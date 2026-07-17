@@ -47,8 +47,10 @@
     if(!confirm(`ยืนยันกำหนดกะ ${shift} จำนวน ${selected.size.toLocaleString("th-TH")} รายการ?`)) return;
     a.showLoading("กำลังกำหนดกะรายการที่เลือก..."); let done=0;
     try{
-      for(const key of selected){ const [emp,date]=key.split("|"); const {error}=await a.state.client.rpc("ta_assign_shift_single",{p_emp_code:emp,p_work_date:date,p_shift_code:shift,p_note:"กำหนดจาก Review Center",p_change_reason:"Bulk assign จาก Review Center",p_confirm_now:confirmNow}); if(error) throw error; done++; }
-      selected.clear(); a.toast(`บันทึกกะสำเร็จ ${done.toLocaleString("th-TH")} รายการ`,"success"); document.getElementById("loadReviewBtn")?.click();
+      const payload=[...selected].map(key=>{const [emp_code,work_date]=key.split("|");return {emp_code,work_date,shift_code:shift,note:"กำหนดจาก Review Center"};});
+      await window.TimeClockShiftAPI.assignBulk(a,payload,"Bulk assign จาก Review Center",confirmNow);
+      done=payload.length;
+      selected.clear(); a.toast(`บันทึกกะสำเร็จ ${done.toLocaleString("th-TH")} รายการ`,"success"); await a.loadReview();
     }catch(e){a.toast(`บันทึกสำเร็จ ${done} รายการ ก่อนเกิดข้อผิดพลาด: ${a.humanError(e)}`,"error");}finally{a.hideLoading();}
   }
   function exportCsv(){
@@ -59,7 +61,7 @@
   }
   function init(){
     const body=$("reviewBody"); if(!body) return;
-    new MutationObserver(()=>{updateKpis();render();}).observe(body,{childList:true});
+    document.addEventListener("timeclock:review-rendered",()=>{ updateKpis(); render(); });
     document.querySelectorAll("[data-review-filter]").forEach(b=>b.addEventListener("click",()=>{activeFilter=b.dataset.reviewFilter||"";document.querySelectorAll("[data-review-filter]").forEach(x=>x.classList.toggle("active",x===b));if($("reviewIssue"))$("reviewIssue").value=activeFilter;render();}));
     $("reviewSearch")?.addEventListener("input",render);
     $("reviewSelectAll")?.addEventListener("change",e=>{filteredRows().forEach(r=>e.target.checked?selected.add(dateKey(r)):selected.delete(dateKey(r)));render();});

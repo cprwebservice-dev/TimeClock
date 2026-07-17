@@ -6,7 +6,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '1.0.0',
+  version: '5.6.1',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });

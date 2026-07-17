@@ -270,24 +270,34 @@
       document.dispatchEvent(new CustomEvent("timeclock:schedule-rendered"));
     }
 
+    let reviewLoadRequest = 0;
     async function loadReview() {
+      const requestId = ++reviewLoadRequest;
       showLoading("กำลังโหลดรายการรอตรวจสอบ...");
       try {
         const issues = val("reviewIssue") ? [val("reviewIssue")] : null;
-        const { data, error } = await state.client.rpc("ta_get_review_queue", {
+        const data = await window.TimeClockShiftAPI.getReview(window.TimeClockApp || { state }, {
           p_start_date: val("reviewStart"), p_end_date: val("reviewEnd"), p_zone: null, p_department: null,
           p_emp_codes: null, p_issue_types: issues
         });
-        if (error) throw error;
+        if (requestId !== reviewLoadRequest) return;
         state.review = data || [];
         renderReview();
-      } catch (err) { toast(humanError(err), "error"); }
-      finally { hideLoading(); }
+      } catch (err) {
+        if (requestId === reviewLoadRequest) {
+          state.review = [];
+          renderReview();
+          toast(humanError(err), "error");
+        }
+      } finally {
+        if (requestId === reviewLoadRequest) hideLoading();
+      }
     }
 
     function renderReview() {
       setText("reviewCount", `${formatNumber(state.review.length)} รายการ`);
       $("reviewBody").innerHTML = state.review.length ? state.review.map(r => `<tr><td>${formatDate(r.work_date)}</td><td>${safe(r.emp_code)}</td><td class="nowrap">${safe(r.full_name)}</td><td>${safe(r.department)}</td><td>${badge(r.auto_shift_code, shiftBadgeClass(r.auto_shift_code))}</td><td>${badge(r.suggested_shift_code || "-", shiftBadgeClass(r.suggested_shift_code))}</td><td class="text-right">${formatNumber(r.suggestion_confidence)}%</td><td>${formatTime(r.actual_in_at || r.first_in)}</td><td>${formatTime(r.actual_out_at || r.last_out)}</td><td>${badge(attendanceLabel(r.attendance_result || r.attendance_status || r.time_pair_status), "badge-red")}</td><td><button class="btn btn-soft" data-review-assign="1" data-emp="${safe(r.emp_code)}" data-date="${safe(String(r.work_date).slice(0,10))}">จัดกะ</button></td></tr>`).join("") : emptyRow(11);
+      document.dispatchEvent(new CustomEvent("timeclock:review-rendered", { detail: { count: state.review.length } }));
     }
 
     async function openAssignment(empCode, workDate) {
@@ -303,11 +313,10 @@
     async function saveAssignment() {
       showLoading("กำลังบันทึกกะ...");
       try {
-        const { error } = await state.client.rpc("ta_assign_shift_single", {
-          p_emp_code: val("assignEmpCode"), p_work_date: val("assignWorkDate"), p_shift_code: val("assignShiftCode"),
-          p_note: val("assignNote") || null, p_change_reason: val("assignReason") || "กำหนดกะจากหน้าปฏิทิน", p_confirm_now: val("assignConfirm") === "true"
+        await window.TimeClockShiftAPI.assignSingle(window.TimeClockApp || { state }, {
+          emp_code: val("assignEmpCode"), work_date: val("assignWorkDate"), shift_code: val("assignShiftCode"),
+          note: val("assignNote") || null, change_reason: val("assignReason") || "กำหนดกะจากหน้าปฏิทิน", confirm_now: val("assignConfirm") === "true"
         });
-        if (error) throw error;
         closeModal("assignModal"); toast("บันทึกกะเรียบร้อย", "success");
         await Promise.all([loadSchedule(), state.currentPage === "review" ? loadReview() : Promise.resolve()]);
       } catch (err) { toast(humanError(err), "error"); }
@@ -318,10 +327,10 @@
       if (!confirm("ยืนยันการลบกะที่จัดไว้รายการนี้?")) return;
       showLoading("กำลังลบกะ...");
       try {
-        const { error } = await state.client.rpc("ta_delete_shift_assignments_bulk", {
-          p_emp_codes: [val("assignEmpCode")], p_start_date: val("assignWorkDate"), p_end_date: val("assignWorkDate"), p_change_reason: "ลบกะจากหน้าปฏิทิน"
-        });
-        if (error) throw error;
+        await window.TimeClockShiftAPI.deleteBulk(
+          window.TimeClockApp || { state },
+          [val("assignEmpCode")], val("assignWorkDate"), val("assignWorkDate"), "ลบกะจากหน้าปฏิทิน"
+        );
         closeModal("assignModal"); toast("ลบกะที่จัดไว้แล้ว", "success"); await loadSchedule();
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
@@ -330,9 +339,9 @@
     async function loadShiftMaster() {
       showLoading("กำลังโหลดข้อมูลกะ...");
       try {
-        const { data, error } = await state.client.from("shift_master").select("*").order("display_order").order("shift_code");
+        const { data, error } = await state.client.from("shift_master").select("*").order("shift_code");
         if (error) throw error;
-        state.filters.shifts = data || [];
+        state.filters.shifts = (data || []).sort((a,b) => Number(a.display_order ?? a.sort_order ?? 0) - Number(b.display_order ?? b.sort_order ?? 0) || String(a.shift_code).localeCompare(String(b.shift_code)));
         fillShiftSelect();
         $("shiftMasterBody").innerHTML = data?.length ? data.map(s => `<tr><td><strong>${safe(s.shift_code)}</strong></td><td>${safe(s.shift_name)}</td><td>${formatTime(s.start_time)}</td><td>${formatTime(s.end_time)}</td><td>${formatNumber(s.break_minutes)} นาที</td><td>${s.is_workday ? (s.is_night_shift ? badge("กะกลางคืน","badge-blue") : badge("กะกลางวัน","badge-blue")) : badge("วันหยุด","badge-gray")}</td><td>${s.is_active ? badge("ใช้งาน","badge-green") : badge("ปิดใช้งาน","badge-red")}</td><td><button class="btn btn-soft" data-edit-shift="${safe(s.shift_code)}">แก้ไข</button></td></tr>`).join("") : emptyRow(8);
       } catch (err) { toast(humanError(err), "error"); }
@@ -341,19 +350,18 @@
 
     function editShift(code) {
       const s = state.filters.shifts.find(x => x.shift_code === code) || {};
-      setVal("smCode", s.shift_code); setVal("smName", s.shift_name); setVal("smStart", s.start_time?.slice(0,5)); setVal("smEnd", s.end_time?.slice(0,5)); setVal("smBreak", s.break_minutes ?? 0); setVal("smOrder", s.display_order ?? 0); setVal("smActive", String(s.is_active !== false)); setVal("smNote", s.note || "");
+      setVal("smCode", s.shift_code); setVal("smName", s.shift_name); setVal("smStart", s.start_time?.slice(0,5)); setVal("smEnd", s.end_time?.slice(0,5)); setVal("smBreak", s.break_minutes ?? 0); setVal("smOrder", s.display_order ?? s.sort_order ?? 0); setVal("smActive", String(s.is_active !== false)); setVal("smNote", s.note || "");
       $("smWorkday").checked = s.is_workday !== false; $("smNight").checked = !!s.is_night_shift; $("smCode").disabled = !!s.shift_code; openModal("shiftMasterModal");
     }
 
     async function saveShiftMaster() {
       showLoading("กำลังบันทึกข้อมูลกะ...");
       try {
-        const { error } = await state.client.rpc("ta_upsert_shift_master", {
-          p_shift_code: val("smCode"), p_shift_name: val("smName"), p_start_time: val("smStart") || null, p_end_time: val("smEnd") || null,
-          p_is_night_shift: $("smNight").checked, p_is_workday: $("smWorkday").checked, p_break_minutes: Number(val("smBreak")||0),
-          p_display_order: Number(val("smOrder")||0), p_note: val("smNote") || null, p_is_active: val("smActive") === "true", p_change_reason: "บันทึกจากหน้า HR Admin"
+        await window.TimeClockShiftAPI.upsertShiftMaster(window.TimeClockApp || { state }, {
+          shift_code: val("smCode"), shift_name: val("smName"), start_time: val("smStart") || null, end_time: val("smEnd") || null,
+          is_night_shift: $("smNight").checked, is_workday: $("smWorkday").checked, break_minutes: Number(val("smBreak")||0),
+          display_order: Number(val("smOrder")||0), note: val("smNote") || null, is_active: val("smActive") === "true", change_reason: "บันทึกจากหน้า HR Admin"
         });
-        if (error) throw error;
         closeModal("shiftMasterModal"); toast("บันทึกข้อมูลกะเรียบร้อย", "success"); await loadShiftMaster();
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
@@ -518,7 +526,6 @@
       $("downloadTemplateBtn").addEventListener("click", downloadTemplate);
       document.addEventListener("click", e => {
         const go=e.target.closest("[data-go-page]"); if(go) switchPage(go.dataset.goPage);
-        const cell=e.target.closest("[data-schedule-cell]"); if(cell) openAssignment(cell.dataset.emp,cell.dataset.date);
         const ra=e.target.closest("[data-review-assign]"); if(ra) openAssignment(ra.dataset.emp,ra.dataset.date);
         const es=e.target.closest("[data-edit-shift]"); if(es) editShift(es.dataset.editShift);
         const eh=e.target.closest("[data-edit-holiday]"); if(eh) editHoliday(eh.dataset.editHoliday);
@@ -537,6 +544,7 @@
     window.TimeClockApp = Object.assign(window.TimeClockApp || {}, {
       state,
       loadSchedule,
+      loadReview,
       renderSchedule,
       openAssignment,
       toast,
