@@ -11,9 +11,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="./css/app.css?v=2.0.0" />
   <link rel="stylesheet" href="./css/dashboard-enterprise.css?v=2.0.0" />
-  <link rel="stylesheet" href="./css/schedule-pro.css?v=5.3.0" />
+  <link rel="stylesheet" href="./css/dashboard-executive.css?v=5.2.0" />
+  <link rel="stylesheet" href="./css/schedule-enterprise.css?v=3.0.0" />
+  <link rel="stylesheet" href="./css/schedule-pro.css?v=5.3.1" />
   <link rel="stylesheet" href="./css/settings-enterprise.css?v=4.0.0" />
-  <link rel="stylesheet" href="./css/platform-shell.css?v=5.1.0" />
+  <link rel="stylesheet" href="./css/platform-shell.css?v=5.2.0" />
 </head>
 <body>
   <div id="toastStack" class="toast-stack"></div>
@@ -134,6 +136,24 @@
 
           <div id="dashboardKpis" class="kpi-grid section-gap enterprise-kpis"></div>
 
+          <div class="executive-strip section-gap">
+            <article class="executive-score-card">
+              <div class="executive-score-head"><div><span class="eyebrow">ATTENDANCE HEALTH</span><h3>คะแนนสุขภาพการลงเวลา</h3></div><span id="executiveScoreStatus" class="health-status">กำลังประเมิน</span></div>
+              <div class="executive-score-body">
+                <div id="executiveScoreRing" class="score-ring"><div><strong id="executiveScore">0</strong><span>/100</span></div></div>
+                <div class="score-copy"><strong id="executiveScoreTitle">รอข้อมูล Dashboard</strong><p id="executiveScoreText">ระบบจะประเมินจากความครบถ้วนของเวลาและรายการที่ต้องตรวจสอบ</p><div class="score-scale"><span>ต้องปรับปรุง</span><span>ดีมาก</span></div></div>
+              </div>
+            </article>
+            <article class="executive-attention-card">
+              <div class="executive-card-head"><div><span class="eyebrow">NEED ATTENTION</span><h3>ประเด็นที่ควรดำเนินการ</h3></div><button class="btn btn-light btn-sm" data-go-page="review">เปิด Review</button></div>
+              <div id="executiveAttention" class="attention-matrix"></div>
+            </article>
+            <article class="executive-confirm-card">
+              <div class="executive-card-head"><div><span class="eyebrow">SCHEDULE CONTROL</span><h3>ความพร้อมของแผนกะ</h3></div><button class="btn btn-light btn-sm" data-go-page="schedule">เปิดปฏิทิน</button></div>
+              <div id="scheduleReadiness" class="schedule-readiness"></div>
+            </article>
+          </div>
+
           <div class="dashboard-main-grid section-gap">
             <div class="panel overview-card">
               <div class="panel-header"><div><h3>คุณภาพการลงเวลา</h3><p>สัดส่วนรายการลงเวลาครบเทียบกับรายการทั้งหมด</p></div><span class="panel-chip">Realtime</span></div>
@@ -161,6 +181,17 @@
             <div class="panel">
               <div class="panel-header"><div><h3>กิจกรรมล่าสุด</h3><p>สรุปจากข้อมูลที่โหลดล่าสุด</p></div></div>
               <div id="recentActivity" class="panel-body activity-list"></div>
+            </div>
+          </div>
+
+          <div class="executive-insights-grid section-gap">
+            <div class="panel executive-insight-panel">
+              <div class="panel-header"><div><h3>Executive Insights</h3><p>ข้อสังเกตที่คำนวณจากข้อมูลชุดล่าสุดโดยไม่สร้างข้อมูลสมมติ</p></div><span class="panel-chip">Auto analysis</span></div>
+              <div id="executiveInsights" class="panel-body executive-insights"></div>
+            </div>
+            <div class="panel executive-distribution-panel">
+              <div class="panel-header"><div><h3>Workforce Distribution</h3><p>สัดส่วนสถานะหลักจากรายการทั้งหมด</p></div></div>
+              <div id="workforceDistribution" class="panel-body distribution-list"></div>
             </div>
           </div>
         </section>
@@ -460,7 +491,9 @@
   <script src="./js/core/app-core.js?v=1.0.0"></script>
   <script src="./js/enhancements.js?v=2.0.0"></script>
   <script src="./js/dashboard-enterprise.js?v=2.0.0"></script>
-  <script src="./js/schedule-pro.js?v=5.3.0"></script>
+  <script src="./js/dashboard-executive.js?v=5.2.0"></script>
+  <script src="./js/schedule-enterprise.js?v=3.0.0"></script>
+  <script src="./js/schedule-pro.js?v=5.3.1"></script>
   <script src="./js/settings-enterprise.js?v=4.0.0"></script>
   <script src="./js/platform-shell.js?v=5.1.0"></script>
 </body>

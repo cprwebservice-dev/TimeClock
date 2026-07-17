@@ -1,20 +1,29 @@
-# Time-Clock Enterprise V5.3 — Schedule Pro
+# Time-Clock Enterprise V5.3.1
 
-ต่อยอดตรงจาก V5.1 Enterprise Shell โดยเน้นหน้าจัดกะรายเดือน
+ฐานการพัฒนา: **V5.2 Executive Dashboard**
 
-## เพิ่มใหม่
+## สิ่งที่คงไว้จาก V5.2
+- Executive Dashboard
+- Attendance Health Score
+- Need Attention Matrix
+- Schedule Readiness
+- Executive Insights
+- Workforce Distribution
+- Enterprise Shell, Status Bar, Command Palette และ Notification Drawer
+- System Settings และ Developer Console
+
+## สิ่งที่เพิ่มในหน้าจัดกะ
 - ลากเมาส์เลือกหลายช่อง
-- Shift+คลิกเลือกช่วงสี่เหลี่ยม
-- Ctrl/Cmd+C, Ctrl/Cmd+V
-- Undo/Redo สูงสุด 30 ขั้น
-- ปุ่มลูกศรเลื่อนเซลล์ และ Shift+ลูกศรขยายช่วง
-- Delete/Backspace ล้างกะ
+- Shift + Click เพื่อเลือกช่วง
+- Ctrl/Cmd + C และ Ctrl/Cmd + V
+- Undo / Redo สูงสุด 30 ขั้น
+- ปุ่มลูกศรเลื่อนตำแหน่งเซลล์
+- Delete / Backspace ล้างกะ
 - คลิกขวาเปิดเมนูจัดกะ
-- กะ LV และสรุปจำนวน D/N/OFF/HOL/LV
+- ปุ่มกะ D, N, OFF, HOL และ LV
+- สรุปจำนวนแต่ละกะ
 - ปุ่มเดือนก่อน เดือนปัจจุบัน และเดือนถัดไป
-- ยืนยันเฉพาะช่วงที่เลือก
+- ยืนยันเฉพาะช่องที่เลือก
 
 ## หมายเหตุ
-- ใช้ RPC เดิม `ta_assign_shifts_bulk`
-- การล้างกะส่ง `shift_code: null`; หาก RPC/constraint ฝั่งฐานข้อมูลไม่ยอมรับค่า null ต้องใช้ RPC ลบ assignment ที่ระบบมีอยู่แทน
-- Undo/Redo เป็นประวัติในหน้าเว็บปัจจุบัน เมื่อรีโหลดหน้าจะเริ่มใหม่
+การล้างกะส่ง `shift_code = null` ผ่าน RPC `ta_assign_shifts_bulk` หากฐานข้อมูลไม่รองรับค่า null จะต้องเปลี่ยนไปใช้ RPC ลบ Assignment โดยเฉพาะ
