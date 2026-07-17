@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="./css/schedule-pro.css?v=5.3.1" />
   <link rel="stylesheet" href="./css/review-center.css?v=5.4.1" />
   <link rel="stylesheet" href="./css/report-center.css?v=5.5.0" />
+  <link rel="stylesheet" href="./css/hr-admin-center.css?v=5.6.0" />
   <link rel="stylesheet" href="./css/settings-enterprise.css?v=4.0.0" />
   <link rel="stylesheet" href="./css/platform-shell.css?v=5.2.0" />
 </head>
@@ -76,6 +77,7 @@
 
         <div id="adminNavGroup" class="hidden">
           <div class="nav-label">HR ADMIN</div>
+          <button class="nav-item" data-page="admin-center"><span class="nav-icon">◆</span><span>HR Admin Center</span></button>
           <button class="nav-item" data-page="admin-shifts"><span class="nav-icon">◫</span><span>ตั้งค่ากะทำงาน</span></button>
           <button class="nav-item" data-page="admin-holidays"><span class="nav-icon">◈</span><span>วันหยุดนักขัตฤกษ์</span></button>
           <button class="nav-item" data-page="admin-users"><span class="nav-icon">♙</span><span>User และ Scope</span></button>
@@ -406,6 +408,59 @@
           </div>
         </section>
 
+
+        <!-- HR Admin Center -->
+        <section id="page-admin-center" class="page hr-admin-center-page">
+          <div class="admin-center-hero">
+            <div>
+              <span class="eyebrow">HR ADMIN CONTROL CENTER</span>
+              <h2>ศูนย์บริหารระบบ Time-Clock</h2>
+              <p>ตรวจสอบสถานะข้อมูล ผู้ใช้งาน กะ วันหยุด และการนำเข้าข้อมูลจากจุดเดียว</p>
+            </div>
+            <div class="admin-center-actions">
+              <button id="adminCenterRefreshBtn" class="btn btn-primary">รีเฟรชสถานะ</button>
+              <button id="adminCenterSettingsBtn" class="btn btn-light">System Settings</button>
+            </div>
+          </div>
+
+          <div class="admin-health-grid">
+            <article class="admin-health-card"><span>ผู้ใช้งานทั้งหมด</span><strong id="adminStatUsers">-</strong><small id="adminStatUsersSub">กำลังตรวจสอบ</small></article>
+            <article class="admin-health-card"><span>ผู้ใช้งานที่เปิดใช้งาน</span><strong id="adminStatActiveUsers">-</strong><small id="adminStatActiveUsersSub">กำลังตรวจสอบ</small></article>
+            <article class="admin-health-card"><span>กะที่เปิดใช้งาน</span><strong id="adminStatShifts">-</strong><small id="adminStatShiftsSub">กำลังตรวจสอบ</small></article>
+            <article class="admin-health-card"><span>วันหยุดปีปัจจุบัน</span><strong id="adminStatHolidays">-</strong><small id="adminStatHolidaysSub">กำลังตรวจสอบ</small></article>
+          </div>
+
+          <div class="admin-module-grid">
+            <button class="admin-module-card" data-admin-open="admin-users"><span class="admin-module-icon">♙</span><div><strong>User และ Scope</strong><small>กำหนด Role, สถานะ และขอบเขตข้อมูล</small></div><em>เปิด ›</em></button>
+            <button class="admin-module-card" data-admin-open="admin-shifts"><span class="admin-module-icon">◫</span><div><strong>ตั้งค่ากะทำงาน</strong><small>จัดการรหัสกะ เวลาเริ่ม-สิ้นสุด และเวลาพัก</small></div><em>เปิด ›</em></button>
+            <button class="admin-module-card" data-admin-open="admin-holidays"><span class="admin-module-icon">◈</span><div><strong>วันหยุดนักขัตฤกษ์</strong><small>เพิ่ม แก้ไข และตรวจผลกระทบต่อ Attendance</small></div><em>เปิด ›</em></button>
+            <button class="admin-module-card" data-admin-open="admin-import"><span class="admin-module-icon">⇧</span><div><strong>นำเข้าพนักงาน</strong><small>ตรวจสอบไฟล์ CSV ก่อนนำเข้าฐานข้อมูล</small></div><em>เปิด ›</em></button>
+            <button class="admin-module-card" data-admin-open="system-settings"><span class="admin-module-icon">⚙</span><div><strong>System Settings</strong><small>Theme, Developer Mode, Feature Flags และ Connection</small></div><em>เปิด ›</em></button>
+            <button class="admin-module-card" data-admin-open="report"><span class="admin-module-icon">▤</span><div><strong>ศูนย์รายงาน</strong><small>ส่งออกรายงานและตรวจประวัติการดาวน์โหลด</small></div><em>เปิด ›</em></button>
+          </div>
+
+          <div class="admin-center-columns">
+            <div class="panel">
+              <div class="panel-header"><div><h3>System Health</h3><p>สถานะการเชื่อมต่อและสิทธิ์ปัจจุบัน</p></div><span id="adminHealthBadge" class="admin-health-badge">กำลังตรวจสอบ</span></div>
+              <div class="panel-body admin-health-list">
+                <div><span>Supabase Connection</span><strong id="adminHealthConnection">-</strong></div>
+                <div><span>Actual Role</span><strong id="adminHealthRole">-</strong></div>
+                <div><span>Session</span><strong id="adminHealthSession">-</strong></div>
+                <div><span>Last Refresh</span><strong id="adminHealthRefresh">-</strong></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-header"><div><h3>ข้อแนะนำสำหรับผู้ดูแล</h3><p>รายการตรวจสอบก่อนเปิดใช้งานจริง</p></div></div>
+              <div class="panel-body admin-checklist">
+                <label><input type="checkbox" disabled checked> กำหนดบัญชี HR_ADMIN</label>
+                <label><input id="adminCheckUsers" type="checkbox" disabled> มีผู้ใช้งานที่เปิดใช้งาน</label>
+                <label><input id="adminCheckShifts" type="checkbox" disabled> มีกะมาตรฐานที่เปิดใช้งาน</label>
+                <label><input id="adminCheckHolidays" type="checkbox" disabled> มีข้อมูลวันหยุดปีปัจจุบัน</label>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Admin Shifts -->
         <section id="page-admin-shifts" class="page admin-page">
           <div class="panel">
@@ -539,6 +594,7 @@
   <script src="./js/schedule-pro.js?v=5.3.1"></script>
   <script src="./js/review-center.js?v=5.4.1"></script>
   <script src="./js/report-center.js?v=5.5.0"></script>
+  <script src="./js/hr-admin-center.js?v=5.6.0"></script>
   <script src="./js/settings-enterprise.js?v=4.0.0"></script>
   <script src="./js/platform-shell.js?v=5.1.0"></script>
 </body>
