@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="./css/dashboard-executive.css?v=5.2.0" />
   <link rel="stylesheet" href="./css/schedule-enterprise.css?v=3.0.0" />
   <link rel="stylesheet" href="./css/schedule-pro.css?v=5.3.1" />
+  <link rel="stylesheet" href="./css/review-center.css?v=5.4.1" />
   <link rel="stylesheet" href="./css/settings-enterprise.css?v=4.0.0" />
   <link rel="stylesheet" href="./css/platform-shell.css?v=5.2.0" />
 </head>
@@ -345,21 +346,61 @@
           </div>
         </section>
 
-        <!-- Review -->
-        <section id="page-review" class="page">
-          <div class="panel">
+        <!-- Review Center -->
+        <section id="page-review" class="page review-center-page">
+          <div class="review-hero">
+            <div>
+              <span class="eyebrow">ATTENDANCE REVIEW CENTER</span>
+              <h2>ศูนย์ตรวจสอบรายการผิดปกติ</h2>
+              <p>รวมรายการเวลาไม่ครบ ไม่มีเวลา ทำงานวันหยุด และกะที่ต้องตรวจสอบไว้ในหน้าเดียว</p>
+            </div>
+            <div class="review-hero-actions">
+              <button id="reviewExportBtn" class="btn btn-light">ส่งออก CSV</button>
+              <button id="reviewRefreshBtn" class="btn btn-primary">รีเฟรชข้อมูล</button>
+            </div>
+          </div>
+
+          <div class="review-kpi-grid">
+            <button class="review-kpi active" data-review-filter=""><span>ทั้งหมด</span><strong id="reviewKpiAll">0</strong><small>รายการที่ต้องตรวจสอบ</small></button>
+            <button class="review-kpi danger" data-review-filter="MISSING_IN"><span>ไม่พบเวลาเข้า</span><strong id="reviewKpiMissingIn">0</strong><small>Missing IN</small></button>
+            <button class="review-kpi danger" data-review-filter="MISSING_OUT"><span>ไม่พบเวลาออก</span><strong id="reviewKpiMissingOut">0</strong><small>Missing OUT</small></button>
+            <button class="review-kpi warning" data-review-filter="ABSENT"><span>ไม่มีเวลา</span><strong id="reviewKpiAbsent">0</strong><small>Absent / No time</small></button>
+            <button class="review-kpi info" data-review-filter="NEED_REVIEW"><span>กะต้องตรวจสอบ</span><strong id="reviewKpiShift">0</strong><small>Shift mismatch</small></button>
+            <button class="review-kpi purple" data-review-filter="WORKED_ON_OFFDAY"><span>ทำงานวันหยุด</span><strong id="reviewKpiOffday">0</strong><small>Worked on off day</small></button>
+          </div>
+
+          <div class="panel review-filter-panel">
             <div class="panel-body">
-              <div class="toolbar">
+              <div class="review-filter-grid">
                 <div class="field"><label>วันที่เริ่มต้น</label><input id="reviewStart" class="input" type="date" /></div>
                 <div class="field"><label>วันที่สิ้นสุด</label><input id="reviewEnd" class="input" type="date" /></div>
                 <div class="field"><label>ประเภทปัญหา</label><select id="reviewIssue" class="select"><option value="">ทุกปัญหา</option><option value="NEED_REVIEW">กะไม่ตรงคำแนะนำ</option><option value="MISSING_IN">ไม่พบเวลาเข้า</option><option value="MISSING_OUT">ไม่พบเวลาออก</option><option value="ABSENT">ไม่มีเวลา</option><option value="WORKED_ON_OFFDAY">ทำงานวันหยุด</option></select></div>
+                <div class="field review-search-field"><label>ค้นหาในผลลัพธ์</label><input id="reviewSearch" class="input" placeholder="รหัส ชื่อ หรือหน่วยงาน" /></div>
                 <div class="toolbar-actions"><button id="loadReviewBtn" class="btn btn-primary">ค้นหา</button></div>
               </div>
             </div>
           </div>
-          <div class="panel section-gap">
-            <div class="panel-header"><div><h3>รายการรอตรวจสอบ</h3><p id="reviewCount">0 รายการ</p></div></div>
-            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>กะตั้งต้น</th><th>กะแนะนำ</th><th>ความมั่นใจ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ปัญหา</th><th>จัดการ</th></tr></thead><tbody id="reviewBody"></tbody></table></div></div>
+
+          <div id="reviewBulkBar" class="review-bulk-bar hidden">
+            <div><strong id="reviewSelectedCount">0</strong><span>รายการที่เลือก</span></div>
+            <div class="review-bulk-controls">
+              <select id="reviewBulkShift" class="select"><option value="D">D</option><option value="N">N</option><option value="OFF">OFF</option><option value="HOL">HOL</option><option value="LV">LV</option></select>
+              <label class="checkbox-line"><input id="reviewBulkConfirm" type="checkbox" /> ยืนยันทันที</label>
+              <button id="reviewBulkAssignBtn" class="btn btn-orange">กำหนดกะที่เลือก</button>
+              <button id="reviewClearSelectionBtn" class="btn btn-light">ยกเลิกการเลือก</button>
+            </div>
+          </div>
+
+          <div class="panel section-gap review-table-panel">
+            <div class="panel-header">
+              <div><h3>รายการรอตรวจสอบ</h3><p id="reviewCount">0 รายการ</p></div>
+              <div class="review-table-meta"><span id="reviewVisibleCount">แสดง 0 รายการ</span></div>
+            </div>
+            <div class="panel-body review-table-body">
+              <div class="table-wrap review-table-wrap">
+                <table class="review-table"><thead><tr><th class="review-check-col"><input id="reviewSelectAll" type="checkbox" aria-label="เลือกทั้งหมด" /></th><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>กะตั้งต้น</th><th>กะแนะนำ</th><th>ความมั่นใจ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ปัญหา</th><th>จัดการ</th></tr></thead><tbody id="reviewBody"></tbody></table>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -494,6 +535,7 @@
   <script src="./js/dashboard-executive.js?v=5.2.0"></script>
   <script src="./js/schedule-enterprise.js?v=3.0.0"></script>
   <script src="./js/schedule-pro.js?v=5.3.1"></script>
+  <script src="./js/review-center.js?v=5.4.1"></script>
   <script src="./js/settings-enterprise.js?v=4.0.0"></script>
   <script src="./js/platform-shell.js?v=5.1.0"></script>
 </body>
