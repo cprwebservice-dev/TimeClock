@@ -18,3 +18,7 @@
 
 ## การทดสอบ
 บัญชีที่จะเห็นเมนู System Settings ต้องมีสิทธิ์จริง HR_ADMIN ก่อน จากนั้นเปิด Developer Mode และเลือก View As เพื่อทดสอบ UX ของ USER หรือ VIEWER
+
+
+## V5.5
+เพิ่ม Report Center และประวัติการส่งออกแบบ Client-side
