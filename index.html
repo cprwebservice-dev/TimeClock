@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b1f3a" />
+  <title>Time-Clock Management | CP Retailink</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --navy-950: #071426;
+      --navy-900: #0b1f3a;
+      --navy-800: #102d52;
+      --blue-700: #1554a0;
+      --blue-600: #1d67bf;
+      --blue-500: #2d7bd3;
+      --blue-100: #eaf3ff;
+      --orange-600: #e86a12;
+      --orange-500: #f58220;
+      --orange-100: #fff0e2;
+      --green-600: #16845b;
+      --green-100: #e8f7f1;
+      --red-600: #cf3b45;
+      --red-100: #fdecef;
+      --amber-600: #b66a00;
+      --amber-100: #fff5d8;
+      --slate-900: #18212f;
+      --slate-700: #445064;
+      --slate-600: #5f6b7e;
+      --slate-500: #7d8798;
+      --slate-300: #d9dee8;
+      --slate-200: #e7ebf1;
+      --slate-100: #f4f6f9;
+      --white: #ffffff;
+      --sidebar-width: 270px;
+      --header-height: 68px;
+      --radius: 16px;
+      --shadow: 0 12px 34px rgba(7, 20, 38, 0.09);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans Thai", Tahoma, sans-serif;
+      color: var(--slate-900);
+      background: #eef3f9;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .hidden { display: none !important; }
+    .muted { color: var(--slate-600); }
+    .nowrap { white-space: nowrap; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+
+    /* Login */
+    .login-screen {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      background:
+        radial-gradient(circle at 15% 10%, rgba(45,123,211,.32), transparent 32%),
+        radial-gradient(circle at 82% 86%, rgba(245,130,32,.25), transparent 28%),
+        linear-gradient(135deg, var(--navy-950), var(--navy-800));
+    }
+    .login-hero {
+      position: relative;
+      padding: 64px clamp(34px, 7vw, 110px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      color: var(--white);
+      overflow: hidden;
+    }
+    .login-hero::after {
+      content: "";
+      position: absolute;
+      width: 430px;
+      height: 430px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 50%;
+      right: -135px;
+      top: -110px;
+      box-shadow: 0 0 0 60px rgba(255,255,255,.025), 0 0 0 120px rgba(255,255,255,.018);
+    }
+    .brand-lockup { display: flex; align-items: center; gap: 14px; margin-bottom: 38px; position: relative; z-index: 1; }
+    .brand-mark {
+      width: 54px;
+      height: 54px;
+      display: grid;
+      place-items: center;
+      border-radius: 17px;
+      background: linear-gradient(145deg, var(--blue-500), var(--orange-500));
+      font-size: 27px;
+      font-weight: 800;
+      box-shadow: 0 14px 30px rgba(0,0,0,.22);
+    }
+    .brand-title { font-size: 21px; font-weight: 800; letter-spacing: .2px; }
+    .brand-subtitle { color: rgba(255,255,255,.72); font-size: 13px; }
+    .login-hero h1 { font-size: clamp(36px, 5vw, 66px); line-height: 1.06; margin: 0; position: relative; z-index: 1; }
+    .login-hero h1 span { color: #ff9b4a; }
+    .login-hero p { max-width: 650px; color: rgba(255,255,255,.78); font-size: 18px; line-height: 1.8; position: relative; z-index: 1; }
+    .feature-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; position: relative; z-index: 1; }
+    .feature-pill { padding: 9px 14px; border-radius: 999px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.12); font-size: 13px; }
+
+    .login-panel-wrap { display: grid; place-items: center; padding: 32px; }
+    .login-card {
+      width: min(460px, 100%);
+      background: rgba(255,255,255,.98);
+      border-radius: 26px;
+      box-shadow: 0 28px 80px rgba(0,0,0,.28);
+      padding: 38px;
+    }
+    .login-card h2 { margin: 0 0 6px; font-size: 29px; }
+    .login-card > p { margin: 0 0 28px; color: var(--slate-600); }
+
+    /* Form */
+    .field { margin-bottom: 16px; }
+    .field label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; color: var(--slate-700); }
+    .input, .select, .textarea {
+      width: 100%;
+      border: 1px solid var(--slate-300);
+      border-radius: 11px;
+      padding: 11px 13px;
+      background: var(--white);
+      color: var(--slate-900);
+      outline: none;
+      transition: .18s ease;
+    }
+    .input:focus, .select:focus, .textarea:focus { border-color: var(--blue-500); box-shadow: 0 0 0 4px rgba(45,123,211,.12); }
+    .textarea { min-height: 96px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+    .form-row-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+    .checkbox-line { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+
+    /* Buttons */
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 15px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 700;
+      transition: .18s ease;
+      min-height: 40px;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+    .btn-primary { color: white; background: linear-gradient(135deg, var(--blue-600), var(--blue-700)); box-shadow: 0 8px 18px rgba(21,84,160,.22); }
+    .btn-orange { color: white; background: linear-gradient(135deg, var(--orange-500), var(--orange-600)); }
+    .btn-soft { color: var(--blue-700); background: var(--blue-100); }
+    .btn-light { color: var(--slate-700); background: var(--slate-100); border: 1px solid var(--slate-200); }
+    .btn-danger { color: var(--red-600); background: var(--red-100); }
+    .btn-success { color: var(--green-600); background: var(--green-100); }
+    .btn-block { width: 100%; }
+    .btn-icon { width: 40px; padding: 0; }
+    .icon { width: 18px; height: 18px; display: inline-block; }
+
+    /* App shell */
+    .app-shell { min-height: 100vh; }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: var(--sidebar-width);
+      background: linear-gradient(180deg, var(--navy-950), var(--navy-900) 62%, #0b2443);
+      color: white;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      transition: width .22s ease, transform .22s ease;
+      box-shadow: 8px 0 30px rgba(7,20,38,.12);
+    }
+    .sidebar-brand { height: var(--header-height); display: flex; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .sidebar-brand .brand-mark { width: 39px; height: 39px; border-radius: 12px; font-size: 18px; box-shadow: none; flex: 0 0 auto; }
+    .sidebar-brand-text { min-width: 0; }
+    .sidebar-brand-text strong { display: block; font-size: 14px; }
+    .sidebar-brand-text span { display: block; font-size: 10px; color: rgba(255,255,255,.58); white-space: nowrap; }
+    .sidebar-nav { padding: 14px 12px; overflow-y: auto; flex: 1; }
+    .nav-label { padding: 12px 10px 7px; color: rgba(255,255,255,.42); font-size: 10px; font-weight: 800; letter-spacing: .8px; }
+    .nav-item {
+      width: 100%;
+      border: 0;
+      color: rgba(255,255,255,.74);
+      background: transparent;
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 12px;
+      margin: 3px 0;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      transition: .18s ease;
+    }
+    .nav-item:hover { color: white; background: rgba(255,255,255,.07); }
+    .nav-item.active { color: white; background: linear-gradient(90deg, rgba(45,123,211,.75), rgba(45,123,211,.22)); box-shadow: inset 3px 0 var(--orange-500); }
+    .nav-item .nav-icon { width: 24px; text-align: center; font-size: 17px; }
+    .sidebar-footer { border-top: 1px solid rgba(255,255,255,.08); padding: 14px; }
+    .sidebar-user { background: rgba(255,255,255,.06); border-radius: 12px; padding: 11px; }
+    .sidebar-user strong, .sidebar-user span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sidebar-user strong { font-size: 12px; }
+    .sidebar-user span { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 3px; }
+
+    .main-shell { margin-left: var(--sidebar-width); min-height: 100vh; transition: margin .22s ease; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      height: var(--header-height);
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: rgba(255,255,255,.93);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--slate-200);
+    }
+    .topbar-left, .topbar-right { display: flex; align-items: center; gap: 12px; }
+    .page-heading strong { display: block; font-size: 17px; }
+    .page-heading span { display: block; font-size: 11px; color: var(--slate-500); }
+    .role-badge { padding: 6px 10px; border-radius: 999px; background: var(--blue-100); color: var(--blue-700); font-size: 11px; font-weight: 800; }
+    .content { padding: 22px; max-width: 1900px; margin: 0 auto; }
+    .page { display: none; animation: fadeIn .18s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    /* Generic cards */
+    .panel { background: var(--white); border: 1px solid rgba(217,222,232,.85); border-radius: var(--radius); box-shadow: var(--shadow); }
+    .panel-header { padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--slate-200); }
+    .panel-header h3 { margin: 0; font-size: 15px; }
+    .panel-header p { margin: 3px 0 0; font-size: 11px; color: var(--slate-500); }
+    .panel-body { padding: 18px; }
+    .toolbar { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+    .toolbar .field { margin: 0; min-width: 165px; }
+    .toolbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .section-gap { margin-top: 18px; }
+
+    .kpi-grid { display: grid; grid-template-columns: repeat(6, minmax(150px,1fr)); gap: 14px; }
+    .kpi-card { position: relative; overflow: hidden; padding: 17px; min-height: 120px; }
+    .kpi-card::after { content: ""; position: absolute; width: 84px; height: 84px; border-radius: 50%; right: -25px; bottom: -28px; background: rgba(45,123,211,.08); }
+    .kpi-label { color: var(--slate-600); font-size: 11px; font-weight: 700; }
+    .kpi-value { margin-top: 8px; font-size: 28px; font-weight: 800; line-height: 1; }
+    .kpi-sub { margin-top: 10px; color: var(--slate-500); font-size: 10px; }
+    .kpi-icon { position: absolute; right: 14px; top: 14px; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px; background: var(--blue-100); }
+    .kpi-card.orange .kpi-icon { background: var(--orange-100); }
+    .kpi-card.red .kpi-icon { background: var(--red-100); }
+    .kpi-card.green .kpi-icon { background: var(--green-100); }
+
+    .dashboard-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+    .status-bars { display: grid; gap: 13px; }
+    .status-row { display: grid; grid-template-columns: 160px 1fr 74px; align-items: center; gap: 10px; font-size: 12px; }
+    .bar-track { height: 10px; border-radius: 999px; background: var(--slate-100); overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blue-500), var(--blue-700)); width: 0%; transition: width .45s ease; }
+    .bar-fill.orange { background: linear-gradient(90deg, var(--orange-500), var(--orange-600)); }
+    .bar-fill.red { background: linear-gradient(90deg, #ef6a73, var(--red-600)); }
+    .bar-fill.green { background: linear-gradient(90deg, #35b989, var(--green-600)); }
+    .quick-list { display: grid; gap: 10px; }
+    .quick-item { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; border: 1px solid var(--slate-200); border-radius: 11px; background: #fbfcfe; }
+    .quick-item strong { font-size: 13px; }
+    .quick-item span { font-size: 11px; color: var(--slate-500); }
+
+    /* Tables */
+    .table-wrap { width: 100%; overflow: auto; border-radius: 12px; border: 1px solid var(--slate-200); }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; }
+    th { position: sticky; top: 0; z-index: 3; background: var(--navy-900); color: white; text-align: left; padding: 10px 11px; white-space: nowrap; font-weight: 700; }
+    td { padding: 9px 11px; border-bottom: 1px solid var(--slate-200); background: white; vertical-align: middle; }
+    tbody tr:hover td { background: #f8fbff; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .table-empty { padding: 34px !important; text-align: center; color: var(--slate-500); }
+    .sticky-col-1 { position: sticky; left: 0; z-index: 2; }
+    .sticky-col-2 { position: sticky; left: 82px; z-index: 2; }
+    th.sticky-col-1, th.sticky-col-2 { z-index: 5; }
+    td.sticky-col-1, td.sticky-col-2 { background: white; }
+
+    .badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; white-space: nowrap; }
+    .badge-blue { color: var(--blue-700); background: var(--blue-100); }
+    .badge-orange { color: var(--orange-600); background: var(--orange-100); }
+    .badge-green { color: var(--green-600); background: var(--green-100); }
+    .badge-red { color: var(--red-600); background: var(--red-100); }
+    .badge-amber { color: var(--amber-600); background: var(--amber-100); }
+    .badge-gray { color: var(--slate-700); background: var(--slate-100); }
+
+    /* Schedule */
+    .schedule-table th.day-col, .schedule-table td.day-col { min-width: 48px; text-align: center; padding: 6px 4px; }
+    .schedule-table th.weekend { background: #9b4d19; }
+    .schedule-cell {
+      width: 36px;
+      height: 31px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      display: inline-grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 800;
+      background: var(--slate-100);
+      color: var(--slate-700);
+      cursor: pointer;
+      user-select: none;
+      transition: .15s ease;
+    }
+    .schedule-cell:hover { transform: scale(1.08); border-color: var(--blue-500); }
+    .schedule-cell.shift-D { background: var(--blue-100); color: var(--blue-700); }
+    .schedule-cell.shift-N { background: #eee9ff; color: #6342b8; }
+    .schedule-cell.shift-OFF { background: var(--slate-100); color: var(--slate-500); }
+    .schedule-cell.shift-HOL { background: var(--orange-100); color: var(--orange-600); }
+    .schedule-cell.review { box-shadow: inset 0 0 0 2px var(--red-600); }
+    .schedule-cell.confirmed { box-shadow: inset 0 -3px var(--green-600); }
+
+    /* Overlay / modal */
+    .modal-backdrop { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: rgba(7,20,38,.64); backdrop-filter: blur(4px); }
+    .modal { width: min(650px, 100%); max-height: 90vh; overflow: auto; background: white; border-radius: 20px; box-shadow: 0 30px 90px rgba(0,0,0,.34); }
+    .modal.large { width: min(960px, 100%); }
+    .modal-header { padding: 17px 20px; border-bottom: 1px solid var(--slate-200); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .modal-header h3 { margin: 0; font-size: 17px; }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 14px 20px; border-top: 1px solid var(--slate-200); display: flex; justify-content: flex-end; gap: 9px; }
+
+    /* Load / toast */
+    .loading-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(238,243,249,.78); backdrop-filter: blur(3px); }
+    .loading-box { background: white; border-radius: 18px; box-shadow: var(--shadow); padding: 24px 30px; display: flex; align-items: center; gap: 14px; font-weight: 700; }
+    .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--slate-200); border-top-color: var(--blue-600); animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast-stack { position: fixed; right: 18px; top: 84px; z-index: 220; display: grid; gap: 9px; width: min(390px, calc(100vw - 36px)); }
+    .toast { background: white; border-radius: 12px; box-shadow: 0 16px 46px rgba(7,20,38,.18); padding: 13px 14px; border-left: 4px solid var(--blue-500); font-size: 12px; animation: toastIn .2s ease; }
+    .toast.error { border-left-color: var(--red-600); }
+    .toast.success { border-left-color: var(--green-600); }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+
+    .footer-credit { text-align: center; color: var(--slate-500); font-size: 10px; padding: 24px 10px 8px; }
+    .mobile-only { display: none; }
+
+    @media (max-width: 1450px) {
+      .kpi-grid { grid-template-columns: repeat(3, minmax(150px,1fr)); }
+    }
+    @media (max-width: 1050px) {
+      .login-screen { grid-template-columns: 1fr; }
+      .login-hero { display: none; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .form-row-3 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 820px) {
+      .sidebar { transform: translateX(-100%); width: var(--sidebar-width); }
+      .sidebar.open { transform: none; }
+      .main-shell { margin-left: 0; }
+      .mobile-only { display: inline-flex; }
+      .content { padding: 14px; }
+      .topbar { padding: 0 13px; }
+      .topbar-right .role-badge { display: none; }
+      .kpi-grid { grid-template-columns: repeat(2, minmax(135px,1fr)); }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+      .toolbar .field { min-width: min(100%, 220px); flex: 1; }
+      .toolbar-actions { width: 100%; margin-left: 0; }
+    }
+    @media (max-width: 480px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .login-card { padding: 25px 20px; border-radius: 20px; }
+      .login-panel-wrap { padding: 18px; }
+      .page-heading span { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="toastStack" class="toast-stack"></div>
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-box"><div class="spinner"></div><span id="loadingText">กำลังประมวลผล...</span></div>
+  </div>
+
+  <!-- Login -->
+  <section id="loginScreen" class="login-screen">
+    <div class="login-hero">
+      <div class="brand-lockup">
+        <div class="brand-mark">TC</div>
+        <div><div class="brand-title">Time-Clock Management</div><div class="brand-subtitle">CP Retailink Workforce Operations</div></div>
+      </div>
+      <h1>บริหารกะและเวลา<br /><span>ช่างเทคนิค</span>ในที่เดียว</h1>
+      <p>ตรวจสอบเวลาเข้า–ออก จัดกะรายเดือน ติดตามรายการผิดปกติ และดู Dashboard ตามสิทธิ์พื้นที่แบบเรียลไทม์</p>
+      <div class="feature-pills">
+        <div class="feature-pill">✓ Dashboard ภาพรวม</div>
+        <div class="feature-pill">✓ ปฏิทินจัดกะ</div>
+        <div class="feature-pill">✓ ตรวจเวลาไม่ครบ</div>
+        <div class="feature-pill">✓ Role &amp; Scope</div>
+      </div>
+    </div>
+    <div class="login-panel-wrap">
+      <form id="loginForm" class="login-card">
+        <div class="brand-lockup" style="margin-bottom:22px;color:var(--navy-900)">
+          <div class="brand-mark">TC</div>
+          <div><div class="brand-title">ระบบ Time-Clock</div><div class="brand-subtitle" style="color:var(--slate-500)">เข้าสู่ระบบด้วยบัญชี Supabase</div></div>
+        </div>
+        <h2>ยินดีต้อนรับ</h2>
+        <p>กรอกอีเมลและรหัสผ่านเพื่อเข้าสู่ระบบ</p>
+        <div class="field"><label for="loginEmail">อีเมล</label><input id="loginEmail" class="input" type="email" autocomplete="username" required placeholder="name@company.com" /></div>
+        <div class="field"><label for="loginPassword">รหัสผ่าน</label><input id="loginPassword" class="input" type="password" autocomplete="current-password" required placeholder="••••••••" /></div>
+        <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
+        <button id="openConfigFromLogin" class="btn btn-light btn-block" type="button" style="margin-top:10px">ตั้งค่าการเชื่อมต่อ Supabase</button>
+        <div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</div>
+      </form>
+    </div>
+  </section>
+
+  <!-- App -->
+  <div id="appShell" class="app-shell hidden">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark">TC</div>
+        <div class="sidebar-brand-text"><strong>Time-Clock</strong><span>Technician Management</span></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-label">ภาพรวม</div>
+        <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span><span>Dashboard</span></button>
+        <button class="nav-item" data-page="attendance"><span class="nav-icon">◷</span><span>รายละเอียดเวลาทำงาน</span></button>
+        <button class="nav-item" data-page="schedule"><span class="nav-icon">▣</span><span>ปฏิทินจัดกะ</span></button>
+        <button class="nav-item" data-page="review"><span class="nav-icon">⚠</span><span>รายการรอตรวจสอบ</span></button>
+
+        <div id="adminNavGroup" class="hidden">
+          <div class="nav-label">HR ADMIN</div>
+          <button class="nav-item" data-page="admin-shifts"><span class="nav-icon">◫</span><span>ตั้งค่ากะทำงาน</span></button>
+          <button class="nav-item" data-page="admin-holidays"><span class="nav-icon">◈</span><span>วันหยุดนักขัตฤกษ์</span></button>
+          <button class="nav-item" data-page="admin-users"><span class="nav-icon">♙</span><span>User และ Scope</span></button>
+          <button class="nav-item" data-page="admin-import"><span class="nav-icon">⇧</span><span>นำเข้าพนักงาน</span></button>
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="sidebar-user"><strong id="sidebarUserName">-</strong><span id="sidebarUserEmail">-</span></div>
+      </div>
+    </aside>
+
+    <main class="main-shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="mobileMenuBtn" class="btn btn-light btn-icon mobile-only" aria-label="เปิดเมนู">☰</button>
+          <div class="page-heading"><strong id="pageTitle">Dashboard</strong><span id="pageSubtitle">ภาพรวมการลงเวลาและการจัดกะ</span></div>
+        </div>
+        <div class="topbar-right">
+          <span id="roleBadge" class="role-badge">VIEWER</span>
+          <button id="configBtn" class="btn btn-light btn-icon" title="ตั้งค่า Supabase">⚙</button>
+          <button id="logoutBtn" class="btn btn-danger">ออกจากระบบ</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- Dashboard -->
+        <section id="page-dashboard" class="page active">
+          <div class="panel">
+            <div class="panel-body">
+              <div class="toolbar">
+                <div class="field"><label>วันที่เริ่มต้น</label><input id="dashStart" class="input" type="date" /></div>
+                <div class="field"><label>วันที่สิ้นสุด</label><input id="dashEnd" class="input" type="date" /></div>
+                <div class="field"><label>พื้นที่</label><select id="dashZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
+                <div class="field"><label>หน่วยงาน</label><select id="dashDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div>
+                <div class="toolbar-actions"><button id="loadDashboardBtn" class="btn btn-primary">แสดงผล</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="dashboardKpis" class="kpi-grid section-gap"></div>
+
+          <div class="dashboard-grid section-gap">
+            <div class="panel">
+              <div class="panel-header"><div><h3>สถานะการลงเวลา</h3><p>เปรียบเทียบรายการสำคัญตามช่วงวันที่</p></div></div>
+              <div id="dashboardBars" class="panel-body status-bars"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-header"><div><h3>รายการที่ต้องดำเนินการ</h3><p>ทางลัดไปยังข้อมูลที่ควรตรวจสอบ</p></div></div>
+              <div id="dashboardQuick" class="panel-body quick-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Attendance -->
+        <section id="page-attendance" class="page">
+          <div class="panel">
+            <div class="panel-body">
+              <div class="toolbar">
+                <div class="field"><label>วันที่เริ่มต้น</label><input id="attStart" class="input" type="date" /></div>
+                <div class="field"><label>วันที่สิ้นสุด</label><input id="attEnd" class="input" type="date" /></div>
+                <div class="field"><label>พื้นที่</label><select id="attZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
+                <div class="field"><label>หน่วยงาน</label><select id="attDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div>
+                <div class="field"><label>สถานะ</label><select id="attStatus" class="select"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENT">ไม่มีเวลา</option><option value="INCOMPLETE_TIME">เวลาไม่ครบ</option><option value="WORKED_ON_OFFDAY">ทำงานวันหยุด</option><option value="NEED_REVIEW">รอตรวจสอบ</option></select></div>
+                <div class="toolbar-actions"><button id="loadAttendanceBtn" class="btn btn-primary">ค้นหา</button><button id="exportAttendanceBtn" class="btn btn-success">Export CSV</button></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel section-gap">
+            <div class="panel-header"><div><h3>รายละเอียดเวลาทำงาน</h3><p id="attendanceCount">0 รายการ</p></div></div>
+            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>กะ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>สาย</th><th>กลับก่อน</th><th>สถานะ</th></tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <!-- Schedule -->
+        <section id="page-schedule" class="page">
+          <div class="panel">
+            <div class="panel-body">
+              <div class="toolbar">
+                <div class="field"><label>เดือน</label><input id="scheduleMonth" class="input" type="month" /></div>
+                <div class="field"><label>พื้นที่</label><select id="scheduleZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
+                <div class="field"><label>หน่วยงาน</label><select id="scheduleDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div>
+                <div class="field"><label>ค้นหาพนักงาน</label><input id="scheduleSearch" class="input" placeholder="รหัสหรือชื่อ" /></div>
+                <div class="toolbar-actions"><button id="loadScheduleBtn" class="btn btn-primary">โหลดตารางกะ</button></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel section-gap">
+            <div class="panel-header"><div><h3>ตารางกะรายเดือน</h3><p>คลิกช่องวันที่เพื่อดูหรือกำหนดกะ</p></div><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge badge-blue">D กะกลางวัน</span><span class="badge" style="background:#eee9ff;color:#6342b8">N กะกลางคืน</span><span class="badge badge-orange">HOL นักขัตฤกษ์</span><span class="badge badge-gray">OFF วันหยุด</span></div></div>
+            <div class="panel-body"><div id="scheduleTableWrap" class="table-wrap" style="max-height:70vh"></div></div>
+          </div>
+        </section>
+
+        <!-- Review -->
+        <section id="page-review" class="page">
+          <div class="panel">
+            <div class="panel-body">
+              <div class="toolbar">
+                <div class="field"><label>วันที่เริ่มต้น</label><input id="reviewStart" class="input" type="date" /></div>
+                <div class="field"><label>วันที่สิ้นสุด</label><input id="reviewEnd" class="input" type="date" /></div>
+                <div class="field"><label>ประเภทปัญหา</label><select id="reviewIssue" class="select"><option value="">ทุกปัญหา</option><option value="NEED_REVIEW">กะไม่ตรงคำแนะนำ</option><option value="MISSING_IN">ไม่พบเวลาเข้า</option><option value="MISSING_OUT">ไม่พบเวลาออก</option><option value="ABSENT">ไม่มีเวลา</option><option value="WORKED_ON_OFFDAY">ทำงานวันหยุด</option></select></div>
+                <div class="toolbar-actions"><button id="loadReviewBtn" class="btn btn-primary">ค้นหา</button></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel section-gap">
+            <div class="panel-header"><div><h3>รายการรอตรวจสอบ</h3><p id="reviewCount">0 รายการ</p></div></div>
+            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>กะตั้งต้น</th><th>กะแนะนำ</th><th>ความมั่นใจ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ปัญหา</th><th>จัดการ</th></tr></thead><tbody id="reviewBody"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <!-- Admin Shifts -->
+        <section id="page-admin-shifts" class="page admin-page">
+          <div class="panel">
+            <div class="panel-header"><div><h3>ตั้งค่ากะทำงาน</h3><p>เพิ่ม แก้ไข หรือปิดการใช้งานกะ</p></div><button id="newShiftBtn" class="btn btn-orange">+ เพิ่มกะ</button></div>
+            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>รหัสกะ</th><th>ชื่อกะ</th><th>เวลาเริ่ม</th><th>เวลาสิ้นสุด</th><th>พัก</th><th>ประเภท</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="shiftMasterBody"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <!-- Admin Holidays -->
+        <section id="page-admin-holidays" class="page admin-page">
+          <div class="panel">
+            <div class="panel-header"><div><h3>วันหยุดนักขัตฤกษ์</h3><p>ข้อมูลวันหยุดที่ใช้คำนวณกะอัตโนมัติ</p></div><button id="newHolidayBtn" class="btn btn-orange">+ เพิ่มวันหยุด</button></div>
+            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันที่</th><th>ชื่อวันหยุด</th><th>แหล่งข้อมูล</th><th>หมายเหตุ</th><th>รายการ Attendance</th><th>มีเวลาทำงาน</th><th>จัดการ</th></tr></thead><tbody id="holidayBody"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <!-- Admin Users -->
+        <section id="page-admin-users" class="page admin-page">
+          <div class="panel">
+            <div class="panel-header"><div><h3>User และ Scope</h3><p>กำหนด Role และขอบเขตการดูข้อมูล</p></div><button id="reloadUsersBtn" class="btn btn-light">รีเฟรช</button></div>
+            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>อีเมล</th><th>ชื่อแสดง</th><th>Role</th><th>สถานะ</th><th>เข้าใช้ล่าสุด</th><th>Scope</th><th>จัดการ</th></tr></thead><tbody id="userBody"></tbody></table></div></div>
+          </div>
+        </section>
+
+        <!-- Admin Import -->
+        <section id="page-admin-import" class="page admin-page">
+          <div class="panel">
+            <div class="panel-header"><div><h3>นำเข้าข้อมูลพนักงาน</h3><p>รองรับไฟล์ CSV UTF-8 ตามชื่อคอลัมน์ที่กำหนด</p></div></div>
+            <div class="panel-body">
+              <div class="form-row">
+                <div class="field"><label>เลือกไฟล์ CSV</label><input id="employeeFile" class="input" type="file" accept=".csv,text/csv" /></div>
+                <div class="field"><label>หมายเหตุ</label><input id="importNote" class="input" placeholder="เช่น ปรับปรุงข้อมูลประจำเดือน" /></div>
+              </div>
+              <div style="display:flex;gap:9px;flex-wrap:wrap"><button id="previewImportBtn" class="btn btn-light">ตรวจสอบก่อนนำเข้า</button><button id="runImportBtn" class="btn btn-primary">นำเข้าข้อมูล</button><button id="downloadTemplateBtn" class="btn btn-success">ดาวน์โหลด Template</button></div>
+              <div class="section-gap" style="padding:14px;border-radius:12px;background:var(--slate-100);font-size:11px;color:var(--slate-700)">ชื่อคอลัมน์: employee_id, full_name, position_name, department, zone, pc, area, sub_area, car_team, manager_department, manager_division, start_date, resign_date</div>
+              <div id="importResult" class="section-gap"></div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="footer-credit">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer>
+      </div>
+    </main>
+  </div>
+
+  <!-- Config Modal -->
+  <div id="configModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>ตั้งค่าการเชื่อมต่อ Supabase</h3><button class="btn btn-light btn-icon" data-close-modal="configModal">×</button></div>
+      <div class="modal-body">
+        <div class="field"><label>Supabase Project URL</label><input id="configUrl" class="input" placeholder="https://xxxxxxxx.supabase.co" /></div>
+        <div class="field"><label>Publishable Key / Anon Key</label><textarea id="configKey" class="textarea" placeholder="sb_publishable_... หรือ anon key"></textarea></div>
+        <div style="padding:12px;border-radius:10px;background:var(--amber-100);color:var(--amber-600);font-size:11px">ใช้เฉพาะ Publishable/Anon key สำหรับ Browser ห้ามใส่ Service Role key</div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-light" data-close-modal="configModal">ยกเลิก</button><button id="saveConfigBtn" class="btn btn-primary">บันทึกการตั้งค่า</button></div>
+    </div>
+  </div>
+
+  <!-- Shift Assignment Modal -->
+  <div id="assignModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>กำหนดกะทำงาน</h3><button class="btn btn-light btn-icon" data-close-modal="assignModal">×</button></div>
+      <div class="modal-body">
+        <input id="assignEmpCode" type="hidden" /><input id="assignWorkDate" type="hidden" />
+        <div id="assignEmployeeInfo" style="padding:13px;border-radius:12px;background:var(--blue-100);color:var(--blue-700);margin-bottom:15px;font-weight:700"></div>
+        <div class="form-row">
+          <div class="field"><label>กะทำงาน</label><select id="assignShiftCode" class="select"></select></div>
+          <div class="field"><label>ยืนยันทันที</label><select id="assignConfirm" class="select"><option value="false">ยังไม่ยืนยัน</option><option value="true">ยืนยันกะทันที</option></select></div>
+        </div>
+        <div class="field"><label>หมายเหตุ</label><input id="assignNote" class="input" placeholder="หมายเหตุการจัดกะ" /></div>
+        <div class="field"><label>เหตุผลการเปลี่ยนแปลง</label><input id="assignReason" class="input" value="กำหนดกะจากหน้าปฏิทิน" /></div>
+      </div>
+      <div class="modal-footer"><button id="deleteAssignmentBtn" class="btn btn-danger" style="margin-right:auto">ลบกะที่จัดไว้</button><button class="btn btn-light" data-close-modal="assignModal">ยกเลิก</button><button id="saveAssignmentBtn" class="btn btn-primary">บันทึกกะ</button></div>
+    </div>
+  </div>
+
+  <!-- Shift Master Modal -->
+  <div id="shiftMasterModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>ข้อมูลกะทำงาน</h3><button class="btn btn-light btn-icon" data-close-modal="shiftMasterModal">×</button></div>
+      <div class="modal-body">
+        <div class="form-row"><div class="field"><label>รหัสกะ</label><input id="smCode" class="input" /></div><div class="field"><label>ชื่อกะ</label><input id="smName" class="input" /></div></div>
+        <div class="form-row"><div class="field"><label>เวลาเริ่ม</label><input id="smStart" class="input" type="time" /></div><div class="field"><label>เวลาสิ้นสุด</label><input id="smEnd" class="input" type="time" /></div></div>
+        <div class="form-row-3"><div class="field"><label>เวลาพัก (นาที)</label><input id="smBreak" class="input" type="number" min="0" value="0" /></div><div class="field"><label>ลำดับ</label><input id="smOrder" class="input" type="number" value="0" /></div><div class="field"><label>สถานะ</label><select id="smActive" class="select"><option value="true">ใช้งาน</option><option value="false">ปิดใช้งาน</option></select></div></div>
+        <div style="display:flex;gap:18px;margin-bottom:16px"><label class="checkbox-line"><input id="smWorkday" type="checkbox" checked /> เป็นวันทำงาน</label><label class="checkbox-line"><input id="smNight" type="checkbox" /> กะกลางคืน</label></div>
+        <div class="field"><label>หมายเหตุ</label><textarea id="smNote" class="textarea"></textarea></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-light" data-close-modal="shiftMasterModal">ยกเลิก</button><button id="saveShiftMasterBtn" class="btn btn-primary">บันทึก</button></div>
+    </div>
+  </div>
+
+  <!-- Holiday Modal -->
+  <div id="holidayModal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header"><h3>ข้อมูลวันหยุด</h3><button class="btn btn-light btn-icon" data-close-modal="holidayModal">×</button></div>
+      <div class="modal-body"><div class="field"><label>วันที่</label><input id="holDate" class="input" type="date" /></div><div class="field"><label>ชื่อวันหยุด</label><input id="holName" class="input" /></div><div class="field"><label>แหล่งข้อมูล</label><input id="holSource" class="input" value="HR_ADMIN" /></div><div class="field"><label>หมายเหตุ</label><textarea id="holNote" class="textarea"></textarea></div></div>
+      <div class="modal-footer"><button class="btn btn-light" data-close-modal="holidayModal">ยกเลิก</button><button id="saveHolidayBtn" class="btn btn-primary">บันทึก</button></div>
+    </div>
+  </div>
+
+  <!-- User Modal -->
+  <div id="userModal" class="modal-backdrop hidden">
+    <div class="modal large">
+      <div class="modal-header"><h3>กำหนดสิทธิ์ผู้ใช้งาน</h3><button class="btn btn-light btn-icon" data-close-modal="userModal">×</button></div>
+      <div class="modal-body">
+        <input id="umUserId" type="hidden" />
+        <div class="form-row-3"><div class="field"><label>อีเมล</label><input id="umEmail" class="input" disabled /></div><div class="field"><label>ชื่อแสดง</label><input id="umDisplayName" class="input" /></div><div class="field"><label>Role</label><select id="umRole" class="select"><option value="VIEWER">VIEWER</option><option value="USER">USER</option><option value="HR_ADMIN">HR_ADMIN</option></select></div></div>
+        <label class="checkbox-line" style="margin-bottom:18px"><input id="umActive" type="checkbox" checked /> เปิดใช้งาน User</label>
+        <div style="border-top:1px solid var(--slate-200);padding-top:16px"><h4 style="margin:0 0 12px">Scope หลัก</h4><div class="form-row-3"><div class="field"><label>ประเภท Scope</label><select id="umScopeType" class="select"><option value="ALL">ALL</option><option value="ZONE">ZONE</option><option value="AREA">AREA</option><option value="SUB_AREA">SUB_AREA</option><option value="DEPARTMENT">DEPARTMENT</option><option value="EMPLOYEE">EMPLOYEE</option></select></div><div class="field"><label>ค่า Scope</label><input id="umScopeValue" class="input" value="*" /></div><div class="field"><label>ชื่อแสดง Scope</label><input id="umScopeLabel" class="input" value="ทุกพื้นที่" /></div></div><div style="display:flex;gap:18px;flex-wrap:wrap"><label class="checkbox-line"><input id="umCanView" type="checkbox" checked /> ดูข้อมูล</label><label class="checkbox-line"><input id="umCanEdit" type="checkbox" /> จัดกะ</label><label class="checkbox-line"><input id="umCanConfirm" type="checkbox" /> ยืนยันกะ</label></div></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    const APP_CONFIG_KEY = "ta_supabase_config_v1";
+    const state = {
+      client: null,
+      session: null,
+      user: null,
+      profile: null,
+      filters: { zones: [], departments: [], employees: [], shifts: [] },
+      dashboard: null,
+      attendance: [],
+      schedule: [],
+      review: [],
+      users: [],
+      scopeOptions: null,
+      currentPage: "dashboard"
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const qs = (selector, root = document) => root.querySelector(selector);
+    const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
+    const val = (id) => $(id)?.value ?? "";
+    const setVal = (id, value) => { if ($(id)) $(id).value = value ?? ""; };
+    const setText = (id, value) => { if ($(id)) $(id).textContent = value ?? ""; };
+    const safe = (v) => String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+    const todayISO = () => new Date().toISOString().slice(0, 10);
+    const monthISO = () => new Date().toISOString().slice(0, 7);
+    const firstDayOfMonth = (d = new Date()) => new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+    const formatDate = (d) => d ? new Date(`${String(d).slice(0,10)}T00:00:00`).toLocaleDateString("th-TH", {day:"2-digit",month:"2-digit",year:"numeric"}) : "-";
+    const formatDateTime = (d) => d ? new Date(d).toLocaleString("th-TH", {dateStyle:"short",timeStyle:"short"}) : "-";
+    const formatTime = (v) => {
+      if (!v) return "-";
+      const s = String(v);
+      if (s.includes("T")) return new Date(s).toLocaleTimeString("th-TH", {hour:"2-digit",minute:"2-digit",hour12:false});
+      return s.slice(0,5);
+    };
+    const formatNumber = (n) => Number(n || 0).toLocaleString("th-TH");
+    const minutesToHours = (n) => Number.isFinite(Number(n)) ? (Number(n) / 60).toLocaleString("th-TH", {minimumFractionDigits:1,maximumFractionDigits:1}) : "-";
+
+    function showLoading(text = "กำลังประมวลผล...") { setText("loadingText", text); $("loadingOverlay").classList.remove("hidden"); }
+    function hideLoading() { $("loadingOverlay").classList.add("hidden"); }
+    function toast(message, type = "info") {
+      const el = document.createElement("div");
+      el.className = `toast ${type}`;
+      el.textContent = message;
+      $("toastStack").appendChild(el);
+      setTimeout(() => el.remove(), 4500);
+    }
+    function openModal(id) { $(id).classList.remove("hidden"); }
+    function closeModal(id) { $(id).classList.add("hidden"); }
+    function getConfig() { try { return JSON.parse(localStorage.getItem(APP_CONFIG_KEY) || "null"); } catch { return null; } }
+    function saveConfig(url, key) { localStorage.setItem(APP_CONFIG_KEY, JSON.stringify({ url: url.trim(), key: key.trim() })); }
+
+    function initClient() {
+      const cfg = getConfig();
+      if (!cfg?.url || !cfg?.key) return false;
+      if (!window.supabase?.createClient) throw new Error("ไม่สามารถโหลด Supabase JavaScript Client");
+      state.client = window.supabase.createClient(cfg.url, cfg.key, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
+      state.client.auth.onAuthStateChange((event, session) => {
+        state.session = session;
+        state.user = session?.user || null;
+        if (event === "SIGNED_OUT") showLogin();
+      });
+      return true;
+    }
+
+    async function boot() {
+      setDefaultDates();
+      bindEvents();
+      const cfg = getConfig();
+      if (cfg) { setVal("configUrl", cfg.url); setVal("configKey", cfg.key); }
+      if (!initClient()) { openModal("configModal"); return; }
+      const { data: { session }, error } = await state.client.auth.getSession();
+      if (error) toast(error.message, "error");
+      if (session) {
+        state.session = session; state.user = session.user;
+        await enterApp();
+      } else showLogin();
+    }
+
+    function setDefaultDates() {
+      const start = firstDayOfMonth();
+      const end = todayISO();
+      ["dashStart","attStart","reviewStart"].forEach(id => setVal(id, start));
+      ["dashEnd","attEnd","reviewEnd"].forEach(id => setVal(id, end));
+      setVal("scheduleMonth", monthISO());
+    }
+
+    function showLogin() { $("appShell").classList.add("hidden"); $("loginScreen").classList.remove("hidden"); }
+    function showApp() { $("loginScreen").classList.add("hidden"); $("appShell").classList.remove("hidden"); }
+
+    async function enterApp() {
+      showLoading("กำลังโหลดสิทธิ์ผู้ใช้งาน...");
+      try {
+        await loadProfile();
+        applyProfile();
+        showApp();
+        await loadFilterOptions();
+        await loadDashboard();
+      } catch (err) {
+        toast(humanError(err), "error");
+        showLogin();
+      } finally { hideLoading(); }
+    }
+
+    async function loadProfile() {
+      const { data, error } = await state.client.from("ta_user_profiles").select("*").eq("user_id", state.user.id).maybeSingle();
+      if (error) throw error;
+      state.profile = data || { user_id: state.user.id, email: state.user.email, display_name: state.user.email, role: "VIEWER", is_active: false };
+      if (!state.profile.is_active) throw new Error("บัญชีนี้ยังไม่ได้เปิดใช้งาน กรุณาติดต่อ HR Admin");
+    }
+
+    function applyProfile() {
+      const p = state.profile;
+      setText("sidebarUserName", p.display_name || p.email || state.user.email);
+      setText("sidebarUserEmail", p.email || state.user.email);
+      setText("roleBadge", p.role || "VIEWER");
+      $("adminNavGroup").classList.toggle("hidden", p.role !== "HR_ADMIN");
+    }
+
+    async function loadFilterOptions() {
+      const { data, error } = await state.client.rpc("ta_get_filter_options", { p_start_date: val("dashStart"), p_end_date: val("dashEnd") });
+      if (error) throw error;
+      const f = data || {};
+      state.filters = {
+        zones: Array.isArray(f.zones) ? f.zones : [],
+        departments: Array.isArray(f.departments) ? f.departments : [],
+        employees: Array.isArray(f.employees) ? f.employees : [],
+        shifts: Array.isArray(f.shifts) ? f.shifts : []
+      };
+      ["dashZone","attZone","scheduleZone"].forEach(id => fillSelect(id, state.filters.zones, "ทุกพื้นที่"));
+      ["dashDepartment","attDepartment","scheduleDepartment"].forEach(id => fillSelect(id, state.filters.departments, "ทุกหน่วยงาน"));
+      fillShiftSelect();
+    }
+
+    function fillSelect(id, values, allLabel) {
+      const el = $(id); if (!el) return;
+      const old = el.value;
+      el.innerHTML = `<option value="">${safe(allLabel)}</option>` + values.map(v => `<option value="${safe(v)}">${safe(v)}</option>`).join("");
+      if ([...el.options].some(o => o.value === old)) el.value = old;
+    }
+    function fillShiftSelect() {
+      $("assignShiftCode").innerHTML = state.filters.shifts.filter(s => s.is_active !== false).map(s => `<option value="${safe(s.shift_code)}">${safe(s.shift_code)} — ${safe(s.shift_name || "")}</option>`).join("");
+    }
+
+    async function loadDashboard() {
+      showLoading("กำลังโหลด Dashboard...");
+      try {
+        const { data, error } = await state.client.rpc("ta_get_dashboard_overview", {
+          p_start_date: val("dashStart"), p_end_date: val("dashEnd"), p_zone: val("dashZone") || null, p_department: val("dashDepartment") || null
+        });
+        if (error) throw error;
+        state.dashboard = Array.isArray(data) ? data[0] : data;
+        renderDashboard(state.dashboard || {});
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    function renderDashboard(d) {
+      const cards = [
+        ["พนักงาน", d.total_employees, "คนในขอบเขตข้อมูล", "♙", ""],
+        ["รายการทั้งหมด", d.total_rows, "วัน-พนักงาน", "▦", ""],
+        ["ลงเวลาครบ", d.complete_time_rows, "มีเวลาเข้าและออก", "✓", "green"],
+        ["เวลาไม่ครบ", Number(d.missing_in_rows||0)+Number(d.missing_out_rows||0), "ขาดเวลาเข้าหรือออก", "!", "orange"],
+        ["ไม่พบเวลา", d.absent_rows ?? d.no_time_rows, "วันทำงานที่ไม่มีเวลา", "×", "red"],
+        ["รอตรวจสอบ", d.need_review_rows, "กะหรือเวลาผิดปกติ", "⚠", "orange"]
+      ];
+      $("dashboardKpis").innerHTML = cards.map(c => `<div class="panel kpi-card ${c[4]}"><div class="kpi-label">${safe(c[0])}</div><div class="kpi-value">${formatNumber(c[1])}</div><div class="kpi-sub">${safe(c[2])}</div><div class="kpi-icon">${c[3]}</div></div>`).join("");
+      const bars = [
+        ["ลงเวลาครบ", d.complete_time_rows, "green"],
+        ["ไม่พบเวลาเข้า", d.missing_in_rows, "orange"],
+        ["ไม่พบเวลาออก", d.missing_out_rows, "orange"],
+        ["ทำงานในวันหยุด", d.worked_on_offday_rows, "blue"],
+        ["รอตรวจสอบกะ", d.need_review_rows, "red"]
+      ];
+      const max = Math.max(1, ...bars.map(x => Number(x[1]||0)));
+      $("dashboardBars").innerHTML = bars.map(x => `<div class="status-row"><span>${safe(x[0])}</span><div class="bar-track"><div class="bar-fill ${x[2]}" style="width:${Math.max(2, Number(x[1]||0)/max*100)}%"></div></div><strong class="text-right">${formatNumber(x[1])}</strong></div>`).join("");
+      $("dashboardQuick").innerHTML = [
+        ["รายการรอตรวจสอบ", d.need_review_rows, "review"],
+        ["ขาดเวลาเข้า", d.missing_in_rows, "review"],
+        ["ขาดเวลาออก", d.missing_out_rows, "review"],
+        ["กะที่ยืนยันแล้ว", d.confirmed_rows, "schedule"]
+      ].map(x => `<button class="quick-item" data-go-page="${x[2]}"><div><strong>${safe(x[0])}</strong><span> คลิกเพื่อดูรายละเอียด</span></div><span class="badge badge-blue">${formatNumber(x[1])}</span></button>`).join("");
+    }
+
+    async function loadAttendance() {
+      showLoading("กำลังโหลดรายละเอียดเวลา...");
+      try {
+        const statuses = val("attStatus") ? [val("attStatus")] : null;
+        const { data, error } = await state.client.rpc("ta_get_attendance_detail", {
+          p_start_date: val("attStart"), p_end_date: val("attEnd"), p_zone: val("attZone") || null,
+          p_department: val("attDepartment") || null, p_emp_codes: null, p_attendance_statuses: statuses, p_schedule_statuses: null
+        });
+        if (error) throw error;
+        state.attendance = data || [];
+        renderAttendance();
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    function renderAttendance() {
+      setText("attendanceCount", `${formatNumber(state.attendance.length)} รายการ`);
+      $("attendanceBody").innerHTML = state.attendance.length ? state.attendance.map(r => `<tr><td class="nowrap">${formatDate(r.work_date)}</td><td>${safe(r.emp_code)}</td><td class="nowrap">${safe(r.full_name)}</td><td>${safe(r.department)}</td><td>${safe(r.zone)}</td><td>${badge(r.effective_shift_code, shiftBadgeClass(r.effective_shift_code))}</td><td>${formatTime(r.actual_in_at || r.first_in)}</td><td>${formatTime(r.actual_out_at || r.last_out)}</td><td class="text-right">${minutesToHours(r.net_work_minutes)}</td><td class="text-right">${formatNumber(r.late_minutes)}</td><td class="text-right">${formatNumber(r.early_leave_minutes)}</td><td>${badge(attendanceLabel(r.attendance_result || r.attendance_status), statusBadgeClass(r.attendance_result || r.attendance_status))}</td></tr>`).join("") : emptyRow(12);
+    }
+
+    async function loadSchedule() {
+      showLoading("กำลังโหลดปฏิทินกะ...");
+      try {
+        const month = `${val("scheduleMonth")}-01`;
+        const { data, error } = await state.client.rpc("ta_get_monthly_schedule", {
+          p_month: month, p_zone: val("scheduleZone") || null, p_department: val("scheduleDepartment") || null,
+          p_emp_codes: null, p_schedule_statuses: null
+        });
+        if (error) throw error;
+        state.schedule = data || [];
+        renderSchedule();
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    function renderSchedule() {
+      const term = val("scheduleSearch").trim().toLowerCase();
+      const rows = term ? state.schedule.filter(r => `${r.emp_code} ${r.full_name}`.toLowerCase().includes(term)) : state.schedule;
+      const month = val("scheduleMonth");
+      if (!month) return;
+      const [year, mon] = month.split("-").map(Number);
+      const days = new Date(year, mon, 0).getDate();
+      const map = new Map();
+      for (const r of rows) {
+        if (!map.has(r.emp_code)) map.set(r.emp_code, { meta: r, days: {} });
+        map.get(r.emp_code).days[Number(String(r.work_date).slice(8,10))] = r;
+      }
+      const headDays = Array.from({length:days},(_,i)=>i+1).map(d => { const dow = new Date(year, mon-1, d).getDay(); return `<th class="day-col ${dow===0||dow===6?'weekend':''}">${d}</th>`; }).join("");
+      let html = `<table class="schedule-table"><thead><tr><th class="sticky-col-1" style="min-width:82px">รหัส</th><th class="sticky-col-2" style="min-width:190px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
+      if (!map.size) html += emptyRow(days + 2);
+      for (const [emp, obj] of map) {
+        html += `<tr><td class="sticky-col-1">${safe(emp)}</td><td class="sticky-col-2 nowrap">${safe(obj.meta.full_name)}</td>`;
+        for (let d=1; d<=days; d++) {
+          const r = obj.days[d];
+          if (!r) { html += `<td class="day-col"><span class="schedule-cell">-</span></td>`; continue; }
+          const code = r.effective_shift_code || r.auto_shift_code || "-";
+          const cls = `shift-${code} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
+          html += `<td class="day-col"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(String(r.work_date).slice(0,10))}" title="${safe(r.full_name)} | ${safe(r.schedule_status)}">${safe(code)}</span></td>`;
+        }
+        html += `</tr>`;
+      }
+      html += `</tbody></table>`;
+      $("scheduleTableWrap").innerHTML = html;
+    }
+
+    async function loadReview() {
+      showLoading("กำลังโหลดรายการรอตรวจสอบ...");
+      try {
+        const issues = val("reviewIssue") ? [val("reviewIssue")] : null;
+        const { data, error } = await state.client.rpc("ta_get_review_queue", {
+          p_start_date: val("reviewStart"), p_end_date: val("reviewEnd"), p_zone: null, p_department: null,
+          p_emp_codes: null, p_issue_types: issues
+        });
+        if (error) throw error;
+        state.review = data || [];
+        renderReview();
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    function renderReview() {
+      setText("reviewCount", `${formatNumber(state.review.length)} รายการ`);
+      $("reviewBody").innerHTML = state.review.length ? state.review.map(r => `<tr><td>${formatDate(r.work_date)}</td><td>${safe(r.emp_code)}</td><td class="nowrap">${safe(r.full_name)}</td><td>${safe(r.department)}</td><td>${badge(r.auto_shift_code, shiftBadgeClass(r.auto_shift_code))}</td><td>${badge(r.suggested_shift_code || "-", shiftBadgeClass(r.suggested_shift_code))}</td><td class="text-right">${formatNumber(r.suggestion_confidence)}%</td><td>${formatTime(r.actual_in_at || r.first_in)}</td><td>${formatTime(r.actual_out_at || r.last_out)}</td><td>${badge(attendanceLabel(r.attendance_result || r.attendance_status || r.time_pair_status), "badge-red")}</td><td><button class="btn btn-soft" data-review-assign="1" data-emp="${safe(r.emp_code)}" data-date="${safe(String(r.work_date).slice(0,10))}">จัดกะ</button></td></tr>`).join("") : emptyRow(11);
+    }
+
+    async function openAssignment(empCode, workDate) {
+      const r = state.schedule.find(x => x.emp_code === empCode && String(x.work_date).slice(0,10) === workDate) || state.review.find(x => x.emp_code === empCode && String(x.work_date).slice(0,10) === workDate);
+      setVal("assignEmpCode", empCode); setVal("assignWorkDate", workDate);
+      setText("assignEmployeeInfo", `${r?.full_name || empCode} | ${formatDate(workDate)} | กะปัจจุบัน ${r?.effective_shift_code || "-"}`);
+      setVal("assignShiftCode", r?.assigned_shift_code || r?.suggested_shift_code || r?.effective_shift_code || "D");
+      setVal("assignConfirm", "false"); setVal("assignNote", ""); setVal("assignReason", "กำหนดกะจากหน้าปฏิทิน");
+      $("deleteAssignmentBtn").classList.toggle("hidden", !r?.assigned_shift_code);
+      openModal("assignModal");
+    }
+
+    async function saveAssignment() {
+      showLoading("กำลังบันทึกกะ...");
+      try {
+        const { error } = await state.client.rpc("ta_assign_shift_single", {
+          p_emp_code: val("assignEmpCode"), p_work_date: val("assignWorkDate"), p_shift_code: val("assignShiftCode"),
+          p_note: val("assignNote") || null, p_change_reason: val("assignReason") || "กำหนดกะจากหน้าปฏิทิน", p_confirm_now: val("assignConfirm") === "true"
+        });
+        if (error) throw error;
+        closeModal("assignModal"); toast("บันทึกกะเรียบร้อย", "success");
+        await Promise.all([loadSchedule(), state.currentPage === "review" ? loadReview() : Promise.resolve()]);
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    async function deleteAssignment() {
+      if (!confirm("ยืนยันการลบกะที่จัดไว้รายการนี้?")) return;
+      showLoading("กำลังลบกะ...");
+      try {
+        const { error } = await state.client.rpc("ta_delete_shift_assignments_bulk", {
+          p_emp_codes: [val("assignEmpCode")], p_start_date: val("assignWorkDate"), p_end_date: val("assignWorkDate"), p_change_reason: "ลบกะจากหน้าปฏิทิน"
+        });
+        if (error) throw error;
+        closeModal("assignModal"); toast("ลบกะที่จัดไว้แล้ว", "success"); await loadSchedule();
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    async function loadShiftMaster() {
+      showLoading("กำลังโหลดข้อมูลกะ...");
+      try {
+        const { data, error } = await state.client.from("shift_master").select("*").order("display_order").order("shift_code");
+        if (error) throw error;
+        state.filters.shifts = data || [];
+        fillShiftSelect();
+        $("shiftMasterBody").innerHTML = data?.length ? data.map(s => `<tr><td><strong>${safe(s.shift_code)}</strong></td><td>${safe(s.shift_name)}</td><td>${formatTime(s.start_time)}</td><td>${formatTime(s.end_time)}</td><td>${formatNumber(s.break_minutes)} นาที</td><td>${s.is_workday ? (s.is_night_shift ? badge("กะกลางคืน","badge-blue") : badge("กะกลางวัน","badge-blue")) : badge("วันหยุด","badge-gray")}</td><td>${s.is_active ? badge("ใช้งาน","badge-green") : badge("ปิดใช้งาน","badge-red")}</td><td><button class="btn btn-soft" data-edit-shift="${safe(s.shift_code)}">แก้ไข</button></td></tr>`).join("") : emptyRow(8);
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    function editShift(code) {
+      const s = state.filters.shifts.find(x => x.shift_code === code) || {};
+      setVal("smCode", s.shift_code); setVal("smName", s.shift_name); setVal("smStart", s.start_time?.slice(0,5)); setVal("smEnd", s.end_time?.slice(0,5)); setVal("smBreak", s.break_minutes ?? 0); setVal("smOrder", s.display_order ?? 0); setVal("smActive", String(s.is_active !== false)); setVal("smNote", s.note || "");
+      $("smWorkday").checked = s.is_workday !== false; $("smNight").checked = !!s.is_night_shift; $("smCode").disabled = !!s.shift_code; openModal("shiftMasterModal");
+    }
+
+    async function saveShiftMaster() {
+      showLoading("กำลังบันทึกข้อมูลกะ...");
+      try {
+        const { error } = await state.client.rpc("ta_upsert_shift_master", {
+          p_shift_code: val("smCode"), p_shift_name: val("smName"), p_start_time: val("smStart") || null, p_end_time: val("smEnd") || null,
+          p_is_night_shift: $("smNight").checked, p_is_workday: $("smWorkday").checked, p_break_minutes: Number(val("smBreak")||0),
+          p_display_order: Number(val("smOrder")||0), p_note: val("smNote") || null, p_is_active: val("smActive") === "true", p_change_reason: "บันทึกจากหน้า HR Admin"
+        });
+        if (error) throw error;
+        closeModal("shiftMasterModal"); toast("บันทึกข้อมูลกะเรียบร้อย", "success"); await loadShiftMaster();
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    async function loadHolidays() {
+      showLoading("กำลังโหลดวันหยุด...");
+      try {
+        const year = new Date().getFullYear();
+        const { data, error } = await state.client.rpc("ta_get_holiday_management", { p_start_date: `${year}-01-01`, p_end_date: `${year+1}-12-31` });
+        if (error) throw error;
+        state.holidays = data || [];
+        $("holidayBody").innerHTML = state.holidays.length ? state.holidays.map(h => `<tr><td>${formatDate(h.holiday_date)}</td><td>${safe(h.holiday_name)}</td><td>${safe(h.source)}</td><td>${safe(h.note)}</td><td class="text-right">${formatNumber(h.attendance_rows)}</td><td class="text-right">${formatNumber(h.rows_with_time)}</td><td><button class="btn btn-soft" data-edit-holiday="${safe(String(h.holiday_date).slice(0,10))}">แก้ไข</button> <button class="btn btn-danger" data-delete-holiday="${safe(String(h.holiday_date).slice(0,10))}">ลบ</button></td></tr>`).join("") : emptyRow(7);
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    function editHoliday(date) {
+      const h = (state.holidays || []).find(x => String(x.holiday_date).slice(0,10) === date) || {};
+      setVal("holDate", date || ""); setVal("holName", h.holiday_name || ""); setVal("holSource", h.source || "HR_ADMIN"); setVal("holNote", h.note || ""); $("holDate").disabled = !!date; openModal("holidayModal");
+    }
+
+    async function saveHoliday() {
+      showLoading("กำลังบันทึกวันหยุดและประมวลผลใหม่...");
+      try {
+        const { error } = await state.client.rpc("ta_upsert_holiday", { p_holiday_date: val("holDate"), p_holiday_name: val("holName"), p_source: val("holSource") || "HR_ADMIN", p_note: val("holNote") || null, p_change_reason: "บันทึกจากหน้า HR Admin" });
+        if (error) throw error;
+        closeModal("holidayModal"); toast("บันทึกวันหยุดเรียบร้อย", "success"); await loadHolidays();
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { hideLoading(); }
+    }
+
+    async function deleteHoliday(date) {
+      if (!confirm(`ยืนยันการลบวันหยุด ${formatDate(date)}?`)) return;
+      showLoading("กำลังลบวันหยุดและประมวลผลใหม่...");
+      try { const { error } = await state.client.rpc("ta_delete_holiday", { p_holiday_date: date, p_change_reason: "ลบจากหน้า HR Admin" }); if (error) throw error; toast("ลบวันหยุดเรียบร้อย", "success"); await loadHolidays(); }
+      catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
+    }
+
+    async function loadUsers() {
+      showLoading("กำลังโหลด User และ Scope...");
+      try {
+        const { data, error } = await state.client.rpc("ta_get_user_management"); if (error) throw error; state.users = data || [];
+        $("userBody").innerHTML = state.users.length ? state.users.map(u => `<tr><td>${safe(u.email)}</td><td>${safe(u.display_name)}</td><td>${badge(u.role, u.role==='HR_ADMIN'?'badge-orange':u.role==='USER'?'badge-blue':'badge-gray')}</td><td>${u.is_active?badge("Active","badge-green"):badge("Inactive","badge-red")}</td><td>${formatDateTime(u.last_sign_in_at)}</td><td>${formatNumber(Array.isArray(u.scopes)?u.scopes.length:0)} รายการ</td><td><button class="btn btn-soft" data-edit-user="${safe(u.user_id)}">แก้ไขสิทธิ์</button></td></tr>`).join("") : emptyRow(7);
+      } catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
+    }
+
+    function editUser(userId) {
+      const u = state.users.find(x => x.user_id === userId); if (!u) return;
+      setVal("umUserId", u.user_id); setVal("umEmail", u.email); setVal("umDisplayName", u.display_name || u.email); setVal("umRole", u.role || "VIEWER"); $("umActive").checked = u.is_active !== false;
+      const s = Array.isArray(u.scopes) && u.scopes.length ? u.scopes[0] : null;
+      setVal("umScopeType", s?.scope_type || "ALL"); setVal("umScopeValue", s?.scope_value || "*"); setVal("umScopeLabel", s?.scope_label || "ทุกพื้นที่"); $("umCanView").checked = s?.can_view !== false; $("umCanEdit").checked = !!s?.can_edit_schedule; $("umCanConfirm").checked = !!s?.can_confirm_schedule;
+      openModal("userModal");
+    }
+
+    async function saveUser() {
+      showLoading("กำลังบันทึกสิทธิ์ผู้ใช้งาน...");
+      try {
+        const userId = val("umUserId");
+        let res = await state.client.rpc("ta_upsert_user_profile", { p_user_id: userId, p_role: val("umRole"), p_display_name: val("umDisplayName") || null, p_is_active: $("umActive").checked, p_change_reason: "แก้ไขจากหน้า HR Admin" });
+        if (res.error) throw res.error;
+        const scopeType = val("umScopeType");
+        const scope = [{ scope_type: scopeType, scope_value: scopeType === "ALL" ? "*" : val("umScopeValue"), scope_label: val("umScopeLabel") || null, can_view: $("umCanView").checked, can_edit_schedule: $("umCanEdit").checked, can_confirm_schedule: $("umCanConfirm").checked, is_active: true, effective_from: null, effective_to: null }];
+        res = await state.client.rpc("ta_replace_user_scopes", { p_user_id: userId, p_scopes: scope, p_change_reason: "แก้ไข Scope จากหน้า HR Admin" });
+        if (res.error) throw res.error;
+        closeModal("userModal"); toast("บันทึกสิทธิ์เรียบร้อย", "success"); await loadUsers();
+      } catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
+    }
+
+    function parseCSV(text) {
+      const rows = []; let row = [], cell = "", quoted = false;
+      for (let i=0;i<text.length;i++) {
+        const ch = text[i], next = text[i+1];
+        if (ch === '"' && quoted && next === '"') { cell += '"'; i++; }
+        else if (ch === '"') quoted = !quoted;
+        else if (ch === ',' && !quoted) { row.push(cell); cell = ""; }
+        else if ((ch === '\n' || ch === '\r') && !quoted) {
+          if (ch === '\r' && next === '\n') i++;
+          row.push(cell); if (row.some(x => x.trim() !== "")) rows.push(row); row = []; cell = "";
+        } else cell += ch;
+      }
+      row.push(cell); if (row.some(x => x.trim() !== "")) rows.push(row);
+      if (!rows.length) return [];
+      const headers = rows.shift().map((x,i) => (i===0 ? x.replace(/^\uFEFF/,"") : x).trim());
+      return rows.map(r => Object.fromEntries(headers.map((h,i) => [h, (r[i] ?? "").trim()])));
+    }
+
+    async function runEmployeeImport(previewOnly) {
+      const file = $("employeeFile").files[0]; if (!file) return toast("กรุณาเลือกไฟล์ CSV", "error");
+      showLoading(previewOnly ? "กำลังตรวจสอบไฟล์..." : "กำลังนำเข้าพนักงาน...");
+      try {
+        const rows = parseCSV(await file.text()); if (!rows.length) throw new Error("ไม่พบข้อมูลในไฟล์");
+        const { data, error } = await state.client.rpc("ta_import_employees", { p_rows: rows, p_file_name: file.name, p_preview_only: previewOnly, p_note: val("importNote") || null });
+        if (error) throw error;
+        const r = Array.isArray(data) ? data[0] : data;
+        $("importResult").innerHTML = `<div class="panel"><div class="panel-body"><div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)"><div><small>สถานะ</small><strong style="display:block">${safe(r.import_status)}</strong></div><div><small>ทั้งหมด</small><strong style="display:block">${formatNumber(r.total_rows)}</strong></div><div><small>ถูกต้อง</small><strong style="display:block">${formatNumber(r.valid_rows)}</strong></div><div><small>เพิ่มใหม่</small><strong style="display:block">${formatNumber(r.inserted_rows)}</strong></div><div><small>ปรับปรุง</small><strong style="display:block">${formatNumber(r.updated_rows)}</strong></div></div></div></div>`;
+        toast(previewOnly ? "ตรวจสอบไฟล์เรียบร้อย" : "นำเข้าข้อมูลเรียบร้อย", "success");
+      } catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
+    }
+
+    function downloadTemplate() {
+      const headers = ["employee_id","full_name","position_name","department","zone","pc","area","sub_area","car_team","manager_department","manager_division","start_date","resign_date"];
+      downloadFile("Employee_Template.csv", "\uFEFF" + headers.join(",") + "\n", "text/csv;charset=utf-8");
+    }
+
+    function exportAttendance() {
+      if (!state.attendance.length) return toast("ไม่มีข้อมูลสำหรับ Export", "error");
+      const headers = ["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","มาสาย(นาที)","กลับก่อน(นาที)","สถานะ"];
+      const rows = state.attendance.map(r => [formatDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone,r.effective_shift_code,formatTime(r.actual_in_at||r.first_in),formatTime(r.actual_out_at||r.last_out),minutesToHours(r.net_work_minutes),r.late_minutes||0,r.early_leave_minutes||0,attendanceLabel(r.attendance_result||r.attendance_status)]);
+      const csv = "\uFEFF" + [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\n");
+      downloadFile(`Attendance_${val("attStart")}_${val("attEnd")}.csv`, csv, "text/csv;charset=utf-8");
+    }
+    const csvCell = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
+    function downloadFile(name, content, type) { const blob = new Blob([content], {type}); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
+
+    function switchPage(page) {
+      if (page.startsWith("admin-") && state.profile?.role !== "HR_ADMIN") return toast("ไม่มีสิทธิ์เข้าถึงเมนูนี้", "error");
+      state.currentPage = page;
+      qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
+      qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
+      const titles = {
+        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], schedule:["ปฏิทินจัดกะ","จัดกะรายพนักงานแบบรายเดือน"], review:["รายการรอตรวจสอบ","ตรวจสอบกะและเวลาที่ผิดปกติ"],
+        "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-users":["User และ Scope","กำหนดสิทธิ์ผู้ใช้งาน"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"]
+      };
+      setText("pageTitle", titles[page]?.[0] || page); setText("pageSubtitle", titles[page]?.[1] || ""); $("sidebar").classList.remove("open");
+      if (page === "attendance" && !state.attendance.length) loadAttendance();
+      if (page === "schedule" && !state.schedule.length) loadSchedule();
+      if (page === "review" && !state.review.length) loadReview();
+      if (page === "admin-shifts") loadShiftMaster();
+      if (page === "admin-holidays") loadHolidays();
+      if (page === "admin-users") loadUsers();
+    }
+
+    function bindEvents() {
+      $("loginForm").addEventListener("submit", async e => { e.preventDefault(); if (!state.client) return openModal("configModal"); showLoading("กำลังเข้าสู่ระบบ..."); try { const { error } = await state.client.auth.signInWithPassword({ email: val("loginEmail").trim(), password: val("loginPassword") }); if (error) throw error; const { data:{session} } = await state.client.auth.getSession(); state.session=session; state.user=session.user; await enterApp(); } catch(err){toast(humanError(err),"error");} finally{hideLoading();} });
+      $("logoutBtn").addEventListener("click", async () => { if (state.client) await state.client.auth.signOut(); showLogin(); });
+      $("openConfigFromLogin").addEventListener("click", () => openModal("configModal"));
+      $("configBtn").addEventListener("click", () => { const c=getConfig(); setVal("configUrl",c?.url); setVal("configKey",c?.key); openModal("configModal"); });
+      $("saveConfigBtn").addEventListener("click", () => { const url=val("configUrl").trim(), key=val("configKey").trim(); if(!url||!key) return toast("กรุณากรอก URL และ Key", "error"); saveConfig(url,key); closeModal("configModal"); toast("บันทึกการตั้งค่าแล้ว กรุณาโหลดหน้าใหม่", "success"); setTimeout(()=>location.reload(),700); });
+      qsa("[data-close-modal]").forEach(b => b.addEventListener("click", () => closeModal(b.dataset.closeModal)));
+      qsa(".nav-item").forEach(b => b.addEventListener("click", () => switchPage(b.dataset.page)));
+      $("mobileMenuBtn").addEventListener("click", () => $("sidebar").classList.toggle("open"));
+      $("loadDashboardBtn").addEventListener("click", loadDashboard);
+      $("loadAttendanceBtn").addEventListener("click", loadAttendance);
+      $("exportAttendanceBtn").addEventListener("click", exportAttendance);
+      $("loadScheduleBtn").addEventListener("click", loadSchedule);
+      $("scheduleSearch").addEventListener("input", renderSchedule);
+      $("loadReviewBtn").addEventListener("click", loadReview);
+      $("saveAssignmentBtn").addEventListener("click", saveAssignment);
+      $("deleteAssignmentBtn").addEventListener("click", deleteAssignment);
+      $("newShiftBtn").addEventListener("click", () => { ["smCode","smName","smStart","smEnd","smNote"].forEach(id=>setVal(id,"")); setVal("smBreak",0);setVal("smOrder",0);setVal("smActive","true");$("smWorkday").checked=true;$("smNight").checked=false;$("smCode").disabled=false;openModal("shiftMasterModal"); });
+      $("saveShiftMasterBtn").addEventListener("click", saveShiftMaster);
+      $("newHolidayBtn").addEventListener("click", () => { setVal("holDate","");setVal("holName","");setVal("holSource","HR_ADMIN");setVal("holNote","");$("holDate").disabled=false;openModal("holidayModal"); });
+      $("saveHolidayBtn").addEventListener("click", saveHoliday);
+      $("reloadUsersBtn").addEventListener("click", loadUsers);
+      $("saveUserBtn").addEventListener("click", saveUser);
+      $("umScopeType").addEventListener("change", () => { if(val("umScopeType")==="ALL"){setVal("umScopeValue","*");setVal("umScopeLabel","ทุกพื้นที่");} });
+      $("previewImportBtn").addEventListener("click", () => runEmployeeImport(true));
+      $("runImportBtn").addEventListener("click", () => runEmployeeImport(false));
+      $("downloadTemplateBtn").addEventListener("click", downloadTemplate);
+      document.addEventListener("click", e => {
+        const go=e.target.closest("[data-go-page]"); if(go) switchPage(go.dataset.goPage);
+        const cell=e.target.closest("[data-schedule-cell]"); if(cell) openAssignment(cell.dataset.emp,cell.dataset.date);
+        const ra=e.target.closest("[data-review-assign]"); if(ra) openAssignment(ra.dataset.emp,ra.dataset.date);
+        const es=e.target.closest("[data-edit-shift]"); if(es) editShift(es.dataset.editShift);
+        const eh=e.target.closest("[data-edit-holiday]"); if(eh) editHoliday(eh.dataset.editHoliday);
+        const dh=e.target.closest("[data-delete-holiday]"); if(dh) deleteHoliday(dh.dataset.deleteHoliday);
+        const eu=e.target.closest("[data-edit-user]"); if(eu) editUser(eu.dataset.editUser);
+      });
+    }
+
+    function badge(text, cls="badge-gray") { return `<span class="badge ${cls}">${safe(text ?? "-")}</span>`; }
+    function shiftBadgeClass(code) { return code === "D" ? "badge-blue" : code === "N" ? "badge-amber" : code === "HOL" ? "badge-orange" : "badge-gray"; }
+    function statusBadgeClass(s) { return ["NORMAL","HOLIDAY","WEEKLY_OFF"].includes(s) ? "badge-green" : ["LATE","EARLY_LEAVE","LATE_AND_EARLY","WORKED_ON_OFFDAY"].includes(s) ? "badge-orange" : ["ABSENT","MISSING_IN","MISSING_OUT","INVALID_TIME","NEED_REVIEW"].includes(s) ? "badge-red" : "badge-gray"; }
+    function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ไม่มีเวลา",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา"})[s] || s || "-"; }
+    function emptyRow(cols) { return `<tr><td colspan="${cols}" class="table-empty">ไม่พบข้อมูล</td></tr>`; }
+    function humanError(err) { return err?.message || err?.error_description || String(err || "เกิดข้อผิดพลาด"); }
+
+    document.addEventListener("DOMContentLoaded", boot);
+  </script>
+</body>
+</html>
