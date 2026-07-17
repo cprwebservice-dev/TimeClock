@@ -22,3 +22,7 @@
 
 ## V5.5
 เพิ่ม Report Center และประวัติการส่งออกแบบ Client-side
+
+
+## V5.6.2
+แก้ไขการแสดงกะหลังบันทึก โดยยึดข้อมูล manual assignment จาก shift_calendar เป็นลำดับแรก

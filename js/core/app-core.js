@@ -218,11 +218,10 @@
       showLoading("กำลังโหลดปฏิทินกะ...");
       try {
         const month = `${val("scheduleMonth")}-01`;
-        const { data, error } = await state.client.rpc("ta_get_monthly_schedule", {
+        const data = await window.TimeClockShiftAPI.getMonthlySchedule(window.TimeClockApp || { state }, {
           p_month: month, p_zone: val("scheduleZone") || null, p_department: val("scheduleDepartment") || null,
           p_emp_codes: null, p_schedule_statuses: null
         });
-        if (error) throw error;
         state.schedule = data || [];
         renderSchedule();
       } catch (err) { toast(humanError(err), "error"); }
@@ -254,7 +253,7 @@
         for (let d=1; d<=days; d++) {
           const r = obj.days[d];
           if (!r) { html += `<td class="day-col empty-schedule-day"><span class="schedule-cell disabled">-</span></td>`; continue; }
-          const code = r.effective_shift_code || r.auto_shift_code || "-";
+          const code = r.assigned_shift_code || r.effective_shift_code || r.auto_shift_code || r.shift_code || "-";
           const cls = `shift-${code} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
           const date = String(r.work_date).slice(0,10);
           html += `<td class="day-col schedule-data-cell" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(r.full_name)} | ${safe(r.schedule_status)} | ดับเบิลคลิกเพื่อแก้ไข"><b>${safe(code)}</b>${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}</span></td>`;
@@ -303,7 +302,7 @@
     async function openAssignment(empCode, workDate) {
       const r = state.schedule.find(x => x.emp_code === empCode && String(x.work_date).slice(0,10) === workDate) || state.review.find(x => x.emp_code === empCode && String(x.work_date).slice(0,10) === workDate);
       setVal("assignEmpCode", empCode); setVal("assignWorkDate", workDate);
-      setText("assignEmployeeInfo", `${r?.full_name || empCode} | ${formatDate(workDate)} | กะปัจจุบัน ${r?.effective_shift_code || "-"}`);
+      setText("assignEmployeeInfo", `${r?.full_name || empCode} | ${formatDate(workDate)} | กะปัจจุบัน ${r?.assigned_shift_code || r?.effective_shift_code || r?.auto_shift_code || "-"}`);
       setVal("assignShiftCode", r?.assigned_shift_code || r?.suggested_shift_code || r?.effective_shift_code || "D");
       setVal("assignConfirm", "false"); setVal("assignNote", ""); setVal("assignReason", "กำหนดกะจากหน้าปฏิทิน");
       $("deleteAssignmentBtn").classList.toggle("hidden", !r?.assigned_shift_code);
@@ -317,7 +316,19 @@
           emp_code: val("assignEmpCode"), work_date: val("assignWorkDate"), shift_code: val("assignShiftCode"),
           note: val("assignNote") || null, change_reason: val("assignReason") || "กำหนดกะจากหน้าปฏิทิน", confirm_now: val("assignConfirm") === "true"
         });
-        closeModal("assignModal"); toast("บันทึกกะเรียบร้อย", "success");
+        const savedEmp = val("assignEmpCode");
+        const savedDate = val("assignWorkDate");
+        const savedShift = val("assignShiftCode");
+        const savedConfirm = val("assignConfirm") === "true";
+        const currentRow = state.schedule.find(x => x.emp_code === savedEmp && String(x.work_date).slice(0,10) === savedDate);
+        if (currentRow) {
+          currentRow.assigned_shift_code = savedShift;
+          currentRow.effective_shift_code = savedShift;
+          currentRow.is_confirmed = savedConfirm;
+          currentRow.schedule_status = savedConfirm ? "CONFIRMED" : "ASSIGNED";
+          renderSchedule();
+        }
+        closeModal("assignModal"); toast(`บันทึกกะ ${savedShift} เรียบร้อย`, "success");
         await Promise.all([loadSchedule(), state.currentPage === "review" ? loadReview() : Promise.resolve()]);
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }

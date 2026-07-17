@@ -231,6 +231,102 @@
       .filter(row => row.issue_type !== "NORMAL" && (!issues.length || issues.includes(row.issue_type)));
   }
 
+
+  async function getMonthlySchedule(app, params) {
+    const client = app?.state?.client;
+    if (!client) throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
+
+    const exact = {
+      p_month: params.p_month,
+      p_zone: params.p_zone ?? null,
+      p_department: params.p_department ?? null,
+      p_emp_codes: params.p_emp_codes ?? null,
+      p_schedule_statuses: params.p_schedule_statuses ?? null
+    };
+
+    const response = await withTimeout(
+      client.rpc("ta_get_monthly_schedule", exact),
+      30000,
+      "โหลดปฏิทินกะ"
+    );
+    if (response.error) throw response.error;
+
+    const rows = Array.isArray(response.data) ? response.data.map(row => ({ ...row })) : [];
+    const monthStart = String(params.p_month || "").slice(0, 10);
+    if (!monthStart) return rows;
+    const start = new Date(`${monthStart}T00:00:00`);
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+    const endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+
+    // Overlay the manual assignment table on top of the RPC result.
+    // This protects the UI from older ta_get_monthly_schedule versions that
+    // save shift_calendar correctly but do not return assigned_shift_code.
+    let calendarResult = await client
+      .from("shift_calendar")
+      .select("work_date,emp_code,shift_code,is_confirmed,note,source_type,updated_at")
+      .gte("work_date", monthStart)
+      .lte("work_date", endDate);
+
+    if (calendarResult.error && missingColumn(calendarResult.error)) {
+      calendarResult = await client
+        .from("shift_calendar")
+        .select("work_date,emp_code,shift_code")
+        .gte("work_date", monthStart)
+        .lte("work_date", endDate);
+    }
+
+    // If RLS blocks the direct overlay, keep the RPC result rather than failing the whole page.
+    if (calendarResult.error) return rows;
+
+    const assignmentMap = new Map();
+    for (const item of calendarResult.data || []) {
+      const key = `${String(item.emp_code || "").trim()}|${String(item.work_date || "").slice(0, 10)}`;
+      assignmentMap.set(key, item);
+    }
+
+    const metaByEmp = new Map();
+    for (const row of rows) {
+      const emp = String(row.emp_code || "").trim();
+      if (emp && !metaByEmp.has(emp)) metaByEmp.set(emp, row);
+      const key = `${emp}|${String(row.work_date || "").slice(0, 10)}`;
+      const assigned = assignmentMap.get(key);
+      const assignedCode = assigned?.shift_code || row.assigned_shift_code || null;
+      const effectiveCode = assignedCode || row.effective_shift_code || row.auto_shift_code || row.shift_code || row.suggested_shift_code || null;
+      row.assigned_shift_code = assignedCode;
+      row.effective_shift_code = effectiveCode;
+      row.is_confirmed = assigned ? Boolean(assigned.is_confirmed) : Boolean(row.is_confirmed);
+      row.schedule_status = assignedCode
+        ? (row.is_confirmed ? "CONFIRMED" : "ASSIGNED")
+        : (row.schedule_status || (effectiveCode ? "AUTO" : "NEED_REVIEW"));
+      if (assigned?.note != null) row.schedule_note = assigned.note;
+      if (assigned?.source_type != null) row.schedule_source = assigned.source_type;
+      assignmentMap.delete(key);
+    }
+
+    // Preserve a saved assignment even when an older RPC omitted that employee/date row.
+    for (const [key, assigned] of assignmentMap) {
+      const [empCode, workDate] = key.split("|");
+      const meta = metaByEmp.get(empCode) || {};
+      rows.push({
+        ...meta,
+        work_date: workDate,
+        emp_code: empCode,
+        assigned_shift_code: assigned.shift_code,
+        effective_shift_code: assigned.shift_code,
+        is_confirmed: Boolean(assigned.is_confirmed),
+        schedule_status: assigned.is_confirmed ? "CONFIRMED" : "ASSIGNED",
+        schedule_note: assigned.note ?? null,
+        schedule_source: assigned.source_type ?? "manual"
+      });
+    }
+
+    rows.sort((a, b) =>
+      String(a.emp_code || "").localeCompare(String(b.emp_code || ""), "th") ||
+      String(a.work_date || "").localeCompare(String(b.work_date || ""))
+    );
+    return rows;
+  }
+
   async function getReview(app, params) {
     const client = app?.state?.client;
     if (!client) throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
@@ -298,6 +394,7 @@
   window.TimeClockShiftAPI = Object.freeze({
     assignSingle,
     assignBulk,
+    getMonthlySchedule,
     deleteBulk,
     getReview,
     upsertShiftMaster,
