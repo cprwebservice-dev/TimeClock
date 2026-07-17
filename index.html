@@ -9,7 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="./css/app.css?v=1.0.0" />
+  <link rel="stylesheet" href="./css/app.css?v=2.0.0" />
+  <link rel="stylesheet" href="./css/dashboard-enterprise.css?v=2.0.0" />
 </head>
 <body>
   <div id="toastStack" class="toast-stack"></div>
@@ -57,6 +58,7 @@
         <div class="brand-mark">TC</div>
         <div class="sidebar-brand-text"><strong>Time-Clock</strong><span>Technician Management</span></div>
       </div>
+      <button id="sidebarCollapseBtn" class="sidebar-collapse-btn desktop-only" title="ย่อเมนู" aria-label="ย่อเมนู">‹</button>
       <nav class="sidebar-nav">
         <div class="nav-label">ภาพรวม</div>
         <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span><span>Dashboard</span></button>
@@ -83,7 +85,12 @@
           <button id="mobileMenuBtn" class="btn btn-light btn-icon mobile-only" aria-label="เปิดเมนู">☰</button>
           <div class="page-heading"><strong id="pageTitle">Dashboard</strong><span id="pageSubtitle">ภาพรวมการลงเวลาและการจัดกะ</span></div>
         </div>
-        <div class="topbar-right">
+        <div class="topbar-right enterprise-actions">
+          <div class="global-search desktop-only">
+            <span>⌕</span><input id="globalSearch" type="search" placeholder="ค้นหาเมนูหรือพนักงาน" aria-label="ค้นหา" />
+          </div>
+          <button id="themeToggleBtn" class="btn btn-light btn-icon" title="เปลี่ยนธีม" aria-label="เปลี่ยนธีม">☾</button>
+          <button id="notificationBtn" class="btn btn-light btn-icon notification-btn" title="การแจ้งเตือน" aria-label="การแจ้งเตือน">♢<span id="notificationCount" class="notification-count">0</span></button>
           <span id="roleBadge" class="role-badge">VIEWER</span>
           <button id="configBtn" class="btn btn-light btn-icon" title="ตั้งค่า Supabase">⚙</button>
           <button id="logoutBtn" class="btn btn-danger">ออกจากระบบ</button>
@@ -92,29 +99,64 @@
 
       <div class="content">
         <!-- Dashboard -->
-        <section id="page-dashboard" class="page active">
-          <div class="panel">
+        <section id="page-dashboard" class="page active enterprise-dashboard">
+          <div class="dashboard-welcome">
+            <div>
+              <span class="eyebrow">WORKFORCE OPERATIONS</span>
+              <h2>ภาพรวมการบริหารเวลาและกะทำงาน</h2>
+              <p>ติดตามสถานะสำคัญ ตรวจรายการผิดปกติ และดำเนินการได้จากหน้าจอเดียว</p>
+            </div>
+            <div class="dashboard-welcome-actions">
+              <span id="dashboardUpdatedAt" class="updated-chip">อัปเดตล่าสุด --:--</span>
+              <button class="btn btn-soft" data-go-page="schedule">จัดกะรายเดือน</button>
+              <button class="btn btn-primary" data-go-page="review">ตรวจรายการผิดปกติ</button>
+            </div>
+          </div>
+
+          <div class="panel filter-panel">
             <div class="panel-body">
-              <div class="toolbar">
+              <div class="toolbar enterprise-filterbar">
                 <div class="field"><label>วันที่เริ่มต้น</label><input id="dashStart" class="input" type="date" /></div>
                 <div class="field"><label>วันที่สิ้นสุด</label><input id="dashEnd" class="input" type="date" /></div>
                 <div class="field"><label>พื้นที่</label><select id="dashZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
                 <div class="field"><label>หน่วยงาน</label><select id="dashDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div>
-                <div class="toolbar-actions"><button id="loadDashboardBtn" class="btn btn-primary">แสดงผล</button></div>
+                <div class="toolbar-actions">
+                  <button id="clearDashboardFilterBtn" class="btn btn-light">ล้างตัวกรอง</button>
+                  <button id="loadDashboardBtn" class="btn btn-primary">แสดงผล</button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div id="dashboardKpis" class="kpi-grid section-gap"></div>
+          <div id="dashboardKpis" class="kpi-grid section-gap enterprise-kpis"></div>
 
-          <div class="dashboard-grid section-gap">
+          <div class="dashboard-main-grid section-gap">
+            <div class="panel overview-card">
+              <div class="panel-header"><div><h3>คุณภาพการลงเวลา</h3><p>สัดส่วนรายการลงเวลาครบเทียบกับรายการทั้งหมด</p></div><span class="panel-chip">Realtime</span></div>
+              <div class="panel-body overview-body">
+                <div id="attendanceDonut" class="attendance-donut" aria-label="กราฟสัดส่วนการลงเวลา"><div class="donut-center"><strong id="donutPercent">0%</strong><span>ลงเวลาครบ</span></div></div>
+                <div id="dashboardLegend" class="metric-legend"></div>
+              </div>
+            </div>
+
+            <div class="panel action-center">
+              <div class="panel-header"><div><h3>ศูนย์ดำเนินการ</h3><p>รายการที่ควรได้รับการตรวจสอบก่อน</p></div><button class="btn btn-light btn-icon" data-go-page="review" title="เปิดรายการทั้งหมด">→</button></div>
+              <div id="dashboardQuick" class="panel-body quick-list enterprise-quick-list"></div>
+            </div>
+          </div>
+
+          <div class="dashboard-secondary-grid section-gap">
             <div class="panel">
               <div class="panel-header"><div><h3>สถานะการลงเวลา</h3><p>เปรียบเทียบรายการสำคัญตามช่วงวันที่</p></div></div>
               <div id="dashboardBars" class="panel-body status-bars"></div>
             </div>
             <div class="panel">
-              <div class="panel-header"><div><h3>รายการที่ต้องดำเนินการ</h3><p>ทางลัดไปยังข้อมูลที่ควรตรวจสอบ</p></div></div>
-              <div id="dashboardQuick" class="panel-body quick-list"></div>
+              <div class="panel-header"><div><h3>สรุปเชิงปฏิบัติการ</h3><p>ตัวชี้วัดสำหรับติดตามการดำเนินงาน</p></div></div>
+              <div id="operationalSummary" class="panel-body operational-summary"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-header"><div><h3>กิจกรรมล่าสุด</h3><p>สรุปจากข้อมูลที่โหลดล่าสุด</p></div></div>
+              <div id="recentActivity" class="panel-body activity-list"></div>
             </div>
           </div>
         </section>
@@ -289,8 +331,10 @@
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
     </div>
   </div>
+  <script src="./js/app.js" defer></script>
   <script src="./js/config.js?v=1.0.0"></script>
   <script src="./js/core/app-core.js?v=1.0.0"></script>
-  <script src="./js/enhancements.js?v=1.0.0"></script>
+  <script src="./js/enhancements.js?v=2.0.0"></script>
+  <script src="./js/dashboard-enterprise.js?v=2.0.0"></script>
 </body>
 </html>
