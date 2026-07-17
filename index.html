@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1f3a" />
-  <title>Time-Clock Enterprise V5.1 | CP Retailink</title>
+  <title>Time-Clock Enterprise V5.6.3 | CP Retailink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="./css/dashboard-enterprise.css?v=2.0.0" />
   <link rel="stylesheet" href="./css/dashboard-executive.css?v=5.2.0" />
   <link rel="stylesheet" href="./css/schedule-enterprise.css?v=3.0.0" />
-  <link rel="stylesheet" href="./css/schedule-pro.css?v=5.3.1" />
+  <link rel="stylesheet" href="./css/schedule-pro.css?v=5.6.3" />
   <link rel="stylesheet" href="./css/review-center.css?v=5.4.1" />
   <link rel="stylesheet" href="./css/report-center.css?v=5.5.0" />
   <link rel="stylesheet" href="./css/hr-admin-center.css?v=5.6.0" />
@@ -284,7 +284,7 @@
           </div>
           <div class="panel section-gap">
             <div class="panel-header"><div><h3>รายละเอียดเวลาทำงาน</h3><p id="attendanceCount">0 รายการ</p></div></div>
-            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>กะ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>สาย</th><th>กลับก่อน</th><th>สถานะ</th></tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
+            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>เวลาเริ่มกะ</th><th>เวลาสิ้นสุดกะ</th><th>กะ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>สาย</th><th>กลับก่อน</th><th>สถานะ</th></tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
           </div>
         </section>
 
@@ -315,8 +315,8 @@
           </div>
           <div class="panel section-gap schedule-workspace">
             <div class="panel-header schedule-panel-header">
-              <div><h3>ตารางกะรายเดือนแบบ Excel</h3><p>คลิกเพื่อเลือกหลายช่อง • ดับเบิลคลิกเพื่อแก้ไขรายวัน • Ctrl/Cmd + C และ Ctrl/Cmd + V เพื่อคัดลอกกะ</p></div>
-              <div class="schedule-legend"><span class="badge badge-blue">D กลางวัน</span><span class="badge shift-legend-night">N กลางคืน</span><span class="badge badge-orange">HOL นักขัตฤกษ์</span><span class="badge badge-gray">OFF วันหยุด</span></div>
+              <div><h3>ตารางกะรายเดือนแบบ Excel</h3><p>จัดกะล่วงหน้าได้ทุกวัน รวมวันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์ • ลากเลือกหลายช่อง • Ctrl/Cmd + C และ Ctrl/Cmd + V</p></div>
+              <div class="schedule-legend"><span class="badge badge-blue">D กลางวัน</span><span class="badge shift-legend-night">N กลางคืน</span><span class="badge badge-orange">HOL นักขัตฤกษ์</span><span class="badge badge-gray">OFF วันหยุด</span><span class="badge schedule-holiday-legend">กรอบส้ม = วันหยุดนักขัตฤกษ์</span><span class="badge schedule-weeklyoff-legend">พื้นเทา = วันหยุดประจำสัปดาห์</span></div>
             </div>
             <div class="schedule-commandbar">
               <div class="schedule-selection-info"><span id="scheduleSelectionCount">ยังไม่ได้เลือกช่อง</span><small id="scheduleClipboardInfo">เลือกช่องแล้วกดกะด่วน</small></div>
@@ -539,7 +539,7 @@
         <div id="assignEmployeeInfo" style="padding:13px;border-radius:12px;background:var(--blue-100);color:var(--blue-700);margin-bottom:15px;font-weight:700"></div>
         <div class="form-row">
           <div class="field"><label>กะทำงาน</label><select id="assignShiftCode" class="select"></select></div>
-          <div class="field"><label>ยืนยันทันที</label><select id="assignConfirm" class="select"><option value="false">ยังไม่ยืนยัน</option><option value="true">ยืนยันกะทันที</option></select></div>
+          <div class="field"><label>สถานะการยืนยันกะ</label><select id="assignConfirm" class="select"><option value="false">ยังไม่ยืนยัน</option><option value="true">ยืนยันกะทันที</option></select><small id="assignConfirmHelp" class="field-help">ยังไม่ยืนยัน: บันทึกเป็นกะร่างสถานะ ASSIGNED และยังแก้ไขได้</small></div>
         </div>
         <div class="field"><label>หมายเหตุ</label><input id="assignNote" class="input" placeholder="หมายเหตุการจัดกะ" /></div>
         <div class="field"><label>เหตุผลการเปลี่ยนแปลง</label><input id="assignReason" class="input" value="กำหนดกะจากหน้าปฏิทิน" /></div>
@@ -585,15 +585,15 @@
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
     </div>
   </div>
-  <script src="./js/config.js?v=5.6.2"></script>
-  <script src="./js/shift-api.js?v=5.6.2"></script>
-  <script src="./js/core/app-core.js?v=5.6.2"></script>
+  <script src="./js/config.js?v=5.6.3"></script>
+  <script src="./js/shift-api.js?v=5.6.3"></script>
+  <script src="./js/core/app-core.js?v=5.6.3"></script>
   <script src="./js/enhancements.js?v=2.0.0"></script>
   <script src="./js/dashboard-enterprise.js?v=2.0.0"></script>
   <script src="./js/dashboard-executive.js?v=5.2.0"></script>
-  <script src="./js/schedule-pro.js?v=5.6.2"></script>
-  <script src="./js/review-center.js?v=5.6.2"></script>
-  <script src="./js/report-center.js?v=5.6.2"></script>
+  <script src="./js/schedule-pro.js?v=5.6.3"></script>
+  <script src="./js/review-center.js?v=5.6.3"></script>
+  <script src="./js/report-center.js?v=5.6.3"></script>
   <script src="./js/hr-admin-center.js?v=5.6.0"></script>
   <script src="./js/settings-enterprise.js?v=4.0.0"></script>
   <script src="./js/platform-shell.js?v=5.1.0"></script>

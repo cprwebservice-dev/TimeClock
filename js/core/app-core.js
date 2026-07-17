@@ -36,6 +36,20 @@
     };
     const formatNumber = (n) => Number(n || 0).toLocaleString("th-TH");
     const minutesToHours = (n) => Number.isFinite(Number(n)) ? (Number(n) / 60).toLocaleString("th-TH", {minimumFractionDigits:1,maximumFractionDigits:1}) : "-";
+    const attendanceShiftCode = r => r?.effective_shift_code || r?.assigned_shift_code || r?.shift_code || r?.auto_shift_code || null;
+    function attendanceShiftTime(r, side) {
+      const code = attendanceShiftCode(r);
+      const master = state.filters.shifts.find(s => String(s.shift_code || "").toUpperCase() === String(code || "").toUpperCase()) || {};
+      const start = r?.effective_shift_start_time || r?.assigned_shift_start_time || r?.shift_start_time || master.start_time;
+      const end = r?.effective_shift_end_time || r?.assigned_shift_end_time || r?.shift_end_time || master.end_time;
+      return side === "start" ? start : end;
+    }
+    function updateAssignConfirmHelp() {
+      const confirmed = val("assignConfirm") === "true";
+      setText("assignConfirmHelp", confirmed
+        ? "ยืนยันกะทันที: บันทึกเป็นกะยืนยันแล้ว พร้อมผู้ยืนยันและวันเวลา ระบบแสดงเครื่องหมาย ✓"
+        : "ยังไม่ยืนยัน: บันทึกเป็นกะร่างสถานะ ASSIGNED ยังแก้ไขได้ ภายใต้ระบบปัจจุบันกะนี้ถูกใช้เป็นกะทำงานทันทีเช่นกัน");
+    }
 
     function showLoading(text = "กำลังประมวลผล...") { setText("loadingText", text); $("loadingOverlay").classList.remove("hidden"); }
     function hideLoading() { $("loadingOverlay").classList.add("hidden"); }
@@ -211,7 +225,10 @@
 
     function renderAttendance() {
       setText("attendanceCount", `${formatNumber(state.attendance.length)} รายการ`);
-      $("attendanceBody").innerHTML = state.attendance.length ? state.attendance.map(r => `<tr><td class="nowrap">${formatDate(r.work_date)}</td><td>${safe(r.emp_code)}</td><td class="nowrap">${safe(r.full_name)}</td><td>${safe(r.department)}</td><td>${safe(r.zone)}</td><td>${badge(r.effective_shift_code, shiftBadgeClass(r.effective_shift_code))}</td><td>${formatTime(r.actual_in_at || r.first_in)}</td><td>${formatTime(r.actual_out_at || r.last_out)}</td><td class="text-right">${minutesToHours(r.net_work_minutes)}</td><td class="text-right">${formatNumber(r.late_minutes)}</td><td class="text-right">${formatNumber(r.early_leave_minutes)}</td><td>${badge(attendanceLabel(r.attendance_result || r.attendance_status), statusBadgeClass(r.attendance_result || r.attendance_status))}</td></tr>`).join("") : emptyRow(12);
+      $("attendanceBody").innerHTML = state.attendance.length ? state.attendance.map(r => {
+        const code = attendanceShiftCode(r);
+        return `<tr><td class="nowrap">${formatDate(r.work_date)}</td><td>${safe(r.emp_code)}</td><td class="nowrap">${safe(r.full_name)}</td><td>${safe(r.department)}</td><td>${safe(r.zone)}</td><td class="nowrap">${formatTime(attendanceShiftTime(r,"start"))}</td><td class="nowrap">${formatTime(attendanceShiftTime(r,"end"))}</td><td>${badge(code, shiftBadgeClass(code))}</td><td>${formatTime(r.actual_in_at || r.first_in)}</td><td>${formatTime(r.actual_out_at || r.last_out)}</td><td class="text-right">${minutesToHours(r.net_work_minutes)}</td><td class="text-right">${formatNumber(r.late_minutes)}</td><td class="text-right">${formatNumber(r.early_leave_minutes)}</td><td>${badge(attendanceLabel(r.attendance_result || r.attendance_status), statusBadgeClass(r.attendance_result || r.attendance_status))}</td></tr>`;
+      }).join("") : emptyRow(14);
     }
 
     async function loadSchedule() {
@@ -236,27 +253,42 @@
       const [year, mon] = month.split("-").map(Number);
       const days = new Date(year, mon, 0).getDate();
       const map = new Map();
+      const dateMeta = new Map();
       for (const r of rows) {
         if (!map.has(r.emp_code)) map.set(r.emp_code, { meta: r, days: {} });
         map.get(r.emp_code).days[Number(String(r.work_date).slice(8,10))] = r;
+        const date = String(r.work_date).slice(0,10);
+        if (!dateMeta.has(date)) dateMeta.set(date, { holiday: false, holidayName: null });
+        if (r.is_public_holiday || r.day_type === "PUBLIC_HOLIDAY") {
+          dateMeta.set(date, { holiday: true, holidayName: r.holiday_name || "วันหยุดนักขัตฤกษ์" });
+        }
       }
       const thaiDays = ["อา","จ","อ","พ","พฤ","ศ","ส"];
       const headDays = Array.from({length:days},(_,i)=>i+1).map(d => {
         const dow = new Date(year, mon-1, d).getDay();
         const date = `${year}-${String(mon).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-        return `<th class="day-col ${dow===0||dow===6?'weekend':''}" data-select-date="${date}" title="เลือกทั้งวันที่"><span>${d}</span><small>${thaiDays[dow]}</small></th>`;
+        const meta = dateMeta.get(date) || {};
+        const classes = [dow===0||dow===6 ? "weekend" : "", meta.holiday ? "public-holiday-head" : ""].filter(Boolean).join(" ");
+        const title = meta.holiday ? `${meta.holidayName} • คลิกเพื่อเลือกทั้งวันที่` : "เลือกทั้งวันที่";
+        return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d}</span><small>${thaiDays[dow]}${meta.holiday?" • หยุด":""}</small></th>`;
       }).join("");
       let html = `<table class="schedule-table enterprise-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
       if (!map.size) html += emptyRow(days + 2);
+      const today = todayISO();
       for (const [emp, obj] of map) {
         html += `<tr data-emp-row="${safe(emp)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><strong>${safe(obj.meta.full_name)}</strong><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td>`;
         for (let d=1; d<=days; d++) {
           const r = obj.days[d];
           if (!r) { html += `<td class="day-col empty-schedule-day"><span class="schedule-cell disabled">-</span></td>`; continue; }
           const code = r.assigned_shift_code || r.effective_shift_code || r.auto_shift_code || r.shift_code || "-";
-          const cls = `shift-${code} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
           const date = String(r.work_date).slice(0,10);
-          html += `<td class="day-col schedule-data-cell" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(r.full_name)} | ${safe(r.schedule_status)} | ดับเบิลคลิกเพื่อแก้ไข"><b>${safe(code)}</b>${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}</span></td>`;
+          const publicHoliday = r.is_public_holiday || r.day_type === "PUBLIC_HOLIDAY";
+          const weeklyOff = r.is_weekly_off || r.day_type === "WEEKLY_OFF";
+          const cls = `shift-${code} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
+          const tdCls = ["day-col","schedule-data-cell",publicHoliday?"public-holiday-cell":"",weeklyOff?"weekly-off-cell":"",date>today?"future-schedule-cell":""].filter(Boolean).join(" ");
+          const dayLabel = publicHoliday ? (r.holiday_name || "วันหยุดนักขัตฤกษ์") : weeklyOff ? "วันหยุดประจำสัปดาห์" : "วันทำงาน";
+          const statusLabel = r.schedule_status === "CONFIRMED" ? "ยืนยันแล้ว" : r.schedule_status === "ASSIGNED" ? "ยังไม่ยืนยัน" : r.schedule_status || "AUTO";
+          html += `<td class="${tdCls}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(r.full_name)} | ${safe(dayLabel)} | ${safe(statusLabel)} | ดับเบิลคลิกเพื่อแก้ไข"><b>${safe(code)}</b>${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}</span></td>`;
         }
         html += `</tr>`;
       }
@@ -304,7 +336,8 @@
       setVal("assignEmpCode", empCode); setVal("assignWorkDate", workDate);
       setText("assignEmployeeInfo", `${r?.full_name || empCode} | ${formatDate(workDate)} | กะปัจจุบัน ${r?.assigned_shift_code || r?.effective_shift_code || r?.auto_shift_code || "-"}`);
       setVal("assignShiftCode", r?.assigned_shift_code || r?.suggested_shift_code || r?.effective_shift_code || "D");
-      setVal("assignConfirm", "false"); setVal("assignNote", ""); setVal("assignReason", "กำหนดกะจากหน้าปฏิทิน");
+      setVal("assignConfirm", r?.is_confirmed ? "true" : "false"); setVal("assignNote", r?.schedule_note || ""); setVal("assignReason", "กำหนดกะจากหน้าปฏิทิน");
+      updateAssignConfirmHelp();
       $("deleteAssignmentBtn").classList.toggle("hidden", !r?.assigned_shift_code);
       openModal("assignModal");
     }
@@ -480,8 +513,8 @@
 
     function exportAttendance() {
       if (!state.attendance.length) return toast("ไม่มีข้อมูลสำหรับ Export", "error");
-      const headers = ["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","มาสาย(นาที)","กลับก่อน(นาที)","สถานะ"];
-      const rows = state.attendance.map(r => [formatDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone,r.effective_shift_code,formatTime(r.actual_in_at||r.first_in),formatTime(r.actual_out_at||r.last_out),minutesToHours(r.net_work_minutes),r.late_minutes||0,r.early_leave_minutes||0,attendanceLabel(r.attendance_result||r.attendance_status)]);
+      const headers = ["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","มาสาย(นาที)","กลับก่อน(นาที)","สถานะ"];
+      const rows = state.attendance.map(r => [formatDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone,formatTime(attendanceShiftTime(r,"start")),formatTime(attendanceShiftTime(r,"end")),attendanceShiftCode(r),formatTime(r.actual_in_at||r.first_in),formatTime(r.actual_out_at||r.last_out),minutesToHours(r.net_work_minutes),r.late_minutes||0,r.early_leave_minutes||0,attendanceLabel(r.attendance_result||r.attendance_status)]);
       const csv = "\uFEFF" + [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\n");
       downloadFile(`Attendance_${val("attStart")}_${val("attEnd")}.csv`, csv, "text/csv;charset=utf-8");
     }
@@ -496,7 +529,7 @@
       qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
-        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], schedule:["ปฏิทินจัดกะ","จัดกะรายพนักงานแบบรายเดือน"], review:["รายการรอตรวจสอบ","ตรวจสอบกะและเวลาที่ผิดปกติ"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
+        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], schedule:["ปฏิทินจัดกะ","จัดกะล่วงหน้าได้ทุกวัน รวมวันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์"], review:["รายการรอตรวจสอบ","ตรวจสอบกะและเวลาที่ผิดปกติ"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
         "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-users":["User และ Scope","กำหนดสิทธิ์ผู้ใช้งาน"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"]
       };
       setText("pageTitle", titles[page]?.[0] || page); setText("pageSubtitle", titles[page]?.[1] || ""); $("sidebar").classList.remove("open");
@@ -525,6 +558,7 @@
       $("loadReviewBtn").addEventListener("click", loadReview);
       $("saveAssignmentBtn").addEventListener("click", saveAssignment);
       $("deleteAssignmentBtn").addEventListener("click", deleteAssignment);
+      $("assignConfirm")?.addEventListener("change", updateAssignConfirmHelp);
       $("newShiftBtn").addEventListener("click", () => { ["smCode","smName","smStart","smEnd","smNote"].forEach(id=>setVal(id,"")); setVal("smBreak",0);setVal("smOrder",0);setVal("smActive","true");$("smWorkday").checked=true;$("smNight").checked=false;$("smCode").disabled=false;openModal("shiftMasterModal"); });
       $("saveShiftMasterBtn").addEventListener("click", saveShiftMaster);
       $("newHolidayBtn").addEventListener("click", () => { setVal("holDate","");setVal("holName","");setVal("holSource","HR_ADMIN");setVal("holNote","");$("holDate").disabled=false;openModal("holidayModal"); });

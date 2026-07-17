@@ -2,7 +2,7 @@
   const $ = (id) => document.getElementById(id);
   const q = (s, r=document) => r.querySelector(s);
   const qa = (s, r=document) => [...r.querySelectorAll(s)];
-  const VERSION = '5.1.0';
+  const VERSION = '5.6.3';
   const menuItems = [
     ['dashboard','Dashboard','ภาพรวมการลงเวลา','▦'],['attendance','รายละเอียดเวลาทำงาน','ค้นหาและตรวจเวลาพนักงาน','◷'],['schedule','ปฏิทินจัดกะ','จัดกะรายเดือน','▣'],['review','รายการรอตรวจสอบ','Missing IN / OUT และรายการผิดปกติ','⚠'],['admin-shifts','ตั้งค่ากะทำงาน','Shift Master','◫'],['admin-holidays','วันหยุดนักขัตฤกษ์','Holiday Master','◈'],['admin-users','User และ Scope','สิทธิ์ผู้ใช้งาน','♙'],['admin-import','นำเข้าพนักงาน','Import CSV','⇧'],['system-settings','System Settings','Theme, Developer และ Connection','⚙']
   ];
@@ -48,7 +48,7 @@
   function mountDrawer(){
     if($('notificationDrawer')) return;
     const d=document.createElement('aside'); d.id='notificationDrawer'; d.className='notification-drawer';
-    d.innerHTML=`<div class="drawer-head"><div><small>TIME-CLOCK</small><h3>การแจ้งเตือน</h3></div><button id="drawerClose" class="btn btn-light btn-icon">×</button></div><div class="drawer-tabs"><button class="drawer-tab active">ทั้งหมด</button><button class="drawer-tab">รอตรวจสอบ</button><button class="drawer-tab">ระบบ</button></div><div class="drawer-body"><div class="notice-card"><span class="notice-dot"></span><div><strong>พร้อมใช้งาน Enterprise Shell V5.1</strong><p>Command Palette, Status Bar และ Profile Center เปิดใช้งานแล้ว</p><time>ล่าสุด</time></div></div><div class="notice-card"><span class="notice-dot"></span><div><strong>ตรวจรายการรอตรวจสอบ</strong><p>กดเมนู Review Center เพื่อดู Missing IN / OUT</p><time>วันนี้</time></div></div><div class="notice-card"><span class="notice-dot"></span><div><strong>สิทธิ์ปัจจุบัน: <span id="noticeRole">VIEWER</span></strong><p>การมองเห็นเมนูขึ้นกับ Role และ Scope จริง</p><time>Session ปัจจุบัน</time></div></div></div>`;
+    d.innerHTML=`<div class="drawer-head"><div><small>TIME-CLOCK</small><h3>การแจ้งเตือน</h3></div><button id="drawerClose" class="btn btn-light btn-icon">×</button></div><div class="drawer-tabs"><button class="drawer-tab active">ทั้งหมด</button><button class="drawer-tab">รอตรวจสอบ</button><button class="drawer-tab">ระบบ</button></div><div class="drawer-body"><div class="notice-card"><span class="notice-dot"></span><div><strong>พร้อมใช้งาน Enterprise Shell V5.6.3</strong><p>Command Palette, Status Bar และ Profile Center เปิดใช้งานแล้ว</p><time>ล่าสุด</time></div></div><div class="notice-card"><span class="notice-dot"></span><div><strong>ตรวจรายการรอตรวจสอบ</strong><p>กดเมนู Review Center เพื่อดู Missing IN / OUT</p><time>วันนี้</time></div></div><div class="notice-card"><span class="notice-dot"></span><div><strong>สิทธิ์ปัจจุบัน: <span id="noticeRole">VIEWER</span></strong><p>การมองเห็นเมนูขึ้นกับ Role และ Scope จริง</p><time>Session ปัจจุบัน</time></div></div></div>`;
     document.body.appendChild(d); $('drawerClose').onclick=()=>d.classList.remove('open');
   }
 

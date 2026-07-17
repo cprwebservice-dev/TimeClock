@@ -32,6 +32,7 @@
     const workDate = String(row.work_date || row.p_work_date || "").slice(0, 10);
     const shiftCode = row.shift_code ?? row.p_shift_code;
     const note = row.note ?? row.p_note ?? null;
+    const confirmNow = Boolean(row.confirm_now ?? row.p_confirm_now);
     if (!empCode || !workDate) throw new Error("ข้อมูลรหัสพนักงานหรือวันที่จัดกะไม่ครบ");
 
     if (!shiftCode) {
@@ -47,6 +48,9 @@
       shift_code: String(shiftCode).trim().toUpperCase(),
       source_type: "manual",
       note,
+      is_confirmed: confirmNow,
+      confirmed_at: confirmNow ? new Date().toISOString() : null,
+      confirmed_by: confirmNow ? actor : null,
       updated_by: actor,
       updated_at: new Date().toISOString()
     };
@@ -85,7 +89,8 @@
       emp_code: full.p_emp_code,
       work_date: full.p_work_date,
       shift_code: full.p_shift_code,
-      note: full.p_note
+      note: full.p_note,
+      confirm_now: full.p_confirm_now
     }, app);
   }
 
@@ -120,6 +125,9 @@
         shift_code: row.shift_code,
         source_type: "manual",
         note: row.note,
+        is_confirmed: Boolean(confirmNow),
+        confirmed_at: confirmNow ? new Date().toISOString() : null,
+        confirmed_by: confirmNow ? actor : null,
         updated_by: actor,
         updated_at: new Date().toISOString()
       }));
@@ -206,7 +214,7 @@
       if (Array.isArray(params.p_emp_codes) && params.p_emp_codes.length) query = query.in("emp_code", params.p_emp_codes);
       const { data, error } = await query;
       if (error) throw error;
-      rows.push(...(data || []));
+      rows.push(...(data || []).filter(emp => !params.p_zone || String(emp.zone || emp.area || "") === String(params.p_zone)));
       if (!data || data.length < pageSize) break;
     }
     const calendarMap = new Map();
@@ -232,6 +240,159 @@
   }
 
 
+  const isoDateLocal = date => {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  const parsePcGroup = value => {
+    const text = String(value || "").trim().toUpperCase();
+    const match = text.match(/[0-9]+/);
+    return match ? match[0] : text;
+  };
+
+  const isNaturalWeeklyOff = (pc, date) => {
+    const dow = date.getDay(); // 0 Sunday, 6 Saturday
+    const group = parsePcGroup(pc);
+    if (group === "4") return dow === 0 || dow === 6;
+    if (group === "5") return dow === 0;
+    return false;
+  };
+
+  async function fetchEmployeesForSchedule(client, params, monthStart, endDate) {
+    const pageSize = 1000;
+    const rows = [];
+    for (let from = 0; from < 10000; from += pageSize) {
+      let query = client.from("employees")
+        .select("EmployeeId,full_name,position_name,department,pc,area,zone,sub_area,car_team,manager_department,manager_division,start_date,resign_date")
+        .or(`start_date.is.null,start_date.lte.${endDate}`)
+        .or(`resign_date.is.null,resign_date.gte.${monthStart}`)
+        .order("EmployeeId", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (params.p_department) query = query.eq("department", params.p_department);
+      if (Array.isArray(params.p_emp_codes) && params.p_emp_codes.length) query = query.in("EmployeeId", params.p_emp_codes);
+      const { data, error } = await query;
+      if (error) throw error;
+      rows.push(...(data || []));
+      if (!data || data.length < pageSize) break;
+    }
+    return rows;
+  }
+
+  async function fetchOptional(client, table, select, configure) {
+    try {
+      let query = client.from(table).select(select);
+      query = configure ? configure(query) : query;
+      const { data, error } = await query;
+      if (error) return [];
+      return data || [];
+    } catch {
+      return [];
+    }
+  }
+
+  function patternShiftFor(patternsByEmp, detailsByPattern, empCode, workDate) {
+    const patterns = patternsByEmp.get(empCode) || [];
+    const active = patterns
+      .filter(p => (!p.effective_start || p.effective_start <= workDate) && (!p.effective_end || p.effective_end >= workDate))
+      .sort((a, b) => String(b.effective_start || "").localeCompare(String(a.effective_start || "")))[0];
+    if (!active) return null;
+    const details = detailsByPattern.get(active.pattern_code) || [];
+    if (!details.length) return null;
+    const cycle = Math.max(...details.map(d => Number(d.day_no || 0)), 0);
+    if (!cycle) return null;
+    const start = new Date(`${active.effective_start}T00:00:00`);
+    const current = new Date(`${workDate}T00:00:00`);
+    const diff = Math.round((current - start) / 86400000);
+    const dayNo = ((diff + Number(active.start_day_no || 1) - 1) % cycle + cycle) % cycle + 1;
+    return details.find(d => Number(d.day_no) === dayNo)?.shift_code || null;
+  }
+
+  async function ensureMonthlyMatrix(client, rows, params, monthStart, endDate) {
+    let employees;
+    try {
+      employees = await fetchEmployeesForSchedule(client, params, monthStart, endDate);
+    } catch {
+      return rows;
+    }
+    if (!employees.length) return rows;
+
+    const [holidays, shiftMaster, patterns, patternDetails] = await Promise.all([
+      fetchOptional(client, "holidays", "holiday_date,holiday_name", q => q.gte("holiday_date", monthStart).lte("holiday_date", endDate)),
+      fetchOptional(client, "shift_master", "shift_code,shift_name,start_time,end_time,is_workday,is_active", q => q.eq("is_active", true)),
+      fetchOptional(client, "employee_shift_patterns", "emp_code,pattern_code,effective_start,effective_end,start_day_no", q => q.lte("effective_start", endDate).or(`effective_end.is.null,effective_end.gte.${monthStart}`)),
+      fetchOptional(client, "shift_pattern_details", "pattern_code,day_no,shift_code")
+    ]);
+
+    const holidayMap = new Map(holidays.map(h => [String(h.holiday_date).slice(0, 10), h.holiday_name || "วันหยุดนักขัตฤกษ์"]));
+    const shiftMap = new Map(shiftMaster.map(s => [String(s.shift_code || "").toUpperCase(), s]));
+    const patternsByEmp = new Map();
+    patterns.forEach(p => {
+      const key = String(p.emp_code || "").trim();
+      if (!patternsByEmp.has(key)) patternsByEmp.set(key, []);
+      patternsByEmp.get(key).push(p);
+    });
+    const detailsByPattern = new Map();
+    patternDetails.forEach(d => {
+      const key = String(d.pattern_code || "").trim();
+      if (!detailsByPattern.has(key)) detailsByPattern.set(key, []);
+      detailsByPattern.get(key).push(d);
+    });
+
+    const rowMap = new Map();
+    (rows || []).forEach(row => {
+      const key = `${String(row.emp_code || "").trim()}|${String(row.work_date || "").slice(0, 10)}`;
+      rowMap.set(key, { ...row });
+    });
+
+    const start = new Date(`${monthStart}T00:00:00`);
+    const end = new Date(`${endDate}T00:00:00`);
+    for (const emp of employees) {
+      const empCode = String(emp.EmployeeId || emp.emp_code || "").trim();
+      if (!empCode) continue;
+      for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
+        const workDate = isoDateLocal(cursor);
+        if (emp.start_date && workDate < String(emp.start_date).slice(0, 10)) continue;
+        if (emp.resign_date && workDate > String(emp.resign_date).slice(0, 10)) continue;
+        const key = `${empCode}|${workDate}`;
+        const existing = rowMap.get(key) || {};
+        const publicHoliday = holidayMap.has(workDate);
+        const weeklyOff = !publicHoliday && isNaturalWeeklyOff(emp.pc, cursor);
+        const patternShift = patternShiftFor(patternsByEmp, detailsByPattern, empCode, workDate);
+        const autoCode = existing.auto_shift_code || existing.shift_code || (publicHoliday ? "HOL" : patternShift || (weeklyOff ? "OFF" : "D"));
+        const effectiveCode = existing.assigned_shift_code || existing.effective_shift_code || autoCode;
+        const shift = shiftMap.get(String(effectiveCode || "").toUpperCase()) || {};
+        rowMap.set(key, {
+          ...emp,
+          ...existing,
+          work_date: workDate,
+          emp_code: empCode,
+          full_name: existing.full_name || emp.full_name,
+          position_name: existing.position_name || emp.position_name,
+          department: existing.department || emp.department,
+          area: existing.area || emp.area || emp.zone,
+          zone: existing.zone || emp.zone || emp.area,
+          sub_area: existing.sub_area || emp.sub_area,
+          pc: existing.pc || emp.pc,
+          day_type: publicHoliday ? "PUBLIC_HOLIDAY" : weeklyOff ? "WEEKLY_OFF" : "WORKDAY",
+          is_public_holiday: publicHoliday,
+          is_weekly_off: weeklyOff,
+          holiday_name: publicHoliday ? holidayMap.get(workDate) : null,
+          expected_day: existing.expected_day ?? (publicHoliday || weeklyOff ? 0 : 1),
+          auto_shift_code: autoCode,
+          suggested_shift_code: existing.suggested_shift_code || autoCode,
+          suggestion_confidence: existing.suggestion_confidence ?? (patternShift ? 95 : publicHoliday || weeklyOff ? 100 : 70),
+          effective_shift_code: effectiveCode,
+          schedule_status: existing.schedule_status || (existing.assigned_shift_code ? (existing.is_confirmed ? "CONFIRMED" : "ASSIGNED") : "AUTO"),
+          shift_start_time: existing.shift_start_time || existing.effective_shift_start_time || shift.start_time || null,
+          shift_end_time: existing.shift_end_time || existing.effective_shift_end_time || shift.end_time || null
+        });
+      }
+    }
+    return [...rowMap.values()];
+  }
+
+
   async function getMonthlySchedule(app, params) {
     const client = app?.state?.client;
     if (!client) throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
@@ -244,19 +405,31 @@
       p_schedule_statuses: params.p_schedule_statuses ?? null
     };
 
-    const response = await withTimeout(
-      client.rpc("ta_get_monthly_schedule", exact),
+    let response = await withTimeout(
+      client.rpc("ta_get_monthly_schedule_v563", exact),
       30000,
-      "โหลดปฏิทินกะ"
+      "โหลดปฏิทินกะล่วงหน้า"
     );
-    if (response.error) throw response.error;
+    if (response.error) {
+      const v563Error = response.error;
+      response = await withTimeout(
+        client.rpc("ta_get_monthly_schedule", exact),
+        30000,
+        "โหลดปฏิทินกะ"
+      );
+      if (response.error) throw (missingFunction(v563Error) ? response.error : v563Error);
+    }
 
-    const rows = Array.isArray(response.data) ? response.data.map(row => ({ ...row })) : [];
+    let rows = Array.isArray(response.data) ? response.data.map(row => ({ ...row })) : [];
     const monthStart = String(params.p_month || "").slice(0, 10);
     if (!monthStart) return rows;
     const start = new Date(`${monthStart}T00:00:00`);
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
     const endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+
+    // Ensure every active employee has a writable cell for every day of the month,
+    // including future dates, weekly off days and public holidays.
+    rows = await ensureMonthlyMatrix(client, rows, exact, monthStart, endDate);
 
     // Overlay the manual assignment table on top of the RPC result.
     // This protects the UI from older ta_get_monthly_schedule versions that
@@ -300,6 +473,11 @@
         : (row.schedule_status || (effectiveCode ? "AUTO" : "NEED_REVIEW"));
       if (assigned?.note != null) row.schedule_note = assigned.note;
       if (assigned?.source_type != null) row.schedule_source = assigned.source_type;
+      const effectiveMaster = app?.state?.filters?.shifts?.find(s => String(s.shift_code || "").toUpperCase() === String(effectiveCode || "").toUpperCase());
+      if (effectiveMaster) {
+        row.shift_start_time = effectiveMaster.start_time || row.shift_start_time || null;
+        row.shift_end_time = effectiveMaster.end_time || row.shift_end_time || null;
+      }
       assignmentMap.delete(key);
     }
 
