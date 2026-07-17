@@ -1,0 +1,17 @@
+:root {
+  --brand-blue: #1f6feb;
+  --brand-navy: #0b1f3a;
+  --brand-orange: #f59e0b;
+  --surface: #ffffff;
+  --surface-soft: #f5f8fc;
+  --text-main: #122033;
+  --text-muted: #64748b;
+  --line: #dbe4ef;
+  --shadow-soft: 0 10px 30px rgba(15, 35, 65, .08);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --transition-fast: 160ms ease;
+}
+
+html { color-scheme: light; }
+body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }

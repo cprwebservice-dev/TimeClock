@@ -1,0 +1,16 @@
+/* Page-specific additions can be moved here phase by phase. */
+.page-enter { animation: page-enter .18s ease-out; }
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.connection-state {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-muted);
+}
+.connection-state::before {
+  content: ''; width: 8px; height: 8px; border-radius: 999px; background: #94a3b8;
+}
+.connection-state.online::before { background: #16a34a; }
+.connection-state.offline::before { background: #dc2626; }

@@ -1,29 +1,39 @@
-# Time-Clock Management — Supabase Web App
+# Time-Clock Management — Enterprise Frontend V1
 
-โครงสร้างเริ่มต้นแบบแยกไฟล์สำหรับนำขึ้น Hosting
+เวอร์ชันนี้เป็น Phase 1–2 ของ Frontend ใหม่ โดยรักษาความสามารถเดิมไว้ และจัดโครงสร้างให้พร้อมแยกโมดูลต่อใน Phase ถัดไป
 
-## ไฟล์หลัก
+## โครงสร้าง
 
-- `index.html` — โครงสร้างหน้าเว็บ
-- `css/app.css` — รูปแบบ UX/UI
-- `js/app.js` — Authentication, Supabase RPC และการทำงานของหน้าเว็บ
-- `assets/` — สำหรับ Logo และรูปภาพในอนาคต
+- `index.html` — หน้า SPA หลัก
+- `css/app.css` — จุดรวม CSS
+- `css/tokens.css` — สี ตัวแปร และ Design Tokens
+- `css/layout.css` — Layout หลัก
+- `css/components.css` — Component ที่ใช้ร่วมกัน
+- `css/pages.css` — CSS รายหน้า
+- `css/responsive.css` — Mobile/Responsive
+- `css/legacy.css` — CSS เดิมที่คงไว้เพื่อไม่ให้ระบบเสีย
+- `js/core/app-core.js` — การทำงานเดิมทั้งหมดกับ Supabase/RPC
+- `js/config.js` — Public frontend config เท่านั้น
+- `js/enhancements.js` — UX เพิ่มเติมแบบไม่กระทบ Core
+- `js/modules/` — พื้นที่แยกโมดูลใน Phase ถัดไป
+- `components/` — Shared UI components
+- `404.html` และ `.nojekyll` — รองรับ GitHub Pages
 
-## การใช้งาน
+## วิธีอัปโหลด GitHub Pages
 
-1. อัปโหลดทั้งโฟลเดอร์ขึ้น Hosting โดยให้ `index.html` อยู่ที่ root
-2. เปิด URL ของเว็บไซต์
-3. กดตั้งค่าการเชื่อมต่อ Supabase
-4. กรอก Project URL และ Publishable/Anon Key
-5. Login ด้วยบัญชี Supabase Authentication
+1. แตก ZIP
+2. อัปโหลดไฟล์และโฟลเดอร์ทั้งหมดเข้า root ของ Repository `TimeClock`
+3. ยืนยันว่า GitHub แสดงโฟลเดอร์ `css`, `js`, `components`, `assets`
+4. รอ Deploy แล้วเปิด `https://cprwebservice-dev.github.io/TimeClock/`
+5. กด `Ctrl + Shift + R` เพื่อล้าง Cache
 
-## Supabase URL Configuration
+## Supabase
 
-ตั้งค่าใน Authentication → URL Configuration
+ใช้เฉพาะ Publishable Key หรือ Anon Key ใน Browser ห้ามใช้ Service Role Key
 
-- Site URL: URL หลักของเว็บ
-- Redirect URLs: `https://โดเมนของคุณ/**`
+## สถานะ
 
-## ความปลอดภัย
-
-หน้าเว็บต้องใช้เฉพาะ Publishable Key หรือ Anon Key ห้ามใส่ Service Role Key
+- Login / Session / Logout: พร้อมใช้งาน
+- Dashboard / Attendance / Schedule / Review: คงการทำงานเดิม
+- HR Admin: คงการทำงานเดิม
+- Enterprise structure + accessibility + GitHub Pages support: เพิ่มแล้ว
