@@ -11,6 +11,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="./css/app.css?v=2.0.0" />
   <link rel="stylesheet" href="./css/dashboard-enterprise.css?v=2.0.0" />
+  <link rel="stylesheet" href="./css/schedule-enterprise.css?v=3.0.0" />
+  <link rel="stylesheet" href="./css/settings-enterprise.css?v=4.0.0" />
 </head>
 <body>
   <div id="toastStack" class="toast-stack"></div>
@@ -72,6 +74,7 @@
           <button class="nav-item" data-page="admin-holidays"><span class="nav-icon">◈</span><span>วันหยุดนักขัตฤกษ์</span></button>
           <button class="nav-item" data-page="admin-users"><span class="nav-icon">♙</span><span>User และ Scope</span></button>
           <button class="nav-item" data-page="admin-import"><span class="nav-icon">⇧</span><span>นำเข้าพนักงาน</span></button>
+          <button id="systemSettingsNav" class="nav-item hidden" data-page="system-settings"><span class="nav-icon">⚙</span><span>System Settings</span></button>
         </div>
       </nav>
       <div class="sidebar-footer">
@@ -161,6 +164,73 @@
           </div>
         </section>
 
+        <!-- System Settings -->
+        <section id="page-system-settings" class="page settings-page">
+          <div class="settings-hero">
+            <div><span class="eyebrow">ENTERPRISE CONTROL CENTER</span><h2>System Settings &amp; Developer Console</h2><p>กำหนดค่าระบบ ธีม Feature Flags สีของกะ และทดสอบสิทธิ์การใช้งานจากจุดเดียว</p></div>
+            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">4.0.0</strong><small id="settingsEnvironmentHero">Development</small></div>
+          </div>
+          <div class="settings-layout section-gap">
+            <aside class="settings-tabs" aria-label="เมนูตั้งค่าระบบ">
+              <button class="settings-tab active" data-settings-tab="general">◉ <span>General</span></button>
+              <button class="settings-tab" data-settings-tab="theme">◐ <span>Theme</span></button>
+              <button class="settings-tab" data-settings-tab="developer">⌘ <span>Developer</span></button>
+              <button class="settings-tab" data-settings-tab="features">◆ <span>Feature Flags</span></button>
+              <button class="settings-tab" data-settings-tab="shifts">▦ <span>Shift Colors</span></button>
+              <button class="settings-tab" data-settings-tab="connection">⌁ <span>Connection</span></button>
+              <button class="settings-tab" data-settings-tab="about">ⓘ <span>About</span></button>
+            </aside>
+            <div class="settings-content">
+              <div class="settings-panel active" data-settings-panel="general">
+                <div class="settings-panel-head"><div><h3>General</h3><p>ข้อมูลหลักและข้อความที่ใช้แสดงในระบบ</p></div><span class="settings-status-dot">Local configuration</span></div>
+                <div class="settings-form-grid">
+                  <div class="field"><label>ชื่อระบบ</label><input id="setSystemName" class="input" /></div>
+                  <div class="field"><label>Environment</label><select id="setEnvironment" class="select"><option>Development</option><option>UAT</option><option>Production</option></select></div>
+                  <div class="field"><label>Version</label><input id="setVersion" class="input" /></div>
+                  <div class="field"><label>ชื่อบริษัท</label><input id="setCompanyName" class="input" /></div>
+                  <div class="field settings-span-2"><label>ข้อความ Footer</label><input id="setFooter" class="input" /></div>
+                </div>
+                <div class="settings-actions"><button class="btn btn-light" data-reset-section="general">คืนค่าเริ่มต้น</button><button class="btn btn-primary" data-save-settings>บันทึกการตั้งค่า</button></div>
+              </div>
+              <div class="settings-panel" data-settings-panel="theme">
+                <div class="settings-panel-head"><div><h3>Theme</h3><p>ปรับรูปแบบการแสดงผลสำหรับผู้ใช้เครื่องนี้</p></div></div>
+                <div class="theme-choice-grid">
+                  <button class="theme-choice" data-theme-choice="light"><span class="theme-preview theme-light"></span><strong>Light</strong><small>พื้นสว่าง อ่านง่าย</small></button>
+                  <button class="theme-choice" data-theme-choice="dark"><span class="theme-preview theme-dark"></span><strong>Dark</strong><small>ลดแสงหน้าจอ</small></button>
+                  <button class="theme-choice" data-theme-choice="system"><span class="theme-preview theme-system"></span><strong>System</strong><small>ตามอุปกรณ์</small></button>
+                </div>
+                <div class="settings-form-grid section-gap-small"><div class="field"><label>Accent Color</label><select id="setAccent" class="select"><option value="blue">Blue–Navy</option><option value="orange">Orange</option><option value="teal">Teal</option></select></div><div class="field"><label>Font</label><select id="setFont" class="select"><option value="Noto Sans Thai">Noto Sans Thai</option><option value="system">System UI</option></select></div></div>
+                <div class="settings-actions"><button class="btn btn-primary" data-save-settings>นำ Theme ไปใช้</button></div>
+              </div>
+              <div class="settings-panel" data-settings-panel="developer">
+                <div class="settings-panel-head"><div><h3>Developer Mode</h3><p>ใช้สำหรับจำลอง Role ฝั่งหน้าจอเท่านั้น โดย RLS ของ Supabase ยังควบคุมสิทธิ์จริงเหมือนเดิม</p></div><label class="switch"><input id="setDeveloperMode" type="checkbox"><span></span></label></div>
+                <div class="developer-role-card"><div><span>สิทธิ์จริง</span><strong id="realRoleValue">-</strong></div><div class="role-arrow">→</div><div class="field"><label>View As</label><select id="setViewAsRole" class="select"><option value="HR_ADMIN">HR_ADMIN</option><option value="USER">USER</option><option value="VIEWER">VIEWER</option></select></div></div>
+                <div class="developer-warning">การสลับ Role ไม่ได้ยกระดับสิทธิ์ในฐานข้อมูล ใช้สำหรับตรวจเมนูและ UX เท่านั้น หาก RPC ถูก RLS ปฏิเสธถือว่าเป็นผลที่ถูกต้อง</div>
+                <div class="developer-tools"><button id="devClearCacheBtn" class="btn btn-light">Clear UI Cache</button><button id="devRefreshMetadataBtn" class="btn btn-light">Refresh Metadata</button><button id="devReloadBtn" class="btn btn-primary">Apply &amp; Reload UI</button></div>
+              </div>
+              <div class="settings-panel" data-settings-panel="features">
+                <div class="settings-panel-head"><div><h3>Feature Flags</h3><p>เปิดหรือซ่อนเมนูระหว่างการพัฒนา</p></div></div>
+                <div id="featureFlagList" class="feature-list"></div>
+                <div class="settings-actions"><button class="btn btn-primary" data-save-settings>บันทึก Feature Flags</button></div>
+              </div>
+              <div class="settings-panel" data-settings-panel="shifts">
+                <div class="settings-panel-head"><div><h3>Shift Colors</h3><p>กำหนดสีประจำรหัสกะ โดยไม่ต้องแก้ CSS</p></div></div>
+                <div id="shiftColorGrid" class="shift-color-grid"></div>
+                <div class="settings-actions"><button class="btn btn-light" id="resetShiftColorsBtn">คืนค่าสีเริ่มต้น</button><button class="btn btn-primary" data-save-settings>บันทึกสีของกะ</button></div>
+              </div>
+              <div class="settings-panel" data-settings-panel="connection">
+                <div class="settings-panel-head"><div><h3>Supabase Connection</h3><p>แสดงข้อมูลเชื่อมต่อจาก Browser Storage โดยปิดบังค่า Key</p></div><span id="connectionStatus" class="connection-chip">Not tested</span></div>
+                <div class="settings-form-grid"><div class="field settings-span-2"><label>Project URL</label><input id="setConnectionUrl" class="input" readonly /></div><div class="field settings-span-2"><label>Publishable / Anon Key</label><input id="setConnectionKey" class="input" readonly /></div><div class="field"><label>Project Reference</label><input id="setProjectRef" class="input" readonly /></div><div class="field"><label>Session</label><input id="setSessionStatus" class="input" readonly /></div></div>
+                <div class="settings-actions"><button id="openLegacyConfigBtn" class="btn btn-light">แก้ไข Connection</button><button id="testConnectionBtn" class="btn btn-primary">Test Connection</button></div>
+              </div>
+              <div class="settings-panel" data-settings-panel="about">
+                <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
+                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">4.0.0</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V4</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Attendance -->
         <section id="page-attendance" class="page">
           <div class="panel">
@@ -194,9 +264,33 @@
               </div>
             </div>
           </div>
-          <div class="panel section-gap">
-            <div class="panel-header"><div><h3>ตารางกะรายเดือน</h3><p>คลิกช่องวันที่เพื่อดูหรือกำหนดกะ</p></div><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="badge badge-blue">D กะกลางวัน</span><span class="badge" style="background:#eee9ff;color:#6342b8">N กะกลางคืน</span><span class="badge badge-orange">HOL นักขัตฤกษ์</span><span class="badge badge-gray">OFF วันหยุด</span></div></div>
-            <div class="panel-body"><div id="scheduleTableWrap" class="table-wrap" style="max-height:70vh"></div></div>
+          <div class="schedule-kpi-grid section-gap">
+            <div class="schedule-kpi"><span>พนักงาน</span><strong id="scheduleEmployeeCount">0</strong></div>
+            <div class="schedule-kpi"><span>รายการจัดกะ</span><strong id="scheduleAssignedCount">0</strong></div>
+            <div class="schedule-kpi"><span>ยืนยันแล้ว</span><strong id="scheduleConfirmedCount">0</strong></div>
+            <div class="schedule-kpi warning"><span>รอตรวจสอบ</span><strong id="scheduleReviewCount">0</strong></div>
+          </div>
+          <div class="panel section-gap schedule-workspace">
+            <div class="panel-header schedule-panel-header">
+              <div><h3>ตารางกะรายเดือนแบบ Excel</h3><p>คลิกเพื่อเลือกหลายช่อง • ดับเบิลคลิกเพื่อแก้ไขรายวัน • Ctrl/Cmd + C และ Ctrl/Cmd + V เพื่อคัดลอกกะ</p></div>
+              <div class="schedule-legend"><span class="badge badge-blue">D กลางวัน</span><span class="badge shift-legend-night">N กลางคืน</span><span class="badge badge-orange">HOL นักขัตฤกษ์</span><span class="badge badge-gray">OFF วันหยุด</span></div>
+            </div>
+            <div class="schedule-commandbar">
+              <div class="schedule-selection-info"><span id="scheduleSelectionCount">ยังไม่ได้เลือกช่อง</span><small id="scheduleClipboardInfo">เลือกช่องแล้วกดกะด่วน</small></div>
+              <div class="schedule-quick-shifts">
+                <button class="shift-command shift-D" data-quick-shift="D">D</button>
+                <button class="shift-command shift-N" data-quick-shift="N">N</button>
+                <button class="shift-command shift-OFF" data-quick-shift="OFF">OFF</button>
+                <button class="shift-command shift-HOL" data-quick-shift="HOL">HOL</button>
+              </div>
+              <div class="schedule-command-actions">
+                <button id="scheduleCopyBtn" class="btn btn-light">คัดลอก</button>
+                <button id="schedulePasteBtn" class="btn btn-light">วาง</button>
+                <button id="scheduleClearSelectionBtn" class="btn btn-light">ยกเลิกเลือก</button>
+                <button id="scheduleConfirmSelectedBtn" class="btn btn-success">ยืนยันที่เลือก</button>
+              </div>
+            </div>
+            <div class="panel-body schedule-grid-body"><div id="scheduleTableWrap" class="table-wrap schedule-grid-wrap" style="max-height:70vh"></div></div>
           </div>
         </section>
 
@@ -260,6 +354,17 @@
 
         <footer class="footer-credit">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer>
       </div>
+      <section id="developerConsole" class="developer-console hidden">
+        <button id="developerConsoleToggle" class="developer-console-toggle"><span>⌘ Developer Console</span><strong id="devConsoleSummary">Ready</strong></button>
+        <div id="developerConsoleBody" class="developer-console-body hidden">
+          <div class="dev-stat"><span>Last API / RPC</span><strong id="devLastRpc">-</strong></div>
+          <div class="dev-stat"><span>Execution Time</span><strong id="devExecTime">-</strong></div>
+          <div class="dev-stat"><span>Rows</span><strong id="devRows">-</strong></div>
+          <div class="dev-stat"><span>Status</span><strong id="devStatus">Ready</strong></div>
+          <div class="dev-message"><span>Message</span><code id="devMessage">ยังไม่มีรายการเรียกใช้งาน</code></div>
+          <button id="devConsoleClearBtn" class="btn btn-light btn-sm">ล้าง Log</button>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -331,10 +436,11 @@
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
     </div>
   </div>
-  <script src="./js/app.js" defer></script>
   <script src="./js/config.js?v=1.0.0"></script>
   <script src="./js/core/app-core.js?v=1.0.0"></script>
   <script src="./js/enhancements.js?v=2.0.0"></script>
   <script src="./js/dashboard-enterprise.js?v=2.0.0"></script>
+  <script src="./js/schedule-enterprise.js?v=3.0.0"></script>
+  <script src="./js/settings-enterprise.js?v=4.0.0"></script>
 </body>
 </html>

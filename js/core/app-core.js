@@ -58,6 +58,7 @@
       state.client = window.supabase.createClient(cfg.url, cfg.key, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
+      if (window.TimeClockSettings?.instrumentClient) window.TimeClockSettings.instrumentClient(state.client);
       state.client.auth.onAuthStateChange((event, session) => {
         state.session = session;
         state.user = session?.user || null;
@@ -114,10 +115,18 @@
 
     function applyProfile() {
       const p = state.profile;
+      p._realRole = p._realRole || p.role || "VIEWER";
+      const ui = window.TimeClockSettings?.getRuntimeSettings?.() || {};
+      const canSimulate = p._realRole === "HR_ADMIN" && ui.developerMode === true;
+      p.role = canSimulate ? (ui.viewAsRole || p._realRole) : p._realRole;
       setText("sidebarUserName", p.display_name || p.email || state.user.email);
       setText("sidebarUserEmail", p.email || state.user.email);
       setText("roleBadge", p.role || "VIEWER");
-      $("adminNavGroup").classList.toggle("hidden", p.role !== "HR_ADMIN");
+      $("roleBadge").title = p.role !== p._realRole ? `สิทธิ์จริง ${p._realRole} • กำลังจำลอง ${p.role}` : `สิทธิ์จริง ${p._realRole}`;
+      $("adminNavGroup").classList.toggle("hidden", p.role !== "HR_ADMIN" && p._realRole !== "HR_ADMIN");
+      qsa("#adminNavGroup .nav-item:not(#systemSettingsNav)").forEach(el => el.classList.toggle("hidden", p.role !== "HR_ADMIN"));
+      $("systemSettingsNav")?.classList.toggle("hidden", p._realRole !== "HR_ADMIN");
+      window.TimeClockSettings?.syncProfile?.(p);
     }
 
     async function loadFilterOptions() {
@@ -232,22 +241,33 @@
         if (!map.has(r.emp_code)) map.set(r.emp_code, { meta: r, days: {} });
         map.get(r.emp_code).days[Number(String(r.work_date).slice(8,10))] = r;
       }
-      const headDays = Array.from({length:days},(_,i)=>i+1).map(d => { const dow = new Date(year, mon-1, d).getDay(); return `<th class="day-col ${dow===0||dow===6?'weekend':''}">${d}</th>`; }).join("");
-      let html = `<table class="schedule-table"><thead><tr><th class="sticky-col-1" style="min-width:82px">รหัส</th><th class="sticky-col-2" style="min-width:190px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
+      const thaiDays = ["อา","จ","อ","พ","พฤ","ศ","ส"];
+      const headDays = Array.from({length:days},(_,i)=>i+1).map(d => {
+        const dow = new Date(year, mon-1, d).getDay();
+        const date = `${year}-${String(mon).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        return `<th class="day-col ${dow===0||dow===6?'weekend':''}" data-select-date="${date}" title="เลือกทั้งวันที่"><span>${d}</span><small>${thaiDays[dow]}</small></th>`;
+      }).join("");
+      let html = `<table class="schedule-table enterprise-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
       if (!map.size) html += emptyRow(days + 2);
       for (const [emp, obj] of map) {
-        html += `<tr><td class="sticky-col-1">${safe(emp)}</td><td class="sticky-col-2 nowrap">${safe(obj.meta.full_name)}</td>`;
+        html += `<tr data-emp-row="${safe(emp)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><strong>${safe(obj.meta.full_name)}</strong><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td>`;
         for (let d=1; d<=days; d++) {
           const r = obj.days[d];
-          if (!r) { html += `<td class="day-col"><span class="schedule-cell">-</span></td>`; continue; }
+          if (!r) { html += `<td class="day-col empty-schedule-day"><span class="schedule-cell disabled">-</span></td>`; continue; }
           const code = r.effective_shift_code || r.auto_shift_code || "-";
           const cls = `shift-${code} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
-          html += `<td class="day-col"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(String(r.work_date).slice(0,10))}" title="${safe(r.full_name)} | ${safe(r.schedule_status)}">${safe(code)}</span></td>`;
+          const date = String(r.work_date).slice(0,10);
+          html += `<td class="day-col schedule-data-cell" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(r.full_name)} | ${safe(r.schedule_status)} | ดับเบิลคลิกเพื่อแก้ไข"><b>${safe(code)}</b>${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}</span></td>`;
         }
         html += `</tr>`;
       }
       html += `</tbody></table>`;
       $("scheduleTableWrap").innerHTML = html;
+      setText("scheduleEmployeeCount", formatNumber(map.size));
+      setText("scheduleAssignedCount", formatNumber(rows.filter(r => r.schedule_status === "ASSIGNED").length));
+      setText("scheduleConfirmedCount", formatNumber(rows.filter(r => r.schedule_status === "CONFIRMED").length));
+      setText("scheduleReviewCount", formatNumber(rows.filter(r => r.schedule_status === "NEED_REVIEW").length));
+      document.dispatchEvent(new CustomEvent("timeclock:schedule-rendered"));
     }
 
     async function loadReview() {
@@ -450,13 +470,15 @@
     function downloadFile(name, content, type) { const blob = new Blob([content], {type}); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
 
     function switchPage(page) {
+      const realRole = state.profile?._realRole || state.profile?.role;
+      if (page === "system-settings" && realRole !== "HR_ADMIN") return toast("เมนูนี้สำหรับ HR_ADMIN เท่านั้น", "error");
       if (page.startsWith("admin-") && state.profile?.role !== "HR_ADMIN") return toast("ไม่มีสิทธิ์เข้าถึงเมนูนี้", "error");
       state.currentPage = page;
       qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
         dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], schedule:["ปฏิทินจัดกะ","จัดกะรายพนักงานแบบรายเดือน"], review:["รายการรอตรวจสอบ","ตรวจสอบกะและเวลาที่ผิดปกติ"],
-        "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-users":["User และ Scope","กำหนดสิทธิ์ผู้ใช้งาน"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"]
+        "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-users":["User และ Scope","กำหนดสิทธิ์ผู้ใช้งาน"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"]
       };
       setText("pageTitle", titles[page]?.[0] || page); setText("pageSubtitle", titles[page]?.[1] || ""); $("sidebar").classList.remove("open");
       if (page === "attendance" && !state.attendance.length) loadAttendance();
@@ -511,5 +533,19 @@
     function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ไม่มีเวลา",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา"})[s] || s || "-"; }
     function emptyRow(cols) { return `<tr><td colspan="${cols}" class="table-empty">ไม่พบข้อมูล</td></tr>`; }
     function humanError(err) { return err?.message || err?.error_description || String(err || "เกิดข้อผิดพลาด"); }
+
+    window.TimeClockApp = Object.assign(window.TimeClockApp || {}, {
+      state,
+      loadSchedule,
+      renderSchedule,
+      openAssignment,
+      toast,
+      showLoading,
+      hideLoading,
+      humanError,
+      formatNumber,
+      applyProfile,
+      switchPage
+    });
 
     document.addEventListener("DOMContentLoaded", boot);
