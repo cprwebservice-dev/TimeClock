@@ -9,21 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./app.css?v=6.2.0-compact" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="stylesheet" href="./css/app.css?v=2.0.0" />
-  <link rel="stylesheet" href="./css/dashboard-enterprise.css?v=2.0.0" />
-  <link rel="stylesheet" href="./css/dashboard-executive.css?v=5.2.0" />
-  <link rel="stylesheet" href="./css/schedule-enterprise.css?v=3.0.0" />
-  <link rel="stylesheet" href="./css/schedule-pro.css?v=6.0.0" />
-  <link rel="stylesheet" href="./css/review-center.css?v=5.4.1" />
-  <link rel="stylesheet" href="./css/report-center.css?v=5.5.0" />
-  <link rel="stylesheet" href="./css/functional-complete.css?v=6.0.0" />
-  <link rel="stylesheet" href="./css/mobileta-import.css?v=6.1.4" />
-  <link rel="stylesheet" href="./css/hr-admin-center.css?v=5.6.0" />
-  <link rel="stylesheet" href="./css/attendance-rebuild-admin.css?v=6.1.7" />
-  <link rel="stylesheet" href="./css/attendance-v619.css?v=6.1.9" />
-  <link rel="stylesheet" href="./css/settings-enterprise.css?v=4.0.0" />
-  <link rel="stylesheet" href="./css/platform-shell.css?v=6.0.0" />
 </head>
 <body>
   <div id="toastStack" class="toast-stack"></div>
@@ -77,6 +64,7 @@
         <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span><span>Dashboard</span></button>
         <button class="nav-item" data-page="attendance"><span class="nav-icon">◷</span><span>รายละเอียดเวลาทำงาน</span></button>
         <button class="nav-item" data-page="schedule"><span class="nav-icon">▣</span><span>ปฏิทินจัดกะ</span></button>
+        <button class="nav-item" data-page="work-patterns"><span class="nav-icon">⌘</span><span>รูปแบบการทำงาน</span></button>
         <button class="nav-item" data-page="review"><span class="nav-icon">⚠</span><span>รายการรอตรวจสอบ</span></button>
         <button class="nav-item" data-page="report"><span class="nav-icon">▤</span><span>ศูนย์รายงาน</span></button>
 
@@ -441,9 +429,10 @@
           <div class="admin-module-grid">
             <button class="admin-module-card" data-admin-open="admin-users"><span class="admin-module-icon">♙</span><div><strong>User และ Scope</strong><small>กำหนด Role, สถานะ และขอบเขตข้อมูล</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="admin-shifts"><span class="admin-module-icon">◫</span><div><strong>ตั้งค่ากะทำงาน</strong><small>จัดการรหัสกะ เวลาเริ่ม-สิ้นสุด และเวลาพัก</small></div><em>เปิด ›</em></button>
+            <button class="admin-module-card" data-admin-open="work-patterns"><span class="admin-module-icon">⌘</span><div><strong>รูปแบบการทำงานช่าง</strong><small>กำหนด 5/6 วัน วันหยุดตั้งต้น OT และรูปแบบหลายช่วงงาน</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="admin-holidays"><span class="admin-module-icon">◈</span><div><strong>วันหยุดนักขัตฤกษ์</strong><small>เพิ่ม แก้ไข และตรวจผลกระทบต่อ Attendance</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="admin-import"><span class="admin-module-icon">⇧</span><div><strong>นำเข้าพนักงาน</strong><small>ตรวจสอบไฟล์ CSV ก่อนนำเข้าฐานข้อมูล</small></div><em>เปิด ›</em></button>
-            <button class="admin-module-card" data-admin-open="admin-time-import"><span class="admin-module-icon">⇩</span><div><strong>นำเข้าข้อมูลลงเวลา MobileTA</strong><small>ตรวจสอบและนำเข้า Text File พร้อมประมวลผล Attendance</small></div><em>เปิด ›</em></button>
+            <button class="admin-module-card" data-admin-open="admin-time-import"><span class="admin-module-icon">⇩</span><div><strong>นำเข้าข้อมูลลงเวลา CSV</strong><small>ไฟล์ EmployeeId, InOutDate, InOutTime, InOutMode และ GPS</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="admin-attendance-rebuild"><span class="admin-module-icon">↻</span><div><strong>ประมวลผล Attendance ใหม่</strong><small>ประมวลผลตามช่วงวันที่ พร้อม Progress และ Error Log</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="system-settings"><span class="admin-module-icon">⚙</span><div><strong>System Settings</strong><small>Theme, Developer Mode, Feature Flags และ Connection</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="report"><span class="admin-module-icon">▤</span><div><strong>ศูนย์รายงาน</strong><small>ส่งออกรายงานและตรวจประวัติการดาวน์โหลด</small></div><em>เปิด ›</em></button>
@@ -471,6 +460,32 @@
           </div>
         </section>
 
+
+        <!-- Technician Work Patterns -->
+        <section id="page-work-patterns" class="page work-pattern-page">
+          <div class="work-pattern-hero">
+            <div><span class="eyebrow">TECHNICIAN WORK MODEL</span><h2>รูปแบบการทำงานช่างเทคนิค</h2><p>กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น เกณฑ์ OT และรูปแบบงานหนึ่งช่วง/หลายช่วง</p></div>
+            <button id="workPatternRefreshBtn" class="btn btn-light">รีเฟรชข้อมูล</button>
+          </div>
+
+          <div id="workPatternAdminPanel" class="panel section-gap hidden">
+            <div class="panel-header"><div><h3>พารามิเตอร์กลุ่มการทำงาน</h3><p>แก้ไขได้เฉพาะ HR_ADMIN</p></div><button id="workPatternNewBtn" class="btn btn-orange">+ เพิ่มรูปแบบ</button></div>
+            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>วันทำงาน/สัปดาห์</th><th>เวลา/วันรวมพัก</th><th>OT หลัง</th><th>วันหยุดตั้งต้น</th><th>ยกยอด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="workPatternBody"></tbody></table></div></div>
+          </div>
+
+          <div class="panel section-gap">
+            <div class="panel-header"><div><h3>กำหนดรูปแบบรายบุคคล</h3><p>หัวหน้างานกำหนดได้เฉพาะพนักงานภายใต้ Scope ของตนเอง และกำหนดวันที่เริ่มใช้</p></div></div>
+            <div class="panel-body">
+              <div class="fc-toolbar"><div class="field"><label>ค้นหารหัสหรือชื่อ</label><input id="employeePatternSearch" class="input" placeholder="เช่น 7512172"></div><div class="field"><label>วันที่อ้างอิง</label><input id="employeePatternDate" type="date" class="input"></div><div class="toolbar-actions"><button id="employeePatternLoadBtn" class="btn btn-primary">ค้นหา</button></div></div>
+              <div class="table-wrap section-gap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>PC</th><th>รูปแบบ</th><th>วันหยุดตั้งต้น</th><th>Template เริ่มต้น</th><th>เริ่มใช้</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
+            </div>
+          </div>
+
+          <div class="panel section-gap">
+            <div class="panel-header"><div><h3>Template ช่วงงาน</h3><p>ใช้กำหนดลักษณะหนึ่งช่วงงาน หรือมีช่วงรอคอยก่อนเข้าพบลูกค้า</p></div></div>
+            <div id="workTemplateCards" class="work-template-grid panel-body"></div>
+          </div>
+        </section>
 
         <!-- Attendance Rebuild Admin -->
         <section id="page-admin-attendance-rebuild" class="page admin-page att-rebuild-page">
@@ -561,60 +576,61 @@
           </div>
         </section>
 
-        <!-- MobileTA Time Import -->
+        <!-- CSV Time Import -->
         <section id="page-admin-time-import" class="page admin-page mobileta-import-page">
           <div class="mobileta-import-hero">
             <div>
-              <span class="eyebrow">MOBILETA TEXT IMPORT</span>
-              <h2>นำเข้าข้อมูลลงเวลา MobileTA</h2>
-              <p>รองรับ Text File รูปแบบ <strong>ALL,รหัสพนักงาน,YYMMDD,HHMMSS</strong> พร้อมตรวจข้อมูลซ้ำและประมวลผล Attendance</p>
+              <span class="eyebrow">CSV TIME IMPORT</span>
+              <h2>นำเข้าข้อมูลลงเวลาจาก CSV</h2>
+              <p>รองรับ CSV UTF-8: <strong>EmployeeId, InOutDate, InOutTime, InOutMode, GPSName, GpsLocation</strong> โดยใช้ค่า เข้า/ออกจากไฟล์โดยตรง</p>
             </div>
-            <button id="mobiletaRefreshHistoryBtn" class="btn btn-light">รีเฟรชประวัติ</button>
+            <button id="timeCsvRefreshHistoryBtn" class="btn btn-light">รีเฟรชประวัติ</button>
           </div>
 
           <div class="panel section-gap">
-            <div class="panel-header"><div><h3>1. เลือกและตรวจสอบไฟล์</h3><p>ระบบอ่านไฟล์ใน Browser ก่อน ยังไม่บันทึกลงฐานข้อมูล</p></div><span id="mobiletaFileStatus" class="mobileta-status-pill neutral">ยังไม่ได้เลือกไฟล์</span></div>
+            <div class="panel-header"><div><h3>1. เลือกและตรวจสอบไฟล์ CSV</h3><p>ระบบตรวจหัวคอลัมน์ วันที่ เวลา เข้า/ออก และข้อมูลซ้ำใน Browser ก่อนบันทึก</p></div><span id="timeCsvFileStatus" class="mobileta-status-pill neutral">ยังไม่ได้เลือกไฟล์</span></div>
             <div class="panel-body">
               <div class="mobileta-form-grid">
-                <div class="field"><label>Text File MobileTA</label><input id="mobiletaFile" class="input" type="file" accept=".txt,.csv,text/plain,text/csv" /></div>
-                <div class="field"><label>หมายเหตุการนำเข้า</label><input id="mobiletaImportNote" class="input" placeholder="เช่น ข้อมูล MobileTA เดือนกรกฎาคม 2569" /></div>
-                <label class="mobileta-option-card"><input id="mobiletaRebuildAttendance" type="checkbox" checked><span><strong>ประมวลผล Attendance หลังนำเข้า</strong><small>สร้างรายละเอียดเวลาทำงานใหม่ตามช่วงวันที่และพนักงานในไฟล์</small></span></label>
+                <div class="field"><label>ไฟล์ CSV UTF-8</label><input id="timeCsvFile" class="input" type="file" accept=".csv,text/csv" /></div>
+                <div class="field"><label>หมายเหตุการนำเข้า</label><input id="timeCsvImportNote" class="input" placeholder="เช่น ข้อมูลลงเวลาเดือนกรกฎาคม 2569" /></div>
+                <label class="mobileta-option-card"><input id="timeCsvRebuildAttendance" type="checkbox" checked><span><strong>ประมวลผล Attendance หลังนำเข้า</strong><small>สร้าง Job ตามช่วงวันที่ของไฟล์ พร้อม Progress และ Error Log</small></span></label>
               </div>
               <div class="mobileta-action-row">
-                <button id="mobiletaPreviewBtn" class="btn btn-light">ตรวจสอบไฟล์</button>
-                <button id="mobiletaImportBtn" class="btn btn-primary" disabled>นำเข้าข้อมูลลงเวลา</button>
-                <button id="mobiletaResetBtn" class="btn btn-danger-soft">ล้างผลตรวจสอบ</button>
+                <button id="timeCsvPreviewBtn" class="btn btn-light">ตรวจสอบไฟล์</button>
+                <button id="timeCsvImportBtn" class="btn btn-primary" disabled>นำเข้าข้อมูลลงเวลา</button>
+                <button id="timeCsvResetBtn" class="btn btn-danger-soft">ล้างผลตรวจสอบ</button>
+                <button id="timeCsvTemplateBtn" class="btn btn-success">ดาวน์โหลด Template CSV</button>
               </div>
-              <div class="mobileta-format-note"><strong>รูปแบบวันที่:</strong> 690602 = 2 มิถุนายน 2569 (ค.ศ. 2026) &nbsp;•&nbsp; <strong>รูปแบบเวลา:</strong> 083050 = 08:30:50 &nbsp;•&nbsp; ข้อมูลซ้ำที่รหัส/วันที่/เวลาเดียวกันจะไม่นำเข้าซ้ำ</div>
+              <div class="mobileta-format-note"><strong>วันที่:</strong> YYYY-MM-DD &nbsp;•&nbsp; <strong>เวลา:</strong> HH:mm หรือ HH:mm:ss &nbsp;•&nbsp; <strong>InOutMode:</strong> เข้า / ออก หรือ IN / OUT &nbsp;•&nbsp; รายการซ้ำจะไม่เพิ่มซ้ำ</div>
             </div>
           </div>
 
-          <div id="mobiletaPreviewPanel" class="hidden">
+          <div id="timeCsvPreviewPanel" class="hidden">
             <div class="mobileta-kpi-grid section-gap">
-              <article><span>บรรทัดทั้งหมด</span><strong id="mobiletaRawRows">0</strong><small>จากไฟล์ที่เลือก</small></article>
-              <article><span>ข้อมูลถูกต้อง</span><strong id="mobiletaValidRows">0</strong><small>พร้อมนำเข้า</small></article>
-              <article><span>ซ้ำภายในไฟล์</span><strong id="mobiletaFileDuplicates">0</strong><small>ระบบจะข้าม</small></article>
-              <article><span>พนักงาน</span><strong id="mobiletaEmployees">0</strong><small>รหัสไม่ซ้ำ</small></article>
-              <article><span>ช่วงวันที่</span><strong id="mobiletaDateRange">-</strong><small>ข้อมูลในไฟล์</small></article>
-              <article><span>ข้อมูลผิดรูปแบบ</span><strong id="mobiletaInvalidRows">0</strong><small>ต้องตรวจสอบ</small></article>
+              <article><span>แถวทั้งหมด</span><strong id="timeCsvRawRows">0</strong><small>ไม่รวมหัวตาราง</small></article>
+              <article><span>ข้อมูลถูกต้อง</span><strong id="timeCsvValidRows">0</strong><small>พร้อมนำเข้า</small></article>
+              <article><span>ซ้ำภายในไฟล์</span><strong id="timeCsvFileDuplicates">0</strong><small>ระบบจะข้าม</small></article>
+              <article><span>พนักงาน</span><strong id="timeCsvEmployees">0</strong><small>รหัสไม่ซ้ำ</small></article>
+              <article><span>ช่วงวันที่</span><strong id="timeCsvDateRange">-</strong><small>ข้อมูลในไฟล์</small></article>
+              <article><span>ข้อมูลผิดรูปแบบ</span><strong id="timeCsvInvalidRows">0</strong><small>ไม่นำเข้า</small></article>
             </div>
 
             <div class="panel section-gap">
-              <div class="panel-header"><div><h3>ตัวอย่างข้อมูล</h3><p>แสดงสูงสุด 20 รายการแรกหลังตัดข้อมูลซ้ำ</p></div><button id="mobiletaDownloadErrorsBtn" class="btn btn-light hidden">ดาวน์โหลดรายการผิดรูปแบบ</button></div>
-              <div class="panel-body"><div class="table-wrap mobileta-preview-table"><table><thead><tr><th>บรรทัด</th><th>ประเภทต้นทาง</th><th>รหัสพนักงาน</th><th>วันที่</th><th>เวลา</th><th>สถานะ</th></tr></thead><tbody id="mobiletaPreviewBody"></tbody></table></div></div>
+              <div class="panel-header"><div><h3>ตัวอย่างข้อมูล</h3><p>แสดงสูงสุด 20 รายการแรกหลังตัดข้อมูลซ้ำ</p></div><button id="timeCsvDownloadErrorsBtn" class="btn btn-light hidden">ดาวน์โหลด Error CSV</button></div>
+              <div class="panel-body"><div class="table-wrap mobileta-preview-table"><table><thead><tr><th>แถว</th><th>รหัสพนักงาน</th><th>วันที่</th><th>เวลา</th><th>เข้า/ออก</th><th>GPSName</th><th>GpsLocation</th></tr></thead><tbody id="timeCsvPreviewBody"></tbody></table></div></div>
             </div>
           </div>
 
-          <div id="mobiletaProgressPanel" class="panel section-gap hidden">
-            <div class="panel-header"><div><h3 id="mobiletaProgressTitle">กำลังนำเข้าข้อมูล</h3><p id="mobiletaProgressText">เตรียมข้อมูล...</p></div><strong id="mobiletaProgressPercent">0%</strong></div>
-            <div class="panel-body"><div class="mobileta-progress-track"><div id="mobiletaProgressBar" class="mobileta-progress-bar"></div></div><div class="mobileta-progress-stats"><span>ส่งข้อมูลแล้ว <strong id="mobiletaUploadedRows">0</strong></span><span>เพิ่มใหม่ <strong id="mobiletaInsertedRows">0</strong></span><span>ซ้ำในฐานข้อมูล <strong id="mobiletaExistingDuplicates">0</strong></span><span>ไม่พบพนักงาน <strong id="mobiletaUnmatchedRows">0</strong></span></div></div>
+          <div id="timeCsvProgressPanel" class="panel section-gap hidden">
+            <div class="panel-header"><div><h3 id="timeCsvProgressTitle">กำลังนำเข้าข้อมูล</h3><p id="timeCsvProgressText">เตรียมข้อมูล...</p></div><strong id="timeCsvProgressPercent">0%</strong></div>
+            <div class="panel-body"><div class="mobileta-progress-track"><div id="timeCsvProgressBar" class="mobileta-progress-bar"></div></div><div class="mobileta-progress-stats"><span>ส่งแล้ว <strong id="timeCsvUploadedRows">0</strong></span><span>เพิ่มใหม่ <strong id="timeCsvInsertedRows">0</strong></span><span>ซ้ำฐานข้อมูล <strong id="timeCsvExistingDuplicates">0</strong></span><span>ไม่พบพนักงาน <strong id="timeCsvUnmatchedRows">0</strong></span><span>GPS Conflict <strong id="timeCsvGpsConflicts">0</strong></span></div></div>
           </div>
 
-          <div id="mobiletaResultPanel" class="section-gap"></div>
+          <div id="timeCsvResultPanel" class="section-gap"></div>
 
           <div class="panel section-gap">
-            <div class="panel-header"><div><h3>ประวัติการนำเข้าข้อมูลลงเวลา</h3><p>แสดง 30 รายการล่าสุด</p></div></div>
-            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>ชื่อไฟล์</th><th>ช่วงวันที่</th><th>บรรทัด</th><th>เพิ่มใหม่</th><th>ข้อมูลซ้ำ</th><th>ไม่พบพนักงาน</th><th>Attendance</th><th>สถานะ</th><th>ผู้ดำเนินการ</th><th>ดำเนินการ</th></tr></thead><tbody id="mobiletaHistoryBody"><tr><td colspan="11" class="table-empty">กดรีเฟรชเพื่อโหลดประวัติ</td></tr></tbody></table></div></div>
+            <div class="panel-header"><div><h3>ประวัติการนำเข้า CSV</h3><p>แสดง 30 รายการล่าสุด</p></div></div>
+            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>ชื่อไฟล์</th><th>ช่วงวันที่</th><th>แถว</th><th>เพิ่มใหม่</th><th>ข้อมูลซ้ำ</th><th>ไม่พบพนักงาน</th><th>GPS Conflict</th><th>Attendance Job</th><th>สถานะ</th><th>ผู้ดำเนินการ</th></tr></thead><tbody id="timeCsvHistoryBody"><tr><td colspan="11" class="table-empty">กดรีเฟรชเพื่อโหลดประวัติ</td></tr></tbody></table></div></div>
           </div>
         </section>
 
@@ -674,7 +690,9 @@
           <div class="field"><label>กะทำงาน</label><select id="assignShiftCode" class="select"></select></div>
           <div class="field"><label>สถานะการยืนยันกะ</label><select id="assignConfirm" class="select"><option value="false">ยังไม่ยืนยัน</option><option value="true">ยืนยันกะทันที</option></select><small id="assignConfirmHelp" class="field-help">ยังไม่ยืนยัน: บันทึกเป็นกะร่างสถานะ ASSIGNED และยังแก้ไขได้</small></div>
         </div>
-        <div class="field"><label>หมายเหตุ</label><input id="assignNote" class="input" placeholder="หมายเหตุการจัดกะ" /></div>
+        <div class="field"><label>รูปแบบช่วงงาน</label><select id="assignWorkTemplate" class="select"><option value="SINGLE_0830">กะเดียว 08:30–17:30</option></select><small class="field-help">กรณีมีงานลูกค้าช่วงที่ 2 ให้เลือก Template แบบมีช่วงรอคอย</small></div>
+        <div id="assignCustomerWindowRow" class="form-row hidden"><div class="field"><label>คาดว่าจะเริ่มงานลูกค้า</label><input id="assignCustomerStart" class="input" type="time" value="22:00"></div><div class="field"><label>คาดว่าจะสิ้นสุด</label><input id="assignCustomerEnd" class="input" type="time"><small class="field-help">เว้นว่างได้ หากไม่กำหนดเวลาสิ้นสุด</small></div></div>
+        <div class="field"><label>หมายเหตุ</label><input id="assignNote" class="input" placeholder="หมายเหตุการจัดกะ / งานลูกค้า" /></div>
         <div class="field"><label>เหตุผลการเปลี่ยนแปลง</label><input id="assignReason" class="input" value="กำหนดกะจากหน้าปฏิทิน" /></div>
       </div>
       <div class="modal-footer"><button id="deleteAssignmentBtn" class="btn btn-danger" style="margin-right:auto">ลบกะที่จัดไว้</button><button class="btn btn-light" data-close-modal="assignModal">ยกเลิก</button><button id="saveAssignmentBtn" class="btn btn-primary">บันทึกกะ</button></div>
@@ -718,20 +736,6 @@
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
     </div>
   </div>
-  <script src="./js/config.js?v=6.0.0"></script>
-  <script src="./js/shift-api.js?v=6.0.0"></script>
-  <script src="./js/core/app-core.js?v=6.1.9"></script>
-  <script src="./js/enhancements.js?v=2.0.0"></script>
-  <script src="./js/dashboard-enterprise.js?v=2.0.0"></script>
-  <script src="./js/dashboard-executive.js?v=5.2.0"></script>
-  <script src="./js/schedule-pro.js?v=6.0.0"></script>
-  <script src="./js/review-center.js?v=6.0.0"></script>
-  <script src="./js/report-center.js?v=6.0.0"></script>
-  <script src="./js/hr-admin-center.js?v=6.0.0"></script>
-  <script src="./js/settings-enterprise.js?v=4.0.0"></script>
-  <script src="./js/platform-shell.js?v=6.1.6"></script>
-  <script src="./js/functional-complete.js?v=6.1.9"></script>
-  <script src="./js/mobileta-import.js?v=6.1.5"></script>
-  <script src="./js/attendance-rebuild-admin.js?v=6.1.7"></script>
+  <script src="./app.js?v=6.2.0-compact"></script>
 </body>
 </html>
