@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="./css/mobileta-import.css?v=6.1.4" />
   <link rel="stylesheet" href="./css/hr-admin-center.css?v=5.6.0" />
   <link rel="stylesheet" href="./css/attendance-rebuild-admin.css?v=6.1.7" />
+  <link rel="stylesheet" href="./css/attendance-v619.css?v=6.1.9" />
   <link rel="stylesheet" href="./css/settings-enterprise.css?v=4.0.0" />
   <link rel="stylesheet" href="./css/platform-shell.css?v=6.0.0" />
 </head>
@@ -282,6 +283,7 @@
                 <div class="field"><label>วันที่เริ่มต้น</label><input id="attStart" class="input" type="date" /></div>
                 <div class="field"><label>วันที่สิ้นสุด</label><input id="attEnd" class="input" type="date" /></div>
                 <div class="field"><label>พื้นที่</label><select id="attZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
+                <div class="field"><label>พื้นที่ย่อย</label><select id="attSubArea" class="select"><option value="">ทุกพื้นที่ย่อย</option></select></div>
                 <div class="field"><label>หน่วยงาน</label><select id="attDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div>
                 <div class="field"><label>สถานะ</label><select id="attStatus" class="select"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENT">ไม่มีเวลา</option><option value="INCOMPLETE_TIME">เวลาไม่ครบ</option><option value="WORKED_ON_OFFDAY">ทำงานวันหยุด</option><option value="NEED_REVIEW">รอตรวจสอบ</option></select></div>
                 <div class="toolbar-actions"><button id="loadAttendanceBtn" class="btn btn-primary">ค้นหา</button><button id="exportAttendanceBtn" class="btn btn-success">Export CSV</button></div>
@@ -290,7 +292,7 @@
           </div>
           <div class="panel section-gap">
             <div class="panel-header"><div><h3>รายละเอียดเวลาทำงาน</h3><p id="attendanceCount">0 รายการ</p></div></div>
-            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>เวลาเริ่มกะ</th><th>เวลาสิ้นสุดกะ</th><th>กะ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>สาย</th><th>กลับก่อน</th><th>สถานะ</th></tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
+            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>พื้นที่ย่อย</th><th>เวลาเริ่มกะ</th><th>เวลาสิ้นสุดกะ</th><th>กะ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>สาย</th><th>กลับก่อน</th><th>สถานะ</th></tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
           </div>
         </section>
 
@@ -718,7 +720,7 @@
   </div>
   <script src="./js/config.js?v=6.0.0"></script>
   <script src="./js/shift-api.js?v=6.0.0"></script>
-  <script src="./js/core/app-core.js?v=6.1.6"></script>
+  <script src="./js/core/app-core.js?v=6.1.9"></script>
   <script src="./js/enhancements.js?v=2.0.0"></script>
   <script src="./js/dashboard-enterprise.js?v=2.0.0"></script>
   <script src="./js/dashboard-executive.js?v=5.2.0"></script>
@@ -728,7 +730,7 @@
   <script src="./js/hr-admin-center.js?v=6.0.0"></script>
   <script src="./js/settings-enterprise.js?v=4.0.0"></script>
   <script src="./js/platform-shell.js?v=6.1.6"></script>
-  <script src="./js/functional-complete.js?v=6.1.6"></script>
+  <script src="./js/functional-complete.js?v=6.1.9"></script>
   <script src="./js/mobileta-import.js?v=6.1.5"></script>
   <script src="./js/attendance-rebuild-admin.js?v=6.1.7"></script>
 </body>

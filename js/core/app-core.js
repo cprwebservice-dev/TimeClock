@@ -6,7 +6,7 @@
       session: null,
       user: null,
       profile: null,
-      filters: { zones: [], departments: [], employees: [], shifts: [] },
+      filters: { zones: [], departments: [], employees: [], shifts: [], attendance: { areas: [], sub_areas: [], departments: [] } },
       dashboard: null,
       attendance: [],
       schedule: [],
@@ -113,6 +113,7 @@
         applyProfile();
         showApp();
         await loadFilterOptions();
+        await loadAttendanceFilterOptions(false);
         await loadDashboard();
       } catch (err) {
         toast(humanError(err), "error");
@@ -153,9 +154,39 @@
         employees: Array.isArray(f.employees) ? f.employees : [],
         shifts: Array.isArray(f.shifts) ? f.shifts : []
       };
-      ["dashZone","attZone","scheduleZone","reportZone"].forEach(id => fillSelect(id, state.filters.zones, "ทุกพื้นที่"));
-      ["dashDepartment","attDepartment","scheduleDepartment","reportDepartment"].forEach(id => fillSelect(id, state.filters.departments, "ทุกหน่วยงาน"));
+      ["dashZone","scheduleZone","reportZone"].forEach(id => fillSelect(id, state.filters.zones, "ทุกพื้นที่"));
+      ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id => fillSelect(id, state.filters.departments, "ทุกหน่วยงาน"));
       fillShiftSelect();
+    }
+
+
+    async function loadAttendanceFilterOptions(preserve = true) {
+      const oldArea = preserve ? val("attZone") : "";
+      const oldSubArea = preserve ? val("attSubArea") : "";
+      const oldDepartment = preserve ? val("attDepartment") : "";
+      try {
+        const { data, error } = await state.client.rpc("ta_get_attendance_filter_options_v619", {
+          p_start_date: val("attStart"),
+          p_end_date: val("attEnd"),
+          p_area: oldArea || null,
+          p_sub_area: oldSubArea || null
+        });
+        if (error) throw error;
+        const f = data || {};
+        state.filters.attendance = {
+          areas: Array.isArray(f.areas) ? f.areas : [],
+          sub_areas: Array.isArray(f.sub_areas) ? f.sub_areas : [],
+          departments: Array.isArray(f.departments) ? f.departments : []
+        };
+        fillSelect("attZone", state.filters.attendance.areas, "ทุกพื้นที่");
+        fillSelect("attSubArea", state.filters.attendance.sub_areas, "ทุกพื้นที่ย่อย");
+        fillSelect("attDepartment", state.filters.attendance.departments, "ทุกหน่วยงาน");
+        if (oldArea && [...$("attZone").options].some(o => o.value === oldArea)) setVal("attZone", oldArea);
+        if (oldSubArea && [...$("attSubArea").options].some(o => o.value === oldSubArea)) setVal("attSubArea", oldSubArea);
+        if (oldDepartment && [...$("attDepartment").options].some(o => o.value === oldDepartment)) setVal("attDepartment", oldDepartment);
+      } catch (err) {
+        toast(`โหลดตัวกรองรายละเอียดเวลาไม่สำเร็จ: ${humanError(err)}`, "error");
+      }
     }
 
     function fillSelect(id, values, allLabel) {
@@ -214,15 +245,19 @@
         const statuses = val("attStatus") ? [val("attStatus")] : null;
         const globalSearch = (document.getElementById("attendanceGridSearch")?.value || "").trim();
         const exactEmpCode = /^\d{4,20}$/.test(globalSearch) ? globalSearch : null;
-        const { data, error } = await state.client.rpc("ta_get_attendance_detail", {
-          p_start_date: val("attStart"), p_end_date: val("attEnd"), p_zone: val("attZone") || null,
+        const { data, error } = await state.client.rpc("ta_get_attendance_detail_v619", {
+          p_start_date: val("attStart"),
+          p_end_date: val("attEnd"),
+          p_area: val("attZone") || null,
+          p_sub_area: val("attSubArea") || null,
           p_department: val("attDepartment") || null,
           p_emp_codes: exactEmpCode ? [exactEmpCode] : null,
           p_attendance_statuses: statuses,
-          p_schedule_statuses: null
+          p_schedule_statuses: null,
+          p_limit: exactEmpCode ? 20000 : 5000
         });
         if (error) throw error;
-        state.attendance = data || [];
+        state.attendance = (data || []).sort((a,b) => String(b.work_date || "").localeCompare(String(a.work_date || "")) || String(a.emp_code || "").localeCompare(String(b.emp_code || "")));
         state.attendanceServerFilter = exactEmpCode;
         renderAttendance();
         document.dispatchEvent(new CustomEvent("timeclock:attendance-loaded", {
@@ -236,8 +271,8 @@
       setText("attendanceCount", `${formatNumber(state.attendance.length)} รายการ`);
       $("attendanceBody").innerHTML = state.attendance.length ? state.attendance.map(r => {
         const code = attendanceShiftCode(r);
-        return `<tr data-attendance-row="1" data-emp="${safe(r.emp_code)}" data-date="${safe(String(r.work_date).slice(0,10))}"><td class="nowrap">${formatDate(r.work_date)}</td><td>${safe(r.emp_code)}</td><td class="nowrap">${safe(r.full_name)}</td><td>${safe(r.department)}</td><td>${safe(r.zone)}</td><td class="nowrap">${formatTime(attendanceShiftTime(r,"start"))}</td><td class="nowrap">${formatTime(attendanceShiftTime(r,"end"))}</td><td>${badge(code, shiftBadgeClass(code))}</td><td>${formatTime(r.actual_in_at || r.first_in)}</td><td>${formatTime(r.actual_out_at || r.last_out)}</td><td class="text-right">${minutesToHours(r.net_work_minutes)}</td><td class="text-right">${formatNumber(r.late_minutes)}</td><td class="text-right">${formatNumber(r.early_leave_minutes)}</td><td>${badge(attendanceLabel(r.attendance_result || r.attendance_status), statusBadgeClass(r.attendance_result || r.attendance_status))}</td></tr>`;
-      }).join("") : emptyRow(14);
+        return `<tr data-attendance-row="1" data-emp="${safe(r.emp_code)}" data-date="${safe(String(r.work_date).slice(0,10))}"><td class="nowrap">${formatDate(r.work_date)}</td><td>${safe(r.emp_code)}</td><td class="nowrap">${safe(r.full_name)}</td><td>${safe(r.department)}</td><td>${safe(r.zone || r.area)}</td><td>${safe(r.sub_area)}</td><td class="nowrap">${formatTime(attendanceShiftTime(r,"start"))}</td><td class="nowrap">${formatTime(attendanceShiftTime(r,"end"))}</td><td>${badge(code, shiftBadgeClass(code))}</td><td>${formatTime(r.actual_in_at || r.first_in)}</td><td>${formatTime(r.actual_out_at || r.last_out)}</td><td class="text-right">${minutesToHours(r.net_work_minutes)}</td><td class="text-right">${formatNumber(r.late_minutes)}</td><td class="text-right">${formatNumber(r.early_leave_minutes)}</td><td>${badge(attendanceLabel(r.attendance_result || r.attendance_status), statusBadgeClass(r.attendance_result || r.attendance_status))}</td></tr>`;
+      }).join("") : emptyRow(15);
       document.dispatchEvent(new CustomEvent("timeclock:attendance-rendered", { detail: { count: state.attendance.length } }));
     }
 
@@ -523,8 +558,8 @@
 
     function exportAttendance() {
       if (!state.attendance.length) return toast("ไม่มีข้อมูลสำหรับ Export", "error");
-      const headers = ["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","มาสาย(นาที)","กลับก่อน(นาที)","สถานะ"];
-      const rows = state.attendance.map(r => [formatDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone,formatTime(attendanceShiftTime(r,"start")),formatTime(attendanceShiftTime(r,"end")),attendanceShiftCode(r),formatTime(r.actual_in_at||r.first_in),formatTime(r.actual_out_at||r.last_out),minutesToHours(r.net_work_minutes),r.late_minutes||0,r.early_leave_minutes||0,attendanceLabel(r.attendance_result||r.attendance_status)]);
+      const headers = ["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","มาสาย(นาที)","กลับก่อน(นาที)","สถานะ"];
+      const rows = state.attendance.map(r => [formatDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,formatTime(attendanceShiftTime(r,"start")),formatTime(attendanceShiftTime(r,"end")),attendanceShiftCode(r),formatTime(r.actual_in_at||r.first_in),formatTime(r.actual_out_at||r.last_out),minutesToHours(r.net_work_minutes),r.late_minutes||0,r.early_leave_minutes||0,attendanceLabel(r.attendance_result||r.attendance_status)]);
       const csv = "\uFEFF" + [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\n");
       downloadFile(`Attendance_${val("attStart")}_${val("attEnd")}.csv`, csv, "text/csv;charset=utf-8");
     }
@@ -562,6 +597,10 @@
       $("mobileMenuBtn").addEventListener("click", () => $("sidebar").classList.toggle("open"));
       $("loadDashboardBtn").addEventListener("click", loadDashboard);
       $("loadAttendanceBtn").addEventListener("click", loadAttendance);
+      $("attZone")?.addEventListener("change", async () => { setVal("attSubArea", ""); setVal("attDepartment", ""); await loadAttendanceFilterOptions(true); });
+      $("attSubArea")?.addEventListener("change", async () => { setVal("attDepartment", ""); await loadAttendanceFilterOptions(true); });
+      $("attStart")?.addEventListener("change", () => loadAttendanceFilterOptions(true));
+      $("attEnd")?.addEventListener("change", () => loadAttendanceFilterOptions(true));
       $("exportAttendanceBtn").addEventListener("click", exportAttendance);
       $("loadScheduleBtn").addEventListener("click", loadSchedule);
       $("scheduleSearch").addEventListener("input", renderSchedule);
@@ -626,6 +665,7 @@
       minutesToHours,
       attendanceShiftCode,
       attendanceShiftTime,
+      loadAttendanceFilterOptions,
       attendanceLabel,
       downloadFile,
       applyProfile,

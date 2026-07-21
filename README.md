@@ -59,3 +59,7 @@
 4. Login as `HR_ADMIN` and open **HR Admin > ประมวลผล Attendance**.
 
 The browser acts as the worker and processes one task at a time. If the browser is closed, reopen the page and click **ดำเนินการต่อ**. Completed tasks are not repeated.
+
+
+## V6.1.9
+Attendance area/sub-area cascading filters and work metric display fixes.
