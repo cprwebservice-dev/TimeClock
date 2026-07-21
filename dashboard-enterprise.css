@@ -1,0 +1,14 @@
+/* Shared interaction states */
+.btn, .nav-item, .quick-item, .input, .select {
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+.btn:not(:disabled):active { transform: translateY(1px); }
+.input:focus, .select:focus { outline: 3px solid rgba(31,111,235,.14); outline-offset: 1px; }
+.nav-item:focus-visible, .btn:focus-visible { outline: 3px solid rgba(245,158,11,.28); outline-offset: 2px; }
+
+.skip-link {
+  position: fixed; left: 12px; top: -60px; z-index: 9999;
+  padding: 10px 14px; border-radius: 10px; background: #fff; color: #0b1f3a;
+  box-shadow: var(--shadow-soft);
+}
+.skip-link:focus { top: 12px; }

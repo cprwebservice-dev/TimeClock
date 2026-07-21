@@ -1,14 +1,19 @@
-# Time-Clock Enterprise V5.6 — HR Admin Center
-
-ต่อยอดจาก V5.5 โดยคง Dashboard, Schedule Pro, Review Center และ Report Center ไว้ครบ
+# Time-Clock Enterprise V5.2 — Executive Dashboard
 
 ## เพิ่มใหม่
-- หน้า HR Admin Center สำหรับบัญชี HR_ADMIN
-- KPI ผู้ใช้งาน กะ และวันหยุด
-- System Health แสดง Connection, Role, Session และเวลาตรวจสอบล่าสุด
-- Quick Access ไปยัง User & Scope, Shift Master, Holiday, Import, Settings และ Report Center
-- Checklist ความพร้อมก่อนเปิดใช้งานจริง
-- โหลดข้อมูลจริงจาก Supabase และรองรับ Error จาก RLS/RPC
+- Attendance Health Score คำนวณจากข้อมูล Dashboard ที่โหลดจริง
+- Need Attention Matrix พร้อมเปิด Review Center
+- Schedule Readiness จากจำนวนกะที่ยืนยันแล้ว
+- Executive Insights แบบอัตโนมัติ
+- Workforce Distribution แสดงสัดส่วนสถานะหลัก
+- Responsive และ Dark Mode สำหรับ Widget ใหม่
 
-## SQL
-ไม่มี SQL ใหม่ รุ่นนี้ใช้ RPC และตารางที่มีอยู่แล้ว
+## หลักการข้อมูล
+Widget ทุกส่วนใช้ค่าจาก RPC `ta_get_dashboard_overview` ที่ระบบโหลดอยู่แล้ว ไม่มีการสร้างจำนวนพนักงานหรือรายการสมมติ
+
+## Acceptance Criteria
+1. Dashboard เดิมโหลดได้ตามปกติ
+2. Health Score แสดงหลัง KPI โหลด
+3. Need Attention เปิดหน้า Review ได้
+4. Schedule Readiness เปิดหน้าปฏิทินจัดกะได้
+5. Dark Mode และหน้าจอขนาดเล็กแสดงผลได้

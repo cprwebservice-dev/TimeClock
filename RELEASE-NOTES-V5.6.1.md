@@ -1,20 +1,35 @@
-# Time-Clock Enterprise V5.6.1 — Shift & Review Bug Fix
+# Time-Clock Enterprise V6.0 – Functional Complete
 
-## Fixed
+ระบบต่อยอดโดยตรงจาก **V5.6.3 Advance Schedule** และคงฟังก์ชันเดิมทั้งหมดไว้
 
-- Fixed missing `ta_assign_shift_single` RPC used by the assignment modal.
-- Fixed missing `ta_assign_shifts_bulk` RPC used by quick assign, paste, confirm, clear, undo and redo.
-- Fixed delete assignment through `ta_delete_shift_assignments_bulk`.
-- Fixed Shift Master save compatibility through `ta_upsert_shift_master`.
-- Removed duplicate Schedule event bindings that caused the same action to run twice.
-- Schedule cells now open the edit modal by double-click only; single click remains available for multi-select.
-- Removed the Review Center `MutationObserver` render loop that caused continuous loading and blank data.
-- Added a 30-second timeout and direct-table fallback for Review Queue.
-- Added the `LV` shift master record so the existing LV quick action can be saved.
-- Added assignment audit logging and PostgREST schema cache reload.
+## ฟังก์ชันหลัก
+- Executive Dashboard
+- ตารางจัดกะล่วงหน้าแบบ Excel
+- Copy/Paste, Undo/Redo, Fill Down, Fill Right และรูปแบบกะ 7 วัน
+- Workflow ตารางกะ DRAFT → PUBLISHED → LOCKED
+- รายละเอียดเวลาทำงาน พร้อมเวลาเริ่มกะ/สิ้นสุดกะ
+- Review Center พร้อมปิด/ละเว้นรายการ
+- Report Center: CSV, Excel และ Print/Save as PDF
+- Employee Directory
+- HR Admin Center
+- User, Role และ Scope
+- Shift Master และ Holiday
+- Audit Log
+- Notification Center
+- System Settings และ Developer Console
+- Smart Assistant แบบ Rule-based ภายในระบบ
 
-## Required deployment order
+## วิธีติดตั้ง
+1. รัน `sql/V6.0_FUNCTIONAL_COMPLETE.sql` ใน Supabase SQL Editor
+2. รัน `sql/V6.0_VERIFY.sql` เพื่อตรวจสอบ
+3. อัปโหลดไฟล์และโฟลเดอร์ทั้งหมดแทน V5.6.3 ใน GitHub Repository
+4. รอ GitHub Pages Deploy
+5. กด `Ctrl + Shift + R`
 
-1. Run `sql/V5.6.1_SHIFT_REVIEW_BUGFIX.sql` in Supabase SQL Editor.
-2. Upload this web package over V5.6 on GitHub Pages.
-3. Wait for deployment and press Ctrl + Shift + R.
+## หมายเหตุ
+- ใช้ Publishable/Anon key บน Browser เท่านั้น ห้ามใช้ Service Role key
+- Developer Mode จำลองเฉพาะ UI ส่วน Supabase RLS ยังตรวจสิทธิ์จริง
+- Print/PDF ใช้คำสั่งพิมพ์ของ Browser
+- Smart Assistant รุ่นนี้ไม่เชื่อม AI ภายนอก
+
+รายละเอียดทั้งหมดอยู่ใน `RELEASE-NOTES-V6.0.md`
