@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="./css/functional-complete.css?v=6.0.0" />
   <link rel="stylesheet" href="./css/mobileta-import.css?v=6.1.4" />
   <link rel="stylesheet" href="./css/hr-admin-center.css?v=5.6.0" />
+  <link rel="stylesheet" href="./css/attendance-rebuild-admin.css?v=6.1.7" />
   <link rel="stylesheet" href="./css/settings-enterprise.css?v=4.0.0" />
   <link rel="stylesheet" href="./css/platform-shell.css?v=6.0.0" />
 </head>
@@ -86,6 +87,7 @@
           <button class="nav-item" data-page="admin-users"><span class="nav-icon">♙</span><span>User และ Scope</span></button>
           <button class="nav-item" data-page="admin-import"><span class="nav-icon">⇧</span><span>นำเข้าพนักงาน</span></button>
           <button class="nav-item" data-page="admin-time-import"><span class="nav-icon">⇩</span><span>นำเข้าข้อมูลลงเวลา</span></button>
+          <button class="nav-item" data-page="admin-attendance-rebuild"><span class="nav-icon">↻</span><span>ประมวลผล Attendance</span></button>
           <button id="systemSettingsNav" class="nav-item hidden" data-page="system-settings"><span class="nav-icon">⚙</span><span>System Settings</span></button>
         </div>
       </nav>
@@ -440,6 +442,7 @@
             <button class="admin-module-card" data-admin-open="admin-holidays"><span class="admin-module-icon">◈</span><div><strong>วันหยุดนักขัตฤกษ์</strong><small>เพิ่ม แก้ไข และตรวจผลกระทบต่อ Attendance</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="admin-import"><span class="admin-module-icon">⇧</span><div><strong>นำเข้าพนักงาน</strong><small>ตรวจสอบไฟล์ CSV ก่อนนำเข้าฐานข้อมูล</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="admin-time-import"><span class="admin-module-icon">⇩</span><div><strong>นำเข้าข้อมูลลงเวลา MobileTA</strong><small>ตรวจสอบและนำเข้า Text File พร้อมประมวลผล Attendance</small></div><em>เปิด ›</em></button>
+            <button class="admin-module-card" data-admin-open="admin-attendance-rebuild"><span class="admin-module-icon">↻</span><div><strong>ประมวลผล Attendance ใหม่</strong><small>ประมวลผลตามช่วงวันที่ พร้อม Progress และ Error Log</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="system-settings"><span class="admin-module-icon">⚙</span><div><strong>System Settings</strong><small>Theme, Developer Mode, Feature Flags และ Connection</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="report"><span class="admin-module-icon">▤</span><div><strong>ศูนย์รายงาน</strong><small>ส่งออกรายงานและตรวจประวัติการดาวน์โหลด</small></div><em>เปิด ›</em></button>
           </div>
@@ -463,6 +466,72 @@
                 <label><input id="adminCheckHolidays" type="checkbox" disabled> มีข้อมูลวันหยุดปีปัจจุบัน</label>
               </div>
             </div>
+          </div>
+        </section>
+
+
+        <!-- Attendance Rebuild Admin -->
+        <section id="page-admin-attendance-rebuild" class="page admin-page att-rebuild-page">
+          <div class="att-rebuild-hero">
+            <div>
+              <span class="eyebrow">ATTENDANCE OPERATIONS</span>
+              <h2>ประมวลผล Attendance ใหม่</h2>
+              <p>สร้างข้อมูลรายละเอียดเวลาทำงานใหม่ตามช่วงวันที่ ระบบแบ่งงานเป็นชุดย่อย แสดงความคืบหน้าแบบต่อเนื่อง และเก็บ Error Log โดยไม่หยุดทั้ง Job</p>
+            </div>
+            <div class="att-rebuild-hero-actions">
+              <button id="attRebuildRefreshBtn" class="btn btn-light">รีเฟรชประวัติ</button>
+            </div>
+          </div>
+
+          <div class="panel section-gap">
+            <div class="panel-header"><div><h3>สร้างงานประมวลผลใหม่</h3><p>สำหรับ HR Admin เท่านั้น ควรเลือกช่วงวันที่เท่าที่จำเป็น</p></div></div>
+            <div class="panel-body">
+              <div class="att-rebuild-form-grid">
+                <div class="field"><label>วันที่เริ่มต้น</label><input id="attRebuildStart" class="input" type="date"></div>
+                <div class="field"><label>วันที่สิ้นสุด</label><input id="attRebuildEnd" class="input" type="date"></div>
+                <div class="field"><label>จำนวนพนักงานต่อ Task</label><select id="attRebuildBatchSize" class="select"><option value="25">25 คน — ปลอดภัยสูง</option><option value="50">50 คน</option><option value="100" selected>100 คน — แนะนำ</option><option value="200">200 คน — เร็วขึ้น</option></select></div>
+                <div class="field att-rebuild-note"><label>หมายเหตุ</label><input id="attRebuildNote" class="input" placeholder="เช่น ประมวลผลใหม่หลังนำเข้า MobileTA กรกฎาคม 2569"></div>
+              </div>
+              <div class="att-rebuild-action-row"><button id="attRebuildStartBtn" class="btn btn-primary">เริ่มประมวลผล</button></div>
+              <div class="att-rebuild-help"><strong>การทำงาน:</strong> ระบบสร้าง Task แยกตามวันที่และกลุ่มพนักงาน หาก Task ใช้เวลานาน ระบบจะแบ่งกลุ่มให้เล็กลงอัตโนมัติ รายการที่ผิดพลาดเฉพาะพนักงานจะถูกข้ามและบันทึกไว้ใน Error Log เพื่อให้งานส่วนอื่นดำเนินต่อได้</div>
+            </div>
+          </div>
+
+          <div id="attRebuildProgressPanel" class="panel section-gap att-rebuild-progress-panel hidden">
+            <div class="panel-body">
+              <div class="att-rebuild-progress-head">
+                <div><span class="eyebrow">CURRENT JOB</span><h3 style="margin:5px 0 4px">กำลังประมวลผล Attendance</h3><p id="attRebuildRange" style="margin:0;color:var(--slate-500)">-</p></div>
+                <span id="attRebuildStatus" class="att-rebuild-status">-</span>
+              </div>
+              <div class="att-rebuild-progress-track"><div id="attRebuildProgressBar" class="att-rebuild-progress-bar"></div></div>
+              <div class="att-rebuild-progress-caption"><strong id="attRebuildPercent">0%</strong><span id="attRebuildTaskText">0 จาก 0 Task</span></div>
+              <div class="att-rebuild-kpis">
+                <div class="att-rebuild-kpi"><span>พนักงานในช่วง</span><strong id="attRebuildKpiEmployees">0</strong></div>
+                <div class="att-rebuild-kpi"><span>จำนวนวัน</span><strong id="attRebuildKpiDays">0</strong></div>
+                <div class="att-rebuild-kpi"><span>Task สำเร็จ</span><strong id="attRebuildKpiCompleted">0</strong></div>
+                <div class="att-rebuild-kpi"><span>Task ผิดพลาด</span><strong id="attRebuildKpiFailed">0</strong></div>
+                <div class="att-rebuild-kpi"><span>ลบข้อมูลเดิม</span><strong id="attRebuildKpiDeleted">0</strong></div>
+                <div class="att-rebuild-kpi"><span>สร้างข้อมูลใหม่</span><strong id="attRebuildKpiInserted">0</strong></div>
+              </div>
+              <div class="att-rebuild-current"><span>กำลังทำวันที่ <strong id="attRebuildCurrentDate">-</strong></span><span id="attRebuildRemaining">0 Task คงเหลือ</span><span>ล่าสุด: <strong id="attRebuildLastError">ไม่พบ Error ล่าสุด</strong></span></div>
+              <div class="att-rebuild-action-row">
+                <button id="attRebuildPauseBtn" class="btn btn-light">หยุดชั่วคราว</button>
+                <button id="attRebuildResumeBtn" class="btn btn-primary hidden">ดำเนินการต่อ</button>
+                <button id="attRebuildRetryBtn" class="btn btn-orange hidden">ลองใหม่รายการผิดพลาด</button>
+                <button id="attRebuildCancelBtn" class="btn btn-danger-soft">ยกเลิก Job</button>
+              </div>
+              <div class="att-rebuild-live-note">สามารถเปิดหน้าอื่นได้ แต่ไม่ควรปิด Browser ระหว่าง Worker ทำงาน หากหน้าเว็บถูกปิด ให้กลับมาที่หน้านี้แล้วกด “ดำเนินการต่อ”</div>
+            </div>
+          </div>
+
+          <div class="panel section-gap att-rebuild-history">
+            <div class="panel-header"><div><h3>ประวัติการประมวลผล</h3><p>แสดง 30 Job ล่าสุด</p></div></div>
+            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>สร้างเมื่อ</th><th>ช่วงวันที่</th><th>สถานะ</th><th>Progress</th><th>พนักงาน</th><th>สร้างใหม่</th><th>Error</th><th>ผู้ดำเนินการ</th><th>จัดการ</th></tr></thead><tbody id="attRebuildHistoryBody"><tr><td colspan="9" class="att-rebuild-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
+          </div>
+
+          <div id="attRebuildErrorPanel" class="panel section-gap att-rebuild-errors att-rebuild-error-panel hidden">
+            <div class="panel-header"><div><h3>Error Log</h3><p id="attRebuildErrorCount">0 รายการ</p></div><button id="attRebuildErrorRefreshBtn" class="btn btn-light">รีเฟรช Error</button></div>
+            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>เวลา</th><th>วันที่ทำงาน</th><th>ระดับ</th><th>Code</th><th>ข้อความ</th><th>รหัสพนักงาน</th><th>การจัดการ</th></tr></thead><tbody id="attRebuildErrorBody"></tbody></table></div></div>
           </div>
         </section>
 
@@ -661,5 +730,6 @@
   <script src="./js/platform-shell.js?v=6.1.6"></script>
   <script src="./js/functional-complete.js?v=6.1.6"></script>
   <script src="./js/mobileta-import.js?v=6.1.5"></script>
+  <script src="./js/attendance-rebuild-admin.js?v=6.1.7"></script>
 </body>
 </html>

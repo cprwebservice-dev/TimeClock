@@ -50,3 +50,12 @@
 
 ## V6.1.4 MobileTA Classify Chunk Fix
 รัน `sql/V6.1.4_MOBILETA_CLASSIFY_CHUNK_FIX.sql` และตรวจด้วย `sql/V6.1.4_VERIFY.sql` จากนั้นอัปโหลดหน้าเว็บ V6.1.4 เพื่อให้ขั้นตอน classify แบ่งงานด้วย cursor และลดขนาดอัตโนมัติเมื่อพบ timeout
+
+## V6.1.7 Attendance Rebuild Admin
+
+1. Run `sql/V6.1.7_ATTENDANCE_REBUILD_ADMIN.sql` in Supabase SQL Editor.
+2. Run `sql/V6.1.7_VERIFY.sql`.
+3. Deploy all web files to the GitHub Pages repository root.
+4. Login as `HR_ADMIN` and open **HR Admin > ประมวลผล Attendance**.
+
+The browser acts as the worker and processes one task at a time. If the browser is closed, reopen the page and click **ดำเนินการต่อ**. Completed tasks are not repeated.
