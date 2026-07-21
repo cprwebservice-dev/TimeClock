@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "6.1.4";
+  const VERSION = "6.1.6";
   const $ = id => document.getElementById(id);
   const qs = (s, r=document) => r.querySelector(s);
   const qsa = (s, r=document) => [...r.querySelectorAll(s)];
@@ -96,14 +96,17 @@
   function enhanceAttendance(){
     const page=$("page-attendance"); if(!page || $("attendanceEnterpriseTools")) return;
     const tablePanel=qs(".panel.section-gap",page);
-    tablePanel?.insertAdjacentHTML("beforebegin",`<div id="attendanceEnterpriseTools" class="panel attendance-enterprise-tools"><div class="panel-body"><div class="fc-toolbar"><div class="field" style="min-width:260px"><label>ค้นหาในผลลัพธ์</label><input id="attendanceGridSearch" class="input" placeholder="รหัส ชื่อ หน่วยงาน พื้นที่ หรือสถานะ"></div><div class="field"><label>จำนวนต่อหน้า</label><select id="attendancePageSize" class="select"><option>50</option><option selected>100</option><option>200</option><option value="999999">ทั้งหมด</option></select></div><div class="fc-toolbar-spacer"></div><div class="fc-actions"><button id="attendanceExcelBtn" class="btn btn-success">Excel</button><button id="attendancePrintBtn" class="btn btn-orange">Print/PDF</button></div></div><div class="attendance-grid-summary"><div class="attendance-mini-kpi"><span>ผลลัพธ์</span><strong id="attGridTotal">0</strong></div><div class="attendance-mini-kpi"><span>ปกติ</span><strong id="attGridNormal">0</strong></div><div class="attendance-mini-kpi"><span>ไม่มีเวลา</span><strong id="attGridAbsent">0</strong></div><div class="attendance-mini-kpi"><span>เวลาไม่ครบ</span><strong id="attGridMissing">0</strong></div><div class="attendance-mini-kpi"><span>มาสาย</span><strong id="attGridLate">0</strong></div><div class="attendance-mini-kpi"><span>ทำงานวันหยุด</span><strong id="attGridOffday">0</strong></div></div></div></div>`);
+    tablePanel?.insertAdjacentHTML("beforebegin",`<div id="attendanceEnterpriseTools" class="panel attendance-enterprise-tools"><div class="panel-body"><div class="fc-toolbar"><div class="field" style="min-width:290px"><label>ค้นหารหัสพนักงาน / กรองผลลัพธ์</label><input id="attendanceGridSearch" class="input" placeholder="ใส่รหัสพนักงานแล้วกด Enter เพื่อค้นหาทั้งฐานข้อมูล"><small id="attendanceSearchHint" style="display:block;margin-top:6px;color:var(--slate-500)">รหัสตัวเลขจะค้นหาจาก Supabase โดยตรง ส่วนชื่อ/หน่วยงานจะกรองจากข้อมูลที่โหลดแล้ว</small></div><div class="field"><label>จำนวนต่อหน้า</label><select id="attendancePageSize" class="select"><option>50</option><option selected>100</option><option>200</option><option value="999999">ทั้งหมด</option></select></div><div class="fc-toolbar-spacer"></div><div class="fc-actions"><button id="attendanceServerSearchBtn" class="btn btn-primary">ค้นหาทั้งฐานข้อมูล</button><button id="attendanceRebuildBtn" class="btn btn-light">ประมวลผลใหม่</button><button id="attendanceExcelBtn" class="btn btn-success">Excel</button><button id="attendancePrintBtn" class="btn btn-orange">Print/PDF</button></div></div><div id="attendanceDataNotice" class="mobileta-import-warning hidden" style="margin-top:12px"></div><div class="attendance-grid-summary"><div class="attendance-mini-kpi"><span>ผลลัพธ์</span><strong id="attGridTotal">0</strong></div><div class="attendance-mini-kpi"><span>ปกติ</span><strong id="attGridNormal">0</strong></div><div class="attendance-mini-kpi"><span>ไม่มีเวลา</span><strong id="attGridAbsent">0</strong></div><div class="attendance-mini-kpi"><span>เวลาไม่ครบ</span><strong id="attGridMissing">0</strong></div><div class="attendance-mini-kpi"><span>มาสาย</span><strong id="attGridLate">0</strong></div><div class="attendance-mini-kpi"><span>ทำงานวันหยุด</span><strong id="attGridOffday">0</strong></div></div></div></div>`);
     const table=qs("table",tablePanel); table?.classList.add("attendance-grid-table");
     const keys=["work_date","emp_code","full_name","department","zone","shift_start","shift_end","shift_code","first_in","last_out","net_work_minutes","late_minutes","early_leave_minutes","status"];
     qsa("thead th",table).forEach((th,i)=>{th.dataset.sortKey=keys[i]; if(i===0)th.classList.add("sticky-att-1"); if(i===1)th.classList.add("sticky-att-2");});
     qs(".panel-body",tablePanel)?.insertAdjacentHTML("beforeend",`<div class="attendance-pagination"><button id="attPrevPage" class="btn btn-light">‹ ก่อนหน้า</button><span id="attPageInfo" class="page-info">หน้า 1 / 1</span><button id="attNextPage" class="btn btn-light">ถัดไป ›</button></div>`);
     document.body.insertAdjacentHTML("beforeend",`<aside id="attendanceDetailDrawer" class="attendance-detail-drawer"><div class="attendance-detail-head"><div><small>ATTENDANCE DETAIL</small><h3 id="attendanceDetailTitle">รายละเอียดเวลา</h3></div><button id="attendanceDetailClose" class="btn btn-light btn-icon">×</button></div><div id="attendanceDetailBody" class="attendance-detail-body"></div></aside>`);
 
-    $("attendanceGridSearch")?.addEventListener("input",e=>{attGrid.search=e.target.value.trim().toLowerCase();attGrid.page=1;renderAttendanceEnterprise();});
+    $("attendanceGridSearch")?.addEventListener("input",e=>{attGrid.search=e.target.value.trim().toLowerCase();attGrid.page=1;renderAttendanceEnterprise();updateAttendanceSearchHint();});
+    $("attendanceGridSearch")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();app()?.loadAttendance?.();}});
+    $("attendanceServerSearchBtn")?.addEventListener("click",()=>app()?.loadAttendance?.());
+    $("attendanceRebuildBtn")?.addEventListener("click",rebuildAttendanceCurrentFilter);
     $("attendancePageSize")?.addEventListener("change",e=>{attGrid.pageSize=Number(e.target.value);attGrid.page=1;renderAttendanceEnterprise();});
     $("attPrevPage")?.addEventListener("click",()=>{if(attGrid.page>1){attGrid.page--;renderAttendanceEnterprise();}});
     $("attNextPage")?.addEventListener("click",()=>{const max=Math.ceil(attGrid.rows.length/attGrid.pageSize)||1;if(attGrid.page<max){attGrid.page++;renderAttendanceEnterprise();}});
@@ -114,6 +117,29 @@
       const th=e.target.closest("th[data-sort-key]"); if(th){const k=th.dataset.sortKey;attGrid.sortDir=attGrid.sortKey===k&&attGrid.sortDir==="asc"?"desc":"asc";attGrid.sortKey=k;renderAttendanceEnterprise();return;}
       const tr=e.target.closest("tbody tr[data-att-key]"); if(tr) openAttendanceDetail(tr.dataset.attKey);
     });
+  }
+  function attendanceExactEmpCode(){const term=String($("attendanceGridSearch")?.value||"").trim();return /^\d{4,20}$/.test(term)?term:null;}
+  function updateAttendanceSearchHint(){const term=String($("attendanceGridSearch")?.value||"").trim(),hint=$("attendanceSearchHint");if(!hint)return;hint.textContent=/^\d{4,20}$/.test(term)?`รหัส ${term}: กด Enter หรือ “ค้นหาทั้งฐานข้อมูล” เพื่อไม่ติดข้อจำกัด 1,000 แถว`:`ชื่อ/หน่วยงานจะกรองเฉพาะข้อมูลที่โหลดแล้ว กรุณาใช้รหัสพนักงานเมื่อต้องการผลครบทุกวัน`;}
+  async function rebuildAttendanceCurrentFilter(){
+    const emp=attendanceExactEmpCode(),start=$("attStart")?.value,end=$("attEnd")?.value;
+    if(!emp)return app()?.toast?.("กรุณาระบุรหัสพนักงานเป็นตัวเลขก่อนประมวลผลใหม่","error");
+    if(!start||!end)return app()?.toast?.("กรุณาระบุวันที่เริ่มต้นและวันที่สิ้นสุด","error");
+    if(!confirm(`ประมวลผล Attendance ใหม่ของรหัส ${emp} ช่วง ${start} ถึง ${end}?`))return;
+    try{
+      app()?.showLoading?.(`กำลังประมวลผล Attendance รหัส ${emp}...`);
+      const data=await rpc("ta_rebuild_attendance_employee",{p_emp_code:emp,p_start_date:start,p_end_date:end});
+      const r=Array.isArray(data)?data[0]:data||{};
+      app()?.toast?.(`ประมวลผลแล้ว ลบ ${num(r.deleted_rows)} / สร้าง ${num(r.inserted_rows)} รายการ`,"success");
+      await app()?.loadAttendance?.();
+    }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
+    finally{app()?.hideLoading?.();}
+  }
+  function renderAttendanceDataNotice(detail={}){
+    const box=$("attendanceDataNotice");if(!box)return;
+    const exact=detail.empCode||attendanceExactEmpCode();
+    if(exact){box.classList.remove("hidden");box.innerHTML=`<strong>ค้นหาจากฐานข้อมูลโดยตรง: ${esc(exact)}</strong><div>ระบบโหลดข้อมูลของพนักงานรหัสนี้ตามช่วงวันที่ที่เลือกครบถ้วน โดยไม่ใช้การค้นหาเฉพาะ 1,000 แถวแรก</div>`;return;}
+    if(detail.reachedLimit){box.classList.remove("hidden");box.innerHTML=`<strong>ข้อมูลที่โหลดถึงขีดจำกัด 1,000 รายการ</strong><div>เมื่อต้องการตรวจพนักงานรายบุคคล กรุณาใส่รหัสพนักงานแล้วกด Enter เพื่อค้นหาจากฐานข้อมูลโดยตรง</div>`;return;}
+    box.classList.add("hidden");box.innerHTML="";
   }
   function attendanceStatus(r){return String(r.attendance_result||r.attendance_status||"").toUpperCase();}
   function attendanceRows(){
@@ -212,6 +238,7 @@
   function setDefaults(){const today=new Date(),end=today.toISOString().slice(0,10),start=new Date(today.getFullYear(),today.getMonth(),1).toISOString().slice(0,10),monthAgo=new Date(today);monthAgo.setDate(monthAgo.getDate()-30);if($("auditStart"))$("auditStart").value=monthAgo.toISOString().slice(0,10);if($("auditEnd"))$("auditEnd").value=end;if($("reportStart")&&!$("reportStart").value)$("reportStart").value=start;if($("reportEnd")&&!$("reportEnd").value)$("reportEnd").value=end;}
   function bindGlobal(){
     document.addEventListener("timeclock:attendance-rendered",renderAttendanceEnterprise);
+    document.addEventListener("timeclock:attendance-loaded",e=>renderAttendanceDataNotice(e.detail||{}));
     document.addEventListener("timeclock:schedule-rendered",()=>{loadScheduleStatus();});
     document.addEventListener("timeclock:review-rendered",()=>loadNotifications());
     $("employeeDirectoryLoadBtn")?.addEventListener("click",loadEmployees);$("employeeExportBtn")?.addEventListener("click",exportEmployees);$("auditLoadBtn")?.addEventListener("click",loadAudit);$("auditExportBtn")?.addEventListener("click",exportAudit);

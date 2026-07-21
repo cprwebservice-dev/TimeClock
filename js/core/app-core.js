@@ -212,13 +212,22 @@
       showLoading("กำลังโหลดรายละเอียดเวลา...");
       try {
         const statuses = val("attStatus") ? [val("attStatus")] : null;
+        const globalSearch = (document.getElementById("attendanceGridSearch")?.value || "").trim();
+        const exactEmpCode = /^\d{4,20}$/.test(globalSearch) ? globalSearch : null;
         const { data, error } = await state.client.rpc("ta_get_attendance_detail", {
           p_start_date: val("attStart"), p_end_date: val("attEnd"), p_zone: val("attZone") || null,
-          p_department: val("attDepartment") || null, p_emp_codes: null, p_attendance_statuses: statuses, p_schedule_statuses: null
+          p_department: val("attDepartment") || null,
+          p_emp_codes: exactEmpCode ? [exactEmpCode] : null,
+          p_attendance_statuses: statuses,
+          p_schedule_statuses: null
         });
         if (error) throw error;
         state.attendance = data || [];
+        state.attendanceServerFilter = exactEmpCode;
         renderAttendance();
+        document.dispatchEvent(new CustomEvent("timeclock:attendance-loaded", {
+          detail: { count: state.attendance.length, empCode: exactEmpCode, reachedLimit: state.attendance.length >= 1000 }
+        }));
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
     }
