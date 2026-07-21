@@ -33,3 +33,7 @@
 - Smart Assistant รุ่นนี้ไม่เชื่อม AI ภายนอก
 
 รายละเอียดทั้งหมดอยู่ใน `RELEASE-NOTES-V6.0.md`
+
+
+## V6.1 MobileTA Text Import
+รัน `sql/V6.1_MOBILETA_TEXT_IMPORT.sql` ก่อนใช้งานเมนูนำเข้าข้อมูลลงเวลา MobileTA
