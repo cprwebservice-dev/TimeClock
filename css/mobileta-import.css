@@ -14,3 +14,15 @@
 @media(max-width:1150px){.mobileta-form-grid{grid-template-columns:1fr 1fr}.mobileta-option-card{grid-column:1/-1}.mobileta-kpi-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:720px){.mobileta-import-hero{align-items:flex-start;flex-direction:column}.mobileta-form-grid,.mobileta-kpi-grid,.mobileta-progress-stats,.mobileta-result-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.mobileta-form-grid,.mobileta-kpi-grid,.mobileta-progress-stats,.mobileta-result-grid{grid-template-columns:1fr}}
+
+/* V6.1.2 timeout-safe import result */
+.mobileta-import-warning{
+  margin:12px 0;
+  padding:12px 14px;
+  border:1px solid rgba(245,158,11,.35);
+  border-radius:12px;
+  background:rgba(245,158,11,.10);
+  color:var(--text-primary,#0f172a);
+}
+.mobileta-import-warning strong{display:block;margin-bottom:4px}
+.mobileta-import-warning small{display:block;margin-top:6px;color:var(--text-secondary,#64748b)}

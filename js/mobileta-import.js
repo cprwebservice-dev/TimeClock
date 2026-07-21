@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION="6.1.0";
+  const VERSION="6.1.2";
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const fmt=n=>Number(n||0).toLocaleString("th-TH");
@@ -55,31 +55,176 @@
 
   function downloadErrors(){if(!state.errors.length)return;const csv="\ufeff"+["บรรทัด,ข้อมูลต้นฉบับ,สาเหตุ",...state.errors.map(e=>[e.line_no,`"${String(e.raw_line).replace(/"/g,'""')}"`,e.error].join(","))].join("\n");app()?.downloadFile?.(`MobileTA_Errors_${new Date().toISOString().slice(0,10)}.csv`,csv,"text/csv;charset=utf-8")}
 
+  function isoDatesBetween(start,end){
+    const out=[];
+    if(!start||!end)return out;
+    const d=new Date(`${start}T00:00:00Z`),last=new Date(`${end}T00:00:00Z`);
+    while(d<=last){out.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}
+    return out;
+  }
+
   async function runImport(){
-    if(!state.rows.length||!state.stats)return app()?.toast?.("กรุณาตรวจสอบไฟล์ก่อนนำเข้า","error");if(state.importing)return;
+    if(!state.rows.length||!state.stats)return app()?.toast?.("กรุณาตรวจสอบไฟล์ก่อนนำเข้า","error");
+    if(state.importing)return;
     if(!confirm(`ยืนยันนำเข้าข้อมูลลงเวลา ${fmt(state.rows.length)} รายการ?`))return;
-    state.importing=true;status("กำลังนำเข้าข้อมูล","working");$("mobiletaImportBtn").disabled=true;$("mobiletaPreviewBtn").disabled=true;$("mobiletaProgressPanel")?.classList.remove("hidden");setProgress(1,"กำลังเปิดรายการนำเข้า...");
+
+    state.importing=true;
+    status("กำลังนำเข้าข้อมูล","working");
+    $("mobiletaImportBtn").disabled=true;
+    $("mobiletaPreviewBtn").disabled=true;
+    $("mobiletaProgressPanel")?.classList.remove("hidden");
+    setProgress(1,"กำลังเปิดรายการนำเข้า...");
+
     let inserted=0,existingDup=0,unmatched=0,uploaded=0;
+    let phase="upload";
+    let completed=false;
+    let classifiedRows=0,rebuildDeleted=0,rebuildInserted=0;
+    const failedRebuildDates=[];
+
     try{
-      const batch=await rpc("ta_begin_mobileta_import",{p_file_name:state.file.name,p_file_size:state.stats.fileSize,p_raw_rows:state.stats.rawRows,p_valid_rows:state.stats.validRows,p_file_duplicate_rows:state.stats.fileDuplicates,p_min_date:state.stats.minDate,p_max_date:state.stats.maxDate,p_note:$("mobiletaImportNote")?.value||null});
-      state.batchId=typeof batch==="string"?batch:(batch?.batch_id||batch?.id);if(!state.batchId)throw new Error("ไม่พบ Batch ID จากระบบ");
-      if(state.errors.length){await rpc("ta_log_mobileta_import_errors",{p_batch_id:state.batchId,p_errors:state.errors.slice(0,1000)})}
-      const chunkSize=2000,total=state.rows.length;
-      for(let start=0;start<total;start+=chunkSize){
-        const chunk=state.rows.slice(start,start+chunkSize);const result=await rpc("ta_import_mobileta_chunk",{p_batch_id:state.batchId,p_rows:chunk});const r=Array.isArray(result)?result[0]:result||{};
-        uploaded+=chunk.length;inserted+=Number(r.inserted_rows||0);existingDup+=Number(r.duplicate_rows||0);unmatched+=Number(r.unmatched_rows||0);
-        const pct=5+(uploaded/total)*85;setProgress(pct,`ส่งข้อมูล ${fmt(uploaded)} จาก ${fmt(total)} รายการ`);setText("mobiletaUploadedRows",fmt(uploaded));setText("mobiletaInsertedRows",fmt(inserted));setText("mobiletaExistingDuplicates",fmt(existingDup));setText("mobiletaUnmatchedRows",fmt(unmatched));
+      const batch=await rpc("ta_begin_mobileta_import",{
+        p_file_name:state.file.name,
+        p_file_size:state.stats.fileSize,
+        p_raw_rows:state.stats.rawRows,
+        p_valid_rows:state.stats.validRows,
+        p_file_duplicate_rows:state.stats.fileDuplicates,
+        p_min_date:state.stats.minDate,
+        p_max_date:state.stats.maxDate,
+        p_note:$("mobiletaImportNote")?.value||null
+      });
+      state.batchId=typeof batch==="string"?batch:(batch?.batch_id||batch?.id);
+      if(!state.batchId)throw new Error("ไม่พบ Batch ID จากระบบ");
+
+      if(state.errors.length){
+        await rpc("ta_log_mobileta_import_errors",{
+          p_batch_id:state.batchId,
+          p_errors:state.errors.slice(0,1000)
+        });
       }
-      setProgress(92,"กำลังกำหนด IN/OUT และประมวลผล Attendance...");const finish=await rpc("ta_finish_mobileta_import",{p_batch_id:state.batchId,p_rebuild_attendance:!!$("mobiletaRebuildAttendance")?.checked});const r=Array.isArray(finish)?finish[0]:finish||{};setProgress(100,"นำเข้าข้อมูลเรียบร้อย");renderResult(r,false);status("นำเข้าข้อมูลสำเร็จ","ready");app().state.attendance=[];app().state.review=[];app()?.toast?.("นำเข้าข้อมูลลงเวลา MobileTA เรียบร้อย","success");await loadHistory();
+
+      // Smaller chunks keep each PostgREST statement below the timeout limit.
+      const chunkSize=500,total=state.rows.length;
+      for(let start=0;start<total;start+=chunkSize){
+        const chunk=state.rows.slice(start,start+chunkSize);
+        const result=await rpc("ta_import_mobileta_chunk",{
+          p_batch_id:state.batchId,
+          p_rows:chunk
+        });
+        const r=Array.isArray(result)?result[0]:result||{};
+        uploaded+=chunk.length;
+        inserted+=Number(r.inserted_rows||0);
+        existingDup+=Number(r.duplicate_rows||0);
+        unmatched+=Number(r.unmatched_rows||0);
+        const pct=5+(uploaded/total)*68;
+        setProgress(pct,`ส่งข้อมูล ${fmt(uploaded)} จาก ${fmt(total)} รายการ`);
+        setText("mobiletaUploadedRows",fmt(uploaded));
+        setText("mobiletaInsertedRows",fmt(inserted));
+        setText("mobiletaExistingDuplicates",fmt(existingDup));
+        setText("mobiletaUnmatchedRows",fmt(unmatched));
+      }
+
+      // Classify IN/OUT one day at a time so a large file is not processed in one statement.
+      phase="classify";
+      const dates=isoDatesBetween(state.stats.minDate,state.stats.maxDate);
+      for(let i=0;i<dates.length;i++){
+        const date=dates[i];
+        const result=await rpc("ta_classify_mobileta_import_step",{
+          p_batch_id:state.batchId,
+          p_start_date:date,
+          p_end_date:date
+        });
+        const r=Array.isArray(result)?result[0]:result||{};
+        classifiedRows+=Number(r.classified_rows||0);
+        setProgress(74+((i+1)/Math.max(dates.length,1))*14,`กำหนด IN/OUT วันที่ ${fmtDate(date)} (${i+1}/${dates.length})`);
+      }
+
+      phase="complete";
+      const finish=await rpc("ta_complete_mobileta_import",{p_batch_id:state.batchId});
+      const finalRow=Array.isArray(finish)?finish[0]:finish||{};
+      completed=true;
+
+      // Rebuild Attendance is post-processing. Import stays completed even when one date is slow.
+      if($("mobiletaRebuildAttendance")?.checked){
+        phase="rebuild";
+        for(let i=0;i<dates.length;i++){
+          const date=dates[i];
+          try{
+            const result=await rpc("ta_rebuild_mobileta_attendance_step",{
+              p_batch_id:state.batchId,
+              p_start_date:date,
+              p_end_date:date
+            });
+            const r=Array.isArray(result)?result[0]:result||{};
+            rebuildDeleted+=Number(r.deleted_rows||0);
+            rebuildInserted+=Number(r.inserted_rows||0);
+          }catch(stepError){
+            failedRebuildDates.push(date);
+            console.warn("MobileTA attendance rebuild failed",date,stepError);
+          }
+          setProgress(89+((i+1)/Math.max(dates.length,1))*10,`ประมวลผล Attendance วันที่ ${fmtDate(date)} (${i+1}/${dates.length})`);
+        }
+
+        await rpc("ta_mark_mobileta_rebuild_result",{
+          p_batch_id:state.batchId,
+          p_success:failedRebuildDates.length===0,
+          p_failed_dates:failedRebuildDates,
+          p_error_message:failedRebuildDates.length?`Attendance timeout: ${failedRebuildDates.join(", ")}`:null
+        });
+      }
+
+      const result={
+        ...finalRow,
+        inserted_rows:Number(finalRow.inserted_rows||inserted),
+        existing_duplicate_rows:Number(finalRow.existing_duplicate_rows||existingDup),
+        unmatched_employee_rows:Number(finalRow.unmatched_employee_rows||unmatched),
+        classified_rows:Number(finalRow.classified_rows||classifiedRows),
+        rebuild_deleted_rows:rebuildDeleted,
+        rebuild_inserted_rows:rebuildInserted,
+        rebuild_failed_dates:failedRebuildDates
+      };
+
+      setProgress(100,failedRebuildDates.length?"นำเข้าสำเร็จ แต่ Attendance บางวันต้องประมวลผลซ้ำ":"นำเข้าข้อมูลเรียบร้อย");
+      renderResult(result,false);
+      status(failedRebuildDates.length?"นำเข้าสำเร็จ มีคำเตือน Attendance":"นำเข้าข้อมูลสำเร็จ",failedRebuildDates.length?"error":"ready");
+      app().state.attendance=[];
+      app().state.review=[];
+      app()?.toast?.(failedRebuildDates.length?`นำเข้าสำเร็จ แต่ Attendance ${failedRebuildDates.length} วันยังไม่สำเร็จ`:"นำเข้าข้อมูลลงเวลา MobileTA เรียบร้อย",failedRebuildDates.length?"info":"success");
+      await loadHistory();
     }catch(err){
-      if(state.batchId){try{await rpc("ta_cancel_mobileta_import",{p_batch_id:state.batchId,p_reason:app()?.humanError?.(err)||String(err),p_rollback:true})}catch(_){}}
-      renderResult({error:app()?.humanError?.(err)||String(err)},true);status("นำเข้าไม่สำเร็จ","error");app()?.toast?.(app()?.humanError?.(err)||String(err),"error");
-    }finally{state.importing=false;$("mobiletaImportBtn").disabled=!state.rows.length;$("mobiletaPreviewBtn").disabled=false}
+      // Rollback only before the batch is completed. Post-processing errors must not delete imported logs.
+      if(state.batchId&&!completed){
+        try{
+          await rpc("ta_cancel_mobileta_import",{
+            p_batch_id:state.batchId,
+            p_reason:app()?.humanError?.(err)||String(err),
+            p_rollback:true
+          });
+        }catch(_){}
+      }
+      renderResult({
+        error:app()?.humanError?.(err)||String(err),
+        phase,
+        rollback:!completed
+      },true);
+      status("นำเข้าไม่สำเร็จ","error");
+      app()?.toast?.(app()?.humanError?.(err)||String(err),"error");
+    }finally{
+      state.importing=false;
+      $("mobiletaImportBtn").disabled=!state.rows.length;
+      $("mobiletaPreviewBtn").disabled=false;
+    }
   }
 
   function renderResult(r,isError){
-    const el=$("mobiletaResultPanel");if(!el)return;if(isError){el.innerHTML=`<div class="mobileta-result-card error"><h3>นำเข้าข้อมูลไม่สำเร็จ</h3><p>${esc(r.error||"เกิดข้อผิดพลาด")}</p><small>ระบบพยายาม Rollback ข้อมูลของ Batch นี้แล้ว</small></div>`;return}
-    el.innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลาเรียบร้อย</h3><p>ระบบกำหนดประเภท IN/OUT จากลำดับเวลาและกะกลางคืนที่จัดไว้ พร้อมอัปเดตรายละเอียดเวลาทำงานตามตัวเลือก</p><div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(r.inserted_rows)}</strong></div><div><span>ซ้ำในฐานข้อมูล</span><strong>${fmt(r.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${fmt(r.unmatched_employee_rows)}</strong></div><div><span>Attendance ลบ/สร้าง</span><strong>${fmt(r.rebuild_deleted_rows)} / ${fmt(r.rebuild_inserted_rows)}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</strong></div></div></div>`;
+    const el=$("mobiletaResultPanel");if(!el)return;
+    if(isError){
+      const rollbackText=r.rollback?"ระบบ Rollback ข้อมูลของ Batch นี้แล้ว":"ข้อมูลลงเวลาถูกนำเข้าสำเร็จแล้ว ระบบไม่ได้ลบข้อมูลเนื่องจาก Error เกิดในขั้นตอนหลังนำเข้า";
+      el.innerHTML=`<div class="mobileta-result-card error"><h3>นำเข้าข้อมูลไม่สำเร็จ</h3><p>${esc(r.error||"เกิดข้อผิดพลาด")}</p><small>ขั้นตอน: ${esc(r.phase||"unknown")} · ${esc(rollbackText)}</small></div>`;
+      return;
+    }
+    const failed=Array.isArray(r.rebuild_failed_dates)?r.rebuild_failed_dates:[];
+    const warning=failed.length?`<div class="mobileta-import-warning"><strong>Attendance ยังประมวลผลไม่สำเร็จ ${fmt(failed.length)} วัน</strong><div>${failed.map(fmtDate).join(", ")}</div><small>ข้อมูลลงเวลานำเข้าสำเร็จแล้ว และไม่ได้ถูก Rollback</small></div>`:"";
+    el.innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลาเรียบร้อย</h3><p>ระบบนำเข้าข้อมูลและกำหนดประเภท IN/OUT แบบรายวัน เพื่อลดปัญหา Statement Timeout</p>${warning}<div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(r.inserted_rows)}</strong></div><div><span>ซ้ำในฐานข้อมูล</span><strong>${fmt(r.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${fmt(r.unmatched_employee_rows)}</strong></div><div><span>จำแนก IN/OUT</span><strong>${fmt(r.classified_rows)}</strong></div><div><span>Attendance ลบ/สร้าง</span><strong>${fmt(r.rebuild_deleted_rows)} / ${fmt(r.rebuild_inserted_rows)}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</strong></div></div></div>`;
   }
 
   async function loadHistory(){

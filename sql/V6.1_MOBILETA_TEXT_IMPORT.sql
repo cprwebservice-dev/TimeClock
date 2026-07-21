@@ -449,7 +449,6 @@ begin
     inout_date,
     inout_time,
     inout_mode,
-    normalized_mode,
     verify_mode,
     source_sheet,
     source_file,
@@ -473,7 +472,6 @@ begin
     v.log_date,
     v.log_time,
     v.raw_mode,
-    null,
     'MOBILETA_TEXT',
     'MobileTA',
     b.file_name,
@@ -640,7 +638,7 @@ begin
     from ranked r
   )
   update public.time_logs tl
-  set normalized_mode = case
+  set inout_mode = case
         when f.is_previous_night_out then 'OUT'
         when f.is_current_night_in then 'IN'
         when f.day_count = 1 and f.inout_time < time '12:00:00' then 'IN'
@@ -652,7 +650,7 @@ begin
       end,
       raw_data = coalesce(tl.raw_data,'{}'::jsonb) || jsonb_build_object(
         'mode_classified_at',now(),
-        'mode_classifier','V6.1_MOBILETA'
+        'mode_classifier','V6.1.1_MOBILETA_GENERATED_COLUMN_FIX'
       )
   from flags f
   where tl.id = f.id;

@@ -37,3 +37,10 @@
 
 ## V6.1 MobileTA Text Import
 รัน `sql/V6.1_MOBILETA_TEXT_IMPORT.sql` ก่อนใช้งานเมนูนำเข้าข้อมูลลงเวลา MobileTA
+
+## V6.1.1 Patch
+ก่อนทดสอบนำเข้า MobileTA ให้รัน `sql/V6.1.1_MOBILETA_GENERATED_COLUMN_FIX.sql` และตรวจด้วย `sql/V6.1.1_VERIFY.sql`.
+
+
+## V6.1.2 Timeout Fix
+รัน `sql/V6.1.2_MOBILETA_TIMEOUT_FIX.sql` และตรวจด้วย `sql/V6.1.2_VERIFY.sql` ก่อนทดสอบนำเข้าไฟล์ขนาดใหญ่
