@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION="6.1.4";
+  const VERSION="6.1.5";
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const fmt=n=>Number(n||0).toLocaleString("th-TH");
@@ -112,6 +112,149 @@
     }
   }
 
+  async function finalizeBatch(batchId){
+    let attempt=0;
+    while(true){
+      try{
+        setProgress(89,"กำลังปิด Batch และบันทึกสถานะสำเร็จ...");
+        const finish=await rpc("ta_complete_mobileta_import",{p_batch_id:batchId});
+        return Array.isArray(finish)?finish[0]:finish||{};
+      }catch(err){
+        attempt++;
+        if(isTimeoutError(err)&&attempt<3){
+          setProgress(89,`ขั้นตอนปิด Batch ใช้เวลานาน กำลังลองใหม่ครั้งที่ ${attempt+1}...`);
+          await new Promise(r=>setTimeout(r,600*attempt));
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  async function rebuildDateInChunks(batchId,date,dateIndex,dateCount){
+    let cursorEmp=null,empLimit=60,retries=0,calls=0;
+    let deleted=0,inserted=0;
+    while(true){
+      if(calls>10000)throw new Error("REBUILD_SAFETY_LIMIT_EXCEEDED");
+      try{
+        const result=await rpc("ta_rebuild_mobileta_attendance_chunk",{
+          p_batch_id:batchId,
+          p_work_date:date,
+          p_after_emp_code:cursorEmp,
+          p_emp_limit:empLimit
+        });
+        const r=Array.isArray(result)?result[0]:result||{};
+        const processed=Number(r.processed_employees||0);
+        deleted+=Number(r.deleted_rows||0);
+        inserted+=Number(r.inserted_rows||0);
+        calls++;retries=0;
+        if(r.next_emp_code)cursorEmp=String(r.next_emp_code);
+        const dayBase=89+(dateIndex/Math.max(dateCount,1))*10;
+        const daySpan=10/Math.max(dateCount,1);
+        setProgress(Math.min(99,dayBase+daySpan*.7),`ประมวลผล Attendance ${fmtDate(date)} · ถึงรหัส ${cursorEmp||"-"} · ครั้งละ ${fmt(empLimit)} คน`);
+        if(r.done===true||processed===0)return {deleted,inserted,calls};
+      }catch(err){
+        if(isTimeoutError(err)&&empLimit>5&&retries<6){
+          empLimit=Math.max(5,Math.floor(empLimit/2));
+          retries++;
+          setProgress(89,`Attendance วันที่ ${fmtDate(date)} ใช้เวลานาน ระบบลดเหลือ ${fmt(empLimit)} คนและลองใหม่...`);
+          await new Promise(r=>setTimeout(r,400));
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  async function rebuildBatchAttendance(batchId,minDate,maxDate){
+    const dates=isoDatesBetween(minDate,maxDate);
+    let rebuildDeleted=0,rebuildInserted=0;
+    const failedDates=[];
+    for(let i=0;i<dates.length;i++){
+      const date=dates[i];
+      try{
+        const r=await rebuildDateInChunks(batchId,date,i,dates.length);
+        rebuildDeleted+=Number(r.deleted||0);
+        rebuildInserted+=Number(r.inserted||0);
+      }catch(stepError){
+        failedDates.push(date);
+        console.warn("MobileTA attendance rebuild failed",date,stepError);
+      }
+      setProgress(89+((i+1)/Math.max(dates.length,1))*10,`ประมวลผล Attendance วันที่ ${fmtDate(date)} (${i+1}/${dates.length})`);
+    }
+    await rpc("ta_mark_mobileta_rebuild_result",{
+      p_batch_id:batchId,
+      p_success:failedDates.length===0,
+      p_failed_dates:failedDates,
+      p_error_message:failedDates.length?`Attendance timeout: ${failedDates.join(", ")}`:null
+    });
+    return {rebuildDeleted,rebuildInserted,failedDates};
+  }
+
+  async function resumeBatch(batchId){
+    if(!batchId||state.importing)return;
+    if(!confirm("ยืนยันดำเนินการต่อจาก Batch ที่ข้อมูลถูกเก็บไว้แล้ว?"))return;
+    state.importing=true;
+    state.batchId=batchId;
+    status("กำลังดำเนินการต่อ","working");
+    $("mobiletaProgressPanel")?.classList.remove("hidden");
+    setProgress(74,"กำลังตรวจสถานะ Batch...");
+    let phase="resume";
+    try{
+      const infoData=await rpc("ta_get_mobileta_import_resume_state",{p_batch_id:batchId});
+      const info=Array.isArray(infoData)?infoData[0]:infoData||{};
+      if(!info.batch_id)throw new Error("ไม่พบข้อมูล Batch");
+      if(info.batch_status==="CANCELLED")throw new Error("Batch นี้ถูกยกเลิกแล้ว");
+
+      let classifiedAdded=0,duplicateAdded=0;
+      if(Number(info.remaining_all_rows||0)>0){
+        phase="classify";
+        const cr=await classifyBatchInChunks(batchId,Number(info.remaining_all_rows||info.inserted_rows||1));
+        classifiedAdded=Number(cr.classifiedRows||0);
+        duplicateAdded=Number(cr.duplicateRows||0);
+      }
+
+      phase="complete";
+      const finalRow=await finalizeBatch(batchId);
+
+      let rebuildDeleted=0,rebuildInserted=0,failedDates=[];
+      if($("mobiletaRebuildAttendance")?.checked){
+        phase="rebuild";
+        const rr=await rebuildBatchAttendance(batchId,info.min_date,info.max_date);
+        rebuildDeleted=rr.rebuildDeleted;
+        rebuildInserted=rr.rebuildInserted;
+        failedDates=rr.failedDates;
+      }
+
+      const result={
+        ...finalRow,
+        inserted_rows:Number(finalRow.inserted_rows||info.inserted_rows||0),
+        existing_duplicate_rows:Number(finalRow.existing_duplicate_rows||info.existing_duplicate_rows||0)+duplicateAdded,
+        unmatched_employee_rows:Number(finalRow.unmatched_employee_rows||info.unmatched_employee_rows||0),
+        classified_rows:Number(finalRow.classified_rows||info.classified_rows||0)+classifiedAdded,
+        rebuild_deleted_rows:rebuildDeleted,
+        rebuild_inserted_rows:rebuildInserted,
+        rebuild_failed_dates:failedDates,
+        min_date:finalRow.min_date||info.min_date,
+        max_date:finalRow.max_date||info.max_date
+      };
+      setProgress(100,failedDates.length?"ดำเนินการต่อสำเร็จ แต่ Attendance บางวันต้องประมวลผลซ้ำ":"ดำเนินการต่อเรียบร้อย");
+      renderResult(result,false);
+      status(failedDates.length?"สำเร็จ มีคำเตือน Attendance":"นำเข้าข้อมูลสำเร็จ",failedDates.length?"error":"ready");
+      if(app()?.state){app().state.attendance=[];app().state.review=[]}
+      app()?.toast?.("ดำเนินการต่อจาก Batch สำเร็จ","success");
+      await loadHistory();
+    }catch(err){
+      renderResult({error:app()?.humanError?.(err)||String(err),phase,rollback:false,batchId},true);
+      status("ดำเนินการต่อไม่สำเร็จ","error");
+      app()?.toast?.(app()?.humanError?.(err)||String(err),"error");
+    }finally{
+      state.importing=false;
+      if($("mobiletaImportBtn"))$("mobiletaImportBtn").disabled=!state.rows.length;
+      if($("mobiletaPreviewBtn"))$("mobiletaPreviewBtn").disabled=false;
+    }
+  }
+
   async function runImport(){
     if(!state.rows.length||!state.stats)return app()?.toast?.("กรุณาตรวจสอบไฟล์ก่อนนำเข้า","error");
     if(state.importing)return;
@@ -152,7 +295,6 @@
         });
       }
 
-      // Smaller chunks keep each PostgREST statement below the timeout limit.
       const chunkSize=500,total=state.rows.length;
       for(let start=0;start<total;start+=chunkSize){
         const chunk=state.rows.slice(start,start+chunkSize);
@@ -174,48 +316,22 @@
       }
 
       uploadFinished=true;
-
-      // Classify by small employee/date groups with a cursor. This prevents
-      // a high-volume date from becoming one long PostgreSQL statement.
       phase="classify";
-      const dates=isoDatesBetween(state.stats.minDate,state.stats.maxDate);
       const classifyResult=await classifyBatchInChunks(state.batchId,inserted);
       classifiedRows+=Number(classifyResult.classifiedRows||0);
       existingDup+=Number(classifyResult.duplicateRows||0);
       setText("mobiletaExistingDuplicates",fmt(existingDup));
 
       phase="complete";
-      const finish=await rpc("ta_complete_mobileta_import",{p_batch_id:state.batchId});
-      const finalRow=Array.isArray(finish)?finish[0]:finish||{};
+      const finalRow=await finalizeBatch(state.batchId);
       completed=true;
 
-      // Rebuild Attendance is post-processing. Import stays completed even when one date is slow.
       if($("mobiletaRebuildAttendance")?.checked){
         phase="rebuild";
-        for(let i=0;i<dates.length;i++){
-          const date=dates[i];
-          try{
-            const result=await rpc("ta_rebuild_mobileta_attendance_step",{
-              p_batch_id:state.batchId,
-              p_start_date:date,
-              p_end_date:date
-            });
-            const r=Array.isArray(result)?result[0]:result||{};
-            rebuildDeleted+=Number(r.deleted_rows||0);
-            rebuildInserted+=Number(r.inserted_rows||0);
-          }catch(stepError){
-            failedRebuildDates.push(date);
-            console.warn("MobileTA attendance rebuild failed",date,stepError);
-          }
-          setProgress(89+((i+1)/Math.max(dates.length,1))*10,`ประมวลผล Attendance วันที่ ${fmtDate(date)} (${i+1}/${dates.length})`);
-        }
-
-        await rpc("ta_mark_mobileta_rebuild_result",{
-          p_batch_id:state.batchId,
-          p_success:failedRebuildDates.length===0,
-          p_failed_dates:failedRebuildDates,
-          p_error_message:failedRebuildDates.length?`Attendance timeout: ${failedRebuildDates.join(", ")}`:null
-        });
+        const rr=await rebuildBatchAttendance(state.batchId,state.stats.minDate,state.stats.maxDate);
+        rebuildDeleted=rr.rebuildDeleted;
+        rebuildInserted=rr.rebuildInserted;
+        failedRebuildDates.push(...rr.failedDates);
       }
 
       const result={
@@ -232,13 +348,10 @@
       setProgress(100,failedRebuildDates.length?"นำเข้าสำเร็จ แต่ Attendance บางวันต้องประมวลผลซ้ำ":"นำเข้าข้อมูลเรียบร้อย");
       renderResult(result,false);
       status(failedRebuildDates.length?"นำเข้าสำเร็จ มีคำเตือน Attendance":"นำเข้าข้อมูลสำเร็จ",failedRebuildDates.length?"error":"ready");
-      app().state.attendance=[];
-      app().state.review=[];
+      if(app()?.state){app().state.attendance=[];app().state.review=[]}
       app()?.toast?.(failedRebuildDates.length?`นำเข้าสำเร็จ แต่ Attendance ${failedRebuildDates.length} วันยังไม่สำเร็จ`:"นำเข้าข้อมูลลงเวลา MobileTA เรียบร้อย",failedRebuildDates.length?"info":"success");
       await loadHistory();
     }catch(err){
-      // Rollback only when upload itself has not finished. Once every source
-      // row is stored, a classify/rebuild error must keep the Batch for retry.
       const shouldRollback=Boolean(state.batchId&&!completed&&!uploadFinished);
       if(shouldRollback){
         try{
@@ -252,7 +365,8 @@
       renderResult({
         error:app()?.humanError?.(err)||String(err),
         phase,
-        rollback:shouldRollback
+        rollback:shouldRollback,
+        batchId:state.batchId
       },true);
       status("นำเข้าไม่สำเร็จ","error");
       app()?.toast?.(app()?.humanError?.(err)||String(err),"error");
@@ -267,7 +381,8 @@
     const el=$("mobiletaResultPanel");if(!el)return;
     if(isError){
       const rollbackText=r.rollback?"ระบบ Rollback ข้อมูลของ Batch นี้แล้ว":"ข้อมูลที่ส่งขึ้นฐานข้อมูลแล้วถูกเก็บไว้ ไม่ได้ Rollback ทั้ง Batch";
-      el.innerHTML=`<div class="mobileta-result-card error"><h3>นำเข้าข้อมูลไม่สำเร็จ</h3><p>${esc(r.error||"เกิดข้อผิดพลาด")}</p><small>ขั้นตอน: ${esc(r.phase||"unknown")} · ${esc(rollbackText)}</small></div>`;
+      const resumeButton=!r.rollback&&r.batchId?`<div style="margin-top:12px"><button class="btn btn-primary btn-sm" data-mobileta-resume="${esc(r.batchId)}">ดำเนินการต่อจาก Batch นี้</button></div>`:"";
+      el.innerHTML=`<div class="mobileta-result-card error"><h3>นำเข้าข้อมูลไม่สำเร็จ</h3><p>${esc(r.error||"เกิดข้อผิดพลาด")}</p><small>ขั้นตอน: ${esc(r.phase||"unknown")} · ${esc(rollbackText)}</small>${resumeButton}</div>`;
       return;
     }
     const failed=Array.isArray(r.rebuild_failed_dates)?r.rebuild_failed_dates:[];
@@ -276,16 +391,25 @@
   }
 
   async function loadHistory(){
-    const body=$("mobiletaHistoryBody");if(!body||!client())return;body.innerHTML='<tr><td colspan="10" class="table-empty">กำลังโหลด...</td></tr>';
-    try{const data=await rpc("ta_get_mobileta_import_history",{p_limit:30});const rows=Array.isArray(data)?data:[];body.innerHTML=rows.length?rows.map(r=>`<tr><td>${fmtDateTime(r.created_at)}</td><td><strong>${esc(r.file_name)}</strong><small style="display:block;color:var(--slate-500)">${fmt(Number(r.file_size||0)/1024)} KB</small></td><td>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</td><td>${fmt(r.raw_rows)}</td><td>${fmt(r.inserted_rows)}</td><td>${fmt(Number(r.file_duplicate_rows||0)+Number(r.existing_duplicate_rows||0))}</td><td>${fmt(r.unmatched_employee_rows)}</td><td>${r.rebuild_attendance?'<span class="mobileta-row-ok">ประมวลผลแล้ว</span>':'-'}</td><td><span class="mobileta-status-pill ${r.status==='COMPLETED'?'ready':r.status==='FAILED'||r.status==='CANCELLED'?'error':'working'}">${esc(r.status)}</span></td><td>${esc(r.created_by_email||'-')}</td></tr>`).join(""):'<tr><td colspan="10" class="table-empty">ยังไม่มีประวัติการนำเข้า</td></tr>'}
-    catch(err){body.innerHTML=`<tr><td colspan="10" class="table-empty">${esc(app()?.humanError?.(err)||String(err))}</td></tr>`}
+    const body=$("mobiletaHistoryBody");if(!body||!client())return;body.innerHTML='<tr><td colspan="11" class="table-empty">กำลังโหลด...</td></tr>';
+    try{
+      const data=await rpc("ta_get_mobileta_import_history",{p_limit:30});
+      const rows=Array.isArray(data)?data:[];
+      body.innerHTML=rows.length?rows.map(r=>{
+        const hasData=Number(r.inserted_rows||0)>0;
+        const canResume=hasData&&r.status!=="CANCELLED"&&(r.status!=="COMPLETED"||!r.rebuild_attendance);
+        const action=canResume?`<button class="btn btn-light btn-sm" data-mobileta-resume="${esc(r.id)}">${r.status==="COMPLETED"?"สร้าง Attendance":"ดำเนินการต่อ"}</button>`:"-";
+        return `<tr><td>${fmtDateTime(r.created_at)}</td><td><strong>${esc(r.file_name)}</strong><small style="display:block;color:var(--slate-500)">${fmt(Number(r.file_size||0)/1024)} KB</small></td><td>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</td><td>${fmt(r.raw_rows)}</td><td>${fmt(r.inserted_rows)}</td><td>${fmt(Number(r.file_duplicate_rows||0)+Number(r.existing_duplicate_rows||0))}</td><td>${fmt(r.unmatched_employee_rows)}</td><td>${r.rebuild_attendance?'<span class="mobileta-row-ok">ประมวลผลแล้ว</span>':'-'}</td><td><span class="mobileta-status-pill ${r.status==='COMPLETED'?'ready':r.status==='FAILED'||r.status==='CANCELLED'?'error':'working'}">${esc(r.status)}</span></td><td>${esc(r.created_by_email||'-')}</td><td>${action}</td></tr>`;
+      }).join(""):'<tr><td colspan="11" class="table-empty">ยังไม่มีประวัติการนำเข้า</td></tr>';
+    }catch(err){body.innerHTML=`<tr><td colspan="11" class="table-empty">${esc(app()?.humanError?.(err)||String(err))}</td></tr>`}
   }
 
   function init(){
     $("mobiletaPreviewBtn")?.addEventListener("click",parseFile);$("mobiletaImportBtn")?.addEventListener("click",runImport);$("mobiletaResetBtn")?.addEventListener("click",reset);$("mobiletaDownloadErrorsBtn")?.addEventListener("click",downloadErrors);$("mobiletaRefreshHistoryBtn")?.addEventListener("click",loadHistory);$("mobiletaFile")?.addEventListener("change",()=>{state.rows=[];state.errors=[];state.stats=null;$("mobiletaImportBtn").disabled=true;status($("mobiletaFile")?.files?.[0]?.name||"ยังไม่ได้เลือกไฟล์","neutral")});
+    document.addEventListener("click",event=>{const btn=event.target.closest?.("[data-mobileta-resume]");if(!btn)return;event.preventDefault();resumeBatch(btn.dataset.mobiletaResume)});
     document.querySelectorAll('[data-page="admin-time-import"]').forEach(b=>b.addEventListener("click",()=>{setTimeout(()=>{setText("pageTitle","นำเข้าข้อมูลลงเวลา");setText("pageSubtitle","นำเข้า Text File MobileTA ตรวจข้อมูลซ้ำ และประมวลผล Attendance");loadHistory()},0)}));
     document.querySelectorAll('[data-admin-open="admin-time-import"]').forEach(b=>b.addEventListener("click",()=>{setTimeout(()=>{setText("pageTitle","นำเข้าข้อมูลลงเวลา");setText("pageSubtitle","นำเข้า Text File MobileTA ตรวจข้อมูลซ้ำ และประมวลผล Attendance");loadHistory()},0)}));
-    window.TimeClockMobileTAImport={loadHistory,parseFile,version:VERSION};
+    window.TimeClockMobileTAImport={loadHistory,parseFile,resumeBatch,version:VERSION};
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
