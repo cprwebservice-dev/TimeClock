@@ -44,3 +44,9 @@
 
 ## V6.1.2 Timeout Fix
 รัน `sql/V6.1.2_MOBILETA_TIMEOUT_FIX.sql` และตรวจด้วย `sql/V6.1.2_VERIFY.sql` ก่อนทดสอบนำเข้าไฟล์ขนาดใหญ่
+
+## V6.1.3 Duplicate Classification Fix
+รัน `sql/V6.1.3_MOBILETA_DUPLICATE_CLASSIFY_FIX.sql` และตรวจด้วย `sql/V6.1.3_VERIFY.sql` ก่อนนำเข้า MobileTA ใหม่
+
+## V6.1.4 MobileTA Classify Chunk Fix
+รัน `sql/V6.1.4_MOBILETA_CLASSIFY_CHUNK_FIX.sql` และตรวจด้วย `sql/V6.1.4_VERIFY.sql` จากนั้นอัปโหลดหน้าเว็บ V6.1.4 เพื่อให้ขั้นตอน classify แบ่งงานด้วย cursor และลดขนาดอัตโนมัติเมื่อพบ timeout

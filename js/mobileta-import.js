@@ -1,6 +1,6 @@
 (() => {
   "use strict";
-  const VERSION="6.1.2";
+  const VERSION="6.1.4";
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const fmt=n=>Number(n||0).toLocaleString("th-TH");
@@ -63,6 +63,55 @@
     return out;
   }
 
+  function isTimeoutError(err){
+    const text=String(err?.message||err||"").toLowerCase();
+    return text.includes("statement timeout")||text.includes("canceling statement")||text.includes("57014");
+  }
+
+  async function classifyBatchInChunks(batchId,totalInserted){
+    let cursorDate=null,cursorEmp=null,groupLimit=120;
+    let classified=0,deduped=0,remaining=Math.max(Number(totalInserted||0),1);
+    let calls=0,retries=0;
+
+    while(true){
+      if(calls>20000)throw new Error("CLASSIFY_SAFETY_LIMIT_EXCEEDED");
+      try{
+        const result=await rpc("ta_classify_mobileta_import_chunk",{
+          p_batch_id:batchId,
+          p_after_date:cursorDate,
+          p_after_emp_code:cursorEmp,
+          p_group_limit:groupLimit
+        });
+        const r=Array.isArray(result)?result[0]:result||{};
+        const processedGroups=Number(r.processed_groups||0);
+        const stepClassified=Number(r.classified_rows||0);
+        const stepDuplicates=Number(r.duplicate_rows||0);
+        remaining=Number(r.remaining_rows||0);
+        classified+=stepClassified;
+        deduped+=stepDuplicates;
+        calls++;retries=0;
+
+        if(r.next_date){cursorDate=String(r.next_date).slice(0,10);cursorEmp=r.next_emp_code||""}
+        const processedRows=classified+deduped;
+        const denominator=Math.max(processedRows+remaining,1);
+        const ratio=Math.min(1,processedRows/denominator);
+        setProgress(74+ratio*14,`กำหนด IN/OUT ${fmt(processedRows)} รายการ · คงเหลือ ${fmt(remaining)} · ครั้งละ ${fmt(groupLimit)} กลุ่ม`);
+
+        if(r.done===true||remaining===0)return {classifiedRows:classified,duplicateRows:deduped,calls};
+        if(processedGroups===0)throw new Error("CLASSIFY_NO_PROGRESS");
+      }catch(err){
+        if(isTimeoutError(err)&&groupLimit>10&&retries<6){
+          groupLimit=Math.max(10,Math.floor(groupLimit/2));
+          retries++;
+          setProgress(74,`คำสั่งใช้เวลานาน ระบบลดขนาดงานเหลือ ${fmt(groupLimit)} กลุ่มและลองใหม่...`);
+          await new Promise(r=>setTimeout(r,350));
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
   async function runImport(){
     if(!state.rows.length||!state.stats)return app()?.toast?.("กรุณาตรวจสอบไฟล์ก่อนนำเข้า","error");
     if(state.importing)return;
@@ -78,6 +127,7 @@
     let inserted=0,existingDup=0,unmatched=0,uploaded=0;
     let phase="upload";
     let completed=false;
+    let uploadFinished=false;
     let classifiedRows=0,rebuildDeleted=0,rebuildInserted=0;
     const failedRebuildDates=[];
 
@@ -123,20 +173,16 @@
         setText("mobiletaUnmatchedRows",fmt(unmatched));
       }
 
-      // Classify IN/OUT one day at a time so a large file is not processed in one statement.
+      uploadFinished=true;
+
+      // Classify by small employee/date groups with a cursor. This prevents
+      // a high-volume date from becoming one long PostgreSQL statement.
       phase="classify";
       const dates=isoDatesBetween(state.stats.minDate,state.stats.maxDate);
-      for(let i=0;i<dates.length;i++){
-        const date=dates[i];
-        const result=await rpc("ta_classify_mobileta_import_step",{
-          p_batch_id:state.batchId,
-          p_start_date:date,
-          p_end_date:date
-        });
-        const r=Array.isArray(result)?result[0]:result||{};
-        classifiedRows+=Number(r.classified_rows||0);
-        setProgress(74+((i+1)/Math.max(dates.length,1))*14,`กำหนด IN/OUT วันที่ ${fmtDate(date)} (${i+1}/${dates.length})`);
-      }
+      const classifyResult=await classifyBatchInChunks(state.batchId,inserted);
+      classifiedRows+=Number(classifyResult.classifiedRows||0);
+      existingDup+=Number(classifyResult.duplicateRows||0);
+      setText("mobiletaExistingDuplicates",fmt(existingDup));
 
       phase="complete";
       const finish=await rpc("ta_complete_mobileta_import",{p_batch_id:state.batchId});
@@ -191,8 +237,10 @@
       app()?.toast?.(failedRebuildDates.length?`นำเข้าสำเร็จ แต่ Attendance ${failedRebuildDates.length} วันยังไม่สำเร็จ`:"นำเข้าข้อมูลลงเวลา MobileTA เรียบร้อย",failedRebuildDates.length?"info":"success");
       await loadHistory();
     }catch(err){
-      // Rollback only before the batch is completed. Post-processing errors must not delete imported logs.
-      if(state.batchId&&!completed){
+      // Rollback only when upload itself has not finished. Once every source
+      // row is stored, a classify/rebuild error must keep the Batch for retry.
+      const shouldRollback=Boolean(state.batchId&&!completed&&!uploadFinished);
+      if(shouldRollback){
         try{
           await rpc("ta_cancel_mobileta_import",{
             p_batch_id:state.batchId,
@@ -204,7 +252,7 @@
       renderResult({
         error:app()?.humanError?.(err)||String(err),
         phase,
-        rollback:!completed
+        rollback:shouldRollback
       },true);
       status("นำเข้าไม่สำเร็จ","error");
       app()?.toast?.(app()?.humanError?.(err)||String(err),"error");
@@ -218,13 +266,13 @@
   function renderResult(r,isError){
     const el=$("mobiletaResultPanel");if(!el)return;
     if(isError){
-      const rollbackText=r.rollback?"ระบบ Rollback ข้อมูลของ Batch นี้แล้ว":"ข้อมูลลงเวลาถูกนำเข้าสำเร็จแล้ว ระบบไม่ได้ลบข้อมูลเนื่องจาก Error เกิดในขั้นตอนหลังนำเข้า";
+      const rollbackText=r.rollback?"ระบบ Rollback ข้อมูลของ Batch นี้แล้ว":"ข้อมูลที่ส่งขึ้นฐานข้อมูลแล้วถูกเก็บไว้ ไม่ได้ Rollback ทั้ง Batch";
       el.innerHTML=`<div class="mobileta-result-card error"><h3>นำเข้าข้อมูลไม่สำเร็จ</h3><p>${esc(r.error||"เกิดข้อผิดพลาด")}</p><small>ขั้นตอน: ${esc(r.phase||"unknown")} · ${esc(rollbackText)}</small></div>`;
       return;
     }
     const failed=Array.isArray(r.rebuild_failed_dates)?r.rebuild_failed_dates:[];
     const warning=failed.length?`<div class="mobileta-import-warning"><strong>Attendance ยังประมวลผลไม่สำเร็จ ${fmt(failed.length)} วัน</strong><div>${failed.map(fmtDate).join(", ")}</div><small>ข้อมูลลงเวลานำเข้าสำเร็จแล้ว และไม่ได้ถูก Rollback</small></div>`:"";
-    el.innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลาเรียบร้อย</h3><p>ระบบนำเข้าข้อมูลและกำหนดประเภท IN/OUT แบบรายวัน เพื่อลดปัญหา Statement Timeout</p>${warning}<div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(r.inserted_rows)}</strong></div><div><span>ซ้ำในฐานข้อมูล</span><strong>${fmt(r.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${fmt(r.unmatched_employee_rows)}</strong></div><div><span>จำแนก IN/OUT</span><strong>${fmt(r.classified_rows)}</strong></div><div><span>Attendance ลบ/สร้าง</span><strong>${fmt(r.rebuild_deleted_rows)} / ${fmt(r.rebuild_inserted_rows)}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</strong></div></div></div>`;
+    el.innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลาเรียบร้อย</h3><p>ระบบนำเข้าข้อมูลและกำหนดประเภท IN/OUT แบบกลุ่มย่อยด้วย Cursor เพื่อลดปัญหา Statement Timeout</p>${warning}<div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(r.inserted_rows)}</strong></div><div><span>ซ้ำในฐานข้อมูล</span><strong>${fmt(r.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${fmt(r.unmatched_employee_rows)}</strong></div><div><span>จำแนก IN/OUT</span><strong>${fmt(r.classified_rows)}</strong></div><div><span>Attendance ลบ/สร้าง</span><strong>${fmt(r.rebuild_deleted_rows)} / ${fmt(r.rebuild_inserted_rows)}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</strong></div></div></div>`;
   }
 
   async function loadHistory(){
