@@ -1,21 +1,19 @@
-# Time-Clock Enterprise V5.1.0
+# Time-Clock Enterprise V5.6.3
 
-## เพิ่มใหม่
-- Enterprise Status Bar: Environment, Role, User, Connection และ Version
-- Command Palette เปิดด้วย Ctrl+K / Cmd+K
-- Notification Drawer ด้านขวา
-- User Profile Center จาก Role badge
-- Global Search Trigger รุ่นใหม่
-- Responsive รองรับ Desktop และ Mobile
+## การจัดกะล่วงหน้า
+- สร้างตาราง Employee × ทุกวันของเดือน รวมเดือนอนาคต
+- วันที่ยังไม่มี Attendance สามารถเลือกและบันทึกกะได้
+- รองรับวันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์
+- Assigned Shift ยังคงมีลำดับสูงกว่า Auto Shift
 
-## การทดสอบ
-1. Login ด้วย HR_ADMIN
-2. กด Ctrl+K และเปิดเมนู Dashboard / Schedule / Settings
-3. กดกระดิ่งเพื่อเปิด Notification Drawer
-4. กด Role badge เพื่อเปิด Profile Center
-5. ตรวจ Status Bar ด้านล่าง
-6. ทดสอบ Sidebar ย่อ/ขยาย
+## รายละเอียดเวลาทำงาน
+- เพิ่มคอลัมน์ เวลาเริ่มกะ และ เวลาสิ้นสุดกะ ก่อนคอลัมน์กะ
+- เพิ่มคอลัมน์เดียวกันใน Export CSV และ Report Center
 
-## หมายเหตุ
-- ไม่เปลี่ยน Business Logic, RPC หรือ RLS
-- Supabase ยังคงตรวจสิทธิ์จริงตาม Role และ Scope
+## สถานะยืนยันกะ
+- ASSIGNED: บันทึกแล้วแต่ยังไม่ยืนยัน แก้ไขได้
+- CONFIRMED: ยืนยันแล้ว มีผู้ยืนยันและวันเวลา พร้อมเครื่องหมาย ✓
+- ตามกติกาปัจจุบัน ทั้ง ASSIGNED และ CONFIRMED ถูกใช้เป็น Effective Shift; ความต่างอยู่ที่สถานะ Workflow และ Audit
+
+## SQL
+รัน `sql/V5.6.3_ADVANCE_SCHEDULE.sql` และตรวจด้วย `sql/V5.6.3_VERIFY.sql`

@@ -517,7 +517,11 @@
       p_issue_types: params.p_issue_types ?? null
     };
     try {
-      const response = await withTimeout(client.rpc("ta_get_review_queue", exact), 30000, "โหลดรายการรอตรวจสอบ");
+      let response = await withTimeout(client.rpc("ta_get_review_queue_v600", exact), 30000, "โหลดรายการรอตรวจสอบ V6");
+      if (!response.error) return response.data || [];
+      if (!missingFunction(response.error)) throw response.error;
+
+      response = await withTimeout(client.rpc("ta_get_review_queue", exact), 30000, "โหลดรายการรอตรวจสอบ");
       if (!response.error) return response.data || [];
       if (!missingFunction(response.error)) throw response.error;
     } catch (error) {

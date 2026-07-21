@@ -1,29 +1,56 @@
-# Time-Clock Enterprise V5.3.1
+# Time-Clock Enterprise V6.0 – Functional Complete
 
-ฐานการพัฒนา: **V5.2 Executive Dashboard**
+ฐานพัฒนา: V5.6.3 Advance Schedule
 
-## สิ่งที่คงไว้จาก V5.2
-- Executive Dashboard
-- Attendance Health Score
-- Need Attention Matrix
-- Schedule Readiness
-- Executive Insights
-- Workforce Distribution
-- Enterprise Shell, Status Bar, Command Palette และ Notification Drawer
-- System Settings และ Developer Console
+## 1. Schedule Workflow
+- จัดกะล่วงหน้าและจัดกะวันหยุดได้เหมือน V5.6.3
+- Fill Down และ Fill Right
+- รูปแบบกะ 7 วัน
+- คัดลอกกะจากสัปดาห์ก่อน
+- ยืนยันกะที่จัดไว้ทั้งหมด
+- สถานะตารางรายเดือน: DRAFT, PUBLISHED และ LOCKED
+- ไม่อนุญาตให้ประกาศ/ล็อก หากยังมีกะที่จัดไว้แต่ยังไม่ยืนยัน
+- เมื่อเดือนถูกล็อก ป้องกันการแก้ไขทั้งหน้าเว็บและฐานข้อมูล
+- ประวัติการจัดกะ พร้อมผู้ดำเนินการ วันเวลา เหตุผล และค่าเดิม/ค่าใหม่
+- Export Excel และ Print/Save as PDF
 
-## สิ่งที่เพิ่มในหน้าจัดกะ
-- ลากเมาส์เลือกหลายช่อง
-- Shift + Click เพื่อเลือกช่วง
-- Ctrl/Cmd + C และ Ctrl/Cmd + V
-- Undo / Redo สูงสุด 30 ขั้น
-- ปุ่มลูกศรเลื่อนตำแหน่งเซลล์
-- Delete / Backspace ล้างกะ
-- คลิกขวาเปิดเมนูจัดกะ
-- ปุ่มกะ D, N, OFF, HOL และ LV
-- สรุปจำนวนแต่ละกะ
-- ปุ่มเดือนก่อน เดือนปัจจุบัน และเดือนถัดไป
-- ยืนยันเฉพาะช่องที่เลือก
+## 2. Attendance Detail
+- ค้นหาและกรองผลในตารางที่โหลดแล้ว
+- เรียงข้อมูล และแบ่งหน้า
+- KPI จำนวนรายการ ครบเวลา เวลาไม่ครบ และมาสาย
+- Drawer รายละเอียดรายวัน
+- แสดงเวลาเริ่มกะและเวลาสิ้นสุดกะก่อนช่องกะ
+- Export Excel และ Print/Save as PDF
 
-## หมายเหตุ
-การล้างกะส่ง `shift_code = null` ผ่าน RPC `ta_assign_shifts_bulk` หากฐานข้อมูลไม่รองรับค่า null จะต้องเปลี่ยนไปใช้ RPC ลบ Assignment โดยเฉพาะ
+## 3. Review Center
+- ปิดรายการและละเว้นรายการที่ตรวจสอบแล้ว
+- บันทึกหมายเหตุ ผู้ดำเนินการ และวันเวลา
+- รายการที่ปิด/ละเว้นจะไม่แสดงในคิวหลัก
+- ตรวจสิทธิ์ตาม Role และ Scope
+- Export Excel และ Print/Save as PDF
+
+## 4. Report Center
+- รายละเอียดเวลาทำงาน
+- ตารางจัดกะรายเดือน
+- รายการรอตรวจสอบ
+- สรุป Dashboard
+- รายงานมาสายและกลับก่อน
+- ส่งออก CSV, Excel และ Print/Save as PDF
+- ประวัติการสร้างรายงานใน Browser
+- บันทึก Export Log ใน Supabase
+
+## 5. HR Admin
+- Employee Directory ค้นหาด้วยรหัส ชื่อ ตำแหน่ง หน่วยงาน พื้นที่ และสถานะ
+- Export รายชื่อพนักงานเป็น Excel
+- Audit Center รวมประวัติการจัดกะ สถานะตารางรายเดือน และ Review Resolution
+
+## 6. Notification และ Smart Assistant
+- Notification Feed จากรายการ Review และสถานะตารางกะจริง
+- ผู้ช่วยวิเคราะห์แบบ Rule-based ภายใน Browser
+- รองรับคำถาม Missing IN, Missing OUT, ไม่มีเวลา, มาสาย, การยืนยันกะ และรายการ Review
+- ไม่มีการส่งข้อมูลไปบริการ AI ภายนอก
+
+## ข้อสังเกต
+- ปุ่ม PDF ใช้หน้าต่าง Print ของ Browser แล้วเลือก Save as PDF
+- Report Job รุ่นนี้สร้างไฟล์ใน Browser และบันทึก Log ใน Supabase ยังไม่ใช่ Server Worker
+- ต้องรัน SQL V6.0 ก่อนใช้งาน Schedule Publish/Lock, Review Resolution, Employee Directory, Audit และ Notification Feed
