@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.0.1 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.4.0 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1f3a" />
-  <title>Time-Clock Enterprise V6.0.1 | CP Retailink</title>
+  <title>Time-Clock Enterprise V6.4.0 | CP Retailink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./app.css?v=6.2.0-compact" />
+  <link rel="stylesheet" href="./app.css?v=6.4.0" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -200,7 +200,7 @@
         <section id="page-system-settings" class="page settings-page">
           <div class="settings-hero">
             <div><span class="eyebrow">ENTERPRISE CONTROL CENTER</span><h2>System Settings &amp; Developer Console</h2><p>กำหนดค่าระบบ ธีม Feature Flags สีของกะ และทดสอบสิทธิ์การใช้งานจากจุดเดียว</p></div>
-            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">4.0.0</strong><small id="settingsEnvironmentHero">Development</small></div>
+            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.4.0</strong><small id="settingsEnvironmentHero">Development</small></div>
           </div>
           <div class="settings-layout section-gap">
             <aside class="settings-tabs" aria-label="เมนูตั้งค่าระบบ">
@@ -257,7 +257,7 @@
               </div>
               <div class="settings-panel" data-settings-panel="about">
                 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">4.0.0</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V4</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.4.0</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.4 Calculation UI</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
               </div>
             </div>
           </div>
@@ -273,14 +273,14 @@
                 <div class="field"><label>พื้นที่</label><select id="attZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
                 <div class="field"><label>พื้นที่ย่อย</label><select id="attSubArea" class="select"><option value="">ทุกพื้นที่ย่อย</option></select></div>
                 <div class="field"><label>หน่วยงาน</label><select id="attDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div>
-                <div class="field"><label>สถานะ</label><select id="attStatus" class="select"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENT">ไม่มีเวลา</option><option value="INCOMPLETE_TIME">เวลาไม่ครบ</option><option value="WORKED_ON_OFFDAY">ทำงานวันหยุด</option><option value="NEED_REVIEW">รอตรวจสอบ</option></select></div>
+                <div class="field"><label>สถานะ</label><select id="attStatus" class="select"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENT">ไม่มีเวลา</option><option value="MISSING_IN">ไม่พบเวลาเข้า</option><option value="MISSING_OUT">ไม่พบเวลาออก</option><option value="LATE">มาสาย</option><option value="EARLY_LEAVE">กลับก่อน</option><option value="LATE_AND_EARLY_LEAVE">สายและกลับก่อน</option><option value="OVERTIME">มี OT</option><option value="WORKED_ON_WEEKLY_OFF">ทำงานวันหยุดประจำสัปดาห์</option><option value="WORKED_ON_HOLIDAY">ทำงานวันหยุดนักขัตฤกษ์</option><option value="WORKED_ON_COMP_OFF">ทำงานวันหยุดชดเชย</option></select></div>
                 <div class="toolbar-actions"><button id="loadAttendanceBtn" class="btn btn-primary">ค้นหา</button><button id="exportAttendanceBtn" class="btn btn-success">Export CSV</button></div>
               </div>
             </div>
           </div>
           <div class="panel section-gap">
             <div class="panel-header"><div><h3>รายละเอียดเวลาทำงาน</h3><p id="attendanceCount">0 รายการ</p></div></div>
-            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>พื้นที่ย่อย</th><th>เวลาเริ่มกะ</th><th>เวลาสิ้นสุดกะ</th><th>กะ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>สาย</th><th>กลับก่อน</th><th>สถานะ</th></tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
+            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>พื้นที่ย่อย</th><th>รูปแบบงาน</th><th>Template</th><th>ประเภทวัน</th><th>เวลาเริ่มกะ</th><th>เวลาสิ้นสุดกะ</th><th>กะ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>ชม.ปกติ</th><th>OT</th><th>รอคอย</th><th>พัก</th><th>สาย</th><th>กลับก่อน</th><th>วันหยุดชดเชย</th><th>สถานะ</th></tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
           </div>
         </section>
 
@@ -366,7 +366,9 @@
             <button class="review-kpi danger" data-review-filter="MISSING_OUT"><span>ไม่พบเวลาออก</span><strong id="reviewKpiMissingOut">0</strong><small>Missing OUT</small></button>
             <button class="review-kpi warning" data-review-filter="ABSENT"><span>ไม่มีเวลา</span><strong id="reviewKpiAbsent">0</strong><small>Absent / No time</small></button>
             <button class="review-kpi info" data-review-filter="NEED_REVIEW"><span>กะต้องตรวจสอบ</span><strong id="reviewKpiShift">0</strong><small>Shift mismatch</small></button>
-            <button class="review-kpi purple" data-review-filter="WORKED_ON_OFFDAY"><span>ทำงานวันหยุด</span><strong id="reviewKpiOffday">0</strong><small>Worked on off day</small></button>
+            <button class="review-kpi purple" data-review-filter-group="OFFDAY"><span>ทำงานวันหยุด</span><strong id="reviewKpiOffday">0</strong><small>Weekly / Holiday / Comp off</small></button>
+            <button class="review-kpi info" data-review-filter="OVERTIME"><span>มี OT</span><strong id="reviewKpiOvertime">0</strong><small>Overtime</small></button>
+            <button class="review-kpi warning" data-review-filter="LATE"><span>มาสาย</span><strong id="reviewKpiLate">0</strong><small>Late</small></button>
           </div>
 
           <div class="panel review-filter-panel">
@@ -374,7 +376,7 @@
               <div class="review-filter-grid">
                 <div class="field"><label>วันที่เริ่มต้น</label><input id="reviewStart" class="input" type="date" /></div>
                 <div class="field"><label>วันที่สิ้นสุด</label><input id="reviewEnd" class="input" type="date" /></div>
-                <div class="field"><label>ประเภทปัญหา</label><select id="reviewIssue" class="select"><option value="">ทุกปัญหา</option><option value="NEED_REVIEW">กะไม่ตรงคำแนะนำ</option><option value="MISSING_IN">ไม่พบเวลาเข้า</option><option value="MISSING_OUT">ไม่พบเวลาออก</option><option value="ABSENT">ไม่มีเวลา</option><option value="WORKED_ON_OFFDAY">ทำงานวันหยุด</option></select></div>
+                <div class="field"><label>ประเภทปัญหา</label><select id="reviewIssue" class="select"><option value="">ทุกปัญหา</option><option value="NEED_REVIEW">กะต้องตรวจสอบ</option><option value="MISSING_IN">ไม่พบเวลาเข้า</option><option value="MISSING_OUT">ไม่พบเวลาออก</option><option value="ABSENT">ไม่มีเวลา</option><option value="LATE">มาสาย</option><option value="EARLY_LEAVE">กลับก่อน</option><option value="LATE_AND_EARLY_LEAVE">สายและกลับก่อน</option><option value="OVERTIME">มี OT</option><option value="WORKED_ON_WEEKLY_OFF">ทำงานวันหยุดประจำสัปดาห์</option><option value="WORKED_ON_HOLIDAY">ทำงานวันหยุดนักขัตฤกษ์</option><option value="WORKED_ON_COMP_OFF">ทำงานวันหยุดชดเชย</option></select></div>
                 <div class="field review-search-field"><label>ค้นหาในผลลัพธ์</label><input id="reviewSearch" class="input" placeholder="รหัส ชื่อ หรือหน่วยงาน" /></div>
                 <div class="toolbar-actions"><button id="loadReviewBtn" class="btn btn-primary">ค้นหา</button></div>
               </div>
@@ -398,7 +400,7 @@
             </div>
             <div class="panel-body review-table-body">
               <div class="table-wrap review-table-wrap">
-                <table class="review-table"><thead><tr><th class="review-check-col"><input id="reviewSelectAll" type="checkbox" aria-label="เลือกทั้งหมด" /></th><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>กะตั้งต้น</th><th>กะแนะนำ</th><th>ความมั่นใจ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ปัญหา</th><th>จัดการ</th></tr></thead><tbody id="reviewBody"></tbody></table>
+                <table class="review-table"><thead><tr><th class="review-check-col"><input id="reviewSelectAll" type="checkbox" aria-label="เลือกทั้งหมด" /></th><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>รูปแบบงาน</th><th>Template</th><th>ประเภทวัน</th><th>กะตั้งต้น</th><th>กะแนะนำ</th><th>ความมั่นใจ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>OT</th><th>รอคอย</th><th>ปัญหา</th><th>ชดเชย</th><th>จัดการ</th></tr></thead><tbody id="reviewBody"></tbody></table>
               </div>
             </div>
           </div>
@@ -736,6 +738,6 @@
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
     </div>
   </div>
-  <script src="./app.js?v=6.2.0-compact"></script>
+  <script src="./app.js?v=6.4.0"></script>
 </body>
 </html>

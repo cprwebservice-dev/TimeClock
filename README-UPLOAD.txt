@@ -1,24 +1,23 @@
-Time-Clock Enterprise V6.2.0 Compact Deploy
+Time-Clock Enterprise V6.4.0 Compact Deploy
 
-อัปโหลดไฟล์ทั้ง 6 รายการนี้ไว้ที่ Root ของ GitHub Repository:
+ไฟล์สำหรับอัปโหลด GitHub Pages
 - index.html
-- app.css
 - app.js
+- app.css
 - 404.html
 - .nojekyll
-- README-UPLOAD.txt
 
-ก่อนใช้งาน:
-1) รัน V6.2.0_CSV_WORK_PATTERN.sql ใน Supabase SQL Editor
-2) รัน V6.2.0_VERIFY.sql
-3) อัปโหลดไฟล์ Compact ทั้งหมดแทนชุดเดิม
-4) รอ GitHub Pages Deploy แล้วกด Ctrl + Shift + R
+ลำดับติดตั้งฐานข้อมูล
+1) ติดตั้ง SQL V6.2.4 ให้ข้อมูล CSV และ Attendance แสดงผลได้
+2) ติดตั้ง V6.3.1 Technician Calculation Engine
+3) ติดตั้ง V6.4.0 Calculation UI API
+4) อัปโหลดไฟล์ใน ZIP นี้แทนชุดเดิม แล้วกด Ctrl+F5
 
-รุ่นนี้เพิ่ม:
-- นำเข้าข้อมูลลงเวลาจาก CSV UTF-8 6 คอลัมน์
-- ใช้ค่าเข้า/ออกจากไฟล์โดยตรง
-- ตรวจข้อมูลซ้ำและ GPS Conflict
-- รูปแบบ TECH_6D / TECH_5D
-- กำหนดวันหยุดตั้งต้นและ OT Threshold
-- กำหนดรูปแบบรายบุคคลตาม Scope
-- Template กะเดียว / มีช่วงรอคอย / งานลูกค้าช่วงที่ 2
+ฟังก์ชันหน้าเว็บ V6.4.0
+- Dashboard แสดงชั่วโมงสุทธิ ชั่วโมงปกติ OT Waiting และวันหยุดชดเชย
+- รายละเอียดเวลาทำงานแสดง Pattern, Template, ประเภทวัน และผลคำนวณ
+- คลิกแถวเพื่อดู Segment 1–3 ช่วงใน Drawer
+- ปฏิทินกะแสดงสัญลักษณ์ OT / Waiting / Comp-off ในช่องวันที่
+- Review Center รองรับสถานะจาก Calculation Engine
+
+Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์

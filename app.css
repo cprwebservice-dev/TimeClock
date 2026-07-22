@@ -830,3 +830,31 @@ body.sidebar-collapsed .platform-statusbar{left:76px}.platform-statusbar .dot{wi
 #timeCsvPreviewBody td:nth-child(7){min-width:240px;white-space:normal}.mobileta-progress-stats{flex-wrap:wrap}
 body.dark .work-template-card,body.dark .dow-checks label{background:var(--slate-800);border-color:var(--slate-700)}
 @media(max-width:1000px){.work-template-grid{grid-template-columns:1fr}.work-pattern-hero{align-items:flex-start;flex-direction:column}}
+
+
+/* ===== Time-Clock Enterprise V6.4.0 Calculation UI ===== */
+.attendance-grid-table{min-width:2480px}
+.review-table{min-width:2350px}
+.attendance-grid-table th,.attendance-grid-table td,.review-table th,.review-table td{vertical-align:middle}
+.calc-ot{font-weight:800;color:var(--orange-600,#ea580c)}
+.schedule-cell{position:relative;overflow:visible}
+.schedule-calc-flag{position:absolute;bottom:-7px;min-width:17px;height:15px;padding:0 3px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:8px;line-height:1;font-style:normal;font-weight:800;color:#fff;box-shadow:0 2px 5px rgba(15,23,42,.18)}
+.schedule-calc-flag.ot{right:-5px;background:#f97316}
+.schedule-calc-flag.wait{left:-5px;background:#64748b}
+.schedule-calc-flag.comp{left:50%;transform:translateX(-50%);background:#16a34a}
+.attendance-segment-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--slate-200,#e2e8f0)}
+.attendance-segment-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.attendance-segment-head span{font-size:11px;color:var(--slate-500,#64748b)}
+.attendance-segment-list{display:grid;gap:9px}
+.attendance-segment-card{padding:12px 14px;border:1px solid var(--slate-200,#e2e8f0);border-left:4px solid #2563eb;border-radius:12px;background:var(--surface,#fff)}
+.attendance-segment-card.segment-waiting{border-left-color:#64748b;background:rgba(100,116,139,.07)}
+.attendance-segment-card.segment-break{border-left-color:#f59e0b;background:rgba(245,158,11,.07)}
+.attendance-segment-card.segment-travel{border-left-color:#8b5cf6;background:rgba(139,92,246,.07)}
+.attendance-segment-card>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.attendance-segment-card>div span{font-size:10px;font-weight:800;color:var(--slate-500,#64748b)}
+.attendance-segment-card>strong{display:block;margin-top:5px;font-size:15px;color:var(--navy-900,#0f172a)}
+.attendance-segment-card>small{display:block;margin-top:5px;line-height:1.5;color:var(--slate-500,#64748b)}
+.enterprise-kpis{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.review-kpi-grid{grid-template-columns:repeat(auto-fit,minmax(165px,1fr))}
+.attendance-grid-summary{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+@media(max-width:768px){.attendance-grid-table{min-width:2200px}.review-table{min-width:2100px}}
