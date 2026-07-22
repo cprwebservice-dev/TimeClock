@@ -1,4 +1,4 @@
-Time-Clock Enterprise V6.5.4 Compact Deploy
+Time-Clock Enterprise V6.5.5 Compact Deploy
 
 ไฟล์สำหรับอัปโหลด GitHub Pages
 - index.html
@@ -12,11 +12,11 @@ Time-Clock Enterprise V6.5.4 Compact Deploy
 2) ติดตั้ง V6.3.1 Technician Calculation Engine
 3) ติดตั้ง V6.4.0 Calculation UI API
 4) ติดตั้ง V6.5.0 Leave, Certificate & Manual Time Correction
-5) ติดตั้ง V6.5.4 Shift Settings by Work Pattern
-6) รัน V6.5.4_VERIFY.sql
+5) ติดตั้ง V6.5.5 Shift Settings by Work Pattern
+6) รัน V6.5.5_VERIFY.sql
 7) อัปโหลดไฟล์ใน ZIP นี้แทนชุดเดิม แล้วกด Ctrl+F5
 
-ฟังก์ชันหน้าเว็บ V6.5.4
+ฟังก์ชันหน้าเว็บ V6.5.5
 - หน้า ตั้งค่ากะ แยกกะสำหรับรูปแบบทำงาน 5 วันและ 6 วันต่อสัปดาห์
 - กะ 6 วันมาตรฐาน 08:30–17:30 รวมพัก 9 ชั่วโมง สุทธิ 8 ชั่วโมง
 - กะ 5 วันมาตรฐาน 08:30–18:00 รวมพัก 9.5 ชั่วโมง สุทธิ 8.5 ชั่วโมง
@@ -31,9 +31,20 @@ Time-Clock Enterprise V6.5.4 Compact Deploy
 Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์
 
 
-V6.5.4 Statement Timeout Fix
-- รัน V6.5.4_SHIFT_RECALC_JOB_TIMEOUT_FIX.sql หลัง V6.5.3
+V6.5.5 Statement Timeout Fix
+- รัน V6.5.5_SHIFT_RECALC_JOB_TIMEOUT_FIX.sql หลัง V6.5.3
 - ปุ่มคำนวณย้อนหลังแบ่งการทำงานเป็น Job ย่อย
 - แต่ละ API Request คำนวณเฉพาะหนึ่งวันและพนักงานหนึ่งชุด
 - ระบบลด Batch Size อัตโนมัติหากชุดปัจจุบันยังหนักเกินไป
 - กดปุ่มเดิมเพื่อ Resume Job ช่วงวันและรูปแบบเดิมได้
+
+
+V6.5.5 Employee Pattern UX
+- ช่อง Template เริ่มต้นแสดง 3 รูปแบบเท่านั้น:
+  1) กะปกติ
+  2) กะปกติ + งานลูกค้าช่วงดึก
+  3) ออกกะแรกก่อนเวลา + งานลูกค้า
+- กะปกติเลือกเวลาให้อัตโนมัติตาม TECH_5D / TECH_6D
+- ตัด Override วันหยุดตั้งต้นรายบุคคลทั้งหน้าเว็บและฐานข้อมูล
+- ตารางรูปแบบรายบุคคลเพิ่มตำแหน่งต่อจากหน่วยงาน
+- ตัดคอลัมน์ PC ออกจากตาราง
