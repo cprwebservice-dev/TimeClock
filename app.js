@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.5.9',
+  version: '6.6.0',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -438,7 +438,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.9"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.0"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -916,6 +916,100 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       el.innerHTML = `<option value="">${safe(allLabel)}</option>` + values.map(v => `<option value="${safe(v)}">${safe(v)}</option>`).join("");
       if ([...el.options].some(o => o.value === old)) el.value = old;
     }
+
+    function scheduleRowPattern(row) {
+      const code = String(
+        row?.pattern_code
+        || row?.resolved_pattern_code
+        || ""
+      ).trim().toUpperCase();
+
+      return ["TECH_5D","TECH_6D"].includes(code)
+        ? code
+        : "UNASSIGNED";
+    }
+
+    function schedulePatternShort(patternCode) {
+      return patternCode === "TECH_5D"
+        ? "5D"
+        : patternCode === "TECH_6D"
+          ? "6D"
+          : "?";
+    }
+
+    function schedulePatternLabel(patternCode) {
+      return patternCode === "TECH_5D"
+        ? "5 วัน/สัปดาห์"
+        : patternCode === "TECH_6D"
+          ? "6 วัน/สัปดาห์"
+          : "ยังไม่ได้กำหนด";
+    }
+
+    function scheduleFilteredRows(rows = state.schedule) {
+      const filter = val("schedulePatternFilter");
+      const term = val("scheduleSearch").trim().toLowerCase();
+
+      return (rows || []).filter(row => {
+        const pattern = scheduleRowPattern(row);
+        if (filter && pattern !== filter) return false;
+        if (
+          term
+          && !`${row.emp_code || ""} ${row.full_name || ""}`
+            .toLowerCase()
+            .includes(term)
+        ) return false;
+        return true;
+      });
+    }
+
+    function updateSchedulePatternSummary(rows = state.schedule) {
+      const employeePatterns = new Map();
+
+      (rows || []).forEach(row => {
+        const emp = String(row.emp_code || "");
+        if (!emp) return;
+        const pattern = scheduleRowPattern(row);
+        if (
+          !employeePatterns.has(emp)
+          || employeePatterns.get(emp) === "UNASSIGNED"
+        ) {
+          employeePatterns.set(emp, pattern);
+        }
+      });
+
+      const counts = {
+        ALL: employeePatterns.size,
+        TECH_5D: 0,
+        TECH_6D: 0,
+        UNASSIGNED: 0
+      };
+
+      employeePatterns.forEach(pattern => {
+        counts[pattern] = (counts[pattern] || 0) + 1;
+      });
+
+      setText("schedulePatternAllCount", formatNumber(counts.ALL));
+      setText("schedulePattern5Count", formatNumber(counts.TECH_5D));
+      setText("schedulePattern6Count", formatNumber(counts.TECH_6D));
+      setText(
+        "schedulePatternUnknownCount",
+        formatNumber(counts.UNASSIGNED)
+      );
+
+      const current = val("schedulePatternFilter");
+      qsa("[data-schedule-pattern-chip]").forEach(button => {
+        button.classList.toggle(
+          "active",
+          String(button.dataset.schedulePatternChip || "") === current
+        );
+      });
+    }
+
+    window.TimeClockSchedulePattern = Object.freeze({
+      rowPattern: scheduleRowPattern,
+      filteredRows: scheduleFilteredRows,
+      updateSummary: updateSchedulePatternSummary
+    });
     const SHIFT_PATTERN_META = {
       TECH_6D: { label: "6 วัน/สัปดาห์", short: "6 วัน", total: 540, net: 480, breakMinutes: 60, start: "08:30", end: "17:30" },
       TECH_5D: { label: "5 วัน/สัปดาห์", short: "5 วัน", total: 570, net: 510, breakMinutes: 60, start: "08:30", end: "18:00" }
@@ -1417,14 +1511,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     function renderSchedule() {
       const period = syncSchedulePeriodUI();
-      const term = val("scheduleSearch").trim().toLowerCase();
       const periodRows = state.schedule.filter(r => {
         const date = String(r.work_date || "").slice(0,10);
         return date >= period.startDate && date <= period.endDate;
       });
-      const rows = term
-        ? periodRows.filter(r => `${r.emp_code} ${r.full_name}`.toLowerCase().includes(term))
-        : periodRows;
+      updateSchedulePatternSummary(periodRows);
+      const rows = scheduleFilteredRows(periodRows);
 
       const map = new Map();
       const dateMeta = new Map();
@@ -1466,7 +1558,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const today = todayISO();
 
       for (const [emp, obj] of map) {
-        html += `<tr data-emp-row="${safe(emp)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><strong>${safe(obj.meta.full_name)}</strong><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td>`;
+        const rowPattern = scheduleRowPattern(obj.meta);
+        const patternClass = rowPattern === "TECH_5D"
+          ? "pattern-5d"
+          : rowPattern === "TECH_6D"
+            ? "pattern-6d"
+            : "pattern-unassigned";
+
+        html += `<tr data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><div class="schedule-name-line"><strong>${safe(obj.meta.full_name)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
@@ -1780,7 +1879,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.5.9"
+          change_reason: "บันทึกจากหน้า HR Admin V6.6.0"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -1940,6 +2039,16 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("exportAttendanceBtn").addEventListener("click", exportAttendance);
       $("loadScheduleBtn").addEventListener("click", loadSchedule);
       $("scheduleSearch").addEventListener("input", renderSchedule);
+      $("schedulePatternFilter")?.addEventListener("change", renderSchedule);
+      $("schedulePatternSummary")?.addEventListener("click", event => {
+        const chip = event.target.closest("[data-schedule-pattern-chip]");
+        if (!chip) return;
+        setVal(
+          "schedulePatternFilter",
+          chip.dataset.schedulePatternChip || ""
+        );
+        renderSchedule();
+      });
       $("loadReviewBtn").addEventListener("click", loadReview);
       $("saveAssignmentBtn").addEventListener("click", saveAssignment);
       $("deleteAssignmentBtn").addEventListener("click", deleteAssignment);
@@ -2008,6 +2117,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       loadSchedule,
       loadReview,
       renderSchedule,
+      scheduleRowPattern,
+      scheduleFilteredRows,
       openAssignment,
       toast,
       showLoading,
@@ -2297,11 +2408,306 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   function selectedRows(){ return [...selected].map(rowForKey).filter(x=>x.row); }
   function currentCode(row){ return row?.assigned_shift_code || row?.effective_shift_code || row?.auto_shift_code || null; }
 
+  function rowPattern(row){
+    return window.TimeClockSchedulePattern?.rowPattern?.(row)
+      || String(row?.pattern_code || "").toUpperCase()
+      || "UNASSIGNED";
+  }
+
+  function shiftMasterRows(){
+    return app()?.state?.filters?.shifts || [];
+  }
+
+  function shiftPatterns(shift){
+    const patterns = Array.isArray(shift?.applicable_pattern_codes)
+      ? shift.applicable_pattern_codes
+      : ["TECH_5D","TECH_6D"];
+
+    return patterns
+      .map(value => String(value || "").trim().toUpperCase())
+      .filter(Boolean);
+  }
+
+  function defaultPatterns(shift){
+    return (Array.isArray(shift?.default_pattern_codes)
+      ? shift.default_pattern_codes
+      : [])
+      .map(value => String(value || "").trim().toUpperCase())
+      .filter(Boolean);
+  }
+
+  function supportsPattern(shift, pattern){
+    if (!shift || shift.is_active === false) return false;
+    if (shift.is_workday === false) return true;
+    return shiftPatterns(shift).includes(pattern);
+  }
+
+  function configuredShift(code){
+    return shiftMasterRows().find(
+      shift => String(shift.shift_code || "") === String(code || "")
+    );
+  }
+
+  function defaultShiftForPattern(pattern){
+    return shiftMasterRows()
+      .filter(shift => supportsPattern(shift, pattern))
+      .sort(
+        (a,b) =>
+          Number(a.display_order || 0) - Number(b.display_order || 0)
+      )
+      .find(shift => defaultPatterns(shift).includes(pattern));
+  }
+
+  function nightShiftForPattern(pattern){
+    const candidates = shiftMasterRows()
+      .filter(
+        shift =>
+          supportsPattern(shift, pattern)
+          && shift.is_workday !== false
+          && (
+            shift.is_night_shift === true
+            || String(shift.shift_code || "").toUpperCase().startsWith("N")
+            || String(shift.shift_name || "").toLowerCase().includes("กลางคืน")
+            || String(shift.shift_name || "").toLowerCase().includes("กะดึก")
+          )
+      )
+      .sort(
+        (a,b) =>
+          Number(a.display_order || 0) - Number(b.display_order || 0)
+      );
+
+    return candidates[0] || null;
+  }
+
+  function semanticShiftForPattern(action, pattern){
+    if (pattern === "UNASSIGNED") return null;
+    if (action === "NORMAL") return defaultShiftForPattern(pattern);
+    if (action === "NIGHT") return nightShiftForPattern(pattern);
+    return configuredShift(action);
+  }
+
+  function smartActionLabel(action){
+    return action === "NORMAL"
+      ? "กะปกติ"
+      : action === "NIGHT"
+        ? "กะกลางคืน"
+        : action;
+  }
+
+  function updateSmartShiftButtons(){
+    const filter = $("schedulePatternFilter")?.value || "";
+    const patterns = filter === "TECH_5D" || filter === "TECH_6D"
+      ? [filter]
+      : ["TECH_5D","TECH_6D"];
+
+    const normalCodes = patterns
+      .map(pattern => defaultShiftForPattern(pattern)?.shift_code)
+      .filter(Boolean);
+
+    const nightCodes = patterns
+      .map(pattern => nightShiftForPattern(pattern)?.shift_code)
+      .filter(Boolean);
+
+    if ($("scheduleQuickNormalCode")) {
+      $("scheduleQuickNormalCode").textContent =
+        normalCodes.length === 1
+          ? normalCodes[0]
+          : normalCodes.length > 1
+            ? [...new Set(normalCodes)].join(" / ")
+            : "ยังไม่ตั้งค่า";
+    }
+
+    if ($("scheduleQuickNightCode")) {
+      $("scheduleQuickNightCode").textContent =
+        nightCodes.length === 1
+          ? nightCodes[0]
+          : nightCodes.length > 1
+            ? [...new Set(nightCodes)].join(" / ")
+            : "ยังไม่ตั้งค่า";
+    }
+
+    if ($("scheduleQuickNormalBtn")) {
+      $("scheduleQuickNormalBtn").disabled = !normalCodes.length;
+    }
+
+    if ($("scheduleQuickNightBtn")) {
+      $("scheduleQuickNightBtn").disabled = !nightCodes.length;
+    }
+  }
+
+  function payloadCompatibility(payload){
+    const valid = [];
+    const skipped = [];
+
+    payload.forEach(item => {
+      if (!item.shift_code) {
+        valid.push(item);
+        return;
+      }
+
+      const row = rowForKey(`${item.emp_code}|${item.work_date}`).row;
+      const pattern = rowPattern(row);
+      const shift = configuredShift(item.shift_code);
+
+      if (["OFF","HOL","LV"].includes(String(item.shift_code))) {
+        valid.push(item);
+        return;
+      }
+
+      if (pattern === "UNASSIGNED") {
+        skipped.push({
+          ...item,
+          pattern,
+          reason: "ยังไม่ได้กำหนดรูปแบบการทำงาน"
+        });
+        return;
+      }
+
+      if (!shift) {
+        skipped.push({
+          ...item,
+          pattern,
+          reason: "ไม่พบกะในหน้าตั้งค่ากะ"
+        });
+        return;
+      }
+
+      if (!supportsPattern(shift, pattern)) {
+        skipped.push({
+          ...item,
+          pattern,
+          reason: `กะ ${item.shift_code} ไม่รองรับ ${pattern === "TECH_5D" ? "5 วัน" : "6 วัน"}`
+        });
+        return;
+      }
+
+      valid.push(item);
+    });
+
+    return { valid, skipped };
+  }
+
+  function skippedSummary(skipped){
+    const groups = new Map();
+
+    skipped.forEach(item => {
+      const key = item.reason || "ไม่รองรับ";
+      groups.set(key, (groups.get(key) || 0) + 1);
+    });
+
+    return [...groups.entries()]
+      .map(([reason,count]) => `• ${reason}: ${count.toLocaleString("th-TH")} ช่อง`)
+      .join("\n");
+  }
+
+  async function smartBulkAssign(action, confirmNow=false){
+    const rows = selectedRows();
+    if (!rows.length) {
+      return app()?.toast("กรุณาเลือกช่องกะก่อน","error");
+    }
+
+    const mapped = [];
+    const skipped = [];
+    const summary = new Map();
+
+    rows.forEach(item => {
+      const pattern = rowPattern(item.row);
+      const shift = semanticShiftForPattern(action, pattern);
+
+      if (!shift) {
+        skipped.push({
+          ...item,
+          pattern,
+          reason: pattern === "UNASSIGNED"
+            ? "ยังไม่ได้กำหนดรูปแบบการทำงาน"
+            : `ยังไม่ได้กำหนด${smartActionLabel(action)}สำหรับกลุ่มนี้`
+        });
+        return;
+      }
+
+      mapped.push({
+        emp_code: item.emp_code,
+        work_date: item.work_date,
+        shift_code: shift.shift_code,
+        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern`
+      });
+
+      const groupKey = `${pattern}|${shift.shift_code}`;
+      summary.set(groupKey, (summary.get(groupKey) || 0) + 1);
+    });
+
+    const lines = [...summary.entries()].map(([key,count]) => {
+      const [pattern,shiftCode] = key.split("|");
+      return `• ${pattern === "TECH_5D" ? "5 วัน" : "6 วัน"}: ${count.toLocaleString("th-TH")} ช่อง → ${shiftCode}`;
+    });
+
+    if (skipped.length) {
+      lines.push(
+        `• ข้าม: ${skipped.length.toLocaleString("th-TH")} ช่อง`
+      );
+    }
+
+    if (!mapped.length) {
+      return app()?.toast(
+        skippedSummary(skipped) || "ไม่มีรายการที่สามารถกำหนดกะได้",
+        "error"
+      );
+    }
+
+    const message = [
+      `กำหนด${smartActionLabel(action)}จำนวน ${mapped.length.toLocaleString("th-TH")} ช่อง`,
+      "",
+      ...lines,
+      skipped.length
+        ? "\nรายการที่ไม่รองรับจะไม่ถูกบันทึก"
+        : ""
+    ].join("\n");
+
+    if (!confirm(message)) return;
+
+    await savePayload(
+      mapped,
+      `กำหนด${smartActionLabel(action)}ตาม Work Pattern`,
+      confirmNow,
+      `กำหนด${smartActionLabel(action)}`
+    );
+
+    if (skipped.length) {
+      app()?.toast(
+        `บันทึกสำเร็จ ${mapped.length.toLocaleString("th-TH")} ช่อง • ข้าม ${skipped.length.toLocaleString("th-TH")} ช่อง`,
+        "info"
+      );
+    }
+  }
+
   function updateHistoryButtons(){ $("scheduleUndoBtn") && ($("scheduleUndoBtn").disabled=!undoStack.length); $("scheduleRedoBtn") && ($("scheduleRedoBtn").disabled=!redoStack.length); }
   function updateSummary(){
     const counts={D:0,N:0,OFF:0,HOL:0,LV:0};
-    (app()?.state?.schedule||[]).forEach(r=>{const c=currentCode(r); if(c in counts) counts[c]++;});
-    Object.entries(counts).forEach(([c,n])=>{const el=$("sumShift"+c); if(el) el.textContent=n.toLocaleString("th-TH");});
+
+    cells().forEach(cell => {
+      const row = rowForKey(keyOf(cell)).row;
+      const code = currentCode(row);
+      const shift = configuredShift(code);
+
+      if (code === "OFF" || code === "HOL" || code === "LV") {
+        counts[code]++;
+      } else if (
+        shift?.is_night_shift === true
+        || String(code || "").toUpperCase().startsWith("N")
+        || String(shift?.shift_name || "").toLowerCase().includes("กะดึก")
+      ) {
+        counts.N++;
+      } else if (code) {
+        counts.D++;
+      }
+    });
+
+    Object.entries(counts).forEach(([code,count]) => {
+      const el=$("sumShift"+code);
+      if(el)el.textContent=count.toLocaleString("th-TH");
+    });
+
+    updateSmartShiftButtons();
   }
   function refreshSelectionUI(){
     wrap()?.querySelectorAll(".schedule-data-cell.cell-selected,.schedule-data-cell.cell-active").forEach(td=>td.classList.remove("cell-selected","cell-active"));
@@ -2332,12 +2738,35 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
   async function savePayload(payload, reason, confirmNow=false, historyLabel="แก้ไขกะ"){
     if(!payload.length) return;
-    const before=payload.map(p=>{const x=rowForKey(`${p.emp_code}|${p.work_date}`);return {...p,shift_code:currentCode(x.row)};});
-    app().showLoading(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);
+
+    const compatibility = payloadCompatibility(payload);
+    const validPayload = compatibility.valid;
+
+    if (!validPayload.length) {
+      return app()?.toast(
+        skippedSummary(compatibility.skipped)
+          || "ไม่มีรายการที่สามารถบันทึกได้",
+        "error"
+      );
+    }
+
+    if (compatibility.skipped.length) {
+      const proceed = confirm(
+        `พบรายการที่ไม่รองรับ ${compatibility.skipped.length.toLocaleString("th-TH")} ช่อง
+
+${skippedSummary(compatibility.skipped)}
+
+ระบบจะข้ามรายการเหล่านี้และบันทึกเฉพาะรายการที่รองรับ ${validPayload.length.toLocaleString("th-TH")} ช่อง`
+      );
+      if (!proceed) return;
+    }
+
+    const before=validPayload.map(p=>{const x=rowForKey(`${p.emp_code}|${p.work_date}`);return {...p,shift_code:currentCode(x.row)};});
+    app().showLoading(`กำลังบันทึก ${validPayload.length.toLocaleString("th-TH")} รายการ...`);
     try{
-      await window.TimeClockShiftAPI.assignBulk(app(), payload, reason, confirmNow);
-      undoStack.push({label:historyLabel,before,after:payload.map(x=>({...x}))}); if(undoStack.length>30)undoStack.shift(); redoStack.length=0; updateHistoryButtons();
-      app().toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการแล้ว`,"success"); await app().loadSchedule();
+      await window.TimeClockShiftAPI.assignBulk(app(), validPayload, reason, confirmNow);
+      undoStack.push({label:historyLabel,before,after:validPayload.map(x=>({...x}))}); if(undoStack.length>30)undoStack.shift(); redoStack.length=0; updateHistoryButtons();
+      app().toast(`บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการแล้ว`,"success"); await app().loadSchedule();
     }catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}
   }
   async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
@@ -2409,10 +2838,18 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     wrap()?.addEventListener("click",e=>{const emp=e.target.closest("[data-select-emp]");if(emp){selectByEmp(emp.dataset.selectEmp);return;}const date=e.target.closest("[data-select-date]");if(date){selectByDate(date.dataset.selectDate);return;}});
     wrap()?.addEventListener("dblclick",e=>{const c=e.target.closest("[data-schedule-cell]");if(c)app()?.openAssignment(c.dataset.emp,c.dataset.date);});
     wrap()?.addEventListener("contextmenu",e=>{const c=e.target.closest("[data-schedule-cell]");if(c)openContext(e,c);});
+    document.querySelectorAll("[data-smart-shift]").forEach(button =>
+      button.addEventListener(
+        "click",
+        () => smartBulkAssign(button.dataset.smartShift)
+      )
+    );
     document.querySelectorAll("[data-quick-shift]").forEach(b=>b.addEventListener("click",()=>bulkAssign(b.dataset.quickShift)));
     $("scheduleCopyBtn")?.addEventListener("click",copySelection); $("schedulePasteBtn")?.addEventListener("click",pasteSelection); $("scheduleClearCellsBtn")?.addEventListener("click",clearCells); $("scheduleClearSelectionBtn")?.addEventListener("click",clearSelection); $("scheduleConfirmSelectedBtn")?.addEventListener("click",confirmSelected); $("scheduleUndoBtn")?.addEventListener("click",undo); $("scheduleRedoBtn")?.addEventListener("click",redo);
     $("schedulePrevMonthBtn")?.addEventListener("click",()=>shiftMonth(-1));
     $("scheduleNextMonthBtn")?.addEventListener("click",()=>shiftMonth(1));
+    $("schedulePatternFilter")?.addEventListener("change",updateSmartShiftButtons);
+    document.addEventListener("timeclock:schedule-rendered",updateSmartShiftButtons);
     $("scheduleTodayBtn")?.addEventListener("click",()=>{
       const today=new Date().toISOString().slice(0,10);
       const start=window.TimeClockSchedulePeriod?.blockStartForDate?.(today)||today;
@@ -2420,9 +2857,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       window.TimeClockSchedulePeriod?.sync?.();
       app()?.loadSchedule();
     });
-    $("scheduleContextMenu")?.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.contextShift)bulkAssign(b.dataset.contextShift);if(b.dataset.contextAction==="copy")copySelection();if(b.dataset.contextAction==="paste")pasteSelection();if(b.dataset.contextAction==="clear")clearCells();closeContext();});
+    $("scheduleContextMenu")?.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.contextSmartShift)smartBulkAssign(b.dataset.contextSmartShift);if(b.dataset.contextShift)bulkAssign(b.dataset.contextShift);if(b.dataset.contextAction==="copy")copySelection();if(b.dataset.contextAction==="paste")pasteSelection();if(b.dataset.contextAction==="clear")clearCells();closeContext();});
     document.addEventListener("click",e=>{if(!e.target.closest("#scheduleContextMenu"))closeContext();});
-    document.addEventListener("keydown",e=>{if(!document.getElementById("page-schedule")?.classList.contains("active"))return;const tag=document.activeElement?.tagName;if(["INPUT","SELECT","TEXTAREA"].includes(tag)&&!(e.ctrlKey||e.metaKey))return;const k=e.key.toLowerCase();if((e.ctrlKey||e.metaKey)&&k==="c"){e.preventDefault();copySelection();}else if((e.ctrlKey||e.metaKey)&&k==="v"){e.preventDefault();pasteSelection();}else if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();e.shiftKey?redo():undo();}else if((e.ctrlKey||e.metaKey)&&k==="y"){e.preventDefault();redo();}else if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();clearCells();}else if(e.key==="Escape")clearSelection();else if(e.key==="ArrowLeft"){e.preventDefault();moveActive(-1,0,e.shiftKey);}else if(e.key==="ArrowRight"){e.preventDefault();moveActive(1,0,e.shiftKey);}else if(e.key==="ArrowUp"){e.preventDefault();moveActive(0,-1,e.shiftKey);}else if(e.key==="ArrowDown"){e.preventDefault();moveActive(0,1,e.shiftKey);}else if(["d","n"].includes(k)&&!e.ctrlKey&&!e.metaKey){e.preventDefault();bulkAssign(k.toUpperCase());}});
+    document.addEventListener("keydown",e=>{if(!document.getElementById("page-schedule")?.classList.contains("active"))return;const tag=document.activeElement?.tagName;if(["INPUT","SELECT","TEXTAREA"].includes(tag)&&!(e.ctrlKey||e.metaKey))return;const k=e.key.toLowerCase();if((e.ctrlKey||e.metaKey)&&k==="c"){e.preventDefault();copySelection();}else if((e.ctrlKey||e.metaKey)&&k==="v"){e.preventDefault();pasteSelection();}else if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();e.shiftKey?redo():undo();}else if((e.ctrlKey||e.metaKey)&&k==="y"){e.preventDefault();redo();}else if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();clearCells();}else if(e.key==="Escape")clearSelection();else if(e.key==="ArrowLeft"){e.preventDefault();moveActive(-1,0,e.shiftKey);}else if(e.key==="ArrowRight"){e.preventDefault();moveActive(1,0,e.shiftKey);}else if(e.key==="ArrowUp"){e.preventDefault();moveActive(0,-1,e.shiftKey);}else if(e.key==="ArrowDown"){e.preventDefault();moveActive(0,1,e.shiftKey);}else if(["d","n"].includes(k)&&!e.ctrlKey&&!e.metaKey){e.preventDefault();smartBulkAssign(k==="d"?"NORMAL":"NIGHT");}});
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();
@@ -3639,7 +4076,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
 ;
 
-/* ===== V6.5.9 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.6.0 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -4115,7 +4552,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.5.9';
+  const VERSION='6.6.0';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
