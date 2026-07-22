@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.6.1',
+  version: '6.6.2',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.1"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.2"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -829,7 +829,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     deleteBulk,
     getReview,
     upsertShiftMaster,
-    missingFunction
+    missingFunction,
+    scheduleText,
+    meaningfulScheduleName,
+    mergeScheduleEmployeeMeta
   });
 })();
 
@@ -1688,6 +1691,35 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       finally { hideLoading(); }
     }
 
+    function scheduleMergeEmployeeMeta(target, source) {
+      const helper =
+        window.TimeClockShiftAPI?.mergeScheduleEmployeeMeta;
+
+      if (typeof helper !== "function") {
+        return target;
+      }
+
+      return helper(target, source);
+    }
+
+    function scheduleHasMeaningfulName(value, empCode) {
+      const helper =
+        window.TimeClockShiftAPI?.meaningfulScheduleName;
+
+      if (typeof helper === "function") {
+        return helper(value, empCode);
+      }
+
+      const text = String(value ?? "").trim();
+      return Boolean(
+        text
+        && text !== "-"
+        && text.toLowerCase() !== "null"
+        && text.toLowerCase() !== "undefined"
+        && text !== String(empCode || "").trim()
+      );
+    }
+
     function renderSchedule() {
       const period = syncSchedulePeriodUI();
       const periodRows = state.schedule.filter(r => {
@@ -1709,7 +1741,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             days: {}
           });
         } else {
-          mergeScheduleEmployeeMeta(
+          scheduleMergeEmployeeMeta(
             map.get(r.emp_code).meta,
             r
           );
@@ -1764,10 +1796,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             ? "pattern-6d"
             : "pattern-unassigned";
 
-        const displayName = meaningfulScheduleName(
-          obj.meta.full_name,
-          emp
-        )
+        const displayName =
+          scheduleHasMeaningfulName(
+            obj.meta.full_name,
+            emp
+          )
           ? obj.meta.full_name
           : "ไม่พบชื่อพนักงาน";
 
@@ -2125,7 +2158,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.6.1"
+          change_reason: "บันทึกจากหน้า HR Admin V6.6.2"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -4322,7 +4355,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.6.1 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.6.2 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -4798,7 +4831,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.6.1';
+  const VERSION='6.6.2';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
