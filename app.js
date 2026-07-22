@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.5.7',
+  version: '6.5.8',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -438,7 +438,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.7"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.8"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -803,6 +803,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       qsa("#adminNavGroup .nav-item:not(#systemSettingsNav)").forEach(el => el.classList.toggle("hidden", p.role !== "HR_ADMIN"));
       $("systemSettingsNav")?.classList.toggle("hidden", p._realRole !== "HR_ADMIN");
       window.TimeClockSettings?.syncProfile?.(p);
+      document.dispatchEvent(new CustomEvent("timeclock:effective-role-changed", {
+        detail: {
+          effectiveRole: p.role || "VIEWER",
+          realRole: p._realRole || p.role || "VIEWER"
+        }
+      }));
     }
 
     async function loadFilterOptions() {
@@ -1565,7 +1571,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.5.7"
+          change_reason: "บันทึกจากหน้า HR Admin V6.5.8"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3368,7 +3374,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
 ;
 
-/* ===== V6.5.7 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.5.8 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -3532,17 +3538,46 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     qsa('[data-close-wp]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.closeWp)?.classList.add('hidden')));
     $('wpSaveBtn')?.addEventListener('click',savePattern);$('epSaveBtn')?.addEventListener('click',saveEmployeePattern);
   }
+  function effectiveWorkPatternRole(){
+    return String(
+      app()?.state?.profile?.role
+      || window.TimeClockApp?.state?.profile?.role
+      || ''
+    ).toUpperCase();
+  }
+
+  function canViewWorkPatternParameters(){
+    return wp.parameterAccessLoaded===true
+      && wp.canViewParameters===true
+      && effectiveWorkPatternRole()==='HR_ADMIN';
+  }
+
+  function canManageWorkPatternParameters(){
+    return wp.parameterAccessLoaded===true
+      && wp.canManageParameters===true
+      && effectiveWorkPatternRole()==='HR_ADMIN';
+  }
+
   function applyWorkPatternParameterVisibility(){
     const panel=$('workPatternAdminPanel');
-    const visible=wp.parameterAccessLoaded&&wp.canViewParameters===true;
+    const visible=canViewWorkPatternParameters();
+    const manageable=canManageWorkPatternParameters();
+
     if(panel){
       panel.classList.toggle('hidden',!visible);
       panel.setAttribute('aria-hidden',visible?'false':'true');
+      panel.inert=!visible;
     }
+
     const addButton=$('workPatternNewBtn');
     if(addButton){
-      addButton.classList.toggle('hidden',!wp.canManageParameters);
-      addButton.disabled=!wp.canManageParameters;
+      addButton.classList.toggle('hidden',!manageable);
+      addButton.disabled=!manageable;
+    }
+
+    if(!visible){
+      const body=$('workPatternBody');
+      if(body)body.innerHTML='';
     }
   }
 
@@ -3606,11 +3641,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     applyWorkPatternParameterVisibility();
     const body=$('workPatternBody');
     if(!body)return;
-    if(!wp.canViewParameters){
+    if(!canViewWorkPatternParameters()){
       body.innerHTML='';
       return;
     }
-    body.innerHTML=wp.patterns.length?wp.patterns.map(r=>`<tr><td><strong>${esc(r.pattern_code)}</strong></td><td>${esc(r.pattern_name)}</td><td>${r.work_days_per_week}</td><td>${hours(r.scheduled_minutes_including_break)} ชม.</td><td>${hours(r.ot_threshold_minutes)} ชม.</td><td>${esc(dowText(r.weekly_off_dows))}</td><td>${r.carry_forward_months} เดือน</td><td><span class="fc-badge ${r.is_active?'active':'danger'}">${r.is_active?'ใช้งาน':'ปิด'}</span></td><td>${wp.canManageParameters?`<button class="btn btn-light btn-sm" data-edit-pattern="${esc(r.pattern_code)}">แก้ไข</button>`:'-'}</td></tr>`).join(''):'<tr><td colspan="9" class="table-empty">ไม่พบข้อมูล</td></tr>';
+    body.innerHTML=wp.patterns.length?wp.patterns.map(r=>`<tr><td><strong>${esc(r.pattern_code)}</strong></td><td>${esc(r.pattern_name)}</td><td>${r.work_days_per_week}</td><td>${hours(r.scheduled_minutes_including_break)} ชม.</td><td>${hours(r.ot_threshold_minutes)} ชม.</td><td>${esc(dowText(r.weekly_off_dows))}</td><td>${r.carry_forward_months} เดือน</td><td><span class="fc-badge ${r.is_active?'active':'danger'}">${r.is_active?'ใช้งาน':'ปิด'}</span></td><td>${canManageWorkPatternParameters()?`<button class="btn btn-light btn-sm" data-edit-pattern="${esc(r.pattern_code)}">แก้ไข</button>`:'-'}</td></tr>`).join(''):'<tr><td colspan="9" class="table-empty">ไม่พบข้อมูล</td></tr>';
   }
   function renderTemplates(){
     const box=$('workTemplateCards');if(!box)return;
@@ -3716,8 +3751,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     return EMPLOYEE_TEMPLATE_LABELS[category]||templateCode||'-';
   }
   function fillPatternOptions(){const pOpts=wp.patterns.filter(x=>x.is_active).map(x=>`<option value="${esc(x.pattern_code)}">${esc(x.pattern_name)}</option>`).join('');const tOpts=wp.templates.filter(x=>x.is_active).map(x=>`<option value="${esc(x.template_code)}">${esc(x.template_name)}</option>`).join('');if($('epPattern'))$('epPattern').innerHTML=pOpts;if($('epTemplate'))$('epTemplate').innerHTML='<option value="">เลือก Template</option>';if($('assignWorkTemplate'))$('assignWorkTemplate').innerHTML=tOpts;}
-  function openPattern(code){if(!wp.canManageParameters){app()?.toast?.('พารามิเตอร์รูปแบบการทำงานสำหรับ HR Admin เท่านั้น','error');return;}ensureWpModals();const r=wp.patterns.find(x=>x.pattern_code===code)||{pattern_code:'',pattern_name:'',work_days_per_week:6,scheduled_minutes_including_break:540,ot_threshold_minutes:540,break_minutes:60,default_start_time:'08:30',default_end_time:'17:30',weekly_off_dows:[0],carry_forward_months:3,is_active:true,note:''};wp.editing=r;$('wpCode').value=r.pattern_code||'';$('wpCode').disabled=!!r.pattern_code;$('wpName').value=r.pattern_name||'';$('wpDays').value=r.work_days_per_week||6;$('wpScheduled').value=r.scheduled_minutes_including_break||540;$('wpOt').value=r.ot_threshold_minutes||540;$('wpBreak').value=r.break_minutes||60;$('wpStart').value=String(r.default_start_time||'08:30').slice(0,5);$('wpEnd').value=String(r.default_end_time||'17:30').slice(0,5);$('wpCarry').value=r.carry_forward_months??3;$('wpActive').checked=r.is_active!==false;$('wpNote').value=r.note||'';qsa('[data-wp-dow]').forEach(c=>c.checked=(r.weekly_off_dows||[]).map(Number).includes(Number(c.dataset.wpDow)));$('workPatternModal').classList.remove('hidden');}
-  async function savePattern(){if(!wp.canManageParameters){app()?.toast?.('ไม่มีสิทธิ์แก้ไขพารามิเตอร์รูปแบบการทำงาน','error');return;}try{const weekly=qsa('[data-wp-dow]').filter(x=>x.checked).map(x=>Number(x.dataset.wpDow));if(!weekly.length)throw new Error('กรุณาเลือกวันหยุดตั้งต้นอย่างน้อย 1 วัน');await rpc('ta_upsert_work_pattern',{p_data:{pattern_code:$('wpCode').value,pattern_name:$('wpName').value,work_days_per_week:Number($('wpDays').value),scheduled_minutes_including_break:Number($('wpScheduled').value),standard_work_minutes:Number($('wpScheduled').value),break_minutes:Number($('wpBreak').value),ot_threshold_minutes:Number($('wpOt').value),weekly_off_dows:weekly,default_start_time:$('wpStart').value,default_end_time:$('wpEnd').value,allow_comp_off:true,carry_forward_months:Number($('wpCarry').value),is_active:$('wpActive').checked,note:$('wpNote').value}});$('workPatternModal').classList.add('hidden');app()?.toast?.('บันทึกรูปแบบการทำงานแล้ว','success');await loadWorkPatterns();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
+  function openPattern(code){if(!canManageWorkPatternParameters()){app()?.toast?.('พารามิเตอร์รูปแบบการทำงานสำหรับ HR Admin เท่านั้น','error');return;}ensureWpModals();const r=wp.patterns.find(x=>x.pattern_code===code)||{pattern_code:'',pattern_name:'',work_days_per_week:6,scheduled_minutes_including_break:540,ot_threshold_minutes:540,break_minutes:60,default_start_time:'08:30',default_end_time:'17:30',weekly_off_dows:[0],carry_forward_months:3,is_active:true,note:''};wp.editing=r;$('wpCode').value=r.pattern_code||'';$('wpCode').disabled=!!r.pattern_code;$('wpName').value=r.pattern_name||'';$('wpDays').value=r.work_days_per_week||6;$('wpScheduled').value=r.scheduled_minutes_including_break||540;$('wpOt').value=r.ot_threshold_minutes||540;$('wpBreak').value=r.break_minutes||60;$('wpStart').value=String(r.default_start_time||'08:30').slice(0,5);$('wpEnd').value=String(r.default_end_time||'17:30').slice(0,5);$('wpCarry').value=r.carry_forward_months??3;$('wpActive').checked=r.is_active!==false;$('wpNote').value=r.note||'';qsa('[data-wp-dow]').forEach(c=>c.checked=(r.weekly_off_dows||[]).map(Number).includes(Number(c.dataset.wpDow)));$('workPatternModal').classList.remove('hidden');}
+  async function savePattern(){if(!canManageWorkPatternParameters()){app()?.toast?.('ไม่มีสิทธิ์แก้ไขพารามิเตอร์รูปแบบการทำงาน','error');return;}try{const weekly=qsa('[data-wp-dow]').filter(x=>x.checked).map(x=>Number(x.dataset.wpDow));if(!weekly.length)throw new Error('กรุณาเลือกวันหยุดตั้งต้นอย่างน้อย 1 วัน');await rpc('ta_upsert_work_pattern',{p_data:{pattern_code:$('wpCode').value,pattern_name:$('wpName').value,work_days_per_week:Number($('wpDays').value),scheduled_minutes_including_break:Number($('wpScheduled').value),standard_work_minutes:Number($('wpScheduled').value),break_minutes:Number($('wpBreak').value),ot_threshold_minutes:Number($('wpOt').value),weekly_off_dows:weekly,default_start_time:$('wpStart').value,default_end_time:$('wpEnd').value,allow_comp_off:true,carry_forward_months:Number($('wpCarry').value),is_active:$('wpActive').checked,note:$('wpNote').value}});$('workPatternModal').classList.add('hidden');app()?.toast?.('บันทึกรูปแบบการทำงานแล้ว','success');await loadWorkPatterns();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   async function loadEmployeePatterns(){
     const body=$('employeePatternBody');if(!body)return;
     body.innerHTML='<tr><td colspan="10" class="table-empty">กำลังโหลด...</td></tr>';
@@ -3794,7 +3829,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     ensureWpModals();
     $('timeCsvPreviewBtn')?.addEventListener('click',inspectCsv);$('timeCsvImportBtn')?.addEventListener('click',runCsvImport);$('timeCsvResetBtn')?.addEventListener('click',resetCsv);$('timeCsvTemplateBtn')?.addEventListener('click',downloadCsvTemplate);$('timeCsvDownloadErrorsBtn')?.addEventListener('click',downloadCsvErrors);$('timeCsvRefreshHistoryBtn')?.addEventListener('click',loadCsvHistory);$('timeCsvFile')?.addEventListener('change',()=>csvStatus($('timeCsvFile')?.files?.[0]?.name||'ยังไม่ได้เลือกไฟล์','neutral'));
     $('workPatternRefreshBtn')?.addEventListener('click',async()=>{await loadWorkPatterns();await loadEmployeePatterns();});$('workPatternNewBtn')?.addEventListener('click',()=>openPattern(null));$('employeePatternLoadBtn')?.addEventListener('click',loadEmployeePatterns);$('employeePatternSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')loadEmployeePatterns();});$('epPattern')?.addEventListener('change',()=>loadEmployeeTemplateOptions($('epPattern').value,null));
-    document.addEventListener('click',e=>{const edit=e.target.closest('[data-edit-pattern]');if(edit&&wp.canManageParameters)openPattern(edit.dataset.editPattern);const assign=e.target.closest('[data-assign-pattern]');if(assign)openEmployeePattern(assign.dataset.assignPattern);});
+    document.addEventListener('click',e=>{const edit=e.target.closest('[data-edit-pattern]');if(edit&&canManageWorkPatternParameters())openPattern(edit.dataset.editPattern);const assign=e.target.closest('[data-assign-pattern]');if(assign)openEmployeePattern(assign.dataset.assignPattern);});
     qsa('[data-page="work-patterns"],[data-admin-open="work-patterns"]').forEach(b=>b.addEventListener('click',()=>setTimeout(async()=>{if($('pageTitle'))$('pageTitle').textContent='รูปแบบการทำงาน';if($('pageSubtitle'))$('pageSubtitle').textContent='กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น และรูปแบบช่วงงานรายบุคคล';await loadWorkPatterns();await loadEmployeePatterns();},0)));
     qsa('[data-page="admin-time-import"],[data-admin-open="admin-time-import"]').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>{if($('pageTitle'))$('pageTitle').textContent='นำเข้าข้อมูลลงเวลา CSV';if($('pageSubtitle'))$('pageSubtitle').textContent='นำเข้า EmployeeId, วันที่, เวลา, เข้า/ออก และ GPS จาก CSV UTF-8';loadCsvHistory();},0)));
     $('assignWorkTemplate')?.addEventListener('change',toggleCustomerWindow);
@@ -3803,6 +3838,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     $('deleteAssignmentBtn')?.addEventListener('click',()=>{const emp=$('assignEmpCode')?.value,date=$('assignWorkDate')?.value;setTimeout(async()=>{if($('assignModal')?.classList.contains('hidden')&&emp&&date){try{await rpc('ta_delete_daily_work_plan',{p_emp_code:emp,p_work_date:date});}catch(e){}}},900);});
     const today=new Date().toISOString().slice(0,10);if($('employeePatternDate'))$('employeePatternDate').value=today;
     applyWorkPatternParameterVisibility();
+    document.addEventListener(
+      'timeclock:effective-role-changed',
+      applyWorkPatternParameterVisibility
+    );
   }
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',bindV620):bindV620();
 })();
@@ -3811,7 +3850,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.5.7';
+  const VERSION='6.5.8';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

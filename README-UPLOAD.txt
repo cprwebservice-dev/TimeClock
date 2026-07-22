@@ -1,4 +1,4 @@
-Time-Clock Enterprise V6.5.7 Compact Deploy
+Time-Clock Enterprise V6.5.8 Compact Deploy
 
 ไฟล์สำหรับอัปโหลด GitHub Pages
 - index.html
@@ -12,11 +12,11 @@ Time-Clock Enterprise V6.5.7 Compact Deploy
 2) ติดตั้ง V6.3.1 Technician Calculation Engine
 3) ติดตั้ง V6.4.0 Calculation UI API
 4) ติดตั้ง V6.5.0 Leave, Certificate & Manual Time Correction
-5) ติดตั้ง V6.5.7 Shift Settings by Work Pattern
-6) รัน V6.5.7_VERIFY.sql
+5) ติดตั้ง V6.5.8 Shift Settings by Work Pattern
+6) รัน V6.5.8_VERIFY.sql
 7) อัปโหลดไฟล์ใน ZIP นี้แทนชุดเดิม แล้วกด Ctrl+F5
 
-ฟังก์ชันหน้าเว็บ V6.5.7
+ฟังก์ชันหน้าเว็บ V6.5.8
 - หน้า ตั้งค่ากะ แยกกะสำหรับรูปแบบทำงาน 5 วันและ 6 วันต่อสัปดาห์
 - กะ 6 วันมาตรฐาน 08:30–17:30 รวมพัก 9 ชั่วโมง สุทธิ 8 ชั่วโมง
 - กะ 5 วันมาตรฐาน 08:30–18:00 รวมพัก 9.5 ชั่วโมง สุทธิ 8.5 ชั่วโมง
@@ -31,15 +31,15 @@ Time-Clock Enterprise V6.5.7 Compact Deploy
 Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์
 
 
-V6.5.7 Statement Timeout Fix
-- รัน V6.5.7_SHIFT_RECALC_JOB_TIMEOUT_FIX.sql หลัง V6.5.3
+V6.5.8 Statement Timeout Fix
+- รัน V6.5.8_SHIFT_RECALC_JOB_TIMEOUT_FIX.sql หลัง V6.5.3
 - ปุ่มคำนวณย้อนหลังแบ่งการทำงานเป็น Job ย่อย
 - แต่ละ API Request คำนวณเฉพาะหนึ่งวันและพนักงานหนึ่งชุด
 - ระบบลด Batch Size อัตโนมัติหากชุดปัจจุบันยังหนักเกินไป
 - กดปุ่มเดิมเพื่อ Resume Job ช่วงวันและรูปแบบเดิมได้
 
 
-V6.5.7 Employee Pattern UX
+V6.5.8 Employee Pattern UX
 - ช่อง Template เริ่มต้นแสดง 3 รูปแบบเท่านั้น:
   1) กะปกติ
   2) กะปกติ + งานลูกค้าช่วงดึก
@@ -50,7 +50,7 @@ V6.5.7 Employee Pattern UX
 - ตัดคอลัมน์ PC ออกจากตาราง
 
 
-V6.5.7 Template & Parameter Security
+V6.5.8 Template & Parameter Security
 - หน้า Template แสดง 3 รูปแบบเท่านั้น
 - กะปกติรวมการแสดง 5 วันและ 6 วันไว้ในการ์ดเดียว
 - ชื่อรูปแบบงานลูกค้าปรับให้ตรงกับตัวเลือกรายบุคคล
@@ -58,10 +58,18 @@ V6.5.7 Template & Parameter Security
 - เพิ่ม Backend Trigger ป้องกันผู้ใช้สิทธิ์อื่นแก้ไข ta_work_patterns
 
 
-V6.5.7 HR Admin Parameter Visibility
+V6.5.8 HR Admin Parameter Visibility
 - ซ่อนการ์ดพารามิเตอร์รูปแบบการทำงานทั้งส่วนเป็นค่าเริ่มต้น
 - ตรวจสิทธิ์จาก RPC ฝั่งฐานข้อมูลก่อนแสดง
 - แสดงเฉพาะ Profile ที่ Active และ role = HR_ADMIN
 - สิทธิ์อื่นไม่เห็นหัวข้อ ตาราง ปุ่มเพิ่ม และปุ่มแก้ไข
 - ไม่ใช้ค่า Role ฝั่ง Browser เป็นตัวตัดสินหลัก
 - Template และการกำหนดรูปแบบรายบุคคลยังคงใช้งานตามสิทธิ์เดิม
+
+
+V6.5.8 Effective Role Visibility Fix
+- แก้กรณี HR Admin เปิด Developer Mode แล้ว View as Role = USER
+- Badge USER จะซ่อนพารามิเตอร์รูปแบบการทำงานทันที
+- ต้องผ่านทั้ง Backend HR_ADMIN และ Effective UI Role = HR_ADMIN
+- Role USER / VIEWER ไม่เห็นหัวข้อ ตาราง ปุ่มเพิ่ม และปุ่มแก้ไข
+- เปลี่ยน View as Role แล้วไม่ต้อง Reload หน้า
