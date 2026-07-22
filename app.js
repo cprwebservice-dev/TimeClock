@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.5.1',
+  version: '6.5.4',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -438,7 +438,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.1"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.4"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -977,10 +977,137 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
     }
 
+    const SHIFT_RECALC_JOB_KEY = "timeclock.shiftRecalcJob.v654";
+
+    function renderShiftRecalcProgress(job, label = "") {
+      const box = $("shiftRecalcProgress");
+      if (!box || !job) return;
+
+      box.classList.remove("hidden");
+
+      const totalDays = Number(job.total_days || 0);
+      const completedDays = Number(job.completed_days || 0);
+      const percent = Math.max(
+        0,
+        Math.min(
+          100,
+          Number(job.progress_percent ?? (
+            totalDays ? completedDays * 100 / totalDays : 0
+          ))
+        )
+      );
+
+      const currentDate = job.current_work_date
+        ? formatDate(job.current_work_date)
+        : "-";
+
+      setText(
+        "shiftRecalcProgressTitle",
+        `${label || job.pattern_code || "รูปแบบการทำงาน"} • ${job.status || "QUEUED"}`
+      );
+      setText(
+        "shiftRecalcProgressPercent",
+        `${percent.toLocaleString("th-TH", {maximumFractionDigits:1})}%`
+      );
+
+      const bar = $("shiftRecalcProgressBar");
+      if (bar) bar.style.width = `${percent}%`;
+
+      const detail = [
+        `วันที่เสร็จ ${formatNumber(completedDays)}/${formatNumber(totalDays)}`,
+        `กำลังตรวจวันที่ ${currentDate}`,
+        `ประมวลผลพนักงาน ${formatNumber(job.processed_employees || 0)} รายการ`,
+        `จำนวนชุด ${formatNumber(job.processed_batches || 0)}`,
+        `ขนาดชุด ${formatNumber(job.batch_size || 0)} คน`
+      ];
+
+      if (job.last_error) {
+        detail.push(`ระบบปรับชุดอัตโนมัติ: ${job.last_error}`);
+      }
+
+      setText("shiftRecalcProgressDetail", detail.join(" • "));
+    }
+
+    async function runShiftRecalcJob(initialJob, label) {
+      let job = initialJob;
+      let guard = 0;
+      const doneStatuses = new Set([
+        "COMPLETED",
+        "COMPLETED_WITH_ERRORS",
+        "FAILED",
+        "CANCELLED"
+      ]);
+
+      localStorage.setItem(
+        SHIFT_RECALC_JOB_KEY,
+        JSON.stringify({
+          jobId: job.job_id,
+          patternCode: job.pattern_code,
+          startDate: job.start_date,
+          endDate: job.end_date
+        })
+      );
+
+      renderShiftRecalcProgress(job, label);
+
+      while (!doneStatuses.has(String(job.status || "").toUpperCase())) {
+        guard += 1;
+        if (guard > 200000) {
+          throw new Error("JOB_LOOP_GUARD_EXCEEDED");
+        }
+
+        const progressText = Number(job.total_days || 0)
+          ? `${formatNumber(job.completed_days || 0)}/${formatNumber(job.total_days)} วัน`
+          : "กำลังเตรียมข้อมูล";
+
+        showLoading(
+          `กำลังคำนวณ ${label} • ${progressText} • ${formatNumber(job.processed_employees || 0)} รายการ`
+        );
+
+        const { data, error } = await state.client.rpc(
+          "ta_process_work_pattern_recalc_step_v654",
+          { p_job_id: job.job_id }
+        );
+
+        if (error) throw error;
+        job = data || job;
+        renderShiftRecalcProgress(job, label);
+
+        await new Promise(resolve => setTimeout(resolve, 35));
+      }
+
+      localStorage.removeItem(SHIFT_RECALC_JOB_KEY);
+
+      const status = String(job.status || "").toUpperCase();
+      if (status === "FAILED") {
+        throw new Error(job.last_error || "WORK_PATTERN_RECALCULATION_FAILED");
+      }
+      if (status === "CANCELLED") {
+        throw new Error("WORK_PATTERN_RECALCULATION_CANCELLED");
+      }
+
+      if (status === "COMPLETED_WITH_ERRORS") {
+        toast(
+          `คำนวณ ${label} เสร็จแล้ว แต่มี ${formatNumber(job.error_count || 0)} ครั้งที่ระบบลดขนาดชุด`,
+          "info"
+        );
+      } else {
+        toast(
+          `คำนวณ ${label} เรียบร้อย • ${formatNumber(job.processed_employees || 0)} รายการ`,
+          "success"
+        );
+      }
+
+      if (state.currentPage === "schedule") await loadSchedule();
+      if (state.attendance.length) await loadAttendance();
+      return job;
+    }
+
     async function recalculateShiftPattern() {
       const patternCode = val("shiftRecalcPattern");
       const startDate = val("shiftRecalcStart");
       const endDate = val("shiftRecalcEnd");
+
       if (!patternCode || !startDate || !endDate) {
         toast("กรุณาเลือกรูปแบบและช่วงวันที่ให้ครบ", "error");
         return;
@@ -989,23 +1116,41 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         toast("วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด", "error");
         return;
       }
+
       const label = SHIFT_PATTERN_META[patternCode]?.label || patternCode;
-      if (!confirm(`ยืนยันคำนวณผลใหม่สำหรับ ${label} ช่วง ${formatDate(startDate)}–${formatDate(endDate)}?`)) return;
-      showLoading("กำลังคำนวณผลตามกะตั้งต้นใหม่...");
+
+      if (!confirm(
+        `ยืนยันคำนวณผลใหม่สำหรับ ${label} ช่วง ${formatDate(startDate)}–${formatDate(endDate)}?\n\nระบบจะแบ่งประมวลผลเป็นชุดเล็กเพื่อป้องกัน Timeout`
+      )) return;
+
+      const button = $("shiftRecalcBtn");
+      if (button) {
+        button.disabled = true;
+        button.textContent = "กำลังคำนวณ...";
+      }
+
+      showLoading("กำลังสร้าง Job คำนวณย้อนหลัง...");
+
       try {
-        const { data, error } = await state.client.rpc("ta_recalculate_work_pattern_v651", {
-          p_pattern_code: patternCode,
-          p_start_date: startDate,
-          p_end_date: endDate
-        });
+        const { data, error } = await state.client.rpc(
+          "ta_create_work_pattern_recalc_job_v654",
+          {
+            p_pattern_code: patternCode,
+            p_start_date: startDate,
+            p_end_date: endDate,
+            p_batch_size: 25
+          }
+        );
+
         if (error) throw error;
-        toast(`คำนวณผล ${label} เรียบร้อย`, "success");
-        if (state.currentPage === "schedule") await loadSchedule();
-        if (state.attendance.length) await loadAttendance();
-        return data;
+        await runShiftRecalcJob(data, label);
       } catch (err) {
         toast(humanError(err), "error");
       } finally {
+        if (button) {
+          button.disabled = false;
+          button.textContent = "คำนวณผลใหม่";
+        }
         hideLoading();
       }
     }
@@ -1420,7 +1565,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.5.1"
+          change_reason: "บันทึกจากหน้า HR Admin V6.5.4"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3223,7 +3368,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
 ;
 
-/* ===== V6.5.1 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.5.4 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -3421,7 +3566,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.5.1';
+  const VERSION='6.5.4';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
