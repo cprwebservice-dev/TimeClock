@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.5.8',
+  version: '6.5.9',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -438,7 +438,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.8"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.9"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -685,6 +685,55 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     const todayISO = () => new Date().toISOString().slice(0, 10);
     const monthISO = () => new Date().toISOString().slice(0, 7);
     const firstDayOfMonth = (d = new Date()) => new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+    const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const parseLocalISO = value => {
+      const [y,m,d] = String(value || "").slice(0,10).split("-").map(Number);
+      return new Date(y, (m || 1)-1, d || 1);
+    };
+    const monthDays = (year, month) => new Date(year, month, 0).getDate();
+    const scheduleBlockStartForDate = value => {
+      const d = parseLocalISO(value || todayISO());
+      const day = d.getDate();
+      d.setDate(day >= 29 ? 29 : day >= 15 ? 15 : 1);
+      return localISO(d);
+    };
+    const schedulePeriodRange = () => {
+      const startISO = val("schedulePeriodStart") || scheduleBlockStartForDate(todayISO());
+      const start = parseLocalISO(startISO);
+      const lastDay = monthDays(start.getFullYear(), start.getMonth()+1);
+      const end = new Date(start);
+      end.setDate(Math.min(start.getDate()+13, lastDay));
+      return {
+        startDate: localISO(start),
+        endDate: localISO(end),
+        month: `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,"0")}`,
+        dates: Array.from(
+          {length: Math.max(0, Math.round((end-start)/86400000)+1)},
+          (_,i) => {
+            const x = new Date(start);
+            x.setDate(start.getDate()+i);
+            return localISO(x);
+          }
+        )
+      };
+    };
+    const syncSchedulePeriodUI = () => {
+      const range = schedulePeriodRange();
+      setVal("schedulePeriodStart", range.startDate);
+      setVal("scheduleMonth", range.month);
+      const startText = formatDate(range.startDate);
+      const endText = formatDate(range.endDate);
+      setText(
+        "schedulePeriodLabel",
+        `${startText} – ${endText} • ${range.dates.length} วัน`
+      );
+      return range;
+    };
+    window.TimeClockSchedulePeriod = Object.freeze({
+      blockStartForDate: scheduleBlockStartForDate,
+      range: schedulePeriodRange,
+      sync: syncSchedulePeriodUI
+    });
     const formatDate = (d) => d ? new Date(`${String(d).slice(0,10)}T00:00:00`).toLocaleDateString("th-TH", {day:"2-digit",month:"2-digit",year:"numeric"}) : "-";
     const formatDateTime = (d) => d ? new Date(d).toLocaleString("th-TH", {dateStyle:"short",timeStyle:"short"}) : "-";
     const formatTime = (v) => {
@@ -761,7 +810,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const end = todayISO();
       ["dashStart","attStart","reviewStart","leaveStart","correctionStart","exceptionStart"].forEach(id => setVal(id, start));
       ["dashEnd","attEnd","reviewEnd","leaveEnd","correctionEnd","exceptionEnd"].forEach(id => setVal(id, end));
-      setVal("scheduleMonth", monthISO());
+      setVal("schedulePeriodStart", scheduleBlockStartForDate(todayISO()));
+      syncSchedulePeriodUI();
     }
 
     function showLogin() { $("appShell").classList.add("hidden"); $("loginScreen").classList.remove("hidden"); }
@@ -1346,75 +1396,142 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     async function loadSchedule() {
-      showLoading("กำลังโหลดปฏิทินกะ...");
+      const period = syncSchedulePeriodUI();
+      showLoading(`กำลังโหลดปฏิทินกะ ${formatDate(period.startDate)}–${formatDate(period.endDate)}...`);
       try {
-        const month = `${val("scheduleMonth")}-01`;
         const data = await window.TimeClockShiftAPI.getMonthlySchedule(window.TimeClockApp || { state }, {
-          p_month: month, p_zone: val("scheduleZone") || null, p_department: val("scheduleDepartment") || null,
-          p_emp_codes: null, p_schedule_statuses: null
+          p_month: `${period.month}-01`,
+          p_zone: val("scheduleZone") || null,
+          p_department: val("scheduleDepartment") || null,
+          p_emp_codes: null,
+          p_schedule_statuses: null
         });
-        state.schedule = data || [];
+        state.schedule = (data || []).filter(r => {
+          const date = String(r.work_date || "").slice(0,10);
+          return date >= period.startDate && date <= period.endDate;
+        });
         renderSchedule();
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
     }
 
     function renderSchedule() {
+      const period = syncSchedulePeriodUI();
       const term = val("scheduleSearch").trim().toLowerCase();
-      const rows = term ? state.schedule.filter(r => `${r.emp_code} ${r.full_name}`.toLowerCase().includes(term)) : state.schedule;
-      const month = val("scheduleMonth");
-      if (!month) return;
-      const [year, mon] = month.split("-").map(Number);
-      const days = new Date(year, mon, 0).getDate();
+      const periodRows = state.schedule.filter(r => {
+        const date = String(r.work_date || "").slice(0,10);
+        return date >= period.startDate && date <= period.endDate;
+      });
+      const rows = term
+        ? periodRows.filter(r => `${r.emp_code} ${r.full_name}`.toLowerCase().includes(term))
+        : periodRows;
+
       const map = new Map();
       const dateMeta = new Map();
+
       for (const r of rows) {
-        if (!map.has(r.emp_code)) map.set(r.emp_code, { meta: r, days: {} });
-        map.get(r.emp_code).days[Number(String(r.work_date).slice(8,10))] = r;
         const date = String(r.work_date).slice(0,10);
+        if (!map.has(r.emp_code)) map.set(r.emp_code, { meta: r, days: {} });
+        map.get(r.emp_code).days[date] = r;
         if (!dateMeta.has(date)) dateMeta.set(date, { holiday: false, holidayName: null });
         if (r.is_public_holiday || r.day_type === "PUBLIC_HOLIDAY") {
-          dateMeta.set(date, { holiday: true, holidayName: r.holiday_name || "วันหยุดนักขัตฤกษ์" });
+          dateMeta.set(date, {
+            holiday: true,
+            holidayName: r.holiday_name || "วันหยุดนักขัตฤกษ์"
+          });
         }
       }
+
       const thaiDays = ["อา","จ","อ","พ","พฤ","ศ","ส"];
-      const headDays = Array.from({length:days},(_,i)=>i+1).map(d => {
-        const dow = new Date(year, mon-1, d).getDay();
-        const date = `${year}-${String(mon).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const thaiMonths = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+
+      const headDays = period.dates.map(date => {
+        const d = parseLocalISO(date);
+        const dow = d.getDay();
         const meta = dateMeta.get(date) || {};
-        const classes = [dow===0||dow===6 ? "weekend" : "", meta.holiday ? "public-holiday-head" : ""].filter(Boolean).join(" ");
-        const title = meta.holiday ? `${meta.holidayName} • คลิกเพื่อเลือกทั้งวันที่` : "เลือกทั้งวันที่";
-        return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d}</span><small>${thaiDays[dow]}${meta.holiday?" • หยุด":""}</small></th>`;
+        const classes = [
+          dow === 0 || dow === 6 ? "weekend" : "",
+          meta.holiday ? "public-holiday-head" : ""
+        ].filter(Boolean).join(" ");
+        const title = meta.holiday
+          ? `${meta.holidayName} • คลิกเพื่อเลือกทั้งวันที่`
+          : "คลิกเพื่อเลือกทั้งวันที่";
+        return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d.getDate()}</span><small>${thaiDays[dow]} ${thaiMonths[d.getMonth()]}${meta.holiday?" • หยุด":""}</small></th>`;
       }).join("");
-      let html = `<table class="schedule-table enterprise-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
-      if (!map.size) html += emptyRow(days + 2);
+
+      let html = `<table class="schedule-table enterprise-schedule-table fortnight-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
+
+      if (!map.size) html += emptyRow(period.dates.length + 2);
+
       const today = todayISO();
+
       for (const [emp, obj] of map) {
         html += `<tr data-emp-row="${safe(emp)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><strong>${safe(obj.meta.full_name)}</strong><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td>`;
-        for (let d=1; d<=days; d++) {
-          const r = obj.days[d];
-          if (!r) { html += `<td class="day-col empty-schedule-day"><span class="schedule-cell disabled">-</span></td>`; continue; }
+
+        for (const date of period.dates) {
+          const r = obj.days[date];
+          if (!r) {
+            html += `<td class="day-col empty-schedule-day"><span class="schedule-cell disabled">-</span></td>`;
+            continue;
+          }
+
           const code = r.assigned_shift_code || r.effective_shift_code || r.auto_shift_code || r.shift_code || "-";
-          const date = String(r.work_date).slice(0,10);
           const publicHoliday = r.is_public_holiday || r.day_type === "PUBLIC_HOLIDAY";
           const weeklyOff = r.is_weekly_off || r.day_type === "WEEKLY_OFF";
           const cls = `shift-${code} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
-          const tdCls = ["day-col","schedule-data-cell",publicHoliday?"public-holiday-cell":"",weeklyOff?"weekly-off-cell":"",date>today?"future-schedule-cell":""].filter(Boolean).join(" ");
-          const dayLabel = publicHoliday ? (r.holiday_name || "วันหยุดนักขัตฤกษ์") : weeklyOff ? "วันหยุดประจำสัปดาห์" : "วันทำงาน";
-          const statusLabel = r.schedule_status === "CONFIRMED" ? "ยืนยันแล้ว" : r.schedule_status === "ASSIGNED" ? "ยังไม่ยืนยัน" : r.schedule_status || "AUTO";
-          const calcBits = [r.pattern_code, r.template_code, r.calculation_status, Number(r.overtime_minutes||0)>0?`OT ${(Number(r.overtime_minutes)/60).toFixed(1)} ชม.`:null, Number(r.waiting_minutes||0)>0?`รอ ${(Number(r.waiting_minutes)/60).toFixed(1)} ชม.`:null, r.comp_off_earned?"ได้วันหยุดชดเชย":null].filter(Boolean).join(" | ");
-          const calcFlags = `${Number(r.overtime_minutes||0)>0?'<small class="schedule-calc-flag ot">OT</small>':''}${Number(r.waiting_minutes||0)>0?'<small class="schedule-calc-flag wait">W</small>':''}${r.comp_off_earned?'<small class="schedule-calc-flag comp">C</small>':''}`;
+          const tdCls = [
+            "day-col",
+            "schedule-data-cell",
+            publicHoliday ? "public-holiday-cell" : "",
+            weeklyOff ? "weekly-off-cell" : "",
+            date > today ? "future-schedule-cell" : ""
+          ].filter(Boolean).join(" ");
+
+          const dayLabel = publicHoliday
+            ? (r.holiday_name || "วันหยุดนักขัตฤกษ์")
+            : weeklyOff
+              ? "วันหยุดประจำสัปดาห์"
+              : "วันทำงาน";
+
+          const statusLabel = r.schedule_status === "CONFIRMED"
+            ? "ยืนยันแล้ว"
+            : r.schedule_status === "ASSIGNED"
+              ? "ยังไม่ยืนยัน"
+              : r.schedule_status || "AUTO";
+
+          const calcBits = [
+            r.pattern_code,
+            r.template_code,
+            r.calculation_status,
+            Number(r.overtime_minutes||0)>0 ? `OT ${(Number(r.overtime_minutes)/60).toFixed(1)} ชม.` : null,
+            Number(r.waiting_minutes||0)>0 ? `รอ ${(Number(r.waiting_minutes)/60).toFixed(1)} ชม.` : null,
+            r.comp_off_earned ? "ได้วันหยุดชดเชย" : null
+          ].filter(Boolean).join(" | ");
+
+          const calcFlags =
+            `${Number(r.overtime_minutes||0)>0?'<small class="schedule-calc-flag ot">OT</small>':''}` +
+            `${Number(r.waiting_minutes||0)>0?'<small class="schedule-calc-flag wait">W</small>':''}` +
+            `${r.comp_off_earned?'<small class="schedule-calc-flag comp">C</small>':''}`;
+
           html += `<td class="${tdCls}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(r.full_name)} | ${safe(dayLabel)} | ${safe(statusLabel)}${calcBits?` | ${safe(calcBits)}`:""} | ดับเบิลคลิกเพื่อแก้ไข"><b>${safe(code)}</b>${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
         }
+
         html += `</tr>`;
       }
+
       html += `</tbody></table>`;
       $("scheduleTableWrap").innerHTML = html;
       setText("scheduleEmployeeCount", formatNumber(map.size));
       setText("scheduleAssignedCount", formatNumber(rows.filter(r => r.schedule_status === "ASSIGNED").length));
       setText("scheduleConfirmedCount", formatNumber(rows.filter(r => r.schedule_status === "CONFIRMED").length));
       setText("scheduleReviewCount", formatNumber(rows.filter(r => r.schedule_status === "NEED_REVIEW").length));
-      document.dispatchEvent(new CustomEvent("timeclock:schedule-rendered"));
+      document.dispatchEvent(new CustomEvent("timeclock:schedule-rendered", {
+        detail: {
+          startDate: period.startDate,
+          endDate: period.endDate,
+          days: period.dates.length
+        }
+      }));
     }
 
     let reviewLoadRequest = 0;
@@ -1447,6 +1564,101 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       document.dispatchEvent(new CustomEvent("timeclock:review-rendered", { detail: { count: state.review.length } }));
     }
 
+    const ASSIGN_TEMPLATE_CACHE = new Map();
+
+    async function assignmentTemplateOptions(patternCode) {
+      const pattern = patternCode === "TECH_5D" ? "TECH_5D" : "TECH_6D";
+      if (ASSIGN_TEMPLATE_CACHE.has(pattern)) {
+        return ASSIGN_TEMPLATE_CACHE.get(pattern);
+      }
+
+      let options = [];
+      try {
+        const { data, error } = await state.client.rpc(
+          "ta_get_employee_template_options_v655",
+          { p_pattern_code: pattern }
+        );
+        if (error) throw error;
+        options = Array.isArray(data) ? data : [];
+      } catch (error) {
+        options = [
+          {
+            category_code: "NORMAL",
+            category_name: "กะปกติ",
+            template_code: pattern === "TECH_5D"
+              ? "SINGLE_0830_1800"
+              : "SINGLE_0830",
+            display_order: 1
+          },
+          {
+            category_code: "NORMAL_LATE_CUSTOMER",
+            category_name: "กะปกติ + งานลูกค้าช่วงดึก",
+            template_code: "SPLIT_FLEX",
+            display_order: 2
+          },
+          {
+            category_code: "EARLY_SHIFT_CUSTOMER",
+            category_name: "ออกกะแรกก่อนเวลา + งานลูกค้า",
+            template_code: "EARLY_SPLIT_FLEX",
+            display_order: 3
+          }
+        ];
+      }
+
+      const normalLabel = pattern === "TECH_5D"
+        ? "กะปกติ 5 วัน/สัปดาห์ • 9.5 ชม.รวมพัก"
+        : "กะปกติ 6 วัน/สัปดาห์ • 9 ชม.รวมพัก";
+
+      const normalized = options
+        .filter(o => o?.template_code)
+        .map(o => ({
+          ...o,
+          category_name: o.category_code === "NORMAL"
+            ? normalLabel
+            : o.category_name
+        }))
+        .sort((a,b) => Number(a.display_order||0)-Number(b.display_order||0));
+
+      ASSIGN_TEMPLATE_CACHE.set(pattern, normalized);
+      return normalized;
+    }
+
+    async function fillAssignmentTemplateSelect(patternCode, selectedTemplate) {
+      const select = $("assignWorkTemplate");
+      if (!select) return;
+
+      select.disabled = true;
+      select.innerHTML = '<option value="">กำลังโหลดรูปแบบช่วงงาน...</option>';
+
+      const options = await assignmentTemplateOptions(patternCode);
+      select.innerHTML = options.map(o =>
+        `<option value="${safe(o.template_code)}">${safe(o.category_name || o.template_name || o.template_code)}</option>`
+      ).join("");
+
+      const fallback = patternCode === "TECH_5D"
+        ? "SINGLE_0830_1800"
+        : "SINGLE_0830";
+
+      const target = options.some(o => o.template_code === selectedTemplate)
+        ? selectedTemplate
+        : options.some(o => o.template_code === fallback)
+          ? fallback
+          : options[0]?.template_code || "";
+
+      select.value = target;
+      select.dataset.patternCode = patternCode;
+
+      setText(
+        "assignWorkTemplateHelp",
+        patternCode === "TECH_5D"
+          ? "พนักงานรูปแบบ 5 วัน: กะปกติอ้างอิง 9.5 ชั่วโมงรวมพัก"
+          : "พนักงานรูปแบบ 6 วัน: กะปกติอ้างอิง 9 ชั่วโมงรวมพัก"
+      );
+
+      select.disabled = false;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
     async function openAssignment(empCode, workDate) {
       const r = state.schedule.find(x => x.emp_code === empCode && String(x.work_date).slice(0,10) === workDate) || state.review.find(x => x.emp_code === empCode && String(x.work_date).slice(0,10) === workDate);
       const patternCode = r?.pattern_code || r?.resolved_pattern_code || (String(r?.pc || "").match(/4/) ? "TECH_5D" : "TECH_6D");
@@ -1457,13 +1669,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       setVal("assignShiftCode", selectedShift);
       setVal("assignConfirm", r?.is_confirmed ? "true" : "false"); setVal("assignNote", r?.schedule_note || ""); setVal("assignReason", "กำหนดกะจากหน้าปฏิทิน");
       $("assignShiftCode").dataset.patternCode = patternCode;
-      if ($("assignWorkTemplate")) {
-        $("assignWorkTemplate").dataset.patternCode = patternCode;
-        const defaultTemplate = patternCode === "TECH_5D" ? "SINGLE_0830_1800" : "SINGLE_0830";
-        if ([...$("assignWorkTemplate").options].some(o => o.value === defaultTemplate)) {
-          $("assignWorkTemplate").value = r?.template_code || defaultTemplate;
-        }
-      }
+      await fillAssignmentTemplateSelect(
+        patternCode,
+        r?.template_code || r?.default_template_code || null
+      );
       updateAssignConfirmHelp();
       $("deleteAssignmentBtn").classList.toggle("hidden", !r?.assigned_shift_code);
       openModal("assignModal");
@@ -1571,7 +1780,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.5.8"
+          change_reason: "บันทึกจากหน้า HR Admin V6.5.9"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -2140,7 +2349,55 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   function undo(){const x=undoStack.pop();if(x)applyHistory(x,"undo");}
   function redo(){const x=redoStack.pop();if(x)applyHistory(x,"redo");}
   function moveActive(dx,dy,extend=false){const c=getCell(activeKey)||cells()[0];if(!c)return;const td=c.closest("td"),tr=td.parentElement;const rows=[...tr.parentElement.children];let ri=rows.indexOf(tr)+dy;ri=Math.max(0,Math.min(rows.length-1,ri));const targetRow=rows[ri];const cellsRow=[...targetRow.querySelectorAll("[data-schedule-cell]")];const sourceCells=[...tr.querySelectorAll("[data-schedule-cell]")];let ci=sourceCells.indexOf(c)+dx;ci=Math.max(0,Math.min(cellsRow.length-1,ci));const target=cellsRow[ci];if(target){selectCell(target,false,extend);target.scrollIntoView({block:"nearest",inline:"nearest"});}}
-  function shiftMonth(delta){const input=$("scheduleMonth");if(!input?.value)return;const [y,m]=input.value.split("-").map(Number);const d=new Date(y,m-1+delta,1);input.value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;app()?.loadSchedule();}
+  function periodStartDate(){
+    return window.TimeClockSchedulePeriod?.range?.().startDate
+      || $("schedulePeriodStart")?.value;
+  }
+
+  function scheduleBlockStart(year,month,day){
+    return `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+  }
+
+  function shiftMonth(delta){
+    const current = new Date(`${periodStartDate()}T00:00:00`);
+    const year = current.getFullYear();
+    const month = current.getMonth()+1;
+    const day = current.getDate();
+    let next;
+
+    if(delta > 0){
+      if(day === 1){
+        next = scheduleBlockStart(year,month,15);
+      }else if(day === 15 && new Date(year,month,0).getDate() >= 29){
+        next = scheduleBlockStart(year,month,29);
+      }else{
+        const d = new Date(year,month,1);
+        next = scheduleBlockStart(d.getFullYear(),d.getMonth()+1,1);
+      }
+    }else{
+      if(day >= 29){
+        next = scheduleBlockStart(year,month,15);
+      }else if(day === 15){
+        next = scheduleBlockStart(year,month,1);
+      }else{
+        const previous = new Date(year,month-2,1);
+        const previousDays = new Date(
+          previous.getFullYear(),
+          previous.getMonth()+1,
+          0
+        ).getDate();
+        next = scheduleBlockStart(
+          previous.getFullYear(),
+          previous.getMonth()+1,
+          previousDays >= 29 ? 29 : 15
+        );
+      }
+    }
+
+    if($("schedulePeriodStart"))$("schedulePeriodStart").value=next;
+    window.TimeClockSchedulePeriod?.sync?.();
+    app()?.loadSchedule();
+  }
   function openContext(e,cell){e.preventDefault();selectCell(cell,e.ctrlKey||e.metaKey,e.shiftKey);const menu=$("scheduleContextMenu");menu.hidden=false;menu.style.left=Math.min(e.clientX,innerWidth-190)+"px";menu.style.top=Math.min(e.clientY,innerHeight-310)+"px";}
   function closeContext(){const m=$("scheduleContextMenu");if(m)m.hidden=true;}
 
@@ -2154,7 +2411,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     wrap()?.addEventListener("contextmenu",e=>{const c=e.target.closest("[data-schedule-cell]");if(c)openContext(e,c);});
     document.querySelectorAll("[data-quick-shift]").forEach(b=>b.addEventListener("click",()=>bulkAssign(b.dataset.quickShift)));
     $("scheduleCopyBtn")?.addEventListener("click",copySelection); $("schedulePasteBtn")?.addEventListener("click",pasteSelection); $("scheduleClearCellsBtn")?.addEventListener("click",clearCells); $("scheduleClearSelectionBtn")?.addEventListener("click",clearSelection); $("scheduleConfirmSelectedBtn")?.addEventListener("click",confirmSelected); $("scheduleUndoBtn")?.addEventListener("click",undo); $("scheduleRedoBtn")?.addEventListener("click",redo);
-    $("schedulePrevMonthBtn")?.addEventListener("click",()=>shiftMonth(-1)); $("scheduleNextMonthBtn")?.addEventListener("click",()=>shiftMonth(1)); $("scheduleTodayBtn")?.addEventListener("click",()=>{const d=new Date();$("scheduleMonth").value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;app()?.loadSchedule();});
+    $("schedulePrevMonthBtn")?.addEventListener("click",()=>shiftMonth(-1));
+    $("scheduleNextMonthBtn")?.addEventListener("click",()=>shiftMonth(1));
+    $("scheduleTodayBtn")?.addEventListener("click",()=>{
+      const today=new Date().toISOString().slice(0,10);
+      const start=window.TimeClockSchedulePeriod?.blockStartForDate?.(today)||today;
+      if($("schedulePeriodStart"))$("schedulePeriodStart").value=start;
+      window.TimeClockSchedulePeriod?.sync?.();
+      app()?.loadSchedule();
+    });
     $("scheduleContextMenu")?.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.contextShift)bulkAssign(b.dataset.contextShift);if(b.dataset.contextAction==="copy")copySelection();if(b.dataset.contextAction==="paste")pasteSelection();if(b.dataset.contextAction==="clear")clearCells();closeContext();});
     document.addEventListener("click",e=>{if(!e.target.closest("#scheduleContextMenu"))closeContext();});
     document.addEventListener("keydown",e=>{if(!document.getElementById("page-schedule")?.classList.contains("active"))return;const tag=document.activeElement?.tagName;if(["INPUT","SELECT","TEXTAREA"].includes(tag)&&!(e.ctrlKey||e.metaKey))return;const k=e.key.toLowerCase();if((e.ctrlKey||e.metaKey)&&k==="c"){e.preventDefault();copySelection();}else if((e.ctrlKey||e.metaKey)&&k==="v"){e.preventDefault();pasteSelection();}else if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();e.shiftKey?redo():undo();}else if((e.ctrlKey||e.metaKey)&&k==="y"){e.preventDefault();redo();}else if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();clearCells();}else if(e.key==="Escape")clearSelection();else if(e.key==="ArrowLeft"){e.preventDefault();moveActive(-1,0,e.shiftKey);}else if(e.key==="ArrowRight"){e.preventDefault();moveActive(1,0,e.shiftKey);}else if(e.key==="ArrowUp"){e.preventDefault();moveActive(0,-1,e.shiftKey);}else if(e.key==="ArrowDown"){e.preventDefault();moveActive(0,1,e.shiftKey);}else if(["d","n"].includes(k)&&!e.ctrlKey&&!e.metaKey){e.preventDefault();bulkAssign(k.toUpperCase());}});
@@ -2702,7 +2967,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   function enhanceSchedule(){const workspace=qs("#page-schedule .schedule-workspace");if(!workspace||$("scheduleWorkflowBar"))return;qs(".schedule-summary-strip",workspace)?.insertAdjacentHTML("afterend",`<div id="scheduleWorkflowBar" class="schedule-workflow-bar"><div class="workflow-summary"><span id="scheduleMonthStatusChip" class="fc-chip status-DRAFT">DRAFT</span><div><strong id="scheduleMonthStatusText">ตารางกะฉบับร่าง</strong><div id="scheduleMonthStatusMeta" class="fc-note">ยังไม่ได้ประกาศ</div></div></div><div class="workflow-actions"><button id="scheduleFillDownBtn" class="btn btn-light">Fill Down</button><button id="scheduleFillRightBtn" class="btn btn-light">Fill Right</button><button id="schedulePatternBtn" class="btn btn-light">รูปแบบ 7 วัน</button><button id="schedulePrevWeekCopyBtn" class="btn btn-light">คัดลอกสัปดาห์ก่อน</button><button id="scheduleExportExcelBtn" class="btn btn-success">Excel</button><button id="schedulePrintBtn" class="btn btn-orange">Print/PDF</button><button id="scheduleHistoryBtn" class="btn btn-light">ประวัติ</button><button id="scheduleConfirmAllBtn" class="btn btn-success">ยืนยันกะที่จัดไว้ทั้งหมด</button><button id="schedulePublishBtn" class="btn btn-primary">ประกาศกะ</button><button id="scheduleLockBtn" class="btn btn-danger-soft">ล็อกเดือน</button></div></div>`);
     document.body.insertAdjacentHTML("beforeend",scheduleModalsHtml());
     $("scheduleFillDownBtn")?.addEventListener("click",()=>fillSchedule("down"));$("scheduleFillRightBtn")?.addEventListener("click",()=>fillSchedule("right"));$("schedulePatternBtn")?.addEventListener("click",openPatternModal);$("schedulePrevWeekCopyBtn")?.addEventListener("click",copyPreviousWeek);$("scheduleExportExcelBtn")?.addEventListener("click",()=>exportSchedule("excel"));$("schedulePrintBtn")?.addEventListener("click",()=>exportSchedule("print"));$("scheduleHistoryBtn")?.addEventListener("click",loadScheduleHistory);$("scheduleConfirmAllBtn")?.addEventListener("click",confirmAllAssigned);$("schedulePublishBtn")?.addEventListener("click",publishSchedule);$("scheduleLockBtn")?.addEventListener("click",toggleScheduleLock);$("applySchedulePatternBtn")?.addEventListener("click",applyPattern);$("scheduleHistoryClose")?.addEventListener("click",()=>$("scheduleHistoryModal")?.classList.add("hidden"));$("schedulePatternClose")?.addEventListener("click",()=>$("schedulePatternModal")?.classList.add("hidden"));
-    document.addEventListener("click",async e=>{const x=e.target.closest("[data-detail-open-schedule]");if(x){const [emp,date]=x.dataset.detailOpenSchedule.split("|");$("attendanceDetailDrawer")?.classList.remove("open");app()?.switchPage?.("schedule");const month=date.slice(0,7);if($("scheduleMonth"))$("scheduleMonth").value=month;app()?.loadSchedule?.().then(()=>app()?.openAssignment?.(emp,date));return;}const rec=e.target.closest("[data-detail-recalculate]");if(rec){const [emp,date]=rec.dataset.detailRecalculate.split("|");try{app()?.showLoading?.("กำลังคำนวณผลรายวันใหม่...");await rpc("ta_recalculate_attendance_v640",{p_start_date:date,p_end_date:date,p_emp_codes:[emp]});app()?.toast?.("คำนวณผลรายวันใหม่แล้ว","success");await app()?.loadAttendance?.();await openAttendanceDetail(`${emp}|${date}`);}catch(err){app()?.toast?.(app()?.humanError?.(err)||err.message,"error");}finally{app()?.hideLoading?.();}}});
+    document.addEventListener("click",async e=>{const x=e.target.closest("[data-detail-open-schedule]");if(x){const [emp,date]=x.dataset.detailOpenSchedule.split("|");$("attendanceDetailDrawer")?.classList.remove("open");app()?.switchPage?.("schedule");const start=window.TimeClockSchedulePeriod?.blockStartForDate?.(date)||date;if($("schedulePeriodStart"))$("schedulePeriodStart").value=start;window.TimeClockSchedulePeriod?.sync?.();app()?.loadSchedule?.().then(()=>app()?.openAssignment?.(emp,date));return;}const rec=e.target.closest("[data-detail-recalculate]");if(rec){const [emp,date]=rec.dataset.detailRecalculate.split("|");try{app()?.showLoading?.("กำลังคำนวณผลรายวันใหม่...");await rpc("ta_recalculate_attendance_v640",{p_start_date:date,p_end_date:date,p_emp_codes:[emp]});app()?.toast?.("คำนวณผลรายวันใหม่แล้ว","success");await app()?.loadAttendance?.();await openAttendanceDetail(`${emp}|${date}`);}catch(err){app()?.toast?.(app()?.humanError?.(err)||err.message,"error");}finally{app()?.hideLoading?.();}}});
     const guardLocked=e=>{if(scheduleMonthStatus.status!=="LOCKED")return;const blocked=e.target.closest("#page-schedule [data-quick-shift],#page-schedule #scheduleClearCellsBtn,#page-schedule #scheduleConfirmSelectedBtn,#page-schedule [data-schedule-cell],#saveAssignmentBtn,#deleteAssignmentBtn");if(blocked){e.preventDefault();e.stopImmediatePropagation();app()?.toast("ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข","error");}};
     document.addEventListener("click",guardLocked,true);document.addEventListener("dblclick",guardLocked,true);
   }
@@ -2716,7 +2981,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   async function applyPattern(){const patterns={};qsa("[data-pattern-dow]").forEach(s=>patterns[Number(s.dataset.patternDow)]=s.value);const payload=selectedCellMeta().map(x=>({emp_code:x.emp,work_date:x.date,shift_code:patterns[new Date(`${x.date}T00:00:00`).getDay()]||"D",note:"รูปแบบกะ 7 วัน"}));$("schedulePatternModal")?.classList.add("hidden");await saveSchedulePayload(payload,"กำหนดรูปแบบกะ 7 วัน");}
   async function copyPreviousWeek(){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่องปลายทางก่อน","error");const payload=items.map(x=>{const d=new Date(`${x.date}T00:00:00`);d.setDate(d.getDate()-7);const sourceDate=d.toISOString().slice(0,10);const source=rowAt(x.emp,sourceDate);return {emp_code:x.emp,work_date:x.date,shift_code:codeOf(source)||"D",note:`คัดลอกจาก ${sourceDate}`};});await saveSchedulePayload(payload,"คัดลอกกะจากสัปดาห์ก่อน");}
   function scheduleExportRows(){const rows=app()?.state?.schedule||[];return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","กะอัตโนมัติ","กะที่กำหนด","กะใช้งาน","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ"],...rows.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.day_type||"WORKDAY",r.auto_shift_code||"",r.assigned_shift_code||"",codeOf(r)||"",r.schedule_status||"",r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time)])];}
-  function exportSchedule(format){const rows=scheduleExportRows();if(rows.length<=1)return app()?.toast("ไม่มีข้อมูลตารางกะ","error");const m=$("scheduleMonth")?.value||"month";format==="excel"?exportExcel(`Schedule_${m}.xls`,rows,`ตารางจัดกะ ${m}`):printRows(rows,`ตารางจัดกะ ${m}`,`สถานะ ${scheduleMonthStatus.status}`);}
+  function exportSchedule(format){const rows=scheduleExportRows();if(rows.length<=1)return app()?.toast("ไม่มีข้อมูลตารางกะ","error");const period=window.TimeClockSchedulePeriod?.range?.()||{};const name=`${period.startDate||$("scheduleMonth")?.value}_${period.endDate||""}`;format==="excel"?exportExcel(`Schedule_${name}.xls`,rows,`ตารางจัดกะ ${name}`):printRows(rows,`ตารางจัดกะ ${name}`,`สถานะเดือน ${scheduleMonthStatus.status}`);}
   async function loadScheduleStatus(){if(!$("scheduleMonth")?.value)return;try{scheduleMonthStatus=await rpc("ta_get_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null})||{status:"DRAFT"};}catch(e){scheduleMonthStatus={status:"DRAFT"};}renderScheduleStatus();}
   function renderScheduleStatus(){const s=scheduleMonthStatus.status||"DRAFT",chip=$("scheduleMonthStatusChip");if(chip){chip.textContent=s;chip.className=`fc-chip status-${s}`;}if($("scheduleMonthStatusText"))$("scheduleMonthStatusText").textContent=s==="LOCKED"?"ตารางกะถูกล็อก":s==="PUBLISHED"?"ประกาศตารางกะแล้ว":"ตารางกะฉบับร่าง";if($("scheduleMonthStatusMeta"))$("scheduleMonthStatusMeta").textContent=scheduleMonthStatus.updated_at?`ปรับปรุง ${fmtDateTime(scheduleMonthStatus.updated_at)}${scheduleMonthStatus.published_by_email?` โดย ${scheduleMonthStatus.published_by_email}`:""}`:"ยังไม่ได้ประกาศ";if($("schedulePublishBtn"))$("schedulePublishBtn").textContent=s==="PUBLISHED"||s==="LOCKED"?"กลับเป็นฉบับร่าง":"ประกาศกะ";if($("scheduleLockBtn"))$("scheduleLockBtn").textContent=s==="LOCKED"?"ปลดล็อกเดือน":"ล็อกเดือน";qs("#page-schedule .schedule-workspace")?.classList.toggle("schedule-locked-overlay",s==="LOCKED");qsa("#scheduleTableWrap [data-schedule-cell]").forEach(c=>{c.classList.toggle("is-published",s==="PUBLISHED");c.classList.toggle("is-locked",s==="LOCKED");});}
   async function setScheduleStatus(action){const label={PUBLISH:"ประกาศตารางกะ",DRAFT:"กลับเป็นฉบับร่าง",LOCK:"ล็อกตารางกะ",UNLOCK:"ปลดล็อกตารางกะ"}[action];if(!confirm(`${label} เดือน ${$("scheduleMonth")?.value}?`))return;try{app()?.showLoading?.(`กำลัง${label}...`);scheduleMonthStatus=await rpc("ta_set_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null,p_action:action,p_note:`ดำเนินการจากหน้า Schedule V${VERSION}`});renderScheduleStatus();app()?.toast(`${label}เรียบร้อย`,"success");loadNotifications();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
@@ -3374,7 +3639,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
 ;
 
-/* ===== V6.5.8 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.5.9 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -3850,7 +4115,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.5.8';
+  const VERSION='6.5.9';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
