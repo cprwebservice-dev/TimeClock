@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.4.0 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.5.0 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1f3a" />
-  <title>Time-Clock Enterprise V6.4.0 | CP Retailink</title>
+  <title>Time-Clock Enterprise V6.5.0 | CP Retailink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./app.css?v=6.4.0" />
+  <link rel="stylesheet" href="./app.css?v=6.5.0" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -66,6 +66,9 @@
         <button class="nav-item" data-page="schedule"><span class="nav-icon">▣</span><span>ปฏิทินจัดกะ</span></button>
         <button class="nav-item" data-page="work-patterns"><span class="nav-icon">⌘</span><span>รูปแบบการทำงาน</span></button>
         <button class="nav-item" data-page="review"><span class="nav-icon">⚠</span><span>รายการรอตรวจสอบ</span></button>
+        <button class="nav-item" data-page="leave"><span class="nav-icon">✚</span><span>ลาและใบรับรอง</span><span id="leaveNavBadge" class="nav-count hidden">0</span></button>
+        <button class="nav-item" data-page="time-correction"><span class="nav-icon">◴</span><span>คำขอแก้ไขเวลา</span><span id="correctionNavBadge" class="nav-count hidden">0</span></button>
+        <button class="nav-item" data-page="exception-center"><span class="nav-icon">⚑</span><span>Exception Center</span><span id="exceptionNavBadge" class="nav-count hidden">0</span></button>
         <button class="nav-item" data-page="report"><span class="nav-icon">▤</span><span>ศูนย์รายงาน</span></button>
 
         <div id="adminNavGroup" class="hidden">
@@ -200,7 +203,7 @@
         <section id="page-system-settings" class="page settings-page">
           <div class="settings-hero">
             <div><span class="eyebrow">ENTERPRISE CONTROL CENTER</span><h2>System Settings &amp; Developer Console</h2><p>กำหนดค่าระบบ ธีม Feature Flags สีของกะ และทดสอบสิทธิ์การใช้งานจากจุดเดียว</p></div>
-            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.4.0</strong><small id="settingsEnvironmentHero">Development</small></div>
+            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.5.0</strong><small id="settingsEnvironmentHero">Development</small></div>
           </div>
           <div class="settings-layout section-gap">
             <aside class="settings-tabs" aria-label="เมนูตั้งค่าระบบ">
@@ -257,7 +260,7 @@
               </div>
               <div class="settings-panel" data-settings-panel="about">
                 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.4.0</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.4 Calculation UI</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.5.0</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.5 Leave & Correction UI</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
               </div>
             </div>
           </div>
@@ -652,6 +655,46 @@
           </div>
         </section>
 
+
+        <!-- Leave & Certificates -->
+        <section id="page-leave" class="page leave-center-page">
+          <div class="v650-hero leave-hero">
+            <div><span class="eyebrow">LEAVE & CERTIFICATE CENTER</span><h2>การลาและใบรับรอง</h2><p>บันทึกคำขอลา ตรวจสิทธิ์ แนบข้อมูลใบรับรอง และติดตามสถานะอนุมัติในหน้าเดียว</p></div>
+            <div class="v650-hero-actions"><button id="newCertificateBtn" class="btn btn-light">+ ลงทะเบียนใบรับรอง</button><button id="newLeaveBtn" class="btn btn-primary">+ สร้างคำขอลา</button></div>
+          </div>
+          <div class="v650-kpi-grid">
+            <article class="v650-kpi"><span>คำขอทั้งหมด</span><strong id="leaveKpiAll">0</strong><small>รายการในช่วงวันที่</small></article>
+            <article class="v650-kpi warning"><span>รออนุมัติ</span><strong id="leaveKpiPending">0</strong><small>ต้องดำเนินการ</small></article>
+            <article class="v650-kpi success"><span>อนุมัติแล้ว</span><strong id="leaveKpiApproved">0</strong><small id="leaveKpiDays">0 วันลา</small></article>
+            <article class="v650-kpi info"><span>ใบรับรองรอตรวจ</span><strong id="certificateKpiPending">0</strong><small>เอกสารประกอบ</small></article>
+          </div>
+          <div class="panel section-gap"><div class="panel-body"><div class="v650-filter-grid">
+            <div class="field"><label>วันที่เริ่มต้น</label><input id="leaveStart" class="input" type="date"></div>
+            <div class="field"><label>วันที่สิ้นสุด</label><input id="leaveEnd" class="input" type="date"></div>
+            <div class="field"><label>สถานะ</label><select id="leaveStatus" class="select"><option value="">ทุกสถานะ</option><option value="PENDING">รออนุมัติ</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
+            <div class="field"><label>ค้นหา</label><input id="leaveSearch" class="input" placeholder="รหัส ชื่อ หรือหน่วยงาน"></div>
+            <div class="toolbar-actions"><button id="loadLeaveBtn" class="btn btn-primary">ค้นหา</button></div>
+          </div></div></div>
+          <div class="panel section-gap"><div class="panel-header"><div><h3>คำขอลา</h3><p id="leaveCount">0 รายการ</p></div><button id="leaveExportBtn" class="btn btn-light">Export CSV</button></div><div class="panel-body"><div class="table-wrap v650-table-wrap"><table class="v650-table"><thead><tr><th>เลขที่</th><th>พนักงาน</th><th>ประเภท</th><th>ช่วงวันที่</th><th>จำนวนวัน</th><th>ใบรับรอง</th><th>สถานะ</th><th>วันที่ขอ</th><th>เหตุผล</th><th>จัดการ</th></tr></thead><tbody id="leaveBody"></tbody></table></div></div></div>
+          <div class="panel section-gap"><div class="panel-header"><div><h3>ใบรับรองและเอกสารประกอบ</h3><p id="certificateCount">0 รายการ</p></div></div><div class="panel-body"><div class="table-wrap v650-table-wrap"><table class="v650-table"><thead><tr><th>พนักงาน</th><th>ประเภท</th><th>วันที่ครอบคลุม</th><th>ผู้ออกเอกสาร</th><th>ชื่อไฟล์</th><th>สถานะตรวจสอบ</th><th>หมายเหตุ</th><th>จัดการ</th></tr></thead><tbody id="certificateBody"></tbody></table></div></div></div>
+        </section>
+
+        <!-- Time Correction -->
+        <section id="page-time-correction" class="page correction-center-page">
+          <div class="v650-hero correction-hero"><div><span class="eyebrow">MANUAL TIME CORRECTION</span><h2>คำขอแก้ไขเวลาเข้า–ออก</h2><p>ขอแก้ไขเวลาโดยระบุเหตุผล ตรวจสอบค่าเดิม–ค่าใหม่ และเก็บ Audit Log หลังอนุมัติ</p></div><div class="v650-hero-actions"><button id="newCorrectionBtn" class="btn btn-primary">+ สร้างคำขอแก้เวลา</button></div></div>
+          <div class="v650-kpi-grid"><article class="v650-kpi"><span>คำขอทั้งหมด</span><strong id="correctionKpiAll">0</strong><small>รายการในช่วงวันที่</small></article><article class="v650-kpi warning"><span>รออนุมัติ</span><strong id="correctionKpiPending">0</strong><small>ต้องตรวจสอบ</small></article><article class="v650-kpi success"><span>อนุมัติแล้ว</span><strong id="correctionKpiApproved">0</strong><small>ปรับ Attendance แล้ว</small></article><article class="v650-kpi danger"><span>ไม่อนุมัติ</span><strong id="correctionKpiRejected">0</strong><small>รายการปฏิเสธ</small></article></div>
+          <div class="panel section-gap"><div class="panel-body"><div class="v650-filter-grid"><div class="field"><label>วันที่เริ่มต้น</label><input id="correctionStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="correctionEnd" class="input" type="date"></div><div class="field"><label>สถานะ</label><select id="correctionStatus" class="select"><option value="">ทุกสถานะ</option><option value="PENDING">รออนุมัติ</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option></select></div><div class="field"><label>ค้นหา</label><input id="correctionSearch" class="input" placeholder="รหัส ชื่อ หรือหน่วยงาน"></div><div class="toolbar-actions"><button id="loadCorrectionBtn" class="btn btn-primary">ค้นหา</button></div></div></div></div>
+          <div class="panel section-gap"><div class="panel-header"><div><h3>รายการคำขอแก้ไขเวลา</h3><p id="correctionCount">0 รายการ</p></div><button id="correctionExportBtn" class="btn btn-light">Export CSV</button></div><div class="panel-body"><div class="table-wrap v650-table-wrap"><table class="v650-table"><thead><tr><th>เลขที่</th><th>วันที่ทำงาน</th><th>พนักงาน</th><th>เวลาเดิม</th><th>เวลาที่เสนอ</th><th>เหตุผล</th><th>สถานะ</th><th>วันที่ขอ</th><th>จัดการ</th></tr></thead><tbody id="correctionBody"></tbody></table></div></div></div>
+        </section>
+
+        <!-- Exception Center -->
+        <section id="page-exception-center" class="page exception-center-page">
+          <div class="v650-hero exception-hero"><div><span class="eyebrow">UNIFIED EXCEPTION CENTER</span><h2>Exception Center</h2><p>รวมคำขอลา คำขอแก้เวลา และข้อยกเว้น Attendance เพื่อจัดลำดับงานที่ต้องดำเนินการ</p></div><div class="v650-hero-actions"><button id="exceptionRefreshBtn" class="btn btn-primary">รีเฟรชข้อมูล</button></div></div>
+          <div class="v650-kpi-grid"><article class="v650-kpi"><span>ทั้งหมด</span><strong id="exceptionKpiAll">0</strong><small>ประเด็นที่เปิดอยู่</small></article><article class="v650-kpi warning"><span>คำขอลา</span><strong id="exceptionKpiLeave">0</strong><small>รออนุมัติ</small></article><article class="v650-kpi info"><span>แก้ไขเวลา</span><strong id="exceptionKpiCorrection">0</strong><small>รออนุมัติ</small></article><article class="v650-kpi danger"><span>Attendance</span><strong id="exceptionKpiAttendance">0</strong><small>ข้อผิดปกติ</small></article></div>
+          <div class="panel section-gap"><div class="panel-body"><div class="v650-filter-grid"><div class="field"><label>วันที่เริ่มต้น</label><input id="exceptionStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="exceptionEnd" class="input" type="date"></div><div class="field"><label>ประเภท</label><select id="exceptionType" class="select"><option value="">ทุกประเภท</option><option value="LEAVE_PENDING">คำขอลารออนุมัติ</option><option value="TIME_CORRECTION_PENDING">คำขอแก้เวลารออนุมัติ</option><option value="MISSING_IN">ไม่พบเวลาเข้า</option><option value="MISSING_OUT">ไม่พบเวลาออก</option><option value="ABSENT">ไม่มีเวลา</option><option value="LEAVE_WITH_TIME">ลาแต่มีเวลา</option><option value="PARTIAL_LEAVE_NO_TIME">ลาบางส่วนแต่ไม่มีเวลา</option><option value="OVERTIME">มี OT</option></select></div><div class="toolbar-actions"><button id="loadExceptionBtn" class="btn btn-primary">ค้นหา</button></div></div></div></div>
+          <div class="panel section-gap"><div class="panel-header"><div><h3>รายการที่ต้องดำเนินการ</h3><p id="exceptionCount">0 รายการ</p></div><button id="exceptionExportBtn" class="btn btn-light">Export CSV</button></div><div class="panel-body"><div class="table-wrap v650-table-wrap"><table class="v650-table"><thead><tr><th>แหล่ง</th><th>วันที่</th><th>พนักงาน</th><th>ประเภทปัญหา</th><th>รายละเอียด</th><th>เวลาเดิม</th><th>เวลาที่เสนอ</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="exceptionBody"></tbody></table></div></div></div>
+        </section>
+
         <footer class="footer-credit">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer>
       </div>
       <section id="developerConsole" class="developer-console hidden">
@@ -667,6 +710,21 @@
       </section>
     </main>
   </div>
+
+
+  <!-- V6.5 Leave Request Modal -->
+  <div id="leaveRequestModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอลา</h3><button class="btn btn-light btn-icon" data-v650-close="leaveRequestModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="leaveEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทการลา</label><select id="leaveTypeCode" class="select"></select></div><div class="field"><label>รูปแบบการลา</label><select id="leavePeriod" class="select"><option value="FULL_DAY">เต็มวัน</option><option value="FIRST_HALF">ครึ่งวันแรก</option><option value="SECOND_HALF">ครึ่งวันหลัง</option></select></div></div><div class="form-row"><div class="field"><label>วันที่เริ่มต้น</label><input id="leaveModalStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="leaveModalEnd" class="input" type="date"></div></div><div class="field"><label>ใบรับรอง/เอกสารประกอบ</label><select id="leaveCertificateId" class="select"><option value="">ไม่ระบุ</option></select><small class="field-help">แสดงเอกสารที่ลงทะเบียนไว้และอยู่ในขอบเขตสิทธิ์</small></div><div class="field"><label>เหตุผล</label><textarea id="leaveReason" class="textarea" placeholder="ระบุเหตุผลการลา"></textarea></div><div id="leaveBalancePreview" class="v650-info-box">กรอกรหัสพนักงานเพื่อดูสิทธิ์คงเหลือ</div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="leaveRequestModal">ยกเลิก</button><button id="submitLeaveBtn" class="btn btn-primary">ส่งคำขอลา</button></div></div></div>
+
+  <!-- V6.5 Certificate Modal -->
+  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.5.0 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
+
+  <!-- V6.5 Time Correction Modal -->
+  <div id="timeCorrectionModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอแก้ไขเวลา</h3><button class="btn btn-light btn-icon" data-v650-close="timeCorrectionModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสพนักงาน</label><input id="correctionEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>วันที่ทำงาน</label><input id="correctionWorkDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>เวลาเข้าใหม่</label><input id="correctionInAt" class="input" type="datetime-local"></div><div class="field"><label>เวลาออกใหม่</label><input id="correctionOutAt" class="input" type="datetime-local"></div></div><div class="field"><label>ใบรับรอง/หลักฐาน</label><select id="correctionCertificateId" class="select"><option value="">ไม่ระบุ</option></select></div><div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea id="correctionReason" class="textarea" placeholder="ระบุเหตุผลที่ต้องแก้ไขเวลา"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="timeCorrectionModal">ยกเลิก</button><button id="submitCorrectionBtn" class="btn btn-primary">ส่งคำขอ</button></div></div></div>
+
+  <!-- V6.5 Decision Modal -->
+  <div id="v650DecisionModal" class="modal-backdrop hidden"><div class="modal"><div class="modal-header"><h3 id="v650DecisionTitle">ยืนยันการดำเนินการ</h3><button class="btn btn-light btn-icon" data-v650-close="v650DecisionModal">×</button></div><div class="modal-body"><input id="v650DecisionSource" type="hidden"><input id="v650DecisionId" type="hidden"><input id="v650DecisionValue" type="hidden"><div id="v650DecisionSummary" class="v650-info-box"></div><div class="field"><label>หมายเหตุ</label><textarea id="v650DecisionNote" class="textarea" placeholder="ระบุหมายเหตุประกอบการตัดสินใจ"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="v650DecisionModal">ยกเลิก</button><button id="confirmV650DecisionBtn" class="btn btn-primary">ยืนยัน</button></div></div></div>
+  <datalist id="v650EmployeeList"></datalist>
+
 
   <!-- Config Modal -->
   <div id="configModal" class="modal-backdrop hidden">
@@ -738,6 +796,6 @@
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
     </div>
   </div>
-  <script src="./app.js?v=6.4.0"></script>
+  <script src="./app.js?v=6.5.0"></script>
 </body>
 </html>
