@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.5.0 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.5.1 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1f3a" />
-  <title>Time-Clock Enterprise V6.5.0 | CP Retailink</title>
+  <title>Time-Clock Enterprise V6.5.1 | CP Retailink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./app.css?v=6.5.0" />
+  <link rel="stylesheet" href="./app.css?v=6.5.1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -203,7 +203,7 @@
         <section id="page-system-settings" class="page settings-page">
           <div class="settings-hero">
             <div><span class="eyebrow">ENTERPRISE CONTROL CENTER</span><h2>System Settings &amp; Developer Console</h2><p>กำหนดค่าระบบ ธีม Feature Flags สีของกะ และทดสอบสิทธิ์การใช้งานจากจุดเดียว</p></div>
-            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.5.0</strong><small id="settingsEnvironmentHero">Development</small></div>
+            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.5.1</strong><small id="settingsEnvironmentHero">Development</small></div>
           </div>
           <div class="settings-layout section-gap">
             <aside class="settings-tabs" aria-label="เมนูตั้งค่าระบบ">
@@ -260,7 +260,7 @@
               </div>
               <div class="settings-panel" data-settings-panel="about">
                 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.5.0</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.5 Leave & Correction UI</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.5.1</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.5.1 Shift Pattern Settings</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
               </div>
             </div>
           </div>
@@ -558,10 +558,55 @@
         </section>
 
         <!-- Admin Shifts -->
-        <section id="page-admin-shifts" class="page admin-page">
-          <div class="panel">
-            <div class="panel-header"><div><h3>ตั้งค่ากะทำงาน</h3><p>เพิ่ม แก้ไข หรือปิดการใช้งานกะ</p></div><button id="newShiftBtn" class="btn btn-orange">+ เพิ่มกะ</button></div>
-            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>รหัสกะ</th><th>ชื่อกะ</th><th>เวลาเริ่ม</th><th>เวลาสิ้นสุด</th><th>พัก</th><th>ประเภท</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="shiftMasterBody"></tbody></table></div></div>
+        <section id="page-admin-shifts" class="page admin-page shift-pattern-settings-page">
+          <div class="shift-settings-hero">
+            <div>
+              <span class="eyebrow">SHIFT & WORK PATTERN</span>
+              <h2>ตั้งค่ากะตามรูปแบบการทำงาน</h2>
+              <p>แยกกะสำหรับพนักงานทำงาน 5 วันและ 6 วันต่อสัปดาห์ เพื่อให้ชั่วโมงต่อวัน กะตั้งต้น และการคำนวณเวลาถูกต้อง</p>
+            </div>
+            <button id="newShiftBtn" class="btn btn-orange">+ เพิ่มกะ</button>
+          </div>
+
+          <div id="shiftPatternSummary" class="shift-pattern-summary section-gap">
+            <article class="shift-pattern-card loading-card"><span>กำลังโหลดกะตั้งต้น...</span></article>
+          </div>
+
+          <div class="panel section-gap">
+            <div class="panel-header">
+              <div><h3>กะทำงานทั้งหมด</h3><p>กะหนึ่งรายการเลือกใช้กับกลุ่ม 5 วัน, 6 วัน หรือทั้งสองกลุ่มได้</p></div>
+              <div class="shift-settings-filter">
+                <label for="shiftPatternFilter">รูปแบบการทำงาน</label>
+                <select id="shiftPatternFilter" class="select">
+                  <option value="">ทั้งหมด</option>
+                  <option value="TECH_6D">6 วัน/สัปดาห์</option>
+                  <option value="TECH_5D">5 วัน/สัปดาห์</option>
+                </select>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>รหัสกะ</th><th>ชื่อกะ</th><th>ใช้กับรูปแบบ</th><th>เวลาเริ่ม</th><th>เวลาสิ้นสุด</th><th>รวมพัก</th><th>สุทธิ</th><th>พัก</th><th>กะตั้งต้น</th><th>ประเภท</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+                  <tbody id="shiftMasterBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel section-gap">
+            <div class="panel-header">
+              <div><h3>คำนวณผลย้อนหลังหลังเปลี่ยนกะตั้งต้น</h3><p>ใช้เมื่อแก้เวลาเริ่ม–สิ้นสุดหรือเปลี่ยนกะตั้งต้น เพื่ออัปเดตชั่วโมง สาย กลับก่อน และ OT</p></div>
+            </div>
+            <div class="panel-body">
+              <div class="shift-recalc-grid">
+                <div class="field"><label>รูปแบบการทำงาน</label><select id="shiftRecalcPattern" class="select"><option value="TECH_6D">6 วัน/สัปดาห์</option><option value="TECH_5D">5 วัน/สัปดาห์</option></select></div>
+                <div class="field"><label>วันที่เริ่มต้น</label><input id="shiftRecalcStart" class="input" type="date"></div>
+                <div class="field"><label>วันที่สิ้นสุด</label><input id="shiftRecalcEnd" class="input" type="date"></div>
+                <button id="shiftRecalcBtn" class="btn btn-primary">คำนวณผลใหม่</button>
+              </div>
+              <div class="shift-settings-note">การเปลี่ยนกะตั้งต้นจะมีผลกับการจัดกะอัตโนมัติและการประมวลผลใหม่ ส่วนกะที่จัดให้พนักงานไว้แล้วจะยังคงเดิม</div>
+            </div>
           </div>
         </section>
 
@@ -716,7 +761,7 @@
   <div id="leaveRequestModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอลา</h3><button class="btn btn-light btn-icon" data-v650-close="leaveRequestModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="leaveEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทการลา</label><select id="leaveTypeCode" class="select"></select></div><div class="field"><label>รูปแบบการลา</label><select id="leavePeriod" class="select"><option value="FULL_DAY">เต็มวัน</option><option value="FIRST_HALF">ครึ่งวันแรก</option><option value="SECOND_HALF">ครึ่งวันหลัง</option></select></div></div><div class="form-row"><div class="field"><label>วันที่เริ่มต้น</label><input id="leaveModalStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="leaveModalEnd" class="input" type="date"></div></div><div class="field"><label>ใบรับรอง/เอกสารประกอบ</label><select id="leaveCertificateId" class="select"><option value="">ไม่ระบุ</option></select><small class="field-help">แสดงเอกสารที่ลงทะเบียนไว้และอยู่ในขอบเขตสิทธิ์</small></div><div class="field"><label>เหตุผล</label><textarea id="leaveReason" class="textarea" placeholder="ระบุเหตุผลการลา"></textarea></div><div id="leaveBalancePreview" class="v650-info-box">กรอกรหัสพนักงานเพื่อดูสิทธิ์คงเหลือ</div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="leaveRequestModal">ยกเลิก</button><button id="submitLeaveBtn" class="btn btn-primary">ส่งคำขอลา</button></div></div></div>
 
   <!-- V6.5 Certificate Modal -->
-  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.5.0 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
+  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.5.1 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
 
   <!-- V6.5 Time Correction Modal -->
   <div id="timeCorrectionModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอแก้ไขเวลา</h3><button class="btn btn-light btn-icon" data-v650-close="timeCorrectionModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสพนักงาน</label><input id="correctionEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>วันที่ทำงาน</label><input id="correctionWorkDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>เวลาเข้าใหม่</label><input id="correctionInAt" class="input" type="datetime-local"></div><div class="field"><label>เวลาออกใหม่</label><input id="correctionOutAt" class="input" type="datetime-local"></div></div><div class="field"><label>ใบรับรอง/หลักฐาน</label><select id="correctionCertificateId" class="select"><option value="">ไม่ระบุ</option></select></div><div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea id="correctionReason" class="textarea" placeholder="ระบุเหตุผลที่ต้องแก้ไขเวลา"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="timeCorrectionModal">ยกเลิก</button><button id="submitCorrectionBtn" class="btn btn-primary">ส่งคำขอ</button></div></div></div>
@@ -761,14 +806,34 @@
 
   <!-- Shift Master Modal -->
   <div id="shiftMasterModal" class="modal-backdrop hidden">
-    <div class="modal">
-      <div class="modal-header"><h3>ข้อมูลกะทำงาน</h3><button class="btn btn-light btn-icon" data-close-modal="shiftMasterModal">×</button></div>
+    <div class="modal large shift-master-modal-v651">
+      <div class="modal-header"><div><h3>ข้อมูลกะทำงาน</h3><p>กำหนดรูปแบบการทำงานและตรวจชั่วโมงก่อนบันทึก</p></div><button class="btn btn-light btn-icon" data-close-modal="shiftMasterModal">×</button></div>
       <div class="modal-body">
-        <div class="form-row"><div class="field"><label>รหัสกะ</label><input id="smCode" class="input" /></div><div class="field"><label>ชื่อกะ</label><input id="smName" class="input" /></div></div>
-        <div class="form-row"><div class="field"><label>เวลาเริ่ม</label><input id="smStart" class="input" type="time" /></div><div class="field"><label>เวลาสิ้นสุด</label><input id="smEnd" class="input" type="time" /></div></div>
-        <div class="form-row-3"><div class="field"><label>เวลาพัก (นาที)</label><input id="smBreak" class="input" type="number" min="0" value="0" /></div><div class="field"><label>ลำดับ</label><input id="smOrder" class="input" type="number" value="0" /></div><div class="field"><label>สถานะ</label><select id="smActive" class="select"><option value="true">ใช้งาน</option><option value="false">ปิดใช้งาน</option></select></div></div>
-        <div style="display:flex;gap:18px;margin-bottom:16px"><label class="checkbox-line"><input id="smWorkday" type="checkbox" checked /> เป็นวันทำงาน</label><label class="checkbox-line"><input id="smNight" type="checkbox" /> กะกลางคืน</label></div>
-        <div class="field"><label>หมายเหตุ</label><textarea id="smNote" class="textarea"></textarea></div>
+        <div class="form-row"><div class="field"><label>รหัสกะ</label><input id="smCode" class="input" maxlength="20" placeholder="เช่น D6" /></div><div class="field"><label>ชื่อกะ</label><input id="smName" class="input" placeholder="ชื่อกะที่ผู้ใช้งานเข้าใจง่าย" /></div></div>
+
+        <div class="shift-pattern-selector">
+          <div class="shift-pattern-selector-head"><strong>ใช้กับรูปแบบการทำงาน</strong><small>เลือกอย่างน้อย 1 รูปแบบ</small></div>
+          <div class="shift-pattern-choice-grid">
+            <label class="shift-pattern-choice"><input id="smPattern6" type="checkbox" value="TECH_6D" checked><span><strong>6 วัน/สัปดาห์</strong><small>9 ชั่วโมงรวมพัก · สุทธิ 8 ชั่วโมง</small></span></label>
+            <label class="shift-pattern-choice"><input id="smPattern5" type="checkbox" value="TECH_5D"><span><strong>5 วัน/สัปดาห์</strong><small>9.5 ชั่วโมงรวมพัก · สุทธิ 8.5 ชั่วโมง</small></span></label>
+          </div>
+        </div>
+
+        <div class="form-row"><div class="field"><label>เวลาเริ่ม</label><input id="smStart" class="input" type="time" value="08:30" /></div><div class="field"><label>เวลาสิ้นสุด</label><input id="smEnd" class="input" type="time" value="17:30" /></div></div>
+        <div class="form-row-3"><div class="field"><label>เวลาพัก (นาที)</label><input id="smBreak" class="input" type="number" min="0" value="60" /></div><div class="field"><label>ลำดับ</label><input id="smOrder" class="input" type="number" value="0" /></div><div class="field"><label>สถานะ</label><select id="smActive" class="select"><option value="true">ใช้งาน</option><option value="false">ปิดใช้งาน</option></select></div></div>
+
+        <div id="smDurationSummary" class="shift-duration-summary"></div>
+
+        <div class="shift-default-selector">
+          <div class="shift-pattern-selector-head"><strong>กำหนดเป็นกะตั้งต้น</strong><small>ชั่วโมงต้องตรงกับมาตรฐานของรูปแบบที่เลือก</small></div>
+          <div class="shift-pattern-choice-grid">
+            <label class="shift-pattern-choice default-choice"><input id="smDefault6" type="checkbox" value="TECH_6D"><span><strong>กะตั้งต้น 6 วัน</strong><small>ใช้จัดกะอัตโนมัติให้กลุ่ม TECH_6D</small></span></label>
+            <label class="shift-pattern-choice default-choice"><input id="smDefault5" type="checkbox" value="TECH_5D"><span><strong>กะตั้งต้น 5 วัน</strong><small>ใช้จัดกะอัตโนมัติให้กลุ่ม TECH_5D</small></span></label>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:18px;margin:16px 0"><label class="checkbox-line"><input id="smWorkday" type="checkbox" checked /> เป็นวันทำงาน</label><label class="checkbox-line"><input id="smNight" type="checkbox" /> กะกลางคืน/ข้ามวัน</label></div>
+        <div class="field"><label>หมายเหตุ</label><textarea id="smNote" class="textarea" placeholder="รายละเอียดเพิ่มเติมของกะ"></textarea></div>
       </div>
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="shiftMasterModal">ยกเลิก</button><button id="saveShiftMasterBtn" class="btn btn-primary">บันทึก</button></div>
     </div>
@@ -796,6 +861,6 @@
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
     </div>
   </div>
-  <script src="./app.js?v=6.5.0"></script>
+  <script src="./app.js?v=6.5.1"></script>
 </body>
 </html>

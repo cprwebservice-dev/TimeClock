@@ -1,4 +1,4 @@
-Time-Clock Enterprise V6.5.0 Compact Deploy
+Time-Clock Enterprise V6.5.1 Compact Deploy
 
 ไฟล์สำหรับอัปโหลด GitHub Pages
 - index.html
@@ -8,20 +8,24 @@ Time-Clock Enterprise V6.5.0 Compact Deploy
 - .nojekyll
 
 ลำดับติดตั้งฐานข้อมูล
-1) ติดตั้ง SQL V6.2.4 ให้ข้อมูล CSV และ Attendance แสดงผลได้
+1) ติดตั้ง V6.2.4 ให้ข้อมูล CSV และ Attendance แสดงผลได้
 2) ติดตั้ง V6.3.1 Technician Calculation Engine
-3) ติดตั้ง V6.5.0 Calculation UI API
-4) อัปโหลดไฟล์ใน ZIP นี้แทนชุดเดิม แล้วกด Ctrl+F5
+3) ติดตั้ง V6.4.0 Calculation UI API
+4) ติดตั้ง V6.5.0 Leave, Certificate & Manual Time Correction
+5) ติดตั้ง V6.5.1 Shift Settings by Work Pattern
+6) รัน V6.5.1_VERIFY.sql
+7) อัปโหลดไฟล์ใน ZIP นี้แทนชุดเดิม แล้วกด Ctrl+F5
 
-ฟังก์ชันหน้าเว็บ V6.5.0
-- Dashboard แสดงชั่วโมงสุทธิ ชั่วโมงปกติ OT Waiting และวันหยุดชดเชย
-- รายละเอียดเวลาทำงานแสดง Pattern, Template, ประเภทวัน และผลคำนวณ
-- คลิกแถวเพื่อดู Segment 1–3 ช่วงใน Drawer
-- ปฏิทินกะแสดงสัญลักษณ์ OT / Waiting / Comp-off ในช่องวันที่
-- Review Center รองรับสถานะจาก Calculation Engine
+ฟังก์ชันหน้าเว็บ V6.5.1
+- หน้า ตั้งค่ากะ แยกกะสำหรับรูปแบบทำงาน 5 วันและ 6 วันต่อสัปดาห์
+- กะ 6 วันมาตรฐาน 08:30–17:30 รวมพัก 9 ชั่วโมง สุทธิ 8 ชั่วโมง
+- กะ 5 วันมาตรฐาน 08:30–18:00 รวมพัก 9.5 ชั่วโมง สุทธิ 8.5 ชั่วโมง
+- กะหนึ่งรายการใช้กับกลุ่ม 5 วัน, 6 วัน หรือทั้งสองกลุ่มได้
+- กำหนดกะตั้งต้นแยกตามรูปแบบการทำงาน
+- ระบบตรวจชั่วโมงรวมพัก ชั่วโมงสุทธิ และเวลาพักก่อนบันทึกกะตั้งต้น
+- ปฏิทินจัดกะเลือกเฉพาะกะที่รองรับรูปแบบของพนักงาน
+- ป้องกันการบันทึกกะข้ามกลุ่มรูปแบบการทำงาน
+- มีคำสั่งคำนวณผลย้อนหลังเมื่อเปลี่ยนกะตั้งต้น
+- คง Dashboard, Attendance, Work Pattern, Leave, Time Correction และ Exception Center เดิม
 
 Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์
-
-
-V6.5.0: เพิ่มหน้า Leave & Certificate, Time Correction และ Exception Center
-ต้องติดตั้ง V6.5.0_LEAVE_CERTIFICATE_TIME_CORRECTION.sql ก่อนใช้งานหน้าใหม่
