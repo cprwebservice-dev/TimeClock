@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.5.5',
+  version: '6.5.6',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -438,7 +438,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.5"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.5.6"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -1565,7 +1565,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.5.5"
+          change_reason: "บันทึกจากหน้า HR Admin V6.5.6"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3368,7 +3368,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
 ;
 
-/* ===== V6.5.5 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.5.6 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -3530,10 +3530,73 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     catch(e){app()?.toast?.(e.message||String(e),'error');}
   }
   function renderPatterns(){
-    const admin=realRole()==='HR_ADMIN';$('workPatternAdminPanel')?.classList.toggle('hidden',!admin);const body=$('workPatternBody');if(!body)return;
-    body.innerHTML=wp.patterns.length?wp.patterns.map(r=>`<tr><td><strong>${esc(r.pattern_code)}</strong></td><td>${esc(r.pattern_name)}</td><td>${r.work_days_per_week}</td><td>${hours(r.scheduled_minutes_including_break)} ชม.</td><td>${hours(r.ot_threshold_minutes)} ชม.</td><td>${esc(dowText(r.weekly_off_dows))}</td><td>${r.carry_forward_months} เดือน</td><td><span class="fc-badge ${r.is_active?'active':'danger'}">${r.is_active?'ใช้งาน':'ปิด'}</span></td><td>${admin?`<button class="btn btn-light btn-sm" data-edit-pattern="${esc(r.pattern_code)}">แก้ไข</button>`:'-'}</td></tr>`).join(''):'<tr><td colspan="9" class="table-empty">ไม่พบข้อมูล</td></tr>';
+    const admin=realRole()==='HR_ADMIN';
+    const panel=$('workPatternAdminPanel');
+    panel?.classList.toggle('hidden',!admin);
+    const body=$('workPatternBody');
+    if(!body)return;
+    if(!admin){
+      body.innerHTML='';
+      return;
+    }
+    body.innerHTML=wp.patterns.length?wp.patterns.map(r=>`<tr><td><strong>${esc(r.pattern_code)}</strong></td><td>${esc(r.pattern_name)}</td><td>${r.work_days_per_week}</td><td>${hours(r.scheduled_minutes_including_break)} ชม.</td><td>${hours(r.ot_threshold_minutes)} ชม.</td><td>${esc(dowText(r.weekly_off_dows))}</td><td>${r.carry_forward_months} เดือน</td><td><span class="fc-badge ${r.is_active?'active':'danger'}">${r.is_active?'ใช้งาน':'ปิด'}</span></td><td><button class="btn btn-light btn-sm" data-edit-pattern="${esc(r.pattern_code)}">แก้ไข</button></td></tr>`).join(''):'<tr><td colspan="9" class="table-empty">ไม่พบข้อมูล</td></tr>';
   }
-  function renderTemplates(){const box=$('workTemplateCards');if(!box)return;box.innerHTML=wp.templates.map(t=>`<article class="work-template-card"><div><span class="fc-badge active">${esc(t.template_type)}</span><h3>${esc(t.template_name)}</h3><small>${esc(t.template_code)}</small></div><p>${esc(t.note||'-')}</p><div class="work-template-segments">${(t.segments||[]).map(s=>`<span class="segment-${String(s.segment_type).toLowerCase()}"><b>${esc(s.segment_type)}</b> ${s.planned_start_time?String(s.planned_start_time).slice(0,5):'ยืดหยุ่น'}–${s.planned_end_time?String(s.planned_end_time).slice(0,5):'ไม่กำหนด'}</span>`).join('')}</div></article>`).join('');}
+  function renderTemplates(){
+    const box=$('workTemplateCards');if(!box)return;
+    const findCode=code=>wp.templates.find(t=>String(t.template_code||'').toUpperCase()===code);
+    const normal6=findCode('SINGLE_0830');
+    const normal5=findCode('SINGLE_0830_1800');
+    const late=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='NORMAL_LATE_CUSTOMER');
+    const early=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='EARLY_SHIFT_CUSTOMER');
+
+    const formatSegments=t=>(t?.segments||[]).map(s=>({
+      type:String(s.segment_type||'WORK').toUpperCase(),
+      start:s.planned_start_time?String(s.planned_start_time).slice(0,5):'ยืดหยุ่น',
+      end:s.planned_end_time?String(s.planned_end_time).slice(0,5):'ไม่กำหนด'
+    }));
+
+    const cards=[
+      {
+        badge:'NORMAL',
+        title:'กะปกติ',
+        code:'เลือกอัตโนมัติตามรูปแบบ 5/6 วัน',
+        note:'TECH_6D ใช้ 08:30–17:30 • TECH_5D ใช้ 08:30–18:00',
+        segments:[
+          {type:'TECH_6D',start:'08:30',end:'17:30'},
+          {type:'TECH_5D',start:'08:30',end:'18:00'}
+        ],
+        ready:!!normal6&&!!normal5
+      },
+      {
+        badge:late?.template_type||'FLEX',
+        title:'กะปกติ + งานลูกค้าช่วงดึก',
+        code:late?.template_code||'ยังไม่พบ Template',
+        note:'กะปกติ ตามด้วยช่วงรอคอย และงานลูกค้าช่วงดึก',
+        segments:formatSegments(late),
+        ready:!!late
+      },
+      {
+        badge:early?.template_type||'FLEX',
+        title:'ออกกะแรกก่อนเวลา + งานลูกค้า',
+        code:early?.template_code||'ยังไม่พบ Template',
+        note:'ออกกะแรกก่อนเวลา ตามด้วยช่วงรอคอย และงานลูกค้า',
+        segments:formatSegments(early),
+        ready:!!early
+      }
+    ];
+
+    box.innerHTML=cards.map(card=>`<article class="work-template-card ${card.ready?'':'template-missing'}">
+      <div>
+        <span class="fc-badge ${card.ready?'active':'danger'}">${esc(card.badge)}</span>
+        <h3>${esc(card.title)}</h3>
+        <small>${esc(card.code)}</small>
+      </div>
+      <p>${esc(card.note)}</p>
+      <div class="work-template-segments">
+        ${card.segments.length?card.segments.map(s=>`<span class="segment-${String(s.type).toLowerCase()}"><b>${esc(s.type)}</b> ${esc(s.start)}–${esc(s.end)}</span>`).join(''):'<span class="segment-waiting"><b>ตรวจสอบ</b> ยังไม่พบ Template ในฐานข้อมูล</span>'}
+      </div>
+    </article>`).join('');
+  }
   const EMPLOYEE_TEMPLATE_LABELS={
     NORMAL:'กะปกติ',
     NORMAL_LATE_CUSTOMER:'กะปกติ + งานลูกค้าช่วงดึก',
@@ -3582,8 +3645,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     return EMPLOYEE_TEMPLATE_LABELS[category]||templateCode||'-';
   }
   function fillPatternOptions(){const pOpts=wp.patterns.filter(x=>x.is_active).map(x=>`<option value="${esc(x.pattern_code)}">${esc(x.pattern_name)}</option>`).join('');const tOpts=wp.templates.filter(x=>x.is_active).map(x=>`<option value="${esc(x.template_code)}">${esc(x.template_name)}</option>`).join('');if($('epPattern'))$('epPattern').innerHTML=pOpts;if($('epTemplate'))$('epTemplate').innerHTML='<option value="">เลือก Template</option>';if($('assignWorkTemplate'))$('assignWorkTemplate').innerHTML=tOpts;}
-  function openPattern(code){ensureWpModals();const r=wp.patterns.find(x=>x.pattern_code===code)||{pattern_code:'',pattern_name:'',work_days_per_week:6,scheduled_minutes_including_break:540,ot_threshold_minutes:540,break_minutes:60,default_start_time:'08:30',default_end_time:'17:30',weekly_off_dows:[0],carry_forward_months:3,is_active:true,note:''};wp.editing=r;$('wpCode').value=r.pattern_code||'';$('wpCode').disabled=!!r.pattern_code;$('wpName').value=r.pattern_name||'';$('wpDays').value=r.work_days_per_week||6;$('wpScheduled').value=r.scheduled_minutes_including_break||540;$('wpOt').value=r.ot_threshold_minutes||540;$('wpBreak').value=r.break_minutes||60;$('wpStart').value=String(r.default_start_time||'08:30').slice(0,5);$('wpEnd').value=String(r.default_end_time||'17:30').slice(0,5);$('wpCarry').value=r.carry_forward_months??3;$('wpActive').checked=r.is_active!==false;$('wpNote').value=r.note||'';qsa('[data-wp-dow]').forEach(c=>c.checked=(r.weekly_off_dows||[]).map(Number).includes(Number(c.dataset.wpDow)));$('workPatternModal').classList.remove('hidden');}
-  async function savePattern(){try{const weekly=qsa('[data-wp-dow]').filter(x=>x.checked).map(x=>Number(x.dataset.wpDow));if(!weekly.length)throw new Error('กรุณาเลือกวันหยุดตั้งต้นอย่างน้อย 1 วัน');await rpc('ta_upsert_work_pattern',{p_data:{pattern_code:$('wpCode').value,pattern_name:$('wpName').value,work_days_per_week:Number($('wpDays').value),scheduled_minutes_including_break:Number($('wpScheduled').value),standard_work_minutes:Number($('wpScheduled').value),break_minutes:Number($('wpBreak').value),ot_threshold_minutes:Number($('wpOt').value),weekly_off_dows:weekly,default_start_time:$('wpStart').value,default_end_time:$('wpEnd').value,allow_comp_off:true,carry_forward_months:Number($('wpCarry').value),is_active:$('wpActive').checked,note:$('wpNote').value}});$('workPatternModal').classList.add('hidden');app()?.toast?.('บันทึกรูปแบบการทำงานแล้ว','success');await loadWorkPatterns();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
+  function openPattern(code){if(realRole()!=='HR_ADMIN'){app()?.toast?.('พารามิเตอร์รูปแบบการทำงานสำหรับ HR Admin เท่านั้น','error');return;}ensureWpModals();const r=wp.patterns.find(x=>x.pattern_code===code)||{pattern_code:'',pattern_name:'',work_days_per_week:6,scheduled_minutes_including_break:540,ot_threshold_minutes:540,break_minutes:60,default_start_time:'08:30',default_end_time:'17:30',weekly_off_dows:[0],carry_forward_months:3,is_active:true,note:''};wp.editing=r;$('wpCode').value=r.pattern_code||'';$('wpCode').disabled=!!r.pattern_code;$('wpName').value=r.pattern_name||'';$('wpDays').value=r.work_days_per_week||6;$('wpScheduled').value=r.scheduled_minutes_including_break||540;$('wpOt').value=r.ot_threshold_minutes||540;$('wpBreak').value=r.break_minutes||60;$('wpStart').value=String(r.default_start_time||'08:30').slice(0,5);$('wpEnd').value=String(r.default_end_time||'17:30').slice(0,5);$('wpCarry').value=r.carry_forward_months??3;$('wpActive').checked=r.is_active!==false;$('wpNote').value=r.note||'';qsa('[data-wp-dow]').forEach(c=>c.checked=(r.weekly_off_dows||[]).map(Number).includes(Number(c.dataset.wpDow)));$('workPatternModal').classList.remove('hidden');}
+  async function savePattern(){if(realRole()!=='HR_ADMIN'){app()?.toast?.('ไม่มีสิทธิ์แก้ไขพารามิเตอร์รูปแบบการทำงาน','error');return;}try{const weekly=qsa('[data-wp-dow]').filter(x=>x.checked).map(x=>Number(x.dataset.wpDow));if(!weekly.length)throw new Error('กรุณาเลือกวันหยุดตั้งต้นอย่างน้อย 1 วัน');await rpc('ta_upsert_work_pattern',{p_data:{pattern_code:$('wpCode').value,pattern_name:$('wpName').value,work_days_per_week:Number($('wpDays').value),scheduled_minutes_including_break:Number($('wpScheduled').value),standard_work_minutes:Number($('wpScheduled').value),break_minutes:Number($('wpBreak').value),ot_threshold_minutes:Number($('wpOt').value),weekly_off_dows:weekly,default_start_time:$('wpStart').value,default_end_time:$('wpEnd').value,allow_comp_off:true,carry_forward_months:Number($('wpCarry').value),is_active:$('wpActive').checked,note:$('wpNote').value}});$('workPatternModal').classList.add('hidden');app()?.toast?.('บันทึกรูปแบบการทำงานแล้ว','success');await loadWorkPatterns();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   async function loadEmployeePatterns(){
     const body=$('employeePatternBody');if(!body)return;
     body.innerHTML='<tr><td colspan="10" class="table-empty">กำลังโหลด...</td></tr>';
@@ -3677,7 +3740,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.5.5';
+  const VERSION='6.5.6';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
