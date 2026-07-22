@@ -1,4 +1,4 @@
-Time-Clock Enterprise V6.6.0 Compact Deploy
+Time-Clock Enterprise V6.6.1 Compact Deploy
 
 ไฟล์สำหรับอัปโหลด GitHub Pages
 - index.html
@@ -12,11 +12,11 @@ Time-Clock Enterprise V6.6.0 Compact Deploy
 2) ติดตั้ง V6.3.1 Technician Calculation Engine
 3) ติดตั้ง V6.4.0 Calculation UI API
 4) ติดตั้ง V6.5.0 Leave, Certificate & Manual Time Correction
-5) ติดตั้ง V6.6.0 Shift Settings by Work Pattern
-6) รัน V6.6.0_VERIFY.sql
+5) ติดตั้ง V6.6.1 Shift Settings by Work Pattern
+6) รัน V6.6.1_VERIFY.sql
 7) อัปโหลดไฟล์ใน ZIP นี้แทนชุดเดิม แล้วกด Ctrl+F5
 
-ฟังก์ชันหน้าเว็บ V6.6.0
+ฟังก์ชันหน้าเว็บ V6.6.1
 - หน้า ตั้งค่ากะ แยกกะสำหรับรูปแบบทำงาน 5 วันและ 6 วันต่อสัปดาห์
 - กะ 6 วันมาตรฐาน 08:30–17:30 รวมพัก 9 ชั่วโมง สุทธิ 8 ชั่วโมง
 - กะ 5 วันมาตรฐาน 08:30–18:00 รวมพัก 9.5 ชั่วโมง สุทธิ 8.5 ชั่วโมง
@@ -31,15 +31,15 @@ Time-Clock Enterprise V6.6.0 Compact Deploy
 Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์
 
 
-V6.6.0 Statement Timeout Fix
-- รัน V6.6.0_SHIFT_RECALC_JOB_TIMEOUT_FIX.sql หลัง V6.5.3
+V6.6.1 Statement Timeout Fix
+- รัน V6.6.1_SHIFT_RECALC_JOB_TIMEOUT_FIX.sql หลัง V6.5.3
 - ปุ่มคำนวณย้อนหลังแบ่งการทำงานเป็น Job ย่อย
 - แต่ละ API Request คำนวณเฉพาะหนึ่งวันและพนักงานหนึ่งชุด
 - ระบบลด Batch Size อัตโนมัติหากชุดปัจจุบันยังหนักเกินไป
 - กดปุ่มเดิมเพื่อ Resume Job ช่วงวันและรูปแบบเดิมได้
 
 
-V6.6.0 Employee Pattern UX
+V6.6.1 Employee Pattern UX
 - ช่อง Template เริ่มต้นแสดง 3 รูปแบบเท่านั้น:
   1) กะปกติ
   2) กะปกติ + งานลูกค้าช่วงดึก
@@ -50,7 +50,7 @@ V6.6.0 Employee Pattern UX
 - ตัดคอลัมน์ PC ออกจากตาราง
 
 
-V6.6.0 Template & Parameter Security
+V6.6.1 Template & Parameter Security
 - หน้า Template แสดง 3 รูปแบบเท่านั้น
 - กะปกติรวมการแสดง 5 วันและ 6 วันไว้ในการ์ดเดียว
 - ชื่อรูปแบบงานลูกค้าปรับให้ตรงกับตัวเลือกรายบุคคล
@@ -58,7 +58,7 @@ V6.6.0 Template & Parameter Security
 - เพิ่ม Backend Trigger ป้องกันผู้ใช้สิทธิ์อื่นแก้ไข ta_work_patterns
 
 
-V6.6.0 HR Admin Parameter Visibility
+V6.6.1 HR Admin Parameter Visibility
 - ซ่อนการ์ดพารามิเตอร์รูปแบบการทำงานทั้งส่วนเป็นค่าเริ่มต้น
 - ตรวจสิทธิ์จาก RPC ฝั่งฐานข้อมูลก่อนแสดง
 - แสดงเฉพาะ Profile ที่ Active และ role = HR_ADMIN
@@ -67,7 +67,7 @@ V6.6.0 HR Admin Parameter Visibility
 - Template และการกำหนดรูปแบบรายบุคคลยังคงใช้งานตามสิทธิ์เดิม
 
 
-V6.6.0 Effective Role Visibility Fix
+V6.6.1 Effective Role Visibility Fix
 - แก้กรณี HR Admin เปิด Developer Mode แล้ว View as Role = USER
 - Badge USER จะซ่อนพารามิเตอร์รูปแบบการทำงานทันที
 - ต้องผ่านทั้ง Backend HR_ADMIN และ Effective UI Role = HR_ADMIN
@@ -75,7 +75,7 @@ V6.6.0 Effective Role Visibility Fix
 - เปลี่ยน View as Role แล้วไม่ต้อง Reload หน้า
 
 
-V6.6.0 Fortnight Schedule View
+V6.6.1 Fortnight Schedule View
 - Popup กำหนดกะ แสดงกะปกติเพียงตัวเดียวตามรูปแบบพนักงาน
 - TECH_5D แสดงกะปกติ 5 วัน/สัปดาห์ 9.5 ชั่วโมงรวมพัก
 - TECH_6D แสดงกะปกติ 6 วัน/สัปดาห์ 9 ชั่วโมงรวมพัก
@@ -86,7 +86,7 @@ V6.6.0 Fortnight Schedule View
 - การประกาศและล็อกกะยังคงอ้างอิงสถานะรายเดือนเดิม
 
 
-V6.6.0 Pattern-Aware Shift Assignment
+V6.6.1 Pattern-Aware Shift Assignment
 - เพิ่มตัวกรองรูปแบบการทำงาน: ทั้งหมด, 5 วัน, 6 วัน, ยังไม่ได้กำหนด
 - แสดง Badge 5D / 6D / ? ในแต่ละแถวพนักงาน
 - แสดงจำนวนพนักงานแต่ละกลุ่มและกด Chip เพื่อกรองได้
@@ -96,3 +96,13 @@ V6.6.0 Pattern-Aware Shift Assignment
 - พนักงานที่ยังไม่ได้กำหนด Work Pattern จะถูกข้ามและแจ้งเหตุผล
 - Paste / Fill / Copy ตรวจความเข้ากันได้ของกะกับ Work Pattern ก่อนบันทึก
 - OFF / HOL / LV ยังคงกำหนดข้ามกลุ่มได้
+
+
+V6.6.1 Schedule Name & Visual Fix
+- รวมชื่อพนักงานจากทุกวันที่โหลดในเดือนก่อนสร้างแถว
+- เติมชื่อจากทะเบียนพนักงาน, Work Pattern Assignment และ Attendance เมื่อ RPC ส่งชื่อว่าง
+- ไม่ปล่อยช่องชื่อว่าง หากยังหาไม่พบจะแสดง “ไม่พบชื่อพนักงาน” เพื่อให้ตรวจสอบได้
+- D5, D6 และกะกลางวันอื่นใช้สีฟ้ากลุ่มเดียวกัน
+- กะกลางคืนใช้ม่วง, OFF ใช้เทา, HOL ใช้ส้ม, LV ใช้เขียว
+- แถบรหัสกะเต็มความกว้างช่อง ขอบโค้งมน และลดเอฟเฟกต์ขยายเพื่อลดความลายตา
+- คงสถานะยืนยัน, Review, OT, Waiting และวันหยุดชดเชยเดิม

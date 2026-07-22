@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.6.0',
+  version: '6.6.1',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -423,6 +423,175 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   }
 
 
+
+  function scheduleText(value) {
+    const text = String(value ?? "").trim();
+    return ["", "-", "null", "undefined"].includes(text.toLowerCase())
+      ? ""
+      : text;
+  }
+
+  function meaningfulScheduleName(value, empCode) {
+    const text = scheduleText(value);
+    return Boolean(text && text !== String(empCode || "").trim());
+  }
+
+  function mergeScheduleEmployeeMeta(target, source) {
+    if (!source) return target;
+
+    const empCode = scheduleText(
+      target.emp_code
+      || target.EmployeeId
+      || source.emp_code
+      || source.EmployeeId
+    );
+
+    const sourceName = scheduleText(
+      source.full_name
+      || source.name
+      || source.employee_name
+      || source.thai_name
+    );
+
+    const targetName = scheduleText(target.full_name);
+
+    if (
+      meaningfulScheduleName(sourceName, empCode)
+      && (
+        !meaningfulScheduleName(targetName, empCode)
+        || sourceName.length > targetName.length
+      )
+    ) {
+      target.full_name = sourceName;
+    }
+
+    const fields = [
+      "position_name",
+      "department",
+      "area",
+      "zone",
+      "sub_area",
+      "pc"
+    ];
+
+    fields.forEach(field => {
+      if (!scheduleText(target[field]) && scheduleText(source[field])) {
+        target[field] = scheduleText(source[field]);
+      }
+    });
+
+    return target;
+  }
+
+  async function enrichScheduleEmployeeMetadata(
+    app,
+    client,
+    rows,
+    effectiveDate
+  ) {
+    const result = Array.isArray(rows)
+      ? rows.map(row => ({ ...row }))
+      : [];
+
+    const metaByEmp = new Map();
+
+    function addMeta(source) {
+      const empCode = scheduleText(
+        source?.emp_code
+        || source?.employee_id
+        || source?.EmployeeId
+        || source?.value
+      );
+      if (!empCode) return;
+
+      const target = metaByEmp.get(empCode) || { emp_code: empCode };
+      mergeScheduleEmployeeMeta(target, {
+        ...source,
+        emp_code: empCode,
+        full_name:
+          source?.full_name
+          || source?.name
+          || source?.label
+          || source?.employee_name
+      });
+      metaByEmp.set(empCode, target);
+    }
+
+    result.forEach(addMeta);
+
+    const filterEmployees = app?.state?.filters?.employees || [];
+    filterEmployees.forEach(item => {
+      if (typeof item === "string") {
+        addMeta({ emp_code: item });
+      } else {
+        addMeta(item);
+      }
+    });
+
+    try {
+      const patternResponse = await client.rpc(
+        "ta_get_employee_pattern_assignments",
+        {
+          p_search: null,
+          p_effective_date: effectiveDate,
+          p_limit: 5000
+        }
+      );
+
+      if (!patternResponse.error) {
+        (patternResponse.data || []).forEach(addMeta);
+      }
+    } catch {
+      // Optional enrichment only.
+    }
+
+    let missing = [...new Set(
+      result
+        .map(row => scheduleText(row.emp_code))
+        .filter(Boolean)
+        .filter(empCode => {
+          const meta = metaByEmp.get(empCode);
+          return !meaningfulScheduleName(meta?.full_name, empCode);
+        })
+    )];
+
+    for (let offset = 0; offset < missing.length; offset += 150) {
+      const chunk = missing.slice(offset, offset + 150);
+
+      try {
+        const attendanceResponse = await client
+          .from("attendance_workday")
+          .select(
+            "emp_code,full_name,position_name,department,area,sub_area,pc,work_date"
+          )
+          .in("emp_code", chunk)
+          .not("full_name", "is", null)
+          .order("work_date", { ascending: false })
+          .limit(5000);
+
+        if (!attendanceResponse.error) {
+          (attendanceResponse.data || []).forEach(addMeta);
+        }
+      } catch {
+        // Keep the schedule available even if optional metadata is blocked.
+      }
+    }
+
+    result.forEach(row => {
+      const empCode = scheduleText(row.emp_code);
+      mergeScheduleEmployeeMeta(row, metaByEmp.get(empCode));
+
+      if (!meaningfulScheduleName(row.full_name, empCode)) {
+        row.full_name = "ไม่พบชื่อพนักงาน";
+        row.employee_name_missing = true;
+      } else {
+        row.employee_name_missing = false;
+      }
+    });
+
+    return result;
+  }
+
   async function getMonthlySchedule(app, params) {
     const client = app?.state?.client;
     if (!client) throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
@@ -438,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.0"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.1"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -477,6 +646,16 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     // Ensure every active employee has a writable cell for every day of the month,
     // including future dates, weekly off days and public holidays.
     rows = await ensureMonthlyMatrix(client, rows, exact, monthStart, endDate);
+
+    // Some RPC rows, especially future dates without Attendance, can return
+    // employee codes without names. Merge metadata from every date and use
+    // employee/pattern/attendance sources as a safe fallback.
+    rows = await enrichScheduleEmployeeMetadata(
+      app,
+      client,
+      rows,
+      monthStart
+    );
 
     // Overlay the manual assignment table on top of the RPC result.
     // This protects the UI from older ta_get_monthly_schedule versions that
@@ -1523,7 +1702,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       for (const r of rows) {
         const date = String(r.work_date).slice(0,10);
-        if (!map.has(r.emp_code)) map.set(r.emp_code, { meta: r, days: {} });
+
+        if (!map.has(r.emp_code)) {
+          map.set(r.emp_code, {
+            meta: { ...r },
+            days: {}
+          });
+        } else {
+          mergeScheduleEmployeeMeta(
+            map.get(r.emp_code).meta,
+            r
+          );
+
+          if (
+            map.get(r.emp_code).meta.employee_name_missing
+            && !r.employee_name_missing
+          ) {
+            map.get(r.emp_code).meta.full_name = r.full_name;
+            map.get(r.emp_code).meta.employee_name_missing = false;
+          }
+        }
+
         map.get(r.emp_code).days[date] = r;
         if (!dateMeta.has(date)) dateMeta.set(date, { holiday: false, holidayName: null });
         if (r.is_public_holiday || r.day_type === "PUBLIC_HOLIDAY") {
@@ -1565,7 +1764,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             ? "pattern-6d"
             : "pattern-unassigned";
 
-        html += `<tr data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><div class="schedule-name-line"><strong>${safe(obj.meta.full_name)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td>`;
+        const displayName = meaningfulScheduleName(
+          obj.meta.full_name,
+          emp
+        )
+          ? obj.meta.full_name
+          : "ไม่พบชื่อพนักงาน";
+
+        const nameClass = obj.meta.employee_name_missing
+          || displayName === "ไม่พบชื่อพนักงาน"
+          ? "schedule-name-missing"
+          : "";
+
+        html += `<tr data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><div class="schedule-name-line"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
@@ -1577,7 +1788,42 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const code = r.assigned_shift_code || r.effective_shift_code || r.auto_shift_code || r.shift_code || "-";
           const publicHoliday = r.is_public_holiday || r.day_type === "PUBLIC_HOLIDAY";
           const weeklyOff = r.is_weekly_off || r.day_type === "WEEKLY_OFF";
-          const cls = `shift-${code} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
+          const normalizedCode = String(code || "")
+            .trim()
+            .toUpperCase();
+
+          const codeClass = normalizedCode.replace(
+            /[^A-Z0-9_-]/g,
+            ""
+          );
+
+          const shiftMaster = state.filters.shifts.find(
+            shift =>
+              String(shift.shift_code || "")
+                .trim()
+                .toUpperCase() === normalizedCode
+          );
+
+          const shiftVisualClass =
+            normalizedCode === "HOL"
+              ? "shift-visual-holiday"
+              : normalizedCode === "LV"
+                ? "shift-visual-leave"
+                : normalizedCode === "OFF"
+                  || shiftMaster?.is_workday === false
+                  ? "shift-visual-off"
+                  : shiftMaster?.is_night_shift === true
+                    || normalizedCode.startsWith("N")
+                    || String(shiftMaster?.shift_name || "")
+                      .toLowerCase()
+                      .includes("กลางคืน")
+                    || String(shiftMaster?.shift_name || "")
+                      .toLowerCase()
+                      .includes("กะดึก")
+                    ? "shift-visual-night"
+                    : "shift-visual-day";
+
+          const cls = `shift-${codeClass} ${shiftVisualClass} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
           const tdCls = [
             "day-col",
             "schedule-data-cell",
@@ -1612,7 +1858,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             `${Number(r.waiting_minutes||0)>0?'<small class="schedule-calc-flag wait">W</small>':''}` +
             `${r.comp_off_earned?'<small class="schedule-calc-flag comp">C</small>':''}`;
 
-          html += `<td class="${tdCls}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(r.full_name)} | ${safe(dayLabel)} | ${safe(statusLabel)}${calcBits?` | ${safe(calcBits)}`:""} | ดับเบิลคลิกเพื่อแก้ไข"><b>${safe(code)}</b>${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
+          html += `<td class="${tdCls}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(displayName)} | ${safe(dayLabel)} | ${safe(statusLabel)}${calcBits?` | ${safe(calcBits)}`:""} | ดับเบิลคลิกเพื่อแก้ไข"><b>${safe(code)}</b>${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
         }
 
         html += `</tr>`;
@@ -1879,7 +2125,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.6.0"
+          change_reason: "บันทึกจากหน้า HR Admin V6.6.1"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -4076,7 +4322,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.6.0 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.6.1 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -4552,7 +4798,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.6.0';
+  const VERSION='6.6.1';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
