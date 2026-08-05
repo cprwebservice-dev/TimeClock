@@ -866,7 +866,7 @@ body.dark .work-template-card,body.dark .dow-checks label{background:var(--slate
 @media(max-width:1100px){.v650-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v650-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v650-filter-grid .toolbar-actions{grid-column:1/-1}}
 @media(max-width:700px){.v650-hero{align-items:flex-start;flex-direction:column;padding:20px}.v650-hero-actions{width:100%;justify-content:stretch}.v650-hero-actions .btn{flex:1}.v650-kpi-grid,.v650-filter-grid{grid-template-columns:1fr}.v650-filter-grid .toolbar-actions{grid-column:auto}.v650-table-wrap{max-height:60vh}}
 
-/* ===== V6.7.2 Shift Settings by Work Pattern ===== */
+/* ===== V6.7.3 Shift Settings by Work Pattern ===== */
 .shift-settings-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px 26px;border-radius:22px;color:#fff;background:linear-gradient(135deg,#0b376f,#1269df 62%,#f58220);box-shadow:0 18px 42px rgba(11,55,111,.2)}
 .shift-settings-hero h2{margin:4px 0 6px;font-size:27px}.shift-settings-hero p{margin:0;max-width:820px;color:rgba(255,255,255,.84)}.shift-settings-hero .eyebrow{color:#fed7aa}
 .shift-pattern-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -888,7 +888,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 @media(max-width:600px){.shift-recalc-grid,.shift-duration-summary{grid-template-columns:1fr}.shift-pattern-card-metrics{grid-template-columns:1fr 1fr}.shift-settings-hero{padding:20px}}
 
 
-/* ===== V6.7.2 Work Pattern Recalculation Job ===== */
+/* ===== V6.7.3 Work Pattern Recalculation Job ===== */
 .shift-recalc-progress{
   margin-top:14px;
   padding:14px 16px;
@@ -931,7 +931,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Template Content ===== */
+/* ===== V6.7.3 Template Content ===== */
 .work-template-card.template-missing{
   border-style:dashed;
   opacity:.82;
@@ -943,13 +943,13 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Effective Role Visibility ===== */
+/* ===== V6.7.3 Effective Role Visibility ===== */
 #workPatternAdminPanel[aria-hidden="true"]{
   display:none !important;
 }
 
 
-/* ===== V6.7.2 Fortnight Schedule View ===== */
+/* ===== V6.7.3 Fortnight Schedule View ===== */
 .schedule-period-field{
   min-width:245px;
 }
@@ -989,7 +989,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Pattern-Aware Shift Assignment ===== */
+/* ===== V6.7.3 Pattern-Aware Shift Assignment ===== */
 .schedule-pattern-summary{
   display:flex;
   align-items:center;
@@ -1095,7 +1095,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Schedule Name & Visual Fix ===== */
+/* ===== V6.7.3 Schedule Name & Visual Fix ===== */
 .schedule-name-missing{
   color:#b42318!important;
   font-size:9px!important;
@@ -1214,7 +1214,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Weekly Schedule & Shift Time ===== */
+/* ===== V6.7.3 Weekly Schedule & Shift Time ===== */
 .weekly-schedule-table th.day-col,
 .weekly-schedule-table td.day-col{
   min-width:94px;
@@ -1264,7 +1264,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Absence & Attendance Columns ===== */
+/* ===== V6.7.3 Absence & Attendance Columns ===== */
 .attendance-column-controls{
   display:flex;
   align-items:center;
@@ -1333,7 +1333,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Leave Status & Optional Location Columns ===== */
+/* ===== V6.7.3 Leave Status & Optional Location Columns ===== */
 .badge-purple{
   color:#6d28d9;
   background:#ede9fe;
@@ -1349,7 +1349,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Attendance Detail Workspace ===== */
+/* ===== V6.7.3 Attendance Detail Workspace ===== */
 .attendance-detail-drawer{
   right:min(-780px,-98vw);
   width:min(760px,98vw);
@@ -1732,7 +1732,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Employee Multi-Select Filter ===== */
+/* ===== V6.7.3 Employee Multi-Select Filter ===== */
 .attendance-employee-field{
   min-width:300px;
 }
@@ -1930,7 +1930,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.7.2 Attendance Filter Layout Refinement ===== */
+/* ===== V6.7.3 Attendance Filter Layout Refinement ===== */
 #page-attendance>.panel:first-child{
   overflow:visible;
 }
@@ -2117,4 +2117,64 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
   #page-attendance .attendance-grid-summary{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
+}
+
+
+/* ===== V6.7.3 Employee Dropdown Readability ===== */
+.attendance-employee-option{
+  grid-template-columns:18px minmax(0,1fr);
+  gap:10px;
+  min-height:58px;
+  padding:9px 11px;
+}
+.attendance-employee-name{
+  min-width:0;
+  width:100%;
+}
+.attendance-employee-primary{
+  display:flex!important;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  margin:0;
+  color:var(--navy-900,#0b1f3a);
+  font-size:11px!important;
+  line-height:1.35;
+  white-space:nowrap;
+}
+.attendance-employee-primary b{
+  flex:0 0 auto;
+  color:#175cd3;
+  font-size:11px;
+  font-weight:900;
+}
+.attendance-employee-primary i{
+  flex:0 0 auto;
+  color:var(--slate-400,#98a2b3);
+  font-style:normal;
+}
+.attendance-employee-primary span{
+  min-width:0;
+  overflow:hidden;
+  color:var(--navy-900,#0b1f3a);
+  font-size:11px;
+  font-weight:800;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.attendance-employee-name small{
+  margin-top:5px;
+  padding-left:0;
+  font-size:9px;
+  line-height:1.35;
+}
+.attendance-employee-toggle>span{
+  font-size:11px;
+  font-weight:800;
+}
+.dark .attendance-employee-primary b{
+  color:#93c5fd;
+}
+.dark .attendance-employee-primary span{
+  color:#f8fafc;
 }

@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.7.2',
+  version: '6.7.3',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.2"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.3"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -1459,6 +1459,21 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           `เลือกทั้งหมด • ${selected.toLocaleString("th-TH")} คน`;
         count.textContent =
           selected.toLocaleString("th-TH");
+      } else if (selected === 1) {
+        const selectedCode =
+          [...attendanceEmployeeFilter.selected][0];
+        const selectedEmployee =
+          attendanceEmployeeFilter.options.find(
+            employee => employee.emp_code === selectedCode
+          );
+
+        text.textContent = selectedEmployee
+          ? `${selectedEmployee.emp_code} • ${
+              selectedEmployee.full_name
+              || "ไม่พบชื่อพนักงาน"
+            }`
+          : `เลือกแล้ว 1 คน`;
+        count.textContent = "1";
       } else {
         text.textContent =
           `เลือกแล้ว ${selected.toLocaleString("th-TH")} คน`;
@@ -1509,15 +1524,16 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
                 value="${safe(employee.emp_code)}"
                 ${checked ? "checked" : ""}
               />
-              <span class="attendance-employee-code">
-                ${safe(employee.emp_code)}
-              </span>
               <span class="attendance-employee-name">
-                <strong>
-                  ${safe(
-                    employee.full_name
-                    || "ไม่พบชื่อพนักงาน"
-                  )}
+                <strong class="attendance-employee-primary">
+                  <b>${safe(employee.emp_code)}</b>
+                  <i>•</i>
+                  <span>
+                    ${safe(
+                      employee.full_name
+                      || "ไม่พบชื่อพนักงาน"
+                    )}
+                  </span>
                 </strong>
                 <small>
                   ${safe(
@@ -3133,7 +3149,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.7.2"
+          change_reason: "บันทึกจากหน้า HR Admin V6.7.3"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -5030,7 +5046,7 @@ ${skippedSummary(compatibility.skipped)}
     finally{app()?.hideLoading?.();}
   }
   function renderAttendanceDataNotice(){
-    // V6.7.2: ตัดแถบแจ้งเตือนค้นหาฐานข้อมูลออก
+    // V6.7.3: ตัดแถบแจ้งเตือนค้นหาฐานข้อมูลออก
   }
   function attendanceRawStatus(r){
     return String(
@@ -6731,7 +6747,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.7.2 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.7.3 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -7207,7 +7223,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.7.2';
+  const VERSION='6.7.3';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
