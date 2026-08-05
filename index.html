@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.6.3 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.6.4 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1f3a" />
-  <title>Time-Clock Enterprise V6.6.3 | CP Retailink</title>
+  <title>Time-Clock Enterprise V6.6.4 | CP Retailink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./app.css?v=6.6.3" />
+  <link rel="stylesheet" href="./app.css?v=6.6.4" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -203,7 +203,7 @@
         <section id="page-system-settings" class="page settings-page">
           <div class="settings-hero">
             <div><span class="eyebrow">ENTERPRISE CONTROL CENTER</span><h2>System Settings &amp; Developer Console</h2><p>กำหนดค่าระบบ ธีม Feature Flags สีของกะ และทดสอบสิทธิ์การใช้งานจากจุดเดียว</p></div>
-            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.6.3</strong><small id="settingsEnvironmentHero">Development</small></div>
+            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.6.4</strong><small id="settingsEnvironmentHero">Development</small></div>
           </div>
           <div class="settings-layout section-gap">
             <aside class="settings-tabs" aria-label="เมนูตั้งค่าระบบ">
@@ -260,7 +260,7 @@
               </div>
               <div class="settings-panel" data-settings-panel="about">
                 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.6.3</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.6.3 Weekly Schedule & Shift Time</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.6.4</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.6.4 Absence & Attendance Columns</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
               </div>
             </div>
           </div>
@@ -276,14 +276,50 @@
                 <div class="field"><label>พื้นที่</label><select id="attZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
                 <div class="field"><label>พื้นที่ย่อย</label><select id="attSubArea" class="select"><option value="">ทุกพื้นที่ย่อย</option></select></div>
                 <div class="field"><label>หน่วยงาน</label><select id="attDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div>
-                <div class="field"><label>สถานะ</label><select id="attStatus" class="select"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENT">ไม่มีเวลา</option><option value="MISSING_IN">ไม่พบเวลาเข้า</option><option value="MISSING_OUT">ไม่พบเวลาออก</option><option value="LATE">มาสาย</option><option value="EARLY_LEAVE">กลับก่อน</option><option value="LATE_AND_EARLY_LEAVE">สายและกลับก่อน</option><option value="OVERTIME">มี OT</option><option value="WORKED_ON_WEEKLY_OFF">ทำงานวันหยุดประจำสัปดาห์</option><option value="WORKED_ON_HOLIDAY">ทำงานวันหยุดนักขัตฤกษ์</option><option value="WORKED_ON_COMP_OFF">ทำงานวันหยุดชดเชย</option></select></div>
+                <div class="field"><label>สถานะ</label><select id="attStatus" class="select"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENCE">ขาดงาน</option><option value="LEAVE">ลา</option><option value="DAY_OFF">วันหยุด</option><option value="LATE">มาสาย</option><option value="EARLY_LEAVE">กลับก่อน</option><option value="LATE_AND_EARLY_LEAVE">สายและกลับก่อน</option></select></div>
                 <div class="toolbar-actions"><button id="loadAttendanceBtn" class="btn btn-primary">ค้นหา</button><button id="exportAttendanceBtn" class="btn btn-success">Export CSV</button></div>
               </div>
             </div>
           </div>
           <div class="panel section-gap">
             <div class="panel-header"><div><h3>รายละเอียดเวลาทำงาน</h3><p id="attendanceCount">0 รายการ</p></div></div>
-            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันที่</th><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>พื้นที่</th><th>พื้นที่ย่อย</th><th>รูปแบบงาน</th><th>Template</th><th>ประเภทวัน</th><th>เวลาเริ่มกะ</th><th>เวลาสิ้นสุดกะ</th><th>กะ</th><th>เวลาเข้า</th><th>เวลาออก</th><th>ชม.สุทธิ</th><th>ชม.ปกติ</th><th>OT</th><th>รอคอย</th><th>พัก</th><th>สาย</th><th>กลับก่อน</th><th>วันหยุดชดเชย</th><th>สถานะ</th></tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
+            <div class="attendance-column-controls">
+              <strong>แสดงคอลัมน์เพิ่มเติม</strong>
+              <label><input type="checkbox" data-att-column-toggle="overtime_minutes"> OT</label>
+              <label><input type="checkbox" data-att-column-toggle="waiting_minutes"> รอคอย</label>
+              <label><input type="checkbox" data-att-column-toggle="break_deducted_minutes"> พัก</label>
+              <label><input type="checkbox" data-att-column-toggle="late_minutes"> มาสาย</label>
+              <label><input type="checkbox" data-att-column-toggle="early_leave_minutes"> กลับก่อน</label>
+              <label><input type="checkbox" data-att-column-toggle="absence_minutes"> ขาดงาน</label>
+              <label><input type="checkbox" data-att-column-toggle="comp_off_balance"> วันหยุดชดเชยคงเหลือ</label>
+              <small>ค่าเริ่มต้นซ่อน และการเลือกมีผลต่อ Export Excel</small>
+            </div>
+            <div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr>
+              <th data-att-col="work_date">วันที่</th>
+              <th data-att-col="emp_code">รหัส</th>
+              <th data-att-col="full_name">ชื่อ-นามสกุล</th>
+              <th data-att-col="department">หน่วยงาน</th>
+              <th data-att-col="zone">พื้นที่</th>
+              <th data-att-col="sub_area">พื้นที่ย่อย</th>
+              <th data-att-col="pattern_code">รูปแบบงาน</th>
+              <th data-att-col="template_code">Template</th>
+              <th data-att-col="day_type">ประเภทวัน</th>
+              <th data-att-col="shift_start">เวลาเริ่มกะ</th>
+              <th data-att-col="shift_end">เวลาสิ้นสุดกะ</th>
+              <th data-att-col="shift_code">กะ</th>
+              <th data-att-col="first_in">เวลาเข้า</th>
+              <th data-att-col="last_out">เวลาออก</th>
+              <th data-att-col="display_status">สถานะ</th>
+              <th data-att-col="net_work_minutes">ชม.สุทธิ</th>
+              <th data-att-col="regular_minutes">ชม.ปกติ</th>
+              <th data-att-col="overtime_minutes" class="attendance-col-hidden">OT</th>
+              <th data-att-col="waiting_minutes" class="attendance-col-hidden">รอคอย</th>
+              <th data-att-col="break_deducted_minutes" class="attendance-col-hidden">พัก</th>
+              <th data-att-col="late_minutes" class="attendance-col-hidden">มาสาย(นาที)</th>
+              <th data-att-col="early_leave_minutes" class="attendance-col-hidden">กลับก่อน(นาที)</th>
+              <th data-att-col="absence_minutes" class="attendance-col-hidden">ขาดงาน(นาที)</th>
+              <th data-att-col="comp_off_balance" class="attendance-col-hidden">วันหยุดชดเชยคงเหลือ</th>
+            </tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
           </div>
         </section>
 
@@ -778,7 +814,7 @@
   <div id="leaveRequestModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอลา</h3><button class="btn btn-light btn-icon" data-v650-close="leaveRequestModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="leaveEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทการลา</label><select id="leaveTypeCode" class="select"></select></div><div class="field"><label>รูปแบบการลา</label><select id="leavePeriod" class="select"><option value="FULL_DAY">เต็มวัน</option><option value="FIRST_HALF">ครึ่งวันแรก</option><option value="SECOND_HALF">ครึ่งวันหลัง</option></select></div></div><div class="form-row"><div class="field"><label>วันที่เริ่มต้น</label><input id="leaveModalStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="leaveModalEnd" class="input" type="date"></div></div><div class="field"><label>ใบรับรอง/เอกสารประกอบ</label><select id="leaveCertificateId" class="select"><option value="">ไม่ระบุ</option></select><small class="field-help">แสดงเอกสารที่ลงทะเบียนไว้และอยู่ในขอบเขตสิทธิ์</small></div><div class="field"><label>เหตุผล</label><textarea id="leaveReason" class="textarea" placeholder="ระบุเหตุผลการลา"></textarea></div><div id="leaveBalancePreview" class="v650-info-box">กรอกรหัสพนักงานเพื่อดูสิทธิ์คงเหลือ</div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="leaveRequestModal">ยกเลิก</button><button id="submitLeaveBtn" class="btn btn-primary">ส่งคำขอลา</button></div></div></div>
 
   <!-- V6.5 Certificate Modal -->
-  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.6.3 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
+  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.6.4 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
 
   <!-- V6.5 Time Correction Modal -->
   <div id="timeCorrectionModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอแก้ไขเวลา</h3><button class="btn btn-light btn-icon" data-v650-close="timeCorrectionModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสพนักงาน</label><input id="correctionEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>วันที่ทำงาน</label><input id="correctionWorkDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>เวลาเข้าใหม่</label><input id="correctionInAt" class="input" type="datetime-local"></div><div class="field"><label>เวลาออกใหม่</label><input id="correctionOutAt" class="input" type="datetime-local"></div></div><div class="field"><label>ใบรับรอง/หลักฐาน</label><select id="correctionCertificateId" class="select"><option value="">ไม่ระบุ</option></select></div><div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea id="correctionReason" class="textarea" placeholder="ระบุเหตุผลที่ต้องแก้ไขเวลา"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="timeCorrectionModal">ยกเลิก</button><button id="submitCorrectionBtn" class="btn btn-primary">ส่งคำขอ</button></div></div></div>
@@ -878,6 +914,6 @@
       <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
     </div>
   </div>
-  <script src="./app.js?v=6.6.3"></script>
+  <script src="./app.js?v=6.6.4"></script>
 </body>
 </html>

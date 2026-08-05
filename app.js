@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.6.3',
+  version: '6.6.4',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.3"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.4"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -957,6 +957,191 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const end = r?.effective_shift_end_time || r?.assigned_shift_end_time || r?.shift_end_time || master.end_time;
       return side === "start" ? start : end;
     }
+    function attendanceClockMinutes(value) {
+      if (!value) return null;
+      const text = String(value);
+      const time = text.includes("T")
+        ? text.slice(11,16)
+        : text.slice(0,5);
+      const [hour,minute] = time.split(":").map(Number);
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+        return null;
+      }
+      return hour * 60 + minute;
+    }
+
+    function attendanceAbsenceMinutes(r) {
+      const backendValue = Number(r?.absence_minutes);
+      if (Number.isFinite(backendValue) && backendValue > 0) {
+        return backendValue;
+      }
+
+      const dayType = String(r?.day_type || "")
+        .trim()
+        .toUpperCase();
+      const rawStatus = String(
+        r?.calculation_status
+        || r?.attendance_result
+        || r?.attendance_status
+        || ""
+      ).toUpperCase();
+
+      const isLeave =
+        Boolean(r?.leave_request_id || r?.leave_type_code)
+        || dayType === "LEAVE"
+        || [
+          "LEAVE_APPROVED",
+          "LEAVE_WITH_TIME",
+          "PARTIAL_LEAVE",
+          "PARTIAL_LEAVE_NO_TIME"
+        ].includes(rawStatus);
+
+      if (
+        isLeave
+        || dayType !== "WORKDAY"
+      ) {
+        return 0;
+      }
+
+      const inTime = r?.actual_in_at || r?.first_in;
+      const outTime = r?.actual_out_at || r?.last_out;
+
+      if (inTime && outTime) return 0;
+
+      const start = attendanceClockMinutes(
+        attendanceShiftTime(r,"start")
+      );
+      const end = attendanceClockMinutes(
+        attendanceShiftTime(r,"end")
+      );
+
+      if (start != null && end != null) {
+        return end >= start
+          ? end - start
+          : end + 1440 - start;
+      }
+
+      return Math.max(
+        0,
+        Number(r?.scheduled_minutes_including_break || 0),
+        Number(r?.planned_paid_minutes || 0),
+        Number(r?.standard_work_minutes || 0)
+          + Number(r?.pattern_break_minutes || 0)
+      );
+    }
+
+    function attendanceDisplayStatus(r) {
+      const backend = String(r?.display_status || "")
+        .trim()
+        .toUpperCase();
+
+      if (backend) return backend;
+      if (attendanceAbsenceMinutes(r) > 0) return "ABSENCE";
+
+      const dayType = String(r?.day_type || "")
+        .trim()
+        .toUpperCase();
+      const rawStatus = String(
+        r?.calculation_status
+        || r?.attendance_result
+        || r?.attendance_status
+        || "NORMAL"
+      ).toUpperCase();
+
+      if (
+        r?.leave_request_id
+        || r?.leave_type_code
+        || dayType === "LEAVE"
+        || [
+          "LEAVE_APPROVED",
+          "LEAVE_WITH_TIME",
+          "PARTIAL_LEAVE",
+          "PARTIAL_LEAVE_NO_TIME"
+        ].includes(rawStatus)
+      ) {
+        return "LEAVE";
+      }
+
+      if (
+        ["WEEKLY_OFF","COMP_OFF","HOLIDAY"].includes(dayType)
+      ) {
+        return "DAY_OFF";
+      }
+
+      if (rawStatus === "OVERTIME") return "NORMAL";
+      return rawStatus || "NORMAL";
+    }
+
+    function attendanceDisplayLabel(r) {
+      const status = typeof r === "string"
+        ? r
+        : attendanceDisplayStatus(r);
+
+      return ({
+        ABSENCE:"ขาดงาน",
+        LEAVE:"ลา",
+        DAY_OFF:"วันหยุด",
+        NORMAL:"ปกติ"
+      })[status] || attendanceLabel(status);
+    }
+
+    const ATTENDANCE_OPTIONAL_COLUMNS = new Set([
+      "overtime_minutes",
+      "waiting_minutes",
+      "break_deducted_minutes",
+      "late_minutes",
+      "early_leave_minutes",
+      "absence_minutes",
+      "comp_off_balance"
+    ]);
+
+    function attendanceIsColumnVisible(key) {
+      if (!ATTENDANCE_OPTIONAL_COLUMNS.has(key)) return true;
+      return Boolean(
+        document.querySelector(
+          `[data-att-column-toggle="${key}"]`
+        )?.checked
+      );
+    }
+
+    function attendanceExportMatrix(rows) {
+      const definitions = [
+        ["work_date","วันที่",r => formatDate(r.work_date)],
+        ["emp_code","รหัสพนักงาน",r => r.emp_code],
+        ["full_name","ชื่อ-นามสกุล",r => r.full_name],
+        ["department","หน่วยงาน",r => r.department],
+        ["zone","พื้นที่",r => r.zone || r.area],
+        ["sub_area","พื้นที่ย่อย",r => r.sub_area],
+        ["pattern_code","รูปแบบงาน",r => r.pattern_code],
+        ["template_code","Template",r => r.template_code],
+        ["day_type","ประเภทวัน",r => attendanceLabel(r.day_type)],
+        ["shift_start","เวลาเริ่มกะ",r => formatTime(attendanceShiftTime(r,"start"))],
+        ["shift_end","เวลาสิ้นสุดกะ",r => formatTime(attendanceShiftTime(r,"end"))],
+        ["shift_code","กะ",r => attendanceShiftCode(r)],
+        ["first_in","เวลาเข้า",r => formatTime(r.actual_in_at || r.first_in)],
+        ["last_out","เวลาออก",r => formatTime(r.actual_out_at || r.last_out)],
+        ["display_status","สถานะ",r => attendanceDisplayLabel(r)],
+        ["net_work_minutes","ชั่วโมงสุทธิ",r => (Number(r.net_work_minutes || 0)/60).toFixed(2)],
+        ["regular_minutes","ชั่วโมงปกติ",r => (Number(r.regular_minutes || 0)/60).toFixed(2)],
+        ["overtime_minutes","OT",r => (Number(r.overtime_minutes || 0)/60).toFixed(2)],
+        ["waiting_minutes","รอคอย",r => (Number(r.waiting_minutes || 0)/60).toFixed(2)],
+        ["break_deducted_minutes","พัก",r => (Number(r.break_deducted_minutes || 0)/60).toFixed(2)],
+        ["late_minutes","มาสาย(นาที)",r => Number(r.late_minutes || 0)],
+        ["early_leave_minutes","กลับก่อน(นาที)",r => Number(r.early_leave_minutes || 0)],
+        ["absence_minutes","ขาดงาน(นาที)",r => attendanceAbsenceMinutes(r)],
+        ["comp_off_balance","วันหยุดชดเชยคงเหลือ",r => r.comp_off_balance ?? 0]
+      ].filter(definition =>
+        attendanceIsColumnVisible(definition[0])
+      );
+
+      return [
+        definitions.map(definition => definition[1]),
+        ...(rows || []).map(row =>
+          definitions.map(definition => definition[2](row))
+        )
+      ];
+    }
+
     function updateAssignConfirmHelp() {
       const confirmed = val("assignConfirm") === "true";
       setText("assignConfirmHelp", confirmed
@@ -1656,26 +1841,114 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           p_schedule_statuses: null,
           p_limit: exactEmpCode ? 5000 : 5000
         };
-        let response = await state.client.rpc("ta_get_attendance_detail_v640", args640);
-        if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
-          response = await state.client.rpc("ta_get_attendance_detail_v619", {
-            p_start_date: val("attStart"),
-            p_end_date: val("attEnd"),
-            p_area: val("attZone") || null,
-            p_sub_area: val("attSubArea") || null,
-            p_department: val("attDepartment") || null,
-            p_emp_codes: exactEmpCode ? [exactEmpCode] : null,
-            p_attendance_statuses: statuses,
-            p_schedule_statuses: null,
-            p_limit: exactEmpCode ? 20000 : 5000
-          });
+        let usedV664 = true;
+        let response = await state.client.rpc(
+          "ta_get_attendance_detail_v664",
+          args640
+        );
+
+        if (
+          response.error
+          && window.TimeClockShiftAPI?.missingFunction?.(
+            response.error
+          )
+        ) {
+          usedV664 = false;
+          response = await state.client.rpc(
+            "ta_get_attendance_detail_v640",
+            {
+              ...args640,
+              p_attendance_statuses: null
+            }
+          );
+        }
+
+        if (
+          response.error
+          && window.TimeClockShiftAPI?.missingFunction?.(
+            response.error
+          )
+        ) {
+          usedV664 = false;
+          response = await state.client.rpc(
+            "ta_get_attendance_detail_v619",
+            {
+              p_start_date: val("attStart"),
+              p_end_date: val("attEnd"),
+              p_area: val("attZone") || null,
+              p_sub_area: val("attSubArea") || null,
+              p_department: val("attDepartment") || null,
+              p_emp_codes: exactEmpCode ? [exactEmpCode] : null,
+              p_attendance_statuses: null,
+              p_schedule_statuses: null,
+              p_limit: exactEmpCode ? 20000 : 5000
+            }
+          );
         }
         if (response.error) throw response.error;
         const selectedSubArea = val("attSubArea");
-        const data = selectedSubArea
-          ? (response.data || []).filter(r => String(r.sub_area || "") === selectedSubArea)
+        let data = selectedSubArea
+          ? (response.data || []).filter(
+              r => String(r.sub_area || "") === selectedSubArea
+            )
           : (response.data || []);
-        state.attendance = (data || []).sort((a,b) => String(b.work_date || "").localeCompare(String(a.work_date || "")) || String(a.emp_code || "").localeCompare(String(b.emp_code || "")));
+
+        data = (data || []).map(row => {
+          const enriched = { ...row };
+          enriched.absence_minutes =
+            attendanceAbsenceMinutes(enriched);
+          enriched.display_status =
+            attendanceDisplayStatus(enriched);
+
+          if (
+            !enriched.absence_reason
+            && enriched.absence_minutes > 0
+          ) {
+            const hasIn = Boolean(
+              enriched.actual_in_at || enriched.first_in
+            );
+            const hasOut = Boolean(
+              enriched.actual_out_at || enriched.last_out
+            );
+            enriched.absence_reason =
+              !hasIn && !hasOut
+                ? "MISSING_BOTH"
+                : !hasIn
+                  ? "MISSING_IN"
+                  : "MISSING_OUT";
+          }
+
+          return enriched;
+        });
+
+        if (!usedV664 && statuses?.length) {
+          const wanted = new Set(
+            statuses.map(status =>
+              String(status).toUpperCase()
+            )
+          );
+          data = data.filter(row =>
+            wanted.has(attendanceDisplayStatus(row))
+            || wanted.has(
+              String(
+                row.calculation_status
+                || row.attendance_result
+                || row.attendance_status
+                || ""
+              ).toUpperCase()
+            )
+          );
+        }
+
+        state.attendance = data.sort(
+          (a,b) =>
+            String(b.work_date || "").localeCompare(
+              String(a.work_date || "")
+            )
+            || String(a.emp_code || "").localeCompare(
+              String(b.emp_code || "")
+            )
+        );
         state.attendanceServerFilter = exactEmpCode;
         renderAttendance();
         document.dispatchEvent(new CustomEvent("timeclock:attendance-loaded", {
@@ -1689,8 +1962,40 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       setText("attendanceCount", `${formatNumber(state.attendance.length)} รายการ`);
       $("attendanceBody").innerHTML = state.attendance.length ? state.attendance.map(r => {
         const code = attendanceShiftCode(r);
-        return `<tr data-attendance-row="1" data-emp="${safe(r.emp_code)}" data-date="${safe(String(r.work_date).slice(0,10))}"><td class="nowrap">${formatDate(r.work_date)}</td><td>${safe(r.emp_code)}</td><td class="nowrap">${safe(r.full_name)}</td><td>${safe(r.department)}</td><td>${safe(r.zone || r.area)}</td><td>${safe(r.sub_area)}</td><td>${badge(r.pattern_code||"-","badge-blue")}</td><td>${safe(r.template_code||"-")}</td><td>${safe(attendanceLabel(r.day_type||"-"))}</td><td class="nowrap">${formatTime(attendanceShiftTime(r,"start"))}</td><td class="nowrap">${formatTime(attendanceShiftTime(r,"end"))}</td><td>${badge(code, shiftBadgeClass(code))}</td><td>${formatTime(r.actual_in_at || r.first_in)}</td><td>${formatTime(r.actual_out_at || r.last_out)}</td><td class="text-right">${minutesToHours(r.net_work_minutes)}</td><td class="text-right">${minutesToHours(r.regular_minutes)}</td><td class="text-right">${minutesToHours(r.overtime_minutes)}</td><td class="text-right">${minutesToHours(r.waiting_minutes)}</td><td class="text-right">${minutesToHours(r.break_deducted_minutes)}</td><td class="text-right">${formatNumber(r.late_minutes)}</td><td class="text-right">${formatNumber(r.early_leave_minutes)}</td><td class="text-right">${r.comp_off_earned?"ได้รับ":""}${r.comp_off_balance!=null?` ${formatNumber(r.comp_off_balance)}`:"-"}</td><td>${badge(attendanceLabel(r.calculation_status || r.attendance_result || r.attendance_status), statusBadgeClass(r.calculation_status || r.attendance_result || r.attendance_status))}</td></tr>`;
-      }).join("") : emptyRow(23);
+        const displayStatus =
+          attendanceDisplayStatus(r);
+        const optionalClass = key =>
+          attendanceIsColumnVisible(key)
+            ? ""
+            : " attendance-col-hidden";
+
+        return `<tr data-attendance-row="1" data-emp="${safe(r.emp_code)}" data-date="${safe(String(r.work_date).slice(0,10))}">
+          <td data-att-col="work_date" class="nowrap">${formatDate(r.work_date)}</td>
+          <td data-att-col="emp_code">${safe(r.emp_code)}</td>
+          <td data-att-col="full_name" class="nowrap">${safe(r.full_name)}</td>
+          <td data-att-col="department">${safe(r.department)}</td>
+          <td data-att-col="zone">${safe(r.zone || r.area)}</td>
+          <td data-att-col="sub_area">${safe(r.sub_area)}</td>
+          <td data-att-col="pattern_code">${badge(r.pattern_code||"-","badge-blue")}</td>
+          <td data-att-col="template_code">${safe(r.template_code||"-")}</td>
+          <td data-att-col="day_type">${safe(attendanceLabel(r.day_type||"-"))}</td>
+          <td data-att-col="shift_start" class="nowrap">${formatTime(attendanceShiftTime(r,"start"))}</td>
+          <td data-att-col="shift_end" class="nowrap">${formatTime(attendanceShiftTime(r,"end"))}</td>
+          <td data-att-col="shift_code">${badge(code, shiftBadgeClass(code))}</td>
+          <td data-att-col="first_in">${formatTime(r.actual_in_at || r.first_in)}</td>
+          <td data-att-col="last_out">${formatTime(r.actual_out_at || r.last_out)}</td>
+          <td data-att-col="display_status">${badge(attendanceDisplayLabel(r), statusBadgeClass(displayStatus))}</td>
+          <td data-att-col="net_work_minutes" class="text-right">${minutesToHours(r.net_work_minutes)}</td>
+          <td data-att-col="regular_minutes" class="text-right">${minutesToHours(r.regular_minutes)}</td>
+          <td data-att-col="overtime_minutes" class="text-right${optionalClass("overtime_minutes")}">${minutesToHours(r.overtime_minutes)}</td>
+          <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${minutesToHours(r.waiting_minutes)}</td>
+          <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${minutesToHours(r.break_deducted_minutes)}</td>
+          <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${formatNumber(r.late_minutes)}</td>
+          <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${formatNumber(r.early_leave_minutes)}</td>
+          <td data-att-col="absence_minutes" class="text-right${optionalClass("absence_minutes")}">${formatNumber(attendanceAbsenceMinutes(r))}</td>
+          <td data-att-col="comp_off_balance" class="text-right${optionalClass("comp_off_balance")}">${r.comp_off_earned?"ได้รับ":""}${r.comp_off_balance!=null?` ${formatNumber(r.comp_off_balance)}`:"-"}</td>
+        </tr>`;
+      }).join("") : emptyRow(24);
       document.dispatchEvent(new CustomEvent("timeclock:attendance-rendered", { detail: { count: state.attendance.length } }));
     }
 
@@ -2212,7 +2517,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.6.3"
+          change_reason: "บันทึกจากหน้า HR Admin V6.6.4"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -2325,11 +2630,23 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     function exportAttendance() {
-      if (!state.attendance.length) return toast("ไม่มีข้อมูลสำหรับ Export", "error");
-      const headers = ["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","มาสาย(นาที)","กลับก่อน(นาที)","สถานะ"];
-      const rows = state.attendance.map(r => [formatDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,formatTime(attendanceShiftTime(r,"start")),formatTime(attendanceShiftTime(r,"end")),attendanceShiftCode(r),formatTime(r.actual_in_at||r.first_in),formatTime(r.actual_out_at||r.last_out),minutesToHours(r.net_work_minutes),r.late_minutes||0,r.early_leave_minutes||0,attendanceLabel(r.attendance_result||r.attendance_status)]);
-      const csv = "\uFEFF" + [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\n");
-      downloadFile(`Attendance_${val("attStart")}_${val("attEnd")}.csv`, csv, "text/csv;charset=utf-8");
+      if (!state.attendance.length) {
+        return toast("ไม่มีข้อมูลสำหรับ Export","error");
+      }
+
+      const matrix = attendanceExportMatrix(
+        state.attendance
+      );
+      const csv = "\uFEFF"
+        + matrix
+          .map(row => row.map(csvCell).join(","))
+          .join("\n");
+
+      downloadFile(
+        `Attendance_${val("attStart")}_${val("attEnd")}.csv`,
+        csv,
+        "text/csv;charset=utf-8"
+      );
     }
     const csvCell = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
     function downloadFile(name, content, type) { const blob = new Blob([content], {type}); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
@@ -2423,7 +2740,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return "badge-gray";
     }
     function statusBadgeClass(s) { return ["NORMAL","HOLIDAY","WEEKLY_OFF"].includes(s) ? "badge-green" : ["LATE","EARLY_LEAVE","LATE_AND_EARLY","LATE_AND_EARLY_LEAVE","OVERTIME","WORKED_ON_OFFDAY","WORKED_ON_WEEKLY_OFF","WORKED_ON_HOLIDAY","WORKED_ON_COMP_OFF"].includes(s) ? "badge-orange" : ["ABSENT","MISSING_IN","MISSING_OUT","INVALID_TIME","NEED_REVIEW"].includes(s) ? "badge-red" : "badge-gray"; }
-    function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ไม่มีเวลา",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-"; }
+    function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",DAY_OFF:"วันหยุด",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-"; }
     function emptyRow(cols) { return `<tr><td colspan="${cols}" class="table-empty">ไม่พบข้อมูล</td></tr>`; }
     function humanError(err) {
       const msg = err?.message || err?.error_description || String(err || "เกิดข้อผิดพลาด");
@@ -2464,6 +2781,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       minutesToHours,
       attendanceShiftCode,
       attendanceShiftTime,
+      attendanceAbsenceMinutes,
+      attendanceDisplayStatus,
+      attendanceDisplayLabel,
+      attendanceIsColumnVisible,
+      attendanceExportMatrix,
       loadAttendanceFilterOptions,
       attendanceLabel,
       downloadFile,
@@ -3650,12 +3972,49 @@ ${skippedSummary(compatibility.skipped)}
      Attendance Enterprise Grid
      ------------------------------------------------------------------ */
   const attGrid={search:"",sortKey:"work_date",sortDir:"desc",page:1,pageSize:100,rows:[]};
+  const ATTENDANCE_OPTIONAL_KEYS = [
+    "overtime_minutes",
+    "waiting_minutes",
+    "break_deducted_minutes",
+    "late_minutes",
+    "early_leave_minutes",
+    "absence_minutes",
+    "comp_off_balance"
+  ];
+
+  function applyAttendanceColumnVisibility(){
+    ATTENDANCE_OPTIONAL_KEYS.forEach(key => {
+      const visible =
+        app()?.attendanceIsColumnVisible?.(key) === true;
+
+      qsa(
+        `[data-att-col="${key}"]`,
+        $("page-attendance")
+      ).forEach(element => {
+        element.classList.toggle(
+          "attendance-col-hidden",
+          !visible
+        );
+      });
+    });
+  }
+
   function enhanceAttendance(){
     const page=$("page-attendance"); if(!page || $("attendanceEnterpriseTools")) return;
     const tablePanel=qs(".panel.section-gap",page);
-    tablePanel?.insertAdjacentHTML("beforebegin",`<div id="attendanceEnterpriseTools" class="panel attendance-enterprise-tools"><div class="panel-body"><div class="fc-toolbar"><div class="field" style="min-width:290px"><label>ค้นหารหัสพนักงาน / กรองผลลัพธ์</label><input id="attendanceGridSearch" class="input" placeholder="ใส่รหัสพนักงานแล้วกด Enter เพื่อค้นหาทั้งฐานข้อมูล"><small id="attendanceSearchHint" style="display:block;margin-top:6px;color:var(--slate-500)">รหัสตัวเลขจะค้นหาจาก Supabase โดยตรง ส่วนชื่อ/หน่วยงานจะกรองจากข้อมูลที่โหลดแล้ว</small></div><div class="field"><label>จำนวนต่อหน้า</label><select id="attendancePageSize" class="select"><option>50</option><option selected>100</option><option>200</option><option value="999999">ทั้งหมด</option></select></div><div class="fc-toolbar-spacer"></div><div class="fc-actions"><button id="attendanceServerSearchBtn" class="btn btn-primary">ค้นหาทั้งฐานข้อมูล</button><button id="attendanceRebuildBtn" class="btn btn-light">ประมวลผลใหม่</button><button id="attendanceExcelBtn" class="btn btn-success">Excel</button><button id="attendancePrintBtn" class="btn btn-orange">Print/PDF</button></div></div><div id="attendanceDataNotice" class="mobileta-import-warning hidden" style="margin-top:12px"></div><div class="attendance-grid-summary"><div class="attendance-mini-kpi"><span>ผลลัพธ์</span><strong id="attGridTotal">0</strong></div><div class="attendance-mini-kpi"><span>ปกติ</span><strong id="attGridNormal">0</strong></div><div class="attendance-mini-kpi"><span>ไม่มีเวลา</span><strong id="attGridAbsent">0</strong></div><div class="attendance-mini-kpi"><span>เวลาไม่ครบ</span><strong id="attGridMissing">0</strong></div><div class="attendance-mini-kpi"><span>มาสาย</span><strong id="attGridLate">0</strong></div><div class="attendance-mini-kpi"><span>ทำงานวันหยุด</span><strong id="attGridOffday">0</strong></div><div class="attendance-mini-kpi"><span>มี OT</span><strong id="attGridOt">0</strong></div><div class="attendance-mini-kpi"><span>มีช่วงรอคอย</span><strong id="attGridWaiting">0</strong></div></div></div></div>`);
+    tablePanel?.insertAdjacentHTML("beforebegin",`<div id="attendanceEnterpriseTools" class="panel attendance-enterprise-tools"><div class="panel-body"><div class="fc-toolbar"><div class="field" style="min-width:290px"><label>ค้นหารหัสพนักงาน / กรองผลลัพธ์</label><input id="attendanceGridSearch" class="input" placeholder="ใส่รหัสพนักงานแล้วกด Enter เพื่อค้นหาทั้งฐานข้อมูล"><small id="attendanceSearchHint" style="display:block;margin-top:6px;color:var(--slate-500)">รหัสตัวเลขจะค้นหาจาก Supabase โดยตรง ส่วนชื่อ/หน่วยงานจะกรองจากข้อมูลที่โหลดแล้ว</small></div><div class="field"><label>จำนวนต่อหน้า</label><select id="attendancePageSize" class="select"><option>50</option><option selected>100</option><option>200</option><option value="999999">ทั้งหมด</option></select></div><div class="fc-toolbar-spacer"></div><div class="fc-actions"><button id="attendanceServerSearchBtn" class="btn btn-primary">ค้นหาทั้งฐานข้อมูล</button><button id="attendanceRebuildBtn" class="btn btn-light">ประมวลผลใหม่</button><button id="attendanceExcelBtn" class="btn btn-success">Excel</button><button id="attendancePrintBtn" class="btn btn-orange">Print/PDF</button></div></div><div id="attendanceDataNotice" class="mobileta-import-warning hidden" style="margin-top:12px"></div><div class="attendance-grid-summary"><div class="attendance-mini-kpi"><span>ผลลัพธ์</span><strong id="attGridTotal">0</strong></div><div class="attendance-mini-kpi"><span>ปกติ</span><strong id="attGridNormal">0</strong></div><div class="attendance-mini-kpi"><span>ขาดงาน</span><strong id="attGridAbsent">0</strong></div><div class="attendance-mini-kpi"><span>รูดบัตรไม่ครบ</span><strong id="attGridMissing">0</strong></div><div class="attendance-mini-kpi"><span>มาสาย</span><strong id="attGridLate">0</strong></div><div class="attendance-mini-kpi"><span>ทำงานวันหยุด</span><strong id="attGridOffday">0</strong></div><div class="attendance-mini-kpi"><span>มี OT</span><strong id="attGridOt">0</strong></div><div class="attendance-mini-kpi"><span>มีช่วงรอคอย</span><strong id="attGridWaiting">0</strong></div></div></div></div>`);
     const table=qs("table",tablePanel); table?.classList.add("attendance-grid-table");
-    const keys=["work_date","emp_code","full_name","department","zone","sub_area","pattern_code","template_code","day_type","shift_start","shift_end","shift_code","first_in","last_out","net_work_minutes","regular_minutes","overtime_minutes","waiting_minutes","break_deducted_minutes","late_minutes","early_leave_minutes","comp_off_balance","status"];
+    const keys=[
+      "work_date","emp_code","full_name","department",
+      "zone","sub_area","pattern_code","template_code",
+      "day_type","shift_start","shift_end","shift_code",
+      "first_in","last_out","display_status",
+      "net_work_minutes","regular_minutes",
+      "overtime_minutes","waiting_minutes",
+      "break_deducted_minutes","late_minutes",
+      "early_leave_minutes","absence_minutes",
+      "comp_off_balance"
+    ];
     qsa("thead th",table).forEach((th,i)=>{th.dataset.sortKey=keys[i]; if(i===0)th.classList.add("sticky-att-1"); if(i===1)th.classList.add("sticky-att-2");});
     qs(".panel-body",tablePanel)?.insertAdjacentHTML("beforeend",`<div class="attendance-pagination"><button id="attPrevPage" class="btn btn-light">‹ ก่อนหน้า</button><span id="attPageInfo" class="page-info">หน้า 1 / 1</span><button id="attNextPage" class="btn btn-light">ถัดไป ›</button></div>`);
     document.body.insertAdjacentHTML("beforeend",`<aside id="attendanceDetailDrawer" class="attendance-detail-drawer"><div class="attendance-detail-head"><div><small>ATTENDANCE DETAIL</small><h3 id="attendanceDetailTitle">รายละเอียดเวลา</h3></div><button id="attendanceDetailClose" class="btn btn-light btn-icon">×</button></div><div id="attendanceDetailBody" class="attendance-detail-body"></div></aside>`);
@@ -3669,6 +4028,13 @@ ${skippedSummary(compatibility.skipped)}
     $("attNextPage")?.addEventListener("click",()=>{const max=Math.ceil(attGrid.rows.length/attGrid.pageSize)||1;if(attGrid.page<max){attGrid.page++;renderAttendanceEnterprise();}});
     $("attendanceExcelBtn")?.addEventListener("click",()=>exportAttendanceEnterprise("excel"));
     $("attendancePrintBtn")?.addEventListener("click",()=>exportAttendanceEnterprise("print"));
+    qsa("[data-att-column-toggle]",page).forEach(toggle => {
+      toggle.checked = false;
+      toggle.addEventListener("change",() => {
+        applyAttendanceColumnVisibility();
+      });
+    });
+    applyAttendanceColumnVisibility();
     $("attendanceDetailClose")?.addEventListener("click",()=>$("attendanceDetailDrawer")?.classList.remove("open"));
     table?.addEventListener("click",e=>{
       const th=e.target.closest("th[data-sort-key]"); if(th){const k=th.dataset.sortKey;attGrid.sortDir=attGrid.sortKey===k&&attGrid.sortDir==="asc"?"desc":"asc";attGrid.sortKey=k;renderAttendanceEnterprise();return;}
@@ -3698,22 +4064,184 @@ ${skippedSummary(compatibility.skipped)}
     if(detail.reachedLimit){box.classList.remove("hidden");box.innerHTML=`<strong>ข้อมูลที่โหลดถึงขีดจำกัด 1,000 รายการ</strong><div>เมื่อต้องการตรวจพนักงานรายบุคคล กรุณาใส่รหัสพนักงานแล้วกด Enter เพื่อค้นหาจากฐานข้อมูลโดยตรง</div>`;return;}
     box.classList.add("hidden");box.innerHTML="";
   }
-  function attendanceStatus(r){return String(r.calculation_status||r.attendance_result||r.attendance_status||"").toUpperCase();}
+  function attendanceRawStatus(r){
+    return String(
+      r.calculation_status
+      || r.attendance_result
+      || r.attendance_status
+      || ""
+    ).toUpperCase();
+  }
+  function attendanceStatus(r){
+    return app()?.attendanceDisplayStatus?.(r)
+      || attendanceRawStatus(r)
+      || "NORMAL";
+  }
+  function attendanceStatusText(r){
+    return app()?.attendanceDisplayLabel?.(r)
+      || attendanceStatusText(r);
+  }
+  function attendanceAbsence(r){
+    return Number(
+      app()?.attendanceAbsenceMinutes?.(r)
+      ?? r.absence_minutes
+      ?? 0
+    );
+  }
   function attendanceRows(){
     const term=attGrid.search; let rows=[...(app()?.state?.attendance||[])];
     if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,r.department,r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),statusLabel(attendanceStatus(r))].some(v=>String(v||"").toLowerCase().includes(term)));
     const key=attGrid.sortKey,dir=attGrid.sortDir==="asc"?1:-1;
-    rows.sort((a,b)=>{let av,bv;if(key==="shift_start"){av=app()?.attendanceShiftTime?.(a,"start");bv=app()?.attendanceShiftTime?.(b,"start");}else if(key==="shift_end"){av=app()?.attendanceShiftTime?.(a,"end");bv=app()?.attendanceShiftTime?.(b,"end");}else if(key==="shift_code"){av=codeOf(a);bv=codeOf(b);}else if(key==="status"){av=attendanceStatus(a);bv=attendanceStatus(b);}else{av=a[key];bv=b[key];}if(typeof av==="number"||typeof bv==="number")return (Number(av||0)-Number(bv||0))*dir;return String(av||"").localeCompare(String(bv||""),"th")*dir;});
+    rows.sort((a,b)=>{let av,bv;if(key==="shift_start"){av=app()?.attendanceShiftTime?.(a,"start");bv=app()?.attendanceShiftTime?.(b,"start");}else if(key==="shift_end"){av=app()?.attendanceShiftTime?.(a,"end");bv=app()?.attendanceShiftTime?.(b,"end");}else if(key==="shift_code"){av=codeOf(a);bv=codeOf(b);}else if(key==="display_status"){av=attendanceStatus(a);bv=attendanceStatus(b);}else{av=a[key];bv=b[key];}if(typeof av==="number"||typeof bv==="number")return (Number(av||0)-Number(bv||0))*dir;return String(av||"").localeCompare(String(bv||""),"th")*dir;});
     return rows;
   }
   function renderAttendanceEnterprise(){
-    if(!$("attendanceBody"))return; const all=attendanceRows();attGrid.rows=all;const max=Math.max(1,Math.ceil(all.length/attGrid.pageSize));attGrid.page=Math.min(attGrid.page,max);const start=(attGrid.page-1)*attGrid.pageSize;const rows=all.slice(start,start+attGrid.pageSize);
-    const shifts=app()?.state?.filters?.shifts||[];const shiftTime=(r,side)=>app()?.attendanceShiftTime?.(r,side)||(()=>{const m=shifts.find(s=>String(s.shift_code).toUpperCase()===String(codeOf(r)||"").toUpperCase())||{};return side==="start"?m.start_time:m.end_time;})();
-    $("attendanceBody").innerHTML=rows.length?rows.map(r=>{const s=attendanceStatus(r),key=`${r.emp_code}|${String(r.work_date).slice(0,10)}`;const comp=r.comp_off_earned?`ได้รับ${r.comp_off_balance!=null?` / ${Number(r.comp_off_balance).toLocaleString("th-TH")}`:""}`:(r.comp_off_balance!=null?Number(r.comp_off_balance).toLocaleString("th-TH"):"-");return `<tr data-att-key="${esc(key)}"><td class="nowrap sticky-att-1">${fmtDate(r.work_date)}</td><td class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td><td class="nowrap">${esc(r.full_name)}</td><td>${esc(r.department||"-")}</td><td>${esc(r.zone||r.area||"-")}</td><td>${esc(r.sub_area||"-")}</td><td><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td><td>${esc(r.template_code||"-")}</td><td>${esc(statusLabel(r.day_type||"-"))}</td><td>${fmtTime(shiftTime(r,"start"))}</td><td>${fmtTime(shiftTime(r,"end"))}</td><td><span class="badge badge-blue">${esc(codeOf(r)||"-")}</span></td><td>${fmtTime(r.actual_in_at||r.first_in)}</td><td>${fmtTime(r.actual_out_at||r.last_out)}</td><td class="text-right">${(Number(r.net_work_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td><td class="text-right">${(Number(r.regular_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td><td class="text-right calc-ot">${(Number(r.overtime_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td><td class="text-right">${(Number(r.waiting_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td><td class="text-right">${(Number(r.break_deducted_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td><td class="text-right">${num(r.late_minutes)}</td><td class="text-right">${num(r.early_leave_minutes)}</td><td>${esc(comp)}</td><td><span class="fc-badge ${["NORMAL","COMPLETE"].includes(s)?"active":["ABSENT","MISSING_IN","MISSING_OUT","NEED_REVIEW"].includes(s)?"danger":"warning"}">${esc(statusLabel(s))}</span></td></tr>`;}).join(""):`<tr><td colspan="23" class="fc-empty">ไม่พบข้อมูล</td></tr>`;
-    $("attendanceCount").textContent=`${num(all.length)} รายการ`;$("attGridTotal").textContent=num(all.length);$("attGridNormal").textContent=num(all.filter(r=>["NORMAL","COMPLETE"].includes(attendanceStatus(r))).length);$("attGridAbsent").textContent=num(all.filter(r=>["ABSENT","NO_TIME"].includes(attendanceStatus(r))).length);$("attGridMissing").textContent=num(all.filter(r=>["MISSING_IN","MISSING_OUT","INCOMPLETE_TIME"].includes(attendanceStatus(r))).length);$("attGridLate").textContent=num(all.filter(r=>Number(r.late_minutes||0)>0).length);$("attGridOffday").textContent=num(all.filter(r=>["WORKED_ON_OFFDAY","WORKED_ON_WEEKLY_OFF","WORKED_ON_HOLIDAY","WORKED_ON_COMP_OFF"].includes(attendanceStatus(r))).length);$("attGridOt").textContent=num(all.filter(r=>Number(r.overtime_minutes||0)>0).length);$("attGridWaiting").textContent=num(all.filter(r=>Number(r.waiting_minutes||0)>0).length);
-    $("attPageInfo").textContent=`หน้า ${attGrid.page.toLocaleString("th-TH")} / ${max.toLocaleString("th-TH")} • แสดง ${rows.length.toLocaleString("th-TH")} จาก ${all.length.toLocaleString("th-TH")}`;$("attPrevPage").disabled=attGrid.page<=1;$("attNextPage").disabled=attGrid.page>=max;
-    qsa("thead th[data-sort-key]",$("page-attendance")).forEach(th=>{th.classList.toggle("sort-asc",th.dataset.sortKey===attGrid.sortKey&&attGrid.sortDir==="asc");th.classList.toggle("sort-desc",th.dataset.sortKey===attGrid.sortKey&&attGrid.sortDir==="desc");});
+    if(!$("attendanceBody"))return;
+
+    const all=attendanceRows();
+    attGrid.rows=all;
+    const max=Math.max(
+      1,
+      Math.ceil(all.length/attGrid.pageSize)
+    );
+    attGrid.page=Math.min(attGrid.page,max);
+    const start=(attGrid.page-1)*attGrid.pageSize;
+    const rows=all.slice(start,start+attGrid.pageSize);
+
+    const shifts=app()?.state?.filters?.shifts||[];
+    const shiftTime=(r,side)=>
+      app()?.attendanceShiftTime?.(r,side)
+      ||(()=>{
+        const master=shifts.find(
+          shift=>
+            String(shift.shift_code).toUpperCase()
+            ===String(codeOf(r)||"").toUpperCase()
+        )||{};
+        return side==="start"
+          ? master.start_time
+          : master.end_time;
+      })();
+
+    const optionalClass=key=>
+      app()?.attendanceIsColumnVisible?.(key)
+        ? ""
+        : " attendance-col-hidden";
+
+    $("attendanceBody").innerHTML=rows.length
+      ? rows.map(r=>{
+          const status=attendanceStatus(r);
+          const key=
+            `${r.emp_code}|${String(r.work_date).slice(0,10)}`;
+          const comp=r.comp_off_earned
+            ? `ได้รับ${
+                r.comp_off_balance!=null
+                  ? ` / ${Number(r.comp_off_balance)
+                      .toLocaleString("th-TH")}`
+                  : ""
+              }`
+            : (
+                r.comp_off_balance!=null
+                  ? Number(r.comp_off_balance)
+                    .toLocaleString("th-TH")
+                  : "-"
+              );
+
+          const badgeClass=
+            ["NORMAL","COMPLETE","LEAVE"].includes(status)
+              ? "active"
+              : status==="ABSENCE"
+                ? "danger"
+                : status==="DAY_OFF"
+                  ? ""
+                  : "warning";
+
+          return `<tr data-att-key="${esc(key)}">
+            <td data-att-col="work_date" class="nowrap sticky-att-1">${fmtDate(r.work_date)}</td>
+            <td data-att-col="emp_code" class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td>
+            <td data-att-col="full_name" class="nowrap">${esc(r.full_name)}</td>
+            <td data-att-col="department">${esc(r.department||"-")}</td>
+            <td data-att-col="zone">${esc(r.zone||r.area||"-")}</td>
+            <td data-att-col="sub_area">${esc(r.sub_area||"-")}</td>
+            <td data-att-col="pattern_code"><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td>
+            <td data-att-col="template_code">${esc(r.template_code||"-")}</td>
+            <td data-att-col="day_type">${esc(statusLabel(r.day_type||"-"))}</td>
+            <td data-att-col="shift_start">${fmtTime(shiftTime(r,"start"))}</td>
+            <td data-att-col="shift_end">${fmtTime(shiftTime(r,"end"))}</td>
+            <td data-att-col="shift_code"><span class="badge badge-blue">${esc(codeOf(r)||"-")}</span></td>
+            <td data-att-col="first_in">${fmtTime(r.actual_in_at||r.first_in)}</td>
+            <td data-att-col="last_out">${fmtTime(r.actual_out_at||r.last_out)}</td>
+            <td data-att-col="display_status"><span class="fc-badge ${badgeClass}">${esc(attendanceStatusText(r))}</span></td>
+            <td data-att-col="net_work_minutes" class="text-right">${(Number(r.net_work_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
+            <td data-att-col="regular_minutes" class="text-right">${(Number(r.regular_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
+            <td data-att-col="overtime_minutes" class="text-right calc-ot${optionalClass("overtime_minutes")}">${(Number(r.overtime_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
+            <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${(Number(r.waiting_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
+            <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${(Number(r.break_deducted_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
+            <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${num(r.late_minutes)}</td>
+            <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${num(r.early_leave_minutes)}</td>
+            <td data-att-col="absence_minutes" class="text-right absence-value${optionalClass("absence_minutes")}">${num(attendanceAbsence(r))}</td>
+            <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${esc(comp)}</td>
+          </tr>`;
+        }).join("")
+      : `<tr><td colspan="24" class="fc-empty">ไม่พบข้อมูล</td></tr>`;
+
+    $("attendanceCount").textContent=
+      `${num(all.length)} รายการ`;
+    $("attGridTotal").textContent=num(all.length);
+    $("attGridNormal").textContent=num(
+      all.filter(r=>attendanceStatus(r)==="NORMAL").length
+    );
+    $("attGridAbsent").textContent=num(
+      all.filter(r=>attendanceAbsence(r)>0).length
+    );
+    $("attGridMissing").textContent=num(
+      all.filter(r=>
+        ["MISSING_IN","MISSING_OUT","MISSING_BOTH"]
+          .includes(
+            String(r.absence_reason||"").toUpperCase()
+          )
+      ).length
+    );
+    $("attGridLate").textContent=num(
+      all.filter(r=>Number(r.late_minutes||0)>0).length
+    );
+    $("attGridOffday").textContent=num(
+      all.filter(r=>attendanceStatus(r)==="DAY_OFF").length
+    );
+    $("attGridOt").textContent=num(
+      all.filter(r=>Number(r.overtime_minutes||0)>0).length
+    );
+    $("attGridWaiting").textContent=num(
+      all.filter(r=>Number(r.waiting_minutes||0)>0).length
+    );
+
+    $("attPageInfo").textContent=
+      `หน้า ${attGrid.page.toLocaleString("th-TH")} / `
+      + `${max.toLocaleString("th-TH")} • แสดง `
+      + `${rows.length.toLocaleString("th-TH")} จาก `
+      + `${all.length.toLocaleString("th-TH")}`;
+
+    $("attPrevPage").disabled=attGrid.page<=1;
+    $("attNextPage").disabled=attGrid.page>=max;
+
+    qsa(
+      "thead th[data-sort-key]",
+      $("page-attendance")
+    ).forEach(th=>{
+      th.classList.toggle(
+        "sort-asc",
+        th.dataset.sortKey===attGrid.sortKey
+          && attGrid.sortDir==="asc"
+      );
+      th.classList.toggle(
+        "sort-desc",
+        th.dataset.sortKey===attGrid.sortKey
+          && attGrid.sortDir==="desc"
+      );
+    });
+
+    applyAttendanceColumnVisibility();
   }
+
   async function openAttendanceDetail(key){
     const [emp,date]=key.split("|");
     const r=(app()?.state?.attendance||[]).find(x=>String(x.emp_code)===emp&&String(x.work_date).slice(0,10)===date);
@@ -3731,11 +4259,14 @@ ${skippedSummary(compatibility.skipped)}
       ["รูปแบบงาน",c.pattern_code||r.pattern_code],["Template",c.template_code||r.template_code],["ประเภทวัน",statusLabel(c.day_type||r.day_type)],
       ["กะ",codeOf(r)],["เวลาเริ่มกะ",fmtTime(app()?.attendanceShiftTime?.(r,"start"))],["เวลาสิ้นสุดกะ",fmtTime(app()?.attendanceShiftTime?.(r,"end"))],
       ["เวลาเข้า",fmtTime(r.actual_in_at||r.first_in)],["เวลาออก",fmtTime(r.actual_out_at||r.last_out)],
+      ["สถานะ",attendanceStatusText(r)],
       ["ชั่วโมงสุทธิ",(Number((c.paid_work_minutes ?? r.net_work_minutes) || 0)/60).toFixed(2)],["ชั่วโมงปกติ",(Number(c.regular_minutes||0)/60).toFixed(2)],
       ["OT",(Number(c.overtime_minutes||0)/60).toFixed(2)],["ช่วงรอคอย",(Number(c.waiting_minutes||0)/60).toFixed(2)],
       ["เวลาพัก",(Number(c.break_deducted_minutes||0)/60).toFixed(2)],["มาสาย",`${Number((c.late_minutes ?? r.late_minutes) || 0)} นาที`],
-      ["กลับก่อน",`${Number((c.early_leave_minutes ?? r.early_leave_minutes) || 0)} นาที`],["วันหยุดชดเชยคงเหลือ",balance??"-"],
-      ["สถานะ",statusLabel(c.calculation_status||attendanceStatus(r))],["แหล่งแผน",c.schedule_source||r.schedule_source||"-"]
+      ["กลับก่อน",`${Number((c.early_leave_minutes ?? r.early_leave_minutes) || 0)} นาที`],
+      ["ขาดงาน",`${attendanceAbsence(r)} นาที`],
+      ["วันหยุดชดเชยคงเหลือ",balance??"-"],
+      ["แหล่งแผน",c.schedule_source||r.schedule_source||"-"]
     ];
     const segmentHtml=segments.length?`<div class="attendance-segment-section"><div class="attendance-segment-head"><strong>รายละเอียดช่วงงาน</strong><span>${segments.length} ช่วง</span></div><div class="attendance-segment-list">${segments.map(s=>`<article class="attendance-segment-card segment-${String(s.segment_type||'work').toLowerCase()}"><div><b>ช่วง ${esc(s.segment_no)}</b><span>${esc(s.segment_type||'-')}</span></div><strong>${fmtTime(s.planned_start_at)}–${fmtTime(s.planned_end_at)}</strong><small>เวลาตามแผน ${(Number(s.planned_minutes||0)/60).toFixed(2)} ชม. • ซ้อนทับจริง ${(Number(s.actual_overlap_minutes||0)/60).toFixed(2)} ชม. • ${s.paid?'จ่าย':'ไม่จ่าย'} • ${s.ot_eligible?'คิด OT':'ไม่คิด OT'}</small></article>`).join('')}</div></div>`:'<div class="fc-note">ยังไม่มีรายละเอียด Segment สำหรับรายการนี้</div>';
     const leaveRows=Array.isArray(detail?.leave_requests)?detail.leave_requests:[];
@@ -3746,7 +4277,11 @@ ${skippedSummary(compatibility.skipped)}
     const certificateHtml=certificateRows.length?`<div class="v650-detail-section"><div class="attendance-segment-head"><strong>ใบรับรอง</strong><span>${certificateRows.length} รายการ</span></div>${certificateRows.map(x=>`<article class="v650-mini-card"><strong>${esc(x.certificate_type||'-')} • ${esc(statusLabel(x.verification_status||'-'))}</strong><small>${fmtDate(x.valid_from)}–${fmtDate(x.valid_to)} • ${esc(x.file_name||'ไม่ระบุไฟล์')}</small></article>`).join('')}</div>`:'';
     $("attendanceDetailBody").innerHTML=`<div class="attendance-detail-grid">${fields.map(x=>`<div class="attendance-detail-item"><span>${esc(x[0])}</span><strong>${esc(x[1]??"-")}</strong></div>`).join("")}</div>${segmentHtml}${leaveHtml}${correctionHtml}${certificateHtml}<div class="fc-actions"><button class="btn btn-primary" data-detail-open-schedule="${esc(emp)}|${esc(date)}">เปิดจัดกะวันนี้</button>${String(app()?.state?.profile?.role||'').toUpperCase()==='HR_ADMIN'?`<button class="btn btn-light" data-detail-recalculate="${esc(emp)}|${esc(date)}">คำนวณวันนี้ใหม่</button>`:''}</div>`;
   }
-  function attendanceExportRows(){const rows=attendanceRows();return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","มาสาย(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...rows.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,statusLabel(r.day_type),fmtTime(app()?.attendanceShiftTime?.(r,"start")),fmtTime(app()?.attendanceShiftTime?.(r,"end")),codeOf(r),fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),(Number(r.net_work_minutes||0)/60).toFixed(2),(Number(r.regular_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,statusLabel(attendanceStatus(r))])];}
+  function attendanceExportRows(){
+    return app()?.attendanceExportMatrix?.(
+      attendanceRows()
+    ) || [];
+  }
   function exportAttendanceEnterprise(format){const rows=attendanceExportRows();if(rows.length<=1)return app()?.toast("ไม่มีข้อมูลสำหรับส่งออก","error");const base=`Attendance_${$("attStart")?.value}_${$("attEnd")?.value}`;format==="excel"?exportExcel(`${base}.xls`,rows,"รายละเอียดเวลาทำงาน"):printRows(rows,"รายละเอียดเวลาทำงาน",`${$("attStart")?.value} ถึง ${$("attEnd")?.value}`);}
 
   /* ------------------------------------------------------------------
@@ -4428,7 +4963,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.6.3 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.6.4 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -4904,7 +5439,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.6.3';
+  const VERSION='6.6.4';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
