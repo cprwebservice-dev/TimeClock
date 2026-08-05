@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.7.1',
+  version: '6.7.2',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.1"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.2"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -3133,7 +3133,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.7.1"
+          change_reason: "บันทึกจากหน้า HR Admin V6.7.2"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -4824,7 +4824,96 @@ ${skippedSummary(compatibility.skipped)}
   function enhanceAttendance(){
     const page=$("page-attendance"); if(!page || $("attendanceEnterpriseTools")) return;
     const tablePanel=qs(".panel.section-gap",page);
-    tablePanel?.insertAdjacentHTML("beforebegin",`<div id="attendanceEnterpriseTools" class="panel attendance-enterprise-tools"><div class="panel-body"><div class="fc-toolbar"><div class="field" style="min-width:290px"><label>ค้นหารหัสพนักงาน / กรองผลลัพธ์</label><input id="attendanceGridSearch" class="input" placeholder="ใส่รหัสพนักงานแล้วกด Enter เพื่อค้นหาทั้งฐานข้อมูล"><small id="attendanceSearchHint" style="display:block;margin-top:6px;color:var(--slate-500)">รหัสตัวเลขจะค้นหาจาก Supabase โดยตรง ส่วนชื่อ/หน่วยงานจะกรองจากข้อมูลที่โหลดแล้ว</small></div><div class="field"><label>จำนวนต่อหน้า</label><select id="attendancePageSize" class="select"><option>50</option><option selected>100</option><option>200</option><option value="999999">ทั้งหมด</option></select></div><div class="fc-toolbar-spacer"></div><div class="fc-actions"><button id="attendanceServerSearchBtn" class="btn btn-primary">ค้นหาทั้งฐานข้อมูล</button><button id="attendanceRebuildBtn" class="btn btn-light">ประมวลผลใหม่</button><button id="attendanceExcelBtn" class="btn btn-success">Excel</button><button id="attendancePrintBtn" class="btn btn-orange">Print/PDF</button></div></div><div id="attendanceDataNotice" class="mobileta-import-warning hidden" style="margin-top:12px"></div><div class="attendance-grid-summary"><div class="attendance-mini-kpi"><span>ผลลัพธ์</span><strong id="attGridTotal">0</strong></div><div class="attendance-mini-kpi"><span>ปกติ</span><strong id="attGridNormal">0</strong></div><div class="attendance-mini-kpi"><span>ขาดงาน</span><strong id="attGridAbsent">0</strong></div><div class="attendance-mini-kpi"><span>รูดบัตรไม่ครบ</span><strong id="attGridMissing">0</strong></div><div class="attendance-mini-kpi"><span>มาสาย</span><strong id="attGridLate">0</strong></div><div class="attendance-mini-kpi"><span>ทำงานวันหยุด</span><strong id="attGridOffday">0</strong></div><div class="attendance-mini-kpi"><span>มี OT</span><strong id="attGridOt">0</strong></div><div class="attendance-mini-kpi"><span>มีช่วงรอคอย</span><strong id="attGridWaiting">0</strong></div></div></div></div>`);
+    tablePanel?.insertAdjacentHTML(
+      "beforebegin",
+      `<div
+        id="attendanceEnterpriseTools"
+        class="panel attendance-enterprise-tools"
+      >
+        <div class="panel-body">
+          <div class="attendance-search-layout">
+            <div class="field attendance-search-field">
+              <label>ค้นหารหัสพนักงาน / กรองผลลัพธ์</label>
+              <input
+                id="attendanceGridSearch"
+                class="input"
+                placeholder="ค้นหารหัสพนักงาน ชื่อ-นามสกุล หรือหน่วยงาน"
+              >
+              <small
+                id="attendanceSearchHint"
+                class="attendance-search-hint"
+              >
+                กรอกรหัสพนักงานแล้วกด Enter เพื่อค้นหาข้อมูลตามช่วงวันที่
+              </small>
+            </div>
+            <div class="field attendance-page-size-field">
+              <label>จำนวนต่อหน้า</label>
+              <select
+                id="attendancePageSize"
+                class="select"
+              >
+                <option>50</option>
+                <option selected>100</option>
+                <option>200</option>
+                <option value="999999">ทั้งหมด</option>
+              </select>
+            </div>
+            <div class="attendance-search-actions">
+              <button
+                id="attendanceServerSearchBtn"
+                class="btn btn-primary"
+              >ค้นหาข้อมูล</button>
+              <button
+                id="attendanceRebuildBtn"
+                class="btn btn-light"
+              >ประมวลผลใหม่</button>
+              <button
+                id="attendanceExcelBtn"
+                class="btn btn-success"
+              >Excel</button>
+              <button
+                id="attendancePrintBtn"
+                class="btn btn-orange"
+              >Print/PDF</button>
+            </div>
+          </div>
+          <div class="attendance-grid-summary">
+            <div class="attendance-mini-kpi">
+              <span>ผลลัพธ์</span>
+              <strong id="attGridTotal">0</strong>
+            </div>
+            <div class="attendance-mini-kpi">
+              <span>ปกติ</span>
+              <strong id="attGridNormal">0</strong>
+            </div>
+            <div class="attendance-mini-kpi">
+              <span>ขาดงาน</span>
+              <strong id="attGridAbsent">0</strong>
+            </div>
+            <div class="attendance-mini-kpi">
+              <span>รูดบัตรไม่ครบ</span>
+              <strong id="attGridMissing">0</strong>
+            </div>
+            <div class="attendance-mini-kpi">
+              <span>มาสาย</span>
+              <strong id="attGridLate">0</strong>
+            </div>
+            <div class="attendance-mini-kpi">
+              <span>ทำงานวันหยุด</span>
+              <strong id="attGridOffday">0</strong>
+            </div>
+            <div class="attendance-mini-kpi">
+              <span>มี OT</span>
+              <strong id="attGridOt">0</strong>
+            </div>
+            <div class="attendance-mini-kpi">
+              <span>มีช่วงรอคอย</span>
+              <strong id="attGridWaiting">0</strong>
+            </div>
+          </div>
+        </div>
+      </div>`
+    );
     const table=qs("table",tablePanel); table?.classList.add("attendance-grid-table");
     const keys=[
       "work_date","emp_code","full_name","department",
@@ -4915,7 +5004,17 @@ ${skippedSummary(compatibility.skipped)}
     });
   }
   function attendanceExactEmpCode(){const term=String($("attendanceGridSearch")?.value||"").trim();return /^\d{4,20}$/.test(term)?term:null;}
-  function updateAttendanceSearchHint(){const term=String($("attendanceGridSearch")?.value||"").trim(),hint=$("attendanceSearchHint");if(!hint)return;hint.textContent=/^\d{4,20}$/.test(term)?`รหัส ${term}: กด Enter หรือ “ค้นหาทั้งฐานข้อมูล” เพื่อไม่ติดข้อจำกัด 1,000 แถว`:`ชื่อ/หน่วยงานจะกรองเฉพาะข้อมูลที่โหลดแล้ว กรุณาใช้รหัสพนักงานเมื่อต้องการผลครบทุกวัน`;}
+  function updateAttendanceSearchHint(){
+    const term=String(
+      $("attendanceGridSearch")?.value||""
+    ).trim();
+    const hint=$("attendanceSearchHint");
+    if(!hint)return;
+
+    hint.textContent=/^\d{4,20}$/.test(term)
+      ? `รหัส ${term}: กด Enter หรือปุ่มค้นหาข้อมูล`
+      : "ค้นหาได้จากรหัสพนักงาน ชื่อ-นามสกุล หรือหน่วยงาน";
+  }
   async function rebuildAttendanceCurrentFilter(){
     const emp=attendanceExactEmpCode(),start=$("attStart")?.value,end=$("attEnd")?.value;
     if(!emp)return app()?.toast?.("กรุณาระบุรหัสพนักงานเป็นตัวเลขก่อนประมวลผลใหม่","error");
@@ -4930,12 +5029,8 @@ ${skippedSummary(compatibility.skipped)}
     }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
     finally{app()?.hideLoading?.();}
   }
-  function renderAttendanceDataNotice(detail={}){
-    const box=$("attendanceDataNotice");if(!box)return;
-    const exact=detail.empCode||attendanceExactEmpCode();
-    if(exact){box.classList.remove("hidden");box.innerHTML=`<strong>ค้นหาจากฐานข้อมูลโดยตรง: ${esc(exact)}</strong><div>ระบบโหลดข้อมูลของพนักงานรหัสนี้ตามช่วงวันที่ที่เลือกครบถ้วน โดยไม่ใช้การค้นหาเฉพาะ 1,000 แถวแรก</div>`;return;}
-    if(detail.reachedLimit){box.classList.remove("hidden");box.innerHTML=`<strong>ข้อมูลที่โหลดถึงขีดจำกัด 1,000 รายการ</strong><div>เมื่อต้องการตรวจพนักงานรายบุคคล กรุณาใส่รหัสพนักงานแล้วกด Enter เพื่อค้นหาจากฐานข้อมูลโดยตรง</div>`;return;}
-    box.classList.add("hidden");box.innerHTML="";
+  function renderAttendanceDataNotice(){
+    // V6.7.2: ตัดแถบแจ้งเตือนค้นหาฐานข้อมูลออก
   }
   function attendanceRawStatus(r){
     return String(
@@ -6636,7 +6731,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.7.1 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.7.2 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -7112,7 +7207,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.7.1';
+  const VERSION='6.7.2';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
