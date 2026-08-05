@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.6.2',
+  version: '6.6.3',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.2"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.3"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -873,27 +873,48 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return new Date(y, (m || 1)-1, d || 1);
     };
     const monthDays = (year, month) => new Date(year, month, 0).getDate();
+    const scheduleWeekStarts = [1, 8, 15, 22, 29];
     const scheduleBlockStartForDate = value => {
       const d = parseLocalISO(value || todayISO());
       const day = d.getDate();
-      d.setDate(day >= 29 ? 29 : day >= 15 ? 15 : 1);
+      const startDay = [...scheduleWeekStarts]
+        .reverse()
+        .find(item => day >= item) || 1;
+      d.setDate(startDay);
       return localISO(d);
     };
     const schedulePeriodRange = () => {
-      const startISO = val("schedulePeriodStart") || scheduleBlockStartForDate(todayISO());
+      const startISO =
+        val("schedulePeriodStart")
+        || scheduleBlockStartForDate(todayISO());
       const start = parseLocalISO(startISO);
-      const lastDay = monthDays(start.getFullYear(), start.getMonth()+1);
+      const lastDay = monthDays(
+        start.getFullYear(),
+        start.getMonth() + 1
+      );
       const end = new Date(start);
-      end.setDate(Math.min(start.getDate()+13, lastDay));
+      end.setDate(Math.min(start.getDate() + 6, lastDay));
+      const weekNumber =
+        scheduleWeekStarts.indexOf(start.getDate()) + 1;
+
       return {
         startDate: localISO(start),
         endDate: localISO(end),
-        month: `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,"0")}`,
+        month:
+          `${start.getFullYear()}-`
+          + `${String(start.getMonth()+1).padStart(2,"0")}`,
+        weekNumber: weekNumber > 0 ? weekNumber : 1,
         dates: Array.from(
-          {length: Math.max(0, Math.round((end-start)/86400000)+1)},
+          {
+            length:
+              Math.max(
+                0,
+                Math.round((end-start)/86400000) + 1
+              )
+          },
           (_,i) => {
             const x = new Date(start);
-            x.setDate(start.getDate()+i);
+            x.setDate(start.getDate() + i);
             return localISO(x);
           }
         )
@@ -907,7 +928,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const endText = formatDate(range.endDate);
       setText(
         "schedulePeriodLabel",
-        `${startText} – ${endText} • ${range.dates.length} วัน`
+        `สัปดาห์ที่ ${range.weekNumber} • `
+        + `${startText} – ${endText} • `
+        + `${range.dates.length} วัน`
       );
       return range;
     };
@@ -1782,7 +1805,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d.getDate()}</span><small>${thaiDays[dow]} ${thaiMonths[d.getMonth()]}${meta.holiday?" • หยุด":""}</small></th>`;
       }).join("");
 
-      let html = `<table class="schedule-table enterprise-schedule-table fortnight-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
+      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
 
       if (!map.size) html += emptyRow(period.dates.length + 2);
 
@@ -1818,8 +1841,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             continue;
           }
 
-          const code = r.assigned_shift_code || r.effective_shift_code || r.auto_shift_code || r.shift_code || "-";
-          const publicHoliday = r.is_public_holiday || r.day_type === "PUBLIC_HOLIDAY";
+          const code =
+            r.assigned_shift_code
+            || r.effective_shift_code
+            || r.auto_shift_code
+            || r.shift_code
+            || "-";
+          const publicHoliday =
+            r.is_public_holiday
+            || r.day_type === "PUBLIC_HOLIDAY";
           const weeklyOff = r.is_weekly_off || r.day_type === "WEEKLY_OFF";
           const normalizedCode = String(code || "")
             .trim()
@@ -1836,6 +1866,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
                 .trim()
                 .toUpperCase() === normalizedCode
           );
+
+          const shiftStart = formatTime(
+            r.shift_start_time
+            || r.effective_shift_start_time
+            || r.assigned_shift_start_time
+            || shiftMaster?.start_time
+          );
+          const shiftEnd = formatTime(
+            r.shift_end_time
+            || r.effective_shift_end_time
+            || r.assigned_shift_end_time
+            || shiftMaster?.end_time
+          );
+          const showShiftTime =
+            !["OFF","HOL","LV"].includes(normalizedCode)
+            && shiftMaster?.is_workday !== false
+            && shiftStart !== "-"
+            && shiftEnd !== "-";
+          const shiftTimeLabel = showShiftTime
+            ? `${shiftStart}–${shiftEnd}`
+            : "";
 
           const shiftVisualClass =
             normalizedCode === "HOL"
@@ -1878,6 +1929,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               : r.schedule_status || "AUTO";
 
           const calcBits = [
+            shiftTimeLabel
+              ? `เวลากะ ${shiftTimeLabel}`
+              : null,
             r.pattern_code,
             r.template_code,
             r.calculation_status,
@@ -1891,7 +1945,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             `${Number(r.waiting_minutes||0)>0?'<small class="schedule-calc-flag wait">W</small>':''}` +
             `${r.comp_off_earned?'<small class="schedule-calc-flag comp">C</small>':''}`;
 
-          html += `<td class="${tdCls}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(displayName)} | ${safe(dayLabel)} | ${safe(statusLabel)}${calcBits?` | ${safe(calcBits)}`:""} | ดับเบิลคลิกเพื่อแก้ไข"><b>${safe(code)}</b>${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
+          html += `<td class="${tdCls}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(displayName)} | ${safe(dayLabel)} | ${safe(statusLabel)}${calcBits?` | ${safe(calcBits)}`:""} | ดับเบิลคลิกเพื่อแก้ไข"><b class="schedule-shift-code">${safe(code)}</b>${shiftTimeLabel?`<small class="schedule-shift-time">${safe(shiftTimeLabel)}</small>`:""}${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
         }
 
         html += `</tr>`;
@@ -2158,7 +2212,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.6.2"
+          change_reason: "บันทึกจากหน้า HR Admin V6.6.3"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3067,42 +3121,61 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   function shiftMonth(delta){
-    const current = new Date(`${periodStartDate()}T00:00:00`);
+    const current =
+      new Date(`${periodStartDate()}T00:00:00`);
     const year = current.getFullYear();
-    const month = current.getMonth()+1;
+    const month = current.getMonth() + 1;
     const day = current.getDate();
+    const starts = [1,8,15,22,29];
+    const index = starts.indexOf(day);
     let next;
 
     if(delta > 0){
-      if(day === 1){
-        next = scheduleBlockStart(year,month,15);
-      }else if(day === 15 && new Date(year,month,0).getDate() >= 29){
-        next = scheduleBlockStart(year,month,29);
+      const candidate = starts[index + 1];
+
+      if(
+        candidate
+        && candidate <= new Date(year,month,0).getDate()
+      ){
+        next = scheduleBlockStart(year,month,candidate);
       }else{
-        const d = new Date(year,month,1);
-        next = scheduleBlockStart(d.getFullYear(),d.getMonth()+1,1);
+        const following = new Date(year,month,1);
+        next = scheduleBlockStart(
+          following.getFullYear(),
+          following.getMonth() + 1,
+          1
+        );
       }
     }else{
-      if(day >= 29){
-        next = scheduleBlockStart(year,month,15);
-      }else if(day === 15){
-        next = scheduleBlockStart(year,month,1);
+      const candidate = starts[index - 1];
+
+      if(candidate){
+        next = scheduleBlockStart(year,month,candidate);
       }else{
         const previous = new Date(year,month-2,1);
-        const previousDays = new Date(
-          previous.getFullYear(),
-          previous.getMonth()+1,
-          0
-        ).getDate();
+        const previousLastDay =
+          new Date(
+            previous.getFullYear(),
+            previous.getMonth()+1,
+            0
+          ).getDate();
+        const previousStart =
+          [...starts]
+            .reverse()
+            .find(item => item <= previousLastDay)
+          || 1;
+
         next = scheduleBlockStart(
           previous.getFullYear(),
-          previous.getMonth()+1,
-          previousDays >= 29 ? 29 : 15
+          previous.getMonth() + 1,
+          previousStart
         );
       }
     }
 
-    if($("schedulePeriodStart"))$("schedulePeriodStart").value=next;
+    if($("schedulePeriodStart")){
+      $("schedulePeriodStart").value = next;
+    }
     window.TimeClockSchedulePeriod?.sync?.();
     app()?.loadSchedule();
   }
@@ -4355,7 +4428,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.6.2 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.6.3 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -4831,7 +4904,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.6.2';
+  const VERSION='6.6.3';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
