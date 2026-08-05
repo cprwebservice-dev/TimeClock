@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.6.4',
+  version: '6.6.5',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.4"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.6.5"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -949,7 +949,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     };
     const formatNumber = (n) => Number(n || 0).toLocaleString("th-TH");
     const minutesToHours = (n) => Number.isFinite(Number(n)) ? (Number(n) / 60).toLocaleString("th-TH", {minimumFractionDigits:1,maximumFractionDigits:1}) : "-";
-    const attendanceShiftCode = r => r?.effective_shift_code || r?.assigned_shift_code || r?.shift_code || r?.auto_shift_code || null;
+    const attendanceShiftCode = r => normalizeTemplateCodeV665(
+      r?.effective_shift_code
+      || r?.assigned_shift_code
+      || r?.shift_code
+      || r?.auto_shift_code
+      || null
+    );
     function attendanceShiftTime(r, side) {
       const code = attendanceShiftCode(r);
       const master = state.filters.shifts.find(s => String(s.shift_code || "").toUpperCase() === String(code || "").toUpperCase()) || {};
@@ -957,6 +963,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const end = r?.effective_shift_end_time || r?.assigned_shift_end_time || r?.shift_end_time || master.end_time;
       return side === "start" ? start : end;
     }
+    function normalizeTemplateCodeV665(value) {
+      const code = String(value || "").trim();
+      return code === "SINGLE_" + "0830"
+        ? "SINGLE_0830_1730"
+        : code;
+    }
+
     function attendanceClockMinutes(value) {
       if (!value) return null;
       const text = String(value);
@@ -1086,6 +1099,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     const ATTENDANCE_OPTIONAL_COLUMNS = new Set([
+      "zone",
+      "sub_area",
+      "template_code",
       "overtime_minutes",
       "waiting_minutes",
       "break_deducted_minutes",
@@ -1113,7 +1129,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         ["zone","พื้นที่",r => r.zone || r.area],
         ["sub_area","พื้นที่ย่อย",r => r.sub_area],
         ["pattern_code","รูปแบบงาน",r => r.pattern_code],
-        ["template_code","Template",r => r.template_code],
+        ["template_code","Template",r => normalizeTemplateCodeV665(r.template_code)],
         ["day_type","ประเภทวัน",r => attendanceLabel(r.day_type)],
         ["shift_start","เวลาเริ่มกะ",r => formatTime(attendanceShiftTime(r,"start"))],
         ["shift_end","เวลาสิ้นสุดกะ",r => formatTime(attendanceShiftTime(r,"end"))],
@@ -1974,10 +1990,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           <td data-att-col="emp_code">${safe(r.emp_code)}</td>
           <td data-att-col="full_name" class="nowrap">${safe(r.full_name)}</td>
           <td data-att-col="department">${safe(r.department)}</td>
-          <td data-att-col="zone">${safe(r.zone || r.area)}</td>
-          <td data-att-col="sub_area">${safe(r.sub_area)}</td>
+          <td data-att-col="zone" class="${optionalClass("zone").trim()}">${safe(r.zone || r.area)}</td>
+          <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${safe(r.sub_area)}</td>
           <td data-att-col="pattern_code">${badge(r.pattern_code||"-","badge-blue")}</td>
-          <td data-att-col="template_code">${safe(r.template_code||"-")}</td>
+          <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${safe(normalizeTemplateCodeV665(r.template_code)||"-")}</td>
           <td data-att-col="day_type">${safe(attendanceLabel(r.day_type||"-"))}</td>
           <td data-att-col="shift_start" class="nowrap">${formatTime(attendanceShiftTime(r,"start"))}</td>
           <td data-att-col="shift_end" class="nowrap">${formatTime(attendanceShiftTime(r,"end"))}</td>
@@ -2324,7 +2340,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             category_name: "กะปกติ",
             template_code: pattern === "TECH_5D"
               ? "SINGLE_0830_1800"
-              : "SINGLE_0830",
+              : "SINGLE_0830_1730",
             display_order: 1
           },
           {
@@ -2374,7 +2390,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       const fallback = patternCode === "TECH_5D"
         ? "SINGLE_0830_1800"
-        : "SINGLE_0830";
+        : "SINGLE_0830_1730";
 
       const target = options.some(o => o.template_code === selectedTemplate)
         ? selectedTemplate
@@ -2517,7 +2533,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.6.4"
+          change_reason: "บันทึกจากหน้า HR Admin V6.6.5"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -2739,7 +2755,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (value === "HOL") return "badge-orange";
       return "badge-gray";
     }
-    function statusBadgeClass(s) { return ["NORMAL","HOLIDAY","WEEKLY_OFF"].includes(s) ? "badge-green" : ["LATE","EARLY_LEAVE","LATE_AND_EARLY","LATE_AND_EARLY_LEAVE","OVERTIME","WORKED_ON_OFFDAY","WORKED_ON_WEEKLY_OFF","WORKED_ON_HOLIDAY","WORKED_ON_COMP_OFF"].includes(s) ? "badge-orange" : ["ABSENT","MISSING_IN","MISSING_OUT","INVALID_TIME","NEED_REVIEW"].includes(s) ? "badge-red" : "badge-gray"; }
+    function statusBadgeClass(s) {
+      const status = String(s || "").toUpperCase();
+      if (status === "LEAVE") return "badge-purple";
+      if (["NORMAL","HOLIDAY","WEEKLY_OFF","DAY_OFF"].includes(status)) {
+        return "badge-green";
+      }
+      if ([
+        "LATE","EARLY_LEAVE","LATE_AND_EARLY",
+        "LATE_AND_EARLY_LEAVE","OVERTIME",
+        "WORKED_ON_OFFDAY","WORKED_ON_WEEKLY_OFF",
+        "WORKED_ON_HOLIDAY","WORKED_ON_COMP_OFF"
+      ].includes(status)) {
+        return "badge-orange";
+      }
+      if ([
+        "ABSENT","ABSENCE","MISSING_IN","MISSING_OUT",
+        "MISSING_BOTH","INVALID_TIME","NEED_REVIEW"
+      ].includes(status)) {
+        return "badge-red";
+      }
+      return "badge-gray";
+    }
     function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",DAY_OFF:"วันหยุด",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-"; }
     function emptyRow(cols) { return `<tr><td colspan="${cols}" class="table-empty">ไม่พบข้อมูล</td></tr>`; }
     function humanError(err) {
@@ -2781,6 +2818,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       minutesToHours,
       attendanceShiftCode,
       attendanceShiftTime,
+      normalizeTemplateCodeV665,
       attendanceAbsenceMinutes,
       attendanceDisplayStatus,
       attendanceDisplayLabel,
@@ -3890,7 +3928,14 @@ ${skippedSummary(compatibility.skipped)}
   const fmtDateTime = v => v ? new Date(v).toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"}) : "-";
   const fmtTime = v => { if(!v) return "-"; const s=String(v); if(s.includes("T")||s.includes(" ")){const d=new Date(v);if(!Number.isNaN(d.getTime()))return d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit",hour12:false});} return s.slice(0,5); };
   const num = v => Number(v || 0).toLocaleString("th-TH");
-  const codeOf = r => r?.assigned_shift_code || r?.effective_shift_code || r?.shift_code || r?.auto_shift_code || null;
+  const codeOf = r => {
+    const raw = r?.assigned_shift_code
+      || r?.effective_shift_code
+      || r?.shift_code
+      || r?.auto_shift_code
+      || null;
+    return app()?.normalizeTemplateCodeV665?.(raw) || raw;
+  };
   const issueOf = r => String(r?.issue_type || r?.attendance_result || r?.attendance_status || r?.time_pair_status || "NEED_REVIEW").toUpperCase();
   const statusLabel = s => ({NORMAL:"ปกติ",ABSENT:"ไม่มีเวลา",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-";
 
@@ -3973,6 +4018,9 @@ ${skippedSummary(compatibility.skipped)}
      ------------------------------------------------------------------ */
   const attGrid={search:"",sortKey:"work_date",sortDir:"desc",page:1,pageSize:100,rows:[]};
   const ATTENDANCE_OPTIONAL_KEYS = [
+    "zone",
+    "sub_area",
+    "template_code",
     "overtime_minutes",
     "waiting_minutes",
     "break_deducted_minutes",
@@ -4147,23 +4195,25 @@ ${skippedSummary(compatibility.skipped)}
               );
 
           const badgeClass=
-            ["NORMAL","COMPLETE","LEAVE"].includes(status)
-              ? "active"
-              : status==="ABSENCE"
-                ? "danger"
-                : status==="DAY_OFF"
-                  ? ""
-                  : "warning";
+            status==="LEAVE"
+              ? "leave"
+              : ["NORMAL","COMPLETE"].includes(status)
+                ? "active"
+                : status==="ABSENCE"
+                  ? "danger"
+                  : status==="DAY_OFF"
+                    ? "neutral"
+                    : "warning";
 
           return `<tr data-att-key="${esc(key)}">
             <td data-att-col="work_date" class="nowrap sticky-att-1">${fmtDate(r.work_date)}</td>
             <td data-att-col="emp_code" class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td>
             <td data-att-col="full_name" class="nowrap">${esc(r.full_name)}</td>
             <td data-att-col="department">${esc(r.department||"-")}</td>
-            <td data-att-col="zone">${esc(r.zone||r.area||"-")}</td>
-            <td data-att-col="sub_area">${esc(r.sub_area||"-")}</td>
+            <td data-att-col="zone" class="${optionalClass("zone").trim()}">${esc(r.zone||r.area||"-")}</td>
+            <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${esc(r.sub_area||"-")}</td>
             <td data-att-col="pattern_code"><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td>
-            <td data-att-col="template_code">${esc(r.template_code||"-")}</td>
+            <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${esc(app()?.normalizeTemplateCodeV665?.(r.template_code)||r.template_code||"-")}</td>
             <td data-att-col="day_type">${esc(statusLabel(r.day_type||"-"))}</td>
             <td data-att-col="shift_start">${fmtTime(shiftTime(r,"start"))}</td>
             <td data-att-col="shift_end">${fmtTime(shiftTime(r,"end"))}</td>
@@ -4963,7 +5013,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.6.4 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.6.5 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -5239,7 +5289,7 @@ ${skippedSummary(compatibility.skipped)}
   function renderTemplates(){
     const box=$('workTemplateCards');if(!box)return;
     const findCode=code=>wp.templates.find(t=>String(t.template_code||'').toUpperCase()===code);
-    const normal6=findCode('SINGLE_0830');
+    const normal6=findCode('SINGLE_0830_1730');
     const normal5=findCode('SINGLE_0830_1800');
     const late=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='NORMAL_LATE_CUSTOMER');
     const early=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='EARLY_SHIFT_CUSTOMER');
@@ -5303,11 +5353,11 @@ ${skippedSummary(compatibility.skipped)}
     const text=`${t?.template_name||''} ${t?.note||''} ${code}`.toLowerCase();
     if(text.includes('ออกกะแรกก่อนเวลา')||code.includes('EARLY'))return 'EARLY_SHIFT_CUSTOMER';
     if((text.includes('งานลูกค้าช่วงดึก')||code.includes('LATE')||code.includes('NIGHT'))&&!text.includes('ออกกะแรก'))return 'NORMAL_LATE_CUSTOMER';
-    if(code==='SINGLE_0830'||code==='SINGLE_0830_1800'||text.includes('กะเดียว'))return 'NORMAL';
+    if(code==='SINGLE_0830_1730'||code==='SINGLE_0830_1800'||text.includes('กะเดียว'))return 'NORMAL';
     return '';
   }
   function localEmployeeTemplateOptions(patternCode){
-    const normalCode=patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830';
+    const normalCode=patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730';
     const late=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='NORMAL_LATE_CUSTOMER');
     const early=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='EARLY_SHIFT_CUSTOMER');
     return [
@@ -5366,7 +5416,7 @@ ${skippedSummary(compatibility.skipped)}
         ...r,
         position_name:r.position_name||positionMap.get(String(r.emp_code))||'-'
       }));
-      body.innerHTML=wp.employees.length?wp.employees.map(r=>`<tr><td><strong>${esc(r.emp_code)}</strong></td><td>${esc(r.full_name||'-')}</td><td>${esc(r.department||'-')}</td><td>${esc(r.position_name||'-')}</td><td>${esc([r.area,r.sub_area].filter(Boolean).join(' / ')||'-')}</td><td>${esc(r.pattern_name||r.pattern_code)}</td><td>${esc(dowText(r.weekly_off_dows))}</td><td>${esc(employeeTemplateLabel(r.default_template_code||(r.pattern_code==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830')))}</td><td>${fmtDate(r.effective_from)||'-'}</td><td><button class="btn btn-light btn-sm" data-assign-pattern="${esc(r.emp_code)}">กำหนด</button></td></tr>`).join(''):'<tr><td colspan="10" class="table-empty">ไม่พบพนักงานใน Scope</td></tr>';
+      body.innerHTML=wp.employees.length?wp.employees.map(r=>`<tr><td><strong>${esc(r.emp_code)}</strong></td><td>${esc(r.full_name||'-')}</td><td>${esc(r.department||'-')}</td><td>${esc(r.position_name||'-')}</td><td>${esc([r.area,r.sub_area].filter(Boolean).join(' / ')||'-')}</td><td>${esc(r.pattern_name||r.pattern_code)}</td><td>${esc(dowText(r.weekly_off_dows))}</td><td>${esc(employeeTemplateLabel(r.default_template_code||(r.pattern_code==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730')))}</td><td>${fmtDate(r.effective_from)||'-'}</td><td><button class="btn btn-light btn-sm" data-assign-pattern="${esc(r.emp_code)}">กำหนด</button></td></tr>`).join(''):'<tr><td colspan="10" class="table-empty">ไม่พบพนักงานใน Scope</td></tr>';
     }catch(e){
       body.innerHTML=`<tr><td colspan="10" class="table-empty">${esc(e.message||String(e))}</td></tr>`;
     }
@@ -5384,7 +5434,7 @@ ${skippedSummary(compatibility.skipped)}
     $('employeePatternModal').classList.remove('hidden');
     await loadEmployeeTemplateOptions(
       patternCode,
-      r.default_template_code||(patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830')
+      r.default_template_code||(patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730')
     );
   }
   async function saveEmployeePattern(){
@@ -5410,7 +5460,7 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
 
-  async function loadDailyPlanForModal(){const modal=$('assignModal');if(!modal||modal.classList.contains('hidden'))return;const emp=$('assignEmpCode')?.value,date=$('assignWorkDate')?.value;if(!emp||!date)return;const pattern=$('assignWorkTemplate')?.dataset?.patternCode||$('assignShiftCode')?.dataset?.patternCode||'TECH_6D';const fallback=pattern==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830';try{const plan=await rpc('ta_get_daily_work_plan',{p_emp_code:emp,p_work_date:date});const target=plan?.template_code||fallback;if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===target))$('assignWorkTemplate').value=target;$('assignCustomerStart').value=plan?.customer_window_start?String(plan.customer_window_start).slice(0,5):'22:00';$('assignCustomerEnd').value=plan?.customer_window_end?String(plan.customer_window_end).slice(0,5):'';toggleCustomerWindow();}catch(e){if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===fallback))$('assignWorkTemplate').value=fallback;toggleCustomerWindow();}}
+  async function loadDailyPlanForModal(){const modal=$('assignModal');if(!modal||modal.classList.contains('hidden'))return;const emp=$('assignEmpCode')?.value,date=$('assignWorkDate')?.value;if(!emp||!date)return;const pattern=$('assignWorkTemplate')?.dataset?.patternCode||$('assignShiftCode')?.dataset?.patternCode||'TECH_6D';const fallback=pattern==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730';try{const plan=await rpc('ta_get_daily_work_plan',{p_emp_code:emp,p_work_date:date});const target=plan?.template_code||fallback;if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===target))$('assignWorkTemplate').value=target;$('assignCustomerStart').value=plan?.customer_window_start?String(plan.customer_window_start).slice(0,5):'22:00';$('assignCustomerEnd').value=plan?.customer_window_end?String(plan.customer_window_end).slice(0,5):'';toggleCustomerWindow();}catch(e){if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===fallback))$('assignWorkTemplate').value=fallback;toggleCustomerWindow();}}
   function toggleCustomerWindow(){const code=$('assignWorkTemplate')?.value||'';const flexible=!code.startsWith('SINGLE_');$('assignCustomerWindowRow')?.classList.toggle('hidden',!flexible);}
   async function saveDailyPlanAfterShift(){const modal=$('assignModal');if(!modal||!modal.classList.contains('hidden'))return;const emp=$('assignEmpCode')?.value,date=$('assignWorkDate')?.value,template=$('assignWorkTemplate')?.value;if(!emp||!date||!template)return;try{await rpc('ta_save_daily_work_plan',{p_emp_code:emp,p_work_date:date,p_template_code:template,p_customer_window_start:$('assignCustomerStart')?.value||null,p_customer_window_end:$('assignCustomerEnd')?.value||null,p_status:$('assignConfirm')?.value==='true'?'CONFIRMED':'PLANNED',p_note:$('assignNote')?.value||null});}catch(e){app()?.toast?.(`บันทึกกะสำเร็จ แต่บันทึกรูปแบบช่วงงานไม่สำเร็จ: ${e.message||e}`,'error');}}
 
@@ -5439,7 +5489,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.6.4';
+  const VERSION='6.6.5';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
