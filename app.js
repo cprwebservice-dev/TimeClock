@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.7.0',
+  version: '6.7.1',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.0"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.1"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -847,7 +847,18 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       session: null,
       user: null,
       profile: null,
-      filters: { zones: [], departments: [], employees: [], shifts: [], attendance: { areas: [], sub_areas: [], departments: [] } },
+      filters: {
+        zones: [],
+        departments: [],
+        employees: [],
+        shifts: [],
+        attendance: {
+          areas: [],
+          sub_areas: [],
+          departments: [],
+          employees: []
+        }
+      },
       dashboard: null,
       attendance: [],
       schedule: [],
@@ -1279,13 +1290,472 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         departments: Array.isArray(f.departments) ? f.departments : [],
         employees: Array.isArray(f.employees) ? f.employees : [],
         shifts: shiftRows,
-        attendance: state.filters.attendance || { areas: [], sub_areas: [], departments: [] }
+        attendance: state.filters.attendance || {
+          areas: [],
+          sub_areas: [],
+          departments: [],
+          employees: []
+        }
       };
       ["dashZone","scheduleZone","reportZone"].forEach(id => fillSelect(id, state.filters.zones, "ทุกพื้นที่"));
       ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id => fillSelect(id, state.filters.departments, "ทุกหน่วยงาน"));
       fillShiftSelect();
     }
 
+
+    const attendanceEmployeeFilter = {
+      options: [],
+      selected: new Set(),
+      search: "",
+      page: 1,
+      pageSize: 50,
+      loading: false,
+      cache: new Map()
+    };
+
+    function normalizeAttendanceEmployeeOption(item) {
+      if (typeof item === "string") {
+        return {
+          emp_code: item.trim(),
+          full_name: "",
+          department: "",
+          area: "",
+          sub_area: ""
+        };
+      }
+
+      return {
+        emp_code: String(
+          item?.emp_code
+          || item?.employee_id
+          || item?.EmployeeId
+          || item?.value
+          || ""
+        ).trim(),
+        full_name: String(
+          item?.full_name
+          || item?.employee_name
+          || item?.name
+          || item?.label
+          || ""
+        ).trim(),
+        department: String(
+          item?.department || ""
+        ).trim(),
+        area: String(
+          item?.area
+          || item?.zone
+          || ""
+        ).trim(),
+        sub_area: String(
+          item?.sub_area || ""
+        ).trim()
+      };
+    }
+
+    function attendanceEmployeeFilterKey() {
+      return [
+        val("attStart"),
+        val("attEnd"),
+        val("attZone"),
+        val("attSubArea"),
+        val("attDepartment")
+      ].join("|");
+    }
+
+    function attendanceEmployeeFilteredOptions() {
+      const term = attendanceEmployeeFilter.search
+        .trim()
+        .toLowerCase();
+
+      if (!term) {
+        return attendanceEmployeeFilter.options;
+      }
+
+      return attendanceEmployeeFilter.options.filter(
+        employee =>
+          `${employee.emp_code} ${employee.full_name}`
+            .toLowerCase()
+            .includes(term)
+      );
+    }
+
+    function attendanceEmployeePageOptions() {
+      const filtered =
+        attendanceEmployeeFilteredOptions();
+      const maxPage = Math.max(
+        1,
+        Math.ceil(
+          filtered.length
+          / attendanceEmployeeFilter.pageSize
+        )
+      );
+
+      attendanceEmployeeFilter.page = Math.min(
+        Math.max(1, attendanceEmployeeFilter.page),
+        maxPage
+      );
+
+      const start =
+        (attendanceEmployeeFilter.page - 1)
+        * attendanceEmployeeFilter.pageSize;
+
+      return {
+        filtered,
+        maxPage,
+        rows: filtered.slice(
+          start,
+          start + attendanceEmployeeFilter.pageSize
+        )
+      };
+    }
+
+    function attendanceEmployeeCodesForQuery() {
+      const selected = [
+        ...attendanceEmployeeFilter.selected
+      ];
+
+      if (!selected.length) return null;
+
+      if (
+        attendanceEmployeeFilter.options.length
+        && selected.length
+          === attendanceEmployeeFilter.options.length
+      ) {
+        return null;
+      }
+
+      return selected;
+    }
+
+    function updateAttendanceEmployeeToggle() {
+      const button = $("attEmployeeToggle");
+      const text = $("attEmployeeToggleText");
+      const count = $("attEmployeeSelectedCount");
+
+      if (!button || !text || !count) return;
+
+      const total =
+        attendanceEmployeeFilter.options.length;
+      const selected =
+        attendanceEmployeeFilter.selected.size;
+
+      if (attendanceEmployeeFilter.loading) {
+        text.textContent = "กำลังโหลดรายชื่อ...";
+        count.textContent = "";
+        button.disabled = true;
+        return;
+      }
+
+      button.disabled = false;
+
+      if (!selected) {
+        text.textContent = total
+          ? `พนักงานทั้งหมด • ${total.toLocaleString("th-TH")} คน`
+          : "ไม่พบพนักงาน";
+        count.textContent = "ทั้งหมด";
+      } else if (selected === total) {
+        text.textContent =
+          `เลือกทั้งหมด • ${selected.toLocaleString("th-TH")} คน`;
+        count.textContent =
+          selected.toLocaleString("th-TH");
+      } else {
+        text.textContent =
+          `เลือกแล้ว ${selected.toLocaleString("th-TH")} คน`;
+        count.textContent =
+          selected.toLocaleString("th-TH");
+      }
+    }
+
+    function renderAttendanceEmployeeDropdown() {
+      updateAttendanceEmployeeToggle();
+
+      const list = $("attEmployeeList");
+      if (!list) return;
+
+      if (attendanceEmployeeFilter.loading) {
+        list.innerHTML =
+          `<div class="attendance-employee-empty">
+            กำลังโหลดรายชื่อพนักงาน...
+          </div>`;
+        return;
+      }
+
+      const {
+        filtered,
+        maxPage,
+        rows
+      } = attendanceEmployeePageOptions();
+
+      if (!rows.length) {
+        list.innerHTML =
+          `<div class="attendance-employee-empty">
+            ไม่พบพนักงานที่ตรงกับคำค้นหา
+          </div>`;
+      } else {
+        list.innerHTML = rows.map(employee => {
+          const checked =
+            attendanceEmployeeFilter.selected.has(
+              employee.emp_code
+            );
+
+          return `
+            <label
+              class="attendance-employee-option"
+              data-att-employee-option="${safe(employee.emp_code)}"
+            >
+              <input
+                type="checkbox"
+                value="${safe(employee.emp_code)}"
+                ${checked ? "checked" : ""}
+              />
+              <span class="attendance-employee-code">
+                ${safe(employee.emp_code)}
+              </span>
+              <span class="attendance-employee-name">
+                <strong>
+                  ${safe(
+                    employee.full_name
+                    || "ไม่พบชื่อพนักงาน"
+                  )}
+                </strong>
+                <small>
+                  ${safe(
+                    [
+                      employee.department,
+                      employee.area,
+                      employee.sub_area
+                    ].filter(Boolean).join(" • ")
+                    || "-"
+                  )}
+                </small>
+              </span>
+            </label>
+          `;
+        }).join("");
+      }
+
+      setText(
+        "attEmployeePageInfo",
+        `หน้า ${attendanceEmployeeFilter.page
+          .toLocaleString("th-TH")} / `
+        + `${maxPage.toLocaleString("th-TH")} • `
+        + `${filtered.length.toLocaleString("th-TH")} คน`
+      );
+
+      if ($("attEmployeePrev")) {
+        $("attEmployeePrev").disabled =
+          attendanceEmployeeFilter.page <= 1;
+      }
+
+      if ($("attEmployeeNext")) {
+        $("attEmployeeNext").disabled =
+          attendanceEmployeeFilter.page >= maxPage;
+      }
+
+      const pageCodes = rows.map(
+        employee => employee.emp_code
+      );
+      const pageSelected = Boolean(
+        pageCodes.length
+        && pageCodes.every(code =>
+          attendanceEmployeeFilter.selected.has(code)
+        )
+      );
+
+      const filteredCodes = filtered.map(
+        employee => employee.emp_code
+      );
+      const allFilteredSelected = Boolean(
+        filteredCodes.length
+        && filteredCodes.every(code =>
+          attendanceEmployeeFilter.selected.has(code)
+        )
+      );
+
+      setText(
+        "attEmployeeSelectPage",
+        pageSelected
+          ? "ยกเลิกหน้ารายชื่อ"
+          : "เลือกหน้ารายชื่อ"
+      );
+      setText(
+        "attEmployeeSelectAll",
+        allFilteredSelected
+          ? "ยกเลิกทั้งหมดที่ค้นหา"
+          : "เลือกทั้งหมด"
+      );
+    }
+
+    function fallbackAttendanceEmployeeOptions() {
+      const source = [
+        ...(state.attendance || []),
+        ...(state.filters.employees || [])
+      ];
+
+      const unique = new Map();
+
+      source
+        .map(normalizeAttendanceEmployeeOption)
+        .filter(employee => employee.emp_code)
+        .filter(employee =>
+          !val("attZone")
+          || employee.area === val("attZone")
+        )
+        .filter(employee =>
+          !val("attSubArea")
+          || employee.sub_area === val("attSubArea")
+        )
+        .filter(employee =>
+          !val("attDepartment")
+          || employee.department === val("attDepartment")
+        )
+        .forEach(employee => {
+          const current = unique.get(employee.emp_code);
+
+          if (
+            !current
+            || (
+              !current.full_name
+              && employee.full_name
+            )
+          ) {
+            unique.set(employee.emp_code, employee);
+          }
+        });
+
+      return [...unique.values()].sort(
+        (a,b) =>
+          a.emp_code.localeCompare(
+            b.emp_code,
+            "th",
+            { numeric: true }
+          )
+      );
+    }
+
+    async function loadAttendanceEmployeeOptions(
+      preserve = true,
+      force = false
+    ) {
+      const previous = preserve
+        ? new Set(attendanceEmployeeFilter.selected)
+        : new Set();
+
+      const cacheKey = attendanceEmployeeFilterKey();
+      attendanceEmployeeFilter.loading = true;
+      renderAttendanceEmployeeDropdown();
+
+      try {
+        let rows = null;
+
+        if (
+          !force
+          && attendanceEmployeeFilter.cache.has(cacheKey)
+        ) {
+          rows =
+            attendanceEmployeeFilter.cache.get(cacheKey);
+        } else {
+          const { data, error } = await state.client.rpc(
+            "ta_get_attendance_employee_options_v671",
+            {
+              p_start_date: val("attStart"),
+              p_end_date: val("attEnd"),
+              p_area: val("attZone") || null,
+              p_sub_area: val("attSubArea") || null,
+              p_department:
+                val("attDepartment") || null,
+              p_search: null,
+              p_limit: 10000
+            }
+          );
+
+          if (error) throw error;
+
+          rows = (data || [])
+            .map(normalizeAttendanceEmployeeOption)
+            .filter(employee => employee.emp_code);
+
+          attendanceEmployeeFilter.cache.set(
+            cacheKey,
+            rows
+          );
+
+          if (
+            attendanceEmployeeFilter.cache.size > 20
+          ) {
+            const firstKey =
+              attendanceEmployeeFilter.cache.keys()
+                .next().value;
+            attendanceEmployeeFilter.cache.delete(firstKey);
+          }
+        }
+
+        attendanceEmployeeFilter.options = rows;
+      } catch (error) {
+        attendanceEmployeeFilter.options =
+          fallbackAttendanceEmployeeOptions();
+
+        if (
+          !window.TimeClockShiftAPI
+            ?.missingFunction?.(error)
+        ) {
+          toast(
+            `โหลดรายชื่อพนักงานไม่สำเร็จ: `
+            + `${humanError(error)}`,
+            "error"
+          );
+        }
+      } finally {
+        const available = new Set(
+          attendanceEmployeeFilter.options.map(
+            employee => employee.emp_code
+          )
+        );
+
+        attendanceEmployeeFilter.selected =
+          new Set(
+            [...previous].filter(code =>
+              available.has(code)
+            )
+          );
+
+        state.filters.attendance.employees =
+          attendanceEmployeeFilter.options;
+
+        attendanceEmployeeFilter.search = "";
+        attendanceEmployeeFilter.page = 1;
+        attendanceEmployeeFilter.loading = false;
+
+        if ($("attEmployeeSearch")) {
+          $("attEmployeeSearch").value = "";
+        }
+
+        renderAttendanceEmployeeDropdown();
+      }
+    }
+
+    function toggleAttendanceEmployeeDropdown(force) {
+      const dropdown = $("attEmployeeDropdown");
+      const toggle = $("attEmployeeToggle");
+      if (!dropdown || !toggle) return;
+
+      const shouldOpen = force ?? dropdown.classList
+        .contains("hidden");
+
+      dropdown.classList.toggle("hidden", !shouldOpen);
+      toggle.setAttribute(
+        "aria-expanded",
+        shouldOpen ? "true" : "false"
+      );
+
+      if (shouldOpen) {
+        window.setTimeout(
+          () => $("attEmployeeSearch")?.focus(),
+          30
+        );
+      }
+    }
 
     async function loadAttendanceFilterOptions(preserve = true) {
       const oldArea = preserve ? val("attZone") : "";
@@ -1303,7 +1773,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         state.filters.attendance = {
           areas: Array.isArray(f.areas) ? f.areas : [],
           sub_areas: Array.isArray(f.sub_areas) ? f.sub_areas : [],
-          departments: Array.isArray(f.departments) ? f.departments : []
+          departments: Array.isArray(f.departments) ? f.departments : [],
+          employees:
+            state.filters.attendance.employees || []
         };
         fillSelect("attZone", state.filters.attendance.areas, "ทุกพื้นที่");
         fillSelect("attSubArea", state.filters.attendance.sub_areas, "ทุกพื้นที่ย่อย");
@@ -1314,6 +1786,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       } catch (err) {
         toast(`โหลดตัวกรองรายละเอียดเวลาไม่สำเร็จ: ${humanError(err)}`, "error");
       }
+
+      await loadAttendanceEmployeeOptions(preserve);
     }
 
     function fillSelect(id, values, allLabel) {
@@ -1845,14 +2319,29 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       showLoading("กำลังโหลดรายละเอียดเวลา...");
       try {
         const statuses = val("attStatus") ? [val("attStatus")] : null;
-        const globalSearch = (document.getElementById("attendanceGridSearch")?.value || "").trim();
-        const exactEmpCode = /^\d{4,20}$/.test(globalSearch) ? globalSearch : null;
+        const globalSearch =
+          (
+            document.getElementById(
+              "attendanceGridSearch"
+            )?.value || ""
+          ).trim();
+        const exactEmpCode =
+          /^\d{4,20}$/.test(globalSearch)
+            ? globalSearch
+            : null;
+        const selectedEmployeeCodes =
+          attendanceEmployeeCodesForQuery();
+        const requestEmployeeCodes =
+          exactEmpCode
+            ? [exactEmpCode]
+            : selectedEmployeeCodes;
+
         const args640 = {
           p_start_date: val("attStart"),
           p_end_date: val("attEnd"),
           p_zone: val("attZone") || null,
           p_department: val("attDepartment") || null,
-          p_emp_codes: exactEmpCode ? [exactEmpCode] : null,
+          p_emp_codes: requestEmployeeCodes,
           p_attendance_statuses: statuses,
           p_schedule_statuses: null,
           p_limit: exactEmpCode ? 5000 : 5000
@@ -1894,7 +2383,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               p_area: val("attZone") || null,
               p_sub_area: val("attSubArea") || null,
               p_department: val("attDepartment") || null,
-              p_emp_codes: exactEmpCode ? [exactEmpCode] : null,
+              p_emp_codes: requestEmployeeCodes,
               p_attendance_statuses: null,
               p_schedule_statuses: null,
               p_limit: exactEmpCode ? 20000 : 5000
@@ -2644,7 +3133,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.7.0"
+          change_reason: "บันทึกจากหน้า HR Admin V6.7.1"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -2809,10 +3298,182 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("mobileMenuBtn").addEventListener("click", () => $("sidebar").classList.toggle("open"));
       $("loadDashboardBtn").addEventListener("click", loadDashboard);
       $("loadAttendanceBtn").addEventListener("click", loadAttendance);
-      $("attZone")?.addEventListener("change", async () => { setVal("attSubArea", ""); setVal("attDepartment", ""); await loadAttendanceFilterOptions(true); });
-      $("attSubArea")?.addEventListener("change", async () => { setVal("attDepartment", ""); await loadAttendanceFilterOptions(true); });
-      $("attStart")?.addEventListener("change", () => loadAttendanceFilterOptions(true));
-      $("attEnd")?.addEventListener("change", () => loadAttendanceFilterOptions(true));
+      $("attZone")?.addEventListener(
+        "change",
+        async () => {
+          setVal("attSubArea","");
+          setVal("attDepartment","");
+          await loadAttendanceFilterOptions(true);
+        }
+      );
+      $("attSubArea")?.addEventListener(
+        "change",
+        async () => {
+          setVal("attDepartment","");
+          await loadAttendanceFilterOptions(true);
+        }
+      );
+      $("attDepartment")?.addEventListener(
+        "change",
+        async () => {
+          await loadAttendanceEmployeeOptions(true);
+        }
+      );
+      $("attStart")?.addEventListener(
+        "change",
+        () => loadAttendanceFilterOptions(true)
+      );
+      $("attEnd")?.addEventListener(
+        "change",
+        () => loadAttendanceFilterOptions(true)
+      );
+
+      $("attEmployeeToggle")?.addEventListener(
+        "click",
+        event => {
+          event.stopPropagation();
+          toggleAttendanceEmployeeDropdown();
+        }
+      );
+
+      $("attEmployeeDropdown")?.addEventListener(
+        "click",
+        event => event.stopPropagation()
+      );
+
+      $("attEmployeeSearch")?.addEventListener(
+        "input",
+        event => {
+          attendanceEmployeeFilter.search =
+            event.target.value || "";
+          attendanceEmployeeFilter.page = 1;
+          renderAttendanceEmployeeDropdown();
+        }
+      );
+
+      $("attEmployeeList")?.addEventListener(
+        "change",
+        event => {
+          const checkbox = event.target.closest(
+            'input[type="checkbox"]'
+          );
+          if (!checkbox) return;
+
+          if (checkbox.checked) {
+            attendanceEmployeeFilter.selected.add(
+              checkbox.value
+            );
+          } else {
+            attendanceEmployeeFilter.selected.delete(
+              checkbox.value
+            );
+          }
+
+          renderAttendanceEmployeeDropdown();
+        }
+      );
+
+      $("attEmployeeSelectPage")?.addEventListener(
+        "click",
+        () => {
+          const { rows } =
+            attendanceEmployeePageOptions();
+          const codes = rows.map(
+            employee => employee.emp_code
+          );
+          const allSelected = Boolean(
+            codes.length
+            && codes.every(code =>
+              attendanceEmployeeFilter.selected.has(code)
+            )
+          );
+
+          codes.forEach(code => {
+            if (allSelected) {
+              attendanceEmployeeFilter.selected.delete(code);
+            } else {
+              attendanceEmployeeFilter.selected.add(code);
+            }
+          });
+
+          renderAttendanceEmployeeDropdown();
+        }
+      );
+
+      $("attEmployeeSelectAll")?.addEventListener(
+        "click",
+        () => {
+          const codes =
+            attendanceEmployeeFilteredOptions().map(
+              employee => employee.emp_code
+            );
+          const allSelected = Boolean(
+            codes.length
+            && codes.every(code =>
+              attendanceEmployeeFilter.selected.has(code)
+            )
+          );
+
+          codes.forEach(code => {
+            if (allSelected) {
+              attendanceEmployeeFilter.selected.delete(code);
+            } else {
+              attendanceEmployeeFilter.selected.add(code);
+            }
+          });
+
+          renderAttendanceEmployeeDropdown();
+        }
+      );
+
+      $("attEmployeeClear")?.addEventListener(
+        "click",
+        () => {
+          attendanceEmployeeFilter.selected.clear();
+          renderAttendanceEmployeeDropdown();
+        }
+      );
+
+      $("attEmployeePrev")?.addEventListener(
+        "click",
+        () => {
+          attendanceEmployeeFilter.page = Math.max(
+            1,
+            attendanceEmployeeFilter.page - 1
+          );
+          renderAttendanceEmployeeDropdown();
+        }
+      );
+
+      $("attEmployeeNext")?.addEventListener(
+        "click",
+        () => {
+          attendanceEmployeeFilter.page += 1;
+          renderAttendanceEmployeeDropdown();
+        }
+      );
+
+      document.addEventListener(
+        "click",
+        event => {
+          if (
+            !event.target.closest(
+              "#attEmployeeMulti"
+            )
+          ) {
+            toggleAttendanceEmployeeDropdown(false);
+          }
+        }
+      );
+
+      document.addEventListener(
+        "keydown",
+        event => {
+          if (event.key === "Escape") {
+            toggleAttendanceEmployeeDropdown(false);
+          }
+        }
+      );
       $("exportAttendanceBtn").addEventListener("click", exportAttendance);
       $("loadScheduleBtn").addEventListener("click", loadSchedule);
       $("scheduleSearch").addEventListener("input", renderSchedule);
@@ -2936,6 +3597,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       attendanceIsColumnVisible,
       attendanceExportMatrix,
       loadAttendanceFilterOptions,
+      loadAttendanceEmployeeOptions,
+      attendanceEmployeeCodesForQuery,
       attendanceLabel,
       downloadFile,
       applyProfile,
@@ -5973,7 +6636,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.7.0 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.7.1 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -6449,7 +7112,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.7.0';
+  const VERSION='6.7.1';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
