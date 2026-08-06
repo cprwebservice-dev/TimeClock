@@ -866,7 +866,7 @@ body.dark .work-template-card,body.dark .dow-checks label{background:var(--slate
 @media(max-width:1100px){.v650-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v650-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v650-filter-grid .toolbar-actions{grid-column:1/-1}}
 @media(max-width:700px){.v650-hero{align-items:flex-start;flex-direction:column;padding:20px}.v650-hero-actions{width:100%;justify-content:stretch}.v650-hero-actions .btn{flex:1}.v650-kpi-grid,.v650-filter-grid{grid-template-columns:1fr}.v650-filter-grid .toolbar-actions{grid-column:auto}.v650-table-wrap{max-height:60vh}}
 
-/* ===== V6.9.0 Shift Settings by Work Pattern ===== */
+/* ===== V6.9.3 Shift Settings by Work Pattern ===== */
 .shift-settings-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px 26px;border-radius:22px;color:#fff;background:linear-gradient(135deg,#0b376f,#1269df 62%,#f58220);box-shadow:0 18px 42px rgba(11,55,111,.2)}
 .shift-settings-hero h2{margin:4px 0 6px;font-size:27px}.shift-settings-hero p{margin:0;max-width:820px;color:rgba(255,255,255,.84)}.shift-settings-hero .eyebrow{color:#fed7aa}
 .shift-pattern-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -888,7 +888,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 @media(max-width:600px){.shift-recalc-grid,.shift-duration-summary{grid-template-columns:1fr}.shift-pattern-card-metrics{grid-template-columns:1fr 1fr}.shift-settings-hero{padding:20px}}
 
 
-/* ===== V6.9.0 Work Pattern Recalculation Job ===== */
+/* ===== V6.9.3 Work Pattern Recalculation Job ===== */
 .shift-recalc-progress{
   margin-top:14px;
   padding:14px 16px;
@@ -931,7 +931,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Template Content ===== */
+/* ===== V6.9.3 Template Content ===== */
 .work-template-card.template-missing{
   border-style:dashed;
   opacity:.82;
@@ -943,13 +943,13 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Effective Role Visibility ===== */
+/* ===== V6.9.3 Effective Role Visibility ===== */
 #workPatternAdminPanel[aria-hidden="true"]{
   display:none !important;
 }
 
 
-/* ===== V6.9.0 Fortnight Schedule View ===== */
+/* ===== V6.9.3 Fortnight Schedule View ===== */
 .schedule-period-field{
   min-width:245px;
 }
@@ -989,7 +989,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Pattern-Aware Shift Assignment ===== */
+/* ===== V6.9.3 Pattern-Aware Shift Assignment ===== */
 .schedule-pattern-summary{
   display:flex;
   align-items:center;
@@ -1095,7 +1095,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Schedule Name & Visual Fix ===== */
+/* ===== V6.9.3 Schedule Name & Visual Fix ===== */
 .schedule-name-missing{
   color:#b42318!important;
   font-size:9px!important;
@@ -1214,7 +1214,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Weekly Schedule & Shift Time ===== */
+/* ===== V6.9.3 Weekly Schedule & Shift Time ===== */
 .weekly-schedule-table th.day-col,
 .weekly-schedule-table td.day-col{
   min-width:94px;
@@ -1264,7 +1264,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Absence & Attendance Columns ===== */
+/* ===== V6.9.3 Absence & Attendance Columns ===== */
 .attendance-column-controls{
   display:flex;
   align-items:center;
@@ -1333,7 +1333,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Leave Status & Optional Location Columns ===== */
+/* ===== V6.9.3 Leave Status & Optional Location Columns ===== */
 .badge-purple{
   color:#6d28d9;
   background:#ede9fe;
@@ -1349,7 +1349,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Attendance Detail Workspace ===== */
+/* ===== V6.9.3 Attendance Detail Workspace ===== */
 .attendance-detail-drawer{
   right:min(-780px,-98vw);
   width:min(760px,98vw);
@@ -1732,7 +1732,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Employee Multi-Select Filter ===== */
+/* ===== V6.9.3 Employee Multi-Select Filter ===== */
 .attendance-employee-field{
   min-width:300px;
 }
@@ -1930,7 +1930,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Attendance Filter Layout Refinement ===== */
+/* ===== V6.9.3 Attendance Filter Layout Refinement ===== */
 #page-attendance>.panel:first-child{
   overflow:visible;
 }
@@ -2120,7 +2120,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Employee Dropdown Readability ===== */
+/* ===== V6.9.3 Employee Dropdown Readability ===== */
 .attendance-employee-option{
   grid-template-columns:18px minmax(0,1fr);
   gap:10px;
@@ -2180,7 +2180,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Simplified Attendance Filters ===== */
+/* ===== V6.9.3 Simplified Attendance Filters ===== */
 #page-attendance .attendance-searchable-filter{
   width:100%;
   height:46px;
@@ -2282,7 +2282,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Role & Manager Hierarchy ===== */
+/* ===== V6.9.3 Role & Manager Hierarchy ===== */
 .shift-request-hero{
   display:flex;
   align-items:center;
@@ -2427,7 +2427,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Manager Scope by Email ===== */
+/* ===== V6.9.3 Manager Scope by Email ===== */
 .manager-scope-hero{
   display:flex;
   align-items:flex-start;
@@ -2707,7 +2707,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.0 Organization Structure ===== */
+/* ===== V6.9.3 Organization Structure ===== */
 .org-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:22px 24px;border:1px solid var(--border,#e4e7ec);border-radius:16px;background:linear-gradient(135deg,rgba(21,112,239,.09),rgba(249,115,22,.06)),var(--surface,#fff)}
 .org-hero h2{margin:4px 0 5px;color:var(--navy-900,#0b1f3a)}
 .org-hero p{margin:0;color:var(--slate-500,#667085);font-size:10px}
@@ -2803,3 +2803,31 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 @media(max-width:1100px){.org-workspace{grid-template-columns:1fr}.org-tree{height:440px;min-height:440px}.org-detail-columns{grid-template-columns:1fr}.org-detail-head{flex-direction:column}.org-detail-actions{justify-content:flex-start}.org-upload-grid{grid-template-columns:1fr}}
 @media(max-width:700px){.org-hero{flex-direction:column}.org-hero-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.org-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.org-detail-columns{padding:0 12px}.org-manager-card{margin:12px}.org-detail-head,.org-kpi-grid{padding-left:12px;padding-right:12px}.org-info-grid{grid-template-columns:1fr}}
 @media(max-width:480px){.org-hero-actions{grid-template-columns:1fr}.org-detail-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.org-detail-actions .btn{width:100%}}
+
+
+/* ===== V6.9.3 Organization Upload Modal Balance ===== */
+.modal.extra-large{width:min(1180px,96vw)}
+#orgUploadModal{padding:12px}
+#orgUploadModal .org-upload-modal{display:flex;flex-direction:column;width:min(1480px,98vw);max-height:95vh;overflow:hidden;border-radius:18px}
+#orgUploadModal .modal-header{flex:0 0 auto;padding:16px 20px;background:var(--surface,#fff)}
+#orgUploadModal .modal-header h3{font-size:16px}
+#orgUploadModal .modal-header p{margin:4px 0 0;color:var(--slate-500,#667085);font-size:9px}
+#orgUploadModal .modal-body{flex:1 1 auto;min-height:0;overflow:auto;padding:16px 20px 18px}
+#orgUploadModal .modal-footer{flex:0 0 auto;padding:12px 20px;background:var(--surface,#fff)}
+#orgUploadModal .org-upload-grid{grid-template-columns:minmax(480px,1.35fr) minmax(340px,.85fr);gap:14px;align-items:stretch}
+#orgUploadModal .org-upload-grid>.field,#orgUploadModal .org-danger-option{min-height:70px;margin:0}
+#orgUploadModal .org-upload-grid>.field{display:flex;flex-direction:column;justify-content:flex-end;padding:11px 13px;border:1px solid var(--border,#e4e7ec);border-radius:11px;background:var(--slate-25,#fcfcfd)}
+#orgUploadModal .org-upload-grid>.field label{margin-bottom:7px}
+#orgUploadModal .org-upload-summary{display:flex;align-items:center;min-height:40px;margin:12px 0}
+#orgUploadModal .org-upload-preview{max-height:calc(95vh - 285px);min-height:320px;overflow:auto;border:1px solid var(--border,#e4e7ec);border-radius:11px}
+#orgUploadModal .org-upload-preview-table{min-width:1560px;width:100%;table-layout:auto}
+#orgUploadModal .org-upload-preview-table thead th{position:sticky;top:0;z-index:2;padding:10px 9px;background:var(--slate-50,#f9fafb);color:var(--slate-700,#344054);font-size:8px;white-space:nowrap}
+#orgUploadModal .org-upload-preview-table td{padding:9px;font-size:8px;line-height:1.4;vertical-align:top;white-space:nowrap}
+#orgUploadModal .org-upload-preview-table .org-upload-name{min-width:230px;max-width:340px;white-space:normal}
+#orgUploadModal .org-upload-preview-table .org-upload-note{min-width:190px;max-width:300px;white-space:normal}
+#orgUploadModal .org-upload-preview-table th:nth-child(1),#orgUploadModal .org-upload-preview-table td:nth-child(1){position:sticky;left:0;z-index:1;width:54px;min-width:54px;background:var(--surface,#fff);text-align:center}
+#orgUploadModal .org-upload-preview-table thead th:nth-child(1){z-index:3;background:var(--slate-50,#f9fafb)}
+.dark #orgUploadModal .org-upload-grid>.field,.dark #orgUploadModal .org-upload-preview-table td:nth-child(1){background:rgba(30,41,59,.72)}
+.dark #orgUploadModal .org-upload-preview-table thead th,.dark #orgUploadModal .org-upload-preview-table thead th:nth-child(1){background:#172033;color:#e2e8f0}
+@media(max-width:1000px){#orgUploadModal .org-upload-grid{grid-template-columns:1fr}#orgUploadModal .org-upload-preview{max-height:calc(95vh - 365px)}}
+@media(max-width:600px){#orgUploadModal{padding:6px}#orgUploadModal .org-upload-modal{width:100%;max-height:98vh;border-radius:12px}#orgUploadModal .modal-header,#orgUploadModal .modal-body,#orgUploadModal .modal-footer{padding-left:12px;padding-right:12px}#orgUploadModal .modal-footer{flex-wrap:wrap}#orgUploadModal .modal-footer .btn{flex:1 1 140px}}

@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.9.0',
+  version: '6.9.3',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.0"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.3"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -3306,7 +3306,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.9.0"
+          change_reason: "บันทึกจากหน้า HR Admin V6.9.3"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3607,7 +3607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               val("umDisplayName") || null,
             p_is_active: $("umActive").checked,
             p_change_reason:
-              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.0"
+              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.3"
           }
         );
 
@@ -3885,7 +3885,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         + "\n";
 
       downloadFile(
-        "Manager_Scope_Template_v6.9.0.csv",
+        "Manager_Scope_Template_v6.9.3.csv",
         csv,
         "text/csv;charset=utf-8"
       );
@@ -7709,7 +7709,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.9.0 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.9.3 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -8185,7 +8185,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.9.0';
+  const VERSION='6.9.3';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8266,11 +8266,11 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.0 Role, Manager Hierarchy & Shift Requests ===== */
+/* ===== V6.9.3 Role, Manager Hierarchy & Shift Requests ===== */
 (function TimeClockV680(){
   "use strict";
 
-  const VERSION = "6.9.0";
+  const VERSION = "6.9.3";
   const app = () => window.TimeClockApp;
   const $ = id => document.getElementById(id);
   const qsa = (selector,root=document) =>
@@ -9035,7 +9035,7 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.0 Organization Structure ===== */
+/* ===== V6.9.3 Organization Structure ===== */
 "use strict";
 (() => {
   const A = () => window.TimeClockApp;
@@ -9500,8 +9500,8 @@ ${skippedSummary(compatibility.skipped)}
 
     A().downloadFile?.(
       kind==="org"
-        ? "Organization_Structure_Template_v6.9.0.csv"
-        : "Organization_Manager_Scope_Template_v6.9.0.csv",
+        ? "Organization_Structure_Template_v6.9.3.csv"
+        : "Organization_Manager_Scope_Template_v6.9.3.csv",
       "\uFEFF"+headers.join(",")+"\n",
       "text/csv;charset=utf-8"
     );
@@ -9515,9 +9515,22 @@ ${skippedSummary(compatibility.skipped)}
     $("orgImportBtn").disabled = !state.orgUploadRows.length;
     $("orgUploadBody").innerHTML = state.orgUploadRows.length
       ? state.orgUploadRows.slice(0,100).map((row,index) =>
-          `<tr><td>${index+2}</td><td>${esc(row.org_code)}</td><td>${esc(row.org_name)}</td><td>${esc(row.org_level_name||row.org_level_code)}</td><td>${esc(row.parent_org_code||"-")}</td><td>${esc(row.is_active||"true")}</td></tr>`
+          `<tr>
+            <td>${index+2}</td>
+            <td><strong>${esc(row.org_code)}</strong></td>
+            <td class="org-upload-name">${esc(row.org_name)}</td>
+            <td>${esc(row.org_level_code||"-")}</td>
+            <td>${esc(row.org_level_name||"-")}</td>
+            <td>${esc(row.level_order||"0")}</td>
+            <td>${esc(row.parent_org_code||"-")}</td>
+            <td>${esc(row.sort_order||"0")}</td>
+            <td>${esc(row.effective_from||"-")}</td>
+            <td>${esc(row.effective_to||"-")}</td>
+            <td>${esc(row.is_active||"true")}</td>
+            <td class="org-upload-note">${esc(row.note||"-")}</td>
+          </tr>`
         ).join("")
-      : '<tr><td colspan="6" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
+      : '<tr><td colspan="12" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
   }
 
   async function importOrg() {
@@ -9637,7 +9650,10 @@ ${skippedSummary(compatibility.skipped)}
       $("orgUploadFile").value="";
       $("orgImportBtn").disabled=true;
       $("orgUploadErrors").classList.add("hidden");
+      $("orgUploadErrors").innerHTML="";
       setText("orgUploadSummary","ยังไม่ได้เลือกไฟล์");
+      $("orgUploadBody").innerHTML =
+        '<tr><td colspan="12" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
       open("orgUploadModal");
     });
     $("orgScopeUploadBtn")?.addEventListener("click",()=>{
