@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.7.3',
+  version: '6.7.4',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.3"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.4"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -1793,17 +1793,136 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           employees:
             state.filters.attendance.employees || []
         };
-        fillSelect("attZone", state.filters.attendance.areas, "ทุกพื้นที่");
-        fillSelect("attSubArea", state.filters.attendance.sub_areas, "ทุกพื้นที่ย่อย");
-        fillSelect("attDepartment", state.filters.attendance.departments, "ทุกหน่วยงาน");
-        if (oldArea && [...$("attZone").options].some(o => o.value === oldArea)) setVal("attZone", oldArea);
-        if (oldSubArea && [...$("attSubArea").options].some(o => o.value === oldSubArea)) setVal("attSubArea", oldSubArea);
-        if (oldDepartment && [...$("attDepartment").options].some(o => o.value === oldDepartment)) setVal("attDepartment", oldDepartment);
+        fillSearchableAttendanceFilter(
+          "attZone",
+          "attZoneOptions",
+          state.filters.attendance.areas,
+          "ทุกพื้นที่"
+        );
+        fillSearchableAttendanceFilter(
+          "attSubArea",
+          "attSubAreaOptions",
+          state.filters.attendance.sub_areas,
+          "ทุกพื้นที่ย่อย"
+        );
+        fillSearchableAttendanceFilter(
+          "attDepartment",
+          "attDepartmentOptions",
+          state.filters.attendance.departments,
+          "ทุกหน่วยงาน"
+        );
+
+        if (
+          oldArea
+          && attendanceFilterHasOption("attZone",oldArea)
+        ) {
+          setVal("attZone",oldArea);
+        }
+        if (
+          oldSubArea
+          && attendanceFilterHasOption(
+            "attSubArea",
+            oldSubArea
+          )
+        ) {
+          setVal("attSubArea",oldSubArea);
+        }
+        if (
+          oldDepartment
+          && attendanceFilterHasOption(
+            "attDepartment",
+            oldDepartment
+          )
+        ) {
+          setVal("attDepartment",oldDepartment);
+        }
       } catch (err) {
         toast(`โหลดตัวกรองรายละเอียดเวลาไม่สำเร็จ: ${humanError(err)}`, "error");
       }
 
       await loadAttendanceEmployeeOptions(preserve);
+    }
+
+    function fillSearchableAttendanceFilter(
+      inputId,
+      listId,
+      values,
+      placeholder
+    ) {
+      const input = $(inputId);
+      const list = $(listId);
+      if (!input || !list) return;
+
+      const current = String(input.value || "").trim();
+      const normalized = [
+        ...new Set(
+          (values || [])
+            .map(value => String(value || "").trim())
+            .filter(Boolean)
+        )
+      ].sort((a,b) =>
+        a.localeCompare(b,"th",{numeric:true})
+      );
+
+      list.innerHTML = normalized
+        .map(value => `<option value="${safe(value)}"></option>`)
+        .join("");
+
+      input.placeholder = placeholder;
+      input.dataset.options = JSON.stringify(normalized);
+
+      if (
+        current
+        && !normalized.includes(current)
+      ) {
+        input.value = "";
+      }
+    }
+
+    function attendanceFilterHasOption(inputId,value) {
+      if (!value) return true;
+      const input = $(inputId);
+      if (!input) return false;
+
+      try {
+        const values = JSON.parse(
+          input.dataset.options || "[]"
+        );
+        return values.includes(value);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    async function selectAttendanceEmployees(
+      codes,
+      loadAfter = true
+    ) {
+      const requested = new Set(
+        (codes || [])
+          .map(code => String(code || "").trim())
+          .filter(Boolean)
+      );
+
+      if (!attendanceEmployeeFilter.options.length) {
+        await loadAttendanceEmployeeOptions(false);
+      }
+
+      const available = new Set(
+        attendanceEmployeeFilter.options.map(
+          employee => employee.emp_code
+        )
+      );
+
+      attendanceEmployeeFilter.selected = new Set(
+        [...requested].filter(code => available.has(code))
+      );
+
+      renderAttendanceEmployeeDropdown();
+
+      if (loadAfter) {
+        await loadAttendance();
+      }
     }
 
     function fillSelect(id, values, allLabel) {
@@ -2335,22 +2454,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       showLoading("กำลังโหลดรายละเอียดเวลา...");
       try {
         const statuses = val("attStatus") ? [val("attStatus")] : null;
-        const globalSearch =
-          (
-            document.getElementById(
-              "attendanceGridSearch"
-            )?.value || ""
-          ).trim();
-        const exactEmpCode =
-          /^\d{4,20}$/.test(globalSearch)
-            ? globalSearch
-            : null;
-        const selectedEmployeeCodes =
-          attendanceEmployeeCodesForQuery();
         const requestEmployeeCodes =
-          exactEmpCode
-            ? [exactEmpCode]
-            : selectedEmployeeCodes;
+          attendanceEmployeeCodesForQuery();
 
         const args640 = {
           p_start_date: val("attStart"),
@@ -2360,7 +2465,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           p_emp_codes: requestEmployeeCodes,
           p_attendance_statuses: statuses,
           p_schedule_statuses: null,
-          p_limit: exactEmpCode ? 5000 : 5000
+          p_limit: 5000
         };
         let usedV664 = true;
         let response = await state.client.rpc(
@@ -2402,7 +2507,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               p_emp_codes: requestEmployeeCodes,
               p_attendance_statuses: null,
               p_schedule_statuses: null,
-              p_limit: exactEmpCode ? 20000 : 5000
+              p_limit: 5000
             }
           );
         }
@@ -3149,7 +3254,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.7.3"
+          change_reason: "บันทึกจากหน้า HR Admin V6.7.4"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3490,7 +3595,6 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           }
         }
       );
-      $("exportAttendanceBtn").addEventListener("click", exportAttendance);
       $("loadScheduleBtn").addEventListener("click", loadSchedule);
       $("scheduleSearch").addEventListener("input", renderSchedule);
       $("schedulePatternFilter")?.addEventListener("change", renderSchedule);
@@ -3615,6 +3719,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       loadAttendanceFilterOptions,
       loadAttendanceEmployeeOptions,
       attendanceEmployeeCodesForQuery,
+      selectAttendanceEmployees,
       attendanceLabel,
       downloadFile,
       applyProfile,
@@ -4690,7 +4795,15 @@ ${skippedSummary(compatibility.skipped)}
   function mountCommand(){if($("commandBackdrop"))return;const el=document.createElement("div");el.id="commandBackdrop";el.className="command-backdrop hidden";el.innerHTML=`<div class="command-panel"><div class="command-input-wrap"><span>⌕</span><input id="commandInput" class="command-input" placeholder="ค้นหาเมนู รหัส หรือชื่อพนักงาน..." autocomplete="off"><span class="command-kbd">ESC</span></div><div id="commandResults" class="command-results"></div></div>`;document.body.appendChild(el);el.addEventListener("click",e=>{if(e.target===el)closeCommand()});$("commandInput").addEventListener("input",renderCommand);$("commandInput").addEventListener("keydown",e=>{const items=qa(".command-item",$("commandResults"));if(e.key==="ArrowDown"){e.preventDefault();selected=Math.min(selected+1,items.length-1);renderActive(items);}else if(e.key==="ArrowUp"){e.preventDefault();selected=Math.max(selected-1,0);renderActive(items);}else if(e.key==="Enter"&&items[selected])items[selected].click();});}
   function renderActive(items){items.forEach((x,i)=>x.classList.toggle("active",i===selected));items[selected]?.scrollIntoView({block:"nearest"});}
   function employeeItems(term){if(term.length<2)return[];const raw=app()?.state?.filters?.employees||[];return raw.map(x=>typeof x==="string"?{emp_code:x,full_name:""}:x).filter(x=>`${x.emp_code||x.employee_id||x.EmployeeId||""} ${x.full_name||x.name||""}`.toLowerCase().includes(term)).slice(0,8).map(x=>({emp:String(x.emp_code||x.employee_id||x.EmployeeId||""),name:String(x.full_name||x.name||"")}));}
-  function renderCommand(){const term=$("commandInput").value.trim().toLowerCase();selected=0;const visible=new Set(qa(".nav-item:not(.hidden)").map(x=>x.dataset.page));const menus=menuItems.filter(x=>visible.has(x[0])&&(!term||`${x[1]} ${x[2]} ${x[0]}`.toLowerCase().includes(term)));const employees=employeeItems(term);const res=$("commandResults");if(!menus.length&&!employees.length){res.innerHTML=`<div class="command-empty">ไม่พบข้อมูลที่ตรงกับ “${term}”</div>`;return;}res.innerHTML=`${menus.length?`<div class="command-section-label">เมนู</div>${menus.map((x,i)=>`<button class="command-item ${i===0?"active":""}" data-go="${x[0]}"><span class="command-item-icon">${x[3]}</span><span class="command-item-text"><strong>${x[1]}</strong><small>${x[2]}</small></span></button>`).join("")}`:""}${employees.length?`<div class="command-section-label">พนักงาน</div>${employees.map(x=>`<button class="command-item" data-command-employee="${x.emp}"><span class="command-item-icon">♙</span><span class="command-item-text"><strong>${x.emp} ${x.name}</strong><small>เปิดรายละเอียดเวลาทำงาน</small></span></button>`).join("")}`:""}`;qa("[data-go]",res).forEach(b=>b.onclick=()=>go(b.dataset.go));qa("[data-command-employee]",res).forEach(b=>b.onclick=async()=>{go("attendance");const input=$("attendanceGridSearch");if(input){input.value=b.dataset.commandEmployee;input.dispatchEvent(new Event("input"));}else if(app()?.loadAttendance)await app().loadAttendance();});}
+  function renderCommand(){const term=$("commandInput").value.trim().toLowerCase();selected=0;const visible=new Set(qa(".nav-item:not(.hidden)").map(x=>x.dataset.page));const menus=menuItems.filter(x=>visible.has(x[0])&&(!term||`${x[1]} ${x[2]} ${x[0]}`.toLowerCase().includes(term)));const employees=employeeItems(term);const res=$("commandResults");if(!menus.length&&!employees.length){res.innerHTML=`<div class="command-empty">ไม่พบข้อมูลที่ตรงกับ “${term}”</div>`;return;}res.innerHTML=`${menus.length?`<div class="command-section-label">เมนู</div>${menus.map((x,i)=>`<button class="command-item ${i===0?"active":""}" data-go="${x[0]}"><span class="command-item-icon">${x[3]}</span><span class="command-item-text"><strong>${x[1]}</strong><small>${x[2]}</small></span></button>`).join("")}`:""}${employees.length?`<div class="command-section-label">พนักงาน</div>${employees.map(x=>`<button class="command-item" data-command-employee="${x.emp}"><span class="command-item-icon">♙</span><span class="command-item-text"><strong>${x.emp} ${x.name}</strong><small>เปิดรายละเอียดเวลาทำงาน</small></span></button>`).join("")}`:""}`;qa("[data-go]",res).forEach(b=>b.onclick=()=>go(b.dataset.go));qa("[data-command-employee]",res).forEach(
+  b=>b.onclick=async()=>{
+    go("attendance");
+    await app()?.selectAttendanceEmployees?.(
+      [b.dataset.commandEmployee],
+      true
+    );
+  }
+);}
   function openCommand(){if(!$("commandBackdrop"))return;$("commandBackdrop").classList.remove("hidden");$("commandInput").value="";renderCommand();setTimeout(()=>$("commandInput")?.focus(),20);}
   function closeCommand(){$("commandBackdrop")?.classList.add("hidden");}
   function mountDrawer(){if($("notificationDrawer"))return;const d=document.createElement("aside");d.id="notificationDrawer";d.className="notification-drawer";d.innerHTML=`<div class="drawer-head"><div><small>TIME-CLOCK V6</small><h3>การแจ้งเตือน</h3></div><button id="drawerClose" class="btn btn-light btn-icon">×</button></div><div class="drawer-tabs"><button class="drawer-tab active">ทั้งหมด</button><button class="drawer-tab" data-drawer-go="review">รอตรวจสอบ</button><button class="drawer-tab" data-drawer-go="schedule">ตารางกะ</button></div><div class="drawer-body"><div class="notification-empty">กำลังโหลดการแจ้งเตือน...</div></div>`;document.body.appendChild(d);$("drawerClose").onclick=()=>d.classList.remove("open");qa("[data-drawer-go]",d).forEach(b=>b.onclick=()=>{go(b.dataset.drawerGo);d.classList.remove("open");});}
@@ -4847,20 +4960,10 @@ ${skippedSummary(compatibility.skipped)}
         class="panel attendance-enterprise-tools"
       >
         <div class="panel-body">
-          <div class="attendance-search-layout">
-            <div class="field attendance-search-field">
-              <label>ค้นหารหัสพนักงาน / กรองผลลัพธ์</label>
-              <input
-                id="attendanceGridSearch"
-                class="input"
-                placeholder="ค้นหารหัสพนักงาน ชื่อ-นามสกุล หรือหน่วยงาน"
-              >
-              <small
-                id="attendanceSearchHint"
-                class="attendance-search-hint"
-              >
-                กรอกรหัสพนักงานแล้วกด Enter เพื่อค้นหาข้อมูลตามช่วงวันที่
-              </small>
+          <div class="attendance-result-toolbar">
+            <div class="attendance-result-heading">
+              <h3>สรุปผลการค้นหา</h3>
+              <p>ข้อมูลตามช่วงวันที่และตัวกรองที่เลือก</p>
             </div>
             <div class="field attendance-page-size-field">
               <label>จำนวนต่อหน้า</label>
@@ -4873,24 +4976,6 @@ ${skippedSummary(compatibility.skipped)}
                 <option>200</option>
                 <option value="999999">ทั้งหมด</option>
               </select>
-            </div>
-            <div class="attendance-search-actions">
-              <button
-                id="attendanceServerSearchBtn"
-                class="btn btn-primary"
-              >ค้นหาข้อมูล</button>
-              <button
-                id="attendanceRebuildBtn"
-                class="btn btn-light"
-              >ประมวลผลใหม่</button>
-              <button
-                id="attendanceExcelBtn"
-                class="btn btn-success"
-              >Excel</button>
-              <button
-                id="attendancePrintBtn"
-                class="btn btn-orange"
-              >Print/PDF</button>
             </div>
           </div>
           <div class="attendance-grid-summary">
@@ -4985,10 +5070,6 @@ ${skippedSummary(compatibility.skipped)}
       </aside>
     `);
 
-    $("attendanceGridSearch")?.addEventListener("input",e=>{attGrid.search=e.target.value.trim().toLowerCase();attGrid.page=1;renderAttendanceEnterprise();updateAttendanceSearchHint();});
-    $("attendanceGridSearch")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();app()?.loadAttendance?.();}});
-    $("attendanceServerSearchBtn")?.addEventListener("click",()=>app()?.loadAttendance?.());
-    $("attendanceRebuildBtn")?.addEventListener("click",rebuildAttendanceCurrentFilter);
     $("attendancePageSize")?.addEventListener("change",e=>{attGrid.pageSize=Number(e.target.value);attGrid.page=1;renderAttendanceEnterprise();});
     $("attPrevPage")?.addEventListener("click",()=>{if(attGrid.page>1){attGrid.page--;renderAttendanceEnterprise();}});
     $("attNextPage")?.addEventListener("click",()=>{const max=Math.ceil(attGrid.rows.length/attGrid.pageSize)||1;if(attGrid.page<max){attGrid.page++;renderAttendanceEnterprise();}});
@@ -5018,35 +5099,6 @@ ${skippedSummary(compatibility.skipped)}
       const th=e.target.closest("th[data-sort-key]"); if(th){const k=th.dataset.sortKey;attGrid.sortDir=attGrid.sortKey===k&&attGrid.sortDir==="asc"?"desc":"asc";attGrid.sortKey=k;renderAttendanceEnterprise();return;}
       const tr=e.target.closest("tbody tr[data-att-key]"); if(tr) openAttendanceDetail(tr.dataset.attKey);
     });
-  }
-  function attendanceExactEmpCode(){const term=String($("attendanceGridSearch")?.value||"").trim();return /^\d{4,20}$/.test(term)?term:null;}
-  function updateAttendanceSearchHint(){
-    const term=String(
-      $("attendanceGridSearch")?.value||""
-    ).trim();
-    const hint=$("attendanceSearchHint");
-    if(!hint)return;
-
-    hint.textContent=/^\d{4,20}$/.test(term)
-      ? `รหัส ${term}: กด Enter หรือปุ่มค้นหาข้อมูล`
-      : "ค้นหาได้จากรหัสพนักงาน ชื่อ-นามสกุล หรือหน่วยงาน";
-  }
-  async function rebuildAttendanceCurrentFilter(){
-    const emp=attendanceExactEmpCode(),start=$("attStart")?.value,end=$("attEnd")?.value;
-    if(!emp)return app()?.toast?.("กรุณาระบุรหัสพนักงานเป็นตัวเลขก่อนประมวลผลใหม่","error");
-    if(!start||!end)return app()?.toast?.("กรุณาระบุวันที่เริ่มต้นและวันที่สิ้นสุด","error");
-    if(!confirm(`ประมวลผล Attendance ใหม่ของรหัส ${emp} ช่วง ${start} ถึง ${end}?`))return;
-    try{
-      app()?.showLoading?.(`กำลังประมวลผล Attendance รหัส ${emp}...`);
-      const data=await rpc("ta_rebuild_attendance_employee",{p_emp_code:emp,p_start_date:start,p_end_date:end});
-      const r=Array.isArray(data)?data[0]:data||{};
-      app()?.toast?.(`ประมวลผลแล้ว ลบ ${num(r.deleted_rows)} / สร้าง ${num(r.inserted_rows)} รายการ`,"success");
-      await app()?.loadAttendance?.();
-    }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
-    finally{app()?.hideLoading?.();}
-  }
-  function renderAttendanceDataNotice(){
-    // V6.7.3: ตัดแถบแจ้งเตือนค้นหาฐานข้อมูลออก
   }
   function attendanceRawStatus(r){
     return String(
@@ -6058,11 +6110,6 @@ ${skippedSummary(compatibility.skipped)}
         attGrid.search=
           context.attendanceSearch||attGrid.search||"";
 
-        if($("attendanceGridSearch")){
-          $("attendanceGridSearch").value=
-            attGrid.search;
-        }
-
         renderAttendanceEnterprise();
 
         if(context.reopenDetail!==false){
@@ -6747,7 +6794,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.7.3 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.7.4 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -7223,7 +7270,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.7.3';
+  const VERSION='6.7.4';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7270,7 +7317,19 @@ ${skippedSummary(compatibility.skipped)}
   function openDecision(source,id,decision,summary){$('v650DecisionSource').value=source;$('v650DecisionId').value=id;$('v650DecisionValue').value=decision;$('v650DecisionNote').value='';$('v650DecisionTitle').textContent=`${decision==='APPROVED'||decision==='VERIFIED'?'อนุมัติ':'ไม่อนุมัติ'} ${source==='LEAVE'?'คำขอลา':source==='CORRECTION'?'คำขอแก้เวลา':'ใบรับรอง'}`;$('v650DecisionSummary').textContent=summary||id;open('v650DecisionModal');}
   async function confirmDecision(){const source=val('v650DecisionSource'),id=val('v650DecisionId'),decision=val('v650DecisionValue'),note=val('v650DecisionNote')||null;loading('กำลังบันทึกผลการพิจารณา...');try{if(source==='LEAVE')await rpc('ta_decide_leave_request_v650',{p_request_id:id,p_decision:decision,p_note:note});else if(source==='CORRECTION')await rpc('ta_decide_time_correction_v650',{p_request_id:id,p_decision:decision,p_note:note});else await rpc('ta_verify_certificate_v650',{p_certificate_id:id,p_decision:decision,p_note:note});close('v650DecisionModal');toast('บันทึกผลเรียบร้อย','success');await Promise.all([loadLeave(),loadCorrection(),loadException()]);document.getElementById('loadDashboardBtn')?.click();}catch(e){toast(app()?.humanError?.(e)||e.message,'error');}finally{done();}}
   async function cancelLeave(id){const reason=prompt('ระบุเหตุผลการยกเลิกคำขอลา');if(reason===null)return;loading('กำลังยกเลิกคำขอลา...');try{await rpc('ta_cancel_leave_request_v650',{p_request_id:id,p_reason:reason||'ยกเลิกจากหน้าเว็บ'});toast('ยกเลิกคำขอลาแล้ว','success');await Promise.all([loadLeave(),loadException()]);}catch(e){toast(app()?.humanError?.(e)||e.message,'error');}finally{done();}}
-  function openAttendance(key){const [emp,date]=key.split('|');app()?.switchPage?.('attendance');if($('attStart'))$('attStart').value=date;if($('attEnd'))$('attEnd').value=date;if($('attendanceGridSearch'))$('attendanceGridSearch').value=emp;setTimeout(()=>app()?.loadAttendance?.(),0);}
+  function openAttendance(key){
+    const [emp,date]=key.split("|");
+    app()?.switchPage?.("attendance");
+    if($("attStart"))$("attStart").value=date;
+    if($("attEnd"))$("attEnd").value=date;
+    setTimeout(
+      ()=>app()?.selectAttendanceEmployees?.(
+        [emp],
+        true
+      ),
+      0
+    );
+  }
 
   function openLeaveModal(){populateEmployeeList();loadLeaveTypes();populateCertificateSelects();['leaveEmpCode','leaveReason'].forEach(id=>{if($(id))$(id).value='';});const today=new Date().toISOString().slice(0,10);$('leaveModalStart').value=today;$('leaveModalEnd').value=today;$('leavePeriod').value='FULL_DAY';$('leaveBalancePreview').textContent='กรอกรหัสพนักงานเพื่อดูสิทธิ์คงเหลือ';open('leaveRequestModal');}
   function openCertificateModal(){populateEmployeeList();['certificateEmpCode','certificateIssuer','certificateNote'].forEach(id=>{if($(id))$(id).value='';});const today=new Date().toISOString().slice(0,10);$('certificateIssuedDate').value=today;$('certificateValidFrom').value=today;$('certificateValidTo').value=today;$('certificateFile').value='';open('certificateModal');}
