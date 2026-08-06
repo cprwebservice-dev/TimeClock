@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.7.5',
+  version: '6.9.0',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -294,7 +294,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     const rows = [];
     for (let from = 0; from < 10000; from += pageSize) {
       let query = client.from("employees")
-        .select("EmployeeId,full_name,position_name,department,pc,area,zone,sub_area,car_team,manager_department,manager_division,start_date,resign_date")
+        .select("EmployeeId,full_name,position_name,department,pc,area,zone,sub_area,car_team,manager_department,manager_division,manager_gm,manager_avp,start_date,resign_date")
         .or(`start_date.is.null,start_date.lte.${endDate}`)
         .or(`resign_date.is.null,resign_date.gte.${monthStart}`)
         .order("EmployeeId", { ascending: true })
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.5"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.0"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -1253,6 +1253,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const { data, error } = await state.client.from("ta_user_profiles").select("*").eq("user_id", state.user.id).maybeSingle();
       if (error) throw error;
       state.profile = data || { user_id: state.user.id, email: state.user.email, display_name: state.user.email, role: "VIEWER", is_active: false };
+      state.profile.role = String(state.profile.role || "VIEWER").toUpperCase() === "USER" ? "MANAGER" : String(state.profile.role || "VIEWER").toUpperCase();
       if (!state.profile.is_active) throw new Error("บัญชีนี้ยังไม่ได้เปิดใช้งาน กรุณาติดต่อ HR Admin");
     }
 
@@ -3111,14 +3112,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           "attendance-detail"
         ) {
           try {
-            await state.client.rpc(
-              "ta_recalculate_attendance_v640",
+            let recalcResponse = await state.client.rpc(
+              "ta_recalculate_attendance_employee_v680",
               {
-                p_start_date: savedDate,
-                p_end_date: savedDate,
-                p_emp_codes: [savedEmp]
+                p_emp_code: savedEmp,
+                p_work_date: savedDate
               }
             );
+            if (
+              recalcResponse.error
+              && window.TimeClockShiftAPI?.missingFunction?.(
+                recalcResponse.error
+              )
+            ) {
+              recalcResponse = await state.client.rpc(
+                "ta_recalculate_attendance_v640",
+                {
+                  p_start_date: savedDate,
+                  p_end_date: savedDate,
+                  p_emp_codes: [savedEmp]
+                }
+              );
+            }
           } catch (_) {
             // Non-fatal: the Attendance page can still reload
             // and the user may recalculate manually.
@@ -3177,14 +3192,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedDate = val("assignWorkDate");
 
           try {
-            await state.client.rpc(
-              "ta_recalculate_attendance_v640",
+            let recalcResponse = await state.client.rpc(
+              "ta_recalculate_attendance_employee_v680",
               {
-                p_start_date: savedDate,
-                p_end_date: savedDate,
-                p_emp_codes: [savedEmp]
+                p_emp_code: savedEmp,
+                p_work_date: savedDate
               }
             );
+            if (
+              recalcResponse.error
+              && window.TimeClockShiftAPI?.missingFunction?.(
+                recalcResponse.error
+              )
+            ) {
+              recalcResponse = await state.client.rpc(
+                "ta_recalculate_attendance_v640",
+                {
+                  p_start_date: savedDate,
+                  p_end_date: savedDate,
+                  p_emp_codes: [savedEmp]
+                }
+              );
+            }
           } catch (_) {}
 
           switchPage("attendance");
@@ -3277,7 +3306,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.7.5"
+          change_reason: "บันทึกจากหน้า HR Admin V6.9.0"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3323,35 +3352,696 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
     }
 
-    async function loadUsers() {
-      showLoading("กำลังโหลด User และ Scope...");
-      try {
-        const { data, error } = await state.client.rpc("ta_get_user_management"); if (error) throw error; state.users = data || [];
-        $("userBody").innerHTML = state.users.length ? state.users.map(u => `<tr><td>${safe(u.email)}</td><td>${safe(u.display_name)}</td><td>${badge(u.role, u.role==='HR_ADMIN'?'badge-orange':u.role==='USER'?'badge-blue':'badge-gray')}</td><td>${u.is_active?badge("Active","badge-green"):badge("Inactive","badge-red")}</td><td>${formatDateTime(u.last_sign_in_at)}</td><td>${formatNumber(Array.isArray(u.scopes)?u.scopes.length:0)} รายการ</td><td><button class="btn btn-soft" data-edit-user="${safe(u.user_id)}">แก้ไขสิทธิ์</button></td></tr>`).join("") : emptyRow(7);
-      } catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
+    let managerScopeRows = [];
+    let managerScopeUploadRows = [];
+
+    function managerScopeTypeLabel(type) {
+      return ({
+        ALL:"ทั้งหมด",
+        DEPARTMENT:"หน่วยงาน",
+        ZONE:"Zone",
+        AREA:"พื้นที่",
+        SUB_AREA:"พื้นที่ย่อย",
+        EMPLOYEE:"พนักงานรายบุคคล"
+      })[String(type || "").toUpperCase()] || type || "-";
     }
 
-    function editUser(userId) {
-      const u = state.users.find(x => x.user_id === userId); if (!u) return;
-      setVal("umUserId", u.user_id); setVal("umEmail", u.email); setVal("umDisplayName", u.display_name || u.email); setVal("umRole", u.role || "VIEWER"); $("umActive").checked = u.is_active !== false;
-      const s = Array.isArray(u.scopes) && u.scopes.length ? u.scopes[0] : null;
-      setVal("umScopeType", s?.scope_type || "ALL"); setVal("umScopeValue", s?.scope_value || "*"); setVal("umScopeLabel", s?.scope_label || "ทุกพื้นที่"); $("umCanView").checked = s?.can_view !== false; $("umCanEdit").checked = !!s?.can_edit_schedule; $("umCanConfirm").checked = !!s?.can_confirm_schedule;
+    function managerScopeBoolean(value) {
+      if (typeof value === "boolean") return value;
+      return [
+        "true","t","1","yes","y","ใช่","เปิด"
+      ].includes(String(value || "").trim().toLowerCase());
+    }
+
+    function managerScopePermissionBadge(value) {
+      return value
+        ? badge("✓","badge-green")
+        : badge("—","badge-gray");
+    }
+
+    function toggleUserManagerScopeSection() {
+      const isManager = val("umRole") === "MANAGER";
+      $("umManagerScopeSection")?.classList.toggle(
+        "hidden",
+        !isManager
+      );
+
+      if (!isManager) {
+        managerScopeRows = [];
+        renderManagerScopes();
+      }
+    }
+
+    async function loadManagerScopes(email) {
+      const managerEmail = String(email || "").trim().toLowerCase();
+
+      if (!managerEmail || val("umRole") !== "MANAGER") {
+        managerScopeRows = [];
+        renderManagerScopes();
+        return;
+      }
+
+      setText("umManagerScopeEmail",managerEmail);
+      $("umManagerScopeBody").innerHTML =
+        `<tr><td colspan="10" class="fc-empty">กำลังโหลด Scope...</td></tr>`;
+
+      try {
+        const { data,error } = await state.client.rpc(
+          "ta_get_manager_scopes_v690",
+          {
+            p_manager_email: managerEmail
+          }
+        );
+
+        if (error) throw error;
+
+        managerScopeRows = data || [];
+        renderManagerScopes();
+      } catch (error) {
+        managerScopeRows = [];
+        $("umManagerScopeBody").innerHTML =
+          `<tr><td colspan="10" class="fc-empty">${safe(humanError(error))}</td></tr>`;
+      }
+    }
+
+    function renderManagerScopes() {
+      const body = $("umManagerScopeBody");
+      if (!body) return;
+
+      if (val("umRole") !== "MANAGER") {
+        body.innerHTML =
+          `<tr><td colspan="10" class="fc-empty">Scope ใช้เฉพาะ Role Manager</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = managerScopeRows.length
+        ? managerScopeRows.map(scope => {
+            const range = [
+              scope.effective_from
+                ? formatDate(scope.effective_from)
+                : "ไม่จำกัด",
+              scope.effective_to
+                ? formatDate(scope.effective_to)
+                : "ไม่จำกัด"
+            ].join(" – ");
+
+            return `<tr>
+              <td>${badge(
+                managerScopeTypeLabel(scope.scope_type),
+                scope.scope_type === "EMPLOYEE"
+                  ? "badge-orange"
+                  : scope.scope_type === "ALL"
+                    ? "badge-purple"
+                    : "badge-blue"
+              )}</td>
+              <td>
+                <strong>${safe(scope.scope_value)}</strong>
+                <small class="manager-scope-cell-sub">${safe(scope.scope_label || "")}</small>
+              </td>
+              <td>${managerScopePermissionBadge(scope.can_view)}</td>
+              <td>${managerScopePermissionBadge(scope.can_edit_schedule)}</td>
+              <td>${managerScopePermissionBadge(scope.can_confirm_schedule)}</td>
+              <td>${managerScopePermissionBadge(scope.can_certify_attendance)}</td>
+              <td>${managerScopePermissionBadge(scope.can_decide_shift_request)}</td>
+              <td class="nowrap">${safe(range)}</td>
+              <td>${scope.is_active
+                ? badge("ใช้งาน","badge-green")
+                : badge("ปิด","badge-red")}</td>
+              <td>
+                <div class="manager-scope-row-actions">
+                  <button
+                    class="btn btn-soft btn-sm"
+                    data-edit-manager-scope="${safe(scope.scope_id)}"
+                  >แก้ไข</button>
+                  <button
+                    class="btn btn-danger-soft btn-sm"
+                    data-delete-manager-scope="${safe(scope.scope_id)}"
+                  >ลบ</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join("")
+        : `<tr><td colspan="10" class="fc-empty">Manager นี้ยังไม่มี Scope — จะเห็นเฉพาะข้อมูลของตนเอง</td></tr>`;
+    }
+
+    async function loadUsers() {
+      showLoading("กำลังโหลด User และสิทธิ์...");
+      try {
+        let response = await state.client.rpc(
+          "ta_get_user_management_v681"
+        );
+
+        if (
+          response.error
+          && window.TimeClockShiftAPI?.missingFunction?.(
+            response.error
+          )
+        ) {
+          response = await state.client.rpc(
+            "ta_get_user_management_v680"
+          );
+        }
+
+        if (response.error) throw response.error;
+
+        state.users = (response.data || []).map(user => ({
+          ...user,
+          role:
+            String(user.role || "VIEWER").toUpperCase()
+              === "USER"
+              ? "MANAGER"
+              : String(user.role || "VIEWER").toUpperCase()
+        }));
+
+        $("userBody").innerHTML = state.users.length
+          ? state.users.map(user => {
+              const roleClass =
+                user.role === "HR_ADMIN"
+                  ? "badge-orange"
+                  : user.role === "MANAGER"
+                    ? "badge-blue"
+                    : "badge-gray";
+
+              const scopeCount = Number(
+                user.scope_count
+                ?? user.scope_employee_count
+                ?? (
+                  Array.isArray(user.scopes)
+                    ? user.scopes.length
+                    : 0
+                )
+              );
+
+              return `<tr>
+                <td><strong>${safe(user.email)}</strong></td>
+                <td>${safe(user.display_name || user.email)}</td>
+                <td>${badge(user.role,roleClass)}</td>
+                <td><strong>${safe(user.emp_code || "-")}</strong></td>
+                <td>
+                  ${
+                    user.role === "MANAGER"
+                      ? `<button
+                          class="manager-scope-count"
+                          data-edit-user="${safe(user.user_id)}"
+                        >
+                          <strong>${formatNumber(scopeCount)}</strong>
+                          <span>Scope</span>
+                        </button>
+                        <small class="manager-scope-summary">${safe(user.scope_summary || "ยังไม่กำหนด Scope")}</small>`
+                      : "-"
+                  }
+                </td>
+                <td>${user.is_active
+                  ? badge("Active","badge-green")
+                  : badge("Inactive","badge-red")}</td>
+                <td>${formatDateTime(user.last_sign_in_at)}</td>
+                <td><button
+                  class="btn btn-soft"
+                  data-edit-user="${safe(user.user_id)}"
+                >Role / Scope</button></td>
+              </tr>`;
+            }).join("")
+          : emptyRow(8);
+      } catch (error) {
+        toast(humanError(error),"error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function editUser(userId) {
+      const user = state.users.find(
+        item => item.user_id === userId
+      );
+      if (!user) return;
+
+      setVal("umUserId",user.user_id);
+      setVal("umEmail",user.email);
+      setVal(
+        "umDisplayName",
+        user.display_name || user.email
+      );
+      setVal("umRole",user.role || "VIEWER");
+      setVal("umEmpCode",user.emp_code || "");
+      $("umActive").checked =
+        user.is_active !== false;
+
+      toggleUserManagerScopeSection();
       openModal("userModal");
+
+      if (user.role === "MANAGER") {
+        await loadManagerScopes(user.email);
+      }
     }
 
     async function saveUser() {
-      showLoading("กำลังบันทึกสิทธิ์ผู้ใช้งาน...");
+      showLoading("กำลังบันทึก Role ผู้ใช้งาน...");
       try {
-        const userId = val("umUserId");
-        let res = await state.client.rpc("ta_upsert_user_profile", { p_user_id: userId, p_role: val("umRole"), p_display_name: val("umDisplayName") || null, p_is_active: $("umActive").checked, p_change_reason: "แก้ไขจากหน้า HR Admin" });
-        if (res.error) throw res.error;
-        const scopeType = val("umScopeType");
-        const scope = [{ scope_type: scopeType, scope_value: scopeType === "ALL" ? "*" : val("umScopeValue"), scope_label: val("umScopeLabel") || null, can_view: $("umCanView").checked, can_edit_schedule: $("umCanEdit").checked, can_confirm_schedule: $("umCanConfirm").checked, is_active: true, effective_from: null, effective_to: null }];
-        res = await state.client.rpc("ta_replace_user_scopes", { p_user_id: userId, p_scopes: scope, p_change_reason: "แก้ไข Scope จากหน้า HR Admin" });
-        if (res.error) throw res.error;
-        closeModal("userModal"); toast("บันทึกสิทธิ์เรียบร้อย", "success"); await loadUsers();
-      } catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
+        const { error } = await state.client.rpc(
+          "ta_update_user_access_v681",
+          {
+            p_user_id: val("umUserId"),
+            p_role: val("umRole"),
+            p_emp_code: val("umEmpCode") || null,
+            p_display_name:
+              val("umDisplayName") || null,
+            p_is_active: $("umActive").checked,
+            p_change_reason:
+              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.0"
+          }
+        );
+
+        if (error) throw error;
+
+        toast("บันทึก Role เรียบร้อย","success");
+        await loadUsers();
+
+        if (val("umRole") === "MANAGER") {
+          await loadManagerScopes(val("umEmail"));
+        } else {
+          closeModal("userModal");
+        }
+      } catch (error) {
+        toast(humanError(error),"error");
+      } finally {
+        hideLoading();
+      }
     }
+
+    function resetManagerScopeForm(scope = null) {
+      const managerEmail =
+        String(
+          scope?.manager_email
+          || val("umEmail")
+          || ""
+        ).trim().toLowerCase();
+
+      setVal("msScopeId",scope?.scope_id || "");
+      setVal("msManagerEmail",managerEmail);
+      setText(
+        "managerScopeModalTitle",
+        scope ? "แก้ไข Manager Scope" : "เพิ่ม Manager Scope"
+      );
+      setText(
+        "managerScopeModalEmail",
+        managerEmail || "-"
+      );
+
+      setVal(
+        "msScopeType",
+        scope?.scope_type || "DEPARTMENT"
+      );
+      setVal("msScopeValue",scope?.scope_value || "");
+      setVal("msScopeLabel",scope?.scope_label || "");
+      if ($("msIncludeDescendants")) {
+        $("msIncludeDescendants").checked =
+          scope?.include_descendants === true;
+      }
+      $("msCanView").checked =
+        scope?.can_view !== false;
+      $("msCanEdit").checked =
+        !!scope?.can_edit_schedule;
+      $("msCanConfirm").checked =
+        !!scope?.can_confirm_schedule;
+      $("msCanCertify").checked =
+        !!scope?.can_certify_attendance;
+      $("msCanDecide").checked =
+        !!scope?.can_decide_shift_request;
+      setVal(
+        "msEffectiveFrom",
+        scope?.effective_from
+          ? String(scope.effective_from).slice(0,10)
+          : ""
+      );
+      setVal(
+        "msEffectiveTo",
+        scope?.effective_to
+          ? String(scope.effective_to).slice(0,10)
+          : ""
+      );
+      setVal(
+        "msActive",
+        scope?.is_active === false
+          ? "false"
+          : "true"
+      );
+      setVal("msNote",scope?.note || "");
+
+      updateManagerScopeValueOptions();
+    }
+
+    function updateManagerScopeValueOptions() {
+      const type = val("msScopeType");
+      const list = $("msScopeValueOptions");
+      const input = $("msScopeValue");
+      if (!list || !input) return;
+
+      let values = [];
+      let placeholder = "ระบุค่า Scope";
+
+      if (type === "EMPLOYEE") {
+        values = (state.filters.employees || [])
+          .map(employee =>
+            typeof employee === "string"
+              ? employee
+              : employee.emp_code
+                || employee.employee_id
+                || employee.EmployeeId
+                || ""
+          )
+          .filter(Boolean);
+        placeholder = "ค้นหารหัสพนักงาน";
+      } else if (type === "DEPARTMENT") {
+        values =
+          state.filters.attendance?.departments || [];
+        placeholder = "ค้นหาหน่วยงาน";
+      } else if (type === "ZONE") {
+        values =
+          state.filters.attendance?.areas
+          || state.filters.zones
+          || [];
+        placeholder = "ค้นหา Zone";
+      } else if (type === "AREA") {
+        values =
+          state.filters.attendance?.areas || [];
+        placeholder = "ค้นหาพื้นที่";
+      } else if (type === "SUB_AREA") {
+        values =
+          state.filters.attendance?.sub_areas || [];
+        placeholder = "ค้นหาพื้นที่ย่อย";
+      } else if (type === "ORG_UNIT") {
+        values = (
+          window.TimeClockOrgStructure?.rows?.() || []
+        ).map(item => item.org_code).filter(Boolean);
+        placeholder = "ค้นหารหัสหน่วยงาน";
+      } else if (type === "ALL") {
+        values = ["*"];
+        input.value = "*";
+        placeholder = "ทั้งหมด";
+      }
+
+      list.innerHTML = [
+        ...new Set(values.map(String))
+      ]
+        .sort((a,b) =>
+          a.localeCompare(b,"th",{numeric:true})
+        )
+        .map(value =>
+          `<option value="${safe(value)}"></option>`
+        )
+        .join("");
+
+      input.placeholder = placeholder;
+      input.disabled = type === "ALL";
+      $("msIncludeDescendantsRow")?.classList.toggle(
+        "hidden",
+        type !== "ORG_UNIT"
+      );
+    }
+
+    function openManagerScope(scopeId = null) {
+      if (val("umRole") !== "MANAGER") {
+        return toast(
+          "กรุณาบันทึก Role เป็น MANAGER ก่อนเพิ่ม Scope",
+          "error"
+        );
+      }
+
+      const scope = scopeId
+        ? managerScopeRows.find(
+            item => item.scope_id === scopeId
+          )
+        : null;
+
+      resetManagerScopeForm(scope);
+      openModal("managerScopeModal");
+    }
+
+    async function saveManagerScope() {
+      showLoading("กำลังบันทึก Manager Scope...");
+      try {
+        const { error } = await state.client.rpc(
+          "ta_upsert_manager_scope_v690",
+          {
+            p_scope_id: val("msScopeId") || null,
+            p_manager_email: val("msManagerEmail"),
+            p_scope_type: val("msScopeType"),
+            p_scope_value: val("msScopeValue"),
+            p_scope_label:
+              val("msScopeLabel") || null,
+            p_include_descendants:
+              $("msIncludeDescendants")?.checked || false,
+            p_can_view: $("msCanView").checked,
+            p_can_edit_schedule:
+              $("msCanEdit").checked,
+            p_can_confirm_schedule:
+              $("msCanConfirm").checked,
+            p_can_certify_attendance:
+              $("msCanCertify").checked,
+            p_can_decide_shift_request:
+              $("msCanDecide").checked,
+            p_effective_from:
+              val("msEffectiveFrom") || null,
+            p_effective_to:
+              val("msEffectiveTo") || null,
+            p_is_active:
+              val("msActive") === "true",
+            p_note: val("msNote") || null
+          }
+        );
+
+        if (error) throw error;
+
+        closeModal("managerScopeModal");
+        toast("บันทึก Manager Scope แล้ว","success");
+        await Promise.all([
+          loadManagerScopes(val("umEmail")),
+          loadUsers()
+        ]);
+      } catch (error) {
+        toast(humanError(error),"error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function deleteManagerScope(scopeId) {
+      const scope = managerScopeRows.find(
+        item => item.scope_id === scopeId
+      );
+
+      if (!scope) return;
+
+      if (!confirm(
+        `ยืนยันลบ Scope ${managerScopeTypeLabel(scope.scope_type)}: ${scope.scope_value}?`
+      )) return;
+
+      showLoading("กำลังลบ Manager Scope...");
+      try {
+        const { error } = await state.client.rpc(
+          "ta_delete_manager_scope_v690",
+          {
+            p_scope_id: scopeId
+          }
+        );
+
+        if (error) throw error;
+
+        toast("ลบ Manager Scope แล้ว","success");
+        await Promise.all([
+          loadManagerScopes(val("umEmail")),
+          loadUsers()
+        ]);
+      } catch (error) {
+        toast(humanError(error),"error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function managerScopeTemplateHeaders() {
+      return [
+        "manager_email",
+        "scope_type",
+        "scope_value",
+        "scope_label",
+        "include_descendants",
+        "can_view",
+        "can_edit_schedule",
+        "can_confirm_schedule",
+        "can_certify_attendance",
+        "can_decide_shift_request",
+        "effective_from",
+        "effective_to",
+        "is_active",
+        "note"
+      ];
+    }
+
+    function downloadManagerScopeTemplate() {
+      const csv =
+        "\uFEFF"
+        + managerScopeTemplateHeaders().join(",")
+        + "\n";
+
+      downloadFile(
+        "Manager_Scope_Template_v6.9.0.csv",
+        csv,
+        "text/csv;charset=utf-8"
+      );
+    }
+
+    function openManagerScopeUpload() {
+      managerScopeUploadRows = [];
+      $("managerScopeFile").value = "";
+      $("managerScopeReplace").checked = false;
+      $("importManagerScopeBtn").disabled = true;
+      setText(
+        "managerScopeUploadSummary",
+        "ยังไม่ได้เลือกไฟล์"
+      );
+      $("managerScopeUploadBody").innerHTML =
+        `<tr><td colspan="9" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>`;
+      $("managerScopeUploadErrors").classList.add("hidden");
+      $("managerScopeUploadErrors").innerHTML = "";
+      openModal("managerScopeUploadModal");
+    }
+
+    async function previewManagerScopeUpload(file) {
+      managerScopeUploadRows = [];
+
+      if (!file) {
+        $("importManagerScopeBtn").disabled = true;
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        const rows = parseCSV(text);
+        const required = [
+          "manager_email",
+          "scope_type",
+          "scope_value"
+        ];
+
+        const headers = rows.length
+          ? Object.keys(rows[0])
+          : [];
+
+        const missing = required.filter(
+          header => !headers.includes(header)
+        );
+
+        if (missing.length) {
+          throw new Error(
+            `ไม่พบหัวคอลัมน์ ${missing.join(", ")}`
+          );
+        }
+
+        managerScopeUploadRows = rows
+          .map(row =>
+            Object.fromEntries(
+              Object.entries(row).map(
+                ([key,value]) => [
+                  String(key || "").trim(),
+                  String(value ?? "").trim()
+                ]
+              )
+            )
+          )
+          .filter(row =>
+            row.manager_email
+            || row.scope_type
+            || row.scope_value
+          );
+
+        setText(
+          "managerScopeUploadSummary",
+          `${file.name} • ${formatNumber(managerScopeUploadRows.length)} รายการ`
+        );
+
+        $("managerScopeUploadBody").innerHTML =
+          managerScopeUploadRows.length
+            ? managerScopeUploadRows
+                .slice(0,50)
+                .map((row,index) => `<tr>
+                  <td>${index + 2}</td>
+                  <td>${safe(row.manager_email)}</td>
+                  <td>${safe(row.scope_type)}</td>
+                  <td>${safe(row.scope_value)}</td>
+                  <td>${safe(row.can_view || "true")}</td>
+                  <td>${safe(row.can_edit_schedule || "false")}</td>
+                  <td>${safe(row.can_confirm_schedule || "false")}</td>
+                  <td>${safe(row.can_certify_attendance || "false")}</td>
+                  <td>${safe(row.can_decide_shift_request || "false")}</td>
+                </tr>`).join("")
+            : `<tr><td colspan="9" class="fc-empty">ไม่พบข้อมูลในไฟล์</td></tr>`;
+
+        $("importManagerScopeBtn").disabled =
+          !managerScopeUploadRows.length;
+      } catch (error) {
+        managerScopeUploadRows = [];
+        $("importManagerScopeBtn").disabled = true;
+        setText(
+          "managerScopeUploadSummary",
+          `ตรวจไฟล์ไม่สำเร็จ: ${error.message}`
+        );
+        toast(error.message,"error");
+      }
+    }
+
+    async function importManagerScopes() {
+      if (!managerScopeUploadRows.length) {
+        return toast("กรุณาเลือกไฟล์ Scope","error");
+      }
+
+      showLoading("กำลังนำเข้า Manager Scope...");
+      try {
+        const { data,error } = await state.client.rpc(
+          "ta_import_manager_scopes_v690",
+          {
+            p_rows: managerScopeUploadRows,
+            p_replace_existing:
+              $("managerScopeReplace").checked
+          }
+        );
+
+        if (error) throw error;
+
+        if (!data?.success) {
+          const errors = Array.isArray(data?.errors)
+            ? data.errors
+            : [];
+
+          $("managerScopeUploadErrors").classList.remove(
+            "hidden"
+          );
+          $("managerScopeUploadErrors").innerHTML =
+            `<strong>พบข้อมูลไม่พร้อมนำเข้า ${formatNumber(data?.invalid_rows || 0)} รายการ</strong>`
+            + errors.slice(0,100).map(item =>
+              `<div>แถว ${safe(item.row_no)} • ${safe(item.manager_email)} • ${safe(item.error)}</div>`
+            ).join("");
+
+          toast(
+            "พบข้อมูล Scope ไม่ถูกต้อง กรุณาตรวจ Error",
+            "error"
+          );
+          return;
+        }
+
+        closeModal("managerScopeUploadModal");
+        toast(
+          `นำเข้า Scope สำเร็จ ${formatNumber(data.upserted_rows)} รายการ`,
+          "success"
+        );
+        await loadUsers();
+      } catch (error) {
+        toast(humanError(error),"error");
+      } finally {
+        hideLoading();
+      }
+    }
+
 
     function parseCSV(text) {
       const rows = []; let row = [], cell = "", quoted = false;
@@ -3378,14 +4068,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const rows = parseCSV(await file.text()); if (!rows.length) throw new Error("ไม่พบข้อมูลในไฟล์");
         const { data, error } = await state.client.rpc("ta_import_employees", { p_rows: rows, p_file_name: file.name, p_preview_only: previewOnly, p_note: val("importNote") || null });
         if (error) throw error;
+
+        const hierarchyResponse = await state.client.rpc(
+          "ta_sync_employee_manager_columns_v680",
+          {
+            p_rows: rows,
+            p_preview_only: previewOnly
+          }
+        );
+        if (hierarchyResponse.error) {
+          throw hierarchyResponse.error;
+        }
+
+        const hierarchy = hierarchyResponse.data || {};
         const r = Array.isArray(data) ? data[0] : data;
-        $("importResult").innerHTML = `<div class="panel"><div class="panel-body"><div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)"><div><small>สถานะ</small><strong style="display:block">${safe(r.import_status)}</strong></div><div><small>ทั้งหมด</small><strong style="display:block">${formatNumber(r.total_rows)}</strong></div><div><small>ถูกต้อง</small><strong style="display:block">${formatNumber(r.valid_rows)}</strong></div><div><small>เพิ่มใหม่</small><strong style="display:block">${formatNumber(r.inserted_rows)}</strong></div><div><small>ปรับปรุง</small><strong style="display:block">${formatNumber(r.updated_rows)}</strong></div></div></div></div>`;
+        $("importResult").innerHTML = `<div class="panel"><div class="panel-body"><div class="kpi-grid" style="grid-template-columns:repeat(6,1fr)"><div><small>สถานะ</small><strong style="display:block">${safe(r.import_status)}</strong></div><div><small>ทั้งหมด</small><strong style="display:block">${formatNumber(r.total_rows)}</strong></div><div><small>ถูกต้อง</small><strong style="display:block">${formatNumber(r.valid_rows)}</strong></div><div><small>เพิ่มใหม่</small><strong style="display:block">${formatNumber(r.inserted_rows)}</strong></div><div><small>ปรับปรุง</small><strong style="display:block">${formatNumber(r.updated_rows)}</strong></div><div><small>สายบังคับบัญชา</small><strong style="display:block">${formatNumber(hierarchy.updated_rows ?? hierarchy.matched_rows ?? 0)}</strong></div></div></div></div>`;
         toast(previewOnly ? "ตรวจสอบไฟล์เรียบร้อย" : "นำเข้าข้อมูลเรียบร้อย", "success");
       } catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
     }
 
     function downloadTemplate() {
-      const headers = ["employee_id","full_name","position_name","department","zone","pc","area","sub_area","car_team","manager_department","manager_division","start_date","resign_date"];
+      const headers = ["employee_id","full_name","position_name","department","zone","pc","area","sub_area","car_team","manager_department","manager_division","manager_gm","manager_avp","start_date","resign_date"];
       downloadFile("Employee_Template.csv", "\uFEFF" + headers.join(",") + "\n", "text/csv;charset=utf-8");
     }
 
@@ -3412,22 +4115,79 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     function downloadFile(name, content, type) { const blob = new Blob([content], {type}); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = name; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); }
 
     function switchPage(page) {
-      const realRole = state.profile?._realRole || state.profile?.role;
-      if (page === "system-settings" && realRole !== "HR_ADMIN") return toast("เมนูนี้สำหรับ HR_ADMIN เท่านั้น", "error");
-      if (page.startsWith("admin-") && state.profile?.role !== "HR_ADMIN") return toast("ไม่มีสิทธิ์เข้าถึงเมนูนี้", "error");
+      const realRole = String(
+        state.profile?._realRole
+        || state.profile?.role
+        || "VIEWER"
+      ).toUpperCase();
+      const effectiveRole = String(
+        state.profile?.role || realRole
+      ).toUpperCase();
+
+      const hrOnlyPages = new Set([
+        "leave",
+        "time-correction",
+        "exception-center"
+      ]);
+      const managerPages = new Set([
+        "schedule",
+        "work-patterns",
+        "review"
+      ]);
+
+      if (
+        page === "system-settings"
+        && realRole !== "HR_ADMIN"
+      ) {
+        return toast(
+          "เมนูนี้สำหรับ HR_ADMIN เท่านั้น",
+          "error"
+        );
+      }
+      if (
+        page.startsWith("admin-")
+        && effectiveRole !== "HR_ADMIN"
+      ) {
+        return toast(
+          "ไม่มีสิทธิ์เข้าถึงเมนูนี้",
+          "error"
+        );
+      }
+      if (
+        hrOnlyPages.has(page)
+        && effectiveRole !== "HR_ADMIN"
+      ) {
+        return toast(
+          "เมนูนี้สำหรับ HR Admin เท่านั้น",
+          "error"
+        );
+      }
+      if (
+        managerPages.has(page)
+        && !["HR_ADMIN","MANAGER"].includes(
+          effectiveRole
+        )
+      ) {
+        return toast(
+          "Viewer ไม่มีสิทธิ์จัดการกะหรือทีมงาน",
+          "error"
+        );
+      }
       state.currentPage = page;
       qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
-        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], schedule:["ปฏิทินจัดกะ","จัดกะล่วงหน้าได้ทุกวัน รวมวันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์"], "work-patterns":["รูปแบบการทำงาน","กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น และรูปแบบช่วงงานรายบุคคล"], review:["รายการรอตรวจสอบ","ตรวจสอบกะและเวลาที่ผิดปกติ"], leave:["ลาและใบรับรอง","จัดการคำขอลา สิทธิ์ และเอกสารประกอบ"], "time-correction":["คำขอแก้ไขเวลา","ตรวจค่าเดิม–ค่าใหม่และอนุมัติการแก้เวลา"], "exception-center":["Exception Center","รวมรายการที่ต้องดำเนินการจากการลา เวลา และ Attendance"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
-        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-users":["User และ Scope","กำหนดสิทธิ์ผู้ใช้งาน"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
+        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอแก้ไขกะ","พนักงานส่งคำขอ และ Manager พิจารณาตามสายบังคับบัญชา"], schedule:["ปฏิทินจัดกะ","จัดกะล่วงหน้าได้ทุกวัน รวมวันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์"], "work-patterns":["รูปแบบการทำงาน","กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น และรูปแบบช่วงงานรายบุคคล"], review:["รายการรอตรวจสอบ","ตรวจสอบกะและเวลาที่ผิดปกติ"], leave:["ลาและใบรับรอง","จัดการคำขอลา สิทธิ์ และเอกสารประกอบ"], "time-correction":["คำขอแก้ไขเวลา","ตรวจค่าเดิม–ค่าใหม่และอนุมัติการแก้เวลา"], "exception-center":["Exception Center","รวมรายการที่ต้องดำเนินการจากการลา เวลา และ Attendance"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
+        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page); setText("pageSubtitle", titles[page]?.[1] || ""); $("sidebar").classList.remove("open");
       if (page === "attendance" && !state.attendance.length) loadAttendance();
+      if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
       if (page === "schedule" && !state.schedule.length) loadSchedule();
       if (page === "review" && !state.review.length) loadReview();
       if (page === "admin-shifts") loadShiftMaster();
       if (page === "admin-holidays") loadHolidays();
+      if (page === "admin-org") window.TimeClockOrgStructure?.load?.();
       if (page === "admin-users") loadUsers();
     }
 
@@ -3648,7 +4408,49 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("saveHolidayBtn").addEventListener("click", saveHoliday);
       $("reloadUsersBtn").addEventListener("click", loadUsers);
       $("saveUserBtn").addEventListener("click", saveUser);
-      $("umScopeType").addEventListener("change", () => { if(val("umScopeType")==="ALL"){setVal("umScopeValue","*");setVal("umScopeLabel","ทุกพื้นที่");} });
+      $("umRole")?.addEventListener(
+        "change",
+        () => {
+          toggleUserManagerScopeSection();
+          if (val("umRole") === "MANAGER") {
+            loadManagerScopes(val("umEmail"));
+          }
+        }
+      );
+      $("newManagerScopeBtn")?.addEventListener(
+        "click",
+        () => openManagerScope()
+      );
+      $("saveManagerScopeBtn")?.addEventListener(
+        "click",
+        saveManagerScope
+      );
+      $("msScopeType")?.addEventListener(
+        "change",
+        updateManagerScopeValueOptions
+      );
+      $("managerScopeUploadBtn")?.addEventListener(
+        "click",
+        openManagerScopeUpload
+      );
+      $("managerScopeTemplateBtn")?.addEventListener(
+        "click",
+        downloadManagerScopeTemplate
+      );
+      $("managerScopeUploadTemplateBtn")?.addEventListener(
+        "click",
+        downloadManagerScopeTemplate
+      );
+      $("managerScopeFile")?.addEventListener(
+        "change",
+        event => previewManagerScopeUpload(
+          event.target.files?.[0]
+        )
+      );
+      $("importManagerScopeBtn")?.addEventListener(
+        "click",
+        importManagerScopes
+      );
       $("previewImportBtn").addEventListener("click", () => runEmployeeImport(true));
       $("runImportBtn").addEventListener("click", () => runEmployeeImport(false));
       $("downloadTemplateBtn").addEventListener("click", downloadTemplate);
@@ -3658,7 +4460,26 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const es=e.target.closest("[data-edit-shift]"); if(es) editShift(es.dataset.editShift);
         const eh=e.target.closest("[data-edit-holiday]"); if(eh) editHoliday(eh.dataset.editHoliday);
         const dh=e.target.closest("[data-delete-holiday]"); if(dh) deleteHoliday(dh.dataset.deleteHoliday);
-        const eu=e.target.closest("[data-edit-user]"); if(eu) editUser(eu.dataset.editUser);
+        const eu=e.target.closest("[data-edit-user]");
+        if(eu) editUser(eu.dataset.editUser);
+
+        const editScope=e.target.closest(
+          "[data-edit-manager-scope]"
+        );
+        if(editScope){
+          openManagerScope(
+            editScope.dataset.editManagerScope
+          );
+        }
+
+        const deleteScope=e.target.closest(
+          "[data-delete-manager-scope]"
+        );
+        if(deleteScope){
+          deleteManagerScope(
+            deleteScope.dataset.deleteManagerScope
+          );
+        }
       });
     }
 
@@ -5539,6 +6360,10 @@ ${skippedSummary(compatibility.skipped)}
       Array.isArray(detail?.certificates)
         ? detail.certificates
         : [];
+    const certification =
+      detail?.certification || {
+        status:"NOT_CERTIFIED"
+      };
 
     const status=attendanceStatus(row);
     const statusText=attendanceStatusText(row);
@@ -5696,7 +6521,19 @@ ${skippedSummary(compatibility.skipped)}
         || String(row.schedule_status||"")
           .toUpperCase()==="CONFIRMED"
           ? "ยืนยันแล้ว"
-          : "ยังไม่ยืนยัน"]
+          : "ยังไม่ยืนยัน"],
+      ["การรับรองเวลา",
+        certification.status === "CERTIFIED"
+          ? "รับรองแล้ว"
+          : certification.status === "STALE"
+            ? "ต้องรับรองใหม่"
+            : certification.status === "REVOKED"
+              ? "ยกเลิกการรับรอง"
+              : "ยังไม่รับรอง"],
+      ["วันเวลารับรอง",
+        certification.certified_at
+          ? fmtDateTime(certification.certified_at)
+          : "-"]
     ];
 
     const calculationInfo=[
@@ -5928,40 +6765,65 @@ ${skippedSummary(compatibility.skipped)}
       ${relatedHtml}
     `;
 
+    const detailRole = String(
+      app()?.state?.profile?.role || "VIEWER"
+    ).toUpperCase();
+    const detailKey =
+      `${row.emp_code}|${String(row.work_date)
+        .slice(0,10)}`;
+    const profileEmpCode = String(
+      app()?.state?.profile?.emp_code || ""
+    );
+    const canManageAttendance =
+      detailRole === "HR_ADMIN"
+      || (
+        detailRole === "MANAGER"
+        && String(row.emp_code) !== profileEmpCode
+      );
+    const isViewer = detailRole === "VIEWER";
+    const certificationAction =
+      certification.status === "CERTIFIED"
+        ? "REVOKE"
+        : "CERTIFY";
+
     $("attendanceDetailFooter").innerHTML=`
       <div class="attendance-detail-footer-main">
-        <button
-          class="btn btn-primary"
-          data-detail-quick-shift="${esc(
-            `${row.emp_code}|${String(row.work_date)
-              .slice(0,10)}`
-          )}"
-        >
-          แก้ไขกะวันนี้
-        </button>
-        <button
-          class="btn btn-light"
-          data-detail-open-calendar="${esc(
-            `${row.emp_code}|${String(row.work_date)
-              .slice(0,10)}`
-          )}"
-        >
-          เปิดปฏิทินสัปดาห์
-        </button>
+        ${
+          canManageAttendance
+            ? `<button
+                class="btn btn-primary"
+                data-detail-quick-shift="${esc(detailKey)}"
+              >แก้ไขกะวันนี้</button>
+              <button
+                class="btn btn-success"
+                data-detail-certify="${esc(detailKey)}"
+                data-certification-action="${certificationAction}"
+              >${
+                certificationAction === "REVOKE"
+                  ? "ยกเลิกการรับรอง"
+                  : "รับรองเวลาทำงาน"
+              }</button>
+              <button
+                class="btn btn-light"
+                data-detail-open-calendar="${esc(detailKey)}"
+              >เปิดปฏิทินสัปดาห์</button>`
+            : ""
+        }
+        ${
+          isViewer
+            ? `<button
+                class="btn btn-primary"
+                data-detail-shift-request="${esc(detailKey)}"
+              >ส่งคำขอแก้ไขกะ</button>`
+            : ""
+        }
       </div>
       ${
-        String(
-          app()?.state?.profile?.role||""
-        ).toUpperCase()==="HR_ADMIN"
+        detailRole === "HR_ADMIN"
           ? `<button
               class="btn btn-light"
-              data-detail-recalculate="${esc(
-                `${row.emp_code}|${String(row.work_date)
-                  .slice(0,10)}`
-              )}"
-            >
-              คำนวณวันนี้ใหม่
-            </button>`
+              data-detail-recalculate="${esc(detailKey)}"
+            >คำนวณวันนี้ใหม่</button>`
           : ""
       }
     `;
@@ -6029,6 +6891,31 @@ ${skippedSummary(compatibility.skipped)}
       }
     }
 
+    try {
+      const certification = await rpc(
+        "ta_get_attendance_certification_v680",
+        {
+          p_emp_code: row.emp_code,
+          p_work_date: String(row.work_date)
+            .slice(0,10)
+        }
+      );
+      detail = {
+        ...(detail || {}),
+        certification:
+          certification || {
+            status:"NOT_CERTIFIED"
+          }
+      };
+    } catch (_) {
+      detail = {
+        ...(detail || {}),
+        certification: {
+          status:"NOT_CERTIFIED"
+        }
+      };
+    }
+
     if(
       requestId!==attendanceDetailRequestId
       || attendanceDetailCurrentKey!==key
@@ -6042,6 +6929,11 @@ ${skippedSummary(compatibility.skipped)}
       false
     );
   }
+
+  window.TimeClockAttendanceWorkspace = Object.freeze({
+    openAttendanceDetail,
+    attendanceDetailRow
+  });
 
   function attendanceExportRows(){
     return app()?.attendanceExportMatrix?.(
@@ -6817,7 +7709,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.7.5 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.9.0 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -7293,7 +8185,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.7.5';
+  const VERSION='6.9.0';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -7371,4 +8263,1449 @@ ${skippedSummary(compatibility.skipped)}
   }
   function init(){populateEmployeeList();loadLeaveTypes();bind();const start=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10),end=new Date().toISOString().slice(0,10);['leaveStart','correctionStart','exceptionStart'].forEach(id=>{if($(id)&&!$(id).value)$(id).value=start;});['leaveEnd','correctionEnd','exceptionEnd'].forEach(id=>{if($(id)&&!$(id).value)$(id).value=end;});window.TimeClockV650={VERSION,loadLeave,loadCorrection,loadException,openLeaveModal,openCorrectionModal};}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+
+
+/* ===== V6.9.0 Role, Manager Hierarchy & Shift Requests ===== */
+(function TimeClockV680(){
+  "use strict";
+
+  const VERSION = "6.9.0";
+  const app = () => window.TimeClockApp;
+  const $ = id => document.getElementById(id);
+  const qsa = (selector,root=document) =>
+    [...root.querySelectorAll(selector)];
+  const esc = value => String(value ?? "")
+    .replace(/[&<>"']/g,char => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#39;"
+    })[char]);
+  const role = () => String(
+    app()?.state?.profile?.role || "VIEWER"
+  ).toUpperCase();
+  const realRole = () => String(
+    app()?.state?.profile?._realRole
+    || app()?.state?.profile?.role
+    || "VIEWER"
+  ).toUpperCase();
+  const isHR = () => role() === "HR_ADMIN";
+  const isManager = () => role() === "MANAGER";
+  const isViewer = () => role() === "VIEWER";
+  const canManage = () => isHR() || isManager();
+  const fmtDate = value =>
+    app()?.formatDate?.(value) || value || "-";
+  const fmtDateTime = value =>
+    app()?.formatDateTime?.(value) || value || "-";
+  const safeStatus = value =>
+    String(value || "").toUpperCase();
+  const statusLabel = value => ({
+    PENDING:"รอพิจารณา",
+    APPROVED:"อนุมัติแล้ว",
+    REJECTED:"ไม่อนุมัติ",
+    CANCELLED:"ยกเลิก",
+    CERTIFIED:"รับรองแล้ว",
+    NOT_CERTIFIED:"ยังไม่รับรอง",
+    REVOKED:"ยกเลิกการรับรอง",
+    STALE:"ต้องรับรองใหม่"
+  })[safeStatus(value)] || value || "-";
+  const statusClass = value => {
+    const code = safeStatus(value);
+    if (["APPROVED","CERTIFIED"].includes(code)) {
+      return "success";
+    }
+    if (code === "PENDING") return "warning";
+    if (["REJECTED","CANCELLED","REVOKED"].includes(code)) {
+      return "danger";
+    }
+    return "info";
+  };
+
+  let shiftRequests = [];
+
+  async function rpc(name,args={}) {
+    const client = app()?.state?.client;
+    if (!client) {
+      throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
+    }
+    const {data,error} = await client.rpc(name,args);
+    if (error) throw error;
+    return data;
+  }
+
+  function setText(id,value) {
+    if ($(id)) $(id).textContent = value ?? "";
+  }
+
+  function setNavBadge(count) {
+    const badge = $("shiftRequestNavBadge");
+    if (!badge) return;
+    badge.textContent = Number(count || 0)
+      .toLocaleString("th-TH");
+    badge.classList.toggle("hidden",!Number(count));
+  }
+
+  function roleLevelText(profile) {
+    return ({
+      DEPARTMENT:"ระดับแผนก",
+      DIVISION:"ระดับฝ่าย",
+      GM:"ระดับด้าน",
+      AVP:"ระดับสำนัก"
+    })[String(profile?.manager_level || "").toUpperCase()]
+      || "";
+  }
+
+  function applyRoleUI() {
+    const currentRole = role();
+    const managerAllowed = [
+      "schedule",
+      "work-patterns",
+      "review"
+    ];
+    const hrOnly = [
+      "leave",
+      "time-correction",
+      "exception-center"
+    ];
+
+    managerAllowed.forEach(page => {
+      const nav = document.querySelector(
+        `.nav-item[data-page="${page}"]`
+      );
+      nav?.classList.toggle(
+        "hidden",
+        !["HR_ADMIN","MANAGER"].includes(
+          currentRole
+        )
+      );
+    });
+
+    hrOnly.forEach(page => {
+      const nav = document.querySelector(
+        `.nav-item[data-page="${page}"]`
+      );
+      nav?.classList.toggle(
+        "hidden",
+        currentRole !== "HR_ADMIN"
+      );
+    });
+
+    $("adminNavGroup")?.classList.toggle(
+      "hidden",
+      currentRole !== "HR_ADMIN"
+      && realRole() !== "HR_ADMIN"
+    );
+
+    qsa(
+      "#adminNavGroup .nav-item:not(#systemSettingsNav)"
+    ).forEach(nav => {
+      nav.classList.toggle(
+        "hidden",
+        currentRole !== "HR_ADMIN"
+      );
+    });
+
+    const profile = app()?.state?.profile || {};
+    if ($("roleBadge")) {
+      $("roleBadge").textContent = currentRole;
+      const level = roleLevelText(profile);
+      if (level) {
+        $("roleBadge").title =
+          `${currentRole} • ${level} • `
+          + `รหัส ${profile.emp_code || "-"}`;
+      }
+    }
+
+    $("newShiftRequestBtn")?.classList.toggle(
+      "hidden",
+      !isViewer()
+    );
+
+    if ($("shiftRequestSubtitle")) {
+      $("shiftRequestSubtitle").textContent =
+        isViewer()
+          ? "ตรวจสอบคำขอของตนเองและส่งคำขอแก้ไขกะให้ Manager"
+          : isManager()
+            ? `พิจารณาคำขอของพนักงานในขอบเขต ${
+                roleLevelText(profile)
+                || "Manager"
+              }`
+            : "ตรวจสอบและพิจารณาคำขอแก้ไขกะทั้งหมด";
+    }
+
+    [
+      "newLeaveBtn",
+      "newCertificateBtn",
+      "newCorrectionBtn"
+    ].forEach(id => {
+      $(id)?.classList.toggle(
+        "hidden",
+        currentRole !== "HR_ADMIN"
+      );
+    });
+  }
+
+  function shiftOptions() {
+    const shifts =
+      app()?.state?.filters?.shifts || [];
+
+    return shifts
+      .filter(shift => shift.is_active !== false)
+      .sort(
+        (a,b) =>
+          Number(a.display_order || 0)
+          - Number(b.display_order || 0)
+      );
+  }
+
+  function populateShiftRequestSelect() {
+    const select = $("shiftRequestRequestedShift");
+    if (!select) return;
+
+    select.innerHTML = shiftOptions().map(shift => {
+      const start = app()?.formatTime?.(
+        shift.start_time
+      ) || "-";
+      const end = app()?.formatTime?.(
+        shift.end_time
+      ) || "-";
+      return `<option value="${esc(shift.shift_code)}">
+        ${esc(shift.shift_code)}
+        • ${esc(shift.shift_name || "")}
+        ${shift.is_workday === false
+          ? ""
+          : `• ${esc(start)}–${esc(end)}`}
+      </option>`;
+    }).join("");
+  }
+
+  function attendanceRow(emp,date) {
+    return (
+      app()?.state?.attendance || []
+    ).find(row =>
+      String(row.emp_code) === String(emp)
+      && String(row.work_date).slice(0,10)
+        === String(date).slice(0,10)
+    );
+  }
+
+  function openShiftRequestModal(prefill={}) {
+    const profile = app()?.state?.profile || {};
+    const empCode = String(
+      prefill.emp
+      || profile.emp_code
+      || ""
+    ).trim();
+    const date = String(
+      prefill.date
+      || new Date().toISOString().slice(0,10)
+    ).slice(0,10);
+    const row = attendanceRow(empCode,date);
+    const fullName =
+      prefill.fullName
+      || row?.full_name
+      || profile.display_name
+      || "";
+
+    if (!empCode) {
+      return app()?.toast?.(
+        "บัญชีนี้ยังไม่ได้ผูกรหัสพนักงาน กรุณาติดต่อ HR Admin",
+        "error"
+      );
+    }
+
+    if (isViewer() && empCode !== String(
+      profile.emp_code || ""
+    )) {
+      return app()?.toast?.(
+        "Viewer ส่งคำขอได้เฉพาะข้อมูลของตนเอง",
+        "error"
+      );
+    }
+
+    populateShiftRequestSelect();
+
+    $("shiftRequestEmpCode").value = empCode;
+    $("shiftRequestWorkDate").value = date;
+    $("shiftRequestCurrentShift").value =
+      prefill.currentShift
+      || row?.assigned_shift_code
+      || row?.effective_shift_code
+      || row?.shift_code
+      || "-";
+    $("shiftRequestReason").value = "";
+    $("shiftRequestEmployeeDisplay").innerHTML =
+      `<strong>${esc(empCode)} • ${esc(fullName)}</strong>
+       <span>${esc(
+         row?.department
+         || profile.manager_level
+         || ""
+       )}</span>`;
+
+    $("shiftRequestModal")?.classList.remove("hidden");
+  }
+
+  function closeModal(id) {
+    $(id)?.classList.add("hidden");
+  }
+
+  async function submitShiftRequest() {
+    const emp = $("shiftRequestEmpCode")?.value.trim();
+    const date = $("shiftRequestWorkDate")?.value;
+    const requestedShift =
+      $("shiftRequestRequestedShift")?.value;
+    const reason =
+      $("shiftRequestReason")?.value.trim();
+
+    if (!emp || !date || !requestedShift || !reason) {
+      return app()?.toast?.(
+        "กรุณากรอกวันที่ กะที่ต้องการ และเหตุผล",
+        "error"
+      );
+    }
+
+    app()?.showLoading?.("กำลังส่งคำขอแก้ไขกะ...");
+    try {
+      await rpc(
+        "ta_submit_shift_change_request_v680",
+        {
+          p_emp_code: emp,
+          p_work_date: date,
+          p_requested_shift_code:
+            requestedShift,
+          p_reason: reason
+        }
+      );
+      closeModal("shiftRequestModal");
+      app()?.toast?.(
+        "ส่งคำขอแก้ไขกะเรียบร้อย",
+        "success"
+      );
+      await loadShiftRequests();
+
+      if (
+        app()?.state?.currentPage === "attendance"
+      ) {
+        await app()?.loadAttendance?.();
+      }
+    } catch (error) {
+      app()?.toast?.(
+        app()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      app()?.hideLoading?.();
+    }
+  }
+
+  async function loadShiftRequests() {
+    if (!$("shiftRequestBody")) return;
+
+    const start =
+      $("shiftRequestStart")?.value
+      || new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1
+      ).toISOString().slice(0,10);
+    const end =
+      $("shiftRequestEnd")?.value
+      || new Date().toISOString().slice(0,10);
+    const status =
+      $("shiftRequestStatus")?.value;
+    const search =
+      $("shiftRequestSearch")?.value.trim();
+
+    app()?.showLoading?.(
+      "กำลังโหลดคำขอแก้ไขกะ..."
+    );
+    try {
+      shiftRequests = await rpc(
+        "ta_get_shift_change_requests_v680",
+        {
+          p_start_date: start,
+          p_end_date: end,
+          p_statuses: status ? [status] : null,
+          p_search: search || null,
+          p_limit: 3000
+        }
+      ) || [];
+
+      renderShiftRequests();
+    } catch (error) {
+      app()?.toast?.(
+        app()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      app()?.hideLoading?.();
+    }
+  }
+
+  function renderShiftRequests() {
+    const pending = shiftRequests.filter(
+      request => request.status === "PENDING"
+    ).length;
+    const approved = shiftRequests.filter(
+      request => request.status === "APPROVED"
+    ).length;
+    const closed = shiftRequests.filter(
+      request => [
+        "REJECTED","CANCELLED"
+      ].includes(request.status)
+    ).length;
+
+    setText(
+      "shiftRequestCount",
+      `${shiftRequests.length
+        .toLocaleString("th-TH")} รายการ`
+    );
+    setText(
+      "shiftRequestKpiAll",
+      shiftRequests.length.toLocaleString("th-TH")
+    );
+    setText(
+      "shiftRequestKpiPending",
+      pending.toLocaleString("th-TH")
+    );
+    setText(
+      "shiftRequestKpiApproved",
+      approved.toLocaleString("th-TH")
+    );
+    setText(
+      "shiftRequestKpiClosed",
+      closed.toLocaleString("th-TH")
+    );
+    setNavBadge(pending);
+
+    const body = $("shiftRequestBody");
+    if (!body) return;
+
+    body.innerHTML = shiftRequests.length
+      ? shiftRequests.map(request => {
+          const actions = [];
+
+          if (
+            canManage()
+            && request.status === "PENDING"
+          ) {
+            actions.push(
+              `<button
+                class="btn btn-success btn-sm"
+                data-shift-request-decision="${esc(request.request_id)}|APPROVED"
+              >อนุมัติ</button>`
+            );
+            actions.push(
+              `<button
+                class="btn btn-danger-soft btn-sm"
+                data-shift-request-decision="${esc(request.request_id)}|REJECTED"
+              >ไม่อนุมัติ</button>`
+            );
+          }
+
+          if (
+            request.requested_by_self
+            && request.status === "PENDING"
+          ) {
+            actions.push(
+              `<button
+                class="btn btn-light btn-sm"
+                data-shift-request-cancel="${esc(request.request_id)}"
+              >ยกเลิก</button>`
+            );
+          }
+
+          return `<tr>
+            <td><strong>${esc(request.request_no)}</strong></td>
+            <td>${fmtDate(request.work_date)}</td>
+            <td>
+              <strong>${esc(request.emp_code)}</strong>
+              <small class="v650-cell-sub">${esc(request.full_name || "")}</small>
+            </td>
+            <td><span class="badge badge-gray">${esc(request.current_shift_code || "-")}</span></td>
+            <td><span class="badge badge-blue">${esc(request.requested_shift_code)}</span></td>
+            <td>${esc(request.reason || "-")}</td>
+            <td><span class="v650-status ${statusClass(request.status)}">${esc(statusLabel(request.status))}</span></td>
+            <td>${fmtDateTime(request.requested_at)}</td>
+            <td>${esc(request.decision_note || "-")}</td>
+            <td><div class="v650-actions">${actions.join("") || "-"}</div></td>
+          </tr>`;
+        }).join("")
+      : `<tr><td colspan="10" class="fc-empty">ไม่พบคำขอแก้ไขกะ</td></tr>`;
+  }
+
+  async function decideShiftRequest(id,decision) {
+    const note = prompt(
+      decision === "APPROVED"
+        ? "หมายเหตุการอนุมัติ"
+        : "ระบุเหตุผลที่ไม่อนุมัติ"
+    );
+
+    if (note === null) return;
+
+    app()?.showLoading?.(
+      "กำลังบันทึกผลการพิจารณา..."
+    );
+    try {
+      await rpc(
+        "ta_decide_shift_change_request_v680",
+        {
+          p_request_id: id,
+          p_decision: decision,
+          p_note: note || null
+        }
+      );
+      app()?.toast?.(
+        decision === "APPROVED"
+          ? "อนุมัติและปรับกะเรียบร้อย"
+          : "บันทึกผลไม่อนุมัติแล้ว",
+        "success"
+      );
+      await loadShiftRequests();
+    } catch (error) {
+      app()?.toast?.(
+        app()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      app()?.hideLoading?.();
+    }
+  }
+
+  async function cancelShiftRequest(id) {
+    const note = prompt("เหตุผลการยกเลิกคำขอ");
+    if (note === null) return;
+
+    app()?.showLoading?.("กำลังยกเลิกคำขอ...");
+    try {
+      await rpc(
+        "ta_cancel_shift_change_request_v680",
+        {
+          p_request_id: id,
+          p_reason: note || null
+        }
+      );
+      app()?.toast?.(
+        "ยกเลิกคำขอเรียบร้อย",
+        "success"
+      );
+      await loadShiftRequests();
+    } catch (error) {
+      app()?.toast?.(
+        app()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      app()?.hideLoading?.();
+    }
+  }
+
+  async function certifyAttendance(key,action) {
+    const [emp,date] = String(key).split("|");
+    const note = prompt(
+      action === "REVOKE"
+        ? "เหตุผลการยกเลิกการรับรอง"
+        : "หมายเหตุการรับรองเวลาทำงาน"
+    );
+    if (note === null) return;
+
+    app()?.showLoading?.(
+      action === "REVOKE"
+        ? "กำลังยกเลิกการรับรอง..."
+        : "กำลังรับรองเวลาทำงาน..."
+    );
+    try {
+      await rpc(
+        action === "REVOKE"
+          ? "ta_revoke_attendance_certification_v680"
+          : "ta_certify_attendance_v680",
+        {
+          p_emp_code: emp,
+          p_work_date: date,
+          p_note: note || null
+        }
+      );
+      app()?.toast?.(
+        action === "REVOKE"
+          ? "ยกเลิกการรับรองแล้ว"
+          : "รับรองเวลาทำงานเรียบร้อย",
+        "success"
+      );
+
+      await window.TimeClockAttendanceWorkspace
+        ?.openAttendanceDetail?.(key);
+    } catch (error) {
+      app()?.toast?.(
+        app()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      app()?.hideLoading?.();
+    }
+  }
+
+  function exportShiftRequests() {
+    if (!shiftRequests.length) {
+      return app()?.toast?.(
+        "ไม่มีข้อมูลสำหรับ Export",
+        "error"
+      );
+    }
+
+    const rows = [
+      [
+        "เลขที่คำขอ","วันที่ทำงาน",
+        "รหัสพนักงาน","ชื่อ-นามสกุล",
+        "กะเดิม","กะที่ขอ","เหตุผล",
+        "สถานะ","วันที่ส่งคำขอ",
+        "หมายเหตุการพิจารณา"
+      ],
+      ...shiftRequests.map(request => [
+        request.request_no,
+        request.work_date,
+        request.emp_code,
+        request.full_name,
+        request.current_shift_code,
+        request.requested_shift_code,
+        request.reason,
+        statusLabel(request.status),
+        request.requested_at,
+        request.decision_note
+      ])
+    ];
+
+    const cell = value =>
+      `"${String(value ?? "")
+        .replace(/"/g,'""')}"`;
+    const csv = "\uFEFF"
+      + rows.map(row =>
+          row.map(cell).join(",")
+        ).join("\n");
+    const blob = new Blob(
+      [csv],
+      {type:"text/csv;charset=utf-8"}
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download =
+      `Shift_Request_${$("shiftRequestStart")?.value}_${$("shiftRequestEnd")?.value}.csv`;
+    link.click();
+    setTimeout(
+      () => URL.revokeObjectURL(url),
+      1000
+    );
+  }
+
+  function bind() {
+    const today = new Date().toISOString().slice(0,10);
+    const start = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1
+    ).toISOString().slice(0,10);
+
+    if ($("shiftRequestStart")) {
+      $("shiftRequestStart").value = start;
+    }
+    if ($("shiftRequestEnd")) {
+      $("shiftRequestEnd").value = today;
+    }
+
+    $("newShiftRequestBtn")?.addEventListener(
+      "click",
+      () => openShiftRequestModal()
+    );
+    $("loadShiftRequestsBtn")?.addEventListener(
+      "click",
+      loadShiftRequests
+    );
+    $("submitShiftRequestBtn")?.addEventListener(
+      "click",
+      submitShiftRequest
+    );
+    $("shiftRequestExportBtn")?.addEventListener(
+      "click",
+      exportShiftRequests
+    );
+
+    qsa("[data-v680-close]").forEach(button => {
+      button.addEventListener(
+        "click",
+        () => closeModal(button.dataset.v680Close)
+      );
+    });
+
+    document.addEventListener(
+      "click",
+      event => {
+        const requestButton = event.target.closest(
+          "[data-detail-shift-request]"
+        );
+        if (requestButton) {
+          const [emp,date] =
+            requestButton.dataset.detailShiftRequest
+              .split("|");
+          const row = attendanceRow(emp,date);
+          openShiftRequestModal({
+            emp,
+            date,
+            fullName: row?.full_name,
+            currentShift:
+              row?.assigned_shift_code
+              || row?.effective_shift_code
+              || row?.shift_code
+          });
+          return;
+        }
+
+        const certifyButton = event.target.closest(
+          "[data-detail-certify]"
+        );
+        if (certifyButton) {
+          certifyAttendance(
+            certifyButton.dataset.detailCertify,
+            certifyButton.dataset.certificationAction
+          );
+          return;
+        }
+
+        const decisionButton = event.target.closest(
+          "[data-shift-request-decision]"
+        );
+        if (decisionButton) {
+          const [id,decision] =
+            decisionButton.dataset
+              .shiftRequestDecision
+              .split("|");
+          decideShiftRequest(id,decision);
+          return;
+        }
+
+        const cancelButton = event.target.closest(
+          "[data-shift-request-cancel]"
+        );
+        if (cancelButton) {
+          cancelShiftRequest(
+            cancelButton.dataset.shiftRequestCancel
+          );
+          return;
+        }
+
+        const nav = event.target.closest(
+          '.nav-item[data-page="shift-requests"]'
+        );
+        if (nav) {
+          setTimeout(loadShiftRequests,0);
+        }
+      }
+    );
+
+    document.addEventListener(
+      "timeclock:effective-role-changed",
+      applyRoleUI
+    );
+
+    applyRoleUI();
+  }
+
+  window.TimeClockV680 = Object.freeze({
+    VERSION,
+    loadShiftRequests,
+    openShiftRequestModal,
+    applyRoleUI
+  });
+
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      bind,
+      {once:true}
+    );
+  } else {
+    bind();
+  }
+})();
+
+
+/* ===== V6.9.0 Organization Structure ===== */
+"use strict";
+(() => {
+  const A = () => window.TimeClockApp;
+  const $ = id => document.getElementById(id);
+  const qa = (s,r=document) => [...r.querySelectorAll(s)];
+  const state = {
+    rows: [], detail: null, selectedId: null,
+    expanded: new Set(), search: "",
+    managerCandidates: [], orgUploadRows: [], scopeUploadRows: []
+  };
+
+  const esc = value => String(value ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+  const val = id => String($(id)?.value ?? "").trim();
+  const setVal = (id,value) => { if($(id)) $(id).value = value ?? ""; };
+  const setText = (id,value) => { if($(id)) $(id).textContent = value ?? ""; };
+  const num = value => Number(value || 0).toLocaleString("th-TH");
+  const fmtDate = value => value ? (A()?.formatDate?.(value) || value) : "-";
+  const open = id => $(id)?.classList.remove("hidden");
+  const close = id => $(id)?.classList.add("hidden");
+
+  async function rpc(name,args={}) {
+    const {data,error} = await A().state.client.rpc(name,args);
+    if(error) throw error;
+    return data;
+  }
+
+  function levelTone(level) {
+    const code = String(level || "").toUpperCase();
+    if(code.includes("COMPANY")) return "company";
+    if(code.includes("OFFICE") || code.includes("BUREAU")) return "office";
+    if(code.includes("DIVISION")) return "division";
+    if(code.includes("DEPARTMENT")) return "department";
+    if(code.includes("SECTION")) return "section";
+    if(code.includes("TEAM")) return "team";
+    return "unit";
+  }
+
+  function childMap() {
+    const map = new Map();
+    state.rows.forEach(row => {
+      const key = row.parent_org_id || "__ROOT__";
+      if(!map.has(key)) map.set(key,[]);
+      map.get(key).push(row);
+    });
+    for(const rows of map.values()) {
+      rows.sort((a,b) =>
+        Number(a.sort_order||0)-Number(b.sort_order||0)
+        || String(a.org_code).localeCompare(
+          String(b.org_code),"th",{numeric:true}
+        )
+      );
+    }
+    return map;
+  }
+
+  function visibleIds() {
+    const term = state.search.trim().toLowerCase();
+    if(!term) return null;
+    const byId = new Map(state.rows.map(row => [row.org_id,row]));
+    const visible = new Set();
+
+    state.rows.forEach(row => {
+      const hay =
+        `${row.org_code} ${row.org_name} `
+        + `${row.org_level_name||row.org_level_code}`.toLowerCase();
+
+      if(!hay.toLowerCase().includes(term)) return;
+
+      let current = row;
+      while(current) {
+        visible.add(current.org_id);
+        current = current.parent_org_id
+          ? byId.get(current.parent_org_id)
+          : null;
+      }
+    });
+    return visible;
+  }
+
+  function renderTree() {
+    const root = $("orgTree");
+    if(!root) return;
+
+    const map = childMap();
+    const visible = visibleIds();
+    const searching = Boolean(state.search.trim());
+
+    function node(row) {
+      if(visible && !visible.has(row.org_id)) return "";
+      const children = (map.get(row.org_id)||[])
+        .filter(item => !visible || visible.has(item.org_id));
+      const expanded = searching || state.expanded.has(row.org_id);
+
+      return `<div class="org-tree-branch">
+        <button
+          class="org-tree-node ${
+            state.selectedId===row.org_id ? "selected" : ""
+          } ${row.is_active ? "" : "inactive"}"
+          data-org-select="${esc(row.org_id)}"
+          style="--org-depth:${Number(row.depth||0)}"
+        >
+          <span
+            class="org-tree-toggle ${children.length ? "" : "empty"}"
+            data-org-toggle="${esc(row.org_id)}"
+          >${children.length ? (expanded ? "−" : "+") : ""}</span>
+          <span class="org-tree-icon ${levelTone(row.org_level_code)}">▱</span>
+          <span class="org-tree-node-main">
+            <strong><b>${esc(row.org_code)}</b> • ${esc(row.org_name)}</strong>
+            <small>${esc(row.org_level_name||row.org_level_code)}
+              · พนักงาน ${num(row.employee_count)}
+              · Manager ${num(row.manager_count)}</small>
+          </span>
+          ${row.is_active ? "" : "<em>ปิด</em>"}
+        </button>
+        <div class="org-tree-children ${expanded ? "" : "hidden"}">
+          ${children.map(node).join("")}
+        </div>
+      </div>`;
+    }
+
+    const roots = map.get("__ROOT__") || [];
+    root.innerHTML = roots.map(node).join("")
+      || '<div class="org-tree-empty">ไม่พบหน่วยงาน</div>';
+    setText("orgTreeCount",`${num(state.rows.length)} หน่วยงาน`);
+  }
+
+  async function load() {
+    if(!A()?.state?.client) return;
+    A().showLoading?.("กำลังโหลดผังองค์กร...");
+    try {
+      state.rows = await rpc("ta_get_org_tree_v690",{
+        p_include_inactive: $("orgShowInactive")?.checked || false
+      }) || [];
+
+      if(!state.expanded.size) {
+        state.rows.filter(row => Number(row.depth||0)<2)
+          .forEach(row => state.expanded.add(row.org_id));
+      }
+
+      renderTree();
+      fillParentOptions();
+
+      if(
+        state.selectedId
+        && state.rows.some(row => row.org_id===state.selectedId)
+      ) {
+        await selectUnit(state.selectedId);
+      }
+    } catch(error) {
+      $("orgTree").innerHTML =
+        `<div class="org-tree-empty">${esc(A().humanError?.(error)||error.message)}</div>`;
+      A().toast?.(A().humanError?.(error)||error.message,"error");
+    } finally {
+      A().hideLoading?.();
+    }
+  }
+
+  function fillParentOptions() {
+    const list = $("ouParentOptions");
+    if(!list) return;
+    list.innerHTML = state.rows
+      .filter(row => row.org_id !== val("ouOrgId"))
+      .map(row =>
+        `<option value="${esc(row.org_code)}">${esc(row.org_name)}</option>`
+      ).join("");
+  }
+
+  async function selectUnit(orgId) {
+    state.selectedId = orgId;
+    renderTree();
+
+    try {
+      state.detail = await rpc("ta_get_org_unit_detail_v690",{
+        p_org_id:orgId
+      });
+      renderDetail();
+    } catch(error) {
+      A().toast?.(A().humanError?.(error)||error.message,"error");
+    }
+  }
+
+  function info(label,value) {
+    return `<div><span>${esc(label)}</span><strong>${esc(value??"-")}</strong></div>`;
+  }
+
+  function permission(value) {
+    return value
+      ? '<span class="org-permission yes">✓</span>'
+      : '<span class="org-permission no">—</span>';
+  }
+
+  function renderDetail() {
+    const detail = state.detail;
+    const unit = detail?.unit;
+    if(!unit) return;
+
+    $("orgDetailEmpty")?.classList.add("hidden");
+    $("orgDetailContent")?.classList.remove("hidden");
+
+    setText("orgDetailTitle",unit.org_name);
+    setText("orgDetailCode",`รหัส ${unit.org_code}`);
+    setText("orgLevelBadge",unit.org_level_name||unit.org_level_code);
+    $("orgLevelBadge").className =
+      `org-level-badge ${levelTone(unit.org_level_code)}`;
+
+    const crumbs = [...(detail.ancestors||[]),unit];
+    $("orgBreadcrumb").innerHTML = crumbs.map((item,index) =>
+      `<button data-org-select="${esc(item.org_id)}">${esc(item.org_name)}</button>`
+      + (index<crumbs.length-1 ? "<span>›</span>" : "")
+    ).join("");
+
+    setText("orgDirectEmployees",num(detail.direct_employee_count));
+    setText("orgTotalEmployees",num(detail.descendant_employee_count));
+    setText("orgChildCount",num((detail.children||[]).length));
+    setText("orgManagerCount",num((detail.managers||[]).length));
+    setText("orgChildrenCount",`${num((detail.children||[]).length)} รายการ`);
+
+    $("orgInfoGrid").innerHTML = [
+      ["รหัสหน่วยงาน",unit.org_code],
+      ["ชื่อหน่วยงาน",unit.org_name],
+      ["ระดับ",unit.org_level_name||unit.org_level_code],
+      ["หน่วยงานแม่",detail.parent?.org_name||"หน่วยงานหลัก"],
+      ["ลำดับแสดง",unit.sort_order],
+      ["เริ่มใช้",fmtDate(unit.effective_from)],
+      ["สิ้นสุด",fmtDate(unit.effective_to)],
+      ["สถานะ",unit.is_active ? "ใช้งาน" : "ปิดใช้งาน"],
+      ["หมายเหตุ",unit.note||"-"]
+    ].map(item => info(item[0],item[1])).join("");
+
+    $("orgChildrenList").innerHTML = (detail.children||[]).length
+      ? detail.children.map(child => `<button data-org-select="${esc(child.org_id)}">
+          <span class="org-tree-icon ${levelTone(child.org_level_code)}">▱</span>
+          <div><strong>${esc(child.org_code)} • ${esc(child.org_name)}</strong><small>${esc(child.org_level_code)}</small></div>
+          <em>›</em>
+        </button>`).join("")
+      : '<div class="org-list-empty">ไม่มีหน่วยงานลูก</div>';
+
+    $("orgManagerBody").innerHTML = (detail.managers||[]).length
+      ? detail.managers.map(manager => `<tr>
+          <td><strong>${esc(manager.display_name||manager.manager_email)}</strong><small class="org-manager-email">${esc(manager.manager_email)}</small></td>
+          <td>${manager.include_descendants ? "รวมหน่วยงานลูก" : "เฉพาะหน่วยงานนี้"}</td>
+          <td>${permission(manager.can_view)}</td>
+          <td>${permission(manager.can_edit_schedule)}</td>
+          <td>${permission(manager.can_confirm_schedule)}</td>
+          <td>${permission(manager.can_certify_attendance)}</td>
+          <td>${permission(manager.can_decide_shift_request)}</td>
+          <td class="nowrap">${fmtDate(manager.effective_from)} – ${fmtDate(manager.effective_to)}</td>
+          <td>${manager.is_active
+            ? '<span class="badge badge-green">ใช้งาน</span>'
+            : '<span class="badge badge-red">ปิด</span>'}</td>
+          <td><div class="org-row-actions">
+            <button class="btn btn-soft btn-sm" data-org-edit-manager="${esc(manager.scope_id)}">แก้ไข</button>
+            <button class="btn btn-danger-soft btn-sm" data-org-delete-manager="${esc(manager.scope_id)}">ลบ</button>
+          </div></td>
+        </tr>`).join("")
+      : '<tr><td colspan="10" class="fc-empty">ยังไม่ได้กำหนด Manager</td></tr>';
+
+    $("orgDeactivateBtn").disabled = !unit.is_active;
+  }
+
+  function resetUnitModal(unit=null,parentCode="") {
+    setVal("ouOrgId",unit?.org_id||"");
+    setVal("ouOrgCode",unit?.org_code||"");
+    setVal("ouOrgName",unit?.org_name||"");
+    setVal("ouLevelCode",unit?.org_level_code||"DEPARTMENT");
+    setVal("ouLevelName",unit?.org_level_name||"");
+    setVal("ouLevelOrder",unit?.level_order??0);
+    setVal("ouParentCode",unit
+      ? (state.detail?.parent?.org_code||"")
+      : parentCode);
+    setVal("ouSortOrder",unit?.sort_order??0);
+    setVal("ouEffectiveFrom",unit?.effective_from
+      ? String(unit.effective_from).slice(0,10) : "");
+    setVal("ouEffectiveTo",unit?.effective_to
+      ? String(unit.effective_to).slice(0,10) : "");
+    setVal("ouActive",unit?.is_active===false ? "false" : "true");
+    setVal("ouNote",unit?.note||"");
+    setText("orgUnitModalTitle",unit ? "แก้ไขหน่วยงาน" : "เพิ่มหน่วยงาน");
+    fillParentOptions();
+    open("orgUnitModal");
+  }
+
+  async function saveUnit() {
+    A().showLoading?.("กำลังบันทึกหน่วยงาน...");
+    try {
+      const row = await rpc("ta_upsert_org_unit_v690",{
+        p_org_id:val("ouOrgId")||null,
+        p_org_code:val("ouOrgCode"),
+        p_org_name:val("ouOrgName"),
+        p_org_level_code:val("ouLevelCode"),
+        p_org_level_name:val("ouLevelName")||null,
+        p_level_order:Number(val("ouLevelOrder")||0),
+        p_parent_org_code:val("ouParentCode")||null,
+        p_sort_order:Number(val("ouSortOrder")||0),
+        p_effective_from:val("ouEffectiveFrom")||null,
+        p_effective_to:val("ouEffectiveTo")||null,
+        p_is_active:val("ouActive")==="true",
+        p_note:val("ouNote")||null,
+        p_change_reason:"จัดการจากหน้า Organization Structure"
+      });
+      close("orgUnitModal");
+      A().toast?.("บันทึกหน่วยงานเรียบร้อย","success");
+      state.selectedId = row.org_id;
+      await load();
+    } catch(error) {
+      A().toast?.(A().humanError?.(error)||error.message,"error");
+    } finally {
+      A().hideLoading?.();
+    }
+  }
+
+  async function deactivateUnit() {
+    const unit = state.detail?.unit;
+    if(
+      !unit
+      || !confirm(`ยืนยันปิดใช้งาน ${unit.org_code} • ${unit.org_name}?`)
+    ) return;
+
+    A().showLoading?.("กำลังปิดใช้งานหน่วยงาน...");
+    try {
+      await rpc("ta_deactivate_org_unit_v690",{
+        p_org_id:unit.org_id,
+        p_change_reason:"ปิดใช้งานจากหน้า Organization Structure"
+      });
+      A().toast?.("ปิดใช้งานหน่วยงานแล้ว","success");
+      await load();
+    } catch(error) {
+      A().toast?.(A().humanError?.(error)||error.message,"error");
+    } finally {
+      A().hideLoading?.();
+    }
+  }
+
+  async function loadManagerCandidates() {
+    if(state.managerCandidates.length) return;
+    state.managerCandidates =
+      await rpc("ta_get_org_manager_candidates_v690") || [];
+    $("omManagerOptions").innerHTML = state.managerCandidates
+      .map(manager =>
+        `<option value="${esc(manager.email)}">${esc(manager.display_name||manager.email)} • ${esc(manager.emp_code||"-")}</option>`
+      ).join("");
+  }
+
+  async function openManager(scopeId=null) {
+    const unit = state.detail?.unit;
+    if(!unit) return;
+
+    await loadManagerCandidates();
+    const manager = scopeId
+      ? (state.detail.managers||[]).find(x => x.scope_id===scopeId)
+      : null;
+
+    setVal("omScopeId",manager?.scope_id||"");
+    setVal("omManagerEmail",manager?.manager_email||"");
+    $("omManagerEmail").disabled = Boolean(manager);
+    $("omIncludeDescendants").checked =
+      manager?.include_descendants !== false;
+    $("omCanView").checked = manager?.can_view !== false;
+    $("omCanEdit").checked = Boolean(manager?.can_edit_schedule);
+    $("omCanConfirm").checked = Boolean(manager?.can_confirm_schedule);
+    $("omCanCertify").checked = Boolean(manager?.can_certify_attendance);
+    $("omCanDecide").checked = Boolean(manager?.can_decide_shift_request);
+    setVal("omEffectiveFrom",manager?.effective_from
+      ? String(manager.effective_from).slice(0,10) : "");
+    setVal("omEffectiveTo",manager?.effective_to
+      ? String(manager.effective_to).slice(0,10) : "");
+    setVal("omActive",manager?.is_active===false ? "false" : "true");
+    setVal("omNote",manager?.note||"");
+    setText("orgManagerModalTitle",manager ? "แก้ไข Manager" : "กำหนด Manager");
+    setText("orgManagerModalUnit",`${unit.org_code} • ${unit.org_name}`);
+    open("orgManagerModal");
+  }
+
+  async function saveManager() {
+    const unit = state.detail?.unit;
+    if(!unit) return;
+
+    A().showLoading?.("กำลังบันทึก Manager...");
+    try {
+      await rpc("ta_upsert_manager_scope_v690",{
+        p_scope_id:val("omScopeId")||null,
+        p_manager_email:val("omManagerEmail"),
+        p_scope_type:"ORG_UNIT",
+        p_scope_value:unit.org_code,
+        p_scope_label:unit.org_name,
+        p_include_descendants:$("omIncludeDescendants").checked,
+        p_can_view:$("omCanView").checked,
+        p_can_edit_schedule:$("omCanEdit").checked,
+        p_can_confirm_schedule:$("omCanConfirm").checked,
+        p_can_certify_attendance:$("omCanCertify").checked,
+        p_can_decide_shift_request:$("omCanDecide").checked,
+        p_effective_from:val("omEffectiveFrom")||null,
+        p_effective_to:val("omEffectiveTo")||null,
+        p_is_active:val("omActive")==="true",
+        p_note:val("omNote")||null
+      });
+      close("orgManagerModal");
+      A().toast?.("บันทึก Manager เรียบร้อย","success");
+      await load();
+      await selectUnit(unit.org_id);
+    } catch(error) {
+      A().toast?.(A().humanError?.(error)||error.message,"error");
+    } finally {
+      A().hideLoading?.();
+    }
+  }
+
+  async function deleteManager(scopeId) {
+    if(!confirm("ยืนยันลบ Manager Scope รายการนี้?")) return;
+    A().showLoading?.("กำลังลบ Manager...");
+    try {
+      await rpc("ta_delete_manager_scope_v690",{p_scope_id:scopeId});
+      A().toast?.("ลบ Manager Scope แล้ว","success");
+      await load();
+      if(state.selectedId) await selectUnit(state.selectedId);
+    } catch(error) {
+      A().toast?.(A().humanError?.(error)||error.message,"error");
+    } finally {
+      A().hideLoading?.();
+    }
+  }
+
+  function parseCsv(textValue) {
+    const lines = String(textValue||"")
+      .replace(/^\uFEFF/,"")
+      .split(/\r?\n/)
+      .filter(line => line.trim());
+    if(!lines.length) return [];
+
+    const parseLine = line => {
+      const cells=[]; let current=""; let quoted=false;
+      for(let i=0;i<line.length;i++) {
+        const char=line[i];
+        if(char === '"') {
+          if(quoted && line[i+1] === '"') {
+            current+='"'; i++;
+          } else quoted=!quoted;
+        } else if(char === "," && !quoted) {
+          cells.push(current); current="";
+        } else current+=char;
+      }
+      cells.push(current);
+      return cells.map(value => value.trim());
+    };
+
+    const headers = parseLine(lines[0]);
+    return lines.slice(1).map(line => {
+      const values=parseLine(line);
+      return Object.fromEntries(
+        headers.map((header,index) => [header,values[index]??""])
+      );
+    });
+  }
+
+  function downloadTemplate(kind) {
+    const headers = kind==="org"
+      ? ["org_code","org_name","org_level_code","org_level_name","level_order","parent_org_code","sort_order","effective_from","effective_to","is_active","note"]
+      : ["manager_email","scope_type","scope_value","scope_label","include_descendants","can_view","can_edit_schedule","can_confirm_schedule","can_certify_attendance","can_decide_shift_request","effective_from","effective_to","is_active","note"];
+
+    A().downloadFile?.(
+      kind==="org"
+        ? "Organization_Structure_Template_v6.9.0.csv"
+        : "Organization_Manager_Scope_Template_v6.9.0.csv",
+      "\uFEFF"+headers.join(",")+"\n",
+      "text/csv;charset=utf-8"
+    );
+  }
+
+  async function previewOrgFile(file) {
+    state.orgUploadRows = file ? parseCsv(await file.text()) : [];
+    setText("orgUploadSummary",file
+      ? `${file.name} • ${num(state.orgUploadRows.length)} รายการ`
+      : "ยังไม่ได้เลือกไฟล์");
+    $("orgImportBtn").disabled = !state.orgUploadRows.length;
+    $("orgUploadBody").innerHTML = state.orgUploadRows.length
+      ? state.orgUploadRows.slice(0,100).map((row,index) =>
+          `<tr><td>${index+2}</td><td>${esc(row.org_code)}</td><td>${esc(row.org_name)}</td><td>${esc(row.org_level_name||row.org_level_code)}</td><td>${esc(row.parent_org_code||"-")}</td><td>${esc(row.is_active||"true")}</td></tr>`
+        ).join("")
+      : '<tr><td colspan="6" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
+  }
+
+  async function importOrg() {
+    A().showLoading?.("กำลังนำเข้าผังองค์กร...");
+    try {
+      const result = await rpc("ta_import_org_units_v690",{
+        p_rows:state.orgUploadRows,
+        p_deactivate_missing:$("orgDeactivateMissing").checked
+      });
+
+      if(!result?.success) {
+        $("orgUploadErrors").classList.remove("hidden");
+        $("orgUploadErrors").innerHTML =
+          `<strong>พบข้อมูลไม่พร้อมนำเข้า ${num(result.invalid_rows)}</strong>`
+          + (result.errors||[]).map(error =>
+              `<div>แถว ${esc(error.row_no)} • ${esc(error.org_code)} • ${esc(error.error)}</div>`
+            ).join("");
+        return;
+      }
+
+      close("orgUploadModal");
+      A().toast?.(
+        `นำเข้าผังองค์กรสำเร็จ ${num(result.upserted_rows)} รายการ`,
+        "success"
+      );
+      await load();
+    } catch(error) {
+      A().toast?.(A().humanError?.(error)||error.message,"error");
+    } finally {
+      A().hideLoading?.();
+    }
+  }
+
+  async function previewScopeFile(file) {
+    state.scopeUploadRows = file ? parseCsv(await file.text()) : [];
+    setText("orgScopeSummary",file
+      ? `${file.name} • ${num(state.scopeUploadRows.length)} รายการ`
+      : "ยังไม่ได้เลือกไฟล์");
+    $("orgScopeImportBtn").disabled = !state.scopeUploadRows.length;
+    $("orgScopeBody").innerHTML = state.scopeUploadRows.length
+      ? state.scopeUploadRows.slice(0,100).map((row,index) =>
+          `<tr><td>${index+2}</td><td>${esc(row.manager_email)}</td><td>${esc(row.scope_value||row.org_code)}</td><td>${esc(row.include_descendants||"true")}</td><td>${esc(row.can_edit_schedule||"false")}</td><td>${esc(row.can_certify_attendance||"false")}</td></tr>`
+        ).join("")
+      : '<tr><td colspan="6" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
+  }
+
+  async function importScopes() {
+    A().showLoading?.("กำลังนำเข้า Manager Scope...");
+    try {
+      const rows = state.scopeUploadRows.map(row => ({
+        ...row,
+        scope_type:row.scope_type||"ORG_UNIT",
+        scope_value:row.scope_value||row.org_code
+      }));
+      const result = await rpc("ta_import_manager_scopes_v690",{
+        p_rows:rows,
+        p_replace_existing:$("orgScopeReplace").checked
+      });
+
+      if(!result?.success) {
+        $("orgScopeErrors").classList.remove("hidden");
+        $("orgScopeErrors").innerHTML =
+          `<strong>พบข้อมูลไม่พร้อมนำเข้า ${num(result.invalid_rows)}</strong>`
+          + (result.errors||[]).map(error =>
+              `<div>แถว ${esc(error.row_no)} • ${esc(error.manager_email)} • ${esc(error.error)}</div>`
+            ).join("");
+        return;
+      }
+
+      close("orgScopeUploadModal");
+      A().toast?.(
+        `นำเข้า Scope สำเร็จ ${num(result.upserted_rows)} รายการ`,
+        "success"
+      );
+      await load();
+      if(state.selectedId) await selectUnit(state.selectedId);
+    } catch(error) {
+      A().toast?.(A().humanError?.(error)||error.message,"error");
+    } finally {
+      A().hideLoading?.();
+    }
+  }
+
+  function bind() {
+    $("orgRefreshBtn")?.addEventListener("click",load);
+    $("orgShowInactive")?.addEventListener("change",load);
+    $("orgTreeSearch")?.addEventListener(
+      "input",
+      event => { state.search=event.target.value; renderTree(); }
+    );
+    $("orgExpandAllBtn")?.addEventListener(
+      "click",
+      () => { state.rows.forEach(row => state.expanded.add(row.org_id)); renderTree(); }
+    );
+    $("orgCollapseAllBtn")?.addEventListener(
+      "click",
+      () => { state.expanded.clear(); renderTree(); }
+    );
+    $("orgAddRootBtn")?.addEventListener("click",()=>resetUnitModal());
+    $("orgAddChildBtn")?.addEventListener(
+      "click",
+      () => resetUnitModal(null,state.detail?.unit?.org_code||"")
+    );
+    $("orgEditBtn")?.addEventListener(
+      "click",
+      () => resetUnitModal(state.detail?.unit)
+    );
+    $("orgDeactivateBtn")?.addEventListener("click",deactivateUnit);
+    $("orgSaveUnitBtn")?.addEventListener("click",saveUnit);
+    ["orgAddManagerBtn","orgAddManagerInlineBtn"].forEach(id =>
+      $(id)?.addEventListener("click",()=>openManager())
+    );
+    $("orgSaveManagerBtn")?.addEventListener("click",saveManager);
+
+    $("orgUploadBtn")?.addEventListener("click",()=>{
+      state.orgUploadRows=[];
+      $("orgUploadFile").value="";
+      $("orgImportBtn").disabled=true;
+      $("orgUploadErrors").classList.add("hidden");
+      setText("orgUploadSummary","ยังไม่ได้เลือกไฟล์");
+      open("orgUploadModal");
+    });
+    $("orgScopeUploadBtn")?.addEventListener("click",()=>{
+      state.scopeUploadRows=[];
+      $("orgScopeFile").value="";
+      $("orgScopeImportBtn").disabled=true;
+      $("orgScopeErrors").classList.add("hidden");
+      setText("orgScopeSummary","ยังไม่ได้เลือกไฟล์");
+      open("orgScopeUploadModal");
+    });
+
+    $("orgUploadFile")?.addEventListener(
+      "change",
+      event => previewOrgFile(event.target.files?.[0])
+    );
+    $("orgScopeFile")?.addEventListener(
+      "change",
+      event => previewScopeFile(event.target.files?.[0])
+    );
+    $("orgImportBtn")?.addEventListener("click",importOrg);
+    $("orgScopeImportBtn")?.addEventListener("click",importScopes);
+    $("orgDownloadTemplateBtn")?.addEventListener(
+      "click",
+      () => downloadTemplate("org")
+    );
+    $("orgScopeTemplateBtn")?.addEventListener(
+      "click",
+      () => downloadTemplate("scope")
+    );
+    qa("[data-org-close]").forEach(button =>
+      button.addEventListener("click",()=>close(button.dataset.orgClose))
+    );
+
+    document.addEventListener("click",event=>{
+      const toggle=event.target.closest("[data-org-toggle]");
+      if(toggle) {
+        event.stopPropagation();
+        const id=toggle.dataset.orgToggle;
+        state.expanded.has(id)
+          ? state.expanded.delete(id)
+          : state.expanded.add(id);
+        renderTree();
+        return;
+      }
+
+      const select=event.target.closest("[data-org-select]");
+      if(select) {
+        selectUnit(select.dataset.orgSelect);
+        return;
+      }
+
+      const edit=event.target.closest("[data-org-edit-manager]");
+      if(edit) {
+        openManager(edit.dataset.orgEditManager);
+        return;
+      }
+
+      const remove=event.target.closest("[data-org-delete-manager]");
+      if(remove) {
+        deleteManager(remove.dataset.orgDeleteManager);
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded",bind);
+  window.TimeClockOrgStructure = {
+    load,
+    rows:() => state.rows,
+    select:selectUnit
+  };
 })();

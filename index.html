@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.7.5 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.9.0 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1f3a" />
-  <title>Time-Clock Enterprise V6.7.5 | CP Retailink</title>
+  <title>Time-Clock Enterprise V6.9.0 | CP Retailink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./app.css?v=6.7.5" />
+  <link rel="stylesheet" href="./app.css?v=6.9.0" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -63,6 +63,7 @@
         <div class="nav-label">ภาพรวม</div>
         <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span><span>Dashboard</span></button>
         <button class="nav-item" data-page="attendance"><span class="nav-icon">◷</span><span>รายละเอียดเวลาทำงาน</span></button>
+        <button class="nav-item" data-page="shift-requests"><span class="nav-icon">⇄</span><span>คำขอแก้ไขกะ</span><span id="shiftRequestNavBadge" class="nav-count hidden">0</span></button>
         <button class="nav-item" data-page="schedule"><span class="nav-icon">▣</span><span>ปฏิทินจัดกะ</span></button>
         <button class="nav-item" data-page="work-patterns"><span class="nav-icon">⌘</span><span>รูปแบบการทำงาน</span></button>
         <button class="nav-item" data-page="review"><span class="nav-icon">⚠</span><span>รายการรอตรวจสอบ</span></button>
@@ -76,6 +77,7 @@
           <button class="nav-item" data-page="admin-center"><span class="nav-icon">◆</span><span>HR Admin Center</span></button>
           <button class="nav-item" data-page="admin-shifts"><span class="nav-icon">◫</span><span>ตั้งค่ากะทำงาน</span></button>
           <button class="nav-item" data-page="admin-holidays"><span class="nav-icon">◈</span><span>วันหยุดนักขัตฤกษ์</span></button>
+          <button class="nav-item" data-page="admin-org"><span class="nav-icon">⌘</span><span>ผังโครงสร้างองค์กร</span></button>
           <button class="nav-item" data-page="admin-users"><span class="nav-icon">♙</span><span>User และ Scope</span></button>
           <button class="nav-item" data-page="admin-import"><span class="nav-icon">⇧</span><span>นำเข้าพนักงาน</span></button>
           <button class="nav-item" data-page="admin-time-import"><span class="nav-icon">⇩</span><span>นำเข้าข้อมูลลงเวลา</span></button>
@@ -203,7 +205,7 @@
         <section id="page-system-settings" class="page settings-page">
           <div class="settings-hero">
             <div><span class="eyebrow">ENTERPRISE CONTROL CENTER</span><h2>System Settings &amp; Developer Console</h2><p>กำหนดค่าระบบ ธีม Feature Flags สีของกะ และทดสอบสิทธิ์การใช้งานจากจุดเดียว</p></div>
-            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.7.5</strong><small id="settingsEnvironmentHero">Development</small></div>
+            <div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.9.0</strong><small id="settingsEnvironmentHero">Development</small></div>
           </div>
           <div class="settings-layout section-gap">
             <aside class="settings-tabs" aria-label="เมนูตั้งค่าระบบ">
@@ -239,7 +241,7 @@
               </div>
               <div class="settings-panel" data-settings-panel="developer">
                 <div class="settings-panel-head"><div><h3>Developer Mode</h3><p>ใช้สำหรับจำลอง Role ฝั่งหน้าจอเท่านั้น โดย RLS ของ Supabase ยังควบคุมสิทธิ์จริงเหมือนเดิม</p></div><label class="switch"><input id="setDeveloperMode" type="checkbox"><span></span></label></div>
-                <div class="developer-role-card"><div><span>สิทธิ์จริง</span><strong id="realRoleValue">-</strong></div><div class="role-arrow">→</div><div class="field"><label>View As</label><select id="setViewAsRole" class="select"><option value="HR_ADMIN">HR_ADMIN</option><option value="USER">USER</option><option value="VIEWER">VIEWER</option></select></div></div>
+                <div class="developer-role-card"><div><span>สิทธิ์จริง</span><strong id="realRoleValue">-</strong></div><div class="role-arrow">→</div><div class="field"><label>View As</label><select id="setViewAsRole" class="select"><option value="HR_ADMIN">HR_ADMIN</option><option value="MANAGER">MANAGER</option><option value="VIEWER">VIEWER</option></select></div></div>
                 <div class="developer-warning">การสลับ Role ไม่ได้ยกระดับสิทธิ์ในฐานข้อมูล ใช้สำหรับตรวจเมนูและ UX เท่านั้น หาก RPC ถูก RLS ปฏิเสธถือว่าเป็นผลที่ถูกต้อง</div>
                 <div class="developer-tools"><button id="devClearCacheBtn" class="btn btn-light">Clear UI Cache</button><button id="devRefreshMetadataBtn" class="btn btn-light">Refresh Metadata</button><button id="devReloadBtn" class="btn btn-primary">Apply &amp; Reload UI</button></div>
               </div>
@@ -260,7 +262,7 @@
               </div>
               <div class="settings-panel" data-settings-panel="about">
                 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.7.5</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.7.5 Employee Filter Variable Fix</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.9.0</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.9.0 Organization Structure & Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
               </div>
             </div>
           </div>
@@ -432,6 +434,66 @@
           </div>
         </section>
 
+
+        <!-- Shift Change Requests -->
+        <section id="page-shift-requests" class="page shift-request-page">
+          <div class="shift-request-hero">
+            <div>
+              <span class="eyebrow">SHIFT CHANGE REQUEST</span>
+              <h2>คำขอแก้ไขกะทำงาน</h2>
+              <p id="shiftRequestSubtitle">พนักงานส่งคำขอแก้ไขกะของตนเอง และผู้จัดการพิจารณาภายในขอบเขตทีม</p>
+            </div>
+            <button id="newShiftRequestBtn" class="btn btn-primary">+ ส่งคำขอแก้ไขกะ</button>
+          </div>
+
+          <div class="shift-request-kpi-grid section-gap">
+            <article><span>ทั้งหมด</span><strong id="shiftRequestKpiAll">0</strong><small>คำขอในช่วงวันที่</small></article>
+            <article class="warning"><span>รอพิจารณา</span><strong id="shiftRequestKpiPending">0</strong><small>Manager ดำเนินการ</small></article>
+            <article class="success"><span>อนุมัติแล้ว</span><strong id="shiftRequestKpiApproved">0</strong><small>นำกะไปใช้แล้ว</small></article>
+            <article class="danger"><span>ไม่อนุมัติ/ยกเลิก</span><strong id="shiftRequestKpiClosed">0</strong><small>ปิดรายการแล้ว</small></article>
+          </div>
+
+          <div class="panel section-gap">
+            <div class="panel-body">
+              <div class="shift-request-filter-grid">
+                <div class="field"><label>วันที่เริ่มต้น</label><input id="shiftRequestStart" class="input" type="date"></div>
+                <div class="field"><label>วันที่สิ้นสุด</label><input id="shiftRequestEnd" class="input" type="date"></div>
+                <div class="field"><label>สถานะ</label><select id="shiftRequestStatus" class="select"><option value="">ทุกสถานะ</option><option value="PENDING">รอพิจารณา</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
+                <div class="field"><label>ค้นหา</label><input id="shiftRequestSearch" class="input" placeholder="เลขที่คำขอ รหัส หรือชื่อพนักงาน"></div>
+                <div class="toolbar-actions"><button id="loadShiftRequestsBtn" class="btn btn-primary">ค้นหา</button></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel section-gap">
+            <div class="panel-header">
+              <div><h3>รายการคำขอแก้ไขกะ</h3><p id="shiftRequestCount">0 รายการ</p></div>
+              <button id="shiftRequestExportBtn" class="btn btn-success">Excel</button>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap shift-request-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>เลขที่คำขอ</th>
+                      <th>วันที่ทำงาน</th>
+                      <th>พนักงาน</th>
+                      <th>กะเดิม</th>
+                      <th>กะที่ขอ</th>
+                      <th>เหตุผล</th>
+                      <th>สถานะ</th>
+                      <th>วันที่ส่งคำขอ</th>
+                      <th>หมายเหตุการพิจารณา</th>
+                      <th>จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="shiftRequestBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Schedule -->
         <section id="page-schedule" class="page">
           <div class="panel">
@@ -586,6 +648,7 @@
           </div>
 
           <div class="admin-module-grid">
+            <button class="admin-module-card" data-admin-open="admin-org"><span class="admin-module-icon">⌘</span><div><strong>ผังโครงสร้างองค์กร</strong><small>จัดลำดับหน่วยงาน กำหนด Manager และ Upload Scope</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="admin-users"><span class="admin-module-icon">♙</span><div><strong>User และ Scope</strong><small>กำหนด Role, สถานะ และขอบเขตข้อมูล</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="admin-shifts"><span class="admin-module-icon">◫</span><div><strong>ตั้งค่ากะทำงาน</strong><small>จัดการรหัสกะ เวลาเริ่ม-สิ้นสุด และเวลาพัก</small></div><em>เปิด ›</em></button>
             <button class="admin-module-card" data-admin-open="work-patterns"><span class="admin-module-icon">⌘</span><div><strong>รูปแบบการทำงานช่าง</strong><small>กำหนด 5/6 วัน วันหยุดตั้งต้น OT และรูปแบบหลายช่วงงาน</small></div><em>เปิด ›</em></button>
@@ -780,11 +843,131 @@
           </div>
         </section>
 
+
+        <!-- Organization Structure -->
+        <section id="page-admin-org" class="page admin-page org-structure-page">
+          <div class="org-hero">
+            <div>
+              <span class="eyebrow">ORGANIZATION STRUCTURE</span>
+              <h2>ผังโครงสร้างองค์กร</h2>
+              <p>จัดการโครงสร้างหลายระดับ กำหนด Manager รายหน่วยงาน และควบคุม Scope ด้วย Email</p>
+            </div>
+            <div class="org-hero-actions">
+              <button id="orgUploadBtn" class="btn btn-success">Upload ผังองค์กร</button>
+              <button id="orgScopeUploadBtn" class="btn btn-orange">Upload Manager Scope</button>
+              <button id="orgAddRootBtn" class="btn btn-primary">+ เพิ่มหน่วยงานหลัก</button>
+              <button id="orgRefreshBtn" class="btn btn-light">รีเฟรช</button>
+            </div>
+          </div>
+
+          <div class="org-workspace section-gap">
+            <aside class="panel org-tree-panel">
+              <div class="org-tree-toolbar">
+                <div class="org-tree-search"><span>⌕</span><input id="orgTreeSearch" class="input" placeholder="ค้นหารหัสหรือชื่อหน่วยงาน"></div>
+                <label class="org-inactive-toggle"><input id="orgShowInactive" type="checkbox"><span>แสดงที่ปิดใช้งาน</span></label>
+              </div>
+              <div class="org-tree-actions">
+                <button id="orgExpandAllBtn" class="btn btn-light btn-sm">ขยายทั้งหมด</button>
+                <button id="orgCollapseAllBtn" class="btn btn-light btn-sm">ยุบทั้งหมด</button>
+                <span id="orgTreeCount">0 หน่วยงาน</span>
+              </div>
+              <div id="orgTree" class="org-tree"><div class="org-tree-empty">กำลังโหลดผังองค์กร...</div></div>
+            </aside>
+
+            <section class="panel org-detail-panel">
+              <div id="orgDetailEmpty" class="org-detail-empty">
+                <div class="org-detail-empty-icon">⌘</div>
+                <h3>เลือกหน่วยงานจากผังด้านซ้าย</h3>
+                <p>ระบบจะแสดงรายละเอียด หน่วยงานลูก พนักงาน และ Manager ของหน่วยงาน</p>
+              </div>
+
+              <div id="orgDetailContent" class="hidden">
+                <div class="org-detail-head">
+                  <div>
+                    <div id="orgBreadcrumb" class="org-breadcrumb"></div>
+                    <div class="org-title-line">
+                      <span id="orgLevelBadge" class="org-level-badge">-</span>
+                      <div><h2 id="orgDetailTitle">-</h2><p id="orgDetailCode">-</p></div>
+                    </div>
+                  </div>
+                  <div class="org-detail-actions">
+                    <button id="orgAddChildBtn" class="btn btn-primary">+ เพิ่มหน่วยงานลูก</button>
+                    <button id="orgAddManagerBtn" class="btn btn-orange">+ กำหนด Manager</button>
+                    <button id="orgEditBtn" class="btn btn-light">แก้ไข</button>
+                    <button id="orgDeactivateBtn" class="btn btn-danger-soft">ปิดใช้งาน</button>
+                  </div>
+                </div>
+
+                <div class="org-kpi-grid">
+                  <article><span>พนักงานในหน่วยงาน</span><strong id="orgDirectEmployees">0</strong></article>
+                  <article><span>พนักงานรวมหน่วยงานลูก</span><strong id="orgTotalEmployees">0</strong></article>
+                  <article><span>หน่วยงานลูก</span><strong id="orgChildCount">0</strong></article>
+                  <article><span>Manager</span><strong id="orgManagerCount">0</strong></article>
+                </div>
+
+                <div class="org-detail-columns">
+                  <div class="org-info-card"><div class="org-section-head"><strong>ข้อมูลหน่วยงาน</strong></div><div id="orgInfoGrid" class="org-info-grid"></div></div>
+                  <div class="org-info-card"><div class="org-section-head"><strong>หน่วยงานลูก</strong><span id="orgChildrenCount">0 รายการ</span></div><div id="orgChildrenList" class="org-children-list"></div></div>
+                </div>
+
+                <div class="org-info-card org-manager-card">
+                  <div class="org-section-head">
+                    <div><strong>Manager ของหน่วยงาน</strong><small>Scope สามารถครอบคลุมเฉพาะหน่วยงานนี้หรือรวมหน่วยงานลูก</small></div>
+                    <button id="orgAddManagerInlineBtn" class="btn btn-orange btn-sm">+ เพิ่ม Manager</button>
+                  </div>
+                  <div class="table-wrap">
+                    <table>
+                      <thead><tr><th>Manager</th><th>ครอบคลุม</th><th>ดู</th><th>จัดกะ</th><th>ยืนยันกะ</th><th>รับรองเวลา</th><th>พิจารณาคำขอ</th><th>ช่วงใช้</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+                      <tbody id="orgManagerBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
         <!-- Admin Users -->
-        <section id="page-admin-users" class="page admin-page">
-          <div class="panel">
-            <div class="panel-header"><div><h3>User และ Scope</h3><p>กำหนด Role และขอบเขตการดูข้อมูล</p></div><button id="reloadUsersBtn" class="btn btn-light">รีเฟรช</button></div>
-            <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>อีเมล</th><th>ชื่อแสดง</th><th>Role</th><th>สถานะ</th><th>เข้าใช้ล่าสุด</th><th>Scope</th><th>จัดการ</th></tr></thead><tbody id="userBody"></tbody></table></div></div>
+        <section id="page-admin-users" class="page admin-page manager-scope-page">
+          <div class="manager-scope-hero">
+            <div>
+              <span class="eyebrow">ROLE & MANAGER SCOPE</span>
+              <h2>User และสิทธิ์</h2>
+              <p>Role แยกจาก Manager Scope โดยใช้ Email เชื่อมความสัมพันธ์ รองรับ Scope รายหน่วยงานและรายบุคคล</p>
+            </div>
+            <div class="manager-scope-hero-actions">
+              <button id="managerScopeTemplateBtn" class="btn btn-success">Template Scope CSV</button>
+              <button id="managerScopeUploadBtn" class="btn btn-orange">Upload Manager Scope</button>
+              <button id="reloadUsersBtn" class="btn btn-light">รีเฟรช</button>
+            </div>
+          </div>
+
+          <div class="panel section-gap">
+            <div class="panel-header">
+              <div>
+                <h3>User ทั้งหมด</h3>
+                <p>HR Admin, Manager และ Viewer — Manager สามารถมีหลาย Scope ต่ออีเมล</p>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>อีเมล</th>
+                      <th>ชื่อแสดง</th>
+                      <th>Role</th>
+                      <th>รหัสพนักงาน</th>
+                      <th>Manager Scope</th>
+                      <th>สถานะ</th>
+                      <th>เข้าใช้ล่าสุด</th>
+                      <th>จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="userBody"></tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -856,7 +1039,7 @@
                 <div class="field"><label>หมายเหตุ</label><input id="importNote" class="input" placeholder="เช่น ปรับปรุงข้อมูลประจำเดือน" /></div>
               </div>
               <div style="display:flex;gap:9px;flex-wrap:wrap"><button id="previewImportBtn" class="btn btn-light">ตรวจสอบก่อนนำเข้า</button><button id="runImportBtn" class="btn btn-primary">นำเข้าข้อมูล</button><button id="downloadTemplateBtn" class="btn btn-success">ดาวน์โหลด Template</button></div>
-              <div class="section-gap" style="padding:14px;border-radius:12px;background:var(--slate-100);font-size:11px;color:var(--slate-700)">ชื่อคอลัมน์: employee_id, full_name, position_name, department, zone, pc, area, sub_area, car_team, manager_department, manager_division, start_date, resign_date</div>
+              <div class="section-gap" style="padding:14px;border-radius:12px;background:var(--slate-100);font-size:11px;color:var(--slate-700)">ชื่อคอลัมน์: employee_id, full_name, position_name, department, zone, pc, area, sub_area, car_team, manager_department, manager_division, manager_gm, manager_avp, start_date, resign_date</div>
               <div id="importResult" class="section-gap"></div>
             </div>
           </div>
@@ -923,7 +1106,7 @@
   <div id="leaveRequestModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอลา</h3><button class="btn btn-light btn-icon" data-v650-close="leaveRequestModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="leaveEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทการลา</label><select id="leaveTypeCode" class="select"></select></div><div class="field"><label>รูปแบบการลา</label><select id="leavePeriod" class="select"><option value="FULL_DAY">เต็มวัน</option><option value="FIRST_HALF">ครึ่งวันแรก</option><option value="SECOND_HALF">ครึ่งวันหลัง</option></select></div></div><div class="form-row"><div class="field"><label>วันที่เริ่มต้น</label><input id="leaveModalStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="leaveModalEnd" class="input" type="date"></div></div><div class="field"><label>ใบรับรอง/เอกสารประกอบ</label><select id="leaveCertificateId" class="select"><option value="">ไม่ระบุ</option></select><small class="field-help">แสดงเอกสารที่ลงทะเบียนไว้และอยู่ในขอบเขตสิทธิ์</small></div><div class="field"><label>เหตุผล</label><textarea id="leaveReason" class="textarea" placeholder="ระบุเหตุผลการลา"></textarea></div><div id="leaveBalancePreview" class="v650-info-box">กรอกรหัสพนักงานเพื่อดูสิทธิ์คงเหลือ</div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="leaveRequestModal">ยกเลิก</button><button id="submitLeaveBtn" class="btn btn-primary">ส่งคำขอลา</button></div></div></div>
 
   <!-- V6.5 Certificate Modal -->
-  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.7.5 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
+  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.9.0 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
 
   <!-- V6.5 Time Correction Modal -->
   <div id="timeCorrectionModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอแก้ไขเวลา</h3><button class="btn btn-light btn-icon" data-v650-close="timeCorrectionModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสพนักงาน</label><input id="correctionEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>วันที่ทำงาน</label><input id="correctionWorkDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>เวลาเข้าใหม่</label><input id="correctionInAt" class="input" type="datetime-local"></div><div class="field"><label>เวลาออกใหม่</label><input id="correctionOutAt" class="input" type="datetime-local"></div></div><div class="field"><label>ใบรับรอง/หลักฐาน</label><select id="correctionCertificateId" class="select"><option value="">ไม่ระบุ</option></select></div><div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea id="correctionReason" class="textarea" placeholder="ระบุเหตุผลที่ต้องแก้ไขเวลา"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="timeCorrectionModal">ยกเลิก</button><button id="submitCorrectionBtn" class="btn btn-primary">ส่งคำขอ</button></div></div></div>
@@ -932,6 +1115,31 @@
   <div id="v650DecisionModal" class="modal-backdrop hidden"><div class="modal"><div class="modal-header"><h3 id="v650DecisionTitle">ยืนยันการดำเนินการ</h3><button class="btn btn-light btn-icon" data-v650-close="v650DecisionModal">×</button></div><div class="modal-body"><input id="v650DecisionSource" type="hidden"><input id="v650DecisionId" type="hidden"><input id="v650DecisionValue" type="hidden"><div id="v650DecisionSummary" class="v650-info-box"></div><div class="field"><label>หมายเหตุ</label><textarea id="v650DecisionNote" class="textarea" placeholder="ระบุหมายเหตุประกอบการตัดสินใจ"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="v650DecisionModal">ยกเลิก</button><button id="confirmV650DecisionBtn" class="btn btn-primary">ยืนยัน</button></div></div></div>
   <datalist id="v650EmployeeList"></datalist>
 
+
+
+  <!-- V6.8 Shift Change Request Modal -->
+  <div id="shiftRequestModal" class="modal-backdrop hidden">
+    <div class="modal large">
+      <div class="modal-header">
+        <div><h3>ส่งคำขอแก้ไขกะทำงาน</h3><p id="shiftRequestModalSubtitle">คำขอจะถูกส่งให้ Manager ตามสายบังคับบัญชา</p></div>
+        <button class="btn btn-light btn-icon" data-v680-close="shiftRequestModal">×</button>
+      </div>
+      <div class="modal-body">
+        <input id="shiftRequestEmpCode" type="hidden">
+        <div id="shiftRequestEmployeeDisplay" class="shift-request-employee-card">-</div>
+        <div class="form-row-3">
+          <div class="field"><label>วันที่ทำงาน</label><input id="shiftRequestWorkDate" class="input" type="date"></div>
+          <div class="field"><label>กะปัจจุบัน</label><input id="shiftRequestCurrentShift" class="input" disabled></div>
+          <div class="field"><label>กะที่ต้องการ</label><select id="shiftRequestRequestedShift" class="select"></select></div>
+        </div>
+        <div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea id="shiftRequestReason" class="textarea" placeholder="ระบุเหตุผลที่ต้องการแก้ไขกะ"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-v680-close="shiftRequestModal">ยกเลิก</button>
+        <button id="submitShiftRequestBtn" class="btn btn-primary">ส่งคำขอ</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Config Modal -->
   <div id="configModal" class="modal-backdrop hidden">
@@ -1010,19 +1218,320 @@
     </div>
   </div>
 
-  <!-- User Modal -->
-  <div id="userModal" class="modal-backdrop hidden">
+
+  <!-- Organization Unit Modal -->
+  <div id="orgUnitModal" class="modal-backdrop hidden">
     <div class="modal large">
-      <div class="modal-header"><h3>กำหนดสิทธิ์ผู้ใช้งาน</h3><button class="btn btn-light btn-icon" data-close-modal="userModal">×</button></div>
+      <div class="modal-header"><div><h3 id="orgUnitModalTitle">เพิ่มหน่วยงาน</h3><p>กำหนดรหัส ระดับ และหน่วยงานแม่</p></div><button class="btn btn-light btn-icon" data-org-close="orgUnitModal">×</button></div>
       <div class="modal-body">
-        <input id="umUserId" type="hidden" />
-        <div class="form-row-3"><div class="field"><label>อีเมล</label><input id="umEmail" class="input" disabled /></div><div class="field"><label>ชื่อแสดง</label><input id="umDisplayName" class="input" /></div><div class="field"><label>Role</label><select id="umRole" class="select"><option value="VIEWER">VIEWER</option><option value="USER">USER</option><option value="HR_ADMIN">HR_ADMIN</option></select></div></div>
-        <label class="checkbox-line" style="margin-bottom:18px"><input id="umActive" type="checkbox" checked /> เปิดใช้งาน User</label>
-        <div style="border-top:1px solid var(--slate-200);padding-top:16px"><h4 style="margin:0 0 12px">Scope หลัก</h4><div class="form-row-3"><div class="field"><label>ประเภท Scope</label><select id="umScopeType" class="select"><option value="ALL">ALL</option><option value="ZONE">ZONE</option><option value="AREA">AREA</option><option value="SUB_AREA">SUB_AREA</option><option value="DEPARTMENT">DEPARTMENT</option><option value="EMPLOYEE">EMPLOYEE</option></select></div><div class="field"><label>ค่า Scope</label><input id="umScopeValue" class="input" value="*" /></div><div class="field"><label>ชื่อแสดง Scope</label><input id="umScopeLabel" class="input" value="ทุกพื้นที่" /></div></div><div style="display:flex;gap:18px;flex-wrap:wrap"><label class="checkbox-line"><input id="umCanView" type="checkbox" checked /> ดูข้อมูล</label><label class="checkbox-line"><input id="umCanEdit" type="checkbox" /> จัดกะ</label><label class="checkbox-line"><input id="umCanConfirm" type="checkbox" /> ยืนยันกะ</label></div></div>
+        <input id="ouOrgId" type="hidden">
+        <div class="form-row"><div class="field"><label>รหัสหน่วยงาน</label><input id="ouOrgCode" class="input"></div><div class="field"><label>ชื่อหน่วยงาน</label><input id="ouOrgName" class="input"></div></div>
+        <div class="form-row-3"><div class="field"><label>รหัสระดับ</label><input id="ouLevelCode" class="input" list="ouLevelOptions" placeholder="DEPARTMENT"></div><div class="field"><label>ชื่อระดับ</label><input id="ouLevelName" class="input" placeholder="แผนก"></div><div class="field"><label>ลำดับระดับ</label><input id="ouLevelOrder" class="input" type="number" value="0"></div></div>
+        <datalist id="ouLevelOptions"><option value="COMPANY"></option><option value="OFFICE"></option><option value="DIVISION"></option><option value="DEPARTMENT"></option><option value="SECTION"></option><option value="TEAM"></option><option value="UNIT"></option></datalist>
+        <div class="form-row"><div class="field"><label>หน่วยงานแม่</label><input id="ouParentCode" class="input" list="ouParentOptions" placeholder="เว้นว่างสำหรับหน่วยงานหลัก"></div><div class="field"><label>ลำดับแสดง</label><input id="ouSortOrder" class="input" type="number" value="0"></div></div>
+        <datalist id="ouParentOptions"></datalist>
+        <div class="form-row-3"><div class="field"><label>เริ่มใช้</label><input id="ouEffectiveFrom" class="input" type="date"></div><div class="field"><label>สิ้นสุด</label><input id="ouEffectiveTo" class="input" type="date"></div><div class="field"><label>สถานะ</label><select id="ouActive" class="select"><option value="true">ใช้งาน</option><option value="false">ปิดใช้งาน</option></select></div></div>
+        <div class="field"><label>หมายเหตุ</label><textarea id="ouNote" class="textarea"></textarea></div>
       </div>
-      <div class="modal-footer"><button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button><button id="saveUserBtn" class="btn btn-primary">บันทึกสิทธิ์</button></div>
+      <div class="modal-footer"><button class="btn btn-light" data-org-close="orgUnitModal">ยกเลิก</button><button id="orgSaveUnitBtn" class="btn btn-primary">บันทึกหน่วยงาน</button></div>
     </div>
   </div>
-  <script src="./app.js?v=6.7.5"></script>
+
+  <!-- Organization Manager Modal -->
+  <div id="orgManagerModal" class="modal-backdrop hidden">
+    <div class="modal large">
+      <div class="modal-header"><div><h3 id="orgManagerModalTitle">กำหนด Manager</h3><p id="orgManagerModalUnit">-</p></div><button class="btn btn-light btn-icon" data-org-close="orgManagerModal">×</button></div>
+      <div class="modal-body">
+        <input id="omScopeId" type="hidden">
+        <div class="field"><label>Manager Email</label><input id="omManagerEmail" class="input" list="omManagerOptions" placeholder="ค้นหา Email หรือชื่อ Manager"><datalist id="omManagerOptions"></datalist></div>
+        <label class="org-descendant-option"><input id="omIncludeDescendants" type="checkbox" checked><span><strong>รวมหน่วยงานลูกทั้งหมด</strong><small>สิทธิ์จะครอบคลุมทุกระดับภายใต้หน่วยงานนี้</small></span></label>
+        <label id="msIncludeDescendantsRow" class="org-descendant-option hidden"><input id="msIncludeDescendants" type="checkbox" checked><span><strong>รวมหน่วยงานลูกทั้งหมด</strong><small>ใช้กับ Scope ประเภทผังองค์กร</small></span></label>
+        <div class="manager-scope-permission-grid">
+          <label><input id="omCanView" type="checkbox" checked><span>ดูข้อมูล</span></label>
+          <label><input id="omCanEdit" type="checkbox"><span>บันทึกกะ</span></label>
+          <label><input id="omCanConfirm" type="checkbox"><span>ยืนยันกะ</span></label>
+          <label><input id="omCanCertify" type="checkbox"><span>รับรองเวลา</span></label>
+          <label><input id="omCanDecide" type="checkbox"><span>พิจารณาคำขอ</span></label>
+        </div>
+        <div class="form-row-3"><div class="field"><label>เริ่มใช้</label><input id="omEffectiveFrom" class="input" type="date"></div><div class="field"><label>สิ้นสุด</label><input id="omEffectiveTo" class="input" type="date"></div><div class="field"><label>สถานะ</label><select id="omActive" class="select"><option value="true">ใช้งาน</option><option value="false">ปิดใช้งาน</option></select></div></div>
+        <div class="field"><label>หมายเหตุ</label><textarea id="omNote" class="textarea"></textarea></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-light" data-org-close="orgManagerModal">ยกเลิก</button><button id="orgSaveManagerBtn" class="btn btn-primary">บันทึก Manager</button></div>
+    </div>
+  </div>
+
+  <!-- Organization Upload Modal -->
+  <div id="orgUploadModal" class="modal-backdrop hidden">
+    <div class="modal extra-large">
+      <div class="modal-header"><div><h3>Upload ผังองค์กร</h3><p>CSV UTF-8 โดย parent_org_code ใช้เชื่อมลำดับชั้น</p></div><button class="btn btn-light btn-icon" data-org-close="orgUploadModal">×</button></div>
+      <div class="modal-body">
+        <div class="org-upload-grid"><div class="field"><label>ไฟล์ Organization Structure CSV</label><input id="orgUploadFile" class="input" type="file" accept=".csv,text/csv"></div><label class="org-danger-option"><input id="orgDeactivateMissing" type="checkbox"><span><strong>ปิดหน่วยงานที่ไม่อยู่ในไฟล์</strong><small>ใช้เมื่อไฟล์เป็น Master ทั้งองค์กรเท่านั้น</small></span></label></div>
+        <div id="orgUploadSummary" class="org-upload-summary">ยังไม่ได้เลือกไฟล์</div>
+        <div class="table-wrap org-upload-preview"><table><thead><tr><th>แถว</th><th>รหัส</th><th>ชื่อหน่วยงาน</th><th>ระดับ</th><th>หน่วยงานแม่</th><th>สถานะ</th></tr></thead><tbody id="orgUploadBody"><tr><td colspan="6" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr></tbody></table></div>
+        <div id="orgUploadErrors" class="org-upload-errors hidden"></div>
+      </div>
+      <div class="modal-footer"><button id="orgDownloadTemplateBtn" class="btn btn-success" style="margin-right:auto">ดาวน์โหลด Template</button><button class="btn btn-light" data-org-close="orgUploadModal">ยกเลิก</button><button id="orgImportBtn" class="btn btn-primary" disabled>นำเข้าผังองค์กร</button></div>
+    </div>
+  </div>
+
+  <!-- Organization Scope Upload Modal -->
+  <div id="orgScopeUploadModal" class="modal-backdrop hidden">
+    <div class="modal extra-large">
+      <div class="modal-header"><div><h3>Upload Manager Scope</h3><p>กำหนด Manager ด้วย Email และรหัสหน่วยงาน</p></div><button class="btn btn-light btn-icon" data-org-close="orgScopeUploadModal">×</button></div>
+      <div class="modal-body">
+        <div class="org-upload-grid"><div class="field"><label>ไฟล์ Organization Manager Scope CSV</label><input id="orgScopeFile" class="input" type="file" accept=".csv,text/csv"></div><label class="org-danger-option"><input id="orgScopeReplace" type="checkbox"><span><strong>แทนที่ Scope เดิมของ Email ในไฟล์</strong><small>ไม่เลือก = Upsert เฉพาะรายการในไฟล์</small></span></label></div>
+        <div id="orgScopeSummary" class="org-upload-summary">ยังไม่ได้เลือกไฟล์</div>
+        <div class="table-wrap org-upload-preview"><table><thead><tr><th>แถว</th><th>Manager Email</th><th>รหัสหน่วยงาน</th><th>รวมหน่วยงานลูก</th><th>จัดกะ</th><th>รับรองเวลา</th></tr></thead><tbody id="orgScopeBody"><tr><td colspan="6" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr></tbody></table></div>
+        <div id="orgScopeErrors" class="org-upload-errors hidden"></div>
+      </div>
+      <div class="modal-footer"><button id="orgScopeTemplateBtn" class="btn btn-success" style="margin-right:auto">ดาวน์โหลด Template</button><button class="btn btn-light" data-org-close="orgScopeUploadModal">ยกเลิก</button><button id="orgScopeImportBtn" class="btn btn-primary" disabled>นำเข้า Manager Scope</button></div>
+    </div>
+  </div>
+
+  <!-- User Modal -->
+  <div id="userModal" class="modal-backdrop hidden">
+    <div class="modal extra-large manager-user-modal">
+      <div class="modal-header">
+        <div>
+          <h3>กำหนด Role และ Manager Scope</h3>
+          <p>ใช้ Email เป็นตัวเชื่อม User กับ Scope</p>
+        </div>
+        <button class="btn btn-light btn-icon" data-close-modal="userModal">×</button>
+      </div>
+      <div class="modal-body">
+        <input id="umUserId" type="hidden" />
+
+        <section class="manager-user-section">
+          <div class="manager-user-section-head">
+            <strong>ข้อมูล User</strong>
+            <small>Role และข้อมูลสำหรับตรวจสอบข้อมูลของตนเอง</small>
+          </div>
+
+          <div class="form-row-3">
+            <div class="field">
+              <label>อีเมล</label>
+              <input id="umEmail" class="input" disabled />
+            </div>
+            <div class="field">
+              <label>ชื่อแสดง</label>
+              <input id="umDisplayName" class="input" />
+            </div>
+            <div class="field">
+              <label>Role</label>
+              <select id="umRole" class="select">
+                <option value="VIEWER">VIEWER</option>
+                <option value="MANAGER">MANAGER</option>
+                <option value="HR_ADMIN">HR_ADMIN</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>รหัสพนักงาน</label>
+              <input
+                id="umEmpCode"
+                class="input"
+                list="v650EmployeeList"
+                placeholder="เว้นว่างได้ เมื่อ Email ใน Employee Template ตรงกับ User"
+              />
+              <small class="field-help">ใช้สำหรับ Viewer/Manager ตรวจสอบข้อมูลของตนเอง และส่งคำขอแก้ไขกะ</small>
+            </div>
+            <label class="manager-user-active">
+              <input id="umActive" type="checkbox" checked />
+              <span>
+                <strong>เปิดใช้งาน User</strong>
+                <small>ปิดแล้วจะไม่สามารถเข้าถึงข้อมูลระบบ</small>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section id="umManagerScopeSection" class="manager-user-section hidden">
+          <div class="manager-user-section-head manager-scope-section-head">
+            <div>
+              <strong>Manager Scope</strong>
+              <small>กำหนดหลาย Scope ได้ ทั้งหน่วยงานและพนักงานรายบุคคล</small>
+            </div>
+            <button id="newManagerScopeBtn" class="btn btn-orange btn-sm">+ เพิ่ม Scope</button>
+          </div>
+
+          <div class="manager-scope-email-note">
+            Scope จะเชื่อมกับ Email:
+            <strong id="umManagerScopeEmail">-</strong>
+          </div>
+
+          <div class="table-wrap manager-scope-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ประเภท</th>
+                  <th>ค่า Scope</th>
+                  <th>ดู</th>
+                  <th>จัดกะ</th>
+                  <th>ยืนยันกะ</th>
+                  <th>รับรองเวลา</th>
+                  <th>พิจารณาคำขอ</th>
+                  <th>ช่วงใช้</th>
+                  <th>สถานะ</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="umManagerScopeBody">
+                <tr><td colspan="10" class="fc-empty">เลือก Role Manager เพื่อกำหนด Scope</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button>
+        <button id="saveUserBtn" class="btn btn-primary">บันทึก Role</button>
+      </div>
+    </div>
+  </div>
+  <!-- Manager Scope Modal -->
+  <div id="managerScopeModal" class="modal-backdrop hidden">
+    <div class="modal large">
+      <div class="modal-header">
+        <div>
+          <h3 id="managerScopeModalTitle">เพิ่ม Manager Scope</h3>
+          <p id="managerScopeModalEmail">-</p>
+        </div>
+        <button class="btn btn-light btn-icon" data-close-modal="managerScopeModal">×</button>
+      </div>
+      <div class="modal-body">
+        <input id="msScopeId" type="hidden" />
+        <input id="msManagerEmail" type="hidden" />
+
+        <div class="form-row">
+          <div class="field">
+            <label>ประเภท Scope</label>
+            <select id="msScopeType" class="select">
+              <option value="DEPARTMENT">หน่วยงาน</option>
+              <option value="ZONE">Zone</option>
+              <option value="AREA">พื้นที่</option>
+              <option value="SUB_AREA">พื้นที่ย่อย</option>
+              <option value="EMPLOYEE">พนักงานรายบุคคล</option>
+              <option value="ORG_UNIT">ผังองค์กร</option>
+              <option value="ALL">ทั้งหมด</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>ค่า Scope</label>
+            <input
+              id="msScopeValue"
+              class="input"
+              list="msScopeValueOptions"
+              placeholder="ระบุหน่วยงานหรือรหัสพนักงาน"
+            />
+            <datalist id="msScopeValueOptions"></datalist>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>ชื่อแสดง Scope</label>
+          <input id="msScopeLabel" class="input" placeholder="เช่น แผนก BE1-PM4" />
+        </div>
+
+        <div class="manager-scope-permission-grid">
+          <label><input id="msCanView" type="checkbox" checked /><span>ดูข้อมูล</span></label>
+          <label><input id="msCanEdit" type="checkbox" /><span>บันทึกกะ</span></label>
+          <label><input id="msCanConfirm" type="checkbox" /><span>ยืนยันกะ</span></label>
+          <label><input id="msCanCertify" type="checkbox" /><span>รับรองเวลา</span></label>
+          <label><input id="msCanDecide" type="checkbox" /><span>พิจารณาคำขอแก้ไขกะ</span></label>
+        </div>
+
+        <div class="form-row-3">
+          <div class="field">
+            <label>เริ่มใช้</label>
+            <input id="msEffectiveFrom" class="input" type="date" />
+          </div>
+          <div class="field">
+            <label>สิ้นสุด</label>
+            <input id="msEffectiveTo" class="input" type="date" />
+          </div>
+          <div class="field">
+            <label>สถานะ</label>
+            <select id="msActive" class="select">
+              <option value="true">ใช้งาน</option>
+              <option value="false">ปิดใช้งาน</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>หมายเหตุ</label>
+          <textarea id="msNote" class="textarea"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-close-modal="managerScopeModal">ยกเลิก</button>
+        <button id="saveManagerScopeBtn" class="btn btn-primary">บันทึก Scope</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manager Scope Upload Modal -->
+  <div id="managerScopeUploadModal" class="modal-backdrop hidden">
+    <div class="modal extra-large">
+      <div class="modal-header">
+        <div>
+          <h3>Upload Manager Scope</h3>
+          <p>CSV UTF-8 ใช้ manager_email เป็นตัวเชื่อม User</p>
+        </div>
+        <button class="btn btn-light btn-icon" data-close-modal="managerScopeUploadModal">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="manager-scope-upload-grid">
+          <div class="field">
+            <label>ไฟล์ Manager Scope CSV</label>
+            <input id="managerScopeFile" class="input" type="file" accept=".csv,text/csv" />
+          </div>
+          <label class="manager-scope-replace-option">
+            <input id="managerScopeReplace" type="checkbox" />
+            <span>
+              <strong>แทนที่ Scope เดิมของ Email ที่อยู่ในไฟล์</strong>
+              <small>ไม่เลือก = Upsert เพิ่มหรือปรับเฉพาะรายการในไฟล์</small>
+            </span>
+          </label>
+        </div>
+
+        <div id="managerScopeUploadSummary" class="manager-scope-upload-summary">
+          ยังไม่ได้เลือกไฟล์
+        </div>
+
+        <div class="table-wrap manager-scope-upload-preview">
+          <table>
+            <thead>
+              <tr>
+                <th>แถว</th>
+                <th>Manager Email</th>
+                <th>ประเภท</th>
+                <th>ค่า Scope</th>
+                <th>ดู</th>
+                <th>จัดกะ</th>
+                <th>ยืนยันกะ</th>
+                <th>รับรองเวลา</th>
+                <th>พิจารณาคำขอ</th>
+              </tr>
+            </thead>
+            <tbody id="managerScopeUploadBody">
+              <tr><td colspan="9" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="managerScopeUploadErrors" class="manager-scope-upload-errors hidden"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="managerScopeUploadTemplateBtn" class="btn btn-success" style="margin-right:auto">ดาวน์โหลด Template</button>
+        <button class="btn btn-light" data-close-modal="managerScopeUploadModal">ยกเลิก</button>
+        <button id="importManagerScopeBtn" class="btn btn-primary" disabled>นำเข้า Scope</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js?v=6.9.0"></script>
 </body>
 </html>
