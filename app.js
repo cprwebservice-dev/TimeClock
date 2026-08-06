@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.7.4',
+  version: '6.7.5',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.4"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.7.5"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -2575,11 +2575,34 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               String(b.emp_code || "")
             )
         );
-        state.attendanceServerFilter = exactEmpCode;
+        const activeEmployeeCodes =
+          Array.isArray(requestEmployeeCodes)
+            ? requestEmployeeCodes
+            : null;
+        const singleEmployeeCode =
+          activeEmployeeCodes?.length === 1
+            ? activeEmployeeCodes[0]
+            : null;
+
+        state.attendanceServerFilter =
+          activeEmployeeCodes;
+
         renderAttendance();
-        document.dispatchEvent(new CustomEvent("timeclock:attendance-loaded", {
-          detail: { count: state.attendance.length, empCode: exactEmpCode, reachedLimit: state.attendance.length >= 1000 }
-        }));
+
+        document.dispatchEvent(
+          new CustomEvent(
+            "timeclock:attendance-loaded",
+            {
+              detail: {
+                count: state.attendance.length,
+                empCode: singleEmployeeCode,
+                empCodes: activeEmployeeCodes,
+                reachedLimit:
+                  state.attendance.length >= 5000
+              }
+            }
+          )
+        );
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
     }
@@ -3254,7 +3277,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.7.4"
+          change_reason: "บันทึกจากหน้า HR Admin V6.7.5"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -6794,7 +6817,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.7.4 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.7.5 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -7270,7 +7293,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.7.4';
+  const VERSION='6.7.5';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
