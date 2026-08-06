@@ -1,4 +1,9 @@
 
+/* V6.9.8 deployment diagnostic */
+window.__TIME_CLOCK_BUILD__ = "V6.9.8";
+document.documentElement.dataset.timeClockBuild = "6.9.8";
+
+
 /* ===== js/config.js ===== */
 'use strict';
 
@@ -8,7 +13,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.9.6',
+  version: '6.9.8',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +612,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.6"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.8"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -3306,7 +3311,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.9.6"
+          change_reason: "บันทึกจากหน้า HR Admin V6.9.8"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3607,7 +3612,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               val("umDisplayName") || null,
             p_is_active: $("umActive").checked,
             p_change_reason:
-              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.6"
+              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.8"
           }
         );
 
@@ -3885,7 +3890,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         + "\n";
 
       downloadFile(
-        "Manager_Scope_Template_v6.9.6.csv",
+        "Manager_Scope_Template_v6.9.8.csv",
         csv,
         "text/csv;charset=utf-8"
       );
@@ -4297,7 +4302,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       ];
 
       downloadFile(
-        "Employee_Template_v6.9.6.csv",
+        "Employee_Template_v6.9.8.csv",
         "\uFEFF"
           + headers.join(",")
           + "\n",
@@ -7922,7 +7927,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.9.6 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.9.8 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -8398,7 +8403,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.9.6';
+  const VERSION='6.9.8';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8479,11 +8484,11 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.6 Role, Manager Hierarchy & Shift Requests ===== */
+/* ===== V6.9.8 Role, Manager Hierarchy & Shift Requests ===== */
 (function TimeClockV680(){
   "use strict";
 
-  const VERSION = "6.9.6";
+  const VERSION = "6.9.8";
   const app = () => window.TimeClockApp;
   const $ = id => document.getElementById(id);
   const qsa = (selector,root=document) =>
@@ -9248,7 +9253,7 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.6 Organization Structure ===== */
+/* ===== V6.9.8 Organization Structure ===== */
 "use strict";
 (() => {
   const A = () => window.TimeClockApp;
@@ -10023,13 +10028,27 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   async function saveUnit() {
+    const selectedZone = val("ouZone");
+
+    if (
+      selectedZone !== "กรุงเทพฯ"
+      && selectedZone !== "ตจว."
+    ) {
+      A().toast?.(
+        "กรุณาเลือก Zone ของหน่วยงาน",
+        "error"
+      );
+      $("ouZone")?.focus();
+      return;
+    }
+
     A().showLoading?.("กำลังบันทึกหน่วยงาน...");
     try {
       const row = await rpc("ta_upsert_org_unit_v696",{
         p_org_id:val("ouOrgId")||null,
         p_org_code:val("ouOrgCode"),
         p_org_name:val("ouOrgName"),
-        p_zone:val("ouZone"),
+        p_zone:selectedZone,
         p_org_level_code:val("ouLevelCode"),
         p_org_level_name:val("ouLevelName")||null,
         p_level_order:Number(val("ouLevelOrder")||0),
@@ -10202,8 +10221,8 @@ ${skippedSummary(compatibility.skipped)}
 
     A().downloadFile?.(
       kind==="org"
-        ? "Organization_Structure_Template_v6.9.6.csv"
-        : "Organization_Manager_Scope_Template_v6.9.6.csv",
+        ? "Organization_Structure_Template_v6.9.8.csv"
+        : "Organization_Manager_Scope_Template_v6.9.8.csv",
       "\uFEFF"+headers.join(",")+"\n",
       "text/csv;charset=utf-8"
     );
