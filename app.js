@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.9.3',
+  version: '6.9.4',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.3"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.4"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -3306,7 +3306,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.9.3"
+          change_reason: "บันทึกจากหน้า HR Admin V6.9.4"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3607,7 +3607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               val("umDisplayName") || null,
             p_is_active: $("umActive").checked,
             p_change_reason:
-              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.3"
+              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.4"
           }
         );
 
@@ -3885,7 +3885,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         + "\n";
 
       downloadFile(
-        "Manager_Scope_Template_v6.9.3.csv",
+        "Manager_Scope_Template_v6.9.4.csv",
         csv,
         "text/csv;charset=utf-8"
       );
@@ -7709,7 +7709,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.9.3 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.9.4 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -8185,7 +8185,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.9.3';
+  const VERSION='6.9.4';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8266,11 +8266,11 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.3 Role, Manager Hierarchy & Shift Requests ===== */
+/* ===== V6.9.4 Role, Manager Hierarchy & Shift Requests ===== */
 (function TimeClockV680(){
   "use strict";
 
-  const VERSION = "6.9.3";
+  const VERSION = "6.9.4";
   const app = () => window.TimeClockApp;
   const $ = id => document.getElementById(id);
   const qsa = (selector,root=document) =>
@@ -9035,16 +9035,26 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.3 Organization Structure ===== */
+/* ===== V6.9.4 Organization Structure ===== */
 "use strict";
 (() => {
   const A = () => window.TimeClockApp;
   const $ = id => document.getElementById(id);
   const qa = (s,r=document) => [...r.querySelectorAll(s)];
   const state = {
-    rows: [], detail: null, selectedId: null,
-    expanded: new Set(), search: "",
-    managerCandidates: [], orgUploadRows: [], scopeUploadRows: []
+    rows: [],
+    detail: null,
+    selectedId: null,
+    expanded: new Set(),
+    search: "",
+    managerCandidates: [],
+    orgUploadRows: [],
+    scopeUploadRows: [],
+    draggingId: null,
+    dropTargetId: null,
+    dropMode: null,
+    dragExpandTimer: null,
+    suppressClickUntil: 0
   };
 
   const esc = value => String(value ?? "")
@@ -9138,8 +9148,16 @@ ${skippedSummary(compatibility.skipped)}
             state.selectedId===row.org_id ? "selected" : ""
           } ${row.is_active ? "" : "inactive"}"
           data-org-select="${esc(row.org_id)}"
+          data-org-drop-target="${esc(row.org_id)}"
           style="--org-depth:${Number(row.depth||0)}"
         >
+          <span
+            class="org-tree-drag-handle"
+            draggable="true"
+            data-org-drag="${esc(row.org_id)}"
+            title="ลากเพื่อย้ายหรือเรียงลำดับหน่วยงาน"
+            aria-label="ลากหน่วยงาน ${esc(row.org_name)}"
+          >⠿</span>
           <span
             class="org-tree-toggle ${children.length ? "" : "empty"}"
             data-org-toggle="${esc(row.org_id)}"
@@ -9163,6 +9181,473 @@ ${skippedSummary(compatibility.skipped)}
     root.innerHTML = roots.map(node).join("")
       || '<div class="org-tree-empty">ไม่พบหน่วยงาน</div>';
     setText("orgTreeCount",`${num(state.rows.length)} หน่วยงาน`);
+  }
+
+  function orgRow(orgId) {
+    return state.rows.find(
+      row => row.org_id === orgId
+    ) || null;
+  }
+
+  function isOrgDescendant(
+    candidateOrgId,
+    ancestorOrgId
+  ) {
+    if (
+      !candidateOrgId
+      || !ancestorOrgId
+    ) {
+      return false;
+    }
+
+    const byId = new Map(
+      state.rows.map(row => [
+        row.org_id,
+        row
+      ])
+    );
+
+    let current = byId.get(
+      candidateOrgId
+    );
+
+    const visited = new Set();
+
+    while (
+      current
+      && current.parent_org_id
+      && !visited.has(current.org_id)
+    ) {
+      visited.add(current.org_id);
+
+      if (
+        current.parent_org_id
+        === ancestorOrgId
+      ) {
+        return true;
+      }
+
+      current = byId.get(
+        current.parent_org_id
+      );
+    }
+
+    return false;
+  }
+
+  function dragNewParentId(
+    targetId,
+    dropMode
+  ) {
+    if (dropMode === "ROOT") {
+      return null;
+    }
+
+    const target = orgRow(targetId);
+
+    if (!target) {
+      return null;
+    }
+
+    return dropMode === "INSIDE"
+      ? target.org_id
+      : target.parent_org_id;
+  }
+
+  function canDropOrg(
+    draggedId,
+    targetId,
+    dropMode
+  ) {
+    if (!draggedId) {
+      return false;
+    }
+
+    if (dropMode === "ROOT") {
+      return true;
+    }
+
+    if (
+      !targetId
+      || targetId === draggedId
+    ) {
+      return false;
+    }
+
+    const newParentId = dragNewParentId(
+      targetId,
+      dropMode
+    );
+
+    if (newParentId === draggedId) {
+      return false;
+    }
+
+    return !isOrgDescendant(
+      newParentId,
+      draggedId
+    );
+  }
+
+  function clearOrgDropIndicators() {
+    qa(
+      ".org-tree-node.drag-before,"
+      + ".org-tree-node.drag-after,"
+      + ".org-tree-node.drag-inside,"
+      + ".org-tree-node.drag-invalid"
+    ).forEach(node => {
+      node.classList.remove(
+        "drag-before",
+        "drag-after",
+        "drag-inside",
+        "drag-invalid"
+      );
+    });
+
+    $("orgRootDropZone")
+      ?.classList.remove(
+        "active",
+        "invalid"
+      );
+
+    state.dropTargetId = null;
+    state.dropMode = null;
+
+    if (state.dragExpandTimer) {
+      clearTimeout(
+        state.dragExpandTimer
+      );
+      state.dragExpandTimer = null;
+    }
+  }
+
+  function orgDropModeFromPointer(
+    event,
+    node
+  ) {
+    const rect =
+      node.getBoundingClientRect();
+
+    const relativeY =
+      (event.clientY - rect.top)
+      / Math.max(rect.height,1);
+
+    if (relativeY < 0.28) {
+      return "BEFORE";
+    }
+
+    if (relativeY > 0.72) {
+      return "AFTER";
+    }
+
+    return "INSIDE";
+  }
+
+  function orgDropDescription(
+    dragged,
+    target,
+    dropMode
+  ) {
+    if (dropMode === "ROOT") {
+      return `ย้าย ${dragged.org_code} • `
+        + `${dragged.org_name} `
+        + `เป็นหน่วยงานหลักหรือไม่?`;
+    }
+
+    if (dropMode === "INSIDE") {
+      return `ย้าย ${dragged.org_code} • `
+        + `${dragged.org_name} `
+        + `เข้าเป็นหน่วยงานลูกของ `
+        + `${target.org_code} • `
+        + `${target.org_name} หรือไม่?`;
+    }
+
+    const position =
+      dropMode === "BEFORE"
+        ? "ก่อน"
+        : "หลัง";
+
+    return `ย้าย ${dragged.org_code} • `
+      + `${dragged.org_name} `
+      + `ไปเรียง${position} `
+      + `${target.org_code} • `
+      + `${target.org_name} หรือไม่?`;
+  }
+
+  async function moveOrgByDrag(
+    draggedId,
+    targetId,
+    dropMode
+  ) {
+    const dragged = orgRow(
+      draggedId
+    );
+
+    const target = targetId
+      ? orgRow(targetId)
+      : null;
+
+    if (!dragged) {
+      return;
+    }
+
+    if (
+      !canDropOrg(
+        draggedId,
+        targetId,
+        dropMode
+      )
+    ) {
+      A().toast?.(
+        "ไม่สามารถย้ายหน่วยงานไปตำแหน่งนี้ได้",
+        "error"
+      );
+      return;
+    }
+
+    if (
+      !confirm(
+        orgDropDescription(
+          dragged,
+          target,
+          dropMode
+        )
+      )
+    ) {
+      return;
+    }
+
+    A().showLoading?.(
+      "กำลังปรับผังโครงสร้างองค์กร..."
+    );
+
+    try {
+      await rpc(
+        "ta_move_org_unit_v694",
+        {
+          p_org_id: draggedId,
+          p_target_org_id:
+            dropMode === "ROOT"
+              ? null
+              : targetId,
+          p_drop_mode: dropMode,
+          p_change_reason:
+            "Drag and Drop จากหน้า Organization Structure"
+        }
+      );
+
+      if (
+        dropMode === "INSIDE"
+        && targetId
+      ) {
+        state.expanded.add(
+          targetId
+        );
+      }
+
+      state.selectedId =
+        draggedId;
+
+      A().toast?.(
+        "ปรับผังโครงสร้างองค์กรเรียบร้อย",
+        "success"
+      );
+
+      await load();
+      await selectUnit(
+        draggedId
+      );
+    } catch (error) {
+      A().toast?.(
+        A().humanError?.(error)
+          || error.message,
+        "error"
+      );
+    } finally {
+      A().hideLoading?.();
+    }
+  }
+
+  function startOrgDrag(event) {
+    const handle =
+      event.target.closest(
+        "[data-org-drag]"
+      );
+
+    if (!handle) {
+      return;
+    }
+
+    const draggedId =
+      handle.dataset.orgDrag;
+
+    const dragged =
+      orgRow(draggedId);
+
+    if (!dragged) {
+      event.preventDefault();
+      return;
+    }
+
+    state.draggingId =
+      draggedId;
+
+    state.suppressClickUntil =
+      Date.now() + 500;
+
+    event.dataTransfer.effectAllowed =
+      "move";
+
+    event.dataTransfer.setData(
+      "text/plain",
+      draggedId
+    );
+
+    document.body.classList.add(
+      "org-is-dragging"
+    );
+
+    requestAnimationFrame(() => {
+      handle
+        .closest(".org-tree-node")
+        ?.classList.add(
+          "drag-source"
+        );
+    });
+  }
+
+  function endOrgDrag() {
+    qa(
+      ".org-tree-node.drag-source"
+    ).forEach(node =>
+      node.classList.remove(
+        "drag-source"
+      )
+    );
+
+    document.body.classList.remove(
+      "org-is-dragging"
+    );
+
+    clearOrgDropIndicators();
+
+    state.draggingId = null;
+    state.suppressClickUntil =
+      Date.now() + 250;
+  }
+
+  function overOrgNode(event) {
+    if (!state.draggingId) {
+      return;
+    }
+
+    const node =
+      event.target.closest(
+        "[data-org-drop-target]"
+      );
+
+    if (!node) {
+      return;
+    }
+
+    const targetId =
+      node.dataset.orgDropTarget;
+
+    const dropMode =
+      orgDropModeFromPointer(
+        event,
+        node
+      );
+
+    const allowed =
+      canDropOrg(
+        state.draggingId,
+        targetId,
+        dropMode
+      );
+
+    event.preventDefault();
+
+    event.dataTransfer.dropEffect =
+      allowed
+        ? "move"
+        : "none";
+
+    clearOrgDropIndicators();
+
+    state.dropTargetId =
+      targetId;
+
+    state.dropMode =
+      dropMode;
+
+    node.classList.add(
+      allowed
+        ? `drag-${dropMode.toLowerCase()}`
+        : "drag-invalid"
+    );
+
+    if (
+      allowed
+      && dropMode === "INSIDE"
+      && !state.expanded.has(targetId)
+      && Number(
+        orgRow(targetId)?.child_count || 0
+      ) > 0
+    ) {
+      state.dragExpandTimer =
+        setTimeout(
+          () => {
+            state.expanded.add(
+              targetId
+            );
+            renderTree();
+          },
+          750
+        );
+    }
+  }
+
+  async function dropOnOrgNode(
+    event
+  ) {
+    if (!state.draggingId) {
+      return;
+    }
+
+    const node =
+      event.target.closest(
+        "[data-org-drop-target]"
+      );
+
+    if (!node) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const draggedId =
+      state.draggingId;
+
+    const targetId =
+      node.dataset.orgDropTarget;
+
+    const dropMode =
+      state.dropTargetId === targetId
+        ? state.dropMode
+        : orgDropModeFromPointer(
+            event,
+            node
+          );
+
+    endOrgDrag();
+
+    await moveOrgByDrag(
+      draggedId,
+      targetId,
+      dropMode
+    );
   }
 
   async function load() {
@@ -9500,8 +9985,8 @@ ${skippedSummary(compatibility.skipped)}
 
     A().downloadFile?.(
       kind==="org"
-        ? "Organization_Structure_Template_v6.9.3.csv"
-        : "Organization_Manager_Scope_Template_v6.9.3.csv",
+        ? "Organization_Structure_Template_v6.9.4.csv"
+        : "Organization_Manager_Scope_Template_v6.9.4.csv",
       "\uFEFF"+headers.join(",")+"\n",
       "text/csv;charset=utf-8"
     );
@@ -9615,6 +10100,95 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   function bind() {
+    const orgTree = $("orgTree");
+    const rootDropZone =
+      $("orgRootDropZone");
+
+    orgTree?.addEventListener(
+      "dragstart",
+      startOrgDrag
+    );
+
+    orgTree?.addEventListener(
+      "dragover",
+      overOrgNode
+    );
+
+    orgTree?.addEventListener(
+      "drop",
+      dropOnOrgNode
+    );
+
+    orgTree?.addEventListener(
+      "dragend",
+      endOrgDrag
+    );
+
+    orgTree?.addEventListener(
+      "dragleave",
+      event => {
+        if (
+          !event.relatedTarget
+          || !orgTree.contains(
+            event.relatedTarget
+          )
+        ) {
+          clearOrgDropIndicators();
+        }
+      }
+    );
+
+    rootDropZone?.addEventListener(
+      "dragover",
+      event => {
+        if (!state.draggingId) {
+          return;
+        }
+
+        event.preventDefault();
+
+        clearOrgDropIndicators();
+
+        state.dropMode = "ROOT";
+
+        rootDropZone.classList.add(
+          "active"
+        );
+
+        event.dataTransfer.dropEffect =
+          "move";
+      }
+    );
+
+    rootDropZone?.addEventListener(
+      "dragleave",
+      () => rootDropZone.classList.remove(
+        "active"
+      )
+    );
+
+    rootDropZone?.addEventListener(
+      "drop",
+      async event => {
+        if (!state.draggingId) {
+          return;
+        }
+
+        event.preventDefault();
+
+        const draggedId =
+          state.draggingId;
+
+        endOrgDrag();
+
+        await moveOrgByDrag(
+          draggedId,
+          null,
+          "ROOT"
+        );
+      }
+    );
+
     $("orgRefreshBtn")?.addEventListener("click",load);
     $("orgShowInactive")?.addEventListener("change",load);
     $("orgTreeSearch")?.addEventListener(
@@ -9699,9 +10273,23 @@ ${skippedSummary(compatibility.skipped)}
         return;
       }
 
-      const select=event.target.closest("[data-org-select]");
-      if(select) {
-        selectUnit(select.dataset.orgSelect);
+      const select =
+        event.target.closest(
+          "[data-org-select]"
+        );
+
+      if (select) {
+        if (
+          Date.now()
+          < state.suppressClickUntil
+        ) {
+          event.preventDefault();
+          return;
+        }
+
+        selectUnit(
+          select.dataset.orgSelect
+        );
         return;
       }
 

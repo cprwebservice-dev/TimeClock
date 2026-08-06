@@ -866,7 +866,7 @@ body.dark .work-template-card,body.dark .dow-checks label{background:var(--slate
 @media(max-width:1100px){.v650-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v650-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v650-filter-grid .toolbar-actions{grid-column:1/-1}}
 @media(max-width:700px){.v650-hero{align-items:flex-start;flex-direction:column;padding:20px}.v650-hero-actions{width:100%;justify-content:stretch}.v650-hero-actions .btn{flex:1}.v650-kpi-grid,.v650-filter-grid{grid-template-columns:1fr}.v650-filter-grid .toolbar-actions{grid-column:auto}.v650-table-wrap{max-height:60vh}}
 
-/* ===== V6.9.3 Shift Settings by Work Pattern ===== */
+/* ===== V6.9.4 Shift Settings by Work Pattern ===== */
 .shift-settings-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:24px 26px;border-radius:22px;color:#fff;background:linear-gradient(135deg,#0b376f,#1269df 62%,#f58220);box-shadow:0 18px 42px rgba(11,55,111,.2)}
 .shift-settings-hero h2{margin:4px 0 6px;font-size:27px}.shift-settings-hero p{margin:0;max-width:820px;color:rgba(255,255,255,.84)}.shift-settings-hero .eyebrow{color:#fed7aa}
 .shift-pattern-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -888,7 +888,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 @media(max-width:600px){.shift-recalc-grid,.shift-duration-summary{grid-template-columns:1fr}.shift-pattern-card-metrics{grid-template-columns:1fr 1fr}.shift-settings-hero{padding:20px}}
 
 
-/* ===== V6.9.3 Work Pattern Recalculation Job ===== */
+/* ===== V6.9.4 Work Pattern Recalculation Job ===== */
 .shift-recalc-progress{
   margin-top:14px;
   padding:14px 16px;
@@ -931,7 +931,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Template Content ===== */
+/* ===== V6.9.4 Template Content ===== */
 .work-template-card.template-missing{
   border-style:dashed;
   opacity:.82;
@@ -943,13 +943,13 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Effective Role Visibility ===== */
+/* ===== V6.9.4 Effective Role Visibility ===== */
 #workPatternAdminPanel[aria-hidden="true"]{
   display:none !important;
 }
 
 
-/* ===== V6.9.3 Fortnight Schedule View ===== */
+/* ===== V6.9.4 Fortnight Schedule View ===== */
 .schedule-period-field{
   min-width:245px;
 }
@@ -989,7 +989,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Pattern-Aware Shift Assignment ===== */
+/* ===== V6.9.4 Pattern-Aware Shift Assignment ===== */
 .schedule-pattern-summary{
   display:flex;
   align-items:center;
@@ -1095,7 +1095,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Schedule Name & Visual Fix ===== */
+/* ===== V6.9.4 Schedule Name & Visual Fix ===== */
 .schedule-name-missing{
   color:#b42318!important;
   font-size:9px!important;
@@ -1214,7 +1214,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Weekly Schedule & Shift Time ===== */
+/* ===== V6.9.4 Weekly Schedule & Shift Time ===== */
 .weekly-schedule-table th.day-col,
 .weekly-schedule-table td.day-col{
   min-width:94px;
@@ -1264,7 +1264,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Absence & Attendance Columns ===== */
+/* ===== V6.9.4 Absence & Attendance Columns ===== */
 .attendance-column-controls{
   display:flex;
   align-items:center;
@@ -1333,7 +1333,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Leave Status & Optional Location Columns ===== */
+/* ===== V6.9.4 Leave Status & Optional Location Columns ===== */
 .badge-purple{
   color:#6d28d9;
   background:#ede9fe;
@@ -1349,7 +1349,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Attendance Detail Workspace ===== */
+/* ===== V6.9.4 Attendance Detail Workspace ===== */
 .attendance-detail-drawer{
   right:min(-780px,-98vw);
   width:min(760px,98vw);
@@ -1732,7 +1732,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Employee Multi-Select Filter ===== */
+/* ===== V6.9.4 Employee Multi-Select Filter ===== */
 .attendance-employee-field{
   min-width:300px;
 }
@@ -1930,7 +1930,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Attendance Filter Layout Refinement ===== */
+/* ===== V6.9.4 Attendance Filter Layout Refinement ===== */
 #page-attendance>.panel:first-child{
   overflow:visible;
 }
@@ -2120,7 +2120,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Employee Dropdown Readability ===== */
+/* ===== V6.9.4 Employee Dropdown Readability ===== */
 .attendance-employee-option{
   grid-template-columns:18px minmax(0,1fr);
   gap:10px;
@@ -2180,7 +2180,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Simplified Attendance Filters ===== */
+/* ===== V6.9.4 Simplified Attendance Filters ===== */
 #page-attendance .attendance-searchable-filter{
   width:100%;
   height:46px;
@@ -2282,7 +2282,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Role & Manager Hierarchy ===== */
+/* ===== V6.9.4 Role & Manager Hierarchy ===== */
 .shift-request-hero{
   display:flex;
   align-items:center;
@@ -2427,7 +2427,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Manager Scope by Email ===== */
+/* ===== V6.9.4 Manager Scope by Email ===== */
 .manager-scope-hero{
   display:flex;
   align-items:flex-start;
@@ -2707,7 +2707,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 }
 
 
-/* ===== V6.9.3 Organization Structure ===== */
+/* ===== V6.9.4 Organization Structure ===== */
 .org-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:22px 24px;border:1px solid var(--border,#e4e7ec);border-radius:16px;background:linear-gradient(135deg,rgba(21,112,239,.09),rgba(249,115,22,.06)),var(--surface,#fff)}
 .org-hero h2{margin:4px 0 5px;color:var(--navy-900,#0b1f3a)}
 .org-hero p{margin:0;color:var(--slate-500,#667085);font-size:10px}
@@ -2805,7 +2805,7 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 @media(max-width:480px){.org-hero-actions{grid-template-columns:1fr}.org-detail-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.org-detail-actions .btn{width:100%}}
 
 
-/* ===== V6.9.3 Organization Upload Modal Balance ===== */
+/* ===== V6.9.4 Organization Upload Modal Balance ===== */
 .modal.extra-large{width:min(1180px,96vw)}
 #orgUploadModal{padding:12px}
 #orgUploadModal .org-upload-modal{display:flex;flex-direction:column;width:min(1480px,98vw);max-height:95vh;overflow:hidden;border-radius:18px}
@@ -2831,3 +2831,217 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
 .dark #orgUploadModal .org-upload-preview-table thead th,.dark #orgUploadModal .org-upload-preview-table thead th:nth-child(1){background:#172033;color:#e2e8f0}
 @media(max-width:1000px){#orgUploadModal .org-upload-grid{grid-template-columns:1fr}#orgUploadModal .org-upload-preview{max-height:calc(95vh - 365px)}}
 @media(max-width:600px){#orgUploadModal{padding:6px}#orgUploadModal .org-upload-modal{width:100%;max-height:98vh;border-radius:12px}#orgUploadModal .modal-header,#orgUploadModal .modal-body,#orgUploadModal .modal-footer{padding-left:12px;padding-right:12px}#orgUploadModal .modal-footer{flex-wrap:wrap}#orgUploadModal .modal-footer .btn{flex:1 1 140px}}
+
+
+/* ===== V6.9.4 Organization Tree Drag & Drop ===== */
+.org-drag-guide{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:9px 13px;
+  border-bottom:1px solid var(--border,#e4e7ec);
+  background:#f5f9ff;
+}
+.org-drag-guide-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  border:1px solid #b2ddff;
+  border-radius:8px;
+  background:#fff;
+  color:#175cd3;
+  font-size:15px;
+  font-weight:900;
+}
+.org-drag-guide strong{
+  display:block;
+  color:#175cd3;
+  font-size:9px;
+}
+.org-drag-guide small{
+  display:block;
+  margin-top:2px;
+  color:#667085;
+  font-size:7px;
+  line-height:1.45;
+}
+.org-root-drop-zone{
+  display:none;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:44px;
+  margin:8px;
+  border:2px dashed #84adff;
+  border-radius:10px;
+  background:#f5f9ff;
+  color:#175cd3;
+  font-size:9px;
+  transition:
+    border-color .15s ease,
+    background .15s ease,
+    transform .15s ease;
+}
+.org-root-drop-zone span{
+  font-size:16px;
+  font-weight:900;
+}
+.org-root-drop-zone.active{
+  border-color:#1570ef;
+  background:#dbeafe;
+  box-shadow:
+    0 0 0 3px rgba(21,112,239,.12);
+  transform:scale(1.01);
+}
+.org-is-dragging
+.org-root-drop-zone{
+  display:flex;
+}
+.org-tree-drag-handle{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:24px;
+  height:30px;
+  flex:0 0 24px;
+  margin-right:3px;
+  border-radius:7px;
+  color:#98a2b3;
+  font-size:15px;
+  font-weight:900;
+  cursor:grab;
+  user-select:none;
+  touch-action:none;
+}
+.org-tree-drag-handle:hover{
+  background:#eaf2ff;
+  color:#175cd3;
+}
+.org-tree-drag-handle:active{
+  cursor:grabbing;
+}
+.org-tree-node.drag-source{
+  opacity:.42;
+  background:#f2f4f7;
+}
+.org-tree-node.drag-before,
+.org-tree-node.drag-after,
+.org-tree-node.drag-inside{
+  position:relative;
+  z-index:4;
+}
+.org-tree-node.drag-before::before,
+.org-tree-node.drag-after::after{
+  position:absolute;
+  right:7px;
+  left:calc(
+    7px
+    + var(--org-depth) * 18px
+  );
+  z-index:5;
+  height:3px;
+  border-radius:999px;
+  background:#1570ef;
+  box-shadow:
+    0 0 0 2px rgba(21,112,239,.13);
+  content:"";
+}
+.org-tree-node.drag-before::before{
+  top:-2px;
+}
+.org-tree-node.drag-after::after{
+  bottom:-2px;
+}
+.org-tree-node.drag-before
+.org-tree-drag-handle,
+.org-tree-node.drag-after
+.org-tree-drag-handle{
+  color:#175cd3;
+}
+.org-tree-node.drag-inside{
+  background:#dbeafe!important;
+  box-shadow:
+    inset 0 0 0 2px #1570ef,
+    0 5px 14px rgba(21,112,239,.14)!important;
+}
+.org-tree-node.drag-inside::after{
+  position:absolute;
+  right:10px;
+  content:"ย้ายเข้า";
+  padding:3px 6px;
+  border-radius:999px;
+  background:#1570ef;
+  color:#fff;
+  font-size:7px;
+  font-weight:900;
+}
+.org-tree-node.drag-invalid{
+  background:#fef3f2!important;
+  box-shadow:
+    inset 0 0 0 2px #f04438!important;
+  cursor:not-allowed;
+}
+.org-tree-node.drag-invalid::after{
+  position:absolute;
+  right:10px;
+  content:"วางไม่ได้";
+  padding:3px 6px;
+  border-radius:999px;
+  background:#d92d20;
+  color:#fff;
+  font-size:7px;
+  font-weight:900;
+}
+.org-is-dragging
+.org-tree-node:not(.drag-source){
+  transition:
+    background .12s ease,
+    box-shadow .12s ease;
+}
+.dark .org-drag-guide{
+  background:rgba(37,99,235,.13);
+}
+.dark .org-drag-guide-icon{
+  border-color:rgba(96,165,250,.45);
+  background:#172033;
+  color:#93c5fd;
+}
+.dark .org-drag-guide strong{
+  color:#93c5fd;
+}
+.dark .org-root-drop-zone{
+  border-color:#3b82f6;
+  background:rgba(37,99,235,.14);
+  color:#93c5fd;
+}
+.dark .org-root-drop-zone.active{
+  background:rgba(37,99,235,.27);
+}
+.dark .org-tree-node.drag-source{
+  background:rgba(51,65,85,.72);
+}
+.dark .org-tree-node.drag-inside{
+  background:rgba(37,99,235,.28)!important;
+}
+.dark .org-tree-node.drag-invalid{
+  background:rgba(217,45,32,.2)!important;
+}
+@media(max-width:700px){
+  .org-drag-guide small{
+    max-width:260px;
+  }
+  .org-tree-drag-handle{
+    width:28px;
+    flex-basis:28px;
+  }
+}
+@media(pointer:coarse){
+  .org-tree-drag-handle{
+    width:32px;
+    flex-basis:32px;
+    font-size:17px;
+  }
+}
