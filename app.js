@@ -8,7 +8,7 @@
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.9.4',
+  version: '6.9.6',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -607,7 +607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.4"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.6"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -3306,7 +3306,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.9.4"
+          change_reason: "บันทึกจากหน้า HR Admin V6.9.6"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3607,7 +3607,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               val("umDisplayName") || null,
             p_is_active: $("umActive").checked,
             p_change_reason:
-              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.4"
+              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.6"
           }
         );
 
@@ -3885,7 +3885,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         + "\n";
 
       downloadFile(
-        "Manager_Scope_Template_v6.9.4.csv",
+        "Manager_Scope_Template_v6.9.6.csv",
         csv,
         "text/csv;charset=utf-8"
       );
@@ -4065,31 +4065,244 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const file = $("employeeFile").files[0]; if (!file) return toast("กรุณาเลือกไฟล์ CSV", "error");
       showLoading(previewOnly ? "กำลังตรวจสอบไฟล์..." : "กำลังนำเข้าพนักงาน...");
       try {
-        const rows = parseCSV(await file.text()); if (!rows.length) throw new Error("ไม่พบข้อมูลในไฟล์");
-        const { data, error } = await state.client.rpc("ta_import_employees", { p_rows: rows, p_file_name: file.name, p_preview_only: previewOnly, p_note: val("importNote") || null });
-        if (error) throw error;
-
-        const hierarchyResponse = await state.client.rpc(
-          "ta_sync_employee_manager_columns_v680",
-          {
-            p_rows: rows,
-            p_preview_only: previewOnly
-          }
+        const sourceRows = parseCSV(
+          await file.text()
         );
-        if (hierarchyResponse.error) {
-          throw hierarchyResponse.error;
+
+        if (!sourceRows.length) {
+          throw new Error("ไม่พบข้อมูลในไฟล์");
         }
 
-        const hierarchy = hierarchyResponse.data || {};
-        const r = Array.isArray(data) ? data[0] : data;
-        $("importResult").innerHTML = `<div class="panel"><div class="panel-body"><div class="kpi-grid" style="grid-template-columns:repeat(6,1fr)"><div><small>สถานะ</small><strong style="display:block">${safe(r.import_status)}</strong></div><div><small>ทั้งหมด</small><strong style="display:block">${formatNumber(r.total_rows)}</strong></div><div><small>ถูกต้อง</small><strong style="display:block">${formatNumber(r.valid_rows)}</strong></div><div><small>เพิ่มใหม่</small><strong style="display:block">${formatNumber(r.inserted_rows)}</strong></div><div><small>ปรับปรุง</small><strong style="display:block">${formatNumber(r.updated_rows)}</strong></div><div><small>สายบังคับบัญชา</small><strong style="display:block">${formatNumber(hierarchy.updated_rows ?? hierarchy.matched_rows ?? 0)}</strong></div></div></div></div>`;
-        toast(previewOnly ? "ตรวจสอบไฟล์เรียบร้อย" : "นำเข้าข้อมูลเรียบร้อย", "success");
+        const orgResponse =
+          await state.client.rpc(
+            "ta_get_org_tree_v696",
+            {
+              p_include_inactive: true
+            }
+          );
+
+        if (orgResponse.error) {
+          throw orgResponse.error;
+        }
+
+        const orgZoneMap = new Map(
+          (orgResponse.data || []).map(
+            unit => [
+              String(unit.org_code || "").trim(),
+              String(unit.zone || "").trim()
+            ]
+          )
+        );
+
+        const employeeOrgErrors =
+          sourceRows
+            .map((row,index) => {
+              const orgCode = String(
+                row.org_code || ""
+              ).trim();
+
+              if (!orgCode) {
+                return `แถว ${index + 2}: org_code ว่าง`;
+              }
+
+              if (!orgZoneMap.has(orgCode)) {
+                return `แถว ${index + 2}: ไม่พบ org_code ${orgCode}`;
+              }
+
+              const zone =
+                orgZoneMap.get(orgCode);
+
+              if (
+                zone !== "กรุงเทพฯ"
+                && zone !== "ตจว."
+              ) {
+                return `แถว ${index + 2}: หน่วยงาน ${orgCode} ยังไม่ได้กำหนด Zone`;
+              }
+
+              return null;
+            })
+            .filter(Boolean);
+
+        if (employeeOrgErrors.length) {
+          throw new Error(
+            employeeOrgErrors
+              .slice(0,10)
+              .join(" | ")
+          );
+        }
+
+        const rows = sourceRows.map(
+          row => ({
+            ...row,
+            zone: orgZoneMap.get(
+              String(row.org_code || "").trim()
+            )
+          })
+        );
+
+        const { data, error } =
+          await state.client.rpc(
+            "ta_import_employees",
+            {
+              p_rows: rows,
+              p_file_name: file.name,
+              p_preview_only: previewOnly,
+              p_note:
+                val("importNote")
+                || null
+            }
+          );
+        if (error) throw error;
+
+        const structureResponse =
+          await state.client.rpc(
+            "ta_sync_employee_structure_v696",
+            {
+              p_rows: rows,
+              p_preview_only: previewOnly
+            }
+          );
+
+        if (structureResponse.error) {
+          throw structureResponse.error;
+        }
+
+        const structure =
+          structureResponse.data || {};
+
+        const r =
+          Array.isArray(data)
+            ? data[0]
+            : data;
+
+        const structureErrors =
+          Array.isArray(structure.errors)
+            ? structure.errors
+            : [];
+
+        $("importResult").innerHTML =
+          `<div class="panel employee-import-result">
+            <div class="panel-body">
+              <div class="employee-import-kpis">
+                <div>
+                  <small>สถานะ</small>
+                  <strong>${safe(
+                    structure.success === false
+                      ? "ตรวจพบข้อผิดพลาด"
+                      : r.import_status
+                  )}</strong>
+                </div>
+                <div>
+                  <small>ทั้งหมด</small>
+                  <strong>${formatNumber(
+                    r.total_rows
+                  )}</strong>
+                </div>
+                <div>
+                  <small>ถูกต้อง</small>
+                  <strong>${formatNumber(
+                    structure.valid_rows
+                    ?? r.valid_rows
+                  )}</strong>
+                </div>
+                <div>
+                  <small>เพิ่มใหม่</small>
+                  <strong>${formatNumber(
+                    r.inserted_rows
+                  )}</strong>
+                </div>
+                <div>
+                  <small>ปรับปรุงข้อมูลหลัก</small>
+                  <strong>${formatNumber(
+                    r.updated_rows
+                  )}</strong>
+                </div>
+                <div>
+                  <small>Email / ผังองค์กร</small>
+                  <strong>${formatNumber(
+                    structure.updated_rows
+                    ?? 0
+                  )}</strong>
+                </div>
+                <div>
+                  <small>org_code ไม่ถูกต้อง</small>
+                  <strong>${formatNumber(
+                    structure.invalid_org_rows
+                    ?? 0
+                  )}</strong>
+                </div>
+                <div>
+                  <small>Email ซ้ำ</small>
+                  <strong>${formatNumber(
+                    structure.duplicate_email_rows
+                    ?? 0
+                  )}</strong>
+                </div>
+              </div>
+              ${
+                structureErrors.length
+                  ? `<div class="employee-import-errors">
+                      <strong>
+                        พบข้อมูลไม่พร้อมนำเข้า
+                        ${formatNumber(
+                          structure.invalid_rows || 0
+                        )} รายการ
+                      </strong>
+                      ${structureErrors
+                        .slice(0,100)
+                        .map(item =>
+                          `<div>
+                            แถว ${safe(item.row_no)}
+                            • ${safe(item.employee_id)}
+                            • ${safe(item.error)}
+                          </div>`
+                        )
+                        .join("")}
+                    </div>`
+                  : ""
+              }
+            </div>
+          </div>`;
+
+        if (structure.success === false) {
+          toast(
+            "พบ Email หรือ org_code ไม่ถูกต้อง กรุณาตรวจสอบรายละเอียด",
+            "error"
+          );
+        } else {
+          toast(
+            previewOnly
+              ? "ตรวจสอบไฟล์เรียบร้อย"
+              : "นำเข้าข้อมูลเรียบร้อย",
+            "success"
+          );
+        }
       } catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
     }
 
     function downloadTemplate() {
-      const headers = ["employee_id","full_name","position_name","department","zone","pc","area","sub_area","car_team","manager_department","manager_division","manager_gm","manager_avp","start_date","resign_date"];
-      downloadFile("Employee_Template.csv", "\uFEFF" + headers.join(",") + "\n", "text/csv;charset=utf-8");
+      const headers = [
+        "employee_id",
+        "full_name",
+        "email",
+        "position_name",
+        "department",
+        "org_code",
+        "pc",
+        "area",
+        "sub_area",
+        "car_team",
+        "start_date",
+        "resign_date"
+      ];
+
+      downloadFile(
+        "Employee_Template_v6.9.6.csv",
+        "\uFEFF"
+          + headers.join(",")
+          + "\n",
+        "text/csv;charset=utf-8"
+      );
     }
 
     function exportAttendance() {
@@ -7709,7 +7922,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.9.4 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.9.6 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -8185,7 +8398,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.9.4';
+  const VERSION='6.9.6';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8266,11 +8479,11 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.4 Role, Manager Hierarchy & Shift Requests ===== */
+/* ===== V6.9.6 Role, Manager Hierarchy & Shift Requests ===== */
 (function TimeClockV680(){
   "use strict";
 
-  const VERSION = "6.9.4";
+  const VERSION = "6.9.6";
   const app = () => window.TimeClockApp;
   const $ = id => document.getElementById(id);
   const qsa = (selector,root=document) =>
@@ -9035,7 +9248,7 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.4 Organization Structure ===== */
+/* ===== V6.9.6 Organization Structure ===== */
 "use strict";
 (() => {
   const A = () => window.TimeClockApp;
@@ -9166,6 +9379,7 @@ ${skippedSummary(compatibility.skipped)}
           <span class="org-tree-node-main">
             <strong><b>${esc(row.org_code)}</b> • ${esc(row.org_name)}</strong>
             <small>${esc(row.org_level_name||row.org_level_code)}
+              · ${esc(row.zone||"ยังไม่กำหนด Zone")}
               · พนักงาน ${num(row.employee_count)}
               · Manager ${num(row.manager_count)}</small>
           </span>
@@ -9654,7 +9868,7 @@ ${skippedSummary(compatibility.skipped)}
     if(!A()?.state?.client) return;
     A().showLoading?.("กำลังโหลดผังองค์กร...");
     try {
-      state.rows = await rpc("ta_get_org_tree_v690",{
+      state.rows = await rpc("ta_get_org_tree_v696",{
         p_include_inactive: $("orgShowInactive")?.checked || false
       }) || [];
 
@@ -9744,6 +9958,7 @@ ${skippedSummary(compatibility.skipped)}
     $("orgInfoGrid").innerHTML = [
       ["รหัสหน่วยงาน",unit.org_code],
       ["ชื่อหน่วยงาน",unit.org_name],
+      ["Zone",unit.zone||"-"],
       ["ระดับ",unit.org_level_name||unit.org_level_code],
       ["หน่วยงานแม่",detail.parent?.org_name||"หน่วยงานหลัก"],
       ["ลำดับแสดง",unit.sort_order],
@@ -9788,6 +10003,7 @@ ${skippedSummary(compatibility.skipped)}
     setVal("ouOrgId",unit?.org_id||"");
     setVal("ouOrgCode",unit?.org_code||"");
     setVal("ouOrgName",unit?.org_name||"");
+    setVal("ouZone",unit?.zone||"กรุงเทพฯ");
     setVal("ouLevelCode",unit?.org_level_code||"DEPARTMENT");
     setVal("ouLevelName",unit?.org_level_name||"");
     setVal("ouLevelOrder",unit?.level_order??0);
@@ -9809,10 +10025,11 @@ ${skippedSummary(compatibility.skipped)}
   async function saveUnit() {
     A().showLoading?.("กำลังบันทึกหน่วยงาน...");
     try {
-      const row = await rpc("ta_upsert_org_unit_v690",{
+      const row = await rpc("ta_upsert_org_unit_v696",{
         p_org_id:val("ouOrgId")||null,
         p_org_code:val("ouOrgCode"),
         p_org_name:val("ouOrgName"),
+        p_zone:val("ouZone"),
         p_org_level_code:val("ouLevelCode"),
         p_org_level_name:val("ouLevelName")||null,
         p_level_order:Number(val("ouLevelOrder")||0),
@@ -9980,13 +10197,13 @@ ${skippedSummary(compatibility.skipped)}
 
   function downloadTemplate(kind) {
     const headers = kind==="org"
-      ? ["org_code","org_name","org_level_code","org_level_name","level_order","parent_org_code","sort_order","effective_from","effective_to","is_active","note"]
+      ? ["org_code","org_name","zone","org_level_code","org_level_name","level_order","parent_org_code","sort_order","effective_from","effective_to","is_active","note"]
       : ["manager_email","scope_type","scope_value","scope_label","include_descendants","can_view","can_edit_schedule","can_confirm_schedule","can_certify_attendance","can_decide_shift_request","effective_from","effective_to","is_active","note"];
 
     A().downloadFile?.(
       kind==="org"
-        ? "Organization_Structure_Template_v6.9.4.csv"
-        : "Organization_Manager_Scope_Template_v6.9.4.csv",
+        ? "Organization_Structure_Template_v6.9.6.csv"
+        : "Organization_Manager_Scope_Template_v6.9.6.csv",
       "\uFEFF"+headers.join(",")+"\n",
       "text/csv;charset=utf-8"
     );
@@ -10004,6 +10221,15 @@ ${skippedSummary(compatibility.skipped)}
             <td>${index+2}</td>
             <td><strong>${esc(row.org_code)}</strong></td>
             <td class="org-upload-name">${esc(row.org_name)}</td>
+            <td>
+              <span class="org-zone-chip ${
+                row.zone === "ตจว."
+                  ? "upcountry"
+                  : "bangkok"
+              }">
+                ${esc(row.zone||"-")}
+              </span>
+            </td>
             <td>${esc(row.org_level_code||"-")}</td>
             <td>${esc(row.org_level_name||"-")}</td>
             <td>${esc(row.level_order||"0")}</td>
@@ -10015,7 +10241,7 @@ ${skippedSummary(compatibility.skipped)}
             <td class="org-upload-note">${esc(row.note||"-")}</td>
           </tr>`
         ).join("")
-      : '<tr><td colspan="12" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
+      : '<tr><td colspan="13" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
   }
 
   async function importOrg() {
@@ -10227,7 +10453,7 @@ ${skippedSummary(compatibility.skipped)}
       $("orgUploadErrors").innerHTML="";
       setText("orgUploadSummary","ยังไม่ได้เลือกไฟล์");
       $("orgUploadBody").innerHTML =
-        '<tr><td colspan="12" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
+        '<tr><td colspan="13" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>';
       open("orgUploadModal");
     });
     $("orgScopeUploadBtn")?.addEventListener("click",()=>{
