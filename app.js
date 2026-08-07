@@ -1,7 +1,7 @@
 
-/* V6.9.8 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.9.8";
-document.documentElement.dataset.timeClockBuild = "6.9.8";
+/* V6.9.9 deployment diagnostic */
+window.__TIME_CLOCK_BUILD__ = "V6.9.9";
+document.documentElement.dataset.timeClockBuild = "6.9.9";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.9.8";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.9.8',
+  version: '6.9.9',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -612,7 +612,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.8"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.9.9"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -3311,7 +3311,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.9.8"
+          change_reason: "บันทึกจากหน้า HR Admin V6.9.9"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3612,7 +3612,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               val("umDisplayName") || null,
             p_is_active: $("umActive").checked,
             p_change_reason:
-              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.8"
+              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.9.9"
           }
         );
 
@@ -3890,7 +3890,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         + "\n";
 
       downloadFile(
-        "Manager_Scope_Template_v6.9.8.csv",
+        "Manager_Scope_Template_v6.9.9.csv",
         csv,
         "text/csv;charset=utf-8"
       );
@@ -4120,6 +4120,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               if (
                 zone !== "กรุงเทพฯ"
                 && zone !== "ตจว."
+                && zone !== "สำนักงาน"
               ) {
                 return `แถว ${index + 2}: หน่วยงาน ${orgCode} ยังไม่ได้กำหนด Zone`;
               }
@@ -4302,7 +4303,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       ];
 
       downloadFile(
-        "Employee_Template_v6.9.8.csv",
+        "Employee_Template_v6.9.9.csv",
         "\uFEFF"
           + headers.join(",")
           + "\n",
@@ -7927,7 +7928,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.9.8 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.9.9 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -8403,7 +8404,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.9.8';
+  const VERSION='6.9.9';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8484,11 +8485,11 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.8 Role, Manager Hierarchy & Shift Requests ===== */
+/* ===== V6.9.9 Role, Manager Hierarchy & Shift Requests ===== */
 (function TimeClockV680(){
   "use strict";
 
-  const VERSION = "6.9.8";
+  const VERSION = "6.9.9";
   const app = () => window.TimeClockApp;
   const $ = id => document.getElementById(id);
   const qsa = (selector,root=document) =>
@@ -9253,7 +9254,7 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.9.8 Organization Structure ===== */
+/* ===== V6.9.9 Organization Structure ===== */
 "use strict";
 (() => {
   const A = () => window.TimeClockApp;
@@ -10033,6 +10034,7 @@ ${skippedSummary(compatibility.skipped)}
     if (
       selectedZone !== "กรุงเทพฯ"
       && selectedZone !== "ตจว."
+      && selectedZone !== "สำนักงาน"
     ) {
       A().toast?.(
         "กรุณาเลือก Zone ของหน่วยงาน",
@@ -10221,8 +10223,8 @@ ${skippedSummary(compatibility.skipped)}
 
     A().downloadFile?.(
       kind==="org"
-        ? "Organization_Structure_Template_v6.9.8.csv"
-        : "Organization_Manager_Scope_Template_v6.9.8.csv",
+        ? "Organization_Structure_Template_v6.9.9.csv"
+        : "Organization_Manager_Scope_Template_v6.9.9.csv",
       "\uFEFF"+headers.join(",")+"\n",
       "text/csv;charset=utf-8"
     );
@@ -10244,7 +10246,9 @@ ${skippedSummary(compatibility.skipped)}
               <span class="org-zone-chip ${
                 row.zone === "ตจว."
                   ? "upcountry"
-                  : "bangkok"
+                  : row.zone === "สำนักงาน"
+                    ? "office"
+                    : "bangkok"
               }">
                 ${esc(row.zone||"-")}
               </span>
