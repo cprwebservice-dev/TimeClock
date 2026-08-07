@@ -7006,3 +7006,45 @@ article.invite::after{
     grid-template-columns:1fr;
   }
 }
+
+
+/* ==========================================================================
+   V6.10.8 User Account Button / Modal Reliability
+   ========================================================================== */
+
+.account-employee-load-error{
+  padding:14px;
+  border:1px solid #fecdca;
+  border-radius:9px;
+  background:#fef3f2;
+}
+
+.account-employee-load-error strong{
+  display:block;
+  color:#b42318;
+  font-size:9.5px;
+}
+
+.account-employee-load-error small{
+  display:block;
+  margin-top:4px;
+  color:#667085;
+  font-size:8px;
+  line-height:1.5;
+}
+
+.account-load-error-cell{
+  padding:28px!important;
+  color:#b42318!important;
+  line-height:1.55!important;
+}
+
+.dark .account-employee-load-error{
+  border-color:rgba(239,68,68,.35);
+  background:rgba(127,29,29,.18);
+}
+
+.dark .account-employee-load-error strong,
+.dark .account-load-error-cell{
+  color:#fca5a5!important;
+}

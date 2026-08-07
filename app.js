@@ -4832,6 +4832,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       selectAttendanceEmployees,
       attendanceLabel,
       downloadFile,
+      openModal,
+      closeModal,
       applyProfile,
       switchPage
     });
@@ -12837,6 +12839,26 @@ ${skippedSummary(compatibility.skipped)}
   const $ = id =>
     document.getElementById(id);
 
+  function showAccountModal(id) {
+    const modal = $(id);
+
+    if (!modal) {
+      throw new Error(
+        `ACCOUNT_MODAL_NOT_FOUND: ${id}`
+      );
+    }
+
+    modal.classList.remove("hidden");
+  }
+
+  function hideAccountModal(id) {
+    const modal = $(id);
+
+    if (!modal) return;
+
+    modal.classList.add("hidden");
+  }
+
   const safe = value =>
     String(value ?? "")
       .replaceAll("&","&amp;")
@@ -13091,9 +13113,42 @@ ${skippedSummary(compatibility.skipped)}
 
       await loadSummary();
     } catch(error) {
+      const raw =
+        String(
+          error?.message
+          || ""
+        );
+
+      const friendly =
+        raw.includes(
+          "ta_get_user_accounts_v6107"
+        )
+          ? "ยังไม่พบฟังก์ชันบัญชีผู้ใช้งาน V6.10.7 ใน Supabase กรุณารัน SQL V6.10.7 ก่อน"
+          : (
+              A()?.humanError?.(error)
+              || error.message
+            );
+
+      if ($("accountTableBody")) {
+        $("accountTableBody").innerHTML = `
+          <tr>
+            <td
+              colspan="9"
+              class="fc-empty account-load-error-cell"
+            >
+              ${safe(friendly)}
+            </td>
+          </tr>
+        `;
+      }
+
+      if ($("accountTableMeta")) {
+        $("accountTableMeta").textContent =
+          "โหลดข้อมูลไม่สำเร็จ";
+      }
+
       A()?.toast?.(
-        A()?.humanError?.(error)
-        || error.message,
+        friendly,
         "error"
       );
     } finally {
@@ -13457,22 +13512,70 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   async function openCreate() {
-    await loadCandidates(
-      true
-    );
-
     resetCreateForm();
 
-    A()?.openModal?.(
+    showAccountModal(
       "accountCreateModal"
     );
 
-    setTimeout(
-      () =>
-        $("accountEmployeeSearch")
-          ?.focus(),
-      60
-    );
+    const resultBox =
+      $("accountEmployeeSearchResults");
+
+    try {
+      if (resultBox) {
+        resultBox.innerHTML = `
+          <div class="account-employee-empty">
+            กำลังโหลดรายชื่อพนักงาน...
+          </div>
+        `;
+
+        resultBox.classList.remove(
+          "hidden"
+        );
+      }
+
+      await loadCandidates(
+        true
+      );
+
+      if (resultBox) {
+        resultBox.classList.add(
+          "hidden"
+        );
+
+        resultBox.innerHTML = "";
+      }
+
+      setTimeout(
+        () =>
+          $("accountEmployeeSearch")
+            ?.focus(),
+        60
+      );
+    } catch(error) {
+      const message =
+        A()?.humanError?.(error)
+        || error?.message
+        || "โหลดรายชื่อพนักงานไม่สำเร็จ";
+
+      if (resultBox) {
+        resultBox.innerHTML = `
+          <div class="account-employee-load-error">
+            <strong>โหลดรายชื่อพนักงานไม่สำเร็จ</strong>
+            <small>${safe(message)}</small>
+          </div>
+        `;
+
+        resultBox.classList.remove(
+          "hidden"
+        );
+      }
+
+      A()?.toast?.(
+        message,
+        "error"
+      );
+    }
   }
 
   async function createAccount() {
@@ -13555,7 +13658,7 @@ ${skippedSummary(compatibility.skipped)}
         );
       }
 
-      A()?.closeModal?.(
+      hideAccountModal(
         "accountCreateModal"
       );
 
@@ -13638,7 +13741,7 @@ ${skippedSummary(compatibility.skipped)}
     $("accountEditSubtitle").textContent =
       `${account.email || "-"} • ${account.emp_code || "-"}`;
 
-    A()?.openModal?.(
+    showAccountModal(
       "accountEditModal"
     );
   }
@@ -13687,7 +13790,7 @@ ${skippedSummary(compatibility.skipped)}
         }
       );
 
-      A()?.closeModal?.(
+      hideAccountModal(
         "accountEditModal"
       );
 
@@ -13960,7 +14063,7 @@ ${skippedSummary(compatibility.skipped)}
         throw error;
       }
 
-      A()?.closeModal?.(
+      hideAccountModal(
         "forgotPasswordModal"
       );
 
@@ -14218,7 +14321,17 @@ ${skippedSummary(compatibility.skipped)}
     $("accountCreateBtn")
       ?.addEventListener(
         "click",
-        openCreate
+        () => {
+          openCreate()
+            .catch(error => {
+              A()?.toast?.(
+                A()?.humanError?.(error)
+                || error?.message
+                || "เปิดหน้าสร้างบัญชีไม่สำเร็จ",
+                "error"
+              );
+            });
+        }
       );
 
     $("accountRefreshBtn")
@@ -14295,7 +14408,7 @@ ${skippedSummary(compatibility.skipped)}
               || "";
           }
 
-          A()?.openModal?.(
+          showAccountModal(
             "forgotPasswordModal"
           );
         }
@@ -14306,6 +14419,23 @@ ${skippedSummary(compatibility.skipped)}
         "click",
         sendForgotPassword
       );
+
+    document
+      .querySelectorAll(
+        '[data-close-modal="accountCreateModal"],'
+        + '[data-close-modal="accountEditModal"],'
+        + '[data-close-modal="forgotPasswordModal"]'
+      )
+      .forEach(button => {
+        button.addEventListener(
+          "click",
+          () => {
+            hideAccountModal(
+              button.dataset.closeModal
+            );
+          }
+        );
+      });
 
     $("inviteAcceptBtn")
       ?.addEventListener(
@@ -14372,11 +14502,28 @@ ${skippedSummary(compatibility.skipped)}
       )
       ?.addEventListener(
         "click",
-        () =>
+        () => {
+          const accountPage =
+            $("page-admin-accounts");
+
+          if (accountPage) {
+            document
+              .querySelectorAll(
+                ".page"
+              )
+              .forEach(page => {
+                page.classList.toggle(
+                  "active",
+                  page === accountPage
+                );
+              });
+          }
+
           setTimeout(
             load,
             0
-          )
+          );
+        }
       );
 
     setTimeout(
