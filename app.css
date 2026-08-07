@@ -4534,3 +4534,362 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
     flex-direction:column;
   }
 }
+
+
+/* ==========================================================================
+   V6.10.3 Employee Directory Table / Filter / Buttons
+   ========================================================================== */
+
+/* Filter proportions */
+.employee-directory-v6103
+.employee-directory-filter-grid{
+  grid-template-columns:
+    minmax(260px,1.55fr)
+    minmax(125px,.72fr)
+    minmax(150px,.86fr)
+    minmax(150px,.86fr)
+    minmax(200px,1.12fr)
+    minmax(145px,.78fr)
+    auto;
+  gap:9px;
+}
+
+.employee-directory-v6103
+.employee-filter-actions{
+  display:flex;
+  align-items:flex-end;
+  justify-content:flex-end;
+  gap:7px;
+}
+
+.employee-directory-v6103
+.employee-filter-actions .btn{
+  min-width:92px;
+  min-height:39px;
+  padding:0 13px;
+  border-radius:9px;
+  box-shadow:none;
+  transition:
+    transform .12s ease,
+    box-shadow .12s ease,
+    border-color .12s ease;
+}
+
+.employee-directory-v6103
+.employee-filter-actions .btn:hover{
+  transform:translateY(-1px);
+  box-shadow:
+    0 5px 12px rgba(15,23,42,.08);
+}
+
+.employee-directory-v6103
+.employee-filter-reset-btn{
+  min-width:96px;
+  border-color:#d0d5dd;
+  background:#fff;
+  color:#475467;
+}
+
+.employee-directory-v6103
+.employee-filter-search-btn{
+  min-width:104px;
+}
+
+/* Table heading actions */
+.employee-directory-v6103
+.employee-directory-table-head{
+  align-items:center;
+  justify-content:space-between;
+}
+
+.employee-directory-v6103
+.employee-directory-table-tools{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+}
+
+.employee-directory-v6103
+.employee-page-size-field{
+  min-width:118px;
+  margin:0;
+}
+
+.employee-directory-v6103
+.employee-export-btn{
+  min-width:94px;
+  min-height:34px;
+  padding:0 13px;
+  border-radius:8px;
+  font-size:9.5px;
+  font-weight:900;
+}
+
+/* Content-aware table width */
+.employee-directory-v6103
+.directory-table-wrap{
+  max-height:66vh;
+  overflow:auto;
+}
+
+.employee-directory-v6103
+.employee-directory-table{
+  width:max-content;
+  min-width:100%;
+  table-layout:auto;
+}
+
+.employee-directory-v6103
+.employee-directory-table th,
+.employee-directory-v6103
+.employee-directory-table td{
+  width:auto;
+}
+
+/* Code */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(1),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(1){
+  min-width:108px;
+  width:108px;
+  max-width:125px;
+  white-space:nowrap;
+}
+
+/* Name */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(2),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(2){
+  min-width:175px;
+  max-width:250px;
+}
+
+/* Email */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(3),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(3){
+  min-width:190px;
+  max-width:285px;
+}
+
+/* Position */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(4),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(4){
+  min-width:145px;
+  max-width:240px;
+}
+
+/* Department */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(5),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(5){
+  min-width:180px;
+  max-width:300px;
+}
+
+/* Zone */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(6),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(6){
+  min-width:90px;
+  width:96px;
+  white-space:nowrap;
+}
+
+/* Area */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(7),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(7){
+  min-width:125px;
+  max-width:190px;
+}
+
+/* Sub-area */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(8),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(8){
+  min-width:125px;
+  max-width:205px;
+}
+
+/* Dates */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(9),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(9),
+.employee-directory-v6103
+.employee-directory-table th:nth-child(10),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(10){
+  min-width:105px;
+  width:110px;
+  white-space:nowrap;
+}
+
+/* Status */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(11),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(11){
+  min-width:96px;
+  width:100px;
+  white-space:nowrap;
+}
+
+/* Action */
+.employee-directory-v6103
+.employee-directory-table th:nth-child(12),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(12){
+  min-width:74px;
+  width:78px;
+  text-align:center;
+  white-space:nowrap;
+}
+
+/* Wrap only descriptive fields */
+.employee-directory-v6103
+.employee-directory-table td:nth-child(2),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(4),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(5),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(7),
+.employee-directory-v6103
+.employee-directory-table td:nth-child(8){
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+.employee-directory-v6103
+.employee-email-cell{
+  min-width:190px;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+
+.employee-directory-v6103
+.employee-email-cell a{
+  overflow-wrap:anywhere;
+}
+
+.employee-directory-v6103
+.employee-directory-table td{
+  padding:9px 10px;
+}
+
+.employee-directory-v6103
+.employee-directory-table tbody tr{
+  transition:
+    background .12s ease,
+    box-shadow .12s ease;
+}
+
+.employee-directory-v6103
+.employee-directory-table tbody tr:hover{
+  background:#f5f9ff;
+  box-shadow:
+    inset 3px 0 0 #1570ef;
+}
+
+.employee-directory-v6103
+.employee-edit-btn{
+  min-width:56px;
+}
+
+/* Filters use readable organization names */
+.employee-directory-v6103
+#employeeDirectoryDepartment{
+  min-width:0;
+  text-overflow:ellipsis;
+}
+
+/* Dark mode buttons */
+.dark
+.employee-directory-v6103
+.employee-filter-reset-btn{
+  border-color:#475569;
+  background:#172033;
+  color:#cbd5e1;
+}
+
+/* Responsive */
+@media(max-width:1450px){
+  .employee-directory-v6103
+  .employee-directory-filter-grid{
+    grid-template-columns:
+      minmax(260px,1.4fr)
+      repeat(3,minmax(150px,.82fr));
+  }
+
+  .employee-directory-v6103
+  .employee-filter-actions{
+    justify-content:flex-start;
+  }
+}
+
+@media(max-width:1000px){
+  .employee-directory-v6103
+  .employee-directory-filter-grid{
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+  }
+
+  .employee-directory-v6103
+  .employee-filter-search{
+    grid-column:1/-1;
+  }
+
+  .employee-directory-v6103
+  .employee-filter-actions{
+    grid-column:1/-1;
+    justify-content:flex-end;
+  }
+
+  .employee-directory-v6103
+  .employee-directory-table-head{
+    align-items:flex-end;
+  }
+}
+
+@media(max-width:620px){
+  .employee-directory-v6103
+  .employee-directory-filter-grid{
+    grid-template-columns:1fr;
+  }
+
+  .employee-directory-v6103
+  .employee-filter-search,
+  .employee-directory-v6103
+  .employee-filter-actions{
+    grid-column:auto;
+  }
+
+  .employee-directory-v6103
+  .employee-filter-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    width:100%;
+  }
+
+  .employee-directory-v6103
+  .employee-filter-actions .btn{
+    width:100%;
+  }
+
+  .employee-directory-v6103
+  .employee-directory-table-tools{
+    width:100%;
+    justify-content:flex-end;
+  }
+}

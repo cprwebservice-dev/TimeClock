@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.2";
-document.documentElement.dataset.timeClockBuild = "6.10.2";
+window.__TIME_CLOCK_BUILD__ = "V6.10.3";
+document.documentElement.dataset.timeClockBuild = "6.10.3";
 
 
 /* ===== js/config.js ===== */
@@ -5989,7 +5989,7 @@ ${skippedSummary(compatibility.skipped)}
     return `
       <section
         id="page-admin-employees"
-        class="page employee-directory-page employee-directory-v6102"
+        class="page employee-directory-page employee-directory-v6103"
       >
         <div class="directory-hero employee-directory-hero">
           <div>
@@ -6005,12 +6005,6 @@ ${skippedSummary(compatibility.skipped)}
             <span class="employee-admin-chip">
               HR Admin • แก้ไขได้
             </span>
-            <button
-              id="employeeExportBtn"
-              class="btn btn-success"
-            >
-              Excel
-            </button>
           </div>
         </div>
 
@@ -6083,10 +6077,17 @@ ${skippedSummary(compatibility.skipped)}
 
               <div class="employee-filter-actions">
                 <button
-                  id="employeeDirectoryLoadBtn"
-                  class="btn btn-primary"
+                  id="employeeDirectoryResetBtn"
+                  class="btn btn-light employee-filter-reset-btn"
                 >
-                  ค้นหา
+                  ↺ รีเซ็ต
+                </button>
+
+                <button
+                  id="employeeDirectoryLoadBtn"
+                  class="btn btn-primary employee-filter-search-btn"
+                >
+                  ⌕ ค้นหา
                 </button>
               </div>
             </div>
@@ -6129,7 +6130,7 @@ ${skippedSummary(compatibility.skipped)}
             </div>
 
             <div class="employee-directory-table-tools">
-              <div class="field">
+              <div class="field employee-page-size-field">
                 <label>แสดงต่อหน้า</label>
                 <select
                   id="employeeDirectoryPageSize"
@@ -6142,6 +6143,13 @@ ${skippedSummary(compatibility.skipped)}
                   <option value="999999">ทั้งหมด</option>
                 </select>
               </div>
+
+              <button
+                id="employeeExportBtn"
+                class="btn btn-success employee-export-btn"
+              >
+                ⇩ Excel
+              </button>
             </div>
           </div>
 
@@ -7766,6 +7774,118 @@ ${skippedSummary(compatibility.skipped)}
     );
   }
 
+  function fillEmployeeDirectoryOrgSelect(
+    id,
+    rows,
+    label,
+    preserve = true
+  ){
+    const element = $(id);
+
+    if (!element) {
+      return;
+    }
+
+    const current =
+      preserve
+        ? element.value
+        : "";
+
+    const uniqueRows = [
+      ...new Map(
+        (rows || [])
+          .filter(row =>
+            String(
+              row.org_code || ""
+            ).trim()
+          )
+          .map(row => [
+            String(
+              row.org_code || ""
+            ).trim(),
+            row
+          ])
+      ).values()
+    ].sort((a,b) =>
+      String(
+        a.org_name
+        || a.org_code
+        || ""
+      ).localeCompare(
+        String(
+          b.org_name
+          || b.org_code
+          || ""
+        ),
+        "th"
+      )
+    );
+
+    element.innerHTML =
+      `<option value="">${esc(label)}</option>`
+      + uniqueRows
+          .map(row => {
+            const code =
+              String(
+                row.org_code || ""
+              ).trim();
+
+            const name =
+              String(
+                row.org_name
+                || code
+              ).trim();
+
+            return `
+              <option value="${esc(code)}">
+                ${esc(name)} • ${esc(code)}
+              </option>
+            `;
+          })
+          .join("");
+
+    if (
+      current
+      && [...element.options]
+        .some(option =>
+          option.value === current
+        )
+    ) {
+      element.value = current;
+    } else {
+      element.value = "";
+    }
+  }
+
+  function updateEmployeeAreaFilter(
+    resetArea = false
+  ){
+    const zone =
+      $("employeeDirectoryZone")?.value || "";
+
+    const locations =
+      employeeDirectoryState.filterData.locations || [];
+
+    const areas =
+      locations
+        .filter(row =>
+          !zone
+          || String(row.zone || "") === zone
+        )
+        .map(row => row.area);
+
+    fillEmployeeDirectorySelect(
+      "employeeDirectoryArea",
+      areas,
+      "ทุกพื้นที่",
+      !resetArea
+    );
+
+    updateEmployeeSubAreaFilter(
+      resetArea
+    );
+  }
+
   function updateEmployeeSubAreaFilter(
     resetSubArea = false
   ){
@@ -7791,6 +7911,40 @@ ${skippedSummary(compatibility.skipped)}
       subAreas,
       "ทุกพื้นที่ย่อย",
       !resetSubArea
+    );
+
+    updateEmployeeDepartmentFilter(
+      resetSubArea
+    );
+  }
+
+  function updateEmployeeDepartmentFilter(
+    resetDepartment = false
+  ){
+    const zone =
+      $("employeeDirectoryZone")?.value || "";
+
+    const area =
+      $("employeeDirectoryArea")?.value || "";
+
+    const subArea =
+      $("employeeDirectorySubArea")?.value || "";
+
+    const locations =
+      employeeDirectoryState.filterData.locations || [];
+
+    const orgRows =
+      locations.filter(row =>
+        (!zone || String(row.zone || "") === zone)
+        && (!area || String(row.area || "") === area)
+        && (!subArea || String(row.sub_area || "") === subArea)
+      );
+
+    fillEmployeeDirectoryOrgSelect(
+      "employeeDirectoryDepartment",
+      orgRows,
+      "ทุกหน่วยงาน",
+      !resetDepartment
     );
   }
 
@@ -7845,12 +7999,6 @@ ${skippedSummary(compatibility.skipped)}
       "ทุก Zone"
     );
 
-    fillEmployeeDirectorySelect(
-      "employeeDirectoryDepartment",
-      employeeDirectoryState.filterData.departments,
-      "ทุกหน่วยงาน"
-    );
-
     updateEmployeeAreaFilter();
 
     const list = $("employeeEditOrgList");
@@ -7895,7 +8043,7 @@ ${skippedSummary(compatibility.skipped)}
 
       const chunk =
         await rpc(
-          "ta_get_employee_directory_v6102",
+          "ta_get_employee_directory_v6103",
           {
             p_search:
               $("employeeDirectorySearch")?.value
@@ -7913,7 +8061,7 @@ ${skippedSummary(compatibility.skipped)}
               $("employeeDirectorySubArea")?.value
               || null,
 
-            p_department:
+            p_org_code:
               $("employeeDirectoryDepartment")?.value
               || null,
 
@@ -7956,6 +8104,26 @@ ${skippedSummary(compatibility.skipped)}
         : total;
 
     return rows;
+  }
+
+  async function resetEmployeeDirectoryFilters(){
+    if ($("employeeDirectorySearch")) {
+      $("employeeDirectorySearch").value = "";
+    }
+
+    if ($("employeeDirectoryZone")) {
+      $("employeeDirectoryZone").value = "";
+    }
+
+    if ($("employeeDirectoryActive")) {
+      $("employeeDirectoryActive").value = "true";
+    }
+
+    updateEmployeeAreaFilter(true);
+
+    employeeDirectoryState.page = 1;
+
+    await loadEmployees();
   }
 
   async function loadEmployees(){
@@ -8563,6 +8731,20 @@ ${skippedSummary(compatibility.skipped)}
         () => {
           updateEmployeeSubAreaFilter(true);
         }
+      );
+
+    $("employeeDirectorySubArea")
+      ?.addEventListener(
+        "change",
+        () => {
+          updateEmployeeDepartmentFilter(true);
+        }
+      );
+
+    $("employeeDirectoryResetBtn")
+      ?.addEventListener(
+        "click",
+        resetEmployeeDirectoryFilters
       );
 
     $("employeeDirectoryPageSize")
