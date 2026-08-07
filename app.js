@@ -847,6 +847,46 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 "use strict";
 
     const APP_CONFIG_KEY = "ta_supabase_config_v1";
+    const DEFAULT_SUPABASE_CONFIG = Object.freeze({
+      url: "https://lryojaccbbbgdbpjstld.supabase.co",
+      key: "sb_publishable_xxYLeNtxgeWoE0o5GNOwDg_QXfiFy_Y"
+    });
+    try {
+      if (!localStorage.getItem("timeclock_report_jobs_v60")) {
+        localStorage.setItem(
+          "timeclock_report_jobs_v60",
+          JSON.stringify({
+            url: DEFAULT_SUPABASE_CONFIG.url,
+            key: DEFAULT_SUPABASE_CONFIG.key
+          })
+        );
+      }
+    } catch (_) {}
+
+
+    function getSupabaseConfigWithDefaults(config = {}) {
+      return {
+        url:
+          String(
+            config?.url
+            || config?.supabaseUrl
+            || ""
+          ).trim()
+          || DEFAULT_SUPABASE_CONFIG.url,
+
+        key:
+          String(
+            config?.key
+            || config?.anonKey
+            || config?.publishableKey
+            || ""
+          ).trim()
+          || DEFAULT_SUPABASE_CONFIG.key
+      };
+    }
+
+
+
     const state = {
       client: null,
       session: null,
@@ -14743,5 +14783,41 @@ ${skippedSummary(compatibility.skipped)}
     );
   } else {
     bind();
+  }
+})();
+
+(function(){
+  const defaults = {
+    url: "https://lryojaccbbbgdbpjstld.supabase.co",
+    key: "sb_publishable_xxYLeNtxgeWoE0o5GNOwDg_QXfiFy_Y"
+  };
+
+  function fillDefaultSupabaseFields() {
+    const urlInput =
+      document.getElementById("configSupabaseUrl")
+      || document.getElementById("supabaseUrl")
+      || document.getElementById("settingsSupabaseUrl");
+
+    const keyInput =
+      document.getElementById("configSupabaseKey")
+      || document.getElementById("supabaseKey")
+      || document.getElementById("settingsSupabaseKey");
+
+    if (urlInput && !String(urlInput.value || "").trim()) {
+      urlInput.value = defaults.url;
+    }
+
+    if (keyInput && !String(keyInput.value || "").trim()) {
+      keyInput.value = defaults.key;
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      fillDefaultSupabaseFields
+    );
+  } else {
+    fillDefaultSupabaseFields();
   }
 })();

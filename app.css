@@ -7081,3 +7081,25 @@ article.invite::after{
 .dark .account-invite-error small{
   color:#fecaca;
 }
+
+
+/* ==========================================================================
+   V6.10.10 Default Supabase Connection
+   ========================================================================== */
+
+.supabase-default-note-v61010{
+  margin-top:8px;
+  padding:8px 10px;
+  border:1px solid #dbeafe;
+  border-radius:8px;
+  background:#f8fbff;
+  color:#475467;
+  font-size:8px;
+  line-height:1.45;
+}
+
+.dark .supabase-default-note-v61010{
+  border-color:#334155;
+  background:#172033;
+  color:#cbd5e1;
+}
