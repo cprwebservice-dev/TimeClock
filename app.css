@@ -5772,3 +5772,79 @@ body.dark .shift-pattern-card,body.dark .shift-pattern-choice{background:var(--s
     text-align:left;
   }
 }
+
+
+/* ==========================================================================
+   V6.10.5 Manager Account Readiness
+   ========================================================================== */
+
+#orgManagerModal
+.org-manager-candidate.disabled{
+  opacity:.62;
+  cursor:not-allowed;
+}
+
+#orgManagerModal
+.org-manager-candidate.disabled:hover{
+  border-color:transparent;
+  background:#fff;
+}
+
+#orgManagerModal
+.org-manager-account-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-top:5px;
+  padding:3px 6px;
+  border-radius:999px;
+  font-size:7px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+#orgManagerModal
+.org-manager-account-status.ready{
+  background:#ecfdf3;
+  color:#067647;
+}
+
+#orgManagerModal
+.org-manager-account-status.auto{
+  background:#eff8ff;
+  color:#175cd3;
+}
+
+#orgManagerModal
+.org-manager-account-status.blocked{
+  background:#fef3f2;
+  color:#b42318;
+}
+
+.dark
+#orgManagerModal
+.org-manager-candidate.disabled:hover{
+  border-color:#334155;
+  background:#172033;
+}
+
+.dark
+#orgManagerModal
+.org-manager-account-status.ready{
+  background:rgba(5,150,105,.18);
+  color:#6ee7b7;
+}
+
+.dark
+#orgManagerModal
+.org-manager-account-status.auto{
+  background:rgba(37,99,235,.18);
+  color:#93c5fd;
+}
+
+.dark
+#orgManagerModal
+.org-manager-account-status.blocked{
+  background:rgba(220,38,38,.16);
+  color:#fca5a5;
+}

@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.4";
-document.documentElement.dataset.timeClockBuild = "6.10.4";
+window.__TIME_CLOCK_BUILD__ = "V6.10.5";
+document.documentElement.dataset.timeClockBuild = "6.10.5";
 
 
 /* ===== js/config.js ===== */
@@ -11632,7 +11632,7 @@ ${skippedSummary(compatibility.skipped)}
 
     state.managerCandidates =
       await rpc(
-        "ta_get_org_manager_candidates_v6104"
+        "ta_get_org_manager_candidates_v6105"
       ) || [];
   }
 
@@ -11678,6 +11678,70 @@ ${skippedSummary(compatibility.skipped)}
     ) || null;
   }
 
+  function managerAccountStatus(
+    manager
+  ) {
+    const status =
+      String(
+        manager.account_status
+        || ""
+      ).toUpperCase();
+
+    if(status === "READY") {
+      return {
+        label: "พร้อมใช้งาน",
+        css: "ready"
+      };
+    }
+
+    if(status === "READY_HR_ADMIN") {
+      return {
+        label: "HR Admin",
+        css: "ready"
+      };
+    }
+
+    if(status === "PROFILE_WILL_BE_CREATED") {
+      return {
+        label: "จะสร้าง Manager Profile",
+        css: "auto"
+      };
+    }
+
+    if(status === "VIEWER_WILL_BE_MANAGER") {
+      return {
+        label: "จะเปลี่ยน Viewer → Manager",
+        css: "auto"
+      };
+    }
+
+    if(status === "MANAGER_WILL_BE_ACTIVATED") {
+      return {
+        label: "จะเปิดใช้งาน Manager",
+        css: "auto"
+      };
+    }
+
+    if(status === "HR_ADMIN_INACTIVE") {
+      return {
+        label: "จะเปิดใช้งาน HR Admin",
+        css: "auto"
+      };
+    }
+
+    if(status === "NO_AUTH_USER") {
+      return {
+        label: "ยังไม่มีบัญชีผู้ใช้",
+        css: "blocked"
+      };
+    }
+
+    return {
+      label: "ยังไม่พร้อม",
+      css: "blocked"
+    };
+  }
+
   function managerCandidateCard(
     manager
   ) {
@@ -11687,11 +11751,25 @@ ${skippedSummary(compatibility.skipped)}
         || 0
       );
 
+    const account =
+      managerAccountStatus(
+        manager
+      );
+
+    const selectable =
+      Boolean(
+        manager.manager_ready
+      );
+
     return `
       <button
         type="button"
-        class="org-manager-candidate"
-        data-org-manager-candidate="${esc(manager.email)}"
+        class="org-manager-candidate ${selectable ? "" : "disabled"}"
+        ${
+          selectable
+            ? `data-org-manager-candidate="${esc(manager.email)}"`
+            : `disabled`
+        }
       >
         <span class="org-manager-avatar">
           ${esc(
@@ -11726,6 +11804,11 @@ ${skippedSummary(compatibility.skipped)}
 
         <span class="org-manager-candidate-side">
           <b>PC ${esc(manager.pc || "-")}</b>
+
+          <span class="org-manager-account-status ${account.css}">
+            ${esc(account.label)}
+          </span>
+
           ${
             scopeCount
               ? `<small>${num(scopeCount)} Scope</small>`
@@ -11870,6 +11953,14 @@ ${skippedSummary(compatibility.skipped)}
       );
 
     if(!manager) {
+      return;
+    }
+
+    if(!manager.manager_ready) {
+      A().toast?.(
+        "พนักงานคนนี้ยังไม่มีบัญชีผู้ใช้งานระบบ กรุณาสร้าง User ก่อนกำหนด Manager",
+        "error"
+      );
       return;
     }
 
@@ -12104,66 +12195,81 @@ ${skippedSummary(compatibility.skipped)}
     );
 
     try {
-      await rpc(
-        "ta_upsert_manager_scope_v690",
-        {
-          p_scope_id:
-            val("omScopeId")
-            || null,
+      const saveResult =
+        await rpc(
+          "ta_upsert_org_manager_scope_v6105",
+          {
+            p_scope_id:
+              val("omScopeId")
+              || null,
 
-          p_manager_email:
-            managerEmail,
+            p_manager_email:
+              managerEmail,
 
-          p_scope_type:
-            "ORG_UNIT",
+            p_scope_value:
+              unit.org_code,
 
-          p_scope_value:
-            unit.org_code,
+            p_scope_label:
+              unit.org_name,
 
-          p_scope_label:
-            unit.org_name,
+            p_include_descendants:
+              $("omIncludeDescendants").checked,
 
-          p_include_descendants:
-            $("omIncludeDescendants").checked,
+            p_can_view:
+              $("omCanView").checked,
 
-          p_can_view:
-            $("omCanView").checked,
+            p_can_edit_schedule:
+              $("omCanEdit").checked,
 
-          p_can_edit_schedule:
-            $("omCanEdit").checked,
+            p_can_confirm_schedule:
+              $("omCanConfirm").checked,
 
-          p_can_confirm_schedule:
-            $("omCanConfirm").checked,
+            p_can_certify_attendance:
+              $("omCanCertify").checked,
 
-          p_can_certify_attendance:
-            $("omCanCertify").checked,
+            p_can_decide_shift_request:
+              $("omCanDecide").checked,
 
-          p_can_decide_shift_request:
-            $("omCanDecide").checked,
+            p_effective_from:
+              val("omEffectiveFrom")
+              || null,
 
-          p_effective_from:
-            val("omEffectiveFrom")
-            || null,
+            p_effective_to:
+              val("omEffectiveTo")
+              || null,
 
-          p_effective_to:
-            val("omEffectiveTo")
-            || null,
+            p_is_active:
+              val("omActive") === "true",
 
-          p_is_active:
-            val("omActive") === "true",
+            p_note:
+              val("omNote")
+              || null
+          }
+        );
 
-          p_note:
-            val("omNote")
-            || null
-        }
-      );
+      state.managerCandidates = [];
+
+      const profileAction =
+        String(
+          saveResult?.profile_action
+          || ""
+        );
+
+      const profileMessage =
+        profileAction === "CREATED_MANAGER_PROFILE"
+          ? " และสร้าง Manager Profile แล้ว"
+          : profileAction === "PROMOTED_VIEWER_TO_MANAGER"
+            ? " และเปลี่ยนสิทธิ์ Viewer เป็น Manager แล้ว"
+            : profileAction === "ACTIVATED_MANAGER_PROFILE"
+              ? " และเปิดใช้งาน Manager Profile แล้ว"
+              : "";
 
       close(
         "orgManagerModal"
       );
 
       A().toast?.(
-        "บันทึก Manager เรียบร้อย",
+        `บันทึก Manager เรียบร้อย${profileMessage}`,
         "success"
       );
 
@@ -12173,9 +12279,28 @@ ${skippedSummary(compatibility.skipped)}
         unit.org_id
       );
     } catch(error) {
+      const message =
+        String(
+          error?.message
+          || ""
+        );
+
+      const friendlyMessage =
+        message.includes(
+          "MANAGER_AUTH_ACCOUNT_NOT_FOUND"
+        )
+          ? "พนักงานคนนี้ยังไม่มีบัญชีเข้าใช้งานระบบ กรุณาสร้าง User ด้วย Email เดียวกับข้อมูลพนักงานก่อน"
+          : message.includes(
+              "MANAGER_PC_NOT_ALLOWED"
+            )
+            ? "PC ของพนักงานไม่อยู่ในกลุ่มที่อนุญาตให้กำหนดเป็น Manager"
+            : (
+                A().humanError?.(error)
+                || error.message
+              );
+
       A().toast?.(
-        A().humanError?.(error)
-        || error.message,
+        friendlyMessage,
         "error"
       );
     } finally {
