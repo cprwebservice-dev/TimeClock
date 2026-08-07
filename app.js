@@ -1,7 +1,7 @@
 
-/* V6.10.1 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.1";
-document.documentElement.dataset.timeClockBuild = "6.10.1";
+/* V6.10.2 deployment diagnostic */
+window.__TIME_CLOCK_BUILD__ = "V6.10.2";
+document.documentElement.dataset.timeClockBuild = "6.10.2";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.1";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.1',
+  version: '6.10.2',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -612,7 +612,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     let response = await withTimeout(
       client.rpc("ta_get_monthly_schedule_v651", exact),
       30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.10.1"
+      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.10.2"
     );
     if (response.error) {
       const v651Error = response.error;
@@ -3311,7 +3311,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           is_active: val("smActive") === "true",
           applicable_pattern_codes: patterns,
           default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.10.1"
+          change_reason: "บันทึกจากหน้า HR Admin V6.10.2"
         });
         closeModal("shiftMasterModal");
         toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
@@ -3612,7 +3612,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               val("umDisplayName") || null,
             p_is_active: $("umActive").checked,
             p_change_reason:
-              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.10.1"
+              "แก้ไข Role โดยใช้ Email และ Manager Scope V6.10.2"
           }
         );
 
@@ -3890,7 +3890,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         + "\n";
 
       downloadFile(
-        "Manager_Scope_Template_v6.10.1.csv",
+        "Manager_Scope_Template_v6.10.2.csv",
         csv,
         "text/csv;charset=utf-8"
       );
@@ -4313,7 +4313,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       ];
 
       downloadFile(
-        "Employee_Template_v6.10.1.csv",
+        "Employee_Template_v6.10.2.csv",
         "\uFEFF"
           + headers.join(",")
           + "\n",
@@ -5985,7 +5985,368 @@ ${skippedSummary(compatibility.skipped)}
     ];
     return `<section id="page-report" class="page report-center-page"><div class="report-hero"><div><span class="eyebrow">ENTERPRISE REPORT CENTER</span><h2>ศูนย์รายงาน Time-Clock</h2><p>สร้างรายงาน CSV, Excel และ Print/PDF โดยไม่กระทบหน้าการทำงานหลัก</p></div><button id="reportRefreshJobsBtn" class="btn btn-light">รีเฟรชประวัติ</button></div><div class="panel section-gap"><div class="panel-body"><div class="report-filter-grid"><div class="field"><label>วันที่เริ่มต้น</label><input id="reportStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="reportEnd" class="input" type="date"></div><div class="field"><label>พื้นที่</label><select id="reportZone" class="select"><option value="">ทุกพื้นที่</option></select></div><div class="field"><label>หน่วยงาน</label><select id="reportDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div></div></div></div><div class="report-card-grid section-gap">${cards.map(c=>`<article class="report-type-card"><div class="report-icon">${c[1]}</div><h3>${c[2]}</h3><p>${c[3]}</p><div class="report-format-actions"><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-orange" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div><div class="panel section-gap"><div class="panel-header"><div><h3>ประวัติการส่งออก</h3><p>เก็บประวัติใน Browser และบันทึก Log ใน Supabase เมื่อพร้อมใช้งาน</p></div><button id="reportClearJobsBtn" class="btn btn-danger-soft">ล้างประวัติ</button></div><div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>รายงาน</th><th>ช่วงข้อมูล</th><th>จำนวนแถว</th><th>สถานะ</th><th>ไฟล์</th></tr></thead><tbody id="reportJobsBody"></tbody></table></div></div></div></section>`;
   }
-  function employeePageHtml(){return `<section id="page-admin-employees" class="page employee-directory-page"><div class="directory-hero"><div><span class="eyebrow">EMPLOYEE DIRECTORY</span><h2>ข้อมูลพนักงาน</h2><p>ค้นหาพนักงานตามรหัส ชื่อ ตำแหน่ง หน่วยงาน และสถานะการทำงาน</p></div><button id="employeeExportBtn" class="btn btn-success">Export Excel</button></div><div class="panel section-gap"><div class="panel-body"><div class="fc-toolbar"><div class="field"><label>ค้นหา</label><input id="employeeDirectorySearch" class="input" placeholder="รหัส ชื่อ ตำแหน่ง หรือหน่วยงาน"></div><div class="field"><label>พื้นที่</label><select id="employeeDirectoryZone" class="select"><option value="">ทุกพื้นที่</option></select></div><div class="field"><label>หน่วยงาน</label><select id="employeeDirectoryDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div><div class="field"><label>สถานะ</label><select id="employeeDirectoryActive" class="select"><option value="true">กำลังปฏิบัติงาน</option><option value="false">ทุกสถานะ</option></select></div><div class="toolbar-actions"><button id="employeeDirectoryLoadBtn" class="btn btn-primary">ค้นหา</button></div></div></div></div><div class="fc-card-grid section-gap"><article class="fc-stat-card"><span>ผลการค้นหา</span><strong id="employeeDirectoryCount">0</strong><small>คน</small></article><article class="fc-stat-card"><span>กำลังปฏิบัติงาน</span><strong id="employeeDirectoryActiveCount">0</strong><small>คน</small></article><article class="fc-stat-card"><span>รอเริ่มงาน</span><strong id="employeeDirectoryWaitingCount">0</strong><small>คน</small></article><article class="fc-stat-card"><span>พ้นสภาพ</span><strong id="employeeDirectoryResignedCount">0</strong><small>คน</small></article></div><div class="panel section-gap"><div class="panel-header"><div><h3>รายชื่อพนักงาน</h3><p id="employeeDirectoryMeta">ยังไม่ได้โหลดข้อมูล</p></div></div><div class="panel-body"><div class="table-wrap directory-table-wrap"><table class="directory-table"><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ตำแหน่ง</th><th>หน่วยงาน</th><th>PC</th><th>พื้นที่</th><th>พื้นที่ย่อย</th><th>วันที่เริ่มงาน</th><th>วันที่ลาออก</th><th>สถานะ</th></tr></thead><tbody id="employeeDirectoryBody"></tbody></table></div></div></div></section>`;}
+  function employeePageHtml(){
+    return `
+      <section
+        id="page-admin-employees"
+        class="page employee-directory-page employee-directory-v6102"
+      >
+        <div class="directory-hero employee-directory-hero">
+          <div>
+            <span class="eyebrow">EMPLOYEE DIRECTORY</span>
+            <h2>ข้อมูลพนักงาน</h2>
+            <p>
+              ค้นหา ตรวจสอบ และแก้ไขข้อมูลพนักงาน
+              โดย Zone / พื้นที่ / พื้นที่ย่อยอ้างอิงจากผังองค์กร
+            </p>
+          </div>
+
+          <div class="employee-directory-hero-actions">
+            <span class="employee-admin-chip">
+              HR Admin • แก้ไขได้
+            </span>
+            <button
+              id="employeeExportBtn"
+              class="btn btn-success"
+            >
+              Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="panel section-gap employee-filter-panel">
+          <div class="panel-body">
+            <div class="employee-directory-filter-grid">
+              <div class="field employee-filter-search">
+                <label>ค้นหา</label>
+                <input
+                  id="employeeDirectorySearch"
+                  class="input"
+                  placeholder="รหัส ชื่อ Email ตำแหน่ง หน่วยงาน หรือ org_code"
+                >
+              </div>
+
+              <div class="field">
+                <label>Zone</label>
+                <select
+                  id="employeeDirectoryZone"
+                  class="select"
+                >
+                  <option value="">ทุก Zone</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>พื้นที่</label>
+                <select
+                  id="employeeDirectoryArea"
+                  class="select"
+                >
+                  <option value="">ทุกพื้นที่</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>พื้นที่ย่อย</label>
+                <select
+                  id="employeeDirectorySubArea"
+                  class="select"
+                >
+                  <option value="">ทุกพื้นที่ย่อย</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>หน่วยงาน</label>
+                <select
+                  id="employeeDirectoryDepartment"
+                  class="select"
+                >
+                  <option value="">ทุกหน่วยงาน</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>สถานะ</label>
+                <select
+                  id="employeeDirectoryActive"
+                  class="select"
+                >
+                  <option value="true">
+                    กำลังปฏิบัติงาน
+                  </option>
+                  <option value="false">
+                    ทุกสถานะ
+                  </option>
+                </select>
+              </div>
+
+              <div class="employee-filter-actions">
+                <button
+                  id="employeeDirectoryLoadBtn"
+                  class="btn btn-primary"
+                >
+                  ค้นหา
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="employee-directory-kpis section-gap">
+          <article class="employee-directory-kpi">
+            <span>ผลการค้นหา</span>
+            <strong id="employeeDirectoryCount">0</strong>
+            <small>คน</small>
+          </article>
+
+          <article class="employee-directory-kpi success">
+            <span>กำลังปฏิบัติงาน</span>
+            <strong id="employeeDirectoryActiveCount">0</strong>
+            <small>คน</small>
+          </article>
+
+          <article class="employee-directory-kpi warning">
+            <span>รอเริ่มงาน</span>
+            <strong id="employeeDirectoryWaitingCount">0</strong>
+            <small>คน</small>
+          </article>
+
+          <article class="employee-directory-kpi muted">
+            <span>พ้นสภาพ</span>
+            <strong id="employeeDirectoryResignedCount">0</strong>
+            <small>คน</small>
+          </article>
+        </div>
+
+        <div class="panel section-gap employee-directory-table-panel">
+          <div class="panel-header employee-directory-table-head">
+            <div>
+              <h3>รายชื่อพนักงาน</h3>
+              <p id="employeeDirectoryMeta">
+                ยังไม่ได้โหลดข้อมูล
+              </p>
+            </div>
+
+            <div class="employee-directory-table-tools">
+              <div class="field">
+                <label>แสดงต่อหน้า</label>
+                <select
+                  id="employeeDirectoryPageSize"
+                  class="select"
+                >
+                  <option value="100" selected>100</option>
+                  <option value="250">250</option>
+                  <option value="500">500</option>
+                  <option value="1000">1,000</option>
+                  <option value="999999">ทั้งหมด</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-body">
+            <div class="table-wrap directory-table-wrap">
+              <table class="directory-table employee-directory-table">
+                <thead>
+                  <tr>
+                    <th>รหัส</th>
+                    <th>ชื่อ-นามสกุล</th>
+                    <th>Email</th>
+                    <th>ตำแหน่ง</th>
+                    <th>หน่วยงาน</th>
+                    <th>Zone</th>
+                    <th>พื้นที่</th>
+                    <th>พื้นที่ย่อย</th>
+                    <th>วันที่เริ่มงาน</th>
+                    <th>วันที่ลาออก</th>
+                    <th>สถานะ</th>
+                    <th>จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="employeeDirectoryBody"></tbody>
+              </table>
+            </div>
+
+            <div class="employee-directory-pagination">
+              <button
+                id="employeeDirectoryPrev"
+                class="btn btn-light"
+              >
+                ‹ ก่อนหน้า
+              </button>
+
+              <span
+                id="employeeDirectoryPageInfo"
+                class="employee-directory-page-info"
+              >
+                หน้า 1 / 1
+              </span>
+
+              <button
+                id="employeeDirectoryNext"
+                class="btn btn-light"
+              >
+                ถัดไป ›
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div
+        id="employeeEditModal"
+        class="modal-backdrop hidden"
+      >
+        <div class="modal extra-large employee-edit-modal">
+          <div class="modal-header">
+            <div>
+              <div class="employee-edit-title-row">
+                <h3>แก้ไขข้อมูลพนักงาน</h3>
+                <span>HR ADMIN</span>
+              </div>
+              <p>
+                Zone / พื้นที่ / พื้นที่ย่อย
+                จะอ้างอิงจาก org_code ที่เลือก
+              </p>
+            </div>
+
+            <button
+              class="btn btn-light btn-icon"
+              data-employee-edit-close
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div class="employee-edit-grid">
+              <div class="field">
+                <label>รหัสพนักงาน</label>
+                <input
+                  id="employeeEditCode"
+                  class="input"
+                  readonly
+                >
+              </div>
+
+              <div class="field">
+                <label>ชื่อ-นามสกุล *</label>
+                <input
+                  id="employeeEditName"
+                  class="input"
+                >
+              </div>
+
+              <div class="field">
+                <label>Email</label>
+                <input
+                  id="employeeEditEmail"
+                  class="input"
+                  type="email"
+                >
+              </div>
+
+              <div class="field">
+                <label>ตำแหน่ง</label>
+                <input
+                  id="employeeEditPosition"
+                  class="input"
+                >
+              </div>
+
+              <div class="field">
+                <label>หน่วยงาน</label>
+                <input
+                  id="employeeEditDepartment"
+                  class="input"
+                >
+              </div>
+
+              <div class="field">
+                <label>org_code *</label>
+                <input
+                  id="employeeEditOrgCode"
+                  class="input"
+                  list="employeeEditOrgList"
+                  autocomplete="off"
+                >
+                <datalist id="employeeEditOrgList"></datalist>
+              </div>
+            </div>
+
+            <div class="employee-edit-location">
+              <div>
+                <span>Zone</span>
+                <strong id="employeeEditZone">-</strong>
+              </div>
+              <div>
+                <span>พื้นที่</span>
+                <strong id="employeeEditArea">-</strong>
+              </div>
+              <div>
+                <span>พื้นที่ย่อย</span>
+                <strong id="employeeEditSubArea">-</strong>
+              </div>
+            </div>
+
+            <div class="employee-edit-grid employee-edit-grid-lower">
+              <div class="field">
+                <label>ทีมรถ</label>
+                <input
+                  id="employeeEditCarTeam"
+                  class="input"
+                >
+              </div>
+
+              <div class="field">
+                <label>วันที่เริ่มงาน</label>
+                <input
+                  id="employeeEditStartDate"
+                  class="input"
+                  type="date"
+                >
+              </div>
+
+              <div class="field">
+                <label>วันที่ลาออก</label>
+                <input
+                  id="employeeEditResignDate"
+                  class="input"
+                  type="date"
+                >
+              </div>
+
+              <div class="field employee-edit-note">
+                <label>หมายเหตุการแก้ไข</label>
+                <input
+                  id="employeeEditNote"
+                  class="input"
+                  placeholder="ระบุเหตุผลหรือหมายเหตุ"
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button
+              class="btn btn-light"
+              data-employee-edit-close
+            >
+              ยกเลิก
+            </button>
+
+            <button
+              id="employeeEditSaveBtn"
+              class="btn btn-primary"
+            >
+              บันทึกข้อมูลพนักงาน
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
   function auditPageHtml(){return `<section id="page-admin-audit" class="page audit-center-page"><div class="audit-hero"><div><span class="eyebrow">SYSTEM AUDIT CENTER</span><h2>ประวัติการเปลี่ยนแปลง</h2><p>ตรวจสอบการจัดกะ การยืนยัน/ล็อกตาราง และการปิดรายการ Review</p></div><button id="auditExportBtn" class="btn btn-success">Export Excel</button></div><div class="panel section-gap"><div class="panel-body"><div class="fc-toolbar"><div class="field"><label>วันที่เริ่มต้น</label><input id="auditStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="auditEnd" class="input" type="date"></div><div class="field"><label>ประเภท</label><select id="auditType" class="select"><option value="">ทั้งหมด</option><option value="SHIFT_ASSIGNMENT">การจัดกะ</option><option value="SCHEDULE_MONTH">สถานะตารางกะ</option><option value="REVIEW">Review</option></select></div><div class="field"><label>ค้นหา</label><input id="auditSearch" class="input" placeholder="ผู้ดำเนินการ รหัส หรือรายละเอียด"></div><div class="toolbar-actions"><button id="auditLoadBtn" class="btn btn-primary">ค้นหา</button></div></div></div></div><div class="panel section-gap"><div class="panel-header"><div><h3>Audit Log</h3><p id="auditCount">0 รายการ</p></div></div><div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันเวลา</th><th>ประเภท</th><th>การทำงาน</th><th>ผู้ดำเนินการ</th><th>รายการ</th><th>รายละเอียด</th></tr></thead><tbody id="auditBody"></tbody></table></div></div></div></section>`;}
   function assistantPageHtml(){return `<section id="page-smart-assistant" class="page smart-assistant-page"><div class="assistant-hero"><div><span class="eyebrow">SMART DATA ASSISTANT</span><h2>ผู้ช่วยวิเคราะห์ Time-Clock</h2><p>สรุปจากข้อมูลที่ระบบโหลดจริง โดยไม่ส่งข้อมูลออกไปภายนอก</p></div><span class="fc-chip status-PUBLISHED">Local Insight Engine</span></div><div class="assistant-shell section-gap"><div class="assistant-chat"><div id="assistantMessages" class="assistant-messages"><div class="assistant-message bot"><strong>สวัสดีครับ</strong>ถามข้อมูล เช่น “วันนี้ Missing OUT กี่คน”, “หน่วยงานไหนมาสายมากสุด” หรือ “กะเดือนนี้ยืนยันแล้วกี่เปอร์เซ็นต์”</div></div><div class="assistant-inputbar"><input id="assistantInput" class="input" placeholder="พิมพ์คำถามเกี่ยวกับข้อมูล Time-Clock"><button id="assistantSendBtn" class="btn btn-primary">ถาม</button></div></div><aside><div class="panel"><div class="panel-header"><div><h3>คำถามแนะนำ</h3><p>กดเพื่อถามได้ทันที</p></div></div><div class="panel-body assistant-prompts"><button class="assistant-prompt">วันนี้ Missing IN กี่คน</button><button class="assistant-prompt">วันนี้ Missing OUT กี่คน</button><button class="assistant-prompt">หน่วยงานไหนมาสายมากที่สุด</button><button class="assistant-prompt">กะเดือนนี้ยืนยันแล้วกี่เปอร์เซ็นต์</button><button class="assistant-prompt">สรุปรายการรอตรวจสอบ</button><div class="assistant-disclaimer">รุ่นนี้เป็น Rule-based Insight จากข้อมูลในระบบ ไม่ได้เชื่อมบริการ AI ภายนอก</div></div></div></aside></div></section>`;}
 
@@ -7301,10 +7662,836 @@ ${skippedSummary(compatibility.skipped)}
   /* ------------------------------------------------------------------
      Employee Directory / Audit
      ------------------------------------------------------------------ */
-  let employeeRows=[],auditRows=[];
-  async function loadEmployees(){if((app()?.state?.profile?._realRole||app()?.state?.profile?.role)!=="HR_ADMIN")return;try{app()?.showLoading?.("กำลังโหลดข้อมูลพนักงาน...");employeeRows=await rpc("ta_get_employee_directory",{p_search:$("employeeDirectorySearch")?.value||null,p_zone:$("employeeDirectoryZone")?.value||null,p_department:$("employeeDirectoryDepartment")?.value||null,p_active_only:$("employeeDirectoryActive")?.value!=="false",p_limit:5000,p_offset:0})||[];renderEmployees();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
-  function renderEmployees(){const body=$("employeeDirectoryBody");if(!body)return;body.innerHTML=employeeRows.length?employeeRows.map(r=>`<tr><td><strong>${esc(r.emp_code)}</strong></td><td class="employee-name-cell"><strong>${esc(r.full_name||"-")}</strong><small>${esc(r.position_name||"")}</small></td><td>${esc(r.position_name||"-")}</td><td>${esc(r.department||"-")}</td><td>${esc(r.pc||"-")}</td><td>${esc(r.zone||r.area||"-")}</td><td>${esc(r.sub_area||"-")}</td><td>${fmtDate(r.start_date)}</td><td>${fmtDate(r.resign_date)}</td><td><span class="fc-badge ${r.employment_status==="ACTIVE"?"active":r.employment_status==="WAITING_START"?"waiting":"resigned"}">${r.employment_status==="ACTIVE"?"ปฏิบัติงาน":r.employment_status==="WAITING_START"?"รอเริ่มงาน":"พ้นสภาพ"}</span></td></tr>`).join(""):`<tr><td colspan="10" class="fc-empty">ไม่พบข้อมูลพนักงาน</td></tr>`;const total=Number(employeeRows[0]?.total_count||employeeRows.length);$("employeeDirectoryCount").textContent=num(total);$("employeeDirectoryActiveCount").textContent=num(employeeRows.filter(r=>r.employment_status==="ACTIVE").length);$("employeeDirectoryWaitingCount").textContent=num(employeeRows.filter(r=>r.employment_status==="WAITING_START").length);$("employeeDirectoryResignedCount").textContent=num(employeeRows.filter(r=>r.employment_status==="RESIGNED").length);$("employeeDirectoryMeta").textContent=`แสดง ${employeeRows.length.toLocaleString("th-TH")} จาก ${total.toLocaleString("th-TH")} คน`;}
-  function exportEmployees(){const rows=[["รหัสพนักงาน","ชื่อ-นามสกุล","ตำแหน่ง","หน่วยงาน","PC","พื้นที่","พื้นที่ย่อย","วันที่เริ่มงาน","วันที่ลาออก","สถานะ"],...employeeRows.map(r=>[r.emp_code,r.full_name,r.position_name,r.department,r.pc,r.zone||r.area,r.sub_area,fmtDate(r.start_date),fmtDate(r.resign_date),r.employment_status])];exportExcel(`Employee_Directory_${new Date().toISOString().slice(0,10)}.xls`,rows,"ข้อมูลพนักงาน");}
+  let employeeRows = [];
+  let auditRows = [];
+
+  const employeeDirectoryState = {
+    page: 1,
+    pageSize: 100,
+    total: 0,
+    filtersLoaded: false,
+    filterData: {
+      zones: [],
+      areas: [],
+      sub_areas: [],
+      departments: [],
+      locations: []
+    },
+    orgRows: []
+  };
+
+  function employeeDirectoryRole(){
+    return String(
+      app()?.state?.profile?._realRole
+      || app()?.state?.profile?.role
+      || ""
+    ).toUpperCase();
+  }
+
+  function isEmployeeDirectoryAdmin(){
+    return employeeDirectoryRole() === "HR_ADMIN";
+  }
+
+  function employeeDirectoryUnique(values){
+    return [
+      ...new Set(
+        (values || [])
+          .map(value => String(value || "").trim())
+          .filter(Boolean)
+      )
+    ].sort((a,b) =>
+      a.localeCompare(b,"th")
+    );
+  }
+
+  function fillEmployeeDirectorySelect(
+    id,
+    values,
+    label,
+    preserve = true
+  ){
+    const element = $(id);
+    if (!element) return;
+
+    const current =
+      preserve
+        ? element.value
+        : "";
+
+    element.innerHTML =
+      `<option value="">${esc(label)}</option>`
+      + employeeDirectoryUnique(values)
+          .map(value =>
+            `<option value="${esc(value)}">${esc(value)}</option>`
+          )
+          .join("");
+
+    if (
+      current
+      && [...element.options]
+        .some(option => option.value === current)
+    ) {
+      element.value = current;
+    } else {
+      element.value = "";
+    }
+  }
+
+  function updateEmployeeAreaFilter(
+    resetArea = false
+  ){
+    const zone =
+      $("employeeDirectoryZone")?.value || "";
+
+    const locations =
+      employeeDirectoryState.filterData.locations || [];
+
+    const areas =
+      locations
+        .filter(row =>
+          !zone
+          || String(row.zone || "") === zone
+        )
+        .map(row => row.area);
+
+    fillEmployeeDirectorySelect(
+      "employeeDirectoryArea",
+      areas,
+      "ทุกพื้นที่",
+      !resetArea
+    );
+
+    updateEmployeeSubAreaFilter(
+      resetArea
+    );
+  }
+
+  function updateEmployeeSubAreaFilter(
+    resetSubArea = false
+  ){
+    const zone =
+      $("employeeDirectoryZone")?.value || "";
+
+    const area =
+      $("employeeDirectoryArea")?.value || "";
+
+    const locations =
+      employeeDirectoryState.filterData.locations || [];
+
+    const subAreas =
+      locations
+        .filter(row =>
+          (!zone || String(row.zone || "") === zone)
+          && (!area || String(row.area || "") === area)
+        )
+        .map(row => row.sub_area);
+
+    fillEmployeeDirectorySelect(
+      "employeeDirectorySubArea",
+      subAreas,
+      "ทุกพื้นที่ย่อย",
+      !resetSubArea
+    );
+  }
+
+  async function loadEmployeeDirectoryFilters(
+    force = false
+  ){
+    if (
+      employeeDirectoryState.filtersLoaded
+      && !force
+    ) {
+      return;
+    }
+
+    const data =
+      await rpc(
+        "ta_get_employee_directory_filters_v6102"
+      ) || {};
+
+    employeeDirectoryState.filterData = {
+      zones:
+        Array.isArray(data.zones)
+          ? data.zones
+          : [],
+
+      areas:
+        Array.isArray(data.areas)
+          ? data.areas
+          : [],
+
+      sub_areas:
+        Array.isArray(data.sub_areas)
+          ? data.sub_areas
+          : [],
+
+      departments:
+        Array.isArray(data.departments)
+          ? data.departments
+          : [],
+
+      locations:
+        Array.isArray(data.locations)
+          ? data.locations
+          : []
+    };
+
+    employeeDirectoryState.orgRows =
+      employeeDirectoryState.filterData.locations;
+
+    fillEmployeeDirectorySelect(
+      "employeeDirectoryZone",
+      employeeDirectoryState.filterData.zones,
+      "ทุก Zone"
+    );
+
+    fillEmployeeDirectorySelect(
+      "employeeDirectoryDepartment",
+      employeeDirectoryState.filterData.departments,
+      "ทุกหน่วยงาน"
+    );
+
+    updateEmployeeAreaFilter();
+
+    const list = $("employeeEditOrgList");
+
+    if (list) {
+      list.innerHTML =
+        employeeDirectoryState.orgRows
+          .map(row => `
+            <option
+              value="${esc(row.org_code || "")}"
+            >
+              ${esc(row.org_name || "")}
+              • ${esc(row.zone || "-")}
+              • ${esc(row.area || "-")}
+              • ${esc(row.sub_area || "-")}
+            </option>
+          `)
+          .join("");
+    }
+
+    employeeDirectoryState.filtersLoaded = true;
+  }
+
+  async function fetchAllEmployeeDirectoryRows(){
+    const pageLimit = 1000;
+    let offset = 0;
+    let total = null;
+    const rows = [];
+    let safety = 0;
+
+    while (
+      total === null
+      || rows.length < total
+    ) {
+      safety += 1;
+
+      if (safety > 200) {
+        throw new Error(
+          "หยุดโหลดเพื่อป้องกัน Loop ผิดปกติ"
+        );
+      }
+
+      const chunk =
+        await rpc(
+          "ta_get_employee_directory_v6102",
+          {
+            p_search:
+              $("employeeDirectorySearch")?.value
+              || null,
+
+            p_zone:
+              $("employeeDirectoryZone")?.value
+              || null,
+
+            p_area:
+              $("employeeDirectoryArea")?.value
+              || null,
+
+            p_sub_area:
+              $("employeeDirectorySubArea")?.value
+              || null,
+
+            p_department:
+              $("employeeDirectoryDepartment")?.value
+              || null,
+
+            p_active_only:
+              $("employeeDirectoryActive")?.value
+              !== "false",
+
+            p_limit:
+              pageLimit,
+
+            p_offset:
+              offset
+          }
+        ) || [];
+
+      if (total === null) {
+        total =
+          Number(
+            chunk[0]?.total_count
+            || chunk.length
+            || 0
+          );
+      }
+
+      rows.push(...chunk);
+
+      if (
+        chunk.length === 0
+        || chunk.length < pageLimit
+      ) {
+        break;
+      }
+
+      offset += chunk.length;
+    }
+
+    employeeDirectoryState.total =
+      total === null
+        ? rows.length
+        : total;
+
+    return rows;
+  }
+
+  async function loadEmployees(){
+    if (!isEmployeeDirectoryAdmin()) {
+      return;
+    }
+
+    try {
+      app()?.showLoading?.(
+        "กำลังโหลดข้อมูลพนักงาน..."
+      );
+
+      await loadEmployeeDirectoryFilters();
+
+      employeeRows =
+        await fetchAllEmployeeDirectoryRows();
+
+      employeeDirectoryState.page = 1;
+
+      renderEmployees();
+    } catch (error) {
+      app()?.toast(
+        app()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      app()?.hideLoading?.();
+    }
+  }
+
+  function employeeStatusHtml(status){
+    const value =
+      String(status || "").toUpperCase();
+
+    const cssClass =
+      value === "ACTIVE"
+        ? "active"
+        : value === "WAITING_START"
+          ? "waiting"
+          : "resigned";
+
+    const label =
+      value === "ACTIVE"
+        ? "ปฏิบัติงาน"
+        : value === "WAITING_START"
+          ? "รอเริ่มงาน"
+          : "พ้นสภาพ";
+
+    return `
+      <span class="fc-badge ${cssClass}">
+        ${label}
+      </span>
+    `;
+  }
+
+  function renderEmployees(){
+    const body =
+      $("employeeDirectoryBody");
+
+    if (!body) return;
+
+    const pageSize =
+      Number(
+        $("employeeDirectoryPageSize")?.value
+        || employeeDirectoryState.pageSize
+        || 100
+      );
+
+    employeeDirectoryState.pageSize =
+      pageSize;
+
+    const totalRows =
+      employeeRows.length;
+
+    const totalPages =
+      pageSize >= 999999
+        ? 1
+        : Math.max(
+            1,
+            Math.ceil(
+              totalRows / pageSize
+            )
+          );
+
+    employeeDirectoryState.page =
+      Math.min(
+        Math.max(
+          employeeDirectoryState.page,
+          1
+        ),
+        totalPages
+      );
+
+    const start =
+      pageSize >= 999999
+        ? 0
+        : (
+            employeeDirectoryState.page
+            - 1
+          ) * pageSize;
+
+    const end =
+      pageSize >= 999999
+        ? totalRows
+        : start + pageSize;
+
+    const visibleRows =
+      employeeRows.slice(
+        start,
+        end
+      );
+
+    body.innerHTML =
+      visibleRows.length
+        ? visibleRows
+            .map(row => `
+              <tr>
+                <td class="employee-code-cell">
+                  <strong>${esc(row.emp_code)}</strong>
+                  <small>
+                    ${esc(row.org_code || "-")}
+                  </small>
+                </td>
+
+                <td class="employee-name-cell">
+                  <strong>
+                    ${esc(row.full_name || "-")}
+                  </strong>
+                  <small>
+                    ${esc(row.car_team || "")}
+                  </small>
+                </td>
+
+                <td class="employee-email-cell">
+                  ${
+                    row.email
+                      ? `<a href="mailto:${esc(row.email)}">${esc(row.email)}</a>`
+                      : "-"
+                  }
+                </td>
+
+                <td>
+                  ${esc(row.position_name || "-")}
+                </td>
+
+                <td>
+                  ${esc(row.department || "-")}
+                </td>
+
+                <td>
+                  <span class="employee-zone-pill">
+                    ${esc(row.zone || "-")}
+                  </span>
+                </td>
+
+                <td>
+                  ${esc(row.area || "-")}
+                </td>
+
+                <td>
+                  ${esc(row.sub_area || "-")}
+                </td>
+
+                <td>
+                  ${fmtDate(row.start_date)}
+                </td>
+
+                <td>
+                  ${fmtDate(row.resign_date)}
+                </td>
+
+                <td>
+                  ${employeeStatusHtml(
+                    row.employment_status
+                  )}
+                </td>
+
+                <td class="employee-action-cell">
+                  <button
+                    class="btn btn-light employee-edit-btn"
+                    data-employee-edit="${esc(row.emp_code)}"
+                    title="แก้ไขข้อมูลพนักงาน"
+                  >
+                    แก้ไข
+                  </button>
+                </td>
+              </tr>
+            `)
+            .join("")
+        : `
+          <tr>
+            <td
+              colspan="12"
+              class="fc-empty"
+            >
+              ไม่พบข้อมูลพนักงาน
+            </td>
+          </tr>
+        `;
+
+    const activeCount =
+      employeeRows.filter(row =>
+        row.employment_status === "ACTIVE"
+      ).length;
+
+    const waitingCount =
+      employeeRows.filter(row =>
+        row.employment_status === "WAITING_START"
+      ).length;
+
+    const resignedCount =
+      employeeRows.filter(row =>
+        row.employment_status === "RESIGNED"
+      ).length;
+
+    $("employeeDirectoryCount").textContent =
+      num(totalRows);
+
+    $("employeeDirectoryActiveCount").textContent =
+      num(activeCount);
+
+    $("employeeDirectoryWaitingCount").textContent =
+      num(waitingCount);
+
+    $("employeeDirectoryResignedCount").textContent =
+      num(resignedCount);
+
+    const displayStart =
+      totalRows
+        ? start + 1
+        : 0;
+
+    const displayEnd =
+      Math.min(
+        end,
+        totalRows
+      );
+
+    $("employeeDirectoryMeta").textContent =
+      totalRows
+        ? `โหลดครบ ${totalRows.toLocaleString("th-TH")} คน • กำลังแสดง ${displayStart.toLocaleString("th-TH")}–${displayEnd.toLocaleString("th-TH")}`
+        : "ไม่พบข้อมูลพนักงาน";
+
+    const pageInfo =
+      $("employeeDirectoryPageInfo");
+
+    if (pageInfo) {
+      pageInfo.textContent =
+        `หน้า ${employeeDirectoryState.page.toLocaleString("th-TH")} / ${totalPages.toLocaleString("th-TH")} • ${totalRows.toLocaleString("th-TH")} คน`;
+    }
+
+    const prev =
+      $("employeeDirectoryPrev");
+
+    const next =
+      $("employeeDirectoryNext");
+
+    if (prev) {
+      prev.disabled =
+        employeeDirectoryState.page <= 1;
+    }
+
+    if (next) {
+      next.disabled =
+        employeeDirectoryState.page >= totalPages;
+    }
+  }
+
+  function employeeExportRows(){
+    return [
+      [
+        "รหัสพนักงาน",
+        "ชื่อ-นามสกุล",
+        "Email",
+        "ตำแหน่ง",
+        "หน่วยงาน",
+        "org_code",
+        "Zone",
+        "พื้นที่",
+        "พื้นที่ย่อย",
+        "ทีมรถ",
+        "วันที่เริ่มงาน",
+        "วันที่ลาออก",
+        "สถานะ"
+      ],
+
+      ...employeeRows.map(row => [
+        row.emp_code,
+        row.full_name,
+        row.email,
+        row.position_name,
+        row.department,
+        row.org_code,
+        row.zone,
+        row.area,
+        row.sub_area,
+        row.car_team,
+        fmtDate(row.start_date),
+        fmtDate(row.resign_date),
+        row.employment_status
+      ])
+    ];
+  }
+
+  function exportEmployees(){
+    if (!employeeRows.length) {
+      return app()?.toast(
+        "ไม่มีข้อมูลพนักงานสำหรับส่งออก",
+        "error"
+      );
+    }
+
+    const rows =
+      employeeExportRows();
+
+    exportExcel(
+      `Employee_Directory_${new Date().toISOString().slice(0,10)}.xls`,
+      rows,
+      `ข้อมูลพนักงาน ${employeeRows.length.toLocaleString("th-TH")} คน`
+    );
+  }
+
+  function employeeDirectoryRow(
+    empCode
+  ){
+    return employeeRows.find(row =>
+      String(row.emp_code)
+      === String(empCode)
+    ) || null;
+  }
+
+  function employeeOrgLocation(
+    orgCode
+  ){
+    return employeeDirectoryState.orgRows.find(row =>
+      String(row.org_code)
+      === String(orgCode || "").trim()
+    ) || null;
+  }
+
+  function renderEmployeeEditLocation(){
+    const location =
+      employeeOrgLocation(
+        $("employeeEditOrgCode")?.value
+      );
+
+    const zone =
+      location?.zone || "-";
+
+    const area =
+      location?.area || "-";
+
+    const subArea =
+      location?.sub_area || "-";
+
+    if ($("employeeEditZone")) {
+      $("employeeEditZone").textContent =
+        zone;
+    }
+
+    if ($("employeeEditArea")) {
+      $("employeeEditArea").textContent =
+        area;
+    }
+
+    if ($("employeeEditSubArea")) {
+      $("employeeEditSubArea").textContent =
+        subArea;
+    }
+  }
+
+  async function openEmployeeEdit(
+    empCode
+  ){
+    if (!isEmployeeDirectoryAdmin()) {
+      return;
+    }
+
+    await loadEmployeeDirectoryFilters();
+
+    const row =
+      employeeDirectoryRow(empCode);
+
+    if (!row) {
+      return app()?.toast(
+        "ไม่พบข้อมูลพนักงาน",
+        "error"
+      );
+    }
+
+    $("employeeEditCode").value =
+      row.emp_code || "";
+
+    $("employeeEditName").value =
+      row.full_name || "";
+
+    $("employeeEditEmail").value =
+      row.email || "";
+
+    $("employeeEditPosition").value =
+      row.position_name || "";
+
+    $("employeeEditDepartment").value =
+      row.department || "";
+
+    $("employeeEditOrgCode").value =
+      row.org_code || "";
+
+    $("employeeEditCarTeam").value =
+      row.car_team || "";
+
+    $("employeeEditStartDate").value =
+      row.start_date
+        ? String(row.start_date).slice(0,10)
+        : "";
+
+    $("employeeEditResignDate").value =
+      row.resign_date
+        ? String(row.resign_date).slice(0,10)
+        : "";
+
+    $("employeeEditNote").value = "";
+
+    renderEmployeeEditLocation();
+
+    $("employeeEditModal")
+      ?.classList.remove("hidden");
+  }
+
+  function closeEmployeeEdit(){
+    $("employeeEditModal")
+      ?.classList.add("hidden");
+  }
+
+  async function saveEmployeeEdit(){
+    if (!isEmployeeDirectoryAdmin()) {
+      return;
+    }
+
+    const empCode =
+      $("employeeEditCode")?.value || "";
+
+    const fullName =
+      $("employeeEditName")?.value.trim() || "";
+
+    const orgCode =
+      $("employeeEditOrgCode")?.value.trim() || "";
+
+    if (!fullName) {
+      $("employeeEditName")?.focus();
+
+      return app()?.toast(
+        "กรุณาระบุชื่อ-นามสกุล",
+        "error"
+      );
+    }
+
+    const location =
+      employeeOrgLocation(orgCode);
+
+    if (!location) {
+      $("employeeEditOrgCode")?.focus();
+
+      return app()?.toast(
+        "ไม่พบ org_code ในผังองค์กรที่เปิดใช้งาน",
+        "error"
+      );
+    }
+
+    try {
+      app()?.showLoading?.(
+        "กำลังบันทึกข้อมูลพนักงาน..."
+      );
+
+      await rpc(
+        "ta_update_employee_v6102",
+        {
+          p_emp_code:
+            empCode,
+
+          p_full_name:
+            fullName,
+
+          p_email:
+            $("employeeEditEmail")?.value.trim()
+            || null,
+
+          p_position_name:
+            $("employeeEditPosition")?.value.trim()
+            || null,
+
+          p_department:
+            $("employeeEditDepartment")?.value.trim()
+            || null,
+
+          p_org_code:
+            orgCode,
+
+          p_car_team:
+            $("employeeEditCarTeam")?.value.trim()
+            || null,
+
+          p_start_date:
+            $("employeeEditStartDate")?.value
+            || null,
+
+          p_resign_date:
+            $("employeeEditResignDate")?.value
+            || null,
+
+          p_note:
+            $("employeeEditNote")?.value.trim()
+            || null
+        }
+      );
+
+      closeEmployeeEdit();
+
+      app()?.toast(
+        "บันทึกข้อมูลพนักงานเรียบร้อย",
+        "success"
+      );
+
+      await loadEmployees();
+    } catch (error) {
+      app()?.toast(
+        app()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      app()?.hideLoading?.();
+    }
+  }
+
   async function loadAudit(){try{app()?.showLoading?.("กำลังโหลด Audit Log...");auditRows=await rpc("ta_get_system_audit",{p_start_date:$("auditStart")?.value,p_end_date:$("auditEnd")?.value,p_action_type:$("auditType")?.value||null,p_search:$("auditSearch")?.value||null,p_limit:2000})||[];renderAudit();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
   function renderAudit(){const body=$("auditBody");if(!body)return;body.innerHTML=auditRows.length?auditRows.map(r=>`<tr><td>${fmtDateTime(r.event_at)}</td><td><span class="fc-badge info">${esc(r.event_type)}</span></td><td>${esc(r.action_type||"-")}</td><td>${esc(r.actor_email||"-")}</td><td>${esc(r.entity_key||"-")}</td><td>${esc(r.detail||"-")}</td></tr>`).join(""):`<tr><td colspan="6" class="fc-empty">ไม่พบ Audit Log</td></tr>`;$("auditCount").textContent=`${auditRows.length.toLocaleString("th-TH")} รายการ`;}
   function exportAudit(){const rows=[["วันเวลา","ประเภท","การทำงาน","ผู้ดำเนินการ","รายการ","รายละเอียด"],...auditRows.map(r=>[fmtDateTime(r.event_at),r.event_type,r.action_type,r.actor_email,r.entity_key,r.detail])];exportExcel(`Audit_Log_${$("auditStart")?.value}_${$("auditEnd")?.value}.xls`,rows,"Audit Log");}
@@ -7339,14 +8526,156 @@ ${skippedSummary(compatibility.skipped)}
     document.addEventListener("timeclock:attendance-loaded",e=>renderAttendanceDataNotice(e.detail||{}));
     document.addEventListener("timeclock:schedule-rendered",()=>{loadScheduleStatus();});
     document.addEventListener("timeclock:review-rendered",()=>loadNotifications());
-    $("employeeDirectoryLoadBtn")?.addEventListener("click",loadEmployees);$("employeeExportBtn")?.addEventListener("click",exportEmployees);$("auditLoadBtn")?.addEventListener("click",loadAudit);$("auditExportBtn")?.addEventListener("click",exportAudit);
+    $("employeeDirectoryLoadBtn")
+      ?.addEventListener(
+        "click",
+        loadEmployees
+      );
+
+    $("employeeExportBtn")
+      ?.addEventListener(
+        "click",
+        exportEmployees
+      );
+
+    $("employeeDirectorySearch")
+      ?.addEventListener(
+        "keydown",
+        event => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            loadEmployees();
+          }
+        }
+      );
+
+    $("employeeDirectoryZone")
+      ?.addEventListener(
+        "change",
+        () => {
+          updateEmployeeAreaFilter(true);
+        }
+      );
+
+    $("employeeDirectoryArea")
+      ?.addEventListener(
+        "change",
+        () => {
+          updateEmployeeSubAreaFilter(true);
+        }
+      );
+
+    $("employeeDirectoryPageSize")
+      ?.addEventListener(
+        "change",
+        event => {
+          employeeDirectoryState.pageSize =
+            Number(event.target.value || 100);
+
+          employeeDirectoryState.page = 1;
+
+          renderEmployees();
+        }
+      );
+
+    $("employeeDirectoryPrev")
+      ?.addEventListener(
+        "click",
+        () => {
+          if (employeeDirectoryState.page > 1) {
+            employeeDirectoryState.page -= 1;
+            renderEmployees();
+          }
+        }
+      );
+
+    $("employeeDirectoryNext")
+      ?.addEventListener(
+        "click",
+        () => {
+          const pageSize =
+            employeeDirectoryState.pageSize;
+
+          const totalPages =
+            pageSize >= 999999
+              ? 1
+              : Math.max(
+                  1,
+                  Math.ceil(
+                    employeeRows.length
+                    / pageSize
+                  )
+                );
+
+          if (
+            employeeDirectoryState.page
+            < totalPages
+          ) {
+            employeeDirectoryState.page += 1;
+            renderEmployees();
+          }
+        }
+      );
+
+    $("employeeEditOrgCode")
+      ?.addEventListener(
+        "input",
+        renderEmployeeEditLocation
+      );
+
+    $("employeeEditSaveBtn")
+      ?.addEventListener(
+        "click",
+        saveEmployeeEdit
+      );
+
+    document.addEventListener(
+      "click",
+      event => {
+        const editButton =
+          event.target.closest(
+            "[data-employee-edit]"
+          );
+
+        if (editButton) {
+          openEmployeeEdit(
+            editButton.dataset.employeeEdit
+          );
+          return;
+        }
+
+        if (
+          event.target.closest(
+            "[data-employee-edit-close]"
+          )
+        ) {
+          closeEmployeeEdit();
+        }
+      }
+    );
+
+    $("auditLoadBtn")?.addEventListener("click",loadAudit);
+    $("auditExportBtn")?.addEventListener("click",exportAudit);
     $("assistantSendBtn")?.addEventListener("click",()=>{const q=$("assistantInput")?.value;askAssistant(q);$("assistantInput").value="";});$("assistantInput")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("assistantSendBtn")?.click();}});qsa(".assistant-prompt").forEach(b=>b.addEventListener("click",()=>askAssistant(b.textContent)));
     document.addEventListener("click",e=>{const b=e.target.closest('[data-admin-open="admin-employees"],[data-admin-open="admin-audit"]');if(!b)return;setTimeout(()=>{const page=b.dataset.adminOpen;const titles={"admin-employees":["ข้อมูลพนักงาน","ค้นหาและตรวจสอบข้อมูลพนักงาน"],"admin-audit":["Audit Log","ประวัติการเปลี่ยนแปลงและการใช้งานระบบ"]};if($("pageTitle"))$("pageTitle").textContent=titles[page][0];if($("pageSubtitle"))$("pageSubtitle").textContent=titles[page][1];page==="admin-employees"?loadEmployees():loadAudit();},0);});
     document.addEventListener("timeclock:profile-ready",loadNotifications);
-    setTimeout(()=>{const f=app()?.state?.filters;if(f){fillNewSelect("employeeDirectoryZone",f.zones,"ทุกพื้นที่");fillNewSelect("employeeDirectoryDepartment",f.departments,"ทุกหน่วยงาน");}},2500);
+    setTimeout(
+      () => {
+        if (isEmployeeDirectoryAdmin()) {
+          loadEmployeeDirectoryFilters()
+            .catch(() => {});
+        }
+      },
+      1200
+    );
   }
   function fillNewSelect(id,values,label){const el=$(id);if(!el)return;const old=el.value;el.innerHTML=`<option value="">${label}</option>`+(values||[]).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");el.value=old;}
-  function init(){injectNavAndPages();enhanceAttendance();enhanceSchedule();enhanceReview();setDefaults();bindGlobal();document.documentElement.dataset.functionalVersion=VERSION;if($("aboutVersion"))$("aboutVersion").textContent=VERSION;if($("aboutBuild"))$("aboutBuild").textContent="Enterprise V6 Functional Complete";setTimeout(()=>{const f=app()?.state?.filters;if(f){fillNewSelect("employeeDirectoryZone",f.zones,"ทุกพื้นที่");fillNewSelect("employeeDirectoryDepartment",f.departments,"ทุกหน่วยงาน");}loadNotifications();},3000);}
+  function init(){injectNavAndPages();enhanceAttendance();enhanceSchedule();enhanceReview();setDefaults();bindGlobal();document.documentElement.dataset.functionalVersion=VERSION;if($("aboutVersion"))$("aboutVersion").textContent=VERSION;if($("aboutBuild"))$("aboutBuild").textContent="Enterprise V6 Functional Complete";setTimeout(()=>{
+    if(isEmployeeDirectoryAdmin()){
+      loadEmployeeDirectoryFilters().catch(()=>{});
+    }
+    loadNotifications();
+  },1800);}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 
   window.TimeClockFunctional={VERSION,loadEmployees,loadAudit,loadNotifications,renderAttendanceEnterprise,loadScheduleStatus};
@@ -7938,7 +9267,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.10.1 CSV import + technician work patterns + calculation UI ===== */
+/* ===== V6.10.2 CSV import + technician work patterns + calculation UI ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -8414,7 +9743,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.5 Leave, Certificate & Time Correction UI ===== */
 (function TimeClockV650(){
   'use strict';
-  const VERSION='6.10.1';
+  const VERSION='6.10.2';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8495,11 +9824,11 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.10.1 Role, Manager Hierarchy & Shift Requests ===== */
+/* ===== V6.10.2 Role, Manager Hierarchy & Shift Requests ===== */
 (function TimeClockV680(){
   "use strict";
 
-  const VERSION = "6.10.1";
+  const VERSION = "6.10.2";
   const app = () => window.TimeClockApp;
   const $ = id => document.getElementById(id);
   const qsa = (selector,root=document) =>
@@ -9264,7 +10593,7 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.10.1 Organization Structure ===== */
+/* ===== V6.10.2 Organization Structure ===== */
 "use strict";
 (() => {
   const A = () => window.TimeClockApp;
@@ -10239,8 +11568,8 @@ ${skippedSummary(compatibility.skipped)}
 
     A().downloadFile?.(
       kind==="org"
-        ? "Organization_Structure_Template_v6.10.1.csv"
-        : "Organization_Manager_Scope_Template_v6.10.1.csv",
+        ? "Organization_Structure_Template_v6.10.2.csv"
+        : "Organization_Manager_Scope_Template_v6.10.2.csv",
       "\uFEFF"+headers.join(",")+"\n",
       "text/csv;charset=utf-8"
     );
