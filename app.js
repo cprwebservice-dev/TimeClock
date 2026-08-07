@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.3";
-document.documentElement.dataset.timeClockBuild = "6.10.3";
+window.__TIME_CLOCK_BUILD__ = "V6.10.4";
+document.documentElement.dataset.timeClockBuild = "6.10.4";
 
 
 /* ===== js/config.js ===== */
@@ -11622,75 +11622,562 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
 
-  async function loadManagerCandidates() {
-    if(state.managerCandidates.length) return;
+  async function loadManagerCandidates(
+    force = false
+  ) {
+    if(
+      state.managerCandidates.length
+      && !force
+    ) return;
+
     state.managerCandidates =
-      await rpc("ta_get_org_manager_candidates_v690") || [];
-    $("omManagerOptions").innerHTML = state.managerCandidates
-      .map(manager =>
-        `<option value="${esc(manager.email)}">${esc(manager.display_name||manager.email)} • ${esc(manager.emp_code||"-")}</option>`
-      ).join("");
+      await rpc(
+        "ta_get_org_manager_candidates_v6104"
+      ) || [];
   }
 
-  async function openManager(scopeId=null) {
-    const unit = state.detail?.unit;
+  function normalizeManagerSearch(
+    value
+  ) {
+    return String(value || "")
+      .trim()
+      .toLowerCase();
+  }
+
+  function managerCandidateText(
+    manager
+  ) {
+    return [
+      manager.emp_code,
+      manager.display_name,
+      manager.email,
+      manager.pc,
+      manager.position_name,
+      manager.department,
+      manager.org_code,
+      manager.zone,
+      manager.area,
+      manager.sub_area
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+
+  function findManagerCandidateByEmail(
+    email
+  ) {
+    const key =
+      normalizeManagerSearch(email);
+
+    return state.managerCandidates.find(
+      manager =>
+        normalizeManagerSearch(
+          manager.email
+        ) === key
+    ) || null;
+  }
+
+  function managerCandidateCard(
+    manager
+  ) {
+    const scopeCount =
+      Number(
+        manager.existing_scope_count
+        || 0
+      );
+
+    return `
+      <button
+        type="button"
+        class="org-manager-candidate"
+        data-org-manager-candidate="${esc(manager.email)}"
+      >
+        <span class="org-manager-avatar">
+          ${esc(
+            String(
+              manager.display_name
+              || manager.emp_code
+              || "M"
+            )
+              .trim()
+              .slice(0,1)
+              .toUpperCase()
+          )}
+        </span>
+
+        <span class="org-manager-candidate-main">
+          <strong>
+            ${esc(manager.emp_code || "-")}
+            •
+            ${esc(manager.display_name || "-")}
+          </strong>
+
+          <small>
+            ${esc(manager.email || "-")}
+          </small>
+
+          <em>
+            ${esc(manager.position_name || "-")}
+            •
+            ${esc(manager.department || "-")}
+          </em>
+        </span>
+
+        <span class="org-manager-candidate-side">
+          <b>PC ${esc(manager.pc || "-")}</b>
+          ${
+            scopeCount
+              ? `<small>${num(scopeCount)} Scope</small>`
+              : `<small>ยังไม่มี Scope</small>`
+          }
+        </span>
+      </button>
+    `;
+  }
+
+  function renderManagerSearchResults(
+    queryValue = ""
+  ) {
+    const results =
+      $("omManagerSearchResults");
+
+    if(!results) return;
+
+    const query =
+      normalizeManagerSearch(
+        queryValue
+      );
+
+    const matches =
+      state.managerCandidates
+        .filter(manager =>
+          !query
+          || managerCandidateText(
+            manager
+          ).includes(query)
+        )
+        .slice(0,30);
+
+    if(!query) {
+      results.innerHTML = `
+        <div class="org-manager-search-empty">
+          พิมพ์รหัสพนักงาน ชื่อ-นามสกุล หรือ Email เพื่อค้นหา
+        </div>
+      `;
+      results.classList.add("hidden");
+      return;
+    }
+
+    results.innerHTML =
+      matches.length
+        ? matches
+            .map(managerCandidateCard)
+            .join("")
+        : `
+          <div class="org-manager-search-empty">
+            ไม่พบ Manager ที่ตรงกับคำค้นหา
+          </div>
+        `;
+
+    results.classList.remove("hidden");
+  }
+
+  function renderSelectedManager(
+    manager,
+    fallbackEmail = ""
+  ) {
+    const selected =
+      $("omManagerSelected");
+
+    if(!selected) return;
+
+    if(!manager && !fallbackEmail) {
+      selected.innerHTML = "";
+      selected.classList.add("hidden");
+      return;
+    }
+
+    if(manager) {
+      selected.innerHTML = `
+        <div class="org-manager-selected-avatar">
+          ${esc(
+            String(
+              manager.display_name
+              || manager.emp_code
+              || "M"
+            )
+              .trim()
+              .slice(0,1)
+              .toUpperCase()
+          )}
+        </div>
+
+        <div class="org-manager-selected-main">
+          <span>Manager ที่เลือก</span>
+
+          <strong>
+            ${esc(manager.emp_code || "-")}
+            •
+            ${esc(manager.display_name || "-")}
+          </strong>
+
+          <small>
+            ${esc(manager.email || "-")}
+          </small>
+
+          <em>
+            PC ${esc(manager.pc || "-")}
+            •
+            ${esc(manager.position_name || "-")}
+          </em>
+        </div>
+
+        <div class="org-manager-selected-location">
+          <span>
+            ${esc(manager.zone || "-")}
+          </span>
+          <small>
+            ${esc(manager.area || "-")}
+            •
+            ${esc(manager.sub_area || "-")}
+          </small>
+        </div>
+      `;
+    } else {
+      selected.innerHTML = `
+        <div class="org-manager-selected-avatar">
+          M
+        </div>
+
+        <div class="org-manager-selected-main">
+          <span>Manager ปัจจุบัน</span>
+          <strong>${esc(fallbackEmail)}</strong>
+          <small>ข้อมูลพนักงานไม่อยู่ใน Candidate ปัจจุบัน</small>
+        </div>
+      `;
+    }
+
+    selected.classList.remove("hidden");
+  }
+
+  function selectManagerCandidate(
+    email
+  ) {
+    const manager =
+      findManagerCandidateByEmail(
+        email
+      );
+
+    if(!manager) {
+      return;
+    }
+
+    setVal(
+      "omManagerEmail",
+      manager.email
+    );
+
+    setVal(
+      "omManagerSearch",
+      `${manager.emp_code || "-"} • ${manager.display_name || "-"}`
+    );
+
+    $("omManagerSearchResults")
+      ?.classList.add("hidden");
+
+    $("omManagerSearchClear")
+      ?.classList.remove("hidden");
+
+    renderSelectedManager(
+      manager
+    );
+  }
+
+  function clearManagerSelection(
+    keepSearch = false
+  ) {
+    setVal(
+      "omManagerEmail",
+      ""
+    );
+
+    if(!keepSearch) {
+      setVal(
+        "omManagerSearch",
+        ""
+      );
+    }
+
+    $("omManagerSearchClear")
+      ?.classList.add("hidden");
+
+    renderSelectedManager(
+      null
+    );
+
+    $("omManagerSearchResults")
+      ?.classList.add("hidden");
+  }
+
+  async function openManager(
+    scopeId = null
+  ) {
+    const unit =
+      state.detail?.unit;
+
     if(!unit) return;
 
     await loadManagerCandidates();
-    const manager = scopeId
-      ? (state.detail.managers||[]).find(x => x.scope_id===scopeId)
-      : null;
 
-    setVal("omScopeId",manager?.scope_id||"");
-    setVal("omManagerEmail",manager?.manager_email||"");
-    $("omManagerEmail").disabled = Boolean(manager);
+    const manager =
+      scopeId
+        ? (
+            state.detail.managers
+            || []
+          ).find(
+            item =>
+              item.scope_id === scopeId
+          )
+        : null;
+
+    setVal(
+      "omScopeId",
+      manager?.scope_id || ""
+    );
+
+    const managerEmail =
+      manager?.manager_email || "";
+
+    setVal(
+      "omManagerEmail",
+      managerEmail
+    );
+
+    const candidate =
+      findManagerCandidateByEmail(
+        managerEmail
+      );
+
+    if(manager) {
+      setVal(
+        "omManagerSearch",
+        candidate
+          ? `${candidate.emp_code || "-"} • ${candidate.display_name || "-"}`
+          : managerEmail
+      );
+    } else {
+      setVal(
+        "omManagerSearch",
+        ""
+      );
+    }
+
+    const searchInput =
+      $("omManagerSearch");
+
+    if(searchInput) {
+      searchInput.disabled =
+        Boolean(manager);
+    }
+
+    if(manager) {
+      $("omManagerSearchClear")
+        ?.classList.add("hidden");
+
+      renderSelectedManager(
+        candidate,
+        managerEmail
+      );
+    } else {
+      clearManagerSelection();
+    }
+
+    $("omManagerSearchResults")
+      ?.classList.add("hidden");
+
     $("omIncludeDescendants").checked =
       manager?.include_descendants !== false;
-    $("omCanView").checked = manager?.can_view !== false;
-    $("omCanEdit").checked = Boolean(manager?.can_edit_schedule);
-    $("omCanConfirm").checked = Boolean(manager?.can_confirm_schedule);
-    $("omCanCertify").checked = Boolean(manager?.can_certify_attendance);
-    $("omCanDecide").checked = Boolean(manager?.can_decide_shift_request);
-    setVal("omEffectiveFrom",manager?.effective_from
-      ? String(manager.effective_from).slice(0,10) : "");
-    setVal("omEffectiveTo",manager?.effective_to
-      ? String(manager.effective_to).slice(0,10) : "");
-    setVal("omActive",manager?.is_active===false ? "false" : "true");
-    setVal("omNote",manager?.note||"");
-    setText("orgManagerModalTitle",manager ? "แก้ไข Manager" : "กำหนด Manager");
-    setText("orgManagerModalUnit",`${unit.org_code} • ${unit.org_name}`);
-    open("orgManagerModal");
+
+    $("omCanView").checked =
+      manager?.can_view !== false;
+
+    $("omCanEdit").checked =
+      Boolean(
+        manager?.can_edit_schedule
+      );
+
+    $("omCanConfirm").checked =
+      Boolean(
+        manager?.can_confirm_schedule
+      );
+
+    $("omCanCertify").checked =
+      Boolean(
+        manager?.can_certify_attendance
+      );
+
+    $("omCanDecide").checked =
+      Boolean(
+        manager?.can_decide_shift_request
+      );
+
+    setVal(
+      "omEffectiveFrom",
+      manager?.effective_from
+        ? String(
+            manager.effective_from
+          ).slice(0,10)
+        : ""
+    );
+
+    setVal(
+      "omEffectiveTo",
+      manager?.effective_to
+        ? String(
+            manager.effective_to
+          ).slice(0,10)
+        : ""
+    );
+
+    setVal(
+      "omActive",
+      manager?.is_active === false
+        ? "false"
+        : "true"
+    );
+
+    setVal(
+      "omNote",
+      manager?.note || ""
+    );
+
+    setText(
+      "orgManagerModalTitle",
+      manager
+        ? "แก้ไข Manager"
+        : "กำหนด Manager"
+    );
+
+    setText(
+      "orgManagerModalUnit",
+      `${unit.org_code} • ${unit.org_name}`
+    );
+
+    open(
+      "orgManagerModal"
+    );
+
+    if(!manager) {
+      setTimeout(
+        () =>
+          $("omManagerSearch")
+            ?.focus(),
+        80
+      );
+    }
   }
 
   async function saveManager() {
-    const unit = state.detail?.unit;
+    const unit =
+      state.detail?.unit;
+
     if(!unit) return;
 
-    A().showLoading?.("กำลังบันทึก Manager...");
+    const managerEmail =
+      val("omManagerEmail");
+
+    if(!managerEmail) {
+      A().toast?.(
+        "กรุณาค้นหาและเลือก Manager ก่อนบันทึก",
+        "error"
+      );
+
+      $("omManagerSearch")
+        ?.focus();
+
+      return;
+    }
+
+    A().showLoading?.(
+      "กำลังบันทึก Manager..."
+    );
+
     try {
-      await rpc("ta_upsert_manager_scope_v690",{
-        p_scope_id:val("omScopeId")||null,
-        p_manager_email:val("omManagerEmail"),
-        p_scope_type:"ORG_UNIT",
-        p_scope_value:unit.org_code,
-        p_scope_label:unit.org_name,
-        p_include_descendants:$("omIncludeDescendants").checked,
-        p_can_view:$("omCanView").checked,
-        p_can_edit_schedule:$("omCanEdit").checked,
-        p_can_confirm_schedule:$("omCanConfirm").checked,
-        p_can_certify_attendance:$("omCanCertify").checked,
-        p_can_decide_shift_request:$("omCanDecide").checked,
-        p_effective_from:val("omEffectiveFrom")||null,
-        p_effective_to:val("omEffectiveTo")||null,
-        p_is_active:val("omActive")==="true",
-        p_note:val("omNote")||null
-      });
-      close("orgManagerModal");
-      A().toast?.("บันทึก Manager เรียบร้อย","success");
+      await rpc(
+        "ta_upsert_manager_scope_v690",
+        {
+          p_scope_id:
+            val("omScopeId")
+            || null,
+
+          p_manager_email:
+            managerEmail,
+
+          p_scope_type:
+            "ORG_UNIT",
+
+          p_scope_value:
+            unit.org_code,
+
+          p_scope_label:
+            unit.org_name,
+
+          p_include_descendants:
+            $("omIncludeDescendants").checked,
+
+          p_can_view:
+            $("omCanView").checked,
+
+          p_can_edit_schedule:
+            $("omCanEdit").checked,
+
+          p_can_confirm_schedule:
+            $("omCanConfirm").checked,
+
+          p_can_certify_attendance:
+            $("omCanCertify").checked,
+
+          p_can_decide_shift_request:
+            $("omCanDecide").checked,
+
+          p_effective_from:
+            val("omEffectiveFrom")
+            || null,
+
+          p_effective_to:
+            val("omEffectiveTo")
+            || null,
+
+          p_is_active:
+            val("omActive") === "true",
+
+          p_note:
+            val("omNote")
+            || null
+        }
+      );
+
+      close(
+        "orgManagerModal"
+      );
+
+      A().toast?.(
+        "บันทึก Manager เรียบร้อย",
+        "success"
+      );
+
       await load();
-      await selectUnit(unit.org_id);
+
+      await selectUnit(
+        unit.org_id
+      );
     } catch(error) {
-      A().toast?.(A().humanError?.(error)||error.message,"error");
+      A().toast?.(
+        A().humanError?.(error)
+        || error.message,
+        "error"
+      );
     } finally {
       A().hideLoading?.();
     }
@@ -11995,7 +12482,65 @@ ${skippedSummary(compatibility.skipped)}
     ["orgAddManagerBtn","orgAddManagerInlineBtn"].forEach(id =>
       $(id)?.addEventListener("click",()=>openManager())
     );
-    $("orgSaveManagerBtn")?.addEventListener("click",saveManager);
+    $("orgSaveManagerBtn")
+      ?.addEventListener(
+        "click",
+        saveManager
+      );
+
+    $("omManagerSearch")
+      ?.addEventListener(
+        "input",
+        event => {
+          if(
+            val("omManagerEmail")
+          ) {
+            clearManagerSelection(true);
+          }
+
+          const value =
+            event.target.value;
+
+          $("omManagerSearchClear")
+            ?.classList.toggle(
+              "hidden",
+              !String(value || "").trim()
+            );
+
+          renderManagerSearchResults(
+            value
+          );
+        }
+      );
+
+    $("omManagerSearch")
+      ?.addEventListener(
+        "focus",
+        event => {
+          if(
+            !event.target.disabled
+            && String(
+              event.target.value
+              || ""
+            ).trim()
+          ) {
+            renderManagerSearchResults(
+              event.target.value
+            );
+          }
+        }
+      );
+
+    $("omManagerSearchClear")
+      ?.addEventListener(
+        "click",
+        () => {
+          clearManagerSelection();
+
+          $("omManagerSearch")
+            ?.focus();
+        }
+      );
 
     $("orgUploadBtn")?.addEventListener("click",()=>{
       state.orgUploadRows=[];
@@ -12040,6 +12585,31 @@ ${skippedSummary(compatibility.skipped)}
     );
 
     document.addEventListener("click",event=>{
+      const managerCandidate =
+        event.target.closest(
+          "[data-org-manager-candidate]"
+        );
+
+      if(managerCandidate) {
+        event.preventDefault();
+
+        selectManagerCandidate(
+          managerCandidate.dataset
+            .orgManagerCandidate
+        );
+
+        return;
+      }
+
+      if(
+        !event.target.closest(
+          ".org-manager-search-wrap"
+        )
+      ) {
+        $("omManagerSearchResults")
+          ?.classList.add("hidden");
+      }
+
       const toggle=event.target.closest("[data-org-toggle]");
       if(toggle) {
         event.stopPropagation();
