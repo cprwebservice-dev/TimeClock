@@ -1206,7 +1206,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       state.client.auth.onAuthStateChange((event, session) => {
         state.session = session;
         state.user = session?.user || null;
-        if (event === "SIGNED_OUT") showLogin();
+
+        if (event === "SIGNED_OUT") {
+          showLogin();
+        }
+
+        if (
+          event === "PASSWORD_RECOVERY"
+          && session
+        ) {
+          setTimeout(
+            () => {
+              showApp();
+
+              window.TimeClockUserAccounts
+                ?.openForcedPasswordChange?.(
+                  "RECOVERY"
+                );
+            },
+            50
+          );
+        }
       });
       return true;
     }
@@ -1244,6 +1264,20 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       try {
         await loadProfile();
         applyProfile();
+
+        if (
+          state.profile?.must_change_password
+        ) {
+          showApp();
+
+          window.TimeClockUserAccounts
+            ?.openForcedPasswordChange?.(
+              "FIRST_LOGIN"
+            );
+
+          return;
+        }
+
         showApp();
         await loadFilterOptions();
         await loadAttendanceFilterOptions(false);
@@ -1251,7 +1285,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       } catch (err) {
         toast(humanError(err), "error");
         showLogin();
-      } finally { hideLoading(); }
+      } finally {
+        hideLoading();
+      }
     }
 
     async function loadProfile() {
@@ -4407,7 +4443,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
         dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอแก้ไขกะ","พนักงานส่งคำขอ และ Manager พิจารณาตามสายบังคับบัญชา"], schedule:["ปฏิทินจัดกะ","จัดกะล่วงหน้าได้ทุกวัน รวมวันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์"], "work-patterns":["รูปแบบการทำงาน","กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น และรูปแบบช่วงงานรายบุคคล"], review:["รายการรอตรวจสอบ","ตรวจสอบกะและเวลาที่ผิดปกติ"], leave:["ลาและใบรับรอง","จัดการคำขอลา สิทธิ์ และเอกสารประกอบ"], "time-correction":["คำขอแก้ไขเวลา","ตรวจค่าเดิม–ค่าใหม่และอนุมัติการแก้เวลา"], "exception-center":["Exception Center","รวมรายการที่ต้องดำเนินการจากการลา เวลา และ Attendance"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
-        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
+        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page); setText("pageSubtitle", titles[page]?.[1] || ""); $("sidebar").classList.remove("open");
       if (page === "attendance" && !state.attendance.length) loadAttendance();
@@ -4417,6 +4453,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (page === "admin-shifts") loadShiftMaster();
       if (page === "admin-holidays") loadHolidays();
       if (page === "admin-org") window.TimeClockOrgStructure?.load?.();
+      if (page === "admin-accounts") window.TimeClockUserAccounts?.load?.();
       if (page === "admin-users") loadUsers();
     }
 
@@ -5855,7 +5892,7 @@ ${skippedSummary(compatibility.skipped)}
   const VERSION="6.4.0";
   const menuItems=[
     ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["review","รายการรอตรวจสอบ","Missing IN / OUT และรายการผิดปกติ","⚠"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
-    ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
+    ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
   ];
   let selected=0,lastProfileKey="";
   const app=()=>window.TimeClockApp;
@@ -12785,4 +12822,1583 @@ ${skippedSummary(compatibility.skipped)}
     rows:() => state.rows,
     select:selectUnit
   };
+})();
+
+
+/* ==========================================================================
+   V6.10.7 User Account Invite Link
+   ========================================================================== */
+(function(){
+  "use strict";
+
+  const A = () =>
+    window.TimeClockApp;
+
+  const $ = id =>
+    document.getElementById(id);
+
+  const safe = value =>
+    String(value ?? "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+
+  const fmtDateTime = value => {
+    if(!value) return "-";
+
+    const date =
+      new Date(value);
+
+    if(
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      return "-";
+    }
+
+    return date.toLocaleString(
+      "th-TH",
+      {
+        dateStyle:"short",
+        timeStyle:"short"
+      }
+    );
+  };
+
+  const num = value =>
+    Number(
+      value || 0
+    ).toLocaleString(
+      "th-TH"
+    );
+
+  const state = {
+    accounts: [],
+    candidates: [],
+    candidatesLoaded: false,
+    selectedEmployee: null,
+    passwordMode: "FIRST_LOGIN"
+  };
+
+  const realRole = () =>
+    String(
+      A()?.state?.profile?._realRole
+      || A()?.state?.profile?.role
+      || ""
+    ).toUpperCase();
+
+  const isHR = () =>
+    realRole() === "HR_ADMIN";
+
+  async function rpc(
+    name,
+    params = {}
+  ) {
+    const client =
+      A()?.state?.client;
+
+    if(!client) {
+      throw new Error(
+        "SUPABASE_NOT_READY"
+      );
+    }
+
+    const {
+      data,
+      error
+    } =
+      await client.rpc(
+        name,
+        params
+      );
+
+    if(error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  function accountStatusMeta(
+    status
+  ) {
+    const value =
+      String(status || "")
+        .toUpperCase();
+
+    if(value === "ACTIVE") {
+      return {
+        label:"พร้อมใช้งาน",
+        css:"active"
+      };
+    }
+
+    if(
+      value
+      === "INVITE_PENDING"
+    ) {
+      return {
+        label:"รอตอบรับ Invite",
+        css:"invite"
+      };
+    }
+
+    if(
+      value
+      === "FIRST_LOGIN_PASSWORD"
+    ) {
+      return {
+        label:"รอตั้งรหัสผ่าน",
+        css:"first"
+      };
+    }
+
+    if(value === "INACTIVE") {
+      return {
+        label:"Inactive",
+        css:"inactive"
+      };
+    }
+
+    return {
+      label:"ไม่มี Profile",
+      css:"issue"
+    };
+  }
+
+  function roleBadge(
+    role
+  ) {
+    const value =
+      String(role || "VIEWER")
+        .toUpperCase();
+
+    const css =
+      value === "HR_ADMIN"
+        ? "hr"
+        : value === "MANAGER"
+          ? "manager"
+          : "viewer";
+
+    return `
+      <span class="account-role-badge ${css}">
+        ${safe(value)}
+      </span>
+    `;
+  }
+
+  function accountStatusBadge(
+    status
+  ) {
+    const meta =
+      accountStatusMeta(
+        status
+      );
+
+    return `
+      <span class="account-status-badge ${meta.css}">
+        <i></i>
+        ${safe(meta.label)}
+      </span>
+    `;
+  }
+
+  async function loadSummary() {
+    const summary =
+      await rpc(
+        "ta_get_user_account_summary_v6107"
+      ) || {};
+
+    if($("accountKpiTotal")) {
+      $("accountKpiTotal").textContent =
+        num(
+          summary.total_users
+        );
+    }
+
+    if($("accountKpiActive")) {
+      $("accountKpiActive").textContent =
+        num(
+          summary.active_users
+        );
+    }
+
+    if($("accountKpiInvite")) {
+      $("accountKpiInvite").textContent =
+        num(
+          summary.invite_pending
+        );
+    }
+
+    if($("accountKpiFirstLogin")) {
+      $("accountKpiFirstLogin").textContent =
+        num(
+          summary.first_login_pending
+        );
+    }
+
+    if($("accountKpiIssue")) {
+      $("accountKpiIssue").textContent =
+        num(
+          Number(
+            summary.inactive_users
+            || 0
+          )
+          + Number(
+              summary.no_profile_users
+              || 0
+            )
+        );
+    }
+  }
+
+  async function load() {
+    if(!isHR()) return;
+
+    try {
+      A()?.showLoading?.(
+        "กำลังโหลดบัญชีผู้ใช้งาน..."
+      );
+
+      const rows =
+        await rpc(
+          "ta_get_user_accounts_v6107",
+          {
+            p_search:
+              $("accountSearch")
+                ?.value
+              || null,
+
+            p_role:
+              $("accountRoleFilter")
+                ?.value
+              || null,
+
+            p_status:
+              $("accountStatusFilter")
+                ?.value
+              || null
+          }
+        ) || [];
+
+      state.accounts =
+        rows;
+
+      renderAccounts();
+
+      await loadSummary();
+    } catch(error) {
+      A()?.toast?.(
+        A()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
+  function renderAccounts() {
+    const body =
+      $("accountTableBody");
+
+    if(!body) return;
+
+    body.innerHTML =
+      state.accounts.length
+        ? state.accounts
+            .map(account => `
+              <tr>
+                <td class="account-user-cell">
+                  <strong>
+                    ${safe(account.email || "-")}
+                  </strong>
+                  <small>
+                    ${safe(account.display_name || "-")}
+                  </small>
+                </td>
+
+                <td class="account-employee-cell">
+                  <strong>
+                    ${safe(account.emp_code || "-")}
+                  </strong>
+                  <small>
+                    ${safe(account.employee_name || "-")}
+                  </small>
+                </td>
+
+                <td>
+                  ${roleBadge(account.role)}
+                </td>
+
+                <td>
+                  ${accountStatusBadge(account.account_status)}
+                </td>
+
+                <td class="account-org-cell">
+                  <strong>
+                    ${safe(account.department || "-")}
+                  </strong>
+                  <small>
+                    ${safe(account.zone || "-")}
+                    •
+                    ${safe(account.area || "-")}
+                    •
+                    ${safe(account.sub_area || "-")}
+                  </small>
+                </td>
+
+                <td>
+                  ${fmtDateTime(account.created_at)}
+                </td>
+
+                <td>
+                  ${fmtDateTime(account.last_sign_in_at)}
+                </td>
+
+                <td>
+                  ${
+                    String(account.role).toUpperCase()
+                      === "MANAGER"
+                      ? `<span class="account-scope-count">${num(account.scope_count)}</span>`
+                      : "-"
+                  }
+                </td>
+
+                <td>
+                  <div class="account-row-actions">
+                    ${
+                      String(account.account_status).toUpperCase()
+                        === "INVITE_PENDING"
+                        ? `
+                          <button
+                            class="btn btn-light account-resend-button"
+                            data-account-resend="${safe(account.email)}"
+                            title="ส่ง Invite ใหม่"
+                          >
+                            ↻ Invite
+                          </button>
+                        `
+                        : ""
+                    }
+
+                    <button
+                      class="btn btn-light account-edit-button"
+                      data-account-edit="${safe(account.user_id)}"
+                    >
+                      แก้ไข
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `)
+            .join("")
+        : `
+          <tr>
+            <td colspan="9" class="fc-empty">
+              ไม่พบบัญชีผู้ใช้งาน
+            </td>
+          </tr>
+        `;
+
+    if($("accountTableMeta")) {
+      $("accountTableMeta").textContent =
+        `${state.accounts.length.toLocaleString("th-TH")} บัญชี`;
+    }
+  }
+
+  async function loadCandidates(
+    force = false
+  ) {
+    if(
+      state.candidatesLoaded
+      && !force
+    ) {
+      return;
+    }
+
+    state.candidates =
+      await rpc(
+        "ta_get_account_employee_candidates_v6106"
+      ) || [];
+
+    state.candidatesLoaded =
+      true;
+  }
+
+  function candidateSearchText(
+    employee
+  ) {
+    return [
+      employee.emp_code,
+      employee.full_name,
+      employee.email,
+      employee.position_name,
+      employee.department,
+      employee.org_code,
+      employee.zone,
+      employee.area,
+      employee.sub_area
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }
+
+  function renderCandidateResults(
+    query
+  ) {
+    const box =
+      $("accountEmployeeSearchResults");
+
+    if(!box) return;
+
+    const key =
+      String(query || "")
+        .trim()
+        .toLowerCase();
+
+    if(!key) {
+      box.classList.add(
+        "hidden"
+      );
+      box.innerHTML = "";
+      return;
+    }
+
+    const matches =
+      state.candidates
+        .filter(employee =>
+          candidateSearchText(
+            employee
+          ).includes(key)
+        )
+        .slice(0,30);
+
+    box.innerHTML =
+      matches.length
+        ? matches
+            .map(employee => {
+              const exists =
+                Boolean(
+                  employee.auth_user_exists
+                );
+
+              return `
+                <button
+                  type="button"
+                  class="account-employee-result ${exists ? "existing" : ""}"
+                  ${
+                    exists
+                      ? "disabled"
+                      : `data-account-employee="${safe(employee.emp_code)}"`
+                  }
+                >
+                  <span class="account-employee-avatar">
+                    ${safe(
+                      String(
+                        employee.full_name
+                        || employee.emp_code
+                        || "U"
+                      )
+                        .trim()
+                        .slice(0,1)
+                    )}
+                  </span>
+
+                  <span class="account-employee-result-main">
+                    <strong>
+                      ${safe(employee.emp_code || "-")}
+                      •
+                      ${safe(employee.full_name || "-")}
+                    </strong>
+
+                    <small>
+                      ${safe(employee.email || "-")}
+                    </small>
+
+                    <em>
+                      ${safe(employee.position_name || "-")}
+                      •
+                      ${safe(employee.department || "-")}
+                    </em>
+                  </span>
+
+                  <span class="account-employee-result-status ${exists ? "existing" : "new"}">
+                    ${
+                      exists
+                        ? "มีบัญชีแล้ว"
+                        : "สร้างได้"
+                    }
+                  </span>
+                </button>
+              `;
+            })
+            .join("")
+        : `
+          <div class="account-employee-empty">
+            ไม่พบพนักงานที่ตรงกับคำค้นหา
+          </div>
+        `;
+
+    box.classList.remove(
+      "hidden"
+    );
+  }
+
+  function selectEmployee(
+    empCode
+  ) {
+    const employee =
+      state.candidates.find(
+        item =>
+          String(item.emp_code)
+          === String(empCode)
+      );
+
+    if(!employee) return;
+
+    if(employee.auth_user_exists) {
+      return;
+    }
+
+    state.selectedEmployee =
+      employee;
+
+    $("accountCreateEmpCode").value =
+      employee.emp_code || "";
+
+    $("accountCreateEmail").value =
+      employee.email || "";
+
+    $("accountCreateDisplayName").value =
+      employee.full_name || "";
+
+    $("accountEmployeeSearch").value =
+      `${employee.emp_code || "-"} • ${employee.full_name || "-"}`;
+
+    $("accountEmployeeSearchResults")
+      ?.classList.add("hidden");
+
+    const selected =
+      $("accountSelectedEmployee");
+
+    if(selected) {
+      selected.innerHTML = `
+        <div class="account-selected-avatar">
+          ${safe(
+            String(
+              employee.full_name
+              || employee.emp_code
+              || "U"
+            )
+              .trim()
+              .slice(0,1)
+          )}
+        </div>
+
+        <div>
+          <span>พนักงานที่เลือก</span>
+          <strong>
+            ${safe(employee.emp_code || "-")}
+            •
+            ${safe(employee.full_name || "-")}
+          </strong>
+          <small>
+            ${safe(employee.email || "-")}
+          </small>
+          <em>
+            ${safe(employee.department || "-")}
+            •
+            ${safe(employee.zone || "-")}
+            /
+            ${safe(employee.area || "-")}
+            /
+            ${safe(employee.sub_area || "-")}
+          </em>
+        </div>
+      `;
+
+      selected.classList.remove(
+        "hidden"
+      );
+    }
+  }
+
+  function resetCreateForm() {
+    state.selectedEmployee =
+      null;
+
+    [
+      "accountEmployeeSearch",
+      "accountCreateEmpCode",
+      "accountCreateEmail",
+      "accountCreateDisplayName",
+      "accountCreateNote"
+    ].forEach(id => {
+      if($(id)) {
+        $(id).value = "";
+      }
+    });
+
+    if($("accountCreateRole")) {
+      $("accountCreateRole").value =
+        "VIEWER";
+    }
+
+    $("accountSelectedEmployee")
+      ?.classList.add("hidden");
+
+    $("accountEmployeeSearchResults")
+      ?.classList.add("hidden");
+  }
+
+  async function openCreate() {
+    await loadCandidates(
+      true
+    );
+
+    resetCreateForm();
+
+    A()?.openModal?.(
+      "accountCreateModal"
+    );
+
+    setTimeout(
+      () =>
+        $("accountEmployeeSearch")
+          ?.focus(),
+      60
+    );
+  }
+
+  async function createAccount() {
+    if(!state.selectedEmployee) {
+      return A()?.toast?.(
+        "กรุณาค้นหาและเลือกพนักงานก่อน",
+        "error"
+      );
+    }
+
+    const email =
+      $("accountCreateEmail")
+        ?.value
+        .trim();
+
+    if(!email) {
+      return A()?.toast?.(
+        "ไม่พบ Email ของพนักงาน",
+        "error"
+      );
+    }
+
+    try {
+      A()?.showLoading?.(
+        "กำลังสร้างบัญชีและส่ง Invite..."
+      );
+
+      const client =
+        A()?.state?.client;
+
+      const {
+        data,
+        error
+      } =
+        await client.functions.invoke(
+          "admin-users",
+          {
+            body: {
+              action:
+                "invite_user",
+
+              email:
+                email,
+
+              emp_code:
+                $("accountCreateEmpCode")
+                  ?.value
+                || null,
+
+              display_name:
+                $("accountCreateDisplayName")
+                  ?.value
+                  .trim()
+                || email,
+
+              role:
+                $("accountCreateRole")
+                  ?.value
+                || "VIEWER",
+
+              note:
+                $("accountCreateNote")
+                  ?.value
+                  .trim()
+                || null
+            }
+          }
+        );
+
+      if(error) {
+        throw error;
+      }
+
+      if(
+        data?.success === false
+      ) {
+        throw new Error(
+          data.error
+          || "CREATE_USER_FAILED"
+        );
+      }
+
+      A()?.closeModal?.(
+        "accountCreateModal"
+      );
+
+      A()?.toast?.(
+        "สร้างบัญชีและส่ง Invite ให้ User เรียบร้อย",
+        "success"
+      );
+
+      state.candidatesLoaded =
+        false;
+
+      await load();
+    } catch(error) {
+      const message =
+        String(
+          error?.message
+          || ""
+        );
+
+      const friendly =
+        message.includes(
+          "APP_INVITE_REDIRECT_URL_NOT_CONFIGURED"
+        )
+          ? "ยังไม่ได้ตั้งค่า APP_INVITE_REDIRECT_URL สำหรับ Edge Function"
+          : message.includes(
+              "AUTH_USER_ALREADY_EXISTS"
+            )
+            ? "Email นี้มีบัญชีผู้ใช้งานอยู่แล้ว"
+            : message.includes(
+                "EMPLOYEE_EMAIL_NOT_FOUND"
+              )
+              ? "ไม่พบ Email นี้ในข้อมูลพนักงาน"
+              : (
+                  A()?.humanError?.(error)
+                  || error.message
+                );
+
+      A()?.toast?.(
+        friendly,
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
+  function openEdit(
+    userId
+  ) {
+    const account =
+      state.accounts.find(
+        row =>
+          String(row.user_id)
+          === String(userId)
+      );
+
+    if(!account) return;
+
+    $("accountEditUserId").value =
+      account.user_id || "";
+
+    $("accountEditEmail").value =
+      account.email || "";
+
+    $("accountEditEmpCode").value =
+      account.emp_code || "";
+
+    $("accountEditDisplayName").value =
+      account.display_name || "";
+
+    $("accountEditRole").value =
+      account.role || "VIEWER";
+
+    $("accountEditActive").checked =
+      account.is_active !== false;
+
+    $("accountEditNote").value =
+      "";
+
+    $("accountEditSubtitle").textContent =
+      `${account.email || "-"} • ${account.emp_code || "-"}`;
+
+    A()?.openModal?.(
+      "accountEditModal"
+    );
+  }
+
+  async function saveEdit() {
+    try {
+      A()?.showLoading?.(
+        "กำลังบันทึกบัญชี..."
+      );
+
+      await rpc(
+        "ta_update_user_account_profile_v6106",
+        {
+          p_user_id:
+            $("accountEditUserId")
+              ?.value,
+
+          p_display_name:
+            $("accountEditDisplayName")
+              ?.value
+              .trim()
+            || null,
+
+          p_role:
+            $("accountEditRole")
+              ?.value
+            || "VIEWER",
+
+          p_emp_code:
+            $("accountEditEmpCode")
+              ?.value
+              .trim()
+            || null,
+
+          p_is_active:
+            Boolean(
+              $("accountEditActive")
+                ?.checked
+            ),
+
+          p_note:
+            $("accountEditNote")
+              ?.value
+              .trim()
+            || null
+        }
+      );
+
+      A()?.closeModal?.(
+        "accountEditModal"
+      );
+
+      A()?.toast?.(
+        "บันทึกบัญชีเรียบร้อย",
+        "success"
+      );
+
+      await load();
+    } catch(error) {
+      A()?.toast?.(
+        A()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
+  function passwordScore(
+    password
+  ) {
+    let score = 0;
+
+    if(password.length >= 10) {
+      score += 1;
+    }
+
+    if(/[A-Z]/.test(password)) {
+      score += 1;
+    }
+
+    if(/[a-z]/.test(password)) {
+      score += 1;
+    }
+
+    if(/[0-9]/.test(password)) {
+      score += 1;
+    }
+
+    if(/[^A-Za-z0-9]/.test(password)) {
+      score += 1;
+    }
+
+    return score;
+  }
+
+  function renderPasswordStrength() {
+    const password =
+      $("forcePasswordNew")
+        ?.value
+        || "";
+
+    const score =
+      passwordScore(
+        password
+      );
+
+    const element =
+      $("forcePasswordStrength");
+
+    if(!element) return;
+
+    const label =
+      score <= 2
+        ? "ควรเพิ่มความซับซ้อน"
+        : score <= 4
+          ? "รหัสผ่านระดับดี"
+          : "รหัสผ่านแข็งแรง";
+
+    element.className =
+      `account-password-strength score-${score}`;
+
+    element.innerHTML = `
+      <div class="account-password-strength-bars">
+        ${[1,2,3,4,5]
+          .map(index =>
+            `<i class="${index <= score ? "active" : ""}"></i>`
+          )
+          .join("")}
+      </div>
+      <span>${safe(label)}</span>
+    `;
+  }
+
+  function openForcedPasswordChange(
+    mode = "FIRST_LOGIN"
+  ) {
+    state.passwordMode =
+      mode;
+
+    if($("forcePasswordTitle")) {
+      $("forcePasswordTitle").textContent =
+        mode === "RECOVERY"
+          ? "ตั้งรหัสผ่านใหม่"
+          : "เปลี่ยนรหัสผ่านครั้งแรก";
+    }
+
+    if($("forcePasswordSubtitle")) {
+      $("forcePasswordSubtitle").textContent =
+        mode === "RECOVERY"
+          ? "กำหนดรหัสผ่านใหม่สำหรับบัญชีของคุณ"
+          : "เพื่อความปลอดภัย กรุณาเปลี่ยนรหัสผ่านก่อนเข้าใช้งานระบบ";
+    }
+
+    if($("forcePasswordNew")) {
+      $("forcePasswordNew").value =
+        "";
+    }
+
+    if($("forcePasswordConfirm")) {
+      $("forcePasswordConfirm").value =
+        "";
+    }
+
+    renderPasswordStrength();
+
+    $("forcePasswordModal")
+      ?.classList.remove("hidden");
+
+    setTimeout(
+      () =>
+        $("forcePasswordNew")
+          ?.focus(),
+      80
+    );
+  }
+
+  async function savePasswordChange() {
+    const password =
+      $("forcePasswordNew")
+        ?.value
+        || "";
+
+    const confirm =
+      $("forcePasswordConfirm")
+        ?.value
+        || "";
+
+    if(password.length < 10) {
+      return A()?.toast?.(
+        "รหัสผ่านต้องมีอย่างน้อย 10 ตัวอักษร",
+        "error"
+      );
+    }
+
+    if(password !== confirm) {
+      return A()?.toast?.(
+        "ยืนยันรหัสผ่านไม่ตรงกัน",
+        "error"
+      );
+    }
+
+    if(
+      passwordScore(password)
+      < 3
+    ) {
+      return A()?.toast?.(
+        "กรุณาเพิ่มความซับซ้อนของรหัสผ่าน",
+        "error"
+      );
+    }
+
+    try {
+      A()?.showLoading?.(
+        "กำลังเปลี่ยนรหัสผ่าน..."
+      );
+
+      const client =
+        A()?.state?.client;
+
+      const {
+        error
+      } =
+        await client.auth.updateUser({
+          password
+        });
+
+      if(error) {
+        throw error;
+      }
+
+      try {
+        await rpc(
+          "ta_complete_password_change_v6106"
+        );
+      } catch(markError) {
+        // Recovery can be used by a valid Auth user that has no profile.
+        if(
+          state.passwordMode
+          !== "RECOVERY"
+        ) {
+          throw markError;
+        }
+      }
+
+      if(
+        A()?.state?.profile
+      ) {
+        A().state.profile
+          .must_change_password =
+          false;
+      }
+
+      $("forcePasswordModal")
+        ?.classList.add("hidden");
+
+      A()?.toast?.(
+        "เปลี่ยนรหัสผ่านเรียบร้อย",
+        "success"
+      );
+
+      const cleanUrl =
+        location.origin
+        + location.pathname;
+
+      location.replace(
+        cleanUrl
+      );
+    } catch(error) {
+      A()?.toast?.(
+        A()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
+  async function sendForgotPassword() {
+    const email =
+      $("forgotPasswordEmail")
+        ?.value
+        .trim()
+        .toLowerCase();
+
+    if(!email) {
+      return A()?.toast?.(
+        "กรุณาระบุ Email",
+        "error"
+      );
+    }
+
+    try {
+      A()?.showLoading?.(
+        "กำลังส่ง Email ตั้งรหัสผ่านใหม่..."
+      );
+
+      const client =
+        A()?.state?.client;
+
+      const redirectTo =
+        location.origin
+        + location.pathname;
+
+      const {
+        error
+      } =
+        await client.auth
+          .resetPasswordForEmail(
+            email,
+            {
+              redirectTo
+            }
+          );
+
+      if(error) {
+        throw error;
+      }
+
+      A()?.closeModal?.(
+        "forgotPasswordModal"
+      );
+
+      A()?.toast?.(
+        "ส่ง Email สำหรับตั้งรหัสผ่านใหม่แล้ว กรุณาตรวจสอบ Inbox",
+        "success"
+      );
+    } catch(error) {
+      A()?.toast?.(
+        A()?.humanError?.(error)
+        || error.message,
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
+  async function resendInvite(
+    email
+  ) {
+    if(!email) return;
+
+    try {
+      A()?.showLoading?.(
+        "กำลังส่ง Invite ใหม่..."
+      );
+
+      const client =
+        A()?.state?.client;
+
+      const {
+        data,
+        error
+      } =
+        await client.functions.invoke(
+          "admin-users",
+          {
+            body: {
+              action:
+                "resend_invite",
+
+              email:
+                email
+            }
+          }
+        );
+
+      if(error) {
+        throw error;
+      }
+
+      if(
+        data?.success
+        === false
+      ) {
+        throw new Error(
+          data.error
+          || "RESEND_INVITE_FAILED"
+        );
+      }
+
+      A()?.toast?.(
+        "ส่ง Invite ใหม่เรียบร้อย",
+        "success"
+      );
+
+      await load();
+    } catch(error) {
+      const message =
+        String(
+          error?.message
+          || ""
+        );
+
+      const friendly =
+        message.includes(
+          "INVITE_ALREADY_ACCEPTED"
+        )
+          ? "User ตอบรับ Invite แล้ว ไม่ต้องส่ง Invite ใหม่"
+          : (
+              A()?.humanError?.(error)
+              || error.message
+            );
+
+      A()?.toast?.(
+        friendly,
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
+  function inviteParams() {
+    const params =
+      new URLSearchParams(
+        location.search
+      );
+
+    const type =
+      String(
+        params.get("type")
+        || ""
+      ).toLowerCase();
+
+    const tokenHash =
+      params.get(
+        "token_hash"
+      ) || "";
+
+    return {
+      type,
+      tokenHash
+    };
+  }
+
+  function showInviteAcceptIfNeeded() {
+    const {
+      type,
+      tokenHash
+    } =
+      inviteParams();
+
+    if(
+      type !== "invite"
+      || !tokenHash
+    ) {
+      return;
+    }
+
+    if($("inviteAcceptError")) {
+      $("inviteAcceptError")
+        .classList.add(
+          "hidden"
+        );
+
+      $("inviteAcceptError")
+        .textContent =
+          "";
+    }
+
+    $("inviteAcceptModal")
+      ?.classList.remove(
+        "hidden"
+      );
+  }
+
+  async function acceptInvite() {
+    const {
+      type,
+      tokenHash
+    } =
+      inviteParams();
+
+    if(
+      type !== "invite"
+      || !tokenHash
+    ) {
+      return A()?.toast?.(
+        "ไม่พบข้อมูล Invite",
+        "error"
+      );
+    }
+
+    try {
+      A()?.showLoading?.(
+        "กำลังตอบรับคำเชิญ..."
+      );
+
+      const client =
+        A()?.state?.client;
+
+      const {
+        data,
+        error
+      } =
+        await client.auth.verifyOtp({
+          token_hash:
+            tokenHash,
+
+          type:
+            "invite"
+        });
+
+      if(error) {
+        throw error;
+      }
+
+      if(
+        !data?.session
+        && !data?.user
+      ) {
+        throw new Error(
+          "INVITE_SESSION_NOT_CREATED"
+        );
+      }
+
+      $("inviteAcceptModal")
+        ?.classList.add(
+          "hidden"
+        );
+
+      A()?.toast?.(
+        "ตอบรับคำเชิญเรียบร้อย กำลังเปิดหน้าตั้งรหัสผ่าน",
+        "success"
+      );
+
+      const cleanUrl =
+        location.origin
+        + location.pathname;
+
+      location.replace(
+        cleanUrl
+      );
+    } catch(error) {
+      const element =
+        $("inviteAcceptError");
+
+      if(element) {
+        element.textContent =
+          "Invite ไม่ถูกต้อง ถูกใช้งานแล้ว หรือหมดอายุ กรุณาติดต่อ HR Admin เพื่อส่ง Invite ใหม่";
+
+        element.classList.remove(
+          "hidden"
+        );
+      }
+
+      A()?.toast?.(
+        "Invite ไม่ถูกต้องหรือหมดอายุ",
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
+  function resetFilters() {
+    if($("accountSearch")) {
+      $("accountSearch").value = "";
+    }
+
+    if($("accountRoleFilter")) {
+      $("accountRoleFilter").value = "";
+    }
+
+    if($("accountStatusFilter")) {
+      $("accountStatusFilter").value = "";
+    }
+
+    load();
+  }
+
+  function bind() {
+    $("accountCreateBtn")
+      ?.addEventListener(
+        "click",
+        openCreate
+      );
+
+    $("accountRefreshBtn")
+      ?.addEventListener(
+        "click",
+        load
+      );
+
+    $("accountSearchBtn")
+      ?.addEventListener(
+        "click",
+        load
+      );
+
+    $("accountResetFilterBtn")
+      ?.addEventListener(
+        "click",
+        resetFilters
+      );
+
+    $("accountSearch")
+      ?.addEventListener(
+        "keydown",
+        event => {
+          if(event.key === "Enter") {
+            event.preventDefault();
+            load();
+          }
+        }
+      );
+
+    $("accountEmployeeSearch")
+      ?.addEventListener(
+        "input",
+        event =>
+          renderCandidateResults(
+            event.target.value
+          )
+      );
+
+    $("accountCreateSaveBtn")
+      ?.addEventListener(
+        "click",
+        createAccount
+      );
+
+    $("accountEditSaveBtn")
+      ?.addEventListener(
+        "click",
+        saveEdit
+      );
+
+    $("forcePasswordNew")
+      ?.addEventListener(
+        "input",
+        renderPasswordStrength
+      );
+
+    $("forcePasswordSaveBtn")
+      ?.addEventListener(
+        "click",
+        savePasswordChange
+      );
+
+    $("forgotPasswordBtn")
+      ?.addEventListener(
+        "click",
+        () => {
+          if($("forgotPasswordEmail")) {
+            $("forgotPasswordEmail").value =
+              $("loginEmail")
+                ?.value
+                .trim()
+              || "";
+          }
+
+          A()?.openModal?.(
+            "forgotPasswordModal"
+          );
+        }
+      );
+
+    $("forgotPasswordSendBtn")
+      ?.addEventListener(
+        "click",
+        sendForgotPassword
+      );
+
+    $("inviteAcceptBtn")
+      ?.addEventListener(
+        "click",
+        acceptInvite
+      );
+
+    document.addEventListener(
+      "click",
+      event => {
+        const employeeButton =
+          event.target.closest(
+            "[data-account-employee]"
+          );
+
+        if(employeeButton) {
+          selectEmployee(
+            employeeButton.dataset
+              .accountEmployee
+          );
+          return;
+        }
+
+        const resendButton =
+          event.target.closest(
+            "[data-account-resend]"
+          );
+
+        if(resendButton) {
+          resendInvite(
+            resendButton.dataset
+              .accountResend
+          );
+          return;
+        }
+
+        const editButton =
+          event.target.closest(
+            "[data-account-edit]"
+          );
+
+        if(editButton) {
+          openEdit(
+            editButton.dataset
+              .accountEdit
+          );
+          return;
+        }
+
+        if(
+          !event.target.closest(
+            ".account-employee-search-wrap"
+          )
+        ) {
+          $("accountEmployeeSearchResults")
+            ?.classList.add("hidden");
+        }
+      }
+    );
+
+    document
+      .querySelector(
+        '[data-page="admin-accounts"]'
+      )
+      ?.addEventListener(
+        "click",
+        () =>
+          setTimeout(
+            load,
+            0
+          )
+      );
+
+    setTimeout(
+      showInviteAcceptIfNeeded,
+      80
+    );
+  }
+
+  window.TimeClockUserAccounts = {
+    load,
+    openForcedPasswordChange
+  };
+
+  if(
+    document.readyState
+    === "loading"
+  ) {
+    document.addEventListener(
+      "DOMContentLoaded",
+      bind
+    );
+  } else {
+    bind();
+  }
 })();

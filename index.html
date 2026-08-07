@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.10.5 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.10.7 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1f3a" />
-  <title>Time-Clock Enterprise V6.10.5 | CP Retailink</title>
+  <title>Time-Clock Enterprise V6.10.7 | CP Retailink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./app.css?v=6.10.5-20260807" />
+  <link rel="stylesheet" href="./app.css?v=6.10.7-20260807" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -44,6 +44,15 @@
         <p>กรอกอีเมลและรหัสผ่านเพื่อเข้าสู่ระบบ</p>
         <div class="field"><label for="loginEmail">อีเมล</label><input id="loginEmail" class="input" type="email" autocomplete="username" required placeholder="name@company.com" /></div>
         <div class="field"><label for="loginPassword">รหัสผ่าน</label><input id="loginPassword" class="input" type="password" autocomplete="current-password" required placeholder="••••••••" /></div>
+        <div class="login-password-help">
+          <button
+            id="forgotPasswordBtn"
+            type="button"
+            class="login-link-button"
+          >
+            ลืมรหัสผ่าน?
+          </button>
+        </div>
         <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
         <button id="openConfigFromLogin" class="btn btn-light btn-block" type="button" style="margin-top:10px">ตั้งค่าการเชื่อมต่อ Supabase</button>
         <div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</div>
@@ -78,6 +87,7 @@
           <button class="nav-item" data-page="admin-shifts"><span class="nav-icon">◫</span><span>ตั้งค่ากะทำงาน</span></button>
           <button class="nav-item" data-page="admin-holidays"><span class="nav-icon">◈</span><span>วันหยุดนักขัตฤกษ์</span></button>
           <button class="nav-item" data-page="admin-org"><span class="nav-icon">⌘</span><span>ผังโครงสร้างองค์กร</span></button>
+          <button class="nav-item" data-page="admin-accounts"><span class="nav-icon">♜</span><span>จัดการบัญชีผู้ใช้งาน</span></button>
           <button class="nav-item" data-page="admin-users"><span class="nav-icon">♙</span><span>User และ Scope</span></button>
           <button class="nav-item" data-page="admin-import"><span class="nav-icon">⇧</span><span>นำเข้าพนักงาน</span></button>
           <button class="nav-item" data-page="admin-time-import"><span class="nav-icon">⇩</span><span>นำเข้าข้อมูลลงเวลา</span></button>
@@ -262,7 +272,7 @@
               </div>
               <div class="settings-panel" data-settings-panel="about">
                 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.10.5 Organization Structure & Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.10.7 Organization Structure & Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
               </div>
             </div>
           </div>
@@ -975,6 +985,191 @@
           </div>
         </section>
 
+        <!-- User Account Management V6.10.7 -->
+        <section
+          id="page-admin-accounts"
+          class="page admin-page user-account-page"
+        >
+          <div class="user-account-hero">
+            <div>
+              <span class="eyebrow">
+                USER ACCOUNT MANAGEMENT
+              </span>
+              <h2>จัดการบัญชีผู้ใช้งาน</h2>
+              <p>
+                สร้างบัญชีด้วย Email จากข้อมูลพนักงาน
+                ระบบส่ง Invite Link ให้ User ตั้งรหัสผ่านด้วยตนเองก่อนเข้าใช้งาน
+              </p>
+            </div>
+
+            <div class="user-account-hero-actions">
+              <button
+                id="accountRefreshBtn"
+                class="btn btn-light"
+              >
+                ↻ รีเฟรช
+              </button>
+
+              <button
+                id="accountCreateBtn"
+                class="btn btn-primary"
+              >
+                ＋ สร้างบัญชีผู้ใช้
+              </button>
+            </div>
+          </div>
+
+          <div class="user-account-security-note section-gap">
+            <div class="user-account-security-icon">✓</div>
+            <div>
+              <strong>แนวทางความปลอดภัย</strong>
+              <p>
+                ระบบไม่สร้างและไม่ส่ง Temporary Password
+                User จะได้รับ Invite Link และเป็นผู้ตั้งรหัสผ่านด้วยตนเอง
+              </p>
+            </div>
+          </div>
+
+          <div class="user-account-kpi-grid user-account-kpi-grid-v6107 section-gap">
+            <article>
+              <span>บัญชีทั้งหมด</span>
+              <strong id="accountKpiTotal">0</strong>
+              <small>User</small>
+            </article>
+
+            <article class="success">
+              <span>Active</span>
+              <strong id="accountKpiActive">0</strong>
+              <small>User</small>
+            </article>
+
+            <article class="invite">
+              <span>รอตอบรับ Invite</span>
+              <strong id="accountKpiInvite">0</strong>
+              <small>User</small>
+            </article>
+
+            <article class="warning">
+              <span>รอตั้งรหัสผ่าน</span>
+              <strong id="accountKpiFirstLogin">0</strong>
+              <small>User</small>
+            </article>
+
+            <article class="danger">
+              <span>Inactive / ไม่มี Profile</span>
+              <strong id="accountKpiIssue">0</strong>
+              <small>User</small>
+            </article>
+          </div>
+
+          <div class="panel section-gap user-account-filter-panel">
+            <div class="panel-body">
+              <div class="user-account-filter-grid">
+                <div class="field user-account-search">
+                  <label>ค้นหา</label>
+                  <input
+                    id="accountSearch"
+                    class="input"
+                    placeholder="Email รหัสพนักงาน ชื่อ หรือหน่วยงาน"
+                  >
+                </div>
+
+                <div class="field">
+                  <label>Role</label>
+                  <select
+                    id="accountRoleFilter"
+                    class="select"
+                  >
+                    <option value="">ทุก Role</option>
+                    <option value="VIEWER">VIEWER</option>
+                    <option value="MANAGER">MANAGER</option>
+                    <option value="HR_ADMIN">HR_ADMIN</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label>สถานะบัญชี</label>
+                  <select
+                    id="accountStatusFilter"
+                    class="select"
+                  >
+                    <option value="">ทุกสถานะ</option>
+                    <option value="ACTIVE">พร้อมใช้งาน</option>
+                    <option value="INVITE_PENDING">รอตอบรับ Invite</option>
+                    <option value="FIRST_LOGIN_PASSWORD">รอตั้งรหัสผ่าน</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="NO_PROFILE">ไม่มี Profile</option>
+                  </select>
+                </div>
+
+                <div class="user-account-filter-actions">
+                  <button
+                    id="accountResetFilterBtn"
+                    class="btn btn-light"
+                  >
+                    ↺ รีเซ็ต
+                  </button>
+                  <button
+                    id="accountSearchBtn"
+                    class="btn btn-primary"
+                  >
+                    ⌕ ค้นหา
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel section-gap user-account-table-panel">
+            <div class="panel-header">
+              <div>
+                <h3>บัญชีผู้ใช้งาน</h3>
+                <p id="accountTableMeta">
+                  ยังไม่ได้โหลดข้อมูล
+                </p>
+              </div>
+
+              <div class="user-account-table-legend">
+                <span class="account-status-dot active"></span>
+                พร้อมใช้งาน
+                <span class="account-status-dot invite"></span>
+                Invite
+                <span class="account-status-dot first"></span>
+                ตั้งรหัสผ่าน
+                <span class="account-status-dot inactive"></span>
+                Inactive
+              </div>
+            </div>
+
+            <div class="panel-body">
+              <div class="table-wrap user-account-table-wrap">
+                <table class="user-account-table">
+                  <thead>
+                    <tr>
+                      <th>User / Email</th>
+                      <th>พนักงาน</th>
+                      <th>Role</th>
+                      <th>สถานะบัญชี</th>
+                      <th>หน่วยงาน</th>
+                      <th>สร้างบัญชี</th>
+                      <th>เข้าใช้ล่าสุด</th>
+                      <th>Manager Scope</th>
+                      <th>จัดการ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="accountTableBody">
+                    <tr>
+                      <td colspan="9" class="fc-empty">
+                        กดรีเฟรชเพื่อโหลดข้อมูล
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Admin Users -->
         <section id="page-admin-users" class="page admin-page manager-scope-page">
           <div class="manager-scope-hero">
@@ -1089,7 +1284,7 @@
               <div style="display:flex;gap:9px;flex-wrap:wrap"><button id="previewImportBtn" class="btn btn-light">ตรวจสอบก่อนนำเข้า</button><button id="runImportBtn" class="btn btn-primary">นำเข้าข้อมูล</button><button id="downloadTemplateBtn" class="btn btn-success">ดาวน์โหลด Template</button></div>
               <div class="employee-import-guide section-gap">
                 <div>
-                  <strong>คอลัมน์ Employee Template V6.10.5</strong>
+                  <strong>คอลัมน์ Employee Template V6.10.7</strong>
                   <p>employee_id, full_name, email, position_name, department, org_code, pc, car_team, start_date, resign_date</p>
                 </div>
                 <div class="employee-import-guide-note">
@@ -1164,7 +1359,7 @@
   <div id="leaveRequestModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอลา</h3><button class="btn btn-light btn-icon" data-v650-close="leaveRequestModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="leaveEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทการลา</label><select id="leaveTypeCode" class="select"></select></div><div class="field"><label>รูปแบบการลา</label><select id="leavePeriod" class="select"><option value="FULL_DAY">เต็มวัน</option><option value="FIRST_HALF">ครึ่งวันแรก</option><option value="SECOND_HALF">ครึ่งวันหลัง</option></select></div></div><div class="form-row"><div class="field"><label>วันที่เริ่มต้น</label><input id="leaveModalStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="leaveModalEnd" class="input" type="date"></div></div><div class="field"><label>ใบรับรอง/เอกสารประกอบ</label><select id="leaveCertificateId" class="select"><option value="">ไม่ระบุ</option></select><small class="field-help">แสดงเอกสารที่ลงทะเบียนไว้และอยู่ในขอบเขตสิทธิ์</small></div><div class="field"><label>เหตุผล</label><textarea id="leaveReason" class="textarea" placeholder="ระบุเหตุผลการลา"></textarea></div><div id="leaveBalancePreview" class="v650-info-box">กรอกรหัสพนักงานเพื่อดูสิทธิ์คงเหลือ</div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="leaveRequestModal">ยกเลิก</button><button id="submitLeaveBtn" class="btn btn-primary">ส่งคำขอลา</button></div></div></div>
 
   <!-- V6.5 Certificate Modal -->
-  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.10.5 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
+  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.10.7 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
 
   <!-- V6.5 Time Correction Modal -->
   <div id="timeCorrectionModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอแก้ไขเวลา</h3><button class="btn btn-light btn-icon" data-v650-close="timeCorrectionModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสพนักงาน</label><input id="correctionEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>วันที่ทำงาน</label><input id="correctionWorkDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>เวลาเข้าใหม่</label><input id="correctionInAt" class="input" type="datetime-local"></div><div class="field"><label>เวลาออกใหม่</label><input id="correctionOutAt" class="input" type="datetime-local"></div></div><div class="field"><label>ใบรับรอง/หลักฐาน</label><select id="correctionCertificateId" class="select"><option value="">ไม่ระบุ</option></select></div><div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea id="correctionReason" class="textarea" placeholder="ระบุเหตุผลที่ต้องแก้ไขเวลา"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="timeCorrectionModal">ยกเลิก</button><button id="submitCorrectionBtn" class="btn btn-primary">ส่งคำขอ</button></div></div></div>
@@ -1284,7 +1479,7 @@
         <div>
           <div class="org-modal-title-row">
             <h3 id="orgUnitModalTitle">เพิ่มหน่วยงาน</h3>
-            <span class="org-modal-version">V6.10.5</span>
+            <span class="org-modal-version">V6.10.7</span>
           </div>
           <p>กำหนดรหัส Zone ระดับ และหน่วยงานแม่</p>
         </div>
@@ -1543,6 +1738,406 @@
     </div>
   </div>
 
+  <!-- Create User Account Modal V6.10.7 -->
+  <div id="accountCreateModal" class="modal-backdrop hidden">
+    <div class="modal large account-create-modal">
+      <div class="modal-header">
+        <div>
+          <div class="account-modal-title-row">
+            <h3>สร้างบัญชีผู้ใช้งาน</h3>
+            <span>HR ADMIN</span>
+          </div>
+          <p>
+            เลือกพนักงานที่มี Email
+            แล้วระบบจะส่ง Invite Link เพื่อให้ User ตั้งรหัสผ่านด้วยตนเอง
+          </p>
+        </div>
+
+        <button
+          class="btn btn-light btn-icon"
+          data-close-modal="accountCreateModal"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="account-employee-search-card">
+          <div class="account-employee-search-head">
+            <strong>ค้นหาพนักงาน</strong>
+            <small>
+              ค้นหาจากรหัสพนักงาน ชื่อ-นามสกุล หรือ Email
+            </small>
+          </div>
+
+          <div class="account-employee-search-wrap">
+            <span>⌕</span>
+            <input
+              id="accountEmployeeSearch"
+              class="input"
+              autocomplete="off"
+              placeholder="พิมพ์รหัส ชื่อ หรือ Email"
+            >
+            <div
+              id="accountEmployeeSearchResults"
+              class="account-employee-results hidden"
+            ></div>
+          </div>
+
+          <div
+            id="accountSelectedEmployee"
+            class="account-selected-employee hidden"
+          ></div>
+        </div>
+
+        <input id="accountCreateEmpCode" type="hidden">
+
+        <div class="form-row">
+          <div class="field">
+            <label>Email / User *</label>
+            <input
+              id="accountCreateEmail"
+              class="input"
+              type="email"
+              readonly
+            >
+          </div>
+
+          <div class="field">
+            <label>ชื่อแสดง</label>
+            <input
+              id="accountCreateDisplayName"
+              class="input"
+            >
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label>Role *</label>
+            <select
+              id="accountCreateRole"
+              class="select"
+            >
+              <option value="VIEWER">VIEWER</option>
+              <option value="MANAGER">MANAGER</option>
+              <option value="HR_ADMIN">HR_ADMIN</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>การเข้าใช้งานครั้งแรก</label>
+            <div class="account-invite-method">
+              <strong>Invite Link</strong>
+              <small>
+                User กดลิงก์ใน Email และตั้งรหัสผ่านด้วยตนเอง
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>หมายเหตุ</label>
+          <input
+            id="accountCreateNote"
+            class="input"
+            placeholder="เช่น เปิดบัญชีสำหรับเริ่มใช้งานระบบ Time-Clock"
+          >
+        </div>
+
+        <div class="account-email-preview">
+          <div class="account-email-preview-icon">✉</div>
+          <div>
+            <strong>Email ที่ User จะได้รับ</strong>
+            <p>
+              Invite Link สำหรับตอบรับคำเชิญ
+              และเปิดหน้าตั้งรหัสผ่านครั้งแรก
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          class="btn btn-light"
+          data-close-modal="accountCreateModal"
+        >
+          ยกเลิก
+        </button>
+
+        <button
+          id="accountCreateSaveBtn"
+          class="btn btn-primary"
+        >
+          สร้างบัญชีและส่ง Invite
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit User Account Modal V6.10.7 -->
+  <div id="accountEditModal" class="modal-backdrop hidden">
+    <div class="modal large account-edit-modal">
+      <div class="modal-header">
+        <div>
+          <h3>แก้ไขบัญชีผู้ใช้งาน</h3>
+          <p id="accountEditSubtitle">-</p>
+        </div>
+        <button
+          class="btn btn-light btn-icon"
+          data-close-modal="accountEditModal"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <input id="accountEditUserId" type="hidden">
+
+        <div class="form-row">
+          <div class="field">
+            <label>Email</label>
+            <input
+              id="accountEditEmail"
+              class="input"
+              readonly
+            >
+          </div>
+
+          <div class="field">
+            <label>รหัสพนักงาน</label>
+            <input
+              id="accountEditEmpCode"
+              class="input"
+            >
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label>ชื่อแสดง</label>
+            <input
+              id="accountEditDisplayName"
+              class="input"
+            >
+          </div>
+
+          <div class="field">
+            <label>Role</label>
+            <select
+              id="accountEditRole"
+              class="select"
+            >
+              <option value="VIEWER">VIEWER</option>
+              <option value="MANAGER">MANAGER</option>
+              <option value="HR_ADMIN">HR_ADMIN</option>
+            </select>
+          </div>
+        </div>
+
+        <label class="account-active-toggle">
+          <input
+            id="accountEditActive"
+            type="checkbox"
+            checked
+          >
+          <span>
+            <strong>เปิดใช้งานบัญชี</strong>
+            <small>
+              หากปิด User จะ Login ได้แต่ไม่สามารถเข้าใช้งานระบบ
+            </small>
+          </span>
+        </label>
+
+        <div class="field">
+          <label>หมายเหตุ</label>
+          <input
+            id="accountEditNote"
+            class="input"
+          >
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          class="btn btn-light"
+          data-close-modal="accountEditModal"
+        >
+          ยกเลิก
+        </button>
+        <button
+          id="accountEditSaveBtn"
+          class="btn btn-primary"
+        >
+          บันทึกการเปลี่ยนแปลง
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Invite Acceptance Modal V6.10.7 -->
+  <div
+    id="inviteAcceptModal"
+    class="modal-backdrop hidden account-invite-backdrop"
+  >
+    <div class="modal account-invite-accept-modal">
+      <div class="modal-header account-invite-accept-header">
+        <div>
+          <span class="eyebrow">USER INVITATION</span>
+          <h3>ตอบรับคำเชิญเข้าใช้งาน</h3>
+          <p>
+            กรุณากดยืนยันเพื่อเปิดใช้งานบัญชี
+            จากนั้นระบบจะให้คุณตั้งรหัสผ่าน
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="account-invite-accept-card">
+          <div class="account-invite-accept-icon">✉</div>
+          <div>
+            <strong>คำเชิญเข้าใช้งาน Time-Clock</strong>
+            <p>
+              ลิงก์นี้ใช้ได้ครั้งเดียว
+              และมีอายุตามค่า Email OTP Expiration ของ Supabase
+            </p>
+          </div>
+        </div>
+
+        <div
+          id="inviteAcceptError"
+          class="account-invite-error hidden"
+        ></div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          id="inviteAcceptBtn"
+          class="btn btn-primary"
+        >
+          ตอบรับคำเชิญและตั้งรหัสผ่าน
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forced First Password Change -->
+  <div id="forcePasswordModal" class="modal-backdrop hidden account-password-backdrop">
+    <div class="modal account-password-modal">
+      <div class="modal-header account-password-header">
+        <div>
+          <span class="eyebrow">SECURITY REQUIRED</span>
+          <h3 id="forcePasswordTitle">ตั้งรหัสผ่านใหม่</h3>
+          <p id="forcePasswordSubtitle">
+            เพื่อความปลอดภัย กรุณาเปลี่ยนรหัสผ่านก่อนเข้าใช้งานระบบ
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div class="account-password-security">
+          <span>🔒</span>
+          <div>
+            <strong>รหัสผ่านใหม่ต้องมีอย่างน้อย 10 ตัวอักษร</strong>
+            <small>
+              แนะนำให้มีตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก ตัวเลข และอักขระพิเศษ
+            </small>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>รหัสผ่านใหม่</label>
+          <input
+            id="forcePasswordNew"
+            class="input"
+            type="password"
+            autocomplete="new-password"
+          >
+        </div>
+
+        <div class="field">
+          <label>ยืนยันรหัสผ่านใหม่</label>
+          <input
+            id="forcePasswordConfirm"
+            class="input"
+            type="password"
+            autocomplete="new-password"
+          >
+        </div>
+
+        <div
+          id="forcePasswordStrength"
+          class="account-password-strength"
+        ></div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          id="forcePasswordSaveBtn"
+          class="btn btn-primary"
+        >
+          เปลี่ยนรหัสผ่านและเข้าใช้งาน
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div id="forgotPasswordModal" class="modal-backdrop hidden">
+    <div class="modal account-forgot-modal">
+      <div class="modal-header">
+        <div>
+          <h3>ลืมรหัสผ่าน</h3>
+          <p>
+            ระบบจะส่ง Email สำหรับตั้งรหัสผ่านใหม่
+          </p>
+        </div>
+        <button
+          class="btn btn-light btn-icon"
+          data-close-modal="forgotPasswordModal"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field">
+          <label>Email</label>
+          <input
+            id="forgotPasswordEmail"
+            class="input"
+            type="email"
+            placeholder="name@company.com"
+          >
+        </div>
+
+        <div class="account-reset-note">
+          <strong>หมายเหตุ</strong>
+          <p>
+            การส่ง Email Reset ใช้ระบบ Supabase Auth
+            จึงควรตั้ง Custom SMTP สำหรับ Production
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button
+          class="btn btn-light"
+          data-close-modal="forgotPasswordModal"
+        >
+          ยกเลิก
+        </button>
+        <button
+          id="forgotPasswordSendBtn"
+          class="btn btn-primary"
+        >
+          ส่ง Email ตั้งรหัสผ่านใหม่
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- User Modal -->
   <div id="userModal" class="modal-backdrop hidden">
     <div class="modal extra-large manager-user-modal">
@@ -1787,6 +2382,6 @@
     </div>
   </div>
 
-  <script src="./app.js?v=6.10.5-20260807"></script>
+  <script src="./app.js?v=6.10.7-20260807"></script>
 </body>
 </html>
