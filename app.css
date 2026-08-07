@@ -7048,3 +7048,36 @@ article.invite::after{
 .dark .account-load-error-cell{
   color:#fca5a5!important;
 }
+
+
+/* ==========================================================================
+   V6.10.9 Invite ConfirmationURL Fix
+   ========================================================================== */
+
+.account-invite-error strong{
+  display:block;
+  color:#b42318;
+  font-size:9.5px;
+}
+
+.account-invite-error small{
+  display:block;
+  margin-top:4px;
+  color:#7a271a;
+  font-size:8px;
+  line-height:1.5;
+  word-break:break-word;
+}
+
+.account-invite-error em{
+  display:block;
+  margin-top:6px;
+  color:#667085;
+  font-size:7.8px;
+  font-style:normal;
+  line-height:1.45;
+}
+
+.dark .account-invite-error small{
+  color:#fecaca;
+}

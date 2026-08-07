@@ -14170,6 +14170,11 @@ ${skippedSummary(compatibility.skipped)}
         || ""
       ).toLowerCase();
 
+    const confirmationUrl =
+      params.get(
+        "confirmation_url"
+      ) || "";
+
     const tokenHash =
       params.get(
         "token_hash"
@@ -14177,20 +14182,156 @@ ${skippedSummary(compatibility.skipped)}
 
     return {
       type,
+      confirmationUrl,
       tokenHash
     };
+  }
+
+  function authRedirectError() {
+    const query =
+      new URLSearchParams(
+        location.search
+      );
+
+    const hash =
+      new URLSearchParams(
+        String(
+          location.hash
+          || ""
+        ).replace(
+          /^#/,
+          ""
+        )
+      );
+
+    const errorCode =
+      hash.get("error_code")
+      || query.get("error_code")
+      || "";
+
+    const errorDescription =
+      hash.get("error_description")
+      || query.get("error_description")
+      || "";
+
+    const errorName =
+      hash.get("error")
+      || query.get("error")
+      || "";
+
+    return {
+      errorCode,
+      errorDescription:
+        errorDescription
+          ? decodeURIComponent(
+              errorDescription
+                .replace(/\+/g," ")
+            )
+          : "",
+      errorName
+    };
+  }
+
+  function validConfirmationUrl(
+    rawUrl
+  ) {
+    if(!rawUrl) return null;
+
+    try {
+      const target =
+        new URL(
+          rawUrl
+        );
+
+      const clientUrl =
+        String(
+          A()?.state?.client
+            ?.supabaseUrl
+          || ""
+        );
+
+      const projectUrl =
+        clientUrl
+          ? new URL(
+              clientUrl
+            )
+          : null;
+
+      if(
+        target.protocol !== "https:"
+      ) {
+        return null;
+      }
+
+      if(
+        projectUrl
+        && target.hostname
+          !== projectUrl.hostname
+      ) {
+        return null;
+      }
+
+      if(
+        !target.pathname.startsWith(
+          "/auth/v1/verify"
+        )
+      ) {
+        return null;
+      }
+
+      return target.href;
+    } catch {
+      return null;
+    }
   }
 
   function showInviteAcceptIfNeeded() {
     const {
       type,
+      confirmationUrl,
       tokenHash
     } =
       inviteParams();
 
+    const authError =
+      authRedirectError();
+
+    if(
+      authError.errorCode
+      || authError.errorName
+    ) {
+      const element =
+        $("inviteAcceptError");
+
+      if(element) {
+        element.textContent =
+          authError.errorDescription
+          || `Supabase Auth Error: ${authError.errorCode || authError.errorName}`;
+
+        element.classList.remove(
+          "hidden"
+        );
+      }
+
+      $("inviteAcceptBtn")
+        ?.classList.add(
+          "hidden"
+        );
+
+      $("inviteAcceptModal")
+        ?.classList.remove(
+          "hidden"
+        );
+
+      return;
+    }
+
     if(
       type !== "invite"
-      || !tokenHash
+      || (
+        !confirmationUrl
+        && !tokenHash
+      )
     ) {
       return;
     }
@@ -14206,6 +14347,11 @@ ${skippedSummary(compatibility.skipped)}
           "";
     }
 
+    $("inviteAcceptBtn")
+      ?.classList.remove(
+        "hidden"
+      );
+
     $("inviteAcceptModal")
       ?.classList.remove(
         "hidden"
@@ -14215,13 +14361,13 @@ ${skippedSummary(compatibility.skipped)}
   async function acceptInvite() {
     const {
       type,
+      confirmationUrl,
       tokenHash
     } =
       inviteParams();
 
     if(
       type !== "invite"
-      || !tokenHash
     ) {
       return A()?.toast?.(
         "ไม่พบข้อมูล Invite",
@@ -14233,6 +14379,41 @@ ${skippedSummary(compatibility.skipped)}
       A()?.showLoading?.(
         "กำลังตอบรับคำเชิญ..."
       );
+
+      /*
+       * V6.10.9 primary flow:
+       * Let Supabase Auth confirmation endpoint validate the invite.
+       * This follows Supabase's prefetch-safe pattern:
+       * Email -> app confirmation screen -> actual ConfirmationURL.
+       */
+      if(confirmationUrl) {
+        const safeUrl =
+          validConfirmationUrl(
+            confirmationUrl
+          );
+
+        if(!safeUrl) {
+          throw new Error(
+            "INVALID_CONFIRMATION_URL"
+          );
+        }
+
+        location.assign(
+          safeUrl
+        );
+
+        return;
+      }
+
+      /*
+       * Backward compatibility for V6.10.7 / V6.10.8 emails
+       * that still contain token_hash directly.
+       */
+      if(!tokenHash) {
+        throw new Error(
+          "INVITE_TOKEN_NOT_FOUND"
+        );
+      }
 
       const client =
         A()?.state?.client;
@@ -14262,16 +14443,6 @@ ${skippedSummary(compatibility.skipped)}
         );
       }
 
-      $("inviteAcceptModal")
-        ?.classList.add(
-          "hidden"
-        );
-
-      A()?.toast?.(
-        "ตอบรับคำเชิญเรียบร้อย กำลังเปิดหน้าตั้งรหัสผ่าน",
-        "success"
-      );
-
       const cleanUrl =
         location.origin
         + location.pathname;
@@ -14280,12 +14451,36 @@ ${skippedSummary(compatibility.skipped)}
         cleanUrl
       );
     } catch(error) {
+      const code =
+        String(
+          error?.code
+          || ""
+        );
+
+      const message =
+        String(
+          error?.message
+          || error
+          || ""
+        );
+
       const element =
         $("inviteAcceptError");
 
       if(element) {
-        element.textContent =
-          "Invite ไม่ถูกต้อง ถูกใช้งานแล้ว หรือหมดอายุ กรุณาติดต่อ HR Admin เพื่อส่ง Invite ใหม่";
+        element.innerHTML = `
+          <strong>ตอบรับ Invite ไม่สำเร็จ</strong>
+          <small>
+            ${safe(
+              code
+                ? `${code} • ${message}`
+                : message
+            )}
+          </small>
+          <em>
+            กรุณากดส่ง Invite ใหม่หลังอัปเดต Email Template เป็น V6.10.9
+          </em>
+        `;
 
         element.classList.remove(
           "hidden"
@@ -14293,7 +14488,8 @@ ${skippedSummary(compatibility.skipped)}
       }
 
       A()?.toast?.(
-        "Invite ไม่ถูกต้องหรือหมดอายุ",
+        message
+        || "Invite ไม่ถูกต้องหรือหมดอายุ",
         "error"
       );
     } finally {
