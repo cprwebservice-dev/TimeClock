@@ -13866,6 +13866,93 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
 
+  function setPasswordVisibility(
+    inputId,
+    buttonId,
+    visible
+  ) {
+    const input =
+      $(inputId);
+
+    const button =
+      $(buttonId);
+
+    if(!input || !button) return;
+
+    input.type =
+      visible
+        ? "text"
+        : "password";
+
+    button.setAttribute(
+      "aria-pressed",
+      visible
+        ? "true"
+        : "false"
+    );
+
+    button.setAttribute(
+      "aria-label",
+      visible
+        ? "ซ่อนรหัสผ่าน"
+        : "แสดงรหัสผ่าน"
+    );
+
+    const label =
+      button.querySelector(
+        ".account-password-toggle-text"
+      );
+
+    if(label) {
+      label.textContent =
+        visible
+          ? "ซ่อน"
+          : "แสดง";
+    }
+
+    const icon =
+      button.querySelector(
+        ".account-password-toggle-icon"
+      );
+
+    if(icon) {
+      icon.textContent =
+        visible
+          ? "◌"
+          : "◉";
+    }
+  }
+
+  function togglePasswordVisibility(
+    inputId,
+    buttonId
+  ) {
+    const input =
+      $(inputId);
+
+    if(!input) return;
+
+    setPasswordVisibility(
+      inputId,
+      buttonId,
+      input.type === "password"
+    );
+  }
+
+  function resetPasswordVisibility() {
+    setPasswordVisibility(
+      "forcePasswordNew",
+      "forcePasswordNewToggle",
+      false
+    );
+
+    setPasswordVisibility(
+      "forcePasswordConfirm",
+      "forcePasswordConfirmToggle",
+      false
+    );
+  }
+
   function passwordScore(
     password
   ) {
@@ -13961,6 +14048,8 @@ ${skippedSummary(compatibility.skipped)}
       $("forcePasswordConfirm").value =
         "";
     }
+
+    resetPasswordVisibility();
 
     renderPasswordStrength();
 
@@ -15085,6 +15174,28 @@ ${skippedSummary(compatibility.skipped)}
       ?.addEventListener(
         "input",
         renderPasswordStrength
+      );
+
+    $("forcePasswordNewToggle")
+      ?.addEventListener(
+        "click",
+        () => {
+          togglePasswordVisibility(
+            "forcePasswordNew",
+            "forcePasswordNewToggle"
+          );
+        }
+      );
+
+    $("forcePasswordConfirmToggle")
+      ?.addEventListener(
+        "click",
+        () => {
+          togglePasswordVisibility(
+            "forcePasswordConfirm",
+            "forcePasswordConfirmToggle"
+          );
+        }
       );
 
     $("forcePasswordSaveBtn")
