@@ -7267,3 +7267,119 @@ article.invite::after{
 .account-recovery-error small{
   color:#fecaca;
 }
+
+
+/* ==========================================================================
+   V6.10.13 Recovery OTP
+   ========================================================================== */
+
+.account-recovery-otp-modal{
+  width:min(520px,94vw);
+  border-radius:17px;
+  overflow:hidden;
+}
+
+.account-recovery-otp-header{
+  background:
+    linear-gradient(
+      135deg,
+      #fff7ed,
+      #ffffff
+    );
+}
+
+.account-recovery-otp-header h3{
+  margin:3px 0 4px;
+  color:#101828;
+  font-size:17px;
+}
+
+.account-recovery-otp-info{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  margin-bottom:13px;
+  padding:13px;
+  border:1px solid #fedf89;
+  border-radius:11px;
+  background:#fffaeb;
+}
+
+.account-recovery-otp-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:40px;
+  height:40px;
+  flex:0 0 40px;
+  border-radius:11px;
+  background:#f79009;
+  color:#fff;
+  font-size:17px;
+}
+
+.account-recovery-otp-info strong{
+  display:block;
+  color:#93370d;
+  font-size:10px;
+}
+
+.account-recovery-otp-info p{
+  margin:3px 0 0;
+  color:#667085;
+  font-size:8.5px;
+  line-height:1.5;
+}
+
+.account-recovery-otp-input{
+  min-height:48px!important;
+  font-size:18px!important;
+  font-weight:800!important;
+  letter-spacing:3px;
+  text-align:center;
+}
+
+.account-recovery-otp-help{
+  margin-top:10px;
+  padding:9px 10px;
+  border-radius:9px;
+  background:#f8fafc;
+  color:#667085;
+  font-size:8px;
+  line-height:1.5;
+}
+
+.account-recovery-otp-modal
+.modal-footer .btn{
+  width:100%;
+  min-height:42px;
+  font-size:10px;
+  font-weight:900;
+}
+
+.dark
+.account-recovery-otp-header{
+  background:#172033;
+}
+
+.dark
+.account-recovery-otp-header h3{
+  color:#f8fafc;
+}
+
+.dark
+.account-recovery-otp-info{
+  border-color:rgba(245,158,11,.35);
+  background:rgba(180,83,9,.15);
+}
+
+.dark
+.account-recovery-otp-info strong{
+  color:#fbbf24;
+}
+
+.dark
+.account-recovery-otp-help{
+  background:#172033;
+  color:#cbd5e1;
+}

@@ -14133,7 +14133,7 @@ ${skippedSummary(compatibility.skipped)}
       );
 
       A()?.toast?.(
-        "ส่ง Email สำหรับตั้งรหัสผ่านใหม่แล้ว กรุณาตรวจสอบ Inbox",
+        "ส่ง Email พร้อมรหัส OTP สำหรับตั้งรหัสผ่านใหม่แล้ว กรุณาตรวจสอบ Inbox",
         "success"
       );
     } catch(error) {
@@ -14293,6 +14293,208 @@ ${skippedSummary(compatibility.skipped)}
 
       A()?.toast?.(
         friendly,
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
+  function recoveryOtpParams() {
+    const params =
+      new URLSearchParams(
+        location.search
+      );
+
+    return {
+      authFlow:
+        String(
+          params.get("auth_flow")
+          || ""
+        ).toLowerCase(),
+
+      email:
+        String(
+          params.get("email")
+          || ""
+        ).trim()
+    };
+  }
+
+  function showRecoveryOtpIfNeeded() {
+    const {
+      authFlow,
+      email
+    } =
+      recoveryOtpParams();
+
+    if(
+      authFlow
+      !== "recovery_otp"
+    ) {
+      return;
+    }
+
+    if($("recoveryOtpEmail")) {
+      $("recoveryOtpEmail").value =
+        email;
+    }
+
+    if($("recoveryOtpCode")) {
+      $("recoveryOtpCode").value =
+        "";
+    }
+
+    if($("recoveryOtpError")) {
+      $("recoveryOtpError")
+        .classList.add(
+          "hidden"
+        );
+
+      $("recoveryOtpError")
+        .textContent =
+          "";
+    }
+
+    $("recoveryOtpModal")
+      ?.classList.remove(
+        "hidden"
+      );
+
+    setTimeout(
+      () => {
+        if(email) {
+          $("recoveryOtpCode")
+            ?.focus();
+        } else {
+          $("recoveryOtpEmail")
+            ?.focus();
+        }
+      },
+      80
+    );
+  }
+
+  async function verifyRecoveryOtp() {
+    const email =
+      String(
+        $("recoveryOtpEmail")
+          ?.value
+        || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    const token =
+      String(
+        $("recoveryOtpCode")
+          ?.value
+        || ""
+      )
+        .trim()
+        .replace(
+          /\s+/g,
+          ""
+        );
+
+    if(!email) {
+      return A()?.toast?.(
+        "กรุณาระบุ Email",
+        "error"
+      );
+    }
+
+    if(!token) {
+      return A()?.toast?.(
+        "กรุณาระบุรหัส OTP",
+        "error"
+      );
+    }
+
+    try {
+      A()?.showLoading?.(
+        "กำลังตรวจสอบ OTP..."
+      );
+
+      const client =
+        A()?.state?.client;
+
+      const {
+        data,
+        error
+      } =
+        await client.auth.verifyOtp({
+          email,
+          token,
+          type:
+            "recovery"
+        });
+
+      if(error) {
+        throw error;
+      }
+
+      if(
+        !data?.session
+        && !data?.user
+      ) {
+        throw new Error(
+          "RECOVERY_SESSION_NOT_CREATED"
+        );
+      }
+
+      $("recoveryOtpModal")
+        ?.classList.add(
+          "hidden"
+        );
+
+      A()?.toast?.(
+        "ยืนยัน OTP เรียบร้อย กรุณาตั้งรหัสผ่านใหม่",
+        "success"
+      );
+
+      openForcedPasswordChange(
+        "RECOVERY"
+      );
+    } catch(error) {
+      const code =
+        String(
+          error?.code
+          || ""
+        );
+
+      const message =
+        String(
+          error?.message
+          || error
+          || "OTP ไม่ถูกต้องหรือหมดอายุ"
+        );
+
+      const element =
+        $("recoveryOtpError");
+
+      if(element) {
+        element.innerHTML = `
+          <strong>ยืนยัน OTP ไม่สำเร็จ</strong>
+          <small>
+            ${safe(
+              code
+                ? `${code} • ${message}`
+                : message
+            )}
+          </small>
+          <em>
+            หากรหัสหมดอายุ ให้ส่งลิงก์ตั้งรหัสผ่านใหม่
+          </em>
+        `;
+
+        element.classList.remove(
+          "hidden"
+        );
+      }
+
+      A()?.toast?.(
+        message,
         "error"
       );
     } finally {
@@ -14932,6 +15134,23 @@ ${skippedSummary(compatibility.skipped)}
         );
       });
 
+    $("recoveryOtpVerifyBtn")
+      ?.addEventListener(
+        "click",
+        verifyRecoveryOtp
+      );
+
+    $("recoveryOtpCode")
+      ?.addEventListener(
+        "keydown",
+        event => {
+          if(event.key === "Enter") {
+            event.preventDefault();
+            verifyRecoveryOtp();
+          }
+        }
+      );
+
     $("recoveryConfirmBtn")
       ?.addEventListener(
         "click",
@@ -15041,7 +15260,10 @@ ${skippedSummary(compatibility.skipped)}
       );
 
     setTimeout(
-      showInviteAcceptIfNeeded,
+      () => {
+        showRecoveryOtpIfNeeded();
+        showInviteAcceptIfNeeded();
+      },
       80
     );
   }
