@@ -7489,3 +7489,27 @@ article.invite::after{
     padding:0 7px;
   }
 }
+
+
+/* ==========================================================================
+   V6.10.15 Recovery Client + OTP Send Cooldown
+   ========================================================================== */
+
+.account-password-link-button:disabled{
+  cursor:not-allowed!important;
+  opacity:.68;
+  transform:none!important;
+}
+
+.account-password-link-button:disabled:hover{
+  border-color:#fedf89!important;
+  background:#fffaeb!important;
+  color:#b54708!important;
+}
+
+.dark
+.account-password-link-button:disabled:hover{
+  border-color:rgba(245,158,11,.35)!important;
+  background:rgba(180,83,9,.16)!important;
+  color:#fbbf24!important;
+}

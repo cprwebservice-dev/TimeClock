@@ -852,9 +852,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       key: "sb_publishable_xxYLeNtxgeWoE0o5GNOwDg_QXfiFy_Y"
     });
     try {
-      if (!localStorage.getItem("timeclock_report_jobs_v60")) {
+      if (!localStorage.getItem(APP_CONFIG_KEY)) {
         localStorage.setItem(
-          "timeclock_report_jobs_v60",
+          APP_CONFIG_KEY,
           JSON.stringify({
             url: DEFAULT_SUPABASE_CONFIG.url,
             key: DEFAULT_SUPABASE_CONFIG.key
@@ -1232,8 +1232,52 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
     function openModal(id) { $(id).classList.remove("hidden"); }
     function closeModal(id) { $(id).classList.add("hidden"); }
-    function getConfig() { try { return JSON.parse(localStorage.getItem(APP_CONFIG_KEY) || "null"); } catch { return null; } }
-    function saveConfig(url, key) { localStorage.setItem(APP_CONFIG_KEY, JSON.stringify({ url: url.trim(), key: key.trim() })); }
+    function getConfig() {
+      try {
+        const stored =
+          JSON.parse(
+            localStorage.getItem(
+              APP_CONFIG_KEY
+            ) || "null"
+          );
+
+        const config =
+          getSupabaseConfigWithDefaults(
+            stored || {}
+          );
+
+        if(
+          !stored?.url
+          || !stored?.key
+        ) {
+          localStorage.setItem(
+            APP_CONFIG_KEY,
+            JSON.stringify(
+              config
+            )
+          );
+        }
+
+        return config;
+      } catch {
+        return {
+          ...DEFAULT_SUPABASE_CONFIG
+        };
+      }
+    }
+
+    function saveConfig(url, key) {
+      localStorage.setItem(
+        APP_CONFIG_KEY,
+        JSON.stringify({
+          url:
+            url.trim(),
+
+          key:
+            key.trim()
+        })
+      );
+    }
 
     function initClient() {
       const cfg = getConfig();
@@ -1269,6 +1313,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
       });
       return true;
+    }
+
+    function ensureSupabaseClient() {
+      if(
+        state.client?.auth
+      ) {
+        return state.client;
+      }
+
+      const initialized =
+        initClient();
+
+      if(
+        !initialized
+        || !state.client?.auth
+      ) {
+        throw new Error(
+          "SUPABASE_CLIENT_NOT_READY"
+        );
+      }
+
+      return state.client;
     }
 
     async function boot() {
@@ -4874,6 +4940,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       downloadFile,
       openModal,
       closeModal,
+      ensureSupabaseClient,
       applyProfile,
       switchPage
     });
@@ -12955,18 +13022,175 @@ ${skippedSummary(compatibility.skipped)}
   const isHR = () =>
     realRole() === "HR_ADMIN";
 
+  function accountSupabaseClient() {
+    const existing =
+      A()?.state?.client;
+
+    if(
+      existing?.auth
+    ) {
+      return existing;
+    }
+
+    const ensured =
+      A()?.ensureSupabaseClient?.();
+
+    if(
+      !ensured?.auth
+    ) {
+      throw new Error(
+        "SUPABASE_CLIENT_NOT_READY"
+      );
+    }
+
+    return ensured;
+  }
+
+  const PASSWORD_SETUP_COOLDOWN_MS =
+    60 * 1000;
+
+  function passwordSetupStorageKey(
+    email
+  ) {
+    return (
+      "tc_password_setup_sent:"
+      + String(email || "")
+          .trim()
+          .toLowerCase()
+    );
+  }
+
+  function passwordSetupRemainingSeconds(
+    email
+  ) {
+    try {
+      const sentAt =
+        Number(
+          sessionStorage.getItem(
+            passwordSetupStorageKey(
+              email
+            )
+          ) || 0
+        );
+
+      if(!sentAt) return 0;
+
+      const remaining =
+        PASSWORD_SETUP_COOLDOWN_MS
+        - (
+            Date.now()
+            - sentAt
+          );
+
+      return Math.max(
+        0,
+        Math.ceil(
+          remaining / 1000
+        )
+      );
+    } catch {
+      return 0;
+    }
+  }
+
+  function markPasswordSetupSent(
+    email
+  ) {
+    try {
+      sessionStorage.setItem(
+        passwordSetupStorageKey(
+          email
+        ),
+        String(
+          Date.now()
+        )
+      );
+    } catch {
+      // Cooldown is UX-only.
+    }
+  }
+
+  function updatePasswordSetupButtons(
+    email
+  ) {
+    const normalized =
+      String(email || "")
+        .trim()
+        .toLowerCase();
+
+    const remaining =
+      passwordSetupRemainingSeconds(
+        normalized
+      );
+
+    document
+      .querySelectorAll(
+        "[data-account-password-link]"
+      )
+      .forEach(button => {
+        if(
+          String(
+            button.dataset
+              .accountPasswordLink
+            || ""
+          )
+            .trim()
+            .toLowerCase()
+          !== normalized
+        ) {
+          return;
+        }
+
+        button.disabled =
+          remaining > 0;
+
+        button.textContent =
+          remaining > 0
+            ? `ส่งแล้ว • ${remaining} วิ`
+            : "🔑 ตั้งรหัสผ่าน";
+
+        button.title =
+          remaining > 0
+            ? "ระบบรับคำขอส่ง OTP แล้ว กรุณารอก่อนส่งซ้ำ"
+            : "ส่งรหัส OTP สำหรับตั้งรหัสผ่าน";
+      });
+
+    return remaining;
+  }
+
+  function startPasswordSetupCooldown(
+    email
+  ) {
+    updatePasswordSetupButtons(
+      email
+    );
+
+    const timer =
+      window.setInterval(
+        () => {
+          const remaining =
+            updatePasswordSetupButtons(
+              email
+            );
+
+          if(
+            remaining <= 0
+          ) {
+            clearInterval(
+              timer
+            );
+          }
+        },
+        1000
+      );
+  }
+
   async function rpc(
     name,
     params = {}
   ) {
     const client =
-      A()?.state?.client;
-
-    if(!client) {
-      throw new Error(
-        "SUPABASE_NOT_READY"
-      );
-    }
+      accountSupabaseClient();
 
     const {
       data,
@@ -13318,6 +13542,26 @@ ${skippedSummary(compatibility.skipped)}
       $("accountTableMeta").textContent =
         `${state.accounts.length.toLocaleString("th-TH")} บัญชี`;
     }
+
+    state.accounts
+      .filter(account =>
+        String(
+          account.account_status
+          || ""
+        ).toUpperCase()
+        === "FIRST_LOGIN_PASSWORD"
+      )
+      .forEach(account => {
+        if(
+          passwordSetupRemainingSeconds(
+            account.email
+          ) > 0
+        ) {
+          startPasswordSetupCooldown(
+            account.email
+          );
+        }
+      });
   }
 
   async function loadCandidates(
@@ -14105,7 +14349,7 @@ ${skippedSummary(compatibility.skipped)}
       );
 
       const client =
-        A()?.state?.client;
+        accountSupabaseClient();
 
       const {
         error
@@ -14186,7 +14430,7 @@ ${skippedSummary(compatibility.skipped)}
       );
 
       const client =
-        A()?.state?.client;
+        accountSupabaseClient();
 
       const redirectUrl =
         new URL(
@@ -14317,13 +14561,31 @@ ${skippedSummary(compatibility.skipped)}
   ) {
     if(!email) return;
 
+    const remaining =
+      passwordSetupRemainingSeconds(
+        email
+      );
+
+    if(
+      remaining > 0
+    ) {
+      startPasswordSetupCooldown(
+        email
+      );
+
+      return A()?.toast?.(
+        `ระบบรับคำขอส่ง OTP แล้ว กรุณารออีก ${remaining} วินาทีก่อนส่งซ้ำ`,
+        "info"
+      );
+    }
+
     try {
       A()?.showLoading?.(
         "กำลังส่งลิงก์ตั้งรหัสผ่าน..."
       );
 
       const client =
-        A()?.state?.client;
+        accountSupabaseClient();
 
       const {
         data,
@@ -14355,8 +14617,16 @@ ${skippedSummary(compatibility.skipped)}
         );
       }
 
+      markPasswordSetupSent(
+        email
+      );
+
+      startPasswordSetupCooldown(
+        email
+      );
+
       A()?.toast?.(
-        "ส่งลิงก์ตั้งรหัสผ่านให้ User เรียบร้อย",
+        "Supabase รับคำขอส่ง OTP แล้ว กรุณารอ Email และไม่ต้องกดส่งซ้ำภายใน 60 วินาที",
         "success"
       );
     } catch(error) {
@@ -14506,7 +14776,7 @@ ${skippedSummary(compatibility.skipped)}
       );
 
       const client =
-        A()?.state?.client;
+        accountSupabaseClient();
 
       const {
         data,
@@ -14532,6 +14802,21 @@ ${skippedSummary(compatibility.skipped)}
         );
       }
 
+      if(
+        A()?.state
+      ) {
+        A().state.session =
+          data?.session
+          || A().state.session
+          || null;
+
+        A().state.user =
+          data?.user
+          || data?.session?.user
+          || A().state.user
+          || null;
+      }
+
       $("recoveryOtpModal")
         ?.classList.add(
           "hidden"
@@ -14552,12 +14837,19 @@ ${skippedSummary(compatibility.skipped)}
           || ""
         );
 
-      const message =
+      const rawMessage =
         String(
           error?.message
           || error
           || "OTP ไม่ถูกต้องหรือหมดอายุ"
         );
+
+      const message =
+        rawMessage.includes(
+          "SUPABASE_CLIENT_NOT_READY"
+        )
+          ? "ไม่สามารถเชื่อมต่อ Supabase ได้ กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง"
+          : rawMessage;
 
       const element =
         $("recoveryOtpError");
