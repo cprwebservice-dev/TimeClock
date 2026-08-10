@@ -1362,16 +1362,55 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       syncSchedulePeriodUI();
     }
 
+    function setLoginPasswordVisibility(visible) {
+      const input = $("loginPassword");
+      const button = $("loginPasswordToggle");
+
+      if (!input || !button) return;
+
+      input.type = visible ? "text" : "password";
+      button.setAttribute(
+        "aria-pressed",
+        visible ? "true" : "false"
+      );
+      button.setAttribute(
+        "aria-label",
+        visible ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"
+      );
+
+      const text =
+        button.querySelector(
+          ".account-password-toggle-text"
+        );
+      const icon =
+        button.querySelector(
+          ".account-password-toggle-icon"
+        );
+
+      if (text) {
+        text.textContent =
+          visible ? "ซ่อน" : "แสดง";
+      }
+
+      if (icon) {
+        icon.textContent =
+          visible ? "◌" : "◉";
+      }
+    }
+
+    function toggleLoginPasswordVisibility() {
+      const input = $("loginPassword");
+      if (!input) return;
+
+      setLoginPasswordVisibility(
+        input.type === "password"
+      );
+    }
+
     function showLogin() {
       $("appShell").classList.add("hidden");
       $("loginScreen").classList.remove("hidden");
-      if (typeof setPasswordVisibility === "function") {
-        setPasswordVisibility(
-          "loginPassword",
-          "loginPasswordToggle",
-          false
-        );
-      }
+      setLoginPasswordVisibility(false);
     }
     function showApp() { $("loginScreen").classList.add("hidden"); $("appShell").classList.remove("hidden"); }
 
@@ -1420,8 +1459,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const ui = window.TimeClockSettings?.getRuntimeSettings?.() || {};
       const canSimulate = p._realRole === "HR_ADMIN" && ui.developerMode === true;
       p.role = canSimulate ? (ui.viewAsRole || p._realRole) : p._realRole;
-      setText("sidebarUserName", p.display_name || p.email || state.user.email);
-      setText("sidebarUserEmail", p.email || state.user.email);
+      const sidebarDisplayName =
+        p.display_name
+        || p.email
+        || state.user.email
+        || "User";
+
+      setText(
+        "sidebarUserName",
+        sidebarDisplayName
+      );
+      setText(
+        "sidebarUserEmail",
+        p.email || state.user.email
+      );
+      setText(
+        "sidebarUserAvatar",
+        String(sidebarDisplayName)
+          .trim()
+          .charAt(0)
+          .toUpperCase()
+        || "U"
+      );
       setText("roleBadge", p.role || "VIEWER");
       $("roleBadge").title = p.role !== p._realRole ? `สิทธิ์จริง ${p._realRole} • กำลังจำลอง ${p.role}` : `สิทธิ์จริง ${p._realRole}`;
       $("adminNavGroup").classList.toggle("hidden", p.role !== "HR_ADMIN" && p._realRole !== "HR_ADMIN");
@@ -4561,7 +4620,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอแก้ไขกะ","พนักงานส่งคำขอ และ Manager พิจารณาตามสายบังคับบัญชา"], schedule:["ปฏิทินจัดกะ","จัดกะล่วงหน้าได้ทุกวัน รวมวันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์"], "work-patterns":["รูปแบบการทำงาน","กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น และรูปแบบช่วงงานรายบุคคล"], review:["รายการรอตรวจสอบ","ตรวจสอบกะและเวลาที่ผิดปกติ"], leave:["ลาและใบรับรอง","จัดการคำขอลา สิทธิ์ และเอกสารประกอบ"], "time-correction":["คำขอแก้ไขเวลา","ตรวจค่าเดิม–ค่าใหม่และอนุมัติการแก้เวลา"], "exception-center":["Exception Center","รวมรายการที่ต้องดำเนินการจากการลา เวลา และ Attendance"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
         "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
-      setText("pageTitle", titles[page]?.[0] || page); setText("pageSubtitle", titles[page]?.[1] || ""); $("sidebar").classList.remove("open");
+      setText("pageTitle", titles[page]?.[0] || page);
+      setText("pageSubtitle", titles[page]?.[1] || "");
+      $("sidebar").classList.remove("open");
+      $("sidebarScrim")?.classList.remove("active");
+      $("mobileMenuBtn")?.setAttribute(
+        "aria-expanded",
+        "false"
+      );
+      document.body.classList.remove(
+        "sidebar-mobile-open"
+      );
       if (page === "attendance" && !state.attendance.length) loadAttendance();
       if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
       if (page === "schedule" && !state.schedule.length) loadSchedule();
@@ -4575,19 +4644,58 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     function bindEvents() {
       $("loginForm").addEventListener("submit", async e => { e.preventDefault(); if (!state.client) return openModal("configModal"); showLoading("กำลังเข้าสู่ระบบ..."); try { const { error } = await state.client.auth.signInWithPassword({ email: val("loginEmail").trim(), password: val("loginPassword") }); if (error) throw error; const { data:{session} } = await state.client.auth.getSession(); state.session=session; state.user=session.user; await enterApp(); } catch(err){toast(humanError(err),"error");} finally{hideLoading();} });
-      $("loginPasswordToggle")?.addEventListener("click", () => {
-        togglePasswordVisibility(
-          "loginPassword",
-          "loginPasswordToggle"
-        );
-      });
+      $("loginPasswordToggle")?.addEventListener(
+        "click",
+        toggleLoginPasswordVisibility
+      );
       $("logoutBtn").addEventListener("click", async () => { if (state.client) await state.client.auth.signOut(); showLogin(); });
       $("openConfigFromLogin").addEventListener("click", () => openModal("configModal"));
       $("configBtn").addEventListener("click", () => { const c=getConfig(); setVal("configUrl",c?.url); setVal("configKey",c?.key); openModal("configModal"); });
       $("saveConfigBtn").addEventListener("click", () => { const url=val("configUrl").trim(), key=val("configKey").trim(); if(!url||!key) return toast("กรุณากรอก URL และ Key", "error"); saveConfig(url,key); closeModal("configModal"); toast("บันทึกการตั้งค่าแล้ว กรุณาโหลดหน้าใหม่", "success"); setTimeout(()=>location.reload(),700); });
       qsa("[data-close-modal]").forEach(b => b.addEventListener("click", () => closeModal(b.dataset.closeModal)));
       qsa(".nav-item").forEach(b => b.addEventListener("click", () => switchPage(b.dataset.page)));
-      $("mobileMenuBtn").addEventListener("click", () => $("sidebar").classList.toggle("open"));
+      $("mobileMenuBtn").addEventListener("click", () => {
+        const sidebar = $("sidebar");
+        const scrim = $("sidebarScrim");
+        const open = !sidebar.classList.contains("open");
+
+        sidebar.classList.toggle("open", open);
+        scrim?.classList.toggle("active", open);
+        $("mobileMenuBtn").setAttribute(
+          "aria-expanded",
+          open ? "true" : "false"
+        );
+        document.body.classList.toggle(
+          "sidebar-mobile-open",
+          open
+        );
+      });
+
+      $("sidebarScrim")?.addEventListener("click", () => {
+        $("sidebar")?.classList.remove("open");
+        $("sidebarScrim")?.classList.remove("active");
+        $("mobileMenuBtn")?.setAttribute(
+          "aria-expanded",
+          "false"
+        );
+        document.body.classList.remove(
+          "sidebar-mobile-open"
+        );
+      });
+
+      document.addEventListener("keydown", event => {
+        if (event.key !== "Escape") return;
+
+        $("sidebar")?.classList.remove("open");
+        $("sidebarScrim")?.classList.remove("active");
+        $("mobileMenuBtn")?.setAttribute(
+          "aria-expanded",
+          "false"
+        );
+        document.body.classList.remove(
+          "sidebar-mobile-open"
+        );
+      });
       $("loadDashboardBtn").addEventListener("click", loadDashboard);
       $("loadAttendanceBtn").addEventListener("click", loadAttendance);
       $("attZone")?.addEventListener(
@@ -5030,11 +5138,131 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   function bootEnterprise(){
     applyTheme(localStorage.getItem('tc_theme') || 'light');
     $('themeToggleBtn')?.addEventListener('click', () => applyTheme(document.body.classList.contains('theme-dark') ? 'light' : 'dark'));
-    $('sidebarCollapseBtn')?.addEventListener('click', () => {
-      document.body.classList.toggle('sidebar-collapsed');
-      localStorage.setItem('tc_sidebar_collapsed', document.body.classList.contains('sidebar-collapsed') ? '1' : '0');
+    const collapseBtn =
+      $('sidebarCollapseBtn');
+
+    const navItems =
+      [...document.querySelectorAll(
+        '.sidebar .nav-item'
+      )];
+
+    navItems.forEach(item => {
+      const text =
+        item.querySelector(
+          '.nav-text'
+        )?.textContent
+          ?.trim()
+        || item.textContent
+          ?.trim()
+        || '';
+
+      if (text) {
+        item.dataset.navTooltip =
+          text;
+        item.title =
+          text;
+      }
     });
-    if (localStorage.getItem('tc_sidebar_collapsed') === '1') document.body.classList.add('sidebar-collapsed');
+
+    function syncSidebarCollapseButton() {
+      const collapsed =
+        document.body.classList.contains(
+          'sidebar-collapsed'
+        );
+
+      if (!collapseBtn) return;
+
+      collapseBtn.setAttribute(
+        'aria-pressed',
+        collapsed ? 'true' : 'false'
+      );
+      collapseBtn.setAttribute(
+        'aria-label',
+        collapsed ? 'ขยายเมนู' : 'ย่อเมนู'
+      );
+      collapseBtn.title =
+        collapsed ? 'ขยายเมนู' : 'ย่อเมนู';
+
+      const icon =
+        collapseBtn.querySelector(
+          '.sidebar-collapse-icon'
+        );
+
+      if (icon) {
+        icon.textContent =
+          collapsed ? '›' : '‹';
+      }
+    }
+
+    function setSidebarCollapsed(
+      collapsed,
+      persist = true
+    ) {
+      document.body.classList.toggle(
+        'sidebar-collapsed',
+        Boolean(collapsed)
+      );
+
+      if (persist) {
+        localStorage.setItem(
+          'tc_sidebar_collapsed',
+          collapsed ? '1' : '0'
+        );
+      }
+
+      syncSidebarCollapseButton();
+    }
+
+    collapseBtn?.addEventListener(
+      'click',
+      () => {
+        if (
+          window.matchMedia(
+            '(max-width: 900px)'
+          ).matches
+        ) {
+          return;
+        }
+
+        setSidebarCollapsed(
+          !document.body.classList.contains(
+            'sidebar-collapsed'
+          )
+        );
+      }
+    );
+
+    setSidebarCollapsed(
+      localStorage.getItem(
+        'tc_sidebar_collapsed'
+      ) === '1',
+      false
+    );
+
+    window.addEventListener(
+      'resize',
+      () => {
+        syncSidebarCollapseButton();
+
+        if (
+          window.innerWidth > 900
+        ) {
+          $('sidebar')?.classList.remove(
+            'open'
+          );
+          $('sidebarScrim')?.classList.remove(
+            'active'
+          );
+          document.body.classList.remove(
+            'sidebar-mobile-open'
+          );
+          $('mobileMenuBtn')?.setAttribute(
+            'aria-expanded',
+            'false'
+          );
+        }
+      }
+    );
     $('clearDashboardFilterBtn')?.addEventListener('click', () => {
       const end = new Date();
       const start = new Date(end); start.setDate(start.getDate()-30);
