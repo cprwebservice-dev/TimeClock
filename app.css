@@ -8830,3 +8830,12 @@ body.theme-dark .sidebar-collapse-btn{
 #page-exception-center{
   display:none!important;
 }
+
+
+/* ==========================================================================
+   V6.10.20 Attendance Main Search Performance
+   ========================================================================== */
+
+#loadAttendanceBtn{
+  min-width:112px;
+}

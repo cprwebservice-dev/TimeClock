@@ -2834,6 +2834,569 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     let attendanceLoadRequestId = 0;
 
+    function attendanceParseDate(
+      value
+    ) {
+      const match =
+        String(value || "")
+          .match(
+            /^(\d{4})-(\d{2})-(\d{2})$/
+          );
+
+      if(!match) return null;
+
+      return new Date(
+        Date.UTC(
+          Number(match[1]),
+          Number(match[2]) - 1,
+          Number(match[3])
+        )
+      );
+    }
+
+    function attendanceFormatDate(
+      date
+    ) {
+      return date
+        .toISOString()
+        .slice(0,10);
+    }
+
+    function attendanceChunkRanges(
+      startValue,
+      endValue,
+      chunkDays = 14
+    ) {
+      let start =
+        attendanceParseDate(
+          startValue
+        );
+
+      let end =
+        attendanceParseDate(
+          endValue
+        );
+
+      if(
+        !start
+        || !end
+      ) {
+        return [{
+          start:
+            startValue,
+          end:
+            endValue
+        }];
+      }
+
+      if(start > end) {
+        [start,end] =
+          [end,start];
+      }
+
+      const ranges = [];
+      let cursor =
+        new Date(
+          end.getTime()
+        );
+
+      while(
+        cursor >= start
+      ) {
+        const chunkEnd =
+          new Date(
+            cursor.getTime()
+          );
+
+        const chunkStart =
+          new Date(
+            cursor.getTime()
+          );
+
+        chunkStart.setUTCDate(
+          chunkStart.getUTCDate()
+          - (
+              Math.max(
+                1,
+                chunkDays
+              )
+              - 1
+            )
+        );
+
+        if(
+          chunkStart < start
+        ) {
+          chunkStart =
+            new Date(
+              start.getTime()
+            );
+        }
+
+        ranges.push({
+          start:
+            attendanceFormatDate(
+              chunkStart
+            ),
+
+          end:
+            attendanceFormatDate(
+              chunkEnd
+            )
+        });
+
+        cursor =
+          new Date(
+            chunkStart.getTime()
+          );
+
+        cursor.setUTCDate(
+          cursor.getUTCDate()
+          - 1
+        );
+      }
+
+      return ranges;
+    }
+
+    function attendanceIsTimeout(
+      error
+    ) {
+      const message =
+        String(
+          error?.message
+          || error
+          || ""
+        )
+          .toLowerCase();
+
+      return (
+        message.includes(
+          "statement timeout"
+        )
+        || message.includes(
+          "canceling statement"
+        )
+      );
+    }
+
+    async function fetchAttendanceChunk(
+      range,
+      requestEmployeeCodes,
+      statuses,
+      depth = 0
+    ) {
+      const newArgs = {
+        p_start_date:
+          range.start,
+
+        p_end_date:
+          range.end,
+
+        p_area:
+          val("attZone")
+          || null,
+
+        p_sub_area:
+          val("attSubArea")
+          || null,
+
+        p_department:
+          val("attDepartment")
+          || null,
+
+        p_emp_codes:
+          requestEmployeeCodes,
+
+        p_attendance_statuses:
+          statuses,
+
+        p_schedule_statuses:
+          null,
+
+        p_limit:
+          5000
+      };
+
+      let response =
+        await state.client.rpc(
+          "ta_get_attendance_detail_v61020",
+          newArgs
+        );
+
+      let source =
+        "V6.10.20";
+
+      let serverStatusFilter =
+        true;
+
+      let serverSubAreaFilter =
+        true;
+
+      if(
+        response.error
+        && window.TimeClockShiftAPI
+          ?.missingFunction?.(
+            response.error
+          )
+      ) {
+        const legacyArgs = {
+          p_start_date:
+            range.start,
+
+          p_end_date:
+            range.end,
+
+          p_zone:
+            val("attZone")
+            || null,
+
+          p_department:
+            val("attDepartment")
+            || null,
+
+          p_emp_codes:
+            requestEmployeeCodes,
+
+          p_attendance_statuses:
+            statuses,
+
+          p_schedule_statuses:
+            null,
+
+          p_limit:
+            5000
+        };
+
+        response =
+          await state.client.rpc(
+            "ta_get_attendance_detail_v664",
+            legacyArgs
+          );
+
+        source =
+          "V6.6.4";
+
+        serverSubAreaFilter =
+          false;
+      }
+
+      if(
+        response.error
+        && window.TimeClockShiftAPI
+          ?.missingFunction?.(
+            response.error
+          )
+      ) {
+        response =
+          await state.client.rpc(
+            "ta_get_attendance_detail_v640",
+            {
+              p_start_date:
+                range.start,
+
+              p_end_date:
+                range.end,
+
+              p_zone:
+                val("attZone")
+                || null,
+
+              p_department:
+                val("attDepartment")
+                || null,
+
+              p_emp_codes:
+                requestEmployeeCodes,
+
+              p_attendance_statuses:
+                null,
+
+              p_schedule_statuses:
+                null,
+
+              p_limit:
+                5000
+            }
+          );
+
+        source =
+          "V6.4.0";
+
+        serverStatusFilter =
+          false;
+
+        serverSubAreaFilter =
+          false;
+      }
+
+      if(
+        response.error
+        && window.TimeClockShiftAPI
+          ?.missingFunction?.(
+            response.error
+          )
+      ) {
+        response =
+          await state.client.rpc(
+            "ta_get_attendance_detail_v619",
+            {
+              p_start_date:
+                range.start,
+
+              p_end_date:
+                range.end,
+
+              p_area:
+                val("attZone")
+                || null,
+
+              p_sub_area:
+                val("attSubArea")
+                || null,
+
+              p_department:
+                val("attDepartment")
+                || null,
+
+              p_emp_codes:
+                requestEmployeeCodes,
+
+              p_attendance_statuses:
+                null,
+
+              p_schedule_statuses:
+                null,
+
+              p_limit:
+                5000
+            }
+          );
+
+        source =
+          "V6.1.9";
+
+        serverStatusFilter =
+          false;
+
+        serverSubAreaFilter =
+          true;
+      }
+
+      if(
+        response.error
+        && attendanceIsTimeout(
+          response.error
+        )
+        && depth < 4
+      ) {
+        const start =
+          attendanceParseDate(
+            range.start
+          );
+
+        const end =
+          attendanceParseDate(
+            range.end
+          );
+
+        const diffDays =
+          start && end
+            ? Math.floor(
+                (
+                  end.getTime()
+                  - start.getTime()
+                )
+                / 86400000
+              )
+              + 1
+            : 0;
+
+        if(
+          diffDays > 1
+        ) {
+          const half =
+            Math.ceil(
+              diffDays / 2
+            );
+
+          const newerStart =
+            new Date(
+              end.getTime()
+            );
+
+          newerStart.setUTCDate(
+            newerStart.getUTCDate()
+            - half
+            + 1
+          );
+
+          const olderEnd =
+            new Date(
+              newerStart.getTime()
+            );
+
+          olderEnd.setUTCDate(
+            olderEnd.getUTCDate()
+            - 1
+          );
+
+          const newer =
+            await fetchAttendanceChunk(
+              {
+                start:
+                  attendanceFormatDate(
+                    newerStart
+                  ),
+
+                end:
+                  attendanceFormatDate(
+                    end
+                  )
+              },
+              requestEmployeeCodes,
+              statuses,
+              depth + 1
+            );
+
+          const older =
+            olderEnd >= start
+              ? await fetchAttendanceChunk(
+                  {
+                    start:
+                      attendanceFormatDate(
+                        start
+                      ),
+
+                    end:
+                      attendanceFormatDate(
+                        olderEnd
+                      )
+                  },
+                  requestEmployeeCodes,
+                  statuses,
+                  depth + 1
+                )
+              : [];
+
+          return [
+            ...newer,
+            ...older
+          ];
+        }
+      }
+
+      if(
+        response.error
+      ) {
+        throw response.error;
+      }
+
+      let rows =
+        Array.isArray(
+          response.data
+        )
+          ? response.data
+          : [];
+
+      if(
+        !serverSubAreaFilter
+        && val("attSubArea")
+      ) {
+        const selected =
+          val("attSubArea");
+
+        rows =
+          rows.filter(
+            row =>
+              String(
+                row.sub_area
+                || ""
+              ) === selected
+          );
+      }
+
+      rows =
+        rows.map(row => {
+          const enriched = {
+            ...row
+          };
+
+          enriched.absence_minutes =
+            attendanceAbsenceMinutes(
+              enriched
+            );
+
+          enriched.display_status =
+            attendanceDisplayStatus(
+              enriched
+            );
+
+          if(
+            !enriched.absence_reason
+            && enriched.absence_minutes > 0
+          ) {
+            const hasIn =
+              Boolean(
+                enriched.actual_in_at
+                || enriched.first_in
+              );
+
+            const hasOut =
+              Boolean(
+                enriched.actual_out_at
+                || enriched.last_out
+              );
+
+            enriched.absence_reason =
+              !hasIn && !hasOut
+                ? "MISSING_BOTH"
+                : !hasIn
+                  ? "MISSING_IN"
+                  : "MISSING_OUT";
+          }
+
+          enriched._attendance_source =
+            source;
+
+          return enriched;
+        });
+
+      if(
+        !serverStatusFilter
+        && statuses?.length
+      ) {
+        const wanted =
+          new Set(
+            statuses.map(
+              status =>
+                String(status)
+                  .toUpperCase()
+            )
+          );
+
+        rows =
+          rows.filter(row =>
+            wanted.has(
+              attendanceDisplayStatus(
+                row
+              )
+            )
+            || wanted.has(
+              String(
+                row.calculation_status
+                || row.attendance_result
+                || row.attendance_status
+                || ""
+              )
+                .toUpperCase()
+            )
+          );
+      }
+
+      return rows;
+    }
+
     async function loadAttendance() {
       const requestId =
         ++attendanceLoadRequestId;
@@ -2845,118 +3408,54 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       try {
         const statuses =
           val("attStatus")
-            ? [val("attStatus")]
+            ? [
+                val(
+                  "attStatus"
+                )
+              ]
             : null;
+
         const requestEmployeeCodes =
           attendanceEmployeeCodesForQuery();
 
-        const args640 = {
-          p_start_date: val("attStart"),
-          p_end_date: val("attEnd"),
-          p_zone: val("attZone") || null,
-          p_department: val("attDepartment") || null,
-          p_emp_codes: requestEmployeeCodes,
-          p_attendance_statuses: statuses,
-          p_schedule_statuses: null,
-          p_limit: 5000
-        };
-        let usedV664 = true;
-        let response = await state.client.rpc(
-          "ta_get_attendance_detail_v664",
-          args640
-        );
-
-        if (
-          response.error
-          && window.TimeClockShiftAPI?.missingFunction?.(
-            response.error
-          )
-        ) {
-          usedV664 = false;
-          response = await state.client.rpc(
-            "ta_get_attendance_detail_v640",
-            {
-              ...args640,
-              p_attendance_statuses: null
-            }
+        const ranges =
+          attendanceChunkRanges(
+            val("attStart"),
+            val("attEnd"),
+            14
           );
-        }
 
-        if (
-          response.error
-          && window.TimeClockShiftAPI?.missingFunction?.(
-            response.error
-          )
+        const collected = [];
+
+        for(
+          let index = 0;
+          index < ranges.length;
+          index += 1
         ) {
-          usedV664 = false;
-          response = await state.client.rpc(
-            "ta_get_attendance_detail_v619",
-            {
-              p_start_date: val("attStart"),
-              p_end_date: val("attEnd"),
-              p_area: val("attZone") || null,
-              p_sub_area: val("attSubArea") || null,
-              p_department: val("attDepartment") || null,
-              p_emp_codes: requestEmployeeCodes,
-              p_attendance_statuses: null,
-              p_schedule_statuses: null,
-              p_limit: 5000
-            }
-          );
-        }
-        if (response.error) throw response.error;
-        const selectedSubArea = val("attSubArea");
-        let data = selectedSubArea
-          ? (response.data || []).filter(
-              r => String(r.sub_area || "") === selectedSubArea
-            )
-          : (response.data || []);
-
-        data = (data || []).map(row => {
-          const enriched = { ...row };
-          enriched.absence_minutes =
-            attendanceAbsenceMinutes(enriched);
-          enriched.display_status =
-            attendanceDisplayStatus(enriched);
-
-          if (
-            !enriched.absence_reason
-            && enriched.absence_minutes > 0
+          if(
+            requestId
+            !== attendanceLoadRequestId
           ) {
-            const hasIn = Boolean(
-              enriched.actual_in_at || enriched.first_in
-            );
-            const hasOut = Boolean(
-              enriched.actual_out_at || enriched.last_out
-            );
-            enriched.absence_reason =
-              !hasIn && !hasOut
-                ? "MISSING_BOTH"
-                : !hasIn
-                  ? "MISSING_IN"
-                  : "MISSING_OUT";
+            return;
           }
 
-          return enriched;
-        });
+          const rows =
+            await fetchAttendanceChunk(
+              ranges[index],
+              requestEmployeeCodes,
+              statuses
+            );
 
-        if (!usedV664 && statuses?.length) {
-          const wanted = new Set(
-            statuses.map(status =>
-              String(status).toUpperCase()
-            )
+          collected.push(
+            ...rows
           );
-          data = data.filter(row =>
-            wanted.has(attendanceDisplayStatus(row))
-            || wanted.has(
-              String(
-                row.calculation_status
-                || row.attendance_result
-                || row.attendance_status
-                || ""
-              ).toUpperCase()
-            )
-          );
+
+          if(
+            collected.length
+            >= 5000
+          ) {
+            break;
+          }
         }
 
         if(
@@ -2966,15 +3465,67 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           return;
         }
 
-        state.attendance = data.sort(
-          (a,b) =>
-            String(b.work_date || "").localeCompare(
-              String(a.work_date || "")
-            )
-            || String(a.emp_code || "").localeCompare(
-              String(b.emp_code || "")
-            )
-        );
+        const unique =
+          new Map();
+
+        collected
+          .sort(
+            (a,b) =>
+              String(
+                b.work_date
+                || ""
+              )
+                .localeCompare(
+                  String(
+                    a.work_date
+                    || ""
+                  )
+                )
+              || String(
+                a.emp_code
+                || ""
+              )
+                .localeCompare(
+                  String(
+                    b.emp_code
+                    || ""
+                  )
+                )
+          )
+          .forEach(row => {
+            const key =
+              String(
+                row.emp_code
+                || ""
+              )
+              + "|"
+              + String(
+                row.work_date
+                || ""
+              )
+                .slice(
+                  0,
+                  10
+                );
+
+            if(
+              !unique.has(
+                key
+              )
+            ) {
+              unique.set(
+                key,
+                row
+              );
+            }
+          });
+
+        state.attendance =
+          [...unique.values()]
+            .slice(
+              0,
+              5000
+            );
 
         if(
           !attendanceEmployeeFilter.options
@@ -2990,13 +3541,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
 
         const activeEmployeeCodes =
-          Array.isArray(requestEmployeeCodes)
+          Array.isArray(
+            requestEmployeeCodes
+          )
             ? requestEmployeeCodes
             : null;
+
         const singleEmployeeCode =
-          activeEmployeeCodes?.length === 1
-            ? activeEmployeeCodes[0]
-            : null;
+          activeEmployeeCodes?.length
+            === 1
+              ? activeEmployeeCodes[0]
+              : null;
 
         state.attendanceServerFilter =
           activeEmployeeCodes;
@@ -3008,17 +3563,44 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             "timeclock:attendance-loaded",
             {
               detail: {
-                count: state.attendance.length,
-                empCode: singleEmployeeCode,
-                empCodes: activeEmployeeCodes,
+                count:
+                  state.attendance.length,
+
+                empCode:
+                  singleEmployeeCode,
+
+                empCodes:
+                  activeEmployeeCodes,
+
                 reachedLimit:
-                  state.attendance.length >= 5000
+                  state.attendance.length
+                    >= 5000
               }
             }
           )
         );
-      } catch (err) { toast(humanError(err), "error"); }
-      finally { hideLoading(); }
+
+      } catch(error) {
+        if(
+          attendanceIsTimeout(
+            error
+          )
+        ) {
+          toast(
+            "การค้นหายังใช้เวลานานเกินกำหนด กรุณาลองช่วงวันที่สั้นลง หรือเลือกพื้นที่/พนักงานเพิ่มเติม",
+            "error"
+          );
+        } else {
+          toast(
+            humanError(
+              error
+            ),
+            "error"
+          );
+        }
+      } finally {
+        hideLoading();
+      }
     }
 
     function renderAttendance() {
