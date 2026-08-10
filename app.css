@@ -8839,3 +8839,13 @@ body.theme-dark .sidebar-collapse-btn{
 #loadAttendanceBtn{
   min-width:112px;
 }
+
+
+/* ==========================================================================
+   V6.10.22 User Scope Hardening
+   ========================================================================== */
+
+.scope-security-note{
+  font-size:11px;
+  line-height:1.5;
+}

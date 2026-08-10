@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.5";
-document.documentElement.dataset.timeClockBuild = "6.10.5";
+window.__TIME_CLOCK_BUILD__ = "V6.10.22";
+document.documentElement.dataset.timeClockBuild = "6.10.22";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.5";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.2',
+  version: '6.10.22',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -102,23 +102,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!response.error) return response.data;
     if (!missingFunction(response.error)) throw response.error;
 
-    response = await client.rpc("ta_assign_shift_single", full);
-    if (!response.error) return response.data;
-    if (!missingFunction(response.error)) throw response.error;
-
-    const withoutNote = { ...full };
-    delete withoutNote.p_note;
-    response = await client.rpc("ta_assign_shift_single", withoutNote);
-    if (!response.error) return response.data;
-    if (!missingFunction(response.error)) throw response.error;
-
-    return directAssign(client, {
-      emp_code: full.p_emp_code,
-      work_date: full.p_work_date,
-      shift_code: full.p_shift_code,
-      note: full.p_note,
-      confirm_now: full.p_confirm_now
-    }, app);
+    throw new Error(
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.22 ก่อนจัดกะ"
+    );
   }
 
   async function assignBulk(app, rows, changeReason, confirmNow = false) {
@@ -140,64 +126,31 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!response.error) return response.data;
     if (!missingFunction(response.error)) throw response.error;
 
-    response = await client.rpc("ta_assign_shifts_bulk", {
-      p_rows: cleanRows,
-      p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
-      p_confirm_now: Boolean(confirmNow)
-    });
-    if (!response.error) return response.data;
-    if (!missingFunction(response.error)) throw response.error;
-
-    // Fast direct fallback for databases that have not installed the compatibility RPC yet.
-    const toDelete = cleanRows.filter(row => !row.shift_code);
-    const toSave = cleanRows.filter(row => row.shift_code);
-    const actor = currentEmail(app);
-
-    if (toSave.length) {
-      const payload = toSave.map(row => ({
-        emp_code: row.emp_code,
-        work_date: row.work_date,
-        shift_code: row.shift_code,
-        source_type: "manual",
-        note: row.note,
-        is_confirmed: Boolean(confirmNow),
-        confirmed_at: confirmNow ? new Date().toISOString() : null,
-        confirmed_by: confirmNow ? actor : null,
-        updated_by: actor,
-        updated_at: new Date().toISOString()
-      }));
-      let result = await client.from("shift_calendar").upsert(payload, { onConflict: "work_date,emp_code" });
-      if (result.error && missingColumn(result.error)) {
-        const minimum = payload.map(({ emp_code, work_date, shift_code, source_type, note }) => ({ emp_code, work_date, shift_code, source_type, note }));
-        result = await client.from("shift_calendar").upsert(minimum, { onConflict: "work_date,emp_code" });
-      }
-      if (result.error) throw result.error;
-    }
-
-    for (const row of toDelete) {
-      const { error } = await client.from("shift_calendar").delete().eq("emp_code", row.emp_code).eq("work_date", row.work_date);
-      if (error) throw error;
-    }
-    return { saved_rows: toSave.length, deleted_rows: toDelete.length, fallback: true };
+    throw new Error(
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.22 ก่อนบันทึกกะแบบหลายรายการ"
+    );
   }
 
   async function deleteBulk(app, empCodes, startDate, endDate, changeReason) {
     const client = app?.state?.client;
     if (!client) throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
-    const response = await client.rpc("ta_delete_shift_assignments_bulk", {
-      p_emp_codes: empCodes,
-      p_start_date: startDate,
-      p_end_date: endDate,
-      p_change_reason: changeReason || "ลบกะจากหน้าเว็บ"
-    });
-    if (!response.error) return response.data;
-    if (!missingFunction(response.error)) throw response.error;
+    const response = await client.rpc(
+      "ta_delete_shift_assignments_bulk_v61022",
+      {
+        p_emp_codes: empCodes,
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_change_reason:
+          changeReason
+          || "ลบกะจากหน้าเว็บ"
+      }
+    );
 
-    let query = client.from("shift_calendar").delete().gte("work_date", startDate).lte("work_date", endDate);
-    if (Array.isArray(empCodes) && empCodes.length) query = query.in("emp_code", empCodes);
-    const { error } = await query;
-    if (error) throw error;
-    return { deleted_rows: null, fallback: true };
+    if(response.error) {
+      throw response.error;
+    }
+
+    return response.data;
   }
 
   function classifyReviewRow(row) {
@@ -599,140 +552,305 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
   async function getMonthlySchedule(app, params) {
     const client = app?.state?.client;
-    if (!client) throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
+
+    if(!client) {
+      throw new Error(
+        "ยังไม่ได้เชื่อมต่อ Supabase"
+      );
+    }
 
     const exact = {
-      p_month: params.p_month,
-      p_zone: params.p_zone ?? null,
-      p_department: params.p_department ?? null,
-      p_emp_codes: params.p_emp_codes ?? null,
-      p_schedule_statuses: params.p_schedule_statuses ?? null
+      p_month:
+        params.p_month,
+
+      p_zone:
+        params.p_zone
+        ?? null,
+
+      p_department:
+        params.p_department
+        ?? null,
+
+      p_emp_codes:
+        params.p_emp_codes
+        ?? null,
+
+      p_schedule_statuses:
+        params.p_schedule_statuses
+        ?? null
     };
 
-    let response = await withTimeout(
-      client.rpc("ta_get_monthly_schedule_v651", exact),
-      30000,
-      "โหลดปฏิทินกะตามรูปแบบการทำงาน V6.10.2"
-    );
-    if (response.error) {
-      const v651Error = response.error;
-      response = await withTimeout(
-        client.rpc("ta_get_monthly_schedule_v640", exact),
+    const response =
+      await withTimeout(
+        client.rpc(
+          "ta_get_monthly_schedule_v61022",
+          exact
+        ),
         30000,
-        "โหลดปฏิทินกะและผลคำนวณ V6.4"
+        "โหลดปฏิทินกะตาม User Scope"
       );
-      if (response.error && !missingFunction(v651Error)) throw v651Error;
-    }
-    if (response.error) {
-      const v640Error = response.error;
-      response = await withTimeout(
-        client.rpc("ta_get_monthly_schedule_v563", exact),
-        30000,
-        "โหลดปฏิทินกะล่วงหน้า"
-      );
-      if (response.error) {
-        const v563Error = response.error;
-        response = await withTimeout(
-          client.rpc("ta_get_monthly_schedule", exact),
-          30000,
-          "โหลดปฏิทินกะ"
+
+    if(response.error) {
+      if(
+        missingFunction(
+          response.error
+        )
+      ) {
+        throw new Error(
+          "SECURE_SCHEDULE_SCOPE_RPC_REQUIRED: กรุณารัน SQL V6.10.22"
         );
-        if (response.error) throw (missingFunction(v640Error) && missingFunction(v563Error) ? response.error : (missingFunction(v640Error) ? v563Error : v640Error));
       }
+
+      throw response.error;
     }
 
-    let rows = Array.isArray(response.data) ? response.data.map(row => ({ ...row })) : [];
-    const monthStart = String(params.p_month || "").slice(0, 10);
-    if (!monthStart) return rows;
-    const start = new Date(`${monthStart}T00:00:00`);
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
-    const endDate = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+    let rows =
+      Array.isArray(
+        response.data
+      )
+        ? response.data.map(
+            row => ({
+              ...row
+            })
+          )
+        : [];
 
-    // Ensure every active employee has a writable cell for every day of the month,
-    // including future dates, weekly off days and public holidays.
-    rows = await ensureMonthlyMatrix(client, rows, exact, monthStart, endDate);
+    const monthStart =
+      String(
+        params.p_month
+        || ""
+      )
+        .slice(
+          0,
+          10
+        );
 
-    // Some RPC rows, especially future dates without Attendance, can return
-    // employee codes without names. Merge metadata from every date and use
-    // employee/pattern/attendance sources as a safe fallback.
-    rows = await enrichScheduleEmployeeMetadata(
-      app,
-      client,
-      rows,
-      monthStart
-    );
-
-    // Overlay the manual assignment table on top of the RPC result.
-    // This protects the UI from older ta_get_monthly_schedule versions that
-    // save shift_calendar correctly but do not return assigned_shift_code.
-    let calendarResult = await client
-      .from("shift_calendar")
-      .select("work_date,emp_code,shift_code,is_confirmed,note,source_type,updated_at")
-      .gte("work_date", monthStart)
-      .lte("work_date", endDate);
-
-    if (calendarResult.error && missingColumn(calendarResult.error)) {
-      calendarResult = await client
-        .from("shift_calendar")
-        .select("work_date,emp_code,shift_code")
-        .gte("work_date", monthStart)
-        .lte("work_date", endDate);
+    if(!monthStart) {
+      return rows;
     }
 
-    // If RLS blocks the direct overlay, keep the RPC result rather than failing the whole page.
-    if (calendarResult.error) return rows;
+    const realRole =
+      String(
+        app?.state?.profile?._realRole
+        || app?.state?.profile?.role
+        || "VIEWER"
+      )
+        .toUpperCase();
 
-    const assignmentMap = new Map();
-    for (const item of calendarResult.data || []) {
-      const key = `${String(item.emp_code || "").trim()}|${String(item.work_date || "").slice(0, 10)}`;
-      assignmentMap.set(key, item);
-    }
+    // Manager / Viewer:
+    // Return only rows already filtered by the secure RPC.
+    // Do NOT query employees / attendance_workday / shift_calendar directly.
+    if(realRole !== "HR_ADMIN") {
+      rows.forEach(row => {
+        const empCode =
+          scheduleText(
+            row.emp_code
+          );
 
-    const metaByEmp = new Map();
-    for (const row of rows) {
-      const emp = String(row.emp_code || "").trim();
-      if (emp && !metaByEmp.has(emp)) metaByEmp.set(emp, row);
-      const key = `${emp}|${String(row.work_date || "").slice(0, 10)}`;
-      const assigned = assignmentMap.get(key);
-      const assignedCode = assigned?.shift_code || row.assigned_shift_code || null;
-      const effectiveCode = assignedCode || row.effective_shift_code || row.auto_shift_code || row.shift_code || row.suggested_shift_code || null;
-      row.assigned_shift_code = assignedCode;
-      row.effective_shift_code = effectiveCode;
-      row.is_confirmed = assigned ? Boolean(assigned.is_confirmed) : Boolean(row.is_confirmed);
-      row.schedule_status = assignedCode
-        ? (row.is_confirmed ? "CONFIRMED" : "ASSIGNED")
-        : (row.schedule_status || (effectiveCode ? "AUTO" : "NEED_REVIEW"));
-      if (assigned?.note != null) row.schedule_note = assigned.note;
-      if (assigned?.source_type != null) row.schedule_source = assigned.source_type;
-      const effectiveMaster = app?.state?.filters?.shifts?.find(s => String(s.shift_code || "").toUpperCase() === String(effectiveCode || "").toUpperCase());
-      if (effectiveMaster) {
-        row.shift_start_time = effectiveMaster.start_time || row.shift_start_time || null;
-        row.shift_end_time = effectiveMaster.end_time || row.shift_end_time || null;
-      }
-      assignmentMap.delete(key);
-    }
+        if(
+          !meaningfulScheduleName(
+            row.full_name,
+            empCode
+          )
+        ) {
+          row.full_name =
+            "ไม่พบชื่อพนักงาน";
 
-    // Preserve a saved assignment even when an older RPC omitted that employee/date row.
-    for (const [key, assigned] of assignmentMap) {
-      const [empCode, workDate] = key.split("|");
-      const meta = metaByEmp.get(empCode) || {};
-      rows.push({
-        ...meta,
-        work_date: workDate,
-        emp_code: empCode,
-        assigned_shift_code: assigned.shift_code,
-        effective_shift_code: assigned.shift_code,
-        is_confirmed: Boolean(assigned.is_confirmed),
-        schedule_status: assigned.is_confirmed ? "CONFIRMED" : "ASSIGNED",
-        schedule_note: assigned.note ?? null,
-        schedule_source: assigned.source_type ?? "manual"
+          row.employee_name_missing =
+            true;
+        } else {
+          row.employee_name_missing =
+            false;
+        }
       });
+
+      return rows;
     }
 
-    rows.sort((a, b) =>
-      String(a.emp_code || "").localeCompare(String(b.emp_code || ""), "th") ||
-      String(a.work_date || "").localeCompare(String(b.work_date || ""))
-    );
+    // HR Admin keeps the legacy enrichment because HR_ADMIN is intentionally
+    // unrestricted across employees.
+    const start =
+      new Date(
+        `${monthStart}T00:00:00`
+      );
+
+    const monthEnd =
+      new Date(
+        start.getFullYear(),
+        start.getMonth() + 1,
+        0
+      );
+
+    const endDate =
+      `${monthEnd.getFullYear()}-`
+      + `${String(
+          monthEnd.getMonth() + 1
+        ).padStart(2,"0")}-`
+      + `${String(
+          monthEnd.getDate()
+        ).padStart(2,"0")}`;
+
+    rows =
+      await ensureMonthlyMatrix(
+        client,
+        rows,
+        exact,
+        monthStart,
+        endDate
+      );
+
+    rows =
+      await enrichScheduleEmployeeMetadata(
+        app,
+        client,
+        rows,
+        monthStart
+      );
+
+    let calendarResult =
+      await client
+        .from(
+          "shift_calendar"
+        )
+        .select(
+          "work_date,emp_code,shift_code,is_confirmed,note,source_type,updated_at"
+        )
+        .gte(
+          "work_date",
+          monthStart
+        )
+        .lte(
+          "work_date",
+          endDate
+        );
+
+    if(
+      calendarResult.error
+      && missingColumn(
+        calendarResult.error
+      )
+    ) {
+      calendarResult =
+        await client
+          .from(
+            "shift_calendar"
+          )
+          .select(
+            "work_date,emp_code,shift_code"
+          )
+          .gte(
+            "work_date",
+            monthStart
+          )
+          .lte(
+            "work_date",
+            endDate
+          );
+    }
+
+    if(calendarResult.error) {
+      return rows;
+    }
+
+    const assignmentMap =
+      new Map();
+
+    for(
+      const item
+      of calendarResult.data || []
+    ) {
+      const key =
+        `${String(
+          item.emp_code
+          || ""
+        ).trim()}|`
+        + `${String(
+          item.work_date
+          || ""
+        ).slice(0,10)}`;
+
+      assignmentMap.set(
+        key,
+        item
+      );
+    }
+
+    const metaByEmp =
+      new Map();
+
+    for(const row of rows) {
+      const emp =
+        String(
+          row.emp_code
+          || ""
+        )
+          .trim();
+
+      if(
+        emp
+        && !metaByEmp.has(
+          emp
+        )
+      ) {
+        metaByEmp.set(
+          emp,
+          row
+        );
+      }
+
+      const key =
+        `${emp}|`
+        + `${String(
+          row.work_date
+          || ""
+        ).slice(0,10)}`;
+
+      const assigned =
+        assignmentMap.get(
+          key
+        );
+
+      const assignedCode =
+        assigned?.shift_code
+        || row.assigned_shift_code
+        || null;
+
+      const effectiveCode =
+        assignedCode
+        || row.effective_shift_code
+        || row.auto_shift_code
+        || row.shift_code
+        || row.suggested_shift_code
+        || null;
+
+      row.assigned_shift_code =
+        assignedCode;
+
+      row.effective_shift_code =
+        effectiveCode;
+
+      if(assigned) {
+        row.is_confirmed =
+          Boolean(
+            assigned.is_confirmed
+          );
+
+        row.schedule_status =
+          assigned.is_confirmed
+            ? "CONFIRMED"
+            : "ASSIGNED";
+
+        row.schedule_note =
+          assigned.note
+          ?? row.schedule_note;
+
+        row.schedule_source =
+          assigned.source_type
+          || row.schedule_source
+          || "manual";
+      }
+    }
+
     return rows;
   }
 
@@ -1495,8 +1613,36 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     async function loadFilterOptions() {
-      const { data, error } = await state.client.rpc("ta_get_filter_options", { p_start_date: val("dashStart"), p_end_date: val("dashEnd") });
-      if (error) throw error;
+      const {
+        data,
+        error
+      } =
+        await state.client.rpc(
+          "ta_get_filter_options_v61022",
+          {
+            p_start_date:
+              val("dashStart"),
+
+            p_end_date:
+              val("dashEnd")
+          }
+        );
+
+      if(error) {
+        if(
+          window.TimeClockShiftAPI
+            ?.missingFunction?.(
+              error
+            )
+        ) {
+          throw new Error(
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.22"
+          );
+        }
+
+        throw error;
+      }
+
       const f = data || {};
       let shiftRows = Array.isArray(f.shifts) ? f.shifts : [];
       const shiftResponse = await state.client.rpc("ta_get_shift_master_v651");
@@ -2166,13 +2312,43 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const oldSubArea = preserve ? val("attSubArea") : "";
       const oldDepartment = preserve ? val("attDepartment") : "";
       try {
-        const { data, error } = await state.client.rpc("ta_get_attendance_filter_options_v619", {
-          p_start_date: val("attStart"),
-          p_end_date: val("attEnd"),
-          p_area: oldArea || null,
-          p_sub_area: oldSubArea || null
-        });
-        if (error) throw error;
+        const {
+          data,
+          error
+        } =
+          await state.client.rpc(
+            "ta_get_attendance_filter_options_v61022",
+            {
+              p_start_date:
+                val("attStart"),
+
+              p_end_date:
+                val("attEnd"),
+
+              p_area:
+                oldArea
+                || null,
+
+              p_sub_area:
+                oldSubArea
+                || null
+            }
+          );
+
+        if(error) {
+          if(
+            window.TimeClockShiftAPI
+              ?.missingFunction?.(
+                error
+              )
+          ) {
+            throw new Error(
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.22"
+            );
+          }
+
+          throw error;
+        }
         const f = data || {};
         state.filters.attendance = {
           areas: Array.isArray(f.areas) ? f.areas : [],
@@ -5760,6 +5936,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.22 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.22 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.22 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.22 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SHIFT_NOT_APPLICABLE_TO_WORK_PATTERN")) return "กะที่เลือกไม่รองรับรูปแบบการทำงาน 5 วัน/6 วันของพนักงาน กรุณาเลือกกะให้ตรงกลุ่ม";
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
@@ -6707,7 +6887,20 @@ ${skippedSummary(compatibility.skipped)}
     const start=val("reportStart"),end=val("reportEnd"),zone=val("reportZone")||null,dept=val("reportDepartment")||null;
     if(!start||!end)throw new Error("กรุณาเลือกช่วงวันที่");
     if(type==="attendance"||type==="late"){
-      const data=await rpc("ta_get_attendance_detail_v640",{p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept,p_emp_codes:null,p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000});
+      const data=await rpc(
+        "ta_get_attendance_detail_v61020",
+        {
+          p_start_date:start,
+          p_end_date:end,
+          p_area:zone,
+          p_sub_area:null,
+          p_department:dept,
+          p_emp_codes:null,
+          p_attendance_statuses:null,
+          p_schedule_statuses:null,
+          p_limit:5000
+        }
+      );
       const filtered=type==="late"?data.filter(r=>Number(r.late_minutes||0)>0||Number(r.early_leave_minutes||0)>0):data;
       const shiftTime=(r,side)=>app()?.attendanceShiftTime?.(r,side)||r[side==="start"?"shift_start_time":"shift_end_time"];
       return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","มาสาย(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...filtered.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,r.day_type,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),(Number(r.net_work_minutes||0)/60).toFixed(2),(Number(r.regular_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,r.calculation_status||r.attendance_result||r.attendance_status])];
@@ -10591,16 +10784,6 @@ ${skippedSummary(compatibility.skipped)}
         !["HR_ADMIN","MANAGER"].includes(
           currentRole
         )
-      );
-    });
-
-    hrOnly.forEach(page => {
-      const nav = document.querySelector(
-        `.nav-item[data-page="${page}"]`
-      );
-      nav?.classList.toggle(
-        "hidden",
-        currentRole !== "HR_ADMIN"
       );
     });
 
