@@ -14099,9 +14099,19 @@ ${skippedSummary(compatibility.skipped)}
       const client =
         A()?.state?.client;
 
+      const redirectUrl =
+        new URL(
+          location.origin
+          + location.pathname
+        );
+
+      redirectUrl.searchParams.set(
+        "auth_flow",
+        "recovery"
+      );
+
       const redirectTo =
-        location.origin
-        + location.pathname;
+        redirectUrl.href;
 
       const {
         error
@@ -14290,7 +14300,7 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
 
-  function inviteParams() {
+  function authLinkParams() {
     const params =
       new URLSearchParams(
         location.search
@@ -14299,6 +14309,12 @@ ${skippedSummary(compatibility.skipped)}
     const type =
       String(
         params.get("type")
+        || ""
+      ).toLowerCase();
+
+    const authFlow =
+      String(
+        params.get("auth_flow")
         || ""
       ).toLowerCase();
 
@@ -14314,9 +14330,14 @@ ${skippedSummary(compatibility.skipped)}
 
     return {
       type,
+      authFlow,
       confirmationUrl,
       tokenHash
     };
+  }
+
+  function inviteParams() {
+    return authLinkParams();
   }
 
   function authRedirectError() {
@@ -14420,37 +14441,112 @@ ${skippedSummary(compatibility.skipped)}
   function showInviteAcceptIfNeeded() {
     const {
       type,
+      authFlow,
       confirmationUrl,
       tokenHash
     } =
-      inviteParams();
+      authLinkParams();
 
     const authError =
       authRedirectError();
+
+    const flow =
+      authFlow
+      || type;
 
     if(
       authError.errorCode
       || authError.errorName
     ) {
-      const element =
-        $("inviteAcceptError");
+      const message =
+        authError.errorDescription
+        || `Supabase Auth Error: ${authError.errorCode || authError.errorName}`;
 
-      if(element) {
-        element.textContent =
-          authError.errorDescription
-          || `Supabase Auth Error: ${authError.errorCode || authError.errorName}`;
+      if(
+        flow === "recovery"
+      ) {
+        const element =
+          $("recoveryConfirmError");
 
-        element.classList.remove(
-          "hidden"
-        );
+        if(element) {
+          element.textContent =
+            message;
+
+          element.classList.remove(
+            "hidden"
+          );
+        }
+
+        $("recoveryConfirmBtn")
+          ?.classList.add(
+            "hidden"
+          );
+
+        $("recoveryConfirmModal")
+          ?.classList.remove(
+            "hidden"
+          );
+
+        return;
       }
 
-      $("inviteAcceptBtn")
-        ?.classList.add(
+      if(
+        flow === "invite"
+      ) {
+        const element =
+          $("inviteAcceptError");
+
+        if(element) {
+          element.textContent =
+            message;
+
+          element.classList.remove(
+            "hidden"
+          );
+        }
+
+        $("inviteAcceptBtn")
+          ?.classList.add(
+            "hidden"
+          );
+
+        $("inviteAcceptModal")
+          ?.classList.remove(
+            "hidden"
+          );
+
+        return;
+      }
+
+      A()?.toast?.(
+        message,
+        "error"
+      );
+
+      return;
+    }
+
+    if(
+      type === "recovery"
+      && confirmationUrl
+    ) {
+      if($("recoveryConfirmError")) {
+        $("recoveryConfirmError")
+          .classList.add(
+            "hidden"
+          );
+
+        $("recoveryConfirmError")
+          .textContent =
+            "";
+      }
+
+      $("recoveryConfirmBtn")
+        ?.classList.remove(
           "hidden"
         );
 
-      $("inviteAcceptModal")
+      $("recoveryConfirmModal")
         ?.classList.remove(
           "hidden"
         );
@@ -14488,6 +14584,77 @@ ${skippedSummary(compatibility.skipped)}
       ?.classList.remove(
         "hidden"
       );
+  }
+
+  async function acceptRecovery() {
+    const {
+      type,
+      confirmationUrl
+    } =
+      authLinkParams();
+
+    if(
+      type !== "recovery"
+      || !confirmationUrl
+    ) {
+      return A()?.toast?.(
+        "ไม่พบข้อมูลลิงก์ตั้งรหัสผ่าน",
+        "error"
+      );
+    }
+
+    try {
+      A()?.showLoading?.(
+        "กำลังยืนยันลิงก์ตั้งรหัสผ่าน..."
+      );
+
+      const safeUrl =
+        validConfirmationUrl(
+          confirmationUrl
+        );
+
+      if(!safeUrl) {
+        throw new Error(
+          "INVALID_RECOVERY_CONFIRMATION_URL"
+        );
+      }
+
+      location.assign(
+        safeUrl
+      );
+    } catch(error) {
+      const message =
+        String(
+          error?.message
+          || error
+          || ""
+        );
+
+      const element =
+        $("recoveryConfirmError");
+
+      if(element) {
+        element.innerHTML = `
+          <strong>เปิดลิงก์ตั้งรหัสผ่านไม่สำเร็จ</strong>
+          <small>${safe(message)}</small>
+          <em>
+            กรุณาให้ HR Admin ส่งลิงก์ตั้งรหัสผ่านใหม่
+          </em>
+        `;
+
+        element.classList.remove(
+          "hidden"
+        );
+      }
+
+      A()?.toast?.(
+        message
+        || "ลิงก์ตั้งรหัสผ่านไม่ถูกต้อง",
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
   }
 
   async function acceptInvite() {
@@ -14764,6 +14931,12 @@ ${skippedSummary(compatibility.skipped)}
           }
         );
       });
+
+    $("recoveryConfirmBtn")
+      ?.addEventListener(
+        "click",
+        acceptRecovery
+      );
 
     $("inviteAcceptBtn")
       ?.addEventListener(

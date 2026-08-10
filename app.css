@@ -7130,3 +7130,140 @@ article.invite::after{
   background:rgba(180,83,9,.16)!important;
   color:#fbbf24!important;
 }
+
+
+/* ==========================================================================
+   V6.10.12 Prefetch-safe Password Recovery
+   ========================================================================== */
+
+.account-recovery-backdrop{
+  z-index:100001!important;
+  background:
+    rgba(15,23,42,.74)!important;
+  backdrop-filter:blur(7px);
+}
+
+.account-recovery-confirm-modal{
+  width:min(520px,94vw);
+  border-radius:17px;
+  overflow:hidden;
+}
+
+.account-recovery-confirm-header{
+  background:
+    linear-gradient(
+      135deg,
+      #fff7ed,
+      #ffffff
+    );
+}
+
+.account-recovery-confirm-header h3{
+  margin:3px 0 4px;
+  color:#101828;
+  font-size:17px;
+}
+
+.account-recovery-confirm-card{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  padding:13px;
+  border:1px solid #fedf89;
+  border-radius:11px;
+  background:#fffaeb;
+}
+
+.account-recovery-confirm-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:40px;
+  height:40px;
+  flex:0 0 40px;
+  border-radius:11px;
+  background:#f79009;
+  color:#fff;
+  font-size:17px;
+}
+
+.account-recovery-confirm-card strong{
+  display:block;
+  color:#93370d;
+  font-size:10px;
+}
+
+.account-recovery-confirm-card p{
+  margin:3px 0 0;
+  color:#667085;
+  font-size:8.5px;
+  line-height:1.5;
+}
+
+.account-recovery-error{
+  margin-top:11px;
+  padding:10px 11px;
+  border:1px solid #fecdca;
+  border-radius:9px;
+  background:#fef3f2;
+  color:#b42318;
+  font-size:9px;
+  line-height:1.5;
+}
+
+.account-recovery-error strong{
+  display:block;
+  color:#b42318;
+  font-size:9.5px;
+}
+
+.account-recovery-error small{
+  display:block;
+  margin-top:4px;
+  color:#7a271a;
+  font-size:8px;
+  line-height:1.5;
+  word-break:break-word;
+}
+
+.account-recovery-error em{
+  display:block;
+  margin-top:6px;
+  color:#667085;
+  font-size:7.8px;
+  font-style:normal;
+}
+
+.account-recovery-confirm-modal
+.modal-footer .btn{
+  width:100%;
+  min-height:41px;
+  font-size:10px;
+  font-weight:900;
+}
+
+.dark
+.account-recovery-confirm-header{
+  background:#172033;
+}
+
+.dark
+.account-recovery-confirm-header h3{
+  color:#f8fafc;
+}
+
+.dark
+.account-recovery-confirm-card{
+  border-color:rgba(245,158,11,.35);
+  background:rgba(180,83,9,.15);
+}
+
+.dark
+.account-recovery-confirm-card strong{
+  color:#fbbf24;
+}
+
+.dark
+.account-recovery-error small{
+  color:#fecaca;
+}

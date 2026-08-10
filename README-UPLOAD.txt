@@ -1,4 +1,4 @@
-Time-Clock Enterprise V6.10.11 Compact Deploy
+Time-Clock Enterprise V6.10.12 Compact Deploy
 
 ไฟล์สำหรับอัปโหลด GitHub Pages
 - index.html
@@ -12,11 +12,11 @@ Time-Clock Enterprise V6.10.11 Compact Deploy
 2) ติดตั้ง V6.3.1 Technician Calculation Engine
 3) ติดตั้ง V6.4.0 Calculation UI API
 4) ติดตั้ง V6.5.0 Leave, Certificate & Manual Time Correction
-5) ติดตั้ง V6.10.11 Shift Settings by Work Pattern
-6) รัน V6.10.11_VERIFY.sql
+5) ติดตั้ง V6.10.12 Shift Settings by Work Pattern
+6) รัน V6.10.12_VERIFY.sql
 7) อัปโหลดไฟล์ใน ZIP นี้แทนชุดเดิม แล้วกด Ctrl+F5
 
-ฟังก์ชันหน้าเว็บ V6.10.11
+ฟังก์ชันหน้าเว็บ V6.10.12
 - หน้า ตั้งค่ากะ แยกกะสำหรับรูปแบบทำงาน 5 วันและ 6 วันต่อสัปดาห์
 - กะ 6 วันมาตรฐาน 08:30–17:30 รวมพัก 9 ชั่วโมง สุทธิ 8 ชั่วโมง
 - กะ 5 วันมาตรฐาน 08:30–18:00 รวมพัก 9.5 ชั่วโมง สุทธิ 8.5 ชั่วโมง
@@ -31,15 +31,15 @@ Time-Clock Enterprise V6.10.11 Compact Deploy
 Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์
 
 
-V6.10.11 Statement Timeout Fix
-- รัน V6.10.11_SHIFT_RECALC_JOB_TIMEOUT_FIX.sql หลัง V6.5.3
+V6.10.12 Statement Timeout Fix
+- รัน V6.10.12_SHIFT_RECALC_JOB_TIMEOUT_FIX.sql หลัง V6.5.3
 - ปุ่มคำนวณย้อนหลังแบ่งการทำงานเป็น Job ย่อย
 - แต่ละ API Request คำนวณเฉพาะหนึ่งวันและพนักงานหนึ่งชุด
 - ระบบลด Batch Size อัตโนมัติหากชุดปัจจุบันยังหนักเกินไป
 - กดปุ่มเดิมเพื่อ Resume Job ช่วงวันและรูปแบบเดิมได้
 
 
-V6.10.11 Employee Pattern UX
+V6.10.12 Employee Pattern UX
 - ช่อง Template เริ่มต้นแสดง 3 รูปแบบเท่านั้น:
   1) กะปกติ
   2) กะปกติ + งานลูกค้าช่วงดึก
@@ -50,7 +50,7 @@ V6.10.11 Employee Pattern UX
 - ตัดคอลัมน์ PC ออกจากตาราง
 
 
-V6.10.11 Template & Parameter Security
+V6.10.12 Template & Parameter Security
 - หน้า Template แสดง 3 รูปแบบเท่านั้น
 - กะปกติรวมการแสดง 5 วันและ 6 วันไว้ในการ์ดเดียว
 - ชื่อรูปแบบงานลูกค้าปรับให้ตรงกับตัวเลือกรายบุคคล
@@ -58,7 +58,7 @@ V6.10.11 Template & Parameter Security
 - เพิ่ม Backend Trigger ป้องกันผู้ใช้สิทธิ์อื่นแก้ไข ta_work_patterns
 
 
-V6.10.11 HR Admin Parameter Visibility
+V6.10.12 HR Admin Parameter Visibility
 - ซ่อนการ์ดพารามิเตอร์รูปแบบการทำงานทั้งส่วนเป็นค่าเริ่มต้น
 - ตรวจสิทธิ์จาก RPC ฝั่งฐานข้อมูลก่อนแสดง
 - แสดงเฉพาะ Profile ที่ Active และ role = HR_ADMIN
@@ -67,7 +67,7 @@ V6.10.11 HR Admin Parameter Visibility
 - Template และการกำหนดรูปแบบรายบุคคลยังคงใช้งานตามสิทธิ์เดิม
 
 
-V6.10.11 Effective Role Visibility Fix
+V6.10.12 Effective Role Visibility Fix
 - แก้กรณี HR Admin เปิด Developer Mode แล้ว View as Role = USER
 - Badge USER จะซ่อนพารามิเตอร์รูปแบบการทำงานทันที
 - ต้องผ่านทั้ง Backend HR_ADMIN และ Effective UI Role = HR_ADMIN
@@ -75,7 +75,7 @@ V6.10.11 Effective Role Visibility Fix
 - เปลี่ยน View as Role แล้วไม่ต้อง Reload หน้า
 
 
-V6.10.11 Fortnight Schedule View
+V6.10.12 Fortnight Schedule View
 - Popup กำหนดกะ แสดงกะปกติเพียงตัวเดียวตามรูปแบบพนักงาน
 - TECH_5D แสดงกะปกติ 5 วัน/สัปดาห์ 9.5 ชั่วโมงรวมพัก
 - TECH_6D แสดงกะปกติ 6 วัน/สัปดาห์ 9 ชั่วโมงรวมพัก
@@ -86,7 +86,7 @@ V6.10.11 Fortnight Schedule View
 - การประกาศและล็อกกะยังคงอ้างอิงสถานะรายเดือนเดิม
 
 
-V6.10.11 Pattern-Aware Shift Assignment
+V6.10.12 Pattern-Aware Shift Assignment
 - เพิ่มตัวกรองรูปแบบการทำงาน: ทั้งหมด, 5 วัน, 6 วัน, ยังไม่ได้กำหนด
 - แสดง Badge 5D / 6D / ? ในแต่ละแถวพนักงาน
 - แสดงจำนวนพนักงานแต่ละกลุ่มและกด Chip เพื่อกรองได้
@@ -98,7 +98,7 @@ V6.10.11 Pattern-Aware Shift Assignment
 - OFF / HOL / LV ยังคงกำหนดข้ามกลุ่มได้
 
 
-V6.10.11 Schedule Name & Visual Fix
+V6.10.12 Schedule Name & Visual Fix
 - รวมชื่อพนักงานจากทุกวันที่โหลดในเดือนก่อนสร้างแถว
 - เติมชื่อจากทะเบียนพนักงาน, Work Pattern Assignment และ Attendance เมื่อ RPC ส่งชื่อว่าง
 - ไม่ปล่อยช่องชื่อว่าง หากยังหาไม่พบจะแสดง “ไม่พบชื่อพนักงาน” เพื่อให้ตรวจสอบได้
@@ -108,7 +108,7 @@ V6.10.11 Schedule Name & Visual Fix
 - คงสถานะยืนยัน, Review, OT, Waiting และวันหยุดชดเชยเดิม
 
 
-V6.10.11 Schedule Helper Scope Fix
+V6.10.12 Schedule Helper Scope Fix
 - แก้ mergeScheduleEmployeeMeta is not defined
 - แก้ meaningfulScheduleName ซึ่งอยู่คนละ Scope เช่นเดียวกัน
 - Export Helper ผ่าน window.TimeClockShiftAPI
@@ -117,7 +117,7 @@ V6.10.11 Schedule Helper Scope Fix
 - ไม่ต้องรัน SQL เพิ่ม
 
 
-V6.10.11 Weekly Schedule & Shift Time
+V6.10.12 Weekly Schedule & Shift Time
 - ปฏิทินจัดกะแสดงครั้งละ 1 สัปดาห์ภายในเดือน
 - แบ่งเป็น 1–7, 8–14, 15–21, 22–28 และ 29–สิ้นเดือน
 - ปุ่มสัปดาห์ก่อน / สัปดาห์ปัจจุบัน / สัปดาห์ถัดไป
@@ -129,7 +129,7 @@ V6.10.11 Weekly Schedule & Shift Time
 - ไม่ต้องรัน SQL เพิ่ม
 
 
-V6.10.11 Absence & Attendance Columns
+V6.10.12 Absence & Attendance Columns
 - รูดบัตรไม่ครบขา = ขาดงานเต็มกะรวมพัก
 - ไม่มีเข้า, ไม่มีออก หรือไม่มีทั้งสองขา ใช้หลักเดียวกัน
 - ตัวอย่าง 08:30–18:00 = ขาดงาน 570 นาที
@@ -138,20 +138,20 @@ V6.10.11 Absence & Attendance Columns
 - OT ไม่เปลี่ยนสถานะเป็น “มี OT”
 - OT, รอคอย, พัก, มาสาย, กลับก่อน, ขาดงาน และวันหยุดชดเชยคงเหลือ ซ่อนเป็นค่าเริ่มต้น
 - Checkbox เหนือตารางควบคุมทั้งหน้าเว็บและ Export Excel/Print/CSV
-- ต้องรัน V6.10.11_ABSENCE_CALCULATION.sql ก่อนอัปโหลดหน้าเว็บ
+- ต้องรัน V6.10.12_ABSENCE_CALCULATION.sql ก่อนอัปโหลดหน้าเว็บ
 
 
-V6.10.11 Attendance Columns & Template Code
+V6.10.12 Attendance Columns & Template Code
 - เพิ่ม Checkbox ซ่อน/แสดง พื้นที่, พื้นที่ย่อย และ Template
 - ทั้ง 3 คอลัมน์ซ่อนเป็นค่าเริ่มต้น
 - การเลือกคอลัมน์มีผลกับหน้าเว็บและ Export Excel/Print/CSV
 - สถานะ ลา ใช้สีม่วง แตกต่างจากสถานะ ปกติ
 - เปลี่ยนรหัส Template กะ 6 วันจาก SINGLE_0830 เป็น SINGLE_0830_1730
 - SQL ย้ายข้อมูลเดิมและเพิ่ม Trigger รองรับฟังก์ชันรุ่นเก่า
-- ต้องรัน V6.10.11_TEMPLATE_CODE_AND_ATTENDANCE_COLUMNS.sql ก่อนอัปโหลดหน้าเว็บ
+- ต้องรัน V6.10.12_TEMPLATE_CODE_AND_ATTENDANCE_COLUMNS.sql ก่อนอัปโหลดหน้าเว็บ
 
 
-V6.10.11 Attendance Detail Workspace
+V6.10.12 Attendance Detail Workspace
 - Attendance Detail แสดงข้อมูลพื้นฐานทันที ไม่รอ Calculation RPC ก่อน
 - จัดข้อมูลเป็น Summary, ข้อมูลพนักงาน, แผนกะ, ผลคำนวณ, Segment, ลา, แก้ไขเวลา และใบรับรอง
 - เพิ่มปุ่มรายการก่อนหน้า/ถัดไปใน Drawer
@@ -162,7 +162,7 @@ V6.10.11 Attendance Detail Workspace
 - ไม่ต้องรัน SQL เพิ่ม
 
 
-V6.10.11 Employee Multi-Select Filter
+V6.10.12 Employee Multi-Select Filter
 - เพิ่ม Dropdown ชื่อพนักงานใน Tab รายละเอียดเวลาทำงาน
 - รายการแสดงรหัสพนักงาน ชื่อ-นามสกุล หน่วยงาน พื้นที่ และพื้นที่ย่อย
 - รายชื่อเปลี่ยนตามวันที่ พื้นที่ พื้นที่ย่อย และหน่วยงาน
@@ -173,10 +173,10 @@ V6.10.11 Employee Multi-Select Filter
 - เลือกพนักงานได้หลายคน
 - รีเซ็ตเป็นพนักงานทั้งหมดได้
 - ส่งรหัสที่เลือกไปกรองตั้งแต่ Attendance RPC
-- ต้องรัน V6.10.11_ATTENDANCE_EMPLOYEE_FILTER.sql ก่อนอัปโหลดหน้าเว็บ
+- ต้องรัน V6.10.12_ATTENDANCE_EMPLOYEE_FILTER.sql ก่อนอัปโหลดหน้าเว็บ
 
 
-V6.10.11 Attendance Filter Layout Refinement
+V6.10.12 Attendance Filter Layout Refinement
 - ปรับช่องตัวกรองด้านบนให้ความสูงและสัดส่วนสมดุล
 - วันที่ พื้นที่ พื้นที่ย่อย หน่วยงาน ชื่อพนักงาน และสถานะจัดแนวเดียวกัน
 - จัดปุ่มค้นหาและ Export แยกเป็นแถวที่อ่านง่าย
@@ -189,7 +189,7 @@ V6.10.11 Attendance Filter Layout Refinement
 - ไม่ต้องรัน SQL เพิ่ม
 
 
-V6.10.11 Employee Dropdown Readability
+V6.10.12 Employee Dropdown Readability
 - เพิ่มขนาดตัวอักษรรายชื่อพนักงานใน Dropdown
 - แสดงรหัสพนักงานและชื่อ-นามสกุลในบรรทัดเดียว
 - รูปแบบตัวอย่าง 7512172 • ชื่อ นามสกุล
@@ -199,7 +199,7 @@ V6.10.11 Employee Dropdown Readability
 - ไม่ต้องรัน SQL เพิ่ม
 
 
-V6.10.11 Simplified Attendance Filters
+V6.10.12 Simplified Attendance Filters
 - พื้นที่ พื้นที่ย่อย และหน่วยงานเป็น Dropdown ที่พิมพ์ค้นหาได้
 - รายการพื้นที่ย่อยและหน่วยงานยังคงสัมพันธ์กับตัวกรองก่อนหน้า
 - ปรับข้อความช่องชื่อพนักงานให้มีขนาดเท่ากับตัวกรองช่องอื่น
@@ -212,7 +212,7 @@ V6.10.11 Simplified Attendance Filters
 - ไม่ต้องรัน SQL เพิ่ม
 
 
-V6.10.11 Employee Filter Variable Fix
+V6.10.12 Employee Filter Variable Fix
 - แก้ exactEmpCode is not defined เมื่อกดค้นหา
 - ใช้รหัสจากตัวกรองชื่อพนักงานแบบหลายรายการแทน
 - รองรับเลือกพนักงาน 1 คน หลายคน และพนักงานทั้งหมด
@@ -221,7 +221,7 @@ V6.10.11 Employee Filter Variable Fix
 - ไม่ต้องรัน SQL เพิ่ม
 
 
-V6.10.11 Role & Manager Hierarchy
+V6.10.12 Role & Manager Hierarchy
 - Role เหลือ 3 กลุ่ม: HR_ADMIN, MANAGER, VIEWER
 - USER เดิมถูกแปลงเป็น MANAGER
 - Viewer เห็นเฉพาะข้อมูลของตนเองตาม ta_user_profiles.emp_code
@@ -235,10 +235,10 @@ V6.10.11 Role & Manager Hierarchy
 - เพิ่มหน้า “คำขอแก้ไขกะ”
 - HR Admin จัดการ Role, รหัสพนักงาน และ Manager Scope ตาม Email
 - Employee Template เพิ่ม manager_gm และ manager_avp
-- ต้องรัน V6.10.11_ROLE_MANAGER_HIERARCHY.sql ก่อนอัปโหลดหน้าเว็บ
+- ต้องรัน V6.10.12_ROLE_MANAGER_HIERARCHY.sql ก่อนอัปโหลดหน้าเว็บ
 
 
-V6.10.11 Manager Scope by Email
+V6.10.12 Manager Scope by Email
 - Role มี 3 กลุ่ม: HR_ADMIN, MANAGER, VIEWER
 - Manager Scope แยกจาก Employee Template โดยสมบูรณ์
 - ใช้ Email เป็นตัวเชื่อม User กับ Scope
@@ -252,7 +252,7 @@ V6.10.11 Manager Scope by Email
 - หน้า Leave, Time Correction และ Certificate เป็น HR Admin เท่านั้น
 
 
-V6.10.11 Organization Structure & Manager Assignment
+V6.10.12 Organization Structure & Manager Assignment
 - เพิ่มเมนูผังโครงสร้างองค์กรสำหรับ HR Admin
 - Tree แบบหลายระดับ พร้อมค้นหา ขยายทั้งหมด และยุบทั้งหมด
 - เพิ่ม แก้ไข ย้ายหน่วยงานด้วยการเปลี่ยนหน่วยงานแม่ และปิดใช้งาน
@@ -263,10 +263,10 @@ V6.10.11 Organization Structure & Manager Assignment
 - Upload ผังองค์กร CSV พร้อม Preview และ Error รายแถว
 - Upload Organization Manager Scope CSV พร้อม Preview และ Error รายแถว
 - เพิ่ม ORG_UNIT Scope Type และใช้ org_code เชื่อมพนักงานกับผังองค์กร
-- Employee Template V6.10.11 เพิ่มคอลัมน์ org_code
+- Employee Template V6.10.12 เพิ่มคอลัมน์ org_code
 
 
-V6.10.11 Organization Import Safe Update & Upload Modal
+V6.10.12 Organization Import Safe Update & Upload Modal
 - แก้ Error UPDATE requires a WHERE clause
 - แก้ทั้ง Upload ผังองค์กรและ Upload Manager Scope
 - ขยาย Popup Upload ผังองค์กรเป็น 1480px / 98vw
@@ -275,7 +275,7 @@ V6.10.11 Organization Import Safe Update & Upload Modal
 - จัดพื้นที่เลือกไฟล์ ตัวเลือก และปุ่มให้สมดุล
 
 
-V6.10.11 Organization Tree Drag & Drop
+V6.10.12 Organization Tree Drag & Drop
 - เพิ่ม Drag Handle ในแต่ละหน่วยงาน
 - วางด้านบนเพื่อเรียงก่อนหน่วยงานเป้าหมาย
 - วางตรงกลางเพื่อย้ายเข้าเป็นหน่วยงานลูก
@@ -288,7 +288,7 @@ V6.10.11 Organization Tree Drag & Drop
 - ฟังก์ชันนี้จำกัดเฉพาะ HR Admin
 
 
-V6.10.11 Employee Import Template
+V6.10.12 Employee Import Template
 - Employee Template ใช้ email และ org_code เป็นข้อมูลเชื่อมหลัก
 - ตัด manager_department, manager_division, manager_gm และ manager_avp ออกจาก Template ใหม่
 - Manager และขอบเขตสิทธิ์กำหนดแยกที่ Manager Scope
@@ -300,7 +300,7 @@ V6.10.11 Employee Import Template
 - ยังคงรองรับไฟล์เก่าที่มีคอลัมน์ Manager โดยจะอัปเดตเฉพาะเมื่อคอลัมน์นั้นอยู่ในไฟล์
 
 
-V6.10.11 Move Zone to Organization Structure
+V6.10.12 Move Zone to Organization Structure
 - ตัด zone ออกจาก Employee Template
 - เพิ่ม zone ใน Organization Structure Template
 - Zone เลือกได้เฉพาะ กรุงเทพฯ และ ตจว.
@@ -312,17 +312,17 @@ V6.10.11 Move Zone to Organization Structure
 - เมื่อแก้ไข Zone ของหน่วยงาน ระบบอัปเดต employees.zone ตาม org_code
 
 
-V6.10.11 Organization Zone Popup Visibility
+V6.10.12 Organization Zone Popup Visibility
 - ย้ายช่อง Zone ออกมาเป็นแถวเด่นแยกต่างหากใน Popup เพิ่ม/แก้ไขหน่วยงาน
 - แสดงคำอธิบายว่า Employee Zone ดึงจาก org_code อัตโนมัติ
 - Zone มีเฉพาะ กรุงเทพฯ และ ตจว.
 - เพิ่ม Validation ก่อนบันทึก
-- เพิ่ม Badge V6.10.11 ใน Popup เพื่อตรวจสอบชุด Deploy
+- เพิ่ม Badge V6.10.12 ใน Popup เพื่อตรวจสอบชุด Deploy
 - เพิ่ม Cache Busting app.css/app.js เป็น 6.10.2-20260806
 - เพิ่ม window.__TIME_CLOCK_BUILD__ สำหรับตรวจสอบ Build ใน Console
 
 
-V6.10.11 Add Office Zone
+V6.10.12 Add Office Zone
 - Zone รองรับ 3 ค่า: กรุงเทพฯ, ตจว., สำนักงาน
 - Popup เพิ่ม/แก้ไขหน่วยงานเพิ่มตัวเลือก สำนักงาน
 - Upload ผังองค์กรรองรับค่า สำนักงาน
@@ -330,7 +330,7 @@ V6.10.11 Add Office Zone
 - Preview แสดง Zone สำนักงานด้วย Badge สีม่วง
 
 
-V6.10.11 Organization Structure UI Balance
+V6.10.12 Organization Structure UI Balance
 - ปรับเฉพาะ Tab ผังโครงสร้างองค์กรและ Popup ที่เกี่ยวข้อง
 - เพิ่มขนาดตัวอักษรชื่อหน่วยงาน รายละเอียดรอง ตาราง Manager และข้อมูลรายละเอียด
 - ลดขนาดปุ่ม Hero, Toolbar, Detail Actions และ Row Actions
@@ -340,7 +340,7 @@ V6.10.11 Organization Structure UI Balance
 - รองรับ Dark Mode และ Responsive
 
 
-V6.10.11 Move Area/Sub-area to Organization Structure
+V6.10.12 Move Area/Sub-area to Organization Structure
 - เพิ่ม area และ sub_area ใน Organization Structure Template
 - ตัด area และ sub_area ออกจาก Employee Template
 - Popup เพิ่ม/แก้ไขหน่วยงานรองรับ Area และ Sub-area
@@ -351,7 +351,7 @@ V6.10.11 Move Area/Sub-area to Organization Structure
 - ส่วนอื่นคงเดิม
 
 
-V6.10.11 Employee Directory Upgrade
+V6.10.12 Employee Directory Upgrade
 - เพิ่ม Email ในตารางข้อมูลพนักงาน
 - เอา PC ออกจากตารางและ Excel
 - เปลี่ยนชื่อ พื้นที่ เดิมเป็น Zone
@@ -367,7 +367,7 @@ V6.10.11 Employee Directory Upgrade
 - ส่วนอื่นคงเดิม
 
 
-V6.10.11 Employee Directory Layout & Cascading Organization Filter
+V6.10.12 Employee Directory Layout & Cascading Organization Filter
 - ตารางรายชื่อพนักงานปรับความกว้างแต่ละคอลัมน์ตามชนิดข้อมูล
 - ชื่อ, Email, ตำแหน่ง, หน่วยงาน, Area, Sub-area ยืดหยุ่นและตัดบรรทัดได้
 - รหัส, Zone, วันที่, สถานะ และปุ่มจัดการคงความกว้างกะทัดรัด
@@ -380,7 +380,7 @@ V6.10.11 Employee Directory Layout & Cascading Organization Filter
 - ส่วนอื่นคงเดิม
 
 
-V6.10.11 Organization Manager Search & UX/UI
+V6.10.12 Organization Manager Search & UX/UI
 - Manager Candidate ดึงจาก employees
 - รองรับเฉพาะ PC 4C,4B,4A,3C,3B,3A,2C,2B,2A,1A
 - Email ต้องไม่เป็นค่าว่าง
@@ -393,7 +393,7 @@ V6.10.11 Organization Manager Search & UX/UI
 - ส่วนอื่นคงเดิม
 
 
-V6.10.11 Fix Manager Profile Save
+V6.10.12 Fix Manager Profile Save
 - แก้ ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL
 - Candidate แสดงสถานะบัญชี User/Profile
 - ถ้าไม่มี auth.users จะไม่ให้เลือก Manager
@@ -405,7 +405,7 @@ V6.10.11 Fix Manager Profile Save
 - ส่วนอื่นคงเดิม
 
 
-V6.10.11 User Account Management
+V6.10.12 User Account Management
 - เพิ่มเมนู HR Admin: จัดการบัญชีผู้ใช้งาน
 - HR Admin ค้นหาพนักงานจากรหัส/ชื่อ/Email และสร้างบัญชีด้วย Email
 - การสร้าง Auth User ใช้ Supabase Edge Function เท่านั้น
@@ -421,7 +421,7 @@ V6.10.11 User Account Management
 - ต้อง Deploy Edge Function admin-users และตั้ง Secrets ก่อนใช้งาน Create User
 
 
-V6.10.11 Invite Link First Setup
+V6.10.12 Invite Link First Setup
 - ตัด Temporary Password ออกทั้งหมด
 - HR Admin ส่ง Supabase Invite Link
 - User กด Invite -> หน้าเว็บแสดงปุ่มตอบรับ -> verifyOtp type invite
@@ -433,10 +433,10 @@ V6.10.11 Invite Link First Setup
 - Forgot Password ยังใช้ Supabase Auth เหมือนเดิม
 - แนะนำ Email OTP Expiration = 86400 วินาที (24 ชั่วโมง)
 - ต้องตั้ง Custom SMTP และ Redirect URL Allow List
-- ใช้ Invite Email Template V6.10.11 ที่แนบมา
+- ใช้ Invite Email Template V6.10.12 ที่แนบมา
 
 
-V6.10.11 Account Button / Modal Fix
+V6.10.12 Account Button / Modal Fix
 - แก้ปุ่มสร้างบัญชีผู้ใช้กดแล้วไม่เปิด Popup
 - Export openModal / closeModal เข้า TimeClockApp
 - เพิ่ม local modal helper เป็น fallback
@@ -448,7 +448,7 @@ V6.10.11 Account Button / Modal Fix
 - ไม่เปลี่ยน SQL และ Edge Function
 
 
-V6.10.11 Invite ConfirmationURL Fix
+V6.10.12 Invite ConfirmationURL Fix
 - เปลี่ยน Invite Flow หลักจาก client verifyOtp(token_hash) เป็น Supabase ConfirmationURL
 - Email Link เปิดหน้า Time-Clock ก่อนเพื่อป้องกัน email prefetch
 - User กดปุ่มตอบรับแล้วจึงไป Supabase /auth/v1/verify
@@ -459,7 +459,7 @@ V6.10.11 Invite ConfirmationURL Fix
 - SQL และ Edge Function เดิมไม่ต้องเปลี่ยน
 
 
-V6.10.11 Default Supabase Connection
+V6.10.12 Default Supabase Connection
 - Default Project URL: https://lryojaccbbbgdbpjstld.supabase.co
 - Embed Publishable Key สำหรับ Browser
 - User ใหม่ / Browser ใหม่เชื่อม Supabase อัตโนมัติ
@@ -469,10 +469,21 @@ V6.10.11 Default Supabase Connection
 - SQL และ Edge Function ไม่เปลี่ยน
 
 
-V6.10.11 Password Setup Link
+V6.10.12 Password Setup Link
 - INVITE_PENDING: ใช้ปุ่ม ↻ Invite
 - FIRST_LOGIN_PASSWORD: ใช้ปุ่ม 🔑 ตั้งรหัสผ่าน
 - Invite Link เดิมไม่ถูกนำกลับมาใช้หลัง Email confirmed แล้ว
 - ปุ่มตั้งรหัสผ่านเรียก Edge Function action=send_password_setup
 - Recovery Email จะพา User กลับ Time-Clock และเปิด Password Recovery Flow
 - Forgot Password หน้า Login ยังใช้ได้เหมือนเดิม
+
+
+V6.10.12 Prefetch-safe Password Recovery
+- แยก Invite Error และ Password Recovery Error ออกจากกัน
+- Recovery Link จะไม่แสดง Popup USER INVITATION อีก
+- เพิ่ม Popup PASSWORD RECOVERY ก่อนยืนยันกับ Supabase Auth
+- Recovery Email ใช้ ConfirmationURL ผ่านหน้า Time-Clock ก่อน
+- User กด "ยืนยันและตั้งรหัสผ่าน" จึงไป /auth/v1/verify จริง
+- ลดปัญหา Email Security Scanner consume recovery link
+- Forgot Password redirect มี auth_flow=recovery
+- SQL ไม่เปลี่ยน
