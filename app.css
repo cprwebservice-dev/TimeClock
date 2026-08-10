@@ -8813,3 +8813,20 @@ body.theme-dark .sidebar-collapse-btn{
     display:none!important;
   }
 }
+
+
+/* ==========================================================================
+   V6.10.19 Removed Modules
+   Review / Leave / Time Correction / Exception Center
+   ========================================================================== */
+
+.nav-item[data-page="review"],
+.nav-item[data-page="leave"],
+.nav-item[data-page="time-correction"],
+.nav-item[data-page="exception-center"],
+#page-review,
+#page-leave,
+#page-time-correction,
+#page-exception-center{
+  display:none!important;
+}
