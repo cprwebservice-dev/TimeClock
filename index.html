@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.10.17 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.10.18 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b1f3a" />
-  <title>Time-Clock Enterprise V6.10.17 | CP Retailink</title>
+  <title>Time-Clock Enterprise V6.10.18 | CP Retailink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./app.css?v=6.10.17-20260810" />
+  <link rel="stylesheet" href="./app.css?v=6.10.18-20260810" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -300,7 +300,7 @@
               </div>
               <div class="settings-panel" data-settings-panel="about">
                 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.10.17 Organization Structure & Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+                <div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.10.18 Organization Structure & Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
               </div>
             </div>
           </div>
@@ -1013,7 +1013,7 @@
           </div>
         </section>
 
-        <!-- User Account Management V6.10.17 -->
+        <!-- User Account Management V6.10.18 -->
         <section
           id="page-admin-accounts"
           class="page admin-page user-account-page"
@@ -1312,7 +1312,7 @@
               <div style="display:flex;gap:9px;flex-wrap:wrap"><button id="previewImportBtn" class="btn btn-light">ตรวจสอบก่อนนำเข้า</button><button id="runImportBtn" class="btn btn-primary">นำเข้าข้อมูล</button><button id="downloadTemplateBtn" class="btn btn-success">ดาวน์โหลด Template</button></div>
               <div class="employee-import-guide section-gap">
                 <div>
-                  <strong>คอลัมน์ Employee Template V6.10.17</strong>
+                  <strong>คอลัมน์ Employee Template V6.10.18</strong>
                   <p>employee_id, full_name, email, position_name, department, org_code, pc, car_team, start_date, resign_date</p>
                 </div>
                 <div class="employee-import-guide-note">
@@ -1387,7 +1387,7 @@
   <div id="leaveRequestModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอลา</h3><button class="btn btn-light btn-icon" data-v650-close="leaveRequestModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="leaveEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทการลา</label><select id="leaveTypeCode" class="select"></select></div><div class="field"><label>รูปแบบการลา</label><select id="leavePeriod" class="select"><option value="FULL_DAY">เต็มวัน</option><option value="FIRST_HALF">ครึ่งวันแรก</option><option value="SECOND_HALF">ครึ่งวันหลัง</option></select></div></div><div class="form-row"><div class="field"><label>วันที่เริ่มต้น</label><input id="leaveModalStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="leaveModalEnd" class="input" type="date"></div></div><div class="field"><label>ใบรับรอง/เอกสารประกอบ</label><select id="leaveCertificateId" class="select"><option value="">ไม่ระบุ</option></select><small class="field-help">แสดงเอกสารที่ลงทะเบียนไว้และอยู่ในขอบเขตสิทธิ์</small></div><div class="field"><label>เหตุผล</label><textarea id="leaveReason" class="textarea" placeholder="ระบุเหตุผลการลา"></textarea></div><div id="leaveBalancePreview" class="v650-info-box">กรอกรหัสพนักงานเพื่อดูสิทธิ์คงเหลือ</div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="leaveRequestModal">ยกเลิก</button><button id="submitLeaveBtn" class="btn btn-primary">ส่งคำขอลา</button></div></div></div>
 
   <!-- V6.5 Certificate Modal -->
-  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.10.17 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
+  <div id="certificateModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>ลงทะเบียนใบรับรอง</h3><button class="btn btn-light btn-icon" data-v650-close="certificateModal">×</button></div><div class="modal-body"><div class="form-row-3"><div class="field"><label>รหัสพนักงาน</label><input id="certificateEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>ประเภทเอกสาร</label><select id="certificateType" class="select"><option value="MEDICAL">ใบรับรองแพทย์</option><option value="SUPPORTING">เอกสารประกอบ</option><option value="OTHER">อื่น ๆ</option></select></div><div class="field"><label>วันที่ออกเอกสาร</label><input id="certificateIssuedDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ใช้ได้ตั้งแต่</label><input id="certificateValidFrom" class="input" type="date"></div><div class="field"><label>ถึงวันที่</label><input id="certificateValidTo" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>ผู้ออกเอกสาร</label><input id="certificateIssuer" class="input" placeholder="โรงพยาบาล/แพทย์/หน่วยงาน"></div><div class="field"><label>ไฟล์เอกสาร</label><input id="certificateFile" class="input" type="file" accept="image/*,.pdf"><small class="field-help">V6.10.18 บันทึกชื่อและข้อมูลไฟล์เพื่ออ้างอิง โดยไม่ส่งไฟล์ขึ้น Storage</small></div></div><div class="field"><label>หมายเหตุ</label><textarea id="certificateNote" class="textarea"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="certificateModal">ยกเลิก</button><button id="submitCertificateBtn" class="btn btn-primary">บันทึกใบรับรอง</button></div></div></div>
 
   <!-- V6.5 Time Correction Modal -->
   <div id="timeCorrectionModal" class="modal-backdrop hidden"><div class="modal large"><div class="modal-header"><h3>สร้างคำขอแก้ไขเวลา</h3><button class="btn btn-light btn-icon" data-v650-close="timeCorrectionModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสพนักงาน</label><input id="correctionEmpCode" class="input" list="v650EmployeeList" placeholder="กรอกรหัสพนักงาน"></div><div class="field"><label>วันที่ทำงาน</label><input id="correctionWorkDate" class="input" type="date"></div></div><div class="form-row"><div class="field"><label>เวลาเข้าใหม่</label><input id="correctionInAt" class="input" type="datetime-local"></div><div class="field"><label>เวลาออกใหม่</label><input id="correctionOutAt" class="input" type="datetime-local"></div></div><div class="field"><label>ใบรับรอง/หลักฐาน</label><select id="correctionCertificateId" class="select"><option value="">ไม่ระบุ</option></select></div><div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea id="correctionReason" class="textarea" placeholder="ระบุเหตุผลที่ต้องแก้ไขเวลา"></textarea></div></div><div class="modal-footer"><button class="btn btn-light" data-v650-close="timeCorrectionModal">ยกเลิก</button><button id="submitCorrectionBtn" class="btn btn-primary">ส่งคำขอ</button></div></div></div>
@@ -1431,7 +1431,7 @@
         <div class="field"><label>Publishable Key / Anon Key</label><textarea id="configKey" class="textarea" placeholder="sb_publishable_... หรือ anon key"></textarea></div>
         <div style="padding:12px;border-radius:10px;background:var(--amber-100);color:var(--amber-600);font-size:11px">ใช้เฉพาะ Publishable/Anon key สำหรับ Browser ห้ามใส่ Service Role key
           <div class="supabase-default-note-v61010">
-            V6.10.17 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
+            V6.10.18 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
             User ใหม่ไม่ต้องตั้งค่าส่วนนี้เอง
           </div></div>
       </div>
@@ -1511,7 +1511,7 @@
         <div>
           <div class="org-modal-title-row">
             <h3 id="orgUnitModalTitle">เพิ่มหน่วยงาน</h3>
-            <span class="org-modal-version">V6.10.17</span>
+            <span class="org-modal-version">V6.10.18</span>
           </div>
           <p>กำหนดรหัส Zone ระดับ และหน่วยงานแม่</p>
         </div>
@@ -1770,7 +1770,7 @@
     </div>
   </div>
 
-  <!-- Create User Account Modal V6.10.17 -->
+  <!-- Create User Account Modal V6.10.18 -->
   <div id="accountCreateModal" class="modal-backdrop hidden">
     <div class="modal large account-create-modal">
       <div class="modal-header">
@@ -1907,7 +1907,7 @@
     </div>
   </div>
 
-  <!-- Edit User Account Modal V6.10.17 -->
+  <!-- Edit User Account Modal V6.10.18 -->
   <div id="accountEditModal" class="modal-backdrop hidden">
     <div class="modal large account-edit-modal">
       <div class="modal-header">
@@ -2008,7 +2008,7 @@
   </div>
 
 
-  <!-- Invite Acceptance Modal V6.10.17 -->
+  <!-- Invite Acceptance Modal V6.10.18 -->
   <div
     id="inviteAcceptModal"
     class="modal-backdrop hidden account-invite-backdrop"
@@ -2054,7 +2054,7 @@
     </div>
   </div>
 
-  <!-- Password Recovery OTP V6.10.17 -->
+  <!-- Password Recovery OTP V6.10.18 -->
   <div
     id="recoveryOtpModal"
     class="modal-backdrop hidden account-recovery-backdrop"
@@ -2129,7 +2129,7 @@
     </div>
   </div>
 
-  <!-- Password Recovery Confirmation V6.10.17 -->
+  <!-- Password Recovery Confirmation V6.10.18 -->
   <div
     id="recoveryConfirmModal"
     class="modal-backdrop hidden account-recovery-backdrop"
@@ -2558,6 +2558,6 @@
     </div>
   </div>
 
-  <script src="./app.js?v=6.10.17-20260810"></script>
+  <script src="./app.js?v=6.10.18-20260810"></script>
 </body>
 </html>

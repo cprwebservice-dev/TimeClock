@@ -1527,6 +1527,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       page: 1,
       pageSize: 50,
       loading: false,
+      loadedKey: null,
       cache: new Map()
     };
 
@@ -1867,6 +1868,37 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       );
     }
 
+    function invalidateAttendanceEmployeeOptions(
+      preserveSelection = true
+    ) {
+      attendanceEmployeeFilter.loadedKey =
+        null;
+
+      attendanceEmployeeFilter.options =
+        [];
+
+      attendanceEmployeeFilter.search =
+        "";
+
+      attendanceEmployeeFilter.page =
+        1;
+
+      if(!preserveSelection) {
+        attendanceEmployeeFilter.selected =
+          new Set();
+      }
+
+      state.filters.attendance.employees =
+        [];
+
+      if($("attEmployeeSearch")) {
+        $("attEmployeeSearch").value =
+          "";
+      }
+
+      renderAttendanceEmployeeDropdown();
+    }
+
     async function loadAttendanceEmployeeOptions(
       preserve = true,
       force = false
@@ -1889,23 +1921,42 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           rows =
             attendanceEmployeeFilter.cache.get(cacheKey);
         } else {
-          const { data, error } = await state.client.rpc(
-            "ta_get_attendance_employee_options_v671",
-            {
-              p_start_date: val("attStart"),
-              p_end_date: val("attEnd"),
-              p_area: val("attZone") || null,
-              p_sub_area: val("attSubArea") || null,
-              p_department:
-                val("attDepartment") || null,
-              p_search: null,
-              p_limit: 10000
-            }
-          );
+          const args = {
+            p_start_date: val("attStart"),
+            p_end_date: val("attEnd"),
+            p_area: val("attZone") || null,
+            p_sub_area: val("attSubArea") || null,
+            p_department:
+              val("attDepartment") || null,
+            p_search: null,
+            p_limit: 5000
+          };
 
-          if (error) throw error;
+          let response =
+            await state.client.rpc(
+              "ta_get_attendance_employee_options_v61018",
+              args
+            );
 
-          rows = (data || [])
+          if(
+            response.error
+            && window.TimeClockShiftAPI
+              ?.missingFunction?.(
+                response.error
+              )
+          ) {
+            response =
+              await state.client.rpc(
+                "ta_get_attendance_employee_options_v671",
+                args
+              );
+          }
+
+          if(response.error) {
+            throw response.error;
+          }
+
+          rows = (response.data || [])
             .map(normalizeAttendanceEmployeeOption)
             .filter(employee => employee.emp_code);
 
@@ -1924,12 +1975,38 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           }
         }
 
-        attendanceEmployeeFilter.options = rows;
+        attendanceEmployeeFilter.options =
+          rows;
+
+        attendanceEmployeeFilter.loadedKey =
+          cacheKey;
       } catch (error) {
         attendanceEmployeeFilter.options =
           fallbackAttendanceEmployeeOptions();
 
-        if (
+        const message =
+          String(
+            error?.message
+            || humanError(error)
+            || ""
+          );
+
+        const timeout =
+          message.toLowerCase()
+            .includes(
+              "statement timeout"
+            )
+          || message.toLowerCase()
+            .includes(
+              "canceling statement"
+            );
+
+        if(timeout) {
+          toast(
+            "รายชื่อพนักงานใช้เวลาประมวลผลนาน ระบบใช้ข้อมูลที่โหลดได้อยู่ชั่วคราว กรุณารัน SQL V6.10.18",
+            "warning"
+          );
+        } else if (
           !window.TimeClockShiftAPI
             ?.missingFunction?.(error)
         ) {
@@ -1968,26 +2045,60 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
     }
 
-    function toggleAttendanceEmployeeDropdown(force) {
-      const dropdown = $("attEmployeeDropdown");
-      const toggle = $("attEmployeeToggle");
-      if (!dropdown || !toggle) return;
+    async function toggleAttendanceEmployeeDropdown(
+      force
+    ) {
+      const dropdown =
+        $("attEmployeeDropdown");
 
-      const shouldOpen = force ?? dropdown.classList
-        .contains("hidden");
+      const toggle =
+        $("attEmployeeToggle");
 
-      dropdown.classList.toggle("hidden", !shouldOpen);
+      if(!dropdown || !toggle) {
+        return;
+      }
+
+      const shouldOpen =
+        force
+        ?? dropdown.classList
+          .contains(
+            "hidden"
+          );
+
+      dropdown.classList.toggle(
+        "hidden",
+        !shouldOpen
+      );
+
       toggle.setAttribute(
         "aria-expanded",
         shouldOpen ? "true" : "false"
       );
 
-      if (shouldOpen) {
-        window.setTimeout(
-          () => $("attEmployeeSearch")?.focus(),
-          30
+      if(!shouldOpen) {
+        return;
+      }
+
+      const currentKey =
+        attendanceEmployeeFilterKey();
+
+      if(
+        attendanceEmployeeFilter.loadedKey
+          !== currentKey
+        || !attendanceEmployeeFilter.options
+          .length
+      ) {
+        await loadAttendanceEmployeeOptions(
+          true
         );
       }
+
+      window.setTimeout(
+        () =>
+          $("attEmployeeSearch")
+            ?.focus(),
+        30
+      );
     }
 
     async function loadAttendanceFilterOptions(preserve = true) {
@@ -2057,7 +2168,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         toast(`โหลดตัวกรองรายละเอียดเวลาไม่สำเร็จ: ${humanError(err)}`, "error");
       }
 
-      await loadAttendanceEmployeeOptions(preserve);
+      invalidateAttendanceEmployeeOptions(
+        preserve
+      );
     }
 
     function fillSearchableAttendanceFilter(
@@ -2667,10 +2780,21 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       ].map(x => `<button class="quick-item" data-go-page="${x[2]}"><div><strong>${safe(x[0])}</strong><span> คลิกเพื่อดูรายละเอียด</span></div><span class="badge badge-blue">${formatNumber(x[1])}</span></button>`).join("");
     }
 
+    let attendanceLoadRequestId = 0;
+
     async function loadAttendance() {
-      showLoading("กำลังโหลดรายละเอียดเวลา...");
+      const requestId =
+        ++attendanceLoadRequestId;
+
+      showLoading(
+        "กำลังค้นหารายละเอียดเวลา..."
+      );
+
       try {
-        const statuses = val("attStatus") ? [val("attStatus")] : null;
+        const statuses =
+          val("attStatus")
+            ? [val("attStatus")]
+            : null;
         const requestEmployeeCodes =
           attendanceEmployeeCodesForQuery();
 
@@ -2783,6 +2907,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           );
         }
 
+        if(
+          requestId
+          !== attendanceLoadRequestId
+        ) {
+          return;
+        }
+
         state.attendance = data.sort(
           (a,b) =>
             String(b.work_date || "").localeCompare(
@@ -2792,6 +2923,20 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               String(b.emp_code || "")
             )
         );
+
+        if(
+          !attendanceEmployeeFilter.options
+            .length
+        ) {
+          attendanceEmployeeFilter.options =
+            fallbackAttendanceEmployeeOptions();
+
+          state.filters.attendance.employees =
+            attendanceEmployeeFilter.options;
+
+          renderAttendanceEmployeeDropdown();
+        }
+
         const activeEmployeeCodes =
           Array.isArray(requestEmployeeCodes)
             ? requestEmployeeCodes
@@ -4715,8 +4860,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       );
       $("attDepartment")?.addEventListener(
         "change",
-        async () => {
-          await loadAttendanceEmployeeOptions(true);
+        () => {
+          invalidateAttendanceEmployeeOptions(
+            true
+          );
         }
       );
       $("attStart")?.addEventListener(
@@ -4732,7 +4879,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         "click",
         event => {
           event.stopPropagation();
-          toggleAttendanceEmployeeDropdown();
+
+          toggleAttendanceEmployeeDropdown()
+            .catch(error => {
+              toast(
+                humanError(error),
+                "error"
+              );
+            });
         }
       );
 
