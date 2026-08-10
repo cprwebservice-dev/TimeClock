@@ -2908,7 +2908,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             cursor.getTime()
           );
 
-        const chunkStart =
+        let chunkStart =
           new Date(
             cursor.getTime()
           );
