@@ -7103,3 +7103,30 @@ article.invite::after{
   background:#172033;
   color:#cbd5e1;
 }
+
+
+/* ==========================================================================
+   V6.10.11 Password Setup Link
+   ========================================================================== */
+
+.account-password-link-button{
+  min-height:29px!important;
+  padding:0 8px!important;
+  border-color:#fedf89!important;
+  background:#fffaeb!important;
+  color:#b54708!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  white-space:nowrap;
+}
+
+.account-password-link-button:hover{
+  border-color:#fdb022!important;
+  background:#fff7ed!important;
+}
+
+.dark .account-password-link-button{
+  border-color:rgba(245,158,11,.35)!important;
+  background:rgba(180,83,9,.16)!important;
+  color:#fbbf24!important;
+}

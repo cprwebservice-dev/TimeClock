@@ -13280,6 +13280,21 @@ ${skippedSummary(compatibility.skipped)}
                         : ""
                     }
 
+                    ${
+                      String(account.account_status).toUpperCase()
+                        === "FIRST_LOGIN_PASSWORD"
+                        ? `
+                          <button
+                            class="btn btn-light account-password-link-button"
+                            data-account-password-link="${safe(account.email)}"
+                            title="ส่งลิงก์ให้ User ตั้งรหัสผ่าน"
+                          >
+                            🔑 ตั้งรหัสผ่าน
+                          </button>
+                        `
+                        : ""
+                    }
+
                     <button
                       class="btn btn-light account-edit-button"
                       data-account-edit="${safe(account.user_id)}"
@@ -14198,6 +14213,83 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
 
+  async function sendPasswordSetupLink(
+    email
+  ) {
+    if(!email) return;
+
+    try {
+      A()?.showLoading?.(
+        "กำลังส่งลิงก์ตั้งรหัสผ่าน..."
+      );
+
+      const client =
+        A()?.state?.client;
+
+      const {
+        data,
+        error
+      } =
+        await client.functions.invoke(
+          "admin-users",
+          {
+            body: {
+              action:
+                "send_password_setup",
+
+              email:
+                email
+            }
+          }
+        );
+
+      if(error) {
+        throw error;
+      }
+
+      if(
+        data?.success === false
+      ) {
+        throw new Error(
+          data.error
+          || "PASSWORD_SETUP_EMAIL_FAILED"
+        );
+      }
+
+      A()?.toast?.(
+        "ส่งลิงก์ตั้งรหัสผ่านให้ User เรียบร้อย",
+        "success"
+      );
+    } catch(error) {
+      const raw =
+        String(
+          error?.message
+          || ""
+        );
+
+      const friendly =
+        raw.includes(
+          "PASSWORD_SETUP_REQUIRES_CONFIRMED_USER"
+        )
+          ? "User ยังไม่ตอบรับ Invite กรุณาส่ง Invite ก่อน"
+          : raw.includes(
+              "PASSWORD_RESET_RATE_LIMIT"
+            )
+            ? "ส่งลิงก์ซ้ำเร็วเกินไป กรุณารอสักครู่แล้วลองใหม่"
+            : (
+                A()?.humanError?.(error)
+                || error.message
+              );
+
+      A()?.toast?.(
+        friendly,
+        "error"
+      );
+    } finally {
+      A()?.hideLoading?.();
+    }
+  }
+
   function inviteParams() {
     const params =
       new URLSearchParams(
@@ -14704,6 +14796,19 @@ ${skippedSummary(compatibility.skipped)}
           resendInvite(
             resendButton.dataset
               .accountResend
+          );
+          return;
+        }
+
+        const passwordLinkButton =
+          event.target.closest(
+            "[data-account-password-link]"
+          );
+
+        if(passwordLinkButton) {
+          sendPasswordSetupLink(
+            passwordLinkButton.dataset
+              .accountPasswordLink
           );
           return;
         }
