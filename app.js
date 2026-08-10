@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.22";
-document.documentElement.dataset.timeClockBuild = "6.10.22";
+window.__TIME_CLOCK_BUILD__ = "V6.10.23";
+document.documentElement.dataset.timeClockBuild = "6.10.23";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.22";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.22',
+  version: '6.10.23',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.22 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.23 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.22 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.23 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -551,7 +551,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   }
 
   async function getMonthlySchedule(app, params) {
-    const client = app?.state?.client;
+    const client =
+      app?.state?.client;
 
     if(!client) {
       throw new Error(
@@ -559,35 +560,83 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       );
     }
 
-    const exact = {
-      p_month:
-        params.p_month,
+    const monthStart =
+      String(
+        params.p_month
+        || ""
+      ).slice(0,10);
 
-      p_zone:
-        params.p_zone
-        ?? null,
+    const rangeStartDate =
+      params.p_start_date
+      || monthStart;
 
-      p_department:
-        params.p_department
-        ?? null,
+    let rangeEndDate =
+      params.p_end_date
+      || null;
 
-      p_emp_codes:
-        params.p_emp_codes
-        ?? null,
+    if(
+      !rangeEndDate
+      && monthStart
+    ) {
+      const monthDate =
+        new Date(
+          `${monthStart}T00:00:00`
+        );
 
-      p_schedule_statuses:
-        params.p_schedule_statuses
-        ?? null
-    };
+      const lastDay =
+        new Date(
+          monthDate.getFullYear(),
+          monthDate.getMonth() + 1,
+          0
+        );
+
+      rangeEndDate =
+        `${lastDay.getFullYear()}-`
+        + `${String(
+            lastDay.getMonth() + 1
+          ).padStart(2,"0")}-`
+        + `${String(
+            lastDay.getDate()
+          ).padStart(2,"0")}`;
+    }
+
+    if(
+      !rangeStartDate
+      || !rangeEndDate
+    ) {
+      return [];
+    }
 
     const response =
       await withTimeout(
         client.rpc(
-          "ta_get_monthly_schedule_v61022",
-          exact
+          "ta_get_schedule_range_v61023",
+          {
+            p_start_date:
+              rangeStartDate,
+
+            p_end_date:
+              rangeEndDate,
+
+            p_zone:
+              params.p_zone
+              ?? null,
+
+            p_department:
+              params.p_department
+              ?? null,
+
+            p_emp_codes:
+              params.p_emp_codes
+              ?? null,
+
+            p_schedule_statuses:
+              params.p_schedule_statuses
+              ?? null
+          }
         ),
         30000,
-        "โหลดปฏิทินกะตาม User Scope"
+        "โหลดตารางกะตาม User Scope"
       );
 
     if(response.error) {
@@ -597,14 +646,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_SCOPE_RPC_REQUIRED: กรุณารัน SQL V6.10.22"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.23"
         );
       }
 
       throw response.error;
     }
 
-    let rows =
+    const rows =
       Array.isArray(
         response.data
       )
@@ -615,241 +664,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           )
         : [];
 
-    const monthStart =
-      String(
-        params.p_month
-        || ""
-      )
-        .slice(
-          0,
-          10
-        );
-
-    if(!monthStart) {
-      return rows;
-    }
-
-    const realRole =
-      String(
-        app?.state?.profile?._realRole
-        || app?.state?.profile?.role
-        || "VIEWER"
-      )
-        .toUpperCase();
-
-    // Manager / Viewer:
-    // Return only rows already filtered by the secure RPC.
-    // Do NOT query employees / attendance_workday / shift_calendar directly.
-    if(realRole !== "HR_ADMIN") {
-      rows.forEach(row => {
-        const empCode =
-          scheduleText(
-            row.emp_code
-          );
-
-        if(
-          !meaningfulScheduleName(
-            row.full_name,
-            empCode
-          )
-        ) {
-          row.full_name =
-            "ไม่พบชื่อพนักงาน";
-
-          row.employee_name_missing =
-            true;
-        } else {
-          row.employee_name_missing =
-            false;
-        }
-      });
-
-      return rows;
-    }
-
-    // HR Admin keeps the legacy enrichment because HR_ADMIN is intentionally
-    // unrestricted across employees.
-    const start =
-      new Date(
-        `${monthStart}T00:00:00`
-      );
-
-    const monthEnd =
-      new Date(
-        start.getFullYear(),
-        start.getMonth() + 1,
-        0
-      );
-
-    const endDate =
-      `${monthEnd.getFullYear()}-`
-      + `${String(
-          monthEnd.getMonth() + 1
-        ).padStart(2,"0")}-`
-      + `${String(
-          monthEnd.getDate()
-        ).padStart(2,"0")}`;
-
-    rows =
-      await ensureMonthlyMatrix(
-        client,
-        rows,
-        exact,
-        monthStart,
-        endDate
-      );
-
-    rows =
-      await enrichScheduleEmployeeMetadata(
-        app,
-        client,
-        rows,
-        monthStart
-      );
-
-    let calendarResult =
-      await client
-        .from(
-          "shift_calendar"
-        )
-        .select(
-          "work_date,emp_code,shift_code,is_confirmed,note,source_type,updated_at"
-        )
-        .gte(
-          "work_date",
-          monthStart
-        )
-        .lte(
-          "work_date",
-          endDate
-        );
-
-    if(
-      calendarResult.error
-      && missingColumn(
-        calendarResult.error
-      )
-    ) {
-      calendarResult =
-        await client
-          .from(
-            "shift_calendar"
-          )
-          .select(
-            "work_date,emp_code,shift_code"
-          )
-          .gte(
-            "work_date",
-            monthStart
-          )
-          .lte(
-            "work_date",
-            endDate
-          );
-    }
-
-    if(calendarResult.error) {
-      return rows;
-    }
-
-    const assignmentMap =
-      new Map();
-
-    for(
-      const item
-      of calendarResult.data || []
-    ) {
-      const key =
-        `${String(
-          item.emp_code
-          || ""
-        ).trim()}|`
-        + `${String(
-          item.work_date
-          || ""
-        ).slice(0,10)}`;
-
-      assignmentMap.set(
-        key,
-        item
-      );
-    }
-
-    const metaByEmp =
-      new Map();
-
-    for(const row of rows) {
-      const emp =
-        String(
+    rows.forEach(row => {
+      const empCode =
+        scheduleText(
           row.emp_code
-          || ""
-        )
-          .trim();
+        );
 
       if(
-        emp
-        && !metaByEmp.has(
-          emp
+        !meaningfulScheduleName(
+          row.full_name,
+          empCode
         )
       ) {
-        metaByEmp.set(
-          emp,
-          row
-        );
+        row.full_name =
+          "ไม่พบชื่อพนักงาน";
+
+        row.employee_name_missing =
+          true;
+      } else {
+        row.employee_name_missing =
+          false;
       }
-
-      const key =
-        `${emp}|`
-        + `${String(
-          row.work_date
-          || ""
-        ).slice(0,10)}`;
-
-      const assigned =
-        assignmentMap.get(
-          key
-        );
-
-      const assignedCode =
-        assigned?.shift_code
-        || row.assigned_shift_code
-        || null;
-
-      const effectiveCode =
-        assignedCode
-        || row.effective_shift_code
-        || row.auto_shift_code
-        || row.shift_code
-        || row.suggested_shift_code
-        || null;
-
-      row.assigned_shift_code =
-        assignedCode;
-
-      row.effective_shift_code =
-        effectiveCode;
-
-      if(assigned) {
-        row.is_confirmed =
-          Boolean(
-            assigned.is_confirmed
-          );
-
-        row.schedule_status =
-          assigned.is_confirmed
-            ? "CONFIRMED"
-            : "ASSIGNED";
-
-        row.schedule_note =
-          assigned.note
-          ?? row.schedule_note;
-
-        row.schedule_source =
-          assigned.source_type
-          || row.schedule_source
-          || "manual";
-      }
-    }
+    });
 
     return rows;
   }
@@ -1636,7 +1472,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.22"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.23"
           );
         }
 
@@ -2343,7 +2179,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.22"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.23"
             );
           }
 
@@ -3835,6 +3671,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           window.TimeClockApp || { state },
           {
             p_month: `${period.month}-01`,
+            p_start_date:
+              period.startDate,
+            p_end_date:
+              period.endDate,
             p_zone: val("scheduleZone") || null,
             p_department:
               val("scheduleDepartment") || null,
@@ -3849,7 +3689,23 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const date = String(r.work_date || "").slice(0,10);
           return date >= period.startDate && date <= period.endDate;
         });
+
         renderSchedule();
+
+        if(
+          !state.schedule.length
+          && String(
+            state.profile?._realRole
+            || state.profile?.role
+            || ""
+          ).toUpperCase()
+            === "MANAGER"
+        ) {
+          toast(
+            "ไม่พบพนักงานใน Manager Scope สำหรับสัปดาห์ที่เลือก กรุณาตรวจ Scope และช่วงวันที่มีผล",
+            "warning"
+          );
+        }
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
     }
@@ -5936,10 +5792,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.22 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.22 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.22 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.22 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SHIFT_NOT_APPLICABLE_TO_WORK_PATTERN")) return "กะที่เลือกไม่รองรับรูปแบบการทำงาน 5 วัน/6 วันของพนักงาน กรุณาเลือกกะให้ตรงกลุ่ม";
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
@@ -6906,7 +6763,7 @@ ${skippedSummary(compatibility.skipped)}
       return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","มาสาย(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...filtered.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,r.day_type,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),(Number(r.net_work_minutes||0)/60).toFixed(2),(Number(r.regular_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,r.calculation_status||r.attendance_result||r.attendance_status])];
     }
     if(type==="schedule"){
-      const month=`${start.slice(0,7)}-01`;const data=await window.TimeClockShiftAPI.getMonthlySchedule(app(),{p_month:month,p_zone:zone,p_department:dept,p_emp_codes:null,p_schedule_statuses:null});
+      const month=`${start.slice(0,7)}-01`;const data=await window.TimeClockShiftAPI.getMonthlySchedule(app(),{p_month:month,p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept,p_emp_codes:null,p_schedule_statuses:null});
       return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","Template","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,r.template_code,r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,r.schedule_status,r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),(Number(r.paid_work_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
     }
     if(type==="summary"){
