@@ -1362,7 +1362,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       syncSchedulePeriodUI();
     }
 
-    function showLogin() { $("appShell").classList.add("hidden"); $("loginScreen").classList.remove("hidden"); }
+    function showLogin() {
+      $("appShell").classList.add("hidden");
+      $("loginScreen").classList.remove("hidden");
+      if (typeof setPasswordVisibility === "function") {
+        setPasswordVisibility(
+          "loginPassword",
+          "loginPasswordToggle",
+          false
+        );
+      }
+    }
     function showApp() { $("loginScreen").classList.add("hidden"); $("appShell").classList.remove("hidden"); }
 
     async function enterApp() {
@@ -4565,6 +4575,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     function bindEvents() {
       $("loginForm").addEventListener("submit", async e => { e.preventDefault(); if (!state.client) return openModal("configModal"); showLoading("กำลังเข้าสู่ระบบ..."); try { const { error } = await state.client.auth.signInWithPassword({ email: val("loginEmail").trim(), password: val("loginPassword") }); if (error) throw error; const { data:{session} } = await state.client.auth.getSession(); state.session=session; state.user=session.user; await enterApp(); } catch(err){toast(humanError(err),"error");} finally{hideLoading();} });
+      $("loginPasswordToggle")?.addEventListener("click", () => {
+        togglePasswordVisibility(
+          "loginPassword",
+          "loginPasswordToggle"
+        );
+      });
       $("logoutBtn").addEventListener("click", async () => { if (state.client) await state.client.auth.signOut(); showLogin(); });
       $("openConfigFromLogin").addEventListener("click", () => openModal("configModal"));
       $("configBtn").addEventListener("click", () => { const c=getConfig(); setVal("configUrl",c?.url); setVal("configKey",c?.key); openModal("configModal"); });

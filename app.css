@@ -7513,3 +7513,26 @@ article.invite::after{
   background:rgba(180,83,9,.16)!important;
   color:#fbbf24!important;
 }
+
+
+/* ==========================================================================
+   V6.10.16 Login Password Toggle
+   ========================================================================== */
+
+.login-password-input-wrap .login-password-input{
+  padding-right:86px;
+}
+
+.login-password-toggle{
+  min-width:66px;
+}
+
+@media (max-width: 640px){
+  .login-password-input-wrap .login-password-input{
+    padding-right:78px;
+  }
+
+  .login-password-toggle{
+    min-width:58px;
+  }
+}
