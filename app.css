@@ -9051,3 +9051,273 @@ body.theme-dark .post-resign-day{
 body.theme-dark .post-resign-cell{
   color:#d99b9b!important;
 }
+
+
+/* ==========================================================================
+   V6.10.27 Schedule UX
+   - Manager self row = view only
+   - Responsive employee columns
+   - Stronger shift labels
+   - OT badge removed from shift cells
+   ========================================================================== */
+
+.weekly-schedule-table{
+  --schedule-code-col:92px;
+  --schedule-name-col:clamp(148px,13.5vw,190px);
+  --schedule-start-col:108px;
+  --schedule-position-col:clamp(108px,10.5vw,150px);
+}
+
+/* Flexible sticky columns */
+.weekly-schedule-table .schedule-code-head,
+.weekly-schedule-table .schedule-emp-code{
+  width:var(--schedule-code-col)!important;
+  min-width:var(--schedule-code-col)!important;
+  max-width:var(--schedule-code-col)!important;
+}
+
+.weekly-schedule-table .schedule-name-head,
+.weekly-schedule-table .schedule-emp-name{
+  width:var(--schedule-name-col)!important;
+  min-width:var(--schedule-name-col)!important;
+  max-width:var(--schedule-name-col)!important;
+}
+
+.weekly-schedule-table .schedule-start-head,
+.weekly-schedule-table .schedule-emp-start-date{
+  width:var(--schedule-start-col)!important;
+  min-width:var(--schedule-start-col)!important;
+  max-width:var(--schedule-start-col)!important;
+}
+
+.weekly-schedule-table .schedule-position-head,
+.weekly-schedule-table .schedule-emp-position{
+  width:var(--schedule-position-col)!important;
+  min-width:var(--schedule-position-col)!important;
+  max-width:var(--schedule-position-col)!important;
+}
+
+.weekly-schedule-table .sticky-col-1{
+  left:0!important;
+}
+
+.weekly-schedule-table .sticky-col-2{
+  left:var(--schedule-code-col)!important;
+}
+
+.weekly-schedule-table .sticky-col-3{
+  left:calc(
+    var(--schedule-code-col)
+    + var(--schedule-name-col)
+  )!important;
+}
+
+.weekly-schedule-table .sticky-col-4{
+  left:calc(
+    var(--schedule-code-col)
+    + var(--schedule-name-col)
+    + var(--schedule-start-col)
+  )!important;
+}
+
+.weekly-schedule-table .schedule-emp-name{
+  padding:7px 8px!important;
+  overflow:hidden;
+}
+
+.weekly-schedule-table .schedule-name-line{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  min-width:0;
+  max-width:100%;
+  flex-wrap:wrap;
+}
+
+.weekly-schedule-table .schedule-name-line strong{
+  min-width:0;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.weekly-schedule-table .schedule-emp-name small{
+  max-width:100%!important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.weekly-schedule-table .schedule-emp-position{
+  padding:7px 8px!important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* Manager's own row remains visible but cannot be edited */
+.schedule-self-readonly-badge{
+  display:inline-flex;
+  align-items:center;
+  min-height:17px;
+  padding:1px 5px;
+  border:1px solid #cbd5e1;
+  border-radius:999px;
+  background:#f8fafc;
+  color:#64748b;
+  font-size:7px;
+  font-weight:850;
+  line-height:1;
+  white-space:nowrap;
+}
+
+.manager-self-readonly-cell{
+  cursor:not-allowed!important;
+}
+
+.weekly-schedule-table .schedule-cell.manager-self-readonly{
+  cursor:not-allowed!important;
+  filter:saturate(.78);
+}
+
+.weekly-schedule-table .schedule-cell.manager-self-readonly:hover{
+  transform:none!important;
+  box-shadow:none!important;
+}
+
+.manager-self-schedule-row .schedule-emp-code,
+.manager-self-schedule-row .schedule-emp-name{
+  cursor:default!important;
+}
+
+/* Shift labels: stronger but still clean */
+.weekly-schedule-table .schedule-cell{
+  border-width:1.5px!important;
+  box-shadow:0 2px 5px rgba(15,23,42,.08)!important;
+}
+
+.weekly-schedule-table .schedule-cell.shift-visual-day{
+  background:#dbeafe!important;
+  border-color:#60a5fa!important;
+  color:#123f75!important;
+}
+
+.weekly-schedule-table .schedule-cell.shift-visual-night{
+  background:#ede9fe!important;
+  border-color:#a78bfa!important;
+  color:#5425a8!important;
+}
+
+.weekly-schedule-table .schedule-cell.shift-visual-off{
+  background:#e8edf3!important;
+  border-color:#94a3b8!important;
+  color:#334155!important;
+}
+
+.weekly-schedule-table .schedule-cell.shift-visual-holiday{
+  background:#ffedd5!important;
+  border-color:#fb923c!important;
+  color:#a83c08!important;
+}
+
+.weekly-schedule-table .schedule-cell.shift-visual-leave{
+  background:#dcfce7!important;
+  border-color:#4ade80!important;
+  color:#166534!important;
+}
+
+.weekly-schedule-table .schedule-shift-code{
+  font-size:11.5px!important;
+  font-weight:950!important;
+  letter-spacing:.2px;
+}
+
+.weekly-schedule-table .schedule-shift-time{
+  font-size:8.2px!important;
+  font-weight:750!important;
+  opacity:.88!important;
+}
+
+/* Quick shift buttons align with cell labels */
+.shift-command.shift-D{
+  background:#dbeafe!important;
+  border:1px solid #60a5fa!important;
+  color:#123f75!important;
+}
+
+.shift-command.shift-N{
+  background:#ede9fe!important;
+  border:1px solid #a78bfa!important;
+  color:#5425a8!important;
+}
+
+.shift-command.shift-OFF{
+  background:#e8edf3!important;
+  border:1px solid #94a3b8!important;
+  color:#334155!important;
+}
+
+.shift-command.shift-HOL{
+  background:#ffedd5!important;
+  border:1px solid #fb923c!important;
+  color:#a83c08!important;
+}
+
+/* Dark mode */
+body.theme-dark .schedule-self-readonly-badge,
+.dark .schedule-self-readonly-badge{
+  background:#172033;
+  border-color:#475569;
+  color:#cbd5e1;
+}
+
+body.theme-dark .weekly-schedule-table .schedule-cell.shift-visual-day,
+.dark .weekly-schedule-table .schedule-cell.shift-visual-day{
+  background:#153b68!important;
+  border-color:#4d95e8!important;
+  color:#d7eaff!important;
+}
+
+body.theme-dark .weekly-schedule-table .schedule-cell.shift-visual-night,
+.dark .weekly-schedule-table .schedule-cell.shift-visual-night{
+  background:#34245d!important;
+  border-color:#8b6cdb!important;
+  color:#eee8ff!important;
+}
+
+body.theme-dark .weekly-schedule-table .schedule-cell.shift-visual-off,
+.dark .weekly-schedule-table .schedule-cell.shift-visual-off{
+  background:#293443!important;
+  border-color:#64748b!important;
+  color:#e2e8f0!important;
+}
+
+body.theme-dark .weekly-schedule-table .schedule-cell.shift-visual-holiday,
+.dark .weekly-schedule-table .schedule-cell.shift-visual-holiday{
+  background:#593015!important;
+  border-color:#e47b35!important;
+  color:#ffdfc3!important;
+}
+
+body.theme-dark .weekly-schedule-table .schedule-cell.shift-visual-leave,
+.dark .weekly-schedule-table .schedule-cell.shift-visual-leave{
+  background:#153d2a!important;
+  border-color:#3ca56a!important;
+  color:#d4f7e1!important;
+}
+
+@media(max-width:1200px){
+  .weekly-schedule-table{
+    --schedule-name-col:150px;
+    --schedule-position-col:112px;
+  }
+}
+
+@media(max-width:900px){
+  .weekly-schedule-table{
+    --schedule-name-col:140px;
+    --schedule-start-col:100px;
+    --schedule-position-col:104px;
+  }
+}

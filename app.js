@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.26";
-document.documentElement.dataset.timeClockBuild = "6.10.26";
+window.__TIME_CLOCK_BUILD__ = "V6.10.27";
+document.documentElement.dataset.timeClockBuild = "6.10.27";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.26";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.26',
+  version: '6.10.27',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.26 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.27 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.26 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.27 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.26"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.27"
         );
       }
 
@@ -1483,7 +1483,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.26"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.27"
           );
         }
 
@@ -2190,7 +2190,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.26"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.27"
             );
           }
 
@@ -3863,6 +3863,38 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       );
     }
 
+    function scheduleManagerOwnEmployee(
+      empCode
+    ) {
+      const profile =
+        state.profile || {};
+
+      const role =
+        String(
+          profile._realRole
+          || profile.role
+          || ""
+        )
+          .trim()
+          .toUpperCase();
+
+      const ownEmp =
+        String(
+          profile.emp_code
+          || ""
+        )
+          .trim();
+
+      return (
+        role === "MANAGER"
+        && ownEmp
+        && String(
+          empCode
+          || ""
+        ).trim() === ownEmp
+      );
+    }
+
     function renderSchedule() {
       const period = syncSchedulePeriodUI();
       const periodRows = state.schedule.filter(r => {
@@ -3925,7 +3957,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d.getDate()}</span><small>${thaiDays[dow]} ${thaiMonths[d.getMonth()]}${meta.holiday?" • หยุด":""}</small></th>`;
       }).join("");
 
-      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-start-head" style="min-width:116px">วันเริ่มงาน</th><th class="sticky-col-4 schedule-position-head" style="min-width:180px">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
+      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head">รหัส</th><th class="sticky-col-2 schedule-name-head">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-start-head">วันเริ่มงาน</th><th class="sticky-col-4 schedule-position-head">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
 
       if (!map.size) html += emptyRow(period.dates.length + 4);
 
@@ -3970,7 +4002,22 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             || ""
           ).trim();
 
-        html += `<tr data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><div class="schedule-name-line"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-start-date">${safe(formatDate(employeeStartDate))}</td><td class="sticky-col-4 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        const managerOwnEmployee =
+          scheduleManagerOwnEmployee(
+            emp
+          );
+
+        const employeeSelectAttr =
+          managerOwnEmployee
+            ? ""
+            : `data-select-emp="${safe(emp)}"`;
+
+        const managerOwnBadge =
+          managerOwnEmployee
+            ? `<span class="schedule-self-readonly-badge" title="Manager ดูกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง">ตนเอง • ดูอย่างเดียว</span>`
+            : "";
+
+        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-start-date">${safe(formatDate(employeeStartDate))}</td><td class="sticky-col-4 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
@@ -4102,11 +4149,20 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           ].filter(Boolean).join(" | ");
 
           const calcFlags =
-            `${Number(r.overtime_minutes||0)>0?'<small class="schedule-calc-flag ot">OT</small>':''}` +
             `${Number(r.waiting_minutes||0)>0?'<small class="schedule-calc-flag wait">W</small>':''}` +
             `${r.comp_off_earned?'<small class="schedule-calc-flag comp">C</small>':''}`;
 
-          html += `<td class="${tdCls}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls}" data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}" title="${safe(displayName)} | ${safe(dayLabel)} | ${safe(statusLabel)}${calcBits?` | ${safe(calcBits)}`:""} | ดับเบิลคลิกเพื่อแก้ไข"><b class="schedule-shift-code">${safe(code)}</b>${shiftTimeLabel?`<small class="schedule-shift-time">${safe(shiftTimeLabel)}</small>`:""}${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
+          const editAttrs =
+            managerOwnEmployee
+              ? `data-manager-self-readonly="1"`
+              : `data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}"`;
+
+          const cellTitle =
+            managerOwnEmployee
+              ? `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | Manager ไม่สามารถจัดกะให้ตนเอง`
+              : `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ดับเบิลคลิกเพื่อแก้ไข`;
+
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls} ${managerOwnEmployee?"manager-self-readonly":""}" ${editAttrs} title="${safe(cellTitle)}"><b class="schedule-shift-code">${safe(code)}</b>${shiftTimeLabel?`<small class="schedule-shift-time">${safe(shiftTimeLabel)}</small>`:""}${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
         }
 
         html += `</tr>`;
@@ -4223,6 +4279,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     async function openAssignment(empCode, workDate) {
+      if(
+        scheduleManagerOwnEmployee(
+          empCode
+        )
+      ) {
+        toast(
+          "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง",
+          "warning"
+        );
+
+        return;
+      }
+
       const r = state.schedule.find(
         x =>
           x.emp_code === empCode
@@ -5978,11 +6047,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
       if (msg.includes("SHIFT_BEFORE_EMPLOYEE_START_DATE")) return "ไม่สามารถกำหนดกะก่อนวันเริ่มงานของพนักงานได้ กรุณาเลือกวันที่ตั้งแต่วันเริ่มงานเป็นต้นไป";
       if (msg.includes("SHIFT_NOT_APPLICABLE_TO_WORK_PATTERN")) return "กะที่เลือกไม่รองรับรูปแบบการทำงาน 5 วัน/6 วันของพนักงาน กรุณาเลือกกะให้ตรงกลุ่ม";
