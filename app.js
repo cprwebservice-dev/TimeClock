@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.27";
-document.documentElement.dataset.timeClockBuild = "6.10.27";
+window.__TIME_CLOCK_BUILD__ = "V6.10.29";
+document.documentElement.dataset.timeClockBuild = "6.10.29";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.27";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.27',
+  version: '6.10.29',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.27 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.29 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.27 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.29 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.27"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.29"
         );
       }
 
@@ -1483,7 +1483,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.27"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.29"
           );
         }
 
@@ -2190,7 +2190,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.27"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.29"
             );
           }
 
@@ -4317,10 +4317,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     async function saveAssignment() {
       showLoading("กำลังบันทึกกะ...");
       try {
-        await window.TimeClockShiftAPI.assignSingle(window.TimeClockApp || { state }, {
-          emp_code: val("assignEmpCode"), work_date: val("assignWorkDate"), shift_code: val("assignShiftCode"),
-          note: val("assignNote") || null, change_reason: val("assignReason") || "กำหนดกะจากหน้าปฏิทิน", confirm_now: val("assignConfirm") === "true"
-        });
+        const saveResult =
+          await window.TimeClockShiftAPI.assignSingle(
+            window.TimeClockApp || { state },
+            {
+              emp_code:
+                val("assignEmpCode"),
+              work_date:
+                val("assignWorkDate"),
+              shift_code:
+                val("assignShiftCode"),
+              note:
+                val("assignNote")
+                || null,
+              change_reason:
+                val("assignReason")
+                || "กำหนดกะจากหน้าปฏิทิน",
+              confirm_now:
+                val("assignConfirm")
+                === "true"
+            }
+          );
         const savedEmp = val("assignEmpCode");
         const savedDate = val("assignWorkDate");
         const savedShift = val("assignShiftCode");
@@ -4334,8 +4351,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           renderSchedule();
         }
         closeModal("assignModal");
+        const attendanceRecalc =
+          saveResult
+            ?.attendance_recalculation;
+
         toast(
-          `บันทึกกะ ${savedShift} เรียบร้อย`,
+          attendanceRecalc?.deferred
+            ? `บันทึกกะ ${savedShift} เรียบร้อย • ยังไม่มีข้อมูลลงเวลา จึงรอคำนวณเมื่อมี Attendance`
+            : `บันทึกกะ ${savedShift} และประมวลผลเวลาใหม่เรียบร้อย`,
           "success"
         );
 
@@ -4346,33 +4369,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          try {
-            let recalcResponse = await state.client.rpc(
-              "ta_recalculate_attendance_employee_v680",
-              {
-                p_emp_code: savedEmp,
-                p_work_date: savedDate
-              }
-            );
-            if (
-              recalcResponse.error
-              && window.TimeClockShiftAPI?.missingFunction?.(
-                recalcResponse.error
-              )
-            ) {
-              recalcResponse = await state.client.rpc(
-                "ta_recalculate_attendance_v640",
-                {
-                  p_start_date: savedDate,
-                  p_end_date: savedDate,
-                  p_emp_codes: [savedEmp]
-                }
-              );
-            }
-          } catch (_) {
-            // Non-fatal: the Attendance page can still reload
-            // and the user may recalculate manually.
-          }
+          // V6.10.29:
+          // Attendance was recalculated inside the same SQL transaction
+          // that saved the shift. Reload only; do not calculate twice.
 
           switchPage("attendance");
           await loadAttendance();
@@ -4404,12 +4403,29 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (!confirm("ยืนยันการลบกะที่จัดไว้รายการนี้?")) return;
       showLoading("กำลังลบกะ...");
       try {
-        await window.TimeClockShiftAPI.deleteBulk(
-          window.TimeClockApp || { state },
-          [val("assignEmpCode")], val("assignWorkDate"), val("assignWorkDate"), "ลบกะจากหน้าปฏิทิน"
+        const deleteResult =
+          await window.TimeClockShiftAPI.deleteBulk(
+            window.TimeClockApp || { state },
+            [
+              val("assignEmpCode")
+            ],
+            val("assignWorkDate"),
+            val("assignWorkDate"),
+            "ลบกะจากหน้าปฏิทิน"
+          );
+
+        closeModal(
+          "assignModal"
         );
-        closeModal("assignModal");
-        toast("ลบกะที่จัดไว้แล้ว", "success");
+
+        toast(
+          deleteResult
+            ?.attendance_recalculation
+            ?.deferred
+              ? "ลบกะที่จัดไว้แล้ว • ยังไม่มีข้อมูลลงเวลา"
+              : "ลบกะและประมวลผลเวลาใหม่เรียบร้อย",
+          "success"
+        );
 
         const returnContext =
           window.TimeClockAttendanceReturnContext;
@@ -4421,30 +4437,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          try {
-            let recalcResponse = await state.client.rpc(
-              "ta_recalculate_attendance_employee_v680",
-              {
-                p_emp_code: savedEmp,
-                p_work_date: savedDate
-              }
-            );
-            if (
-              recalcResponse.error
-              && window.TimeClockShiftAPI?.missingFunction?.(
-                recalcResponse.error
-              )
-            ) {
-              recalcResponse = await state.client.rpc(
-                "ta_recalculate_attendance_v640",
-                {
-                  p_start_date: savedDate,
-                  p_end_date: savedDate,
-                  p_emp_codes: [savedEmp]
-                }
-              );
-            }
-          } catch (_) {}
+          // V6.10.29:
+          // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
           await loadAttendance();
@@ -6047,11 +6041,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.27 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.10.29";
+      if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
       if (msg.includes("SHIFT_BEFORE_EMPLOYEE_START_DATE")) return "ไม่สามารถกำหนดกะก่อนวันเริ่มงานของพนักงานได้ กรุณาเลือกวันที่ตั้งแต่วันเริ่มงานเป็นต้นไป";
@@ -6855,7 +6851,11 @@ ${skippedSummary(compatibility.skipped)}
     try{
       await window.TimeClockShiftAPI.assignBulk(app(), validPayload, reason, confirmNow);
       undoStack.push({label:historyLabel,before,after:validPayload.map(x=>({...x}))}); if(undoStack.length>30)undoStack.shift(); redoStack.length=0; updateHistoryButtons();
-      app().toast(`บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการแล้ว`,"success"); await app().loadSchedule();
+      app().toast(
+        `บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,
+        "success"
+      );
+      await app().loadSchedule();
     }catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}
   }
   async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
@@ -6863,7 +6863,7 @@ ${skippedSummary(compatibility.skipped)}
   async function pasteSelection(){const targets=selectedRows();if(!clipboard.length)return app()?.toast("ยังไม่มีกะในคลิปบอร์ด","error");if(!targets.length)return app()?.toast("กรุณาเลือกช่องปลายทาง","error");await savePayload(targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"})),"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");}
   async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!confirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
   async function confirmSelected(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกกะที่ต้องการยืนยัน","error");if(!confirm(`ยืนยันกะ ${rows.length} ช่องที่เลือก?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:currentCode(x.row),note:"ยืนยันจาก Schedule Pro"})).filter(x=>x.shift_code),"ยืนยันกะจาก Schedule Pro",true,"ยืนยันกะ");}
-  async function applyHistory(item,mode){const payload=(mode==="undo"?item.before:item.after).map(x=>({...x,note:`${mode} ${item.label}`}));app().showLoading(`กำลัง ${mode==="undo"?"ย้อนกลับ":"ทำซ้ำ"}...`);try{await window.TimeClockShiftAPI.assignBulk(app(),payload,`${mode} ${item.label}`,false);(mode==="undo"?redoStack:undoStack).push(item);updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับแล้ว":"ทำซ้ำแล้ว","success");}catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}}
+  async function applyHistory(item,mode){const payload=(mode==="undo"?item.before:item.after).map(x=>({...x,note:`${mode} ${item.label}`}));app().showLoading(`กำลัง ${mode==="undo"?"ย้อนกลับ":"ทำซ้ำ"}...`);try{await window.TimeClockShiftAPI.assignBulk(app(),payload,`${mode} ${item.label}`,false);(mode==="undo"?redoStack:undoStack).push(item);updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับและประมวลผลเวลาใหม่แล้ว":"ทำซ้ำและประมวลผลเวลาใหม่แล้ว","success");}catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}}
   function undo(){const x=undoStack.pop();if(x)applyHistory(x,"undo");}
   function redo(){const x=redoStack.pop();if(x)applyHistory(x,"redo");}
   function moveActive(dx,dy,extend=false){const c=getCell(activeKey)||cells()[0];if(!c)return;const td=c.closest("td"),tr=td.parentElement;const rows=[...tr.parentElement.children];let ri=rows.indexOf(tr)+dy;ri=Math.max(0,Math.min(rows.length-1,ri));const targetRow=rows[ri];const cellsRow=[...targetRow.querySelectorAll("[data-schedule-cell]")];const sourceCells=[...tr.querySelectorAll("[data-schedule-cell]")];let ci=sourceCells.indexOf(c)+dx;ci=Math.max(0,Math.min(cellsRow.length-1,ci));const target=cellsRow[ci];if(target){selectCell(target,false,extend);target.scrollIntoView({block:"nearest",inline:"nearest"});}}
@@ -8997,7 +8997,7 @@ ${skippedSummary(compatibility.skipped)}
   function scheduleModalsHtml(){return `<div id="schedulePatternModal" class="modal-backdrop hidden fc-modal-wide"><div class="modal"><div class="modal-header"><h3>กำหนดรูปแบบกะ 7 วัน</h3><button id="schedulePatternClose" class="btn btn-light btn-icon">×</button></div><div class="modal-body"><p class="fc-note">เลือกรูปแบบตามวันในสัปดาห์ แล้วนำไปใช้กับช่องที่เลือก</p><div class="schedule-pattern-grid">${["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"].map((d,i)=>`<label class="schedule-pattern-day"><span>${d}</span><select class="select" data-pattern-dow="${i}"><option>D</option><option>N</option><option>OFF</option><option>HOL</option><option>LV</option></select></label>`).join("")}</div></div><div class="modal-footer"><button id="applySchedulePatternBtn" class="btn btn-primary">นำไปใช้กับช่องที่เลือก</button></div></div></div><div id="scheduleHistoryModal" class="modal-backdrop hidden fc-modal-wide"><div class="modal"><div class="modal-header"><h3>ประวัติการจัดกะ</h3><button id="scheduleHistoryClose" class="btn btn-light btn-icon">×</button></div><div class="modal-body"><div class="table-wrap" style="max-height:65vh"><table><thead><tr><th>วันเวลา</th><th>รหัส</th><th>วันที่</th><th>เดิม</th><th>ใหม่</th><th>การทำงาน</th><th>ผู้ดำเนินการ</th><th>เหตุผล</th></tr></thead><tbody id="scheduleHistoryBody"></tbody></table></div></div></div></div>`;}
   function selectedScheduleCells(){return qsa("#scheduleTableWrap .schedule-data-cell.cell-selected [data-schedule-cell],#scheduleTableWrap td.cell-selected [data-schedule-cell]");}
   function rowAt(emp,date){return (app()?.state?.schedule||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date).slice(0,10)===String(date).slice(0,10));}
-  async function saveSchedulePayload(payload,reason,confirmNow=false){if(!payload.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");if(scheduleMonthStatus.status==="LOCKED")return app()?.toast("ตารางกะเดือนนี้ถูกล็อก","error");app()?.showLoading?.(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);try{await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,confirmNow);app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการแล้ว`,"success");await app()?.loadSchedule?.();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
+  async function saveSchedulePayload(payload,reason,confirmNow=false){if(!payload.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");if(scheduleMonthStatus.status==="LOCKED")return app()?.toast("ตารางกะเดือนนี้ถูกล็อก","error");app()?.showLoading?.(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);try{await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,confirmNow);app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");await app()?.loadSchedule?.();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
   function selectedCellMeta(){return selectedScheduleCells().map(c=>{const td=c.closest("td"),tr=td.closest("tr");return {cell:c,td,tr,emp:c.dataset.emp,date:c.dataset.date,row:rowAt(c.dataset.emp,c.dataset.date),ri:[...tr.parentElement.children].indexOf(tr),ci:[...tr.children].indexOf(td)};});}
   async function fillSchedule(direction){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่วงกะก่อน","error");const groups=new Map();items.forEach(x=>{const k=direction==="down"?x.ci:x.ri;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x);});const payload=[];groups.forEach(g=>{g.sort((a,b)=>direction==="down"?a.ri-b.ri:a.ci-b.ci);const source=codeOf(g[0].row)||g[0].cell.dataset.shift||"D";g.forEach(x=>payload.push({emp_code:x.emp,work_date:x.date,shift_code:source,note:`${direction==="down"?"Fill Down":"Fill Right"} จาก Schedule V6`}));});await saveSchedulePayload(payload,direction==="down"?"Fill Down จาก Schedule V6":"Fill Right จาก Schedule V6");}
   function openPatternModal(){if(!selectedScheduleCells().length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");$("schedulePatternModal")?.classList.remove("hidden");}
