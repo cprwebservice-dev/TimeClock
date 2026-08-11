@@ -9917,3 +9917,75 @@ body.theme-dark .system-period-closed-cell,
     min-width:0!important;
   }
 }
+
+
+/* ==========================================================================
+   V6.11.1 System Period Live Sync + Closed Shift Label
+   ========================================================================== */
+
+.system-period-closed-cell .schedule-cell{
+  position:relative!important;
+  opacity:1!important;
+  filter:saturate(.78)!important;
+  padding-right:19px!important;
+}
+
+.system-period-closed-cell .schedule-shift-code{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+.system-period-closed-cell .schedule-shift-time{
+  display:block!important;
+  visibility:visible!important;
+  opacity:.92!important;
+  max-width:100%!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  font-size:8.2px!important;
+  font-weight:800!important;
+}
+
+.system-period-cell-lock{
+  position:absolute!important;
+  top:4px;
+  right:4px;
+  z-index:4;
+  display:inline-flex!important;
+  align-items:center;
+  justify-content:center;
+  width:15px;
+  height:15px;
+  margin:0!important;
+  padding:0;
+  border:1px solid rgba(166,58,69,.28);
+  border-radius:5px;
+  background:rgba(255,244,245,.92);
+  color:#a33d48!important;
+  box-shadow:0 1px 4px rgba(71,21,27,.1);
+  pointer-events:none;
+}
+
+.system-period-cell-lock svg{
+  width:9px;
+  height:9px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+body.theme-dark .system-period-cell-lock,
+.dark .system-period-cell-lock{
+  border-color:rgba(228,149,158,.28);
+  background:rgba(75,29,34,.94);
+  color:#f0a7ae!important;
+}
+
+body.theme-dark .system-period-closed-cell .schedule-shift-time,
+.dark .system-period-closed-cell .schedule-shift-time{
+  opacity:.94!important;
+}
