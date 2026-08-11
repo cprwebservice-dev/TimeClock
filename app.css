@@ -10110,3 +10110,23 @@ body.theme-dark .system-period-page-load-meta.is-error,
   background:#2d1c20;
   color:#e4a4ab;
 }
+
+
+/* ==========================================================================
+   V6.11.5 System Period Scope / Runtime Fix
+   ========================================================================== */
+
+.system-period-page-load-meta.is-loading::before{
+  content:"";
+  width:7px;
+  height:7px;
+  margin-right:6px;
+  border:2px solid currentColor;
+  border-right-color:transparent;
+  border-radius:50%;
+  animation:systemPeriodLoadingSpin .8s linear infinite;
+}
+
+@keyframes systemPeriodLoadingSpin{
+  to{transform:rotate(360deg)}
+}
