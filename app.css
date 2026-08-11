@@ -8849,3 +8849,5 @@ body.theme-dark .sidebar-collapse-btn{
   font-size:11px;
   line-height:1.5;
 }
+
+.schedule-load-status{margin:10px 0 0;padding:10px 13px;border:1px solid #d7e0eb;border-radius:11px;font-size:11.5px;font-weight:650;line-height:1.5}.schedule-load-status.hidden{display:none!important}.schedule-load-status.loading{border-color:#b9d3f0;background:#f1f7fd;color:#245f99}.schedule-load-status.success{border-color:#b9e2cb;background:#f1fbf5;color:#23764a}.schedule-load-status.warning{border-color:#f1d79a;background:#fff9eb;color:#976307}.schedule-load-status.error{border-color:#efc0c5;background:#fff2f3;color:#b4232c}#loadScheduleBtn[aria-busy="true"]{cursor:wait;opacity:.75}

@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.23";
-document.documentElement.dataset.timeClockBuild = "6.10.23";
+window.__TIME_CLOCK_BUILD__ = "V6.10.24";
+document.documentElement.dataset.timeClockBuild = "6.10.24";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.23";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.23',
+  version: '6.10.24',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.23 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.24 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.23 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.24 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -550,6 +550,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     return result;
   }
 
+  async function getScheduleScopeDebug(app,startDate,endDate) {
+    const client=app?.state?.client;
+    if(!client) return null;
+    const {data,error}=await client.rpc("ta_get_schedule_scope_debug_v61024",{p_start_date:startDate,p_end_date:endDate});
+    if(error) return {reason:"DEBUG_RPC_ERROR",message:error.message||String(error)};
+    return data||null;
+  }
+
   async function getMonthlySchedule(app, params) {
     const client =
       app?.state?.client;
@@ -610,7 +618,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     const response =
       await withTimeout(
         client.rpc(
-          "ta_get_schedule_range_v61023",
+          "ta_get_schedule_range_v61024",
           {
             p_start_date:
               rangeStartDate,
@@ -646,7 +654,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.23"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.24"
         );
       }
 
@@ -785,6 +793,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     assignSingle,
     assignBulk,
     getMonthlySchedule,
+    getScheduleScopeDebug,
     deleteBulk,
     getReview,
     upsertShiftMaster,
@@ -1472,7 +1481,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.23"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.24"
           );
         }
 
@@ -2179,7 +2188,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.23"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.24"
             );
           }
 
@@ -3656,58 +3665,47 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       document.dispatchEvent(new CustomEvent("timeclock:attendance-rendered", { detail: { count: state.attendance.length } }));
     }
 
+    function setScheduleLoadStatus(type,message) {
+      const box=$("scheduleLoadStatus");
+      if(!box) return;
+      if(!message){box.className="schedule-load-status hidden";box.textContent="";return;}
+      box.className=`schedule-load-status ${type||"info"}`;box.textContent=message;
+    }
+
+    function scheduleScopeMessage(debug,period) {
+      const reason=String(debug?.reason||"");
+      const accessible=Number(debug?.accessible_employees||0);
+      const currentAccessible=Number(debug?.current_accessible_employees||0);
+      const scopeTotal=Number(debug?.scope_total||0);
+      const scopeInPeriod=Number(debug?.scope_in_period||0);
+      if(reason==="NO_MANAGER_SCOPE") return "บัญชี Manager นี้ยังไม่มี Manager Scope ที่เปิดสิทธิ์ดูข้อมูล";
+      if(reason==="SCOPE_OUTSIDE_PERIOD") return `Manager Scope มี ${scopeTotal} รายการ แต่ไม่มี Scope ที่มีผลในช่วง ${formatDate(period.startDate)}–${formatDate(period.endDate)} กรุณาตรวจ Effective From / Effective To หรือเลือกสัปดาห์ปัจจุบัน`;
+      if(reason==="SCOPE_MATCHED_NO_EMPLOYEE") return `พบ Scope ที่มีผล ${scopeInPeriod} รายการ แต่ไม่พบพนักงานที่ Match กับ Scope กรุณาตรวจ Scope Type / Scope Value / โครงสร้างองค์กร`;
+      if(accessible===0&&currentAccessible>0) return `Scope ปัจจุบันเห็นพนักงาน ${currentAccessible} คน แต่ช่วง ${formatDate(period.startDate)}–${formatDate(period.endDate)} ไม่มีสิทธิ์ตามช่วงวันที่ของ Scope`;
+      if(accessible>0) return `User Scope ผ่าน • พบพนักงาน ${accessible.toLocaleString("th-TH")} คน`;
+      if(reason==="DEBUG_RPC_ERROR") return `ตรวจ Scope ไม่สำเร็จ: ${debug?.message||"Unknown error"}`;
+      return "ไม่พบพนักงานตาม User Scope สำหรับช่วงวันที่ที่เลือก";
+    }
+
     async function loadSchedule() {
-      const period = syncSchedulePeriodUI();
+      const period=syncSchedulePeriodUI();
+      const button=$("loadScheduleBtn");
+      const originalText=button?.textContent||"โหลดตารางกะ";
+      if(button){button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="กำลังโหลด...";}
+      setScheduleLoadStatus("loading",`กำลังตรวจ User Scope และโหลดตารางกะ ${formatDate(period.startDate)}–${formatDate(period.endDate)}`);
       showLoading(`กำลังโหลดปฏิทินกะ ${formatDate(period.startDate)}–${formatDate(period.endDate)}...`);
-      try {
-        const scheduleSearchTerm =
-          val("scheduleSearch").trim();
-        const scheduleExactEmp =
-          /^\d{4,20}$/.test(scheduleSearchTerm)
-            ? scheduleSearchTerm
-            : null;
-
-        const data = await window.TimeClockShiftAPI.getMonthlySchedule(
-          window.TimeClockApp || { state },
-          {
-            p_month: `${period.month}-01`,
-            p_start_date:
-              period.startDate,
-            p_end_date:
-              period.endDate,
-            p_zone: val("scheduleZone") || null,
-            p_department:
-              val("scheduleDepartment") || null,
-            p_emp_codes:
-              scheduleExactEmp
-                ? [scheduleExactEmp]
-                : null,
-            p_schedule_statuses: null
-          }
-        );
-        state.schedule = (data || []).filter(r => {
-          const date = String(r.work_date || "").slice(0,10);
-          return date >= period.startDate && date <= period.endDate;
-        });
-
+      try{
+        const term=val("scheduleSearch").trim();
+        const exactEmp=/^\d{4,20}$/.test(term)?term:null;
+        const data=await window.TimeClockShiftAPI.getMonthlySchedule(window.TimeClockApp||{state},{p_month:`${period.month}-01`,p_start_date:period.startDate,p_end_date:period.endDate,p_zone:val("scheduleZone")||null,p_department:val("scheduleDepartment")||null,p_emp_codes:exactEmp?[exactEmp]:null,p_schedule_statuses:null});
+        state.schedule=(data||[]).filter(row=>{const date=String(row.work_date||"").slice(0,10);return date>=period.startDate&&date<=period.endDate;});
         renderSchedule();
-
-        if(
-          !state.schedule.length
-          && String(
-            state.profile?._realRole
-            || state.profile?.role
-            || ""
-          ).toUpperCase()
-            === "MANAGER"
-        ) {
-          toast(
-            "ไม่พบพนักงานใน Manager Scope สำหรับสัปดาห์ที่เลือก กรุณาตรวจ Scope และช่วงวันที่มีผล",
-            "warning"
-          );
-        }
-      } catch (err) { toast(humanError(err), "error"); }
-      finally { hideLoading(); }
+        const employeeCount=new Set(state.schedule.map(r=>String(r.emp_code||"")).filter(Boolean)).size;
+        if(state.schedule.length){setScheduleLoadStatus("success",`โหลดสำเร็จ • พนักงาน ${employeeCount.toLocaleString("th-TH")} คน • ${state.schedule.length.toLocaleString("th-TH")} วัน-พนักงาน`);return;}
+        const debug=await window.TimeClockShiftAPI?.getScheduleScopeDebug?.(window.TimeClockApp||{state},period.startDate,period.endDate);
+        const message=scheduleScopeMessage(debug,period);setScheduleLoadStatus("warning",message);toast(message,"warning");
+      }catch(error){const message=humanError(error);setScheduleLoadStatus("error",`โหลดตารางกะไม่สำเร็จ: ${message}`);toast(message,"error");}
+      finally{hideLoading();if(button){button.disabled=false;button.removeAttribute("aria-busy");button.textContent=originalText;}}
     }
 
     function scheduleMergeEmployeeMeta(target, source) {
@@ -5792,11 +5790,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.23 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SHIFT_NOT_APPLICABLE_TO_WORK_PATTERN")) return "กะที่เลือกไม่รองรับรูปแบบการทำงาน 5 วัน/6 วันของพนักงาน กรุณาเลือกกะให้ตรงกลุ่ม";
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
