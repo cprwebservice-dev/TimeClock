@@ -9989,3 +9989,37 @@ body.theme-dark .system-period-closed-cell .schedule-shift-time,
 .dark .system-period-closed-cell .schedule-shift-time{
   opacity:.94!important;
 }
+
+
+/* ==========================================================================
+   V6.11.2 System Period Modal Reliability Fix
+   ========================================================================== */
+
+#systemPeriodModal{
+  z-index:340!important;
+}
+
+#systemPeriodHistoryModal{
+  z-index:340!important;
+}
+
+#systemPeriodModal:not(.hidden){
+  display:grid!important;
+  place-items:center;
+}
+
+body.system-period-modal-open{
+  overflow:hidden;
+}
+
+#systemPeriodNewBtn{
+  position:relative;
+  z-index:1;
+  pointer-events:auto!important;
+  cursor:pointer!important;
+}
+
+#systemPeriodModal .system-period-modal{
+  position:relative;
+  z-index:1;
+}

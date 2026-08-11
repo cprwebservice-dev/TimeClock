@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.1";
-document.documentElement.dataset.timeClockBuild = "6.11.1";
+window.__TIME_CLOCK_BUILD__ = "V6.11.2";
+document.documentElement.dataset.timeClockBuild = "6.11.2";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.1";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.1',
+  version: '6.11.2',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.1 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.2 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.1 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.2 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.1"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.2"
         );
       }
 
@@ -1483,7 +1483,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.1"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.2"
           );
         }
 
@@ -2190,7 +2190,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.1"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.2"
             );
           }
 
@@ -4369,7 +4369,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          // V6.11.1:
+          // V6.11.2:
           // Attendance was recalculated inside the same SQL transaction
           // that saved the shift. Reload only; do not calculate twice.
 
@@ -4437,7 +4437,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          // V6.11.1:
+          // V6.11.2:
           // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
@@ -6042,17 +6042,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.1 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.1 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.1 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.1 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.1 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.2 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.2 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.2 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.2 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.2 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
       if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
-      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.1";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.2";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
@@ -7155,6 +7155,56 @@ ${skippedSummary(compatibility.skipped)}
           "profile-ready"
         );
       }
+    );
+  }
+
+  function handleSystemPeriodActionClick(
+    event
+  ){
+    const newButton =
+      event.target?.closest?.(
+        "#systemPeriodNewBtn, [data-system-period-new='1']"
+      );
+
+    if(newButton){
+      event.preventDefault();
+      event.stopPropagation();
+      openNew();
+      return;
+    }
+
+    if(
+      event.target?.closest?.(
+        "#systemPeriodModal"
+      )
+      ===
+      $("systemPeriodModal")
+      && event.target ===
+        $("systemPeriodModal")
+    ){
+      setModalOpen(false);
+    }
+  }
+
+  function bindSystemPeriodDelegation(){
+    if(
+      document.documentElement
+        .dataset
+        .systemPeriodDelegationV6112 ===
+        "1"
+    ){
+      return;
+    }
+
+    document.documentElement
+      .dataset
+      .systemPeriodDelegationV6112 =
+      "1";
+
+    document.addEventListener(
+      "click",
+      handleSystemPeriodActionClick,
+      true
     );
   }
 
@@ -16614,12 +16664,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.1 System Period Management ===== */
+/* ===== V6.11.2 System Period Management ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.1";
+    "6.11.2";
 
   const app = () =>
     window.TimeClockApp;
@@ -17274,11 +17324,67 @@ ${skippedSummary(compatibility.skipped)}
   function setModalOpen(
     open
   ){
-    $("systemPeriodModal")
-      ?.classList.toggle(
-        "hidden",
-        !open
+    const modal =
+      $("systemPeriodModal");
+
+    if(!modal){
+      console.error(
+        "V6.11.2: systemPeriodModal not found"
       );
+
+      app()?.toast?.(
+        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.2",
+        "error"
+      );
+
+      return false;
+    }
+
+    modal.classList.toggle(
+      "hidden",
+      !open
+    );
+
+    modal.setAttribute(
+      "aria-hidden",
+      open
+        ? "false"
+        : "true"
+    );
+
+    if(open){
+      modal.style.display =
+        "grid";
+
+      document.body
+        ?.classList.add(
+          "system-period-modal-open"
+        );
+
+      requestAnimationFrame(
+        () => {
+          $("systemPeriodMonthInput")
+            ?.focus?.();
+        }
+      );
+
+      document.dispatchEvent(
+        new CustomEvent(
+          "timeclock:system-period-modal-opened"
+        )
+      );
+
+    }else{
+      modal.style.display =
+        "";
+
+      document.body
+        ?.classList.remove(
+          "system-period-modal-open"
+        );
+    }
+
+    return true;
   }
 
   function updateRangePreview(){
@@ -17304,8 +17410,49 @@ ${skippedSummary(compatibility.skipped)}
   function openNew(){
     state.currentEdit=null;
 
-    $("systemPeriodModalTitle")
-      .textContent=
+    const title =
+      $("systemPeriodModalTitle");
+
+    const monthInput =
+      $("systemPeriodMonthInput");
+
+    const scheduleDeadlineInput =
+      $("systemPeriodScheduleDeadlineInput");
+
+    const certDeadlineInput =
+      $("systemPeriodCertDeadlineInput");
+
+    const scheduleOpenInput =
+      $("systemPeriodScheduleOpen");
+
+    const certOpenInput =
+      $("systemPeriodCertOpen");
+
+    const noteInput =
+      $("systemPeriodNote");
+
+    if(
+      !title
+      || !monthInput
+      || !scheduleDeadlineInput
+      || !certDeadlineInput
+      || !scheduleOpenInput
+      || !certOpenInput
+      || !noteInput
+    ){
+      console.error(
+        "V6.11.2: System Period modal fields incomplete"
+      );
+
+      app()?.toast?.(
+        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.2 ใหม่ทั้งหมด",
+        "error"
+      );
+
+      return;
+    }
+
+    title.textContent=
       "เพิ่มรอบระบบ";
 
     const now=new Date();
@@ -17316,36 +17463,26 @@ ${skippedSummary(compatibility.skipped)}
       ).padStart(2,"0")
     ].join("-");
 
-    $("systemPeriodMonthInput")
-      .disabled=false;
-
-    $("systemPeriodMonthInput")
-      .value=key;
+    monthInput.disabled=false;
+    monthInput.value=key;
 
     const end=monthEnd(key);
 
-    $("systemPeriodScheduleDeadlineInput")
-      .value=
+    scheduleDeadlineInput.value=
       addDays(
         end,
         10
       );
 
-    $("systemPeriodCertDeadlineInput")
-      .value=
+    certDeadlineInput.value=
       addDays(
         end,
         10
       );
 
-    $("systemPeriodScheduleOpen")
-      .checked=true;
-
-    $("systemPeriodCertOpen")
-      .checked=true;
-
-    $("systemPeriodNote")
-      .value="";
+    scheduleOpenInput.checked=true;
+    certOpenInput.checked=true;
+    noteInput.value="";
 
     updateRangePreview();
     setModalOpen(true);
@@ -18056,11 +18193,27 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   function bind(){
-    $("systemPeriodNewBtn")
-      ?.addEventListener(
+    const newButton =
+      $("systemPeriodNewBtn");
+
+    if(
+      newButton
+      && !newButton.dataset
+        .periodNewBound
+    ){
+      newButton.dataset
+        .periodNewBound =
+        "1";
+
+      newButton.addEventListener(
         "click",
-        openNew
+        event => {
+          event.preventDefault();
+          event.stopPropagation();
+          openNew();
+        }
       );
+    }
 
     $("systemPeriodRefreshBtn")
       ?.addEventListener(
@@ -18219,14 +18372,21 @@ ${skippedSummary(compatibility.skipped)}
       onScheduleRendered
     );
 
+    bindSystemPeriodDelegation();
     fillYearOptions();
     setupLiveSync();
   }
+
+  bindSystemPeriodDelegation();
 
   window.TimeClockSystemPeriods={
     VERSION,
     load,
     getForDate,
+    openNewPeriod:
+      openNew,
+    closePeriodModal:
+      () => setModalOpen(false),
     refreshScheduleGuard:
       applySchedulePeriodGuard,
     refreshLive:
