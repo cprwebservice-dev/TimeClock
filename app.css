@@ -10281,3 +10281,228 @@ body.theme-dark
 .attendance-work-segment-lines em{
   color:#c1cfdd;
 }
+
+
+/* ==========================================================================
+   V6.11.9 Employee Pattern + Attendance Shift 1/2 Punch UX
+   ========================================================================== */
+
+.employee-pattern-table-v6119{
+  min-width:1450px;
+}
+
+.employee-template-chip-v6119{
+  display:inline-flex;
+  align-items:center;
+  max-width:190px;
+  min-height:23px;
+  padding:3px 8px;
+  border:1px solid;
+  border-radius:999px;
+  font-size:8px;
+  font-weight:850;
+  line-height:1.25;
+  white-space:normal;
+}
+
+.employee-template-chip-v6119.normal{
+  background:#eef6ff;
+  border-color:#b9d5f2;
+  color:#245e97;
+}
+
+.employee-template-chip-v6119.late{
+  background:#fff5e8;
+  border-color:#efc68d;
+  color:#9a5b09;
+}
+
+.employee-pattern-open-ended-v6119{
+  display:inline-flex;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#f1f4f7;
+  color:#708090;
+  font-size:7.5px;
+  font-weight:800;
+}
+
+.employee-pattern-recorder-v6119{
+  display:block;
+  max-width:190px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#526a82;
+  font-size:8.5px;
+  font-weight:700;
+}
+
+#assignWorkTemplate:disabled{
+  opacity:1!important;
+  cursor:not-allowed;
+  background:#f5f8fb!important;
+  color:#314a62!important;
+  font-weight:800;
+  border-color:#cbd8e5!important;
+}
+
+.attendance-punch-head{
+  min-width:84px;
+  text-align:center!important;
+  vertical-align:middle!important;
+}
+
+.attendance-punch-head span{
+  display:block;
+  margin-bottom:2px;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.2px;
+  text-transform:uppercase;
+}
+
+.attendance-punch-head strong{
+  display:block;
+  font-size:8.5px;
+  font-weight:850;
+}
+
+.attendance-punch-head.shift-1{
+  background:#edf6ff!important;
+  color:#245d94!important;
+}
+
+.attendance-punch-head.shift-2{
+  background:#fff3e5!important;
+  color:#985804!important;
+}
+
+.attendance-punch-cell-v6119{
+  min-width:84px;
+  text-align:center;
+}
+
+.attendance-punch-cell-v6119.shift-1{
+  background:rgba(236,246,255,.42);
+}
+
+.attendance-punch-cell-v6119.shift-2{
+  background:rgba(255,243,229,.42);
+}
+
+.attendance-punch-value-v6119{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  min-width:68px;
+  padding:3px 6px;
+  border:1px solid;
+  border-radius:8px;
+  white-space:nowrap;
+}
+
+.attendance-punch-value-v6119 i{
+  font-style:normal;
+  font-size:6.8px;
+  font-weight:900;
+  opacity:.72;
+}
+
+.attendance-punch-value-v6119 b{
+  font-size:9px;
+  font-weight:900;
+}
+
+.attendance-punch-value-v6119.shift-1{
+  background:#eef7ff;
+  border-color:#bad8f3;
+  color:#235d96;
+}
+
+.attendance-punch-value-v6119.shift-2{
+  background:#fff6ea;
+  border-color:#efcb99;
+  color:#975b0d;
+}
+
+.attendance-punch-empty-v6119{
+  color:#a0acb8;
+  font-weight:700;
+}
+
+body.theme-dark
+.employee-template-chip-v6119.normal,
+.dark
+.employee-template-chip-v6119.normal{
+  background:#173451;
+  border-color:#315b83;
+  color:#c7e3ff;
+}
+
+body.theme-dark
+.employee-template-chip-v6119.late,
+.dark
+.employee-template-chip-v6119.late{
+  background:#4a3016;
+  border-color:#7b5528;
+  color:#ffdda9;
+}
+
+body.theme-dark
+#assignWorkTemplate:disabled,
+.dark
+#assignWorkTemplate:disabled{
+  background:#172536!important;
+  border-color:#344a61!important;
+  color:#d8e5f1!important;
+}
+
+body.theme-dark
+.attendance-punch-head.shift-1,
+.dark
+.attendance-punch-head.shift-1{
+  background:#173451!important;
+  color:#c7e3ff!important;
+}
+
+body.theme-dark
+.attendance-punch-head.shift-2,
+.dark
+.attendance-punch-head.shift-2{
+  background:#442d16!important;
+  color:#ffd9a5!important;
+}
+
+body.theme-dark
+.attendance-punch-cell-v6119.shift-1,
+.dark
+.attendance-punch-cell-v6119.shift-1{
+  background:rgba(23,52,81,.28);
+}
+
+body.theme-dark
+.attendance-punch-cell-v6119.shift-2,
+.dark
+.attendance-punch-cell-v6119.shift-2{
+  background:rgba(68,45,22,.28);
+}
+
+body.theme-dark
+.attendance-punch-value-v6119.shift-1,
+.dark
+.attendance-punch-value-v6119.shift-1{
+  background:#183955;
+  border-color:#315d84;
+  color:#d2e9ff;
+}
+
+body.theme-dark
+.attendance-punch-value-v6119.shift-2,
+.dark
+.attendance-punch-value-v6119.shift-2{
+  background:#4b3218;
+  border-color:#795529;
+  color:#ffe0ae;
+}

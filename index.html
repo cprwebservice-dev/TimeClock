@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.8 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.9 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.8 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.9 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.8-20260811" rel="stylesheet"/>
+<link href="./app.css?v=6.11.9-20260811" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.8</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.9</span></div>
 </form>
 </div>
 </section>
@@ -278,7 +278,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.8 Organization Structure &amp; Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.9 Organization Structure &amp; Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -373,9 +373,10 @@
 <th data-att-col="shift_start">เวลาเริ่มกะ</th>
 <th data-att-col="shift_end">เวลาสิ้นสุดกะ</th>
 <th data-att-col="shift_code">กะ</th>
-<th data-att-col="work_segments">รูปแบบช่วงงาน</th>
-<th data-att-col="first_in">เวลาเข้า</th>
-<th data-att-col="last_out">เวลาออก</th>
+<th class="attendance-punch-head shift-1" data-att-col="shift_1_in"><span>กะที่ 1</span><strong>เวลาเข้า</strong></th>
+<th class="attendance-punch-head shift-1" data-att-col="shift_1_out"><span>กะที่ 1</span><strong>เวลาออก</strong></th>
+<th class="attendance-punch-head shift-2" data-att-col="shift_2_in"><span>กะที่ 2</span><strong>เวลาเข้า</strong></th>
+<th class="attendance-punch-head shift-2" data-att-col="shift_2_out"><span>กะที่ 2</span><strong>เวลาออก</strong></th>
 <th data-att-col="display_status">สถานะ</th>
 <th data-att-col="net_work_minutes">ชม.สุทธิ</th>
 <th data-att-col="regular_minutes">ชม.ปกติ</th>
@@ -749,7 +750,7 @@
 <div class="panel-header"><div><h3>กำหนดรูปแบบรายบุคคล</h3><p>หัวหน้างานกำหนดได้เฉพาะพนักงานภายใต้ Scope ของตนเอง และกำหนดวันที่เริ่มใช้</p></div></div>
 <div class="panel-body">
 <div class="fc-toolbar"><div class="field"><label>ค้นหารหัสหรือชื่อ</label><input class="input" id="employeePatternSearch" placeholder="เช่น 7512172"/></div><div class="field"><label>วันที่อ้างอิง</label><input class="input" id="employeePatternDate" type="date"/></div><div class="toolbar-actions"><button class="btn btn-primary" id="employeePatternLoadBtn">ค้นหา</button></div></div>
-<div class="table-wrap section-gap"><table><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>ตำแหน่ง</th><th>พื้นที่</th><th>รูปแบบ</th><th>วันหยุดตั้งต้น</th><th>Template เริ่มต้น</th><th>เริ่มใช้</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
+<div class="table-wrap section-gap"><table class="employee-pattern-table-v6119"><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>ตำแหน่ง</th><th>พื้นที่</th><th>รูปแบบ</th><th>วันหยุดตั้งต้น</th><th>Template เริ่มต้น</th><th>เริ่มใช้</th><th>สิ้นสุด</th><th>วันที่บันทึก</th><th>ผู้บันทึก</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
 </div>
 </div>
 <div class="panel section-gap">
@@ -985,7 +986,7 @@
 </section>
 </div>
 </section>
-<!-- User Account Management V6.11.8 -->
+<!-- User Account Management V6.11.9 -->
 <section class="page admin-page user-account-page" id="page-admin-accounts">
 <div class="user-account-hero">
 <div>
@@ -1234,7 +1235,7 @@
 <div style="display:flex;gap:9px;flex-wrap:wrap"><button class="btn btn-light" id="previewImportBtn">ตรวจสอบก่อนนำเข้า</button><button class="btn btn-primary" id="runImportBtn">นำเข้าข้อมูล</button><button class="btn btn-success" id="downloadTemplateBtn">ดาวน์โหลด Template</button></div>
 <div class="employee-import-guide section-gap">
 <div>
-<strong>คอลัมน์ Employee Template V6.11.8</strong>
+<strong>คอลัมน์ Employee Template V6.11.9</strong>
 <p>employee_id, full_name, email, position_name, department, org_code, pc, car_team, start_date, resign_date</p>
 </div>
 <div class="employee-import-guide-note">
@@ -1309,7 +1310,7 @@
 <div class="field"><label>Publishable Key / Anon Key</label><textarea class="textarea" id="configKey" placeholder="sb_publishable_... หรือ anon key"></textarea></div>
 <div style="padding:12px;border-radius:10px;background:var(--amber-100);color:var(--amber-600);font-size:11px">ใช้เฉพาะ Publishable/Anon key สำหรับ Browser ห้ามใส่ Service Role key
           <div class="supabase-default-note-v61010">
-            V6.11.8 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
+            V6.11.9 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
             User ใหม่ไม่ต้องตั้งค่าส่วนนี้เอง
           </div></div>
 </div>
@@ -1379,7 +1380,7 @@
 <div>
 <div class="org-modal-title-row">
 <h3 id="orgUnitModalTitle">เพิ่มหน่วยงาน</h3>
-<span class="org-modal-version">V6.11.8</span>
+<span class="org-modal-version">V6.11.9</span>
 </div>
 <p>กำหนดรหัส Zone ระดับ และหน่วยงานแม่</p>
 </div>
@@ -1582,7 +1583,7 @@
 <div class="modal-footer"><button class="btn btn-success" id="orgScopeTemplateBtn" style="margin-right:auto">ดาวน์โหลด Template</button><button class="btn btn-light" data-org-close="orgScopeUploadModal">ยกเลิก</button><button class="btn btn-primary" disabled="" id="orgScopeImportBtn">นำเข้า Manager Scope</button></div>
 </div>
 </div>
-<!-- Create User Account Modal V6.11.8 -->
+<!-- Create User Account Modal V6.11.9 -->
 <div class="modal-backdrop hidden" id="accountCreateModal">
 <div class="modal large account-create-modal">
 <div class="modal-header">
@@ -1670,7 +1671,7 @@
 </div>
 </div>
 </div>
-<!-- Edit User Account Modal V6.11.8 -->
+<!-- Edit User Account Modal V6.11.9 -->
 <div class="modal-backdrop hidden" id="accountEditModal">
 <div class="modal large account-edit-modal">
 <div class="modal-header">
@@ -1732,7 +1733,7 @@
 </div>
 </div>
 </div>
-<!-- Invite Acceptance Modal V6.11.8 -->
+<!-- Invite Acceptance Modal V6.11.9 -->
 <div class="modal-backdrop hidden account-invite-backdrop" id="inviteAcceptModal">
 <div class="modal account-invite-accept-modal">
 <div class="modal-header account-invite-accept-header">
@@ -1765,7 +1766,7 @@
 </div>
 </div>
 </div>
-<!-- Password Recovery OTP V6.11.8 -->
+<!-- Password Recovery OTP V6.11.9 -->
 <div class="modal-backdrop hidden account-recovery-backdrop" id="recoveryOtpModal">
 <div class="modal account-recovery-otp-modal">
 <div class="modal-header account-recovery-otp-header">
@@ -1810,7 +1811,7 @@
 </div>
 </div>
 </div>
-<!-- Password Recovery Confirmation V6.11.8 -->
+<!-- Password Recovery Confirmation V6.11.9 -->
 <div class="modal-backdrop hidden account-recovery-backdrop" id="recoveryConfirmModal">
 <div class="modal account-recovery-confirm-modal">
 <div class="modal-header account-recovery-confirm-header">
@@ -2148,6 +2149,6 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=6.11.8-20260811"></script>
+<script src="./app.js?v=6.11.9-20260811"></script>
 </body>
 </html>
