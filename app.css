@@ -10023,3 +10023,51 @@ body.system-period-modal-open{
   position:relative;
   z-index:1;
 }
+
+
+/* ==========================================================================
+   V6.11.3 System Period Loading Reliability
+   ========================================================================== */
+
+.system-period-load-error{
+  padding:24px!important;
+}
+
+.system-period-load-error-box{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:120px;
+  padding:18px;
+  border:1px solid #efc5ca;
+  border-radius:14px;
+  background:#fff7f8;
+  color:#8d3943;
+}
+
+.system-period-load-error-box strong{
+  font-size:12px;
+  font-weight:900;
+}
+
+.system-period-load-error-box span{
+  max-width:720px;
+  font-size:9.5px;
+  line-height:1.55;
+  color:#9b5b63;
+  text-align:center;
+}
+
+body.theme-dark .system-period-load-error-box,
+.dark .system-period-load-error-box{
+  border-color:#643c42;
+  background:#27191b;
+  color:#f0b0b7;
+}
+
+body.theme-dark .system-period-load-error-box span,
+.dark .system-period-load-error-box span{
+  color:#d7969d;
+}
