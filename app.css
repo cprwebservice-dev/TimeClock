@@ -10071,3 +10071,42 @@ body.theme-dark .system-period-load-error-box span,
 .dark .system-period-load-error-box span{
   color:#d7969d;
 }
+
+
+/* ==========================================================================
+   V6.11.4 System Period Page Lifecycle Fix
+   ========================================================================== */
+
+.system-period-page-load-meta{
+  display:flex;
+  align-items:center;
+  min-height:23px;
+  margin:-2px 0 8px;
+  padding:3px 8px;
+  border-radius:8px;
+  color:#718397;
+  font-size:8px;
+  font-weight:700;
+}
+
+.system-period-page-load-meta.is-loading{
+  background:#f3f7fb;
+  color:#52708e;
+}
+
+.system-period-page-load-meta.is-error{
+  background:#fff3f4;
+  color:#a24650;
+}
+
+body.theme-dark .system-period-page-load-meta.is-loading,
+.dark .system-period-page-load-meta.is-loading{
+  background:#162438;
+  color:#a7bdd2;
+}
+
+body.theme-dark .system-period-page-load-meta.is-error,
+.dark .system-period-page-load-meta.is-error{
+  background:#2d1c20;
+  color:#e4a4ab;
+}

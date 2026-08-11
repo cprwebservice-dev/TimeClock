@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.3";
-document.documentElement.dataset.timeClockBuild = "6.11.3";
+window.__TIME_CLOCK_BUILD__ = "V6.11.4";
+document.documentElement.dataset.timeClockBuild = "6.11.4";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.3";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.3',
+  version: '6.11.4',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.3 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.4 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.3 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.4 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.3"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.4"
         );
       }
 
@@ -1483,7 +1483,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.3"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.4"
           );
         }
 
@@ -2190,7 +2190,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.3"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.4"
             );
           }
 
@@ -4369,7 +4369,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          // V6.11.3:
+          // V6.11.4:
           // Attendance was recalculated inside the same SQL transaction
           // that saved the shift. Reload only; do not calculate twice.
 
@@ -4437,7 +4437,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          // V6.11.3:
+          // V6.11.4:
           // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
@@ -6042,17 +6042,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.3 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.3 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.3 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.3 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.3 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.4 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.4 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.4 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.4 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.4 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
       if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
-      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.3";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.4";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
@@ -7216,6 +7216,213 @@ ${skippedSummary(compatibility.skipped)}
       "click",
       handleSystemPeriodActionClick,
       true
+    );
+  }
+
+  function systemPeriodPageIsActive(){
+    const page =
+      $("page-admin-periods");
+
+    return Boolean(
+      page
+      && page.classList
+        .contains("active")
+    );
+  }
+
+  function systemPeriodNeedsInitialLoad(){
+    const year =
+      $("systemPeriodYear");
+
+    const body =
+      $("systemPeriodBody");
+
+    if(
+      !year
+      || !body
+    ){
+      return false;
+    }
+
+    const noYear =
+      year.options.length === 0
+      || !String(
+        year.value || ""
+      ).trim();
+
+    const loadingPlaceholder =
+      String(
+        body.textContent || ""
+      ).includes(
+        "กำลังโหลดข้อมูล"
+      );
+
+    return (
+      noYear
+      || loadingPlaceholder
+      || state.lastLoadCompletedAt === 0
+    );
+  }
+
+  function activateSystemPeriodPage(
+    reason="page-active"
+  ){
+    if(
+      !systemPeriodPageIsActive()
+    ){
+      return;
+    }
+
+    fillYearOptions();
+
+    const stale =
+      Date.now()
+      - Number(
+        state.lastLoadCompletedAt
+        || 0
+      )
+      > 15000;
+
+    if(
+      systemPeriodNeedsInitialLoad()
+      || stale
+    ){
+      setTimeout(
+        () => {
+          if(
+            systemPeriodPageIsActive()
+          ){
+            load({
+              force:true,
+              reason
+            });
+          }
+        },
+        0
+      );
+    }
+  }
+
+  function bindSystemPeriodPageLifecycle(){
+    if(
+      state.pageLifecycleBound
+    ){
+      return;
+    }
+
+    state.pageLifecycleBound =
+      true;
+
+    const page =
+      $("page-admin-periods");
+
+    if(page){
+      state.pageObserver =
+        new MutationObserver(
+          mutations => {
+            const becameActive =
+              mutations.some(
+                mutation =>
+                  mutation.attributeName ===
+                    "class"
+              )
+              && page.classList
+                .contains("active");
+
+            if(becameActive){
+              activateSystemPeriodPage(
+                "mutation-active"
+              );
+            }
+          }
+        );
+
+      state.pageObserver.observe(
+        page,
+        {
+          attributes:true,
+          attributeFilter:[
+            "class"
+          ]
+        }
+      );
+    }
+
+    document.addEventListener(
+      "click",
+      event => {
+        const opener =
+          event.target?.closest?.(
+            '[data-page="admin-periods"], [data-admin-open="admin-periods"]'
+          );
+
+        if(opener){
+          setTimeout(
+            () =>
+              activateSystemPeriodPage(
+                "navigation-click"
+              ),
+            0
+          );
+        }
+      },
+      true
+    );
+
+    document.addEventListener(
+      "timeclock:effective-role-changed",
+      () => {
+        setTimeout(
+          () =>
+            activateSystemPeriodPage(
+              "role-ready"
+            ),
+          0
+        );
+      }
+    );
+
+    window.addEventListener(
+      "ta:session-ready",
+      () => {
+        setTimeout(
+          () =>
+            activateSystemPeriodPage(
+              "session-ready"
+            ),
+          0
+        );
+      }
+    );
+
+    window.addEventListener(
+      "focus",
+      () =>
+        activateSystemPeriodPage(
+          "window-focus"
+        )
+    );
+
+    document.addEventListener(
+      "visibilitychange",
+      () => {
+        if(
+          document.visibilityState ===
+            "visible"
+        ){
+          activateSystemPeriodPage(
+            "visibility"
+          );
+        }
+      }
+    );
+
+    setTimeout(
+      () =>
+        activateSystemPeriodPage(
+          "module-ready"
+        ),
+      0
     );
   }
 
@@ -16675,12 +16882,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.3 System Period Management ===== */
+/* ===== V6.11.4 System Period Management ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.3";
+    "6.11.4";
 
   const app = () =>
     window.TimeClockApp;
@@ -16723,7 +16930,12 @@ ${skippedSummary(compatibility.skipped)}
     realtimeChannel: null,
     realtimeConnected: false,
     pollTimer: null,
-    liveRefreshBusy: false
+    liveRefreshBusy: false,
+    pageObserver: null,
+    pageLifecycleBound: false,
+    loadRunning: false,
+    lastLoadStartedAt: 0,
+    lastLoadCompletedAt: 0
   };
 
   function client(){
@@ -16857,6 +17069,29 @@ ${skippedSummary(compatibility.skipped)}
   ){
     const body =
       $("systemPeriodBody");
+
+    const meta =
+      $("systemPeriodPageLoadMeta");
+
+    if(meta){
+      meta.textContent =
+        message
+        || (
+          type === "error"
+            ? "โหลดข้อมูลไม่สำเร็จ"
+            : "กำลังโหลดข้อมูล..."
+        );
+
+      meta.classList.toggle(
+        "is-error",
+        type === "error"
+      );
+
+      meta.classList.toggle(
+        "is-loading",
+        type !== "error"
+      );
+    }
 
     if(!body){
       return;
@@ -17573,7 +17808,25 @@ ${skippedSummary(compatibility.skipped)}
       ).join("");
   }
 
-  async function load(){
+  async function load(
+    options={}
+  ){
+    const force =
+      options?.force === true;
+
+    if(
+      state.loadRunning
+      && !force
+    ){
+      return;
+    }
+
+    state.loadRunning =
+      true;
+
+    state.lastLoadStartedAt =
+      Date.now();
+
     fillYearOptions();
 
     renderLoadState(
@@ -17590,6 +17843,7 @@ ${skippedSummary(compatibility.skipped)}
         "Supabase Client ยังไม่พร้อม กรุณากด ลองใหม่",
         "error"
       );
+      state.loadRunning = false;
       return;
     }
 
@@ -17598,6 +17852,7 @@ ${skippedSummary(compatibility.skipped)}
         "บัญชีปัจจุบันไม่ใช่ HR Admin หรือ Profile ยังโหลดไม่สมบูรณ์",
         "error"
       );
+      state.loadRunning = false;
       return;
     }
 
@@ -17677,6 +17932,7 @@ ${skippedSummary(compatibility.skipped)}
           "error"
         );
 
+        state.loadRunning = false;
         return;
       }
     }finally{
@@ -17697,6 +17953,28 @@ ${skippedSummary(compatibility.skipped)}
     ){
       renderTable();
     }
+
+    state.lastLoadCompletedAt =
+      Date.now();
+
+    if(
+      $("systemPeriodPageLoadMeta")
+    ){
+      $("systemPeriodPageLoadMeta")
+        .textContent =
+        state.rows.length
+          ? `โหลดแล้ว ${state.rows.length.toLocaleString("th-TH")} รอบ`
+          : "โหลดแล้ว • ยังไม่มีรอบระบบในปีที่เลือก";
+
+      $("systemPeriodPageLoadMeta")
+        .classList.remove(
+          "is-error",
+          "is-loading"
+        );
+    }
+
+    state.loadRunning =
+      false;
   }
 
   function setModalOpen(
@@ -17707,11 +17985,11 @@ ${skippedSummary(compatibility.skipped)}
 
     if(!modal){
       console.error(
-        "V6.11.3: systemPeriodModal not found"
+        "V6.11.4: systemPeriodModal not found"
       );
 
       app()?.toast?.(
-        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.3",
+        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.4",
         "error"
       );
 
@@ -17819,11 +18097,11 @@ ${skippedSummary(compatibility.skipped)}
       || !noteInput
     ){
       console.error(
-        "V6.11.3: System Period modal fields incomplete"
+        "V6.11.4: System Period modal fields incomplete"
       );
 
       app()?.toast?.(
-        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.3 ใหม่ทั้งหมด",
+        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.4 ใหม่ทั้งหมด",
         "error"
       );
 
@@ -18739,11 +19017,22 @@ ${skippedSummary(compatibility.skipped)}
     );
 
     bindSystemPeriodDelegation();
+    bindSystemPeriodPageLifecycle();
     fillYearOptions();
     setupLiveSync();
+
+    activateSystemPeriodPage(
+      "bind-complete"
+    );
   }
 
   bindSystemPeriodDelegation();
+
+  if(
+    document.readyState !== "loading"
+  ){
+    bindSystemPeriodPageLifecycle();
+  }
 
   window.TimeClockSystemPeriods={
     VERSION,
@@ -18757,7 +19046,36 @@ ${skippedSummary(compatibility.skipped)}
       applySchedulePeriodGuard,
     refreshLive:
       refreshLivePeriodState,
-    setupRealtime
+    setupRealtime,
+    reload:
+      () => load({
+        force:true,
+        reason:"manual-api"
+      }),
+    activate:
+      activateSystemPeriodPage,
+    debugState:
+      () => ({
+        pageActive:
+          systemPeriodPageIsActive(),
+        yearValue:
+          $("systemPeriodYear")
+            ?.value
+          || "",
+        yearOptions:
+          $("systemPeriodYear")
+            ?.options
+            ?.length
+          || 0,
+        loadRunning:
+          state.loadRunning,
+        lastLoadStartedAt:
+          state.lastLoadStartedAt,
+        lastLoadCompletedAt:
+          state.lastLoadCompletedAt,
+        rowCount:
+          state.rows.length
+      })
   };
 
   if(
