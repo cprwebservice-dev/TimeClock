@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.25";
-document.documentElement.dataset.timeClockBuild = "6.10.25";
+window.__TIME_CLOCK_BUILD__ = "V6.10.26";
+document.documentElement.dataset.timeClockBuild = "6.10.26";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.25";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.25',
+  version: '6.10.26',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.25 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.26 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.25 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.26 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -425,6 +425,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     const fields = [
       "start_date",
+      "resign_date",
       "position_name",
       "department",
       "area",
@@ -655,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.25"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.26"
         );
       }
 
@@ -1482,7 +1483,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.25"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.26"
           );
         }
 
@@ -2189,7 +2190,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.25"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.26"
             );
           }
 
@@ -3685,7 +3686,127 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if(accessible===0&&currentAccessible>0) return `Scope ปัจจุบันเห็นพนักงาน ${currentAccessible} คน แต่ช่วง ${formatDate(period.startDate)}–${formatDate(period.endDate)} ไม่มีสิทธิ์ตามช่วงวันที่ของ Scope`;
       if(accessible>0) return `User Scope ผ่าน • พบพนักงาน ${accessible.toLocaleString("th-TH")} คน`;
       if(reason==="DEBUG_RPC_ERROR") return `ตรวจ Scope ไม่สำเร็จ: ${debug?.message||"Unknown error"}`;
-      return "ไม่พบพนักงานตาม User Scope สำหรับช่วงวันที่ที่เลือก";
+      return "ไม่พบพนักงานตาม User Scope สำหรับช่วงวันที่ที่เลือก กรุณาตรวจ Role, Scope, Can View และ Effective Date";
+    }
+
+    async function loadScheduleFilterOptions(
+      period = syncSchedulePeriodUI(),
+      zoneOverride = undefined
+    ) {
+      const zoneSelect =
+        $("scheduleZone");
+
+      const deptSelect =
+        $("scheduleDepartment");
+
+      if(
+        !zoneSelect
+        || !deptSelect
+      ) {
+        return null;
+      }
+
+      const oldZone =
+        zoneOverride !== undefined
+          ? String(
+              zoneOverride
+              || ""
+            )
+          : val(
+              "scheduleZone"
+            );
+
+      const oldDepartment =
+        val(
+          "scheduleDepartment"
+        );
+
+      const {
+        data,
+        error
+      } =
+        await state.client.rpc(
+          "ta_get_schedule_filter_options_v61026",
+          {
+            p_start_date:
+              period.startDate,
+
+            p_end_date:
+              period.endDate,
+
+            p_zone:
+              oldZone
+              || null,
+
+            p_department:
+              null
+          }
+        );
+
+      if(error) {
+        throw error;
+      }
+
+      const result =
+        data || {};
+
+      const zones =
+        Array.isArray(
+          result.zones
+        )
+          ? result.zones
+          : [];
+
+      const departments =
+        Array.isArray(
+          result.departments
+        )
+          ? result.departments
+          : [];
+
+      fillSelect(
+        "scheduleZone",
+        zones,
+        "ทุกพื้นที่"
+      );
+
+      const zoneStillValid =
+        !oldZone
+        || zones.some(
+          value =>
+            String(value) ===
+            oldZone
+        );
+
+      setVal(
+        "scheduleZone",
+        zoneStillValid
+          ? oldZone
+          : ""
+      );
+
+      fillSelect(
+        "scheduleDepartment",
+        departments,
+        "ทุกหน่วยงาน"
+      );
+
+      const departmentStillValid =
+        !oldDepartment
+        || departments.some(
+          value =>
+            String(value) ===
+            oldDepartment
+        );
+
+      setVal(
+        "scheduleDepartment",
+        departmentStillValid
+          ? oldDepartment
+          : ""
+      );
+
+      return result;
     }
 
     async function loadSchedule() {
@@ -3696,6 +3817,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       setScheduleLoadStatus("loading",`กำลังตรวจ User Scope และโหลดตารางกะ ${formatDate(period.startDate)}–${formatDate(period.endDate)}`);
       showLoading(`กำลังโหลดปฏิทินกะ ${formatDate(period.startDate)}–${formatDate(period.endDate)}...`);
       try{
+        await loadScheduleFilterOptions(
+          period
+        );
+
         const term=val("scheduleSearch").trim();
         const exactEmp=/^\d{4,20}$/.test(term)?term:null;
         const data=await window.TimeClockShiftAPI.getMonthlySchedule(window.TimeClockApp||{state},{p_month:`${period.month}-01`,p_start_date:period.startDate,p_end_date:period.endDate,p_zone:val("scheduleZone")||null,p_department:val("scheduleDepartment")||null,p_emp_codes:exactEmp?[exactEmp]:null,p_schedule_statuses:null});
@@ -3833,13 +3958,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             || ""
           ).slice(0,10);
 
+        const employeeResignDate =
+          String(
+            obj.meta.resign_date
+            || ""
+          ).slice(0,10);
+
         const employeePosition =
           String(
             obj.meta.position_name
             || ""
           ).trim();
 
-        html += `<tr data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><div class="schedule-name-line"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-start-date">${safe(formatDate(employeeStartDate))}</td><td class="sticky-col-4 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        html += `<tr data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><div class="schedule-name-line"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-start-date">${safe(formatDate(employeeStartDate))}</td><td class="sticky-col-4 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
@@ -3855,8 +3986,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             continue;
           }
 
+          const afterResign =
+            Boolean(
+              employeeResignDate
+              && date > employeeResignDate
+            );
+
+          if(afterResign) {
+            html += `<td class="day-col empty-schedule-day post-resign-day" title="หลังวันลาออก ${safe(formatDate(employeeResignDate))}"><span class="schedule-cell disabled post-resign-cell">ลาออก</span></td>`;
+            continue;
+          }
+
           if (!r) {
-            html += `<td class="day-col empty-schedule-day"><span class="schedule-cell disabled">-</span></td>`;
+            html += `<td class="day-col empty-schedule-day out-of-scope-day" title="ไม่มีสิทธิ์ตาม User Scope ในวันที่นี้"><span class="schedule-cell disabled out-of-scope-cell">นอก Scope</span></td>`;
             continue;
           }
 
@@ -5671,6 +5813,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
       );
       $("loadScheduleBtn").addEventListener("click", loadSchedule);
+
+      $("scheduleZone")?.addEventListener(
+        "change",
+        async () => {
+          try {
+            const period =
+              syncSchedulePeriodUI();
+
+            await loadScheduleFilterOptions(
+              period,
+              val("scheduleZone")
+            );
+          } catch(error) {
+            toast(
+              humanError(error),
+              "error"
+            );
+          }
+        }
+      );
+
       $("scheduleSearch").addEventListener("input", renderSchedule);
       $("schedulePatternFilter")?.addEventListener("change", renderSchedule);
       $("schedulePatternSummary")?.addEventListener("click", event => {
@@ -5815,11 +5978,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.26 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
       if (msg.includes("SHIFT_BEFORE_EMPLOYEE_START_DATE")) return "ไม่สามารถกำหนดกะก่อนวันเริ่มงานของพนักงานได้ กรุณาเลือกวันที่ตั้งแต่วันเริ่มงานเป็นต้นไป";
       if (msg.includes("SHIFT_NOT_APPLICABLE_TO_WORK_PATTERN")) return "กะที่เลือกไม่รองรับรูปแบบการทำงาน 5 วัน/6 วันของพนักงาน กรุณาเลือกกะให้ตรงกลุ่ม";
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";

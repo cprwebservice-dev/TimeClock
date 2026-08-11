@@ -8968,3 +8968,86 @@ body.theme-dark .pre-employment-day{
 body.theme-dark .pre-employment-cell{
   color:#708097!important;
 }
+
+
+/* ==========================================================================
+   V6.10.26 Schedule Scope / Employment Gap States
+   ========================================================================== */
+
+.out-of-scope-day{
+  cursor:not-allowed!important;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #fffdf7,
+      #fffdf7 5px,
+      #fff8e5 5px,
+      #fff8e5 10px
+    )!important;
+}
+
+.out-of-scope-cell{
+  width:auto!important;
+  min-width:52px;
+  padding:0 5px;
+  background:transparent!important;
+  color:#a66b00!important;
+  font-size:7.5px!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+
+.post-resign-day{
+  cursor:not-allowed!important;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #fbf7f7,
+      #fbf7f7 5px,
+      #f5ebeb 5px,
+      #f5ebeb 10px
+    )!important;
+}
+
+.post-resign-cell{
+  width:auto!important;
+  min-width:40px;
+  padding:0 5px;
+  background:transparent!important;
+  color:#9b5050!important;
+  font-size:7.5px!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+
+body.theme-dark .out-of-scope-day{
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #201d14,
+      #201d14 5px,
+      #2a2517 5px,
+      #2a2517 10px
+    )!important;
+}
+
+body.theme-dark .out-of-scope-cell{
+  color:#dfb45b!important;
+}
+
+body.theme-dark .post-resign-day{
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #211718,
+      #211718 5px,
+      #2c1d1f 5px,
+      #2c1d1f 10px
+    )!important;
+}
+
+body.theme-dark .post-resign-cell{
+  color:#d99b9b!important;
+}
