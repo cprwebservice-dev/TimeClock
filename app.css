@@ -9321,3 +9321,599 @@ body.theme-dark .weekly-schedule-table .schedule-cell.shift-visual-leave,
     --schedule-position-col:104px;
   }
 }
+
+
+/* ==========================================================================
+   V6.11.0 System Period Management
+   ========================================================================== */
+
+.system-period-page{
+  --period-card-radius:18px;
+}
+
+.system-period-hero{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  padding:24px 26px;
+  border:1px solid #d9e5f2;
+  border-radius:20px;
+  background:
+    radial-gradient(circle at 88% 12%,rgba(245,146,32,.14),transparent 27%),
+    linear-gradient(135deg,#f7fbff 0%,#edf5fd 58%,#fff9f1 100%);
+  box-shadow:0 10px 28px rgba(17,57,93,.07);
+}
+
+.system-period-hero h2{
+  margin:5px 0 7px;
+  font-size:26px;
+  color:#143c63;
+}
+
+.system-period-hero p{
+  margin:0;
+  max-width:780px;
+  color:#5d7185;
+  line-height:1.65;
+}
+
+.system-period-hero-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.system-period-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+
+.system-period-summary-card{
+  min-height:124px;
+  padding:17px 18px;
+  border:1px solid #dde7f0;
+  border-radius:var(--period-card-radius);
+  background:#fff;
+  box-shadow:0 6px 18px rgba(15,42,67,.055);
+}
+
+.system-period-summary-card span{
+  display:block;
+  font-size:10.5px;
+  font-weight:750;
+  color:#728296;
+}
+
+.system-period-summary-card strong{
+  display:block;
+  margin-top:9px;
+  font-size:22px;
+  font-weight:900;
+  color:#1d3852;
+  line-height:1.2;
+}
+
+.system-period-summary-card small{
+  display:block;
+  margin-top:8px;
+  font-size:10px;
+  color:#74869a;
+  line-height:1.45;
+}
+
+.system-period-summary-card.primary{
+  border-top:4px solid #2878c7;
+}
+
+.system-period-summary-card.blue{
+  border-top:4px solid #4b95df;
+}
+
+.system-period-summary-card.orange{
+  border-top:4px solid #ee8d24;
+}
+
+.system-period-summary-card.neutral{
+  border-top:4px solid #61758b;
+}
+
+.system-period-panel{
+  overflow:hidden;
+}
+
+.system-period-panel-header{
+  gap:16px;
+  align-items:flex-end;
+}
+
+.system-period-filterbar{
+  display:flex;
+  align-items:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.system-period-filterbar .field{
+  min-width:110px;
+}
+
+.system-period-search-field{
+  min-width:260px!important;
+}
+
+.system-period-help-strip{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+  padding:10px 12px;
+  margin-bottom:10px;
+  border:1px solid #e1e9f1;
+  border-radius:12px;
+  background:#f9fbfd;
+  color:#52677d;
+  font-size:9.5px;
+  font-weight:700;
+}
+
+.system-period-help-strip small{
+  margin-left:auto;
+  color:#7a8999;
+}
+
+.period-dot{
+  display:inline-block;
+  width:8px;
+  height:8px;
+  margin-right:4px;
+  border-radius:50%;
+  vertical-align:middle;
+}
+
+.period-dot.open{background:#2c9a63}
+.period-dot.due{background:#e69524}
+.period-dot.closed{background:#bd4b56}
+
+.system-period-table-wrap{
+  max-height:62vh;
+}
+
+.system-period-table th{
+  white-space:nowrap;
+}
+
+.system-period-table td{
+  vertical-align:middle;
+}
+
+.period-month-cell,
+.period-updated-cell,
+.period-deadline-cell{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.period-month-cell strong,
+.period-deadline-cell strong{
+  color:#243f59;
+  font-size:11.5px;
+}
+
+.period-month-cell small,
+.period-updated-cell small{
+  color:#8291a1;
+  font-size:8.5px;
+}
+
+.period-updated-cell strong{
+  max-width:190px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:9.5px;
+  color:#52677d;
+}
+
+.period-range-arrow{
+  padding:0 3px;
+  color:#99a8b7;
+}
+
+.period-status-chip{
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  min-height:20px;
+  padding:2px 7px;
+  border:1px solid;
+  border-radius:999px;
+  font-size:8px;
+  font-weight:850;
+}
+
+.period-status-open{
+  background:#edf9f3;
+  border-color:#a8dcc2;
+  color:#27764c;
+}
+
+.period-status-due{
+  background:#fff8e9;
+  border-color:#efcf89;
+  color:#966407;
+}
+
+.period-status-closed{
+  background:#fff0f1;
+  border-color:#eab1b7;
+  color:#a93a45;
+}
+
+.period-status-neutral{
+  background:#f3f6f9;
+  border-color:#d2dce5;
+  color:#687a8d;
+}
+
+.period-toggle-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  min-width:62px;
+  min-height:28px;
+  padding:4px 9px;
+  border:1px solid;
+  border-radius:999px;
+  font-size:8.5px;
+  font-weight:850;
+  cursor:pointer;
+}
+
+.period-toggle-btn.is-open{
+  background:#edf9f3;
+  border-color:#9ed4b9;
+  color:#24734a;
+}
+
+.period-toggle-btn.is-closed{
+  background:#f8f1f2;
+  border-color:#dab8bd;
+  color:#9b4650;
+}
+
+.period-toggle-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:currentColor;
+}
+
+.period-row-actions{
+  display:flex;
+  gap:5px;
+  justify-content:flex-end;
+  white-space:nowrap;
+}
+
+.period-actions-head{
+  text-align:right;
+}
+
+.system-period-modal{
+  width:min(780px,94vw);
+}
+
+.system-period-history-modal{
+  width:min(860px,94vw);
+}
+
+.system-period-form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:13px;
+}
+
+.system-period-month-field{
+  min-width:0;
+}
+
+.system-period-range-preview{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-height:72px;
+  padding:12px 14px;
+  border:1px dashed #b8cce0;
+  border-radius:13px;
+  background:#f7fbff;
+}
+
+.system-period-range-preview span{
+  font-size:9px;
+  font-weight:750;
+  color:#7790a7;
+}
+
+.system-period-range-preview strong{
+  margin-top:5px;
+  font-size:12px;
+  color:#285a87;
+}
+
+.system-period-switch-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:15px;
+}
+
+.system-period-switch-card{
+  display:grid;
+  grid-template-columns:auto 36px 1fr;
+  align-items:center;
+  gap:10px;
+  padding:13px;
+  border:1px solid #dce6ef;
+  border-radius:14px;
+  background:#fbfdff;
+  cursor:pointer;
+}
+
+.system-period-switch-card input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+
+.system-period-switch-card .switch-ui{
+  position:relative;
+  width:36px;
+  height:20px;
+  border-radius:999px;
+  background:#c7d2de;
+  transition:.18s ease;
+}
+
+.system-period-switch-card .switch-ui::after{
+  content:"";
+  position:absolute;
+  width:14px;
+  height:14px;
+  left:3px;
+  top:3px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 1px 4px rgba(15,23,42,.2);
+  transition:.18s ease;
+}
+
+.system-period-switch-card input:checked + .switch-ui{
+  background:#2f83d2;
+}
+
+.system-period-switch-card input:checked + .switch-ui::after{
+  transform:translateX(16px);
+}
+
+.system-period-switch-card strong{
+  display:block;
+  font-size:10.5px;
+  color:#28425a;
+}
+
+.system-period-switch-card small{
+  display:block;
+  margin-top:3px;
+  font-size:8.5px;
+  color:#8190a0;
+  line-height:1.4;
+}
+
+.system-period-policy-note{
+  display:flex;
+  gap:8px;
+  align-items:flex-start;
+  margin-top:14px;
+  padding:11px 13px;
+  border:1px solid #f0d5ae;
+  border-radius:12px;
+  background:#fff9f1;
+  color:#76501f;
+  font-size:9px;
+  line-height:1.5;
+}
+
+.system-period-policy-note strong{
+  white-space:nowrap;
+}
+
+.period-history-action{
+  display:inline-flex;
+  padding:3px 7px;
+  border-radius:999px;
+  background:#eef4fa;
+  color:#42688d;
+  font-size:8px;
+  font-weight:850;
+}
+
+.schedule-system-period-meta{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  margin-top:4px;
+}
+
+.schedule-period-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:20px;
+  padding:2px 7px;
+  border:1px solid;
+  border-radius:999px;
+  font-size:7.8px;
+  font-weight:800;
+}
+
+.schedule-period-chip.open{
+  background:#eef9f4;
+  border-color:#a9dbc2;
+  color:#26754c;
+}
+
+.schedule-period-chip.closed{
+  background:#fff0f1;
+  border-color:#e1aab0;
+  color:#a43c46;
+}
+
+.schedule-period-chip.neutral{
+  background:#f4f6f8;
+  border-color:#d6dee6;
+  color:#6a7b8c;
+}
+
+.system-period-closed-cell{
+  position:relative;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #f8f9fb,
+      #f8f9fb 5px,
+      #f1f4f7 5px,
+      #f1f4f7 10px
+    )!important;
+}
+
+.system-period-closed-cell .schedule-cell{
+  cursor:not-allowed!important;
+  opacity:.72;
+  filter:saturate(.7);
+}
+
+.system-period-cell-lock{
+  display:block;
+  margin-top:1px;
+  color:#a14b54!important;
+  font-size:6.8px!important;
+  font-weight:900!important;
+}
+
+.period-action-disabled{
+  opacity:.55!important;
+  cursor:not-allowed!important;
+}
+
+/* Dark mode */
+body.theme-dark .system-period-hero,
+.dark .system-period-hero{
+  border-color:#263b53;
+  background:
+    radial-gradient(circle at 88% 12%,rgba(230,134,33,.12),transparent 28%),
+    linear-gradient(135deg,#111d2d 0%,#13243a 65%,#211b15 100%);
+}
+
+body.theme-dark .system-period-hero h2,
+.dark .system-period-hero h2{
+  color:#e1efff;
+}
+
+body.theme-dark .system-period-hero p,
+.dark .system-period-hero p{
+  color:#a7b8ca;
+}
+
+body.theme-dark .system-period-summary-card,
+.dark .system-period-summary-card{
+  border-color:#26394f;
+  background:#121e2e;
+  box-shadow:none;
+}
+
+body.theme-dark .system-period-summary-card strong,
+.dark .system-period-summary-card strong{
+  color:#e4edf7;
+}
+
+body.theme-dark .system-period-help-strip,
+.dark .system-period-help-strip{
+  border-color:#2c4057;
+  background:#111d2b;
+  color:#afbdcb;
+}
+
+body.theme-dark .period-month-cell strong,
+body.theme-dark .period-deadline-cell strong,
+.dark .period-month-cell strong,
+.dark .period-deadline-cell strong{
+  color:#d8e4ef;
+}
+
+body.theme-dark .system-period-range-preview,
+.dark .system-period-range-preview{
+  border-color:#38516b;
+  background:#111e2e;
+}
+
+body.theme-dark .system-period-switch-card,
+.dark .system-period-switch-card{
+  border-color:#2c4159;
+  background:#111e2d;
+}
+
+body.theme-dark .system-period-switch-card strong,
+.dark .system-period-switch-card strong{
+  color:#dce8f3;
+}
+
+body.theme-dark .system-period-closed-cell,
+.dark .system-period-closed-cell{
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #131b26,
+      #131b26 5px,
+      #182332 5px,
+      #182332 10px
+    )!important;
+}
+
+@media(max-width:1100px){
+  .system-period-summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .system-period-hero{
+    align-items:flex-start;
+  }
+}
+
+@media(max-width:760px){
+  .system-period-hero{
+    flex-direction:column;
+  }
+
+  .system-period-summary-grid{
+    grid-template-columns:1fr;
+  }
+
+  .system-period-form-grid,
+  .system-period-switch-grid{
+    grid-template-columns:1fr;
+  }
+
+  .system-period-filterbar{
+    width:100%;
+  }
+
+  .system-period-filterbar .field,
+  .system-period-search-field{
+    width:100%;
+    min-width:0!important;
+  }
+}

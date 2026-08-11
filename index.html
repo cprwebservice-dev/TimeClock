@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.10.29 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.0 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.10.29 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.0 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.10.29-20260811" rel="stylesheet"/>
+<link href="./app.css?v=6.11.0-20260811" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.10.29</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.0</span></div>
 </form>
 </div>
 </section>
@@ -92,6 +92,7 @@
 <div class="hidden" id="adminNavGroup">
 <div class="nav-label">HR ADMIN</div>
 <button class="nav-item" data-page="admin-center"><span class="nav-icon">◆</span><span class="nav-text">HR Admin Center</span></button>
+<button class="nav-item" data-page="admin-periods"><span class="nav-icon">◷</span><span class="nav-text">จัดการรอบระบบ</span></button>
 <button class="nav-item" data-page="admin-shifts"><span class="nav-icon">◫</span><span class="nav-text">ตั้งค่ากะทำงาน</span></button>
 <button class="nav-item" data-page="admin-holidays"><span class="nav-icon">◈</span><span class="nav-text">วันหยุดนักขัตฤกษ์</span></button>
 <button class="nav-item" data-page="admin-org"><span class="nav-icon">⌘</span><span class="nav-text">ผังโครงสร้างองค์กร</span></button>
@@ -277,7 +278,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.10.29 Organization Structure &amp; Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.0 Organization Structure &amp; Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -535,6 +536,7 @@
 <article class="admin-health-card"><span>วันหยุดปีปัจจุบัน</span><strong id="adminStatHolidays">-</strong><small id="adminStatHolidaysSub">กำลังตรวจสอบ</small></article>
 </div>
 <div class="admin-module-grid">
+<button class="admin-module-card system-period-admin-card" data-admin-open="admin-periods"><span class="admin-module-icon">◷</span><div><strong>จัดการรอบระบบ</strong><small>กำหนดวันสุดท้ายจัดกะ และรับรองเวลาทำงานของแต่ละเดือน</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-org"><span class="admin-module-icon">⌘</span><div><strong>ผังโครงสร้างองค์กร</strong><small>จัดลำดับหน่วยงาน กำหนด Manager และ Upload Scope</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-users"><span class="admin-module-icon">♙</span><div><strong>User และ Scope</strong><small>กำหนด Role, สถานะ และขอบเขตข้อมูล</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-shifts"><span class="admin-module-icon">◫</span><div><strong>ตั้งค่ากะทำงาน</strong><small>จัดการรหัสกะ เวลาเริ่ม-สิ้นสุด และเวลาพัก</small></div><em>เปิด ›</em></button>
@@ -567,6 +569,170 @@
 </div>
 </div>
 </section>
+
+<!-- System Period Management -->
+<section class="page admin-page system-period-page" id="page-admin-periods">
+  <div class="system-period-hero">
+    <div>
+      <span class="eyebrow">HR ADMIN • PERIOD CONTROL</span>
+      <h2>จัดการรอบระบบ</h2>
+      <p>กำหนดรอบเวลาการทำงาน วันสุดท้ายแก้ไขตารางกะ และวันสุดท้ายรับรองเวลาทำงานของหัวหน้างาน</p>
+    </div>
+    <div class="system-period-hero-actions">
+      <button class="btn btn-light" id="systemPeriodRefreshBtn">รีเฟรช</button>
+      <button class="btn btn-primary" id="systemPeriodNewBtn">+ เพิ่มรอบระบบ</button>
+    </div>
+  </div>
+
+  <div class="system-period-summary-grid">
+    <article class="system-period-summary-card primary">
+      <span>รอบเดือนปัจจุบัน</span>
+      <strong id="systemPeriodCurrentMonth">-</strong>
+      <small id="systemPeriodCurrentRange">ยังไม่ได้กำหนดรอบ</small>
+    </article>
+    <article class="system-period-summary-card blue">
+      <span>วันสุดท้ายจัดกะ</span>
+      <strong id="systemPeriodScheduleDeadline">-</strong>
+      <small id="systemPeriodScheduleStatus">-</small>
+    </article>
+    <article class="system-period-summary-card orange">
+      <span>วันสุดท้ายรับรองเวลา</span>
+      <strong id="systemPeriodCertDeadline">-</strong>
+      <small id="systemPeriodCertStatus">-</small>
+    </article>
+    <article class="system-period-summary-card neutral">
+      <span>สถานะรอบ</span>
+      <strong id="systemPeriodOverallStatus">-</strong>
+      <small id="systemPeriodOverallMeta">HR Admin สามารถ Override ได้</small>
+    </article>
+  </div>
+
+  <div class="panel section-gap system-period-panel">
+    <div class="panel-header system-period-panel-header">
+      <div>
+        <h3>รอบเวลาการทำงาน</h3>
+        <p>รอบที่สร้างแล้วจะควบคุมสิทธิ์ Manager ตาม Deadline และสถานะเปิด/ปิด</p>
+      </div>
+      <div class="system-period-filterbar">
+        <div class="field">
+          <label>ปี</label>
+          <select class="select" id="systemPeriodYear"></select>
+        </div>
+        <div class="field system-period-search-field">
+          <label>ค้นหา</label>
+          <input class="input" id="systemPeriodSearch" placeholder="ค้นหาเดือน / หมายเหตุ / ผู้แก้ไข">
+        </div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="system-period-help-strip">
+        <span><i class="period-dot open"></i> เปิดใช้งาน</span>
+        <span><i class="period-dot due"></i> ใกล้ครบกำหนด</span>
+        <span><i class="period-dot closed"></i> ปิดรอบ</span>
+        <small>เดือนที่ยังไม่ได้สร้างรอบจะไม่ถูกบล็อก เพื่อให้ระบบเดิมทำงานต่อได้</small>
+      </div>
+      <div class="table-wrap system-period-table-wrap">
+        <table class="system-period-table">
+          <thead>
+            <tr>
+              <th>รอบเวลา</th>
+              <th>ช่วงวันที่</th>
+              <th>วันสุดท้ายจัดกะ</th>
+              <th>จัดกะ</th>
+              <th>วันสุดท้ายรับรองเวลา</th>
+              <th>รับรองเวลา</th>
+              <th>แก้ไขล่าสุด</th>
+              <th class="period-actions-head">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="systemPeriodBody">
+            <tr><td colspan="8" class="table-empty">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modal-backdrop hidden system-period-modal-backdrop" id="systemPeriodModal">
+  <div class="modal system-period-modal">
+    <div class="modal-header">
+      <div>
+        <span class="eyebrow">SYSTEM PERIOD</span>
+        <h3 id="systemPeriodModalTitle">เพิ่มรอบระบบ</h3>
+      </div>
+      <button class="btn btn-light btn-icon" id="systemPeriodModalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="system-period-form-grid">
+        <div class="field system-period-month-field">
+          <label>เดือนรอบการทำงาน *</label>
+          <input class="input" id="systemPeriodMonthInput" type="month">
+          <small>ตัวอย่าง: กรกฎาคม 2026 = 01/07/2026 - 31/07/2026</small>
+        </div>
+        <div class="system-period-range-preview">
+          <span>ช่วงรอบ</span>
+          <strong id="systemPeriodRangePreview">-</strong>
+        </div>
+        <div class="field">
+          <label>วันสุดท้ายแก้ไข / จัดกะ *</label>
+          <input class="input" id="systemPeriodScheduleDeadlineInput" type="date">
+          <small>หลังจากวันนี้ Manager จะไม่สามารถเพิ่ม แก้ไข ยืนยัน หรือลบกะได้</small>
+        </div>
+        <div class="field">
+          <label>วันสุดท้ายรับรองเวลาทำงาน *</label>
+          <input class="input" id="systemPeriodCertDeadlineInput" type="date">
+          <small>หลังจากวันนี้ Manager จะไม่สามารถรับรองหรือยกเลิกการรับรองเวลาได้</small>
+        </div>
+      </div>
+
+      <div class="system-period-switch-grid">
+        <label class="system-period-switch-card">
+          <input type="checkbox" id="systemPeriodScheduleOpen" checked>
+          <span class="switch-ui"></span>
+          <div><strong>เปิดให้จัดกะ</strong><small>ปิดสวิตช์เพื่อ Lock ก่อนถึง Deadline</small></div>
+        </label>
+        <label class="system-period-switch-card">
+          <input type="checkbox" id="systemPeriodCertOpen" checked>
+          <span class="switch-ui"></span>
+          <div><strong>เปิดให้รับรองเวลา</strong><small>ปิดสวิตช์เพื่อหยุดการรับรองก่อนถึง Deadline</small></div>
+        </label>
+      </div>
+
+      <div class="field section-gap-sm">
+        <label>หมายเหตุ</label>
+        <textarea class="textarea" id="systemPeriodNote" rows="3" placeholder="เช่น ปิดรอบเดือน ก.ค. ภายในวันที่ 10/08/2026"></textarea>
+      </div>
+
+      <div class="system-period-policy-note">
+        <strong>นโยบายสิทธิ์</strong>
+        <span>Deadline มีผลกับ Manager • HR Admin เป็นผู้ดูแลรอบและสามารถ Override เพื่อแก้ไขกรณีพิเศษได้</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" id="systemPeriodCancelBtn">ยกเลิก</button>
+      <button class="btn btn-primary" id="systemPeriodSaveBtn">บันทึกรอบระบบ</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden system-period-history-backdrop" id="systemPeriodHistoryModal">
+  <div class="modal system-period-history-modal">
+    <div class="modal-header">
+      <div><h3>ประวัติการเปลี่ยนแปลงรอบระบบ</h3><p id="systemPeriodHistorySubtitle">-</p></div>
+      <button class="btn btn-light btn-icon" id="systemPeriodHistoryClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap" style="max-height:65vh">
+        <table>
+          <thead><tr><th>วันเวลา</th><th>การทำงาน</th><th>ผู้ดำเนินการ</th><th>รายละเอียด</th></tr></thead>
+          <tbody id="systemPeriodHistoryBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Technician Work Patterns -->
 <section class="page work-pattern-page" id="page-work-patterns">
 <div class="work-pattern-hero">
@@ -817,7 +983,7 @@
 </section>
 </div>
 </section>
-<!-- User Account Management V6.10.29 -->
+<!-- User Account Management V6.11.0 -->
 <section class="page admin-page user-account-page" id="page-admin-accounts">
 <div class="user-account-hero">
 <div>
@@ -1066,7 +1232,7 @@
 <div style="display:flex;gap:9px;flex-wrap:wrap"><button class="btn btn-light" id="previewImportBtn">ตรวจสอบก่อนนำเข้า</button><button class="btn btn-primary" id="runImportBtn">นำเข้าข้อมูล</button><button class="btn btn-success" id="downloadTemplateBtn">ดาวน์โหลด Template</button></div>
 <div class="employee-import-guide section-gap">
 <div>
-<strong>คอลัมน์ Employee Template V6.10.29</strong>
+<strong>คอลัมน์ Employee Template V6.11.0</strong>
 <p>employee_id, full_name, email, position_name, department, org_code, pc, car_team, start_date, resign_date</p>
 </div>
 <div class="employee-import-guide-note">
@@ -1141,7 +1307,7 @@
 <div class="field"><label>Publishable Key / Anon Key</label><textarea class="textarea" id="configKey" placeholder="sb_publishable_... หรือ anon key"></textarea></div>
 <div style="padding:12px;border-radius:10px;background:var(--amber-100);color:var(--amber-600);font-size:11px">ใช้เฉพาะ Publishable/Anon key สำหรับ Browser ห้ามใส่ Service Role key
           <div class="supabase-default-note-v61010">
-            V6.10.29 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
+            V6.11.0 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
             User ใหม่ไม่ต้องตั้งค่าส่วนนี้เอง
           </div></div>
 </div>
@@ -1211,7 +1377,7 @@
 <div>
 <div class="org-modal-title-row">
 <h3 id="orgUnitModalTitle">เพิ่มหน่วยงาน</h3>
-<span class="org-modal-version">V6.10.29</span>
+<span class="org-modal-version">V6.11.0</span>
 </div>
 <p>กำหนดรหัส Zone ระดับ และหน่วยงานแม่</p>
 </div>
@@ -1414,7 +1580,7 @@
 <div class="modal-footer"><button class="btn btn-success" id="orgScopeTemplateBtn" style="margin-right:auto">ดาวน์โหลด Template</button><button class="btn btn-light" data-org-close="orgScopeUploadModal">ยกเลิก</button><button class="btn btn-primary" disabled="" id="orgScopeImportBtn">นำเข้า Manager Scope</button></div>
 </div>
 </div>
-<!-- Create User Account Modal V6.10.29 -->
+<!-- Create User Account Modal V6.11.0 -->
 <div class="modal-backdrop hidden" id="accountCreateModal">
 <div class="modal large account-create-modal">
 <div class="modal-header">
@@ -1502,7 +1668,7 @@
 </div>
 </div>
 </div>
-<!-- Edit User Account Modal V6.10.29 -->
+<!-- Edit User Account Modal V6.11.0 -->
 <div class="modal-backdrop hidden" id="accountEditModal">
 <div class="modal large account-edit-modal">
 <div class="modal-header">
@@ -1564,7 +1730,7 @@
 </div>
 </div>
 </div>
-<!-- Invite Acceptance Modal V6.10.29 -->
+<!-- Invite Acceptance Modal V6.11.0 -->
 <div class="modal-backdrop hidden account-invite-backdrop" id="inviteAcceptModal">
 <div class="modal account-invite-accept-modal">
 <div class="modal-header account-invite-accept-header">
@@ -1597,7 +1763,7 @@
 </div>
 </div>
 </div>
-<!-- Password Recovery OTP V6.10.29 -->
+<!-- Password Recovery OTP V6.11.0 -->
 <div class="modal-backdrop hidden account-recovery-backdrop" id="recoveryOtpModal">
 <div class="modal account-recovery-otp-modal">
 <div class="modal-header account-recovery-otp-header">
@@ -1642,7 +1808,7 @@
 </div>
 </div>
 </div>
-<!-- Password Recovery Confirmation V6.10.29 -->
+<!-- Password Recovery Confirmation V6.11.0 -->
 <div class="modal-backdrop hidden account-recovery-backdrop" id="recoveryConfirmModal">
 <div class="modal account-recovery-confirm-modal">
 <div class="modal-header account-recovery-confirm-header">
@@ -1980,6 +2146,6 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=6.10.29-20260811"></script>
+<script src="./app.js?v=6.11.0-20260811"></script>
 </body>
 </html>

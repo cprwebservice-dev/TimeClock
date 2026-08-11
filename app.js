@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.29";
-document.documentElement.dataset.timeClockBuild = "6.10.29";
+window.__TIME_CLOCK_BUILD__ = "V6.11.0";
+document.documentElement.dataset.timeClockBuild = "6.11.0";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.29";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.29',
+  version: '6.11.0',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.29 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.0 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.29 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.0 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.29"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.0"
         );
       }
 
@@ -1483,7 +1483,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.29"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.0"
           );
         }
 
@@ -2190,7 +2190,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.29"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.0"
             );
           }
 
@@ -4369,7 +4369,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          // V6.10.29:
+          // V6.11.0:
           // Attendance was recalculated inside the same SQL transaction
           // that saved the shift. Reload only; do not calculate twice.
 
@@ -4437,7 +4437,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          // V6.10.29:
+          // V6.11.0:
           // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
@@ -5611,7 +5611,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
         dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอแก้ไขกะ","พนักงานส่งคำขอ และ Manager พิจารณาตามสายบังคับบัญชา"], schedule:["ปฏิทินจัดกะ","จัดกะล่วงหน้าได้ทุกวัน รวมวันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์"], "work-patterns":["รูปแบบการทำงาน","กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น และรูปแบบช่วงงานรายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
-        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
+        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page);
       setText("pageSubtitle", titles[page]?.[1] || "");
@@ -5627,6 +5627,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (page === "attendance" && !state.attendance.length) loadAttendance();
       if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
       if (page === "schedule" && !state.schedule.length) loadSchedule();
+      if (page === "admin-periods") window.TimeClockSystemPeriods?.load?.();
       if (page === "admin-shifts") loadShiftMaster();
       if (page === "admin-holidays") loadHolidays();
       if (page === "admin-org") window.TimeClockOrgStructure?.load?.();
@@ -6041,12 +6042,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.29 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
-      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.10.29";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.0 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.0 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.0 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.0 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.0 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
+      if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
+      if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
+      if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
+      if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.0";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
@@ -8739,6 +8745,23 @@ ${skippedSummary(compatibility.skipped)}
         ? "REVOKE"
         : "CERTIFY";
 
+    const attendanceSystemPeriod =
+      detail?.system_period || null;
+
+    const certificationPeriodClosed =
+      detailRole === "MANAGER"
+      && attendanceSystemPeriod?.configured
+      && attendanceSystemPeriod
+        ?.can_certify_attendance === false;
+
+    const certificationPeriodTitle =
+      certificationPeriodClosed
+        ? `ปิดรอบรับรองเวลา • Deadline ${fmtDate(
+            attendanceSystemPeriod
+              ?.attendance_certify_deadline
+          )}`
+        : "";
+
     $("attendanceDetailFooter").innerHTML=`
       <div class="attendance-detail-footer-main">
         ${
@@ -8748,9 +8771,11 @@ ${skippedSummary(compatibility.skipped)}
                 data-detail-quick-shift="${esc(detailKey)}"
               >แก้ไขกะวันนี้</button>
               <button
-                class="btn btn-success"
+                class="btn btn-success ${certificationPeriodClosed?"period-action-disabled":""}"
                 data-detail-certify="${esc(detailKey)}"
                 data-certification-action="${certificationAction}"
+                ${certificationPeriodClosed?"disabled":""}
+                title="${esc(certificationPeriodTitle)}"
               >${
                 certificationAction === "REVOKE"
                   ? "ยกเลิกการรับรอง"
@@ -8866,6 +8891,36 @@ ${skippedSummary(compatibility.skipped)}
         certification: {
           status:"NOT_CERTIFIED"
         }
+      };
+    }
+
+    try {
+      const systemPeriod =
+        await (
+          window.TimeClockSystemPeriods
+            ?.getForDate?.(
+              String(row.work_date)
+                .slice(0,10)
+            )
+          || rpc(
+            "ta_get_system_period_for_date_v6110",
+            {
+              p_work_date:
+                String(row.work_date)
+                  .slice(0,10)
+            }
+          )
+        );
+
+      detail = {
+        ...(detail || {}),
+        system_period:
+          systemPeriod || null
+      };
+    } catch (_) {
+      detail = {
+        ...(detail || {}),
+        system_period: null
       };
     }
 
@@ -11318,6 +11373,37 @@ ${skippedSummary(compatibility.skipped)}
 
   async function certifyAttendance(key,action) {
     const [emp,date] = String(key).split("|");
+
+    try {
+      const period =
+        await window.TimeClockSystemPeriods
+          ?.getForDate?.(
+            date,
+            true
+          );
+
+      const role =
+        String(
+          app()?.state?.profile?.role
+          || ""
+        ).toUpperCase();
+
+      if(
+        role === "MANAGER"
+        && period?.configured
+        && period
+          ?.can_certify_attendance === false
+      ) {
+        app()?.toast?.(
+          `ปิดรอบรับรองเวลาทำงานแล้ว • Deadline ${fmtDate(
+            period.attendance_certify_deadline
+          )}`,
+          "warning"
+        );
+        return;
+      }
+    } catch (_) {}
+
     const note = prompt(
       action === "REVOKE"
         ? "เหตุผลการยกเลิกการรับรอง"
@@ -16312,6 +16398,1527 @@ ${skippedSummary(compatibility.skipped)}
     bind();
   }
 })();
+
+
+/* ===== V6.11.0 System Period Management ===== */
+(function(){
+  "use strict";
+
+  const VERSION =
+    "6.11.0";
+
+  const app = () =>
+    window.TimeClockApp;
+
+  const $ = id =>
+    document.getElementById(
+      id
+    );
+
+  const esc = value =>
+    String(
+      value ?? ""
+    )
+      .replace(
+        /&/g,
+        "&amp;"
+      )
+      .replace(
+        /</g,
+        "&lt;"
+      )
+      .replace(
+        />/g,
+        "&gt;"
+      )
+      .replace(
+        /"/g,
+        "&quot;"
+      )
+      .replace(
+        /'/g,
+        "&#039;"
+      );
+
+  const state = {
+    rows: [],
+    filtered: [],
+    periodCache: new Map(),
+    currentEdit: null
+  };
+
+  function client(){
+    return app()?.state?.client;
+  }
+
+  async function rpc(
+    name,
+    args={}
+  ){
+    const c=client();
+    if(!c){
+      throw new Error(
+        "ยังไม่ได้เชื่อมต่อ Supabase"
+      );
+    }
+    const {
+      data,
+      error
+    }=await c.rpc(
+      name,
+      args
+    );
+    if(error) throw error;
+    return data;
+  }
+
+  function role(){
+    return String(
+      app()?.state?.profile
+        ?._realRole
+      || app()?.state?.profile
+        ?.role
+      || ""
+    ).toUpperCase();
+  }
+
+  function formatDate(value){
+    return app()?.formatDate?.(
+      value
+    ) || value || "-";
+  }
+
+  function formatDateTime(value){
+    return app()?.formatDateTime?.(
+      value
+    ) || value || "-";
+  }
+
+  function monthKey(value){
+    return String(
+      value || ""
+    ).slice(0,7);
+  }
+
+  function monthStart(value){
+    const key=monthKey(value);
+    return key
+      ? `${key}-01`
+      : "";
+  }
+
+  function monthLabel(value){
+    const key=monthKey(value);
+    if(!key) return "-";
+    const [
+      year,
+      month
+    ]=key.split("-").map(Number);
+    const names=[
+      "มกราคม",
+      "กุมภาพันธ์",
+      "มีนาคม",
+      "เมษายน",
+      "พฤษภาคม",
+      "มิถุนายน",
+      "กรกฎาคม",
+      "สิงหาคม",
+      "กันยายน",
+      "ตุลาคม",
+      "พฤศจิกายน",
+      "ธันวาคม"
+    ];
+    return `${names[
+      Math.max(
+        0,
+        month-1
+      )
+    ]} ${year}`;
+  }
+
+  function monthEnd(key){
+    if(!key) return "";
+    const [y,m]=key
+      .split("-")
+      .map(Number);
+    const d=new Date(
+      y,
+      m,
+      0
+    );
+    return [
+      d.getFullYear(),
+      String(
+        d.getMonth()+1
+      ).padStart(2,"0"),
+      String(
+        d.getDate()
+      ).padStart(2,"0")
+    ].join("-");
+  }
+
+  function addDays(
+    dateString,
+    days
+  ){
+    const d=new Date(
+      `${dateString}T12:00:00`
+    );
+    d.setDate(
+      d.getDate()
+      + days
+    );
+    return [
+      d.getFullYear(),
+      String(
+        d.getMonth()+1
+      ).padStart(2,"0"),
+      String(
+        d.getDate()
+      ).padStart(2,"0")
+    ].join("-");
+  }
+
+  function nextMonthKey(key){
+    const [y,m]=key
+      .split("-")
+      .map(Number);
+    const d=new Date(
+      y,
+      m,
+      1
+    );
+    return [
+      d.getFullYear(),
+      String(
+        d.getMonth()+1
+      ).padStart(2,"0")
+    ].join("-");
+  }
+
+  function statusLabel(code){
+    return ({
+      OPEN:"เปิดใช้งาน",
+      DUE_SOON:"ใกล้ครบกำหนด",
+      CLOSED_MANUAL:"ปิดโดย HR Admin",
+      CLOSED_DEADLINE:"ครบกำหนดแล้ว",
+      NOT_CONFIGURED:"ยังไม่กำหนด"
+    })[
+      String(
+        code || ""
+      ).toUpperCase()
+    ] || code || "-";
+  }
+
+  function statusClass(code){
+    const c=String(
+      code || ""
+    ).toUpperCase();
+    if(c==="OPEN"){
+      return "period-status-open";
+    }
+    if(c==="DUE_SOON"){
+      return "period-status-due";
+    }
+    if(
+      c==="CLOSED_MANUAL"
+      || c==="CLOSED_DEADLINE"
+    ){
+      return "period-status-closed";
+    }
+    return "period-status-neutral";
+  }
+
+  function fillYearOptions(){
+    const select=$(
+      "systemPeriodYear"
+    );
+    if(!select) return;
+
+    const now=new Date();
+    const current=
+      now.getFullYear();
+
+    const years=new Set([
+      current-1,
+      current,
+      current+1,
+      ...state.rows.map(
+        row =>
+          Number(
+            String(
+              row.period_month
+            ).slice(0,4)
+          )
+      )
+    ]);
+
+    const oldValue=
+      Number(
+        select.value
+      ) || current;
+
+    select.innerHTML=
+      [...years]
+        .filter(Boolean)
+        .sort(
+          (a,b)=>b-a
+        )
+        .map(
+          year =>
+            `<option value="${year}">${year}</option>`
+        )
+        .join("");
+
+    select.value=
+      years.has(oldValue)
+        ? String(oldValue)
+        : String(current);
+  }
+
+  function renderSummary(){
+    const now=new Date();
+    const currentKey=[
+      now.getFullYear(),
+      String(
+        now.getMonth()+1
+      ).padStart(2,"0")
+    ].join("-");
+
+    const row=
+      state.rows.find(
+        item =>
+          monthKey(
+            item.period_month
+          )===currentKey
+      ) || null;
+
+    if(!row){
+      if($("systemPeriodCurrentMonth")){
+        $("systemPeriodCurrentMonth")
+          .textContent=
+          monthLabel(
+            `${currentKey}-01`
+          );
+      }
+      if($("systemPeriodCurrentRange")){
+        $("systemPeriodCurrentRange")
+          .textContent=
+          "ยังไม่ได้กำหนดรอบ";
+      }
+      if($("systemPeriodScheduleDeadline")){
+        $("systemPeriodScheduleDeadline")
+          .textContent="-";
+      }
+      if($("systemPeriodScheduleStatus")){
+        $("systemPeriodScheduleStatus")
+          .textContent=
+          "ระบบยังอนุญาตตามเดิม";
+      }
+      if($("systemPeriodCertDeadline")){
+        $("systemPeriodCertDeadline")
+          .textContent="-";
+      }
+      if($("systemPeriodCertStatus")){
+        $("systemPeriodCertStatus")
+          .textContent=
+          "ระบบยังอนุญาตตามเดิม";
+      }
+      if($("systemPeriodOverallStatus")){
+        $("systemPeriodOverallStatus")
+          .textContent=
+          "ยังไม่กำหนด";
+      }
+      return;
+    }
+
+    $("systemPeriodCurrentMonth")
+      .textContent=
+      monthLabel(
+        row.period_month
+      );
+
+    $("systemPeriodCurrentRange")
+      .textContent=
+      `${formatDate(
+        row.period_start
+      )} – ${formatDate(
+        row.period_end
+      )}`;
+
+    $("systemPeriodScheduleDeadline")
+      .textContent=
+      formatDate(
+        row.schedule_edit_deadline
+      );
+
+    $("systemPeriodScheduleStatus")
+      .textContent=
+      statusLabel(
+        row.schedule_status
+      );
+
+    $("systemPeriodCertDeadline")
+      .textContent=
+      formatDate(
+        row.attendance_certify_deadline
+      );
+
+    $("systemPeriodCertStatus")
+      .textContent=
+      statusLabel(
+        row.certification_status
+      );
+
+    const bothClosed=
+      String(
+        row.schedule_status
+      ).startsWith("CLOSED")
+      && String(
+        row.certification_status
+      ).startsWith("CLOSED");
+
+    const due=
+      row.schedule_status==="DUE_SOON"
+      || row.certification_status==="DUE_SOON";
+
+    $("systemPeriodOverallStatus")
+      .textContent=
+      bothClosed
+        ? "ปิดรอบแล้ว"
+        : due
+          ? "ใกล้ครบกำหนด"
+          : "กำลังเปิด";
+  }
+
+  function applyFilter(){
+    const year=
+      Number(
+        $("systemPeriodYear")
+          ?.value
+      );
+
+    const term=
+      String(
+        $("systemPeriodSearch")
+          ?.value
+        || ""
+      )
+        .trim()
+        .toLowerCase();
+
+    state.filtered=
+      state.rows.filter(
+        row => {
+          const rowYear=
+            Number(
+              String(
+                row.period_month
+              ).slice(0,4)
+            );
+
+          if(
+            year
+            && rowYear!==year
+          ){
+            return false;
+          }
+
+          if(!term){
+            return true;
+          }
+
+          return [
+            monthLabel(
+              row.period_month
+            ),
+            row.note,
+            row.updated_by_email,
+            statusLabel(
+              row.schedule_status
+            ),
+            statusLabel(
+              row.certification_status
+            )
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(term);
+        }
+      );
+
+    renderTable();
+  }
+
+  function switchButton(
+    row,
+    action
+  ){
+    const schedule=
+      action==="SCHEDULE";
+
+    const open=
+      schedule
+        ? row.schedule_open
+        : row.certification_open;
+
+    return `
+      <button
+        class="period-toggle-btn ${open?"is-open":"is-closed"}"
+        data-period-toggle="${action}"
+        data-period-month="${esc(
+          row.period_month
+        )}"
+        data-period-open="${open?"true":"false"}"
+        title="${open?"คลิกเพื่อปิด":"คลิกเพื่อเปิด"}"
+      >
+        <span class="period-toggle-dot"></span>
+        ${open?"เปิด":"ปิด"}
+      </button>
+    `;
+  }
+
+  function renderTable(){
+    const body=$(
+      "systemPeriodBody"
+    );
+    if(!body) return;
+
+    if(!state.filtered.length){
+      body.innerHTML=
+        `<tr>
+          <td colspan="8" class="table-empty">
+            ยังไม่มีรอบระบบในปีที่เลือก
+          </td>
+        </tr>`;
+      return;
+    }
+
+    body.innerHTML=
+      state.filtered.map(
+        row => `
+          <tr data-period-row="${esc(
+            row.period_month
+          )}">
+            <td>
+              <div class="period-month-cell">
+                <strong>${esc(
+                  monthLabel(
+                    row.period_month
+                  )
+                )}</strong>
+                <small>${esc(
+                  String(
+                    row.period_month
+                  ).slice(0,7)
+                )}</small>
+              </div>
+            </td>
+            <td class="nowrap">
+              ${esc(
+                formatDate(
+                  row.period_start
+                )
+              )}
+              <span class="period-range-arrow">→</span>
+              ${esc(
+                formatDate(
+                  row.period_end
+                )
+              )}
+            </td>
+            <td>
+              <div class="period-deadline-cell">
+                <strong>${esc(
+                  formatDate(
+                    row.schedule_edit_deadline
+                  )
+                )}</strong>
+                <span class="period-status-chip ${statusClass(
+                  row.schedule_status
+                )}">${esc(
+                  statusLabel(
+                    row.schedule_status
+                  )
+                )}</span>
+              </div>
+            </td>
+            <td>
+              ${switchButton(
+                row,
+                "SCHEDULE"
+              )}
+            </td>
+            <td>
+              <div class="period-deadline-cell">
+                <strong>${esc(
+                  formatDate(
+                    row.attendance_certify_deadline
+                  )
+                )}</strong>
+                <span class="period-status-chip ${statusClass(
+                  row.certification_status
+                )}">${esc(
+                  statusLabel(
+                    row.certification_status
+                  )
+                )}</span>
+              </div>
+            </td>
+            <td>
+              ${switchButton(
+                row,
+                "CERTIFICATION"
+              )}
+            </td>
+            <td>
+              <div class="period-updated-cell">
+                <strong>${esc(
+                  row.updated_by_email
+                  || "-"
+                )}</strong>
+                <small>${esc(
+                  formatDateTime(
+                    row.updated_at
+                  )
+                )}</small>
+              </div>
+            </td>
+            <td>
+              <div class="period-row-actions">
+                <button class="btn btn-light btn-sm" data-period-edit="${esc(
+                  row.period_month
+                )}">แก้ไข</button>
+                <button class="btn btn-light btn-sm" data-period-copy="${esc(
+                  row.period_month
+                )}">คัดลอก</button>
+                <button class="btn btn-light btn-sm" data-period-history="${esc(
+                  row.period_month
+                )}">ประวัติ</button>
+              </div>
+            </td>
+          </tr>
+        `
+      ).join("");
+  }
+
+  async function load(){
+    if(
+      role()!=="HR_ADMIN"
+    ){
+      return;
+    }
+
+    const year=
+      Number(
+        $("systemPeriodYear")
+          ?.value
+      )
+      || new Date()
+        .getFullYear();
+
+    app()?.showLoading?.(
+      "กำลังโหลดรอบระบบ..."
+    );
+
+    try{
+      const rows=
+        await rpc(
+          "ta_list_system_periods_v6110",
+          {
+            p_year:
+              year
+          }
+        ) || [];
+
+      state.rows=
+        Array.isArray(rows)
+          ? rows
+          : [];
+
+      fillYearOptions();
+      renderSummary();
+      applyFilter();
+
+    }catch(error){
+      app()?.toast?.(
+        app()?.humanError?.(
+          error
+        )
+        || error.message,
+        "error"
+      );
+    }finally{
+      app()?.hideLoading?.();
+    }
+  }
+
+  function setModalOpen(
+    open
+  ){
+    $("systemPeriodModal")
+      ?.classList.toggle(
+        "hidden",
+        !open
+      );
+  }
+
+  function updateRangePreview(){
+    const key=
+      $("systemPeriodMonthInput")
+        ?.value;
+
+    if(!key){
+      $("systemPeriodRangePreview")
+        .textContent="-";
+      return;
+    }
+
+    $("systemPeriodRangePreview")
+      .textContent=
+      `${formatDate(
+        `${key}-01`
+      )} – ${formatDate(
+        monthEnd(key)
+      )}`;
+  }
+
+  function openNew(){
+    state.currentEdit=null;
+
+    $("systemPeriodModalTitle")
+      .textContent=
+      "เพิ่มรอบระบบ";
+
+    const now=new Date();
+    const key=[
+      now.getFullYear(),
+      String(
+        now.getMonth()+1
+      ).padStart(2,"0")
+    ].join("-");
+
+    $("systemPeriodMonthInput")
+      .disabled=false;
+
+    $("systemPeriodMonthInput")
+      .value=key;
+
+    const end=monthEnd(key);
+
+    $("systemPeriodScheduleDeadlineInput")
+      .value=
+      addDays(
+        end,
+        10
+      );
+
+    $("systemPeriodCertDeadlineInput")
+      .value=
+      addDays(
+        end,
+        10
+      );
+
+    $("systemPeriodScheduleOpen")
+      .checked=true;
+
+    $("systemPeriodCertOpen")
+      .checked=true;
+
+    $("systemPeriodNote")
+      .value="";
+
+    updateRangePreview();
+    setModalOpen(true);
+  }
+
+  function openEdit(
+    month
+  ){
+    const row=
+      state.rows.find(
+        item =>
+          monthKey(
+            item.period_month
+          )===
+          monthKey(month)
+      );
+
+    if(!row) return;
+
+    state.currentEdit=row;
+
+    $("systemPeriodModalTitle")
+      .textContent=
+      `แก้ไขรอบ ${monthLabel(
+        row.period_month
+      )}`;
+
+    $("systemPeriodMonthInput")
+      .disabled=true;
+
+    $("systemPeriodMonthInput")
+      .value=
+      monthKey(
+        row.period_month
+      );
+
+    $("systemPeriodScheduleDeadlineInput")
+      .value=
+      String(
+        row.schedule_edit_deadline
+        || ""
+      ).slice(0,10);
+
+    $("systemPeriodCertDeadlineInput")
+      .value=
+      String(
+        row.attendance_certify_deadline
+        || ""
+      ).slice(0,10);
+
+    $("systemPeriodScheduleOpen")
+      .checked=
+      !!row.schedule_open;
+
+    $("systemPeriodCertOpen")
+      .checked=
+      !!row.certification_open;
+
+    $("systemPeriodNote")
+      .value=
+      row.note || "";
+
+    updateRangePreview();
+    setModalOpen(true);
+  }
+
+  async function save(){
+    const key=
+      $("systemPeriodMonthInput")
+        ?.value;
+
+    const scheduleDeadline=
+      $("systemPeriodScheduleDeadlineInput")
+        ?.value;
+
+    const certDeadline=
+      $("systemPeriodCertDeadlineInput")
+        ?.value;
+
+    if(
+      !key
+      || !scheduleDeadline
+      || !certDeadline
+    ){
+      return app()?.toast?.(
+        "กรุณากรอกเดือนและ Deadline ให้ครบ",
+        "error"
+      );
+    }
+
+    const button=$(
+      "systemPeriodSaveBtn"
+    );
+
+    if(button){
+      button.disabled=true;
+      button.textContent=
+        "กำลังบันทึก...";
+    }
+
+    try{
+      await rpc(
+        "ta_upsert_system_period_v6110",
+        {
+          p_period_month:
+            `${key}-01`,
+          p_schedule_edit_deadline:
+            scheduleDeadline,
+          p_attendance_certify_deadline:
+            certDeadline,
+          p_schedule_open:
+            $("systemPeriodScheduleOpen")
+              ?.checked
+            ?? true,
+          p_certification_open:
+            $("systemPeriodCertOpen")
+              ?.checked
+            ?? true,
+          p_note:
+            $("systemPeriodNote")
+              ?.value
+              ?.trim()
+            || null
+        }
+      );
+
+      state.periodCache.clear();
+      setModalOpen(false);
+
+      app()?.toast?.(
+        `บันทึกรอบ ${monthLabel(
+          `${key}-01`
+        )} เรียบร้อย`,
+        "success"
+      );
+
+      await load();
+
+    }catch(error){
+      app()?.toast?.(
+        app()?.humanError?.(
+          error
+        )
+        || error.message,
+        "error"
+      );
+    }finally{
+      if(button){
+        button.disabled=false;
+        button.textContent=
+          "บันทึกรอบระบบ";
+      }
+    }
+  }
+
+  async function togglePeriod(
+    month,
+    action,
+    currentOpen
+  ){
+    const next=
+      !currentOpen;
+
+    const label=
+      action==="SCHEDULE"
+        ? "การจัดกะ"
+        : "การรับรองเวลา";
+
+    if(
+      !confirm(
+        `${next?"เปิด":"ปิด"}${label} สำหรับรอบ ${monthLabel(
+          month
+        )}?`
+      )
+    ){
+      return;
+    }
+
+    try{
+      await rpc(
+        "ta_set_system_period_switch_v6110",
+        {
+          p_period_month:
+            monthStart(month),
+          p_action:
+            action,
+          p_open:
+            next,
+          p_note:
+            `${next?"เปิด":"ปิด"}${label}จากหน้าจัดการรอบระบบ`
+        }
+      );
+
+      state.periodCache.clear();
+
+      app()?.toast?.(
+        `${next?"เปิด":"ปิด"}${label}เรียบร้อย`,
+        "success"
+      );
+
+      await load();
+
+    }catch(error){
+      app()?.toast?.(
+        app()?.humanError?.(
+          error
+        )
+        || error.message,
+        "error"
+      );
+    }
+  }
+
+  async function copyPeriod(
+    sourceMonth
+  ){
+    const sourceKey=
+      monthKey(
+        sourceMonth
+      );
+    const targetKey=
+      nextMonthKey(
+        sourceKey
+      );
+
+    if(
+      !confirm(
+        `คัดลอกรอบ ${monthLabel(
+          `${sourceKey}-01`
+        )} ไปเป็น ${monthLabel(
+          `${targetKey}-01`
+        )}?\n\nระบบจะรักษาระยะห่าง Deadline จากวันสิ้นเดือนเดิม`
+      )
+    ){
+      return;
+    }
+
+    try{
+      await rpc(
+        "ta_copy_system_period_v6110",
+        {
+          p_source_month:
+            `${sourceKey}-01`,
+          p_target_month:
+            `${targetKey}-01`
+        }
+      );
+
+      state.periodCache.clear();
+
+      app()?.toast?.(
+        `สร้างรอบ ${monthLabel(
+          `${targetKey}-01`
+        )} เรียบร้อย`,
+        "success"
+      );
+
+      await load();
+
+    }catch(error){
+      app()?.toast?.(
+        app()?.humanError?.(
+          error
+        )
+        || error.message,
+        "error"
+      );
+    }
+  }
+
+  async function openHistory(
+    month
+  ){
+    const key=
+      monthStart(month);
+
+    $("systemPeriodHistorySubtitle")
+      .textContent=
+      monthLabel(key);
+
+    $("systemPeriodHistoryBody")
+      .innerHTML=
+      `<tr><td colspan="4" class="table-empty">กำลังโหลด...</td></tr>`;
+
+    $("systemPeriodHistoryModal")
+      .classList.remove(
+        "hidden"
+      );
+
+    try{
+      const rows=
+        await rpc(
+          "ta_list_system_period_audit_v6110",
+          {
+            p_period_month:
+              key,
+            p_limit:
+              100
+          }
+        ) || [];
+
+      $("systemPeriodHistoryBody")
+        .innerHTML=
+        rows.length
+          ? rows.map(
+              row => `
+                <tr>
+                  <td class="nowrap">${esc(
+                    formatDateTime(
+                      row.changed_at
+                    )
+                  )}</td>
+                  <td><span class="period-history-action">${esc(
+                    row.action_type
+                  )}</span></td>
+                  <td>${esc(
+                    row.changed_by_email
+                    || "-"
+                  )}</td>
+                  <td>${esc(
+                    row.note
+                    || "-"
+                  )}</td>
+                </tr>
+              `
+            ).join("")
+          : `<tr><td colspan="4" class="table-empty">ยังไม่มีประวัติ</td></tr>`;
+
+    }catch(error){
+      $("systemPeriodHistoryBody")
+        .innerHTML=
+        `<tr><td colspan="4" class="table-empty">${esc(
+          app()?.humanError?.(
+            error
+          )
+          || error.message
+        )}</td></tr>`;
+    }
+  }
+
+  async function getForDate(
+    date,
+    force=false
+  ){
+    const key=
+      monthKey(date);
+
+    if(
+      !force
+      && state.periodCache.has(key)
+    ){
+      return state.periodCache.get(
+        key
+      );
+    }
+
+    const data=
+      await rpc(
+        "ta_get_system_period_for_date_v6110",
+        {
+          p_work_date:
+            String(
+              date
+            ).slice(0,10)
+        }
+      );
+
+    state.periodCache.set(
+      key,
+      data || null
+    );
+
+    return data || null;
+  }
+
+  function ensureSchedulePeriodMeta(){
+    const meta=$(
+      "scheduleMonthStatusMeta"
+    );
+    if(
+      !meta
+      || $("scheduleSystemPeriodMeta")
+    ){
+      return;
+    }
+
+    meta.insertAdjacentHTML(
+      "afterend",
+      `<div id="scheduleSystemPeriodMeta" class="schedule-system-period-meta">รอบระบบ: กำลังตรวจสอบ...</div>`
+    );
+  }
+
+  function scheduleCellDate(cell){
+    return cell?.dataset?.date
+      || cell?.dataset?.periodOriginalDate
+      || cell
+        ?.getAttribute(
+          "data-date"
+        )
+      || "";
+  }
+
+  async function applySchedulePeriodGuard(){
+    ensureSchedulePeriodMeta();
+
+    const cells=[
+      ...document.querySelectorAll(
+        "#scheduleTableWrap [data-schedule-cell], #scheduleTableWrap [data-period-original-date]"
+      )
+    ];
+
+    const dates=[
+      ...new Set(
+        cells
+          .map(
+            scheduleCellDate
+          )
+          .filter(Boolean)
+      )
+    ];
+
+    if(!dates.length){
+      return;
+    }
+
+    const months=[
+      ...new Set(
+        dates.map(
+          monthKey
+        )
+      )
+    ];
+
+    const statuses=
+      new Map();
+
+    await Promise.all(
+      months.map(
+        async month => {
+          const sample=
+            dates.find(
+              date =>
+                monthKey(date)===
+                month
+            );
+          try{
+            statuses.set(
+              month,
+              await getForDate(
+                sample
+              )
+            );
+          }catch(_){
+            statuses.set(
+              month,
+              null
+            );
+          }
+        }
+      )
+    );
+
+    const currentRole=
+      String(
+        app()?.state?.profile?.role
+        || ""
+      ).toUpperCase();
+
+    cells.forEach(
+      cell => {
+        const date=
+          scheduleCellDate(
+            cell
+          );
+
+        if(!date) return;
+
+        const period=
+          statuses.get(
+            monthKey(date)
+          );
+
+        const closed=
+          currentRole==="MANAGER"
+          && period?.configured
+          && period
+            ?.can_schedule_edit === false;
+
+        const td=
+          cell.closest("td");
+
+        if(!closed){
+          td?.classList.remove(
+            "system-period-closed-cell"
+          );
+          return;
+        }
+
+        if(
+          cell.dataset
+            .scheduleCell === "1"
+        ){
+          cell.dataset
+            .periodOriginalDate=
+            cell.dataset.date || "";
+
+          cell.dataset
+            .periodOriginalEmp=
+            cell.dataset.emp || "";
+
+          cell.dataset
+            .periodOriginalShift=
+            cell.dataset.shift || "";
+
+          cell.removeAttribute(
+            "data-schedule-cell"
+          );
+          cell.removeAttribute(
+            "data-emp"
+          );
+          cell.removeAttribute(
+            "data-date"
+          );
+          cell.removeAttribute(
+            "data-shift"
+          );
+          cell.removeAttribute(
+            "data-status"
+          );
+        }
+
+        td?.classList.add(
+          "system-period-closed-cell"
+        );
+
+        if(
+          !cell.querySelector(
+            ".system-period-cell-lock"
+          )
+        ){
+          cell.insertAdjacentHTML(
+            "beforeend",
+            `<small class="system-period-cell-lock">ปิดรอบ</small>`
+          );
+        }
+
+        cell.title=
+          `ปิดรอบจัดกะ • Deadline ${formatDate(
+            period
+              ?.schedule_edit_deadline
+          )}`;
+      }
+    );
+
+    if(
+      $("scheduleSystemPeriodMeta")
+    ){
+      $("scheduleSystemPeriodMeta")
+        .innerHTML=
+        months.map(
+          month => {
+            const period=
+              statuses.get(month);
+
+            if(!period?.configured){
+              return `<span class="schedule-period-chip neutral">${esc(
+                monthLabel(
+                  `${month}-01`
+                )
+              )}: ยังไม่กำหนดรอบ</span>`;
+            }
+
+            const open=
+              currentRole==="HR_ADMIN"
+              || period
+                ?.can_schedule_edit;
+
+            return `<span class="schedule-period-chip ${open?"open":"closed"}">${esc(
+              monthLabel(
+                `${month}-01`
+              )
+            )}: ${open?"จัดกะได้":"ปิดจัดกะ"} • ${esc(
+              formatDate(
+                period
+                  ?.schedule_edit_deadline
+              )
+            )}</span>`;
+          }
+        ).join("");
+    }
+  }
+
+  async function onScheduleRendered(){
+    try{
+      await applySchedulePeriodGuard();
+    }catch(error){
+      console.warn(
+        "System Period schedule guard:",
+        error
+      );
+    }
+  }
+
+  function bind(){
+    $("systemPeriodNewBtn")
+      ?.addEventListener(
+        "click",
+        openNew
+      );
+
+    $("systemPeriodRefreshBtn")
+      ?.addEventListener(
+        "click",
+        load
+      );
+
+    $("systemPeriodYear")
+      ?.addEventListener(
+        "change",
+        load
+      );
+
+    $("systemPeriodSearch")
+      ?.addEventListener(
+        "input",
+        applyFilter
+      );
+
+    $("systemPeriodMonthInput")
+      ?.addEventListener(
+        "change",
+        () => {
+          const key=
+            $("systemPeriodMonthInput")
+              ?.value;
+
+          if(
+            key
+            && !state.currentEdit
+          ){
+            const end=
+              monthEnd(key);
+
+            $("systemPeriodScheduleDeadlineInput")
+              .value=
+              addDays(
+                end,
+                10
+              );
+
+            $("systemPeriodCertDeadlineInput")
+              .value=
+              addDays(
+                end,
+                10
+              );
+          }
+
+          updateRangePreview();
+        }
+      );
+
+    $("systemPeriodSaveBtn")
+      ?.addEventListener(
+        "click",
+        save
+      );
+
+    $("systemPeriodCancelBtn")
+      ?.addEventListener(
+        "click",
+        () =>
+          setModalOpen(false)
+      );
+
+    $("systemPeriodModalClose")
+      ?.addEventListener(
+        "click",
+        () =>
+          setModalOpen(false)
+      );
+
+    $("systemPeriodHistoryClose")
+      ?.addEventListener(
+        "click",
+        () =>
+          $("systemPeriodHistoryModal")
+            ?.classList.add(
+              "hidden"
+            )
+      );
+
+    document.addEventListener(
+      "click",
+      event => {
+        const edit=
+          event.target.closest(
+            "[data-period-edit]"
+          );
+
+        if(edit){
+          openEdit(
+            edit.dataset.periodEdit
+          );
+          return;
+        }
+
+        const copy=
+          event.target.closest(
+            "[data-period-copy]"
+          );
+
+        if(copy){
+          copyPeriod(
+            copy.dataset.periodCopy
+          );
+          return;
+        }
+
+        const history=
+          event.target.closest(
+            "[data-period-history]"
+          );
+
+        if(history){
+          openHistory(
+            history.dataset
+              .periodHistory
+          );
+          return;
+        }
+
+        const toggle=
+          event.target.closest(
+            "[data-period-toggle]"
+          );
+
+        if(toggle){
+          togglePeriod(
+            toggle.dataset
+              .periodMonth,
+            toggle.dataset
+              .periodToggle,
+            toggle.dataset
+              .periodOpen === "true"
+          );
+        }
+      }
+    );
+
+    document
+      .querySelector(
+        '[data-page="admin-periods"]'
+      )
+      ?.addEventListener(
+        "click",
+        () => setTimeout(
+          load,
+          0
+        )
+      );
+
+    document.addEventListener(
+      "timeclock:schedule-rendered",
+      onScheduleRendered
+    );
+
+    fillYearOptions();
+  }
+
+  window.TimeClockSystemPeriods={
+    VERSION,
+    load,
+    getForDate,
+    refreshScheduleGuard:
+      applySchedulePeriodGuard
+  };
+
+  if(
+    document.readyState===
+    "loading"
+  ){
+    document.addEventListener(
+      "DOMContentLoaded",
+      bind
+    );
+  }else{
+    bind();
+  }
+})();
+
 
 (function(){
   const defaults = {
