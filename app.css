@@ -10130,3 +10130,43 @@ body.theme-dark .system-period-page-load-meta.is-error,
 @keyframes systemPeriodLoadingSpin{
   to{transform:rotate(360deg)}
 }
+
+
+/* ==========================================================================
+   V6.11.6 CSV Import + Work Pattern Module Restore
+   ========================================================================== */
+
+.work-pattern-runtime-state{
+  grid-column:1 / -1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:90px;
+  padding:16px;
+  border:1px dashed #cad8e6;
+  border-radius:12px;
+  background:#f8fbfe;
+  color:#647b91;
+  font-size:9.5px;
+  font-weight:700;
+}
+
+.work-pattern-runtime-state.error{
+  border-color:#e8b9bf;
+  background:#fff5f6;
+  color:#a04852;
+}
+
+body.theme-dark .work-pattern-runtime-state,
+.dark .work-pattern-runtime-state{
+  border-color:#334a63;
+  background:#111e2d;
+  color:#a8bbce;
+}
+
+body.theme-dark .work-pattern-runtime-state.error,
+.dark .work-pattern-runtime-state.error{
+  border-color:#6a3f46;
+  background:#2a1b1e;
+  color:#e1a2aa;
+}

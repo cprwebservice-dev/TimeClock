@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.5";
-document.documentElement.dataset.timeClockBuild = "6.11.5";
+window.__TIME_CLOCK_BUILD__ = "V6.11.6";
+document.documentElement.dataset.timeClockBuild = "6.11.6";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.5";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.5',
+  version: '6.11.6',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.5 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.6 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.5 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.6 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.5"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.6"
         );
       }
 
@@ -1483,7 +1483,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.5"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.6"
           );
         }
 
@@ -2190,7 +2190,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.5"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.6"
             );
           }
 
@@ -4369,7 +4369,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          // V6.11.5:
+          // V6.11.6:
           // Attendance was recalculated inside the same SQL transaction
           // that saved the shift. Reload only; do not calculate twice.
 
@@ -4437,7 +4437,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          // V6.11.5:
+          // V6.11.6:
           // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
@@ -5627,6 +5627,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (page === "attendance" && !state.attendance.length) loadAttendance();
       if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
       if (page === "schedule" && !state.schedule.length) loadSchedule();
+
+      if (page === "work-patterns") {
+        window.TimeClockWorkPatterns
+          ?.load?.();
+      }
+
+      if (page === "admin-time-import") {
+        window.TimeClockCsvImport
+          ?.load?.();
+      }
+
       if (page === "admin-periods") window.TimeClockSystemPeriods?.load?.();
       if (page === "admin-shifts") loadShiftMaster();
       if (page === "admin-holidays") loadHolidays();
@@ -6042,17 +6053,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.5 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.5 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.5 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.5 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.5 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.6 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.6 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.6 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.6 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.6 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
       if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
-      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.5";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.6";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
@@ -10265,421 +10276,648 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== js/mobileta-import.js ===== */
+/* ===== V6.11.6 CSV Import + Technician Work Patterns RESTORED ===== */
 (() => {
-  "use strict";
-  const VERSION="6.4.0";
-  const $=id=>document.getElementById(id);
-  const app=()=>window.TimeClockApp;
-  const fmt=n=>Number(n||0).toLocaleString("th-TH");
-  const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-  const fmtDate=v=>v?new Date(`${String(v).slice(0,10)}T00:00:00`).toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"numeric"}):"-";
-  const fmtDateTime=v=>v?new Date(v).toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"}):"-";
-  const state={file:null,rows:[],errors:[],stats:null,batchId:null,parsing:false,importing:false};
-
-  function client(){return app()?.state?.client||null}
-  async function rpc(name,args={}){
-    const c=client();if(!c)throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
-    const started=performance.now();const {data,error}=await c.rpc(name,args);
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const qsa = (sel, root=document) => [...root.querySelectorAll(sel)];
+  const app = () => window.TimeClockApp;
+  const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const fmt = v => Number(v || 0).toLocaleString('th-TH');
+  const fmtDate = v => app()?.formatDate?.(v) || v || '-';
+  const fmtDateTime = v => app()?.formatDateTime?.(v) || v || '-';
+  const realRole = () => app()?.state?.profile?._realRole || app()?.state?.profile?.role || 'VIEWER';
+  const client = () => app()?.state?.client;
+  async function rpc(name, args={}) {
+    const c = client(); if (!c) throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+    const started = performance.now();
+    const {data,error} = await c.rpc(name,args);
     window.TimeClockSettings?.recordApi?.(name,performance.now()-started,Array.isArray(data)?data.length:(data?1:0),error);
-    if(error)throw error;return data;
+    if (error) throw error;
+    return data;
   }
-  function setText(id,v){if($(id))$(id).textContent=v??""}
-  function status(text,type="neutral"){const el=$("mobiletaFileStatus");if(!el)return;el.textContent=text;el.className=`mobileta-status-pill ${type}`}
-  function setProgress(percent,text){const p=Math.max(0,Math.min(100,Number(percent)||0));if($("mobiletaProgressPanel"))$("mobiletaProgressPanel").classList.remove("hidden");if($("mobiletaProgressBar"))$("mobiletaProgressBar").style.width=`${p}%`;setText("mobiletaProgressPercent",`${Math.round(p)}%`);if(text)setText("mobiletaProgressText",text)}
-  function parseDate6(raw){
-    if(!/^\d{6}$/.test(raw))return null;const yy=Number(raw.slice(0,2)),m=Number(raw.slice(2,4)),d=Number(raw.slice(4,6));const y=1957+yy;const dt=new Date(Date.UTC(y,m-1,d));if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==m-1||dt.getUTCDate()!==d)return null;return `${String(y).padStart(4,"0")}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const csvCell = v => `"${String(v ?? '').replace(/"/g,'""')}"`;
+  function download(name, content, type='text/csv;charset=utf-8') {
+    const blob = new Blob([content],{type}); const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=name; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1200);
   }
-  function parseTime6(raw){if(!/^\d{6}$/.test(raw))return null;const h=Number(raw.slice(0,2)),m=Number(raw.slice(2,4)),s=Number(raw.slice(4,6));if(h>23||m>59||s>59)return null;return `${raw.slice(0,2)}:${raw.slice(2,4)}:${raw.slice(4,6)}`}
-  function reset(){state.file=null;state.rows=[];state.errors=[];state.stats=null;state.batchId=null;if($("mobiletaFile"))$("mobiletaFile").value="";if($("mobiletaPreviewPanel"))$("mobiletaPreviewPanel").classList.add("hidden");if($("mobiletaProgressPanel"))$("mobiletaProgressPanel").classList.add("hidden");if($("mobiletaResultPanel"))$("mobiletaResultPanel").innerHTML="";if($("mobiletaImportBtn"))$("mobiletaImportBtn").disabled=true;status("ยังไม่ได้เลือกไฟล์","neutral")}
+  function parseCsvText(text) {
+    const rows=[]; let row=[],cell='',quoted=false;
+    for(let i=0;i<text.length;i++){
+      const ch=text[i],next=text[i+1];
+      if(ch==='"'&&quoted&&next==='"'){cell+='"';i++;}
+      else if(ch==='"') quoted=!quoted;
+      else if(ch===','&&!quoted){row.push(cell);cell='';}
+      else if((ch==='\n'||ch==='\r')&&!quoted){if(ch==='\r'&&next==='\n')i++;row.push(cell);if(row.some(x=>x.trim()!==''))rows.push(row);row=[];cell='';}
+      else cell+=ch;
+    }
+    row.push(cell); if(row.some(x=>x.trim()!==''))rows.push(row);
+    return rows;
+  }
+  function normHeader(v){return String(v||'').replace(/^\uFEFF/,'').trim().toLowerCase().replace(/[ _-]/g,'');}
+  function modeOf(v){const x=String(v||'').trim().toUpperCase();return ['IN','I','เข้า'].includes(x)?'IN':['OUT','O','ออก'].includes(x)?'OUT':null;}
+  function validDate(v){return /^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(`${v}T00:00:00`));}
+  function validTime(v){return /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(v);}
+  function toHms(v){return v.length===5?`${v}:00`:v;}
 
-  async function parseFile(){
-    const file=$("mobiletaFile")?.files?.[0];if(!file)return app()?.toast?.("กรุณาเลือก Text File MobileTA","error");
-    if(state.parsing||state.importing)return;state.parsing=true;state.file=file;status("กำลังตรวจสอบไฟล์","working");app()?.showLoading?.("กำลังอ่าน Text File MobileTA...");
+  /* CSV Import ------------------------------------------------------- */
+  const csvState={file:null,rows:[],errors:[],stats:null,batchId:null};
+  function csvStatus(text,type='neutral'){
+    const el=$('timeCsvFileStatus');if(!el)return;el.textContent=text;el.className=`mobileta-status-pill ${type}`;
+  }
+  function csvProgress(p,text){
+    const n=Math.max(0,Math.min(100,Number(p)||0));
+    $('timeCsvProgressPanel')?.classList.remove('hidden');
+    if($('timeCsvProgressBar'))$('timeCsvProgressBar').style.width=`${n}%`;
+    if($('timeCsvProgressPercent'))$('timeCsvProgressPercent').textContent=`${Math.round(n)}%`;
+    if(text&&$('timeCsvProgressText'))$('timeCsvProgressText').textContent=text;
+  }
+  function resetCsv(){
+    csvState.file=null;csvState.rows=[];csvState.errors=[];csvState.stats=null;csvState.batchId=null;
+    if($('timeCsvFile'))$('timeCsvFile').value='';
+    $('timeCsvPreviewPanel')?.classList.add('hidden');$('timeCsvProgressPanel')?.classList.add('hidden');
+    if($('timeCsvResultPanel'))$('timeCsvResultPanel').innerHTML='';
+    if($('timeCsvImportBtn'))$('timeCsvImportBtn').disabled=true;
+    csvStatus('ยังไม่ได้เลือกไฟล์','neutral');
+  }
+  async function inspectCsv(){
+    const file=$('timeCsvFile')?.files?.[0]; if(!file)return app()?.toast?.('กรุณาเลือกไฟล์ CSV','error');
+    app()?.showLoading?.('กำลังตรวจสอบ CSV...');
     try{
-      const text=(await file.text()).replace(/^\uFEFF/,"");const lines=text.split(/\r?\n/);const rows=[],errors=[],seen=new Set(),employees=new Set();let rawRows=0,fileDuplicates=0,minDate=null,maxDate=null;
-      for(let i=0;i<lines.length;i++){
-        const raw=lines[i].trim();if(!raw)continue;rawRows++;const parts=raw.split(",").map(x=>x.trim());
-        if(parts.length!==4){errors.push({line_no:i+1,raw_line:raw,error:"จำนวนคอลัมน์ต้องเท่ากับ 4"});continue}
-        const [rawMode,rawEmp,rawDate,rawTime]=parts;const date=parseDate6(rawDate),time=parseTime6(rawTime);
-        if(!/^\d{1,20}$/.test(rawEmp)){errors.push({line_no:i+1,raw_line:raw,error:"รหัสพนักงานไม่ถูกต้อง"});continue}
-        if(!date){errors.push({line_no:i+1,raw_line:raw,error:"วันที่ YYMMDD ไม่ถูกต้อง"});continue}
-        if(!time){errors.push({line_no:i+1,raw_line:raw,error:"เวลา HHMMSS ไม่ถูกต้อง"});continue}
-        const key=`${rawEmp}|${date}|${time}`;if(seen.has(key)){fileDuplicates++;continue}seen.add(key);employees.add(rawEmp);minDate=!minDate||date<minDate?date:minDate;maxDate=!maxDate||date>maxDate?date:maxDate;
-        rows.push({source_row_no:i+1,raw_mode:(rawMode||"ALL").toUpperCase(),emp_code:rawEmp,inout_date:date,inout_time:time});
-        if(i>0&&i%20000===0){setProgress(Math.min(30,i/Math.max(lines.length,1)*30),`ตรวจสอบแล้ว ${fmt(i)} บรรทัด`);await new Promise(r=>setTimeout(r,0))}
-      }
-      state.rows=rows;state.errors=errors;state.stats={rawRows,validRows:rows.length,fileDuplicates,uniqueEmployees:employees.size,minDate,maxDate,invalidRows:errors.length,fileSize:file.size};renderPreview();status(errors.length?"ตรวจสอบแล้ว มีรายการผิดรูปแบบ":"ไฟล์พร้อมนำเข้า",errors.length?"error":"ready");if($("mobiletaImportBtn"))$("mobiletaImportBtn").disabled=!rows.length;
-      app()?.toast?.(`ตรวจสอบไฟล์แล้ว ${fmt(rows.length)} รายการ พร้อมนำเข้า`,errors.length?"info":"success");
-    }catch(err){status("ตรวจสอบไฟล์ไม่สำเร็จ","error");app()?.toast?.(app()?.humanError?.(err)||String(err),"error")}
-    finally{state.parsing=false;app()?.hideLoading?.();if($("mobiletaProgressPanel"))$("mobiletaProgressPanel").classList.add("hidden")}
-  }
-
-  function renderPreview(){
-    const s=state.stats;if(!s)return;$("mobiletaPreviewPanel")?.classList.remove("hidden");setText("mobiletaRawRows",fmt(s.rawRows));setText("mobiletaValidRows",fmt(s.validRows));setText("mobiletaFileDuplicates",fmt(s.fileDuplicates));setText("mobiletaEmployees",fmt(s.uniqueEmployees));setText("mobiletaDateRange",s.minDate?`${fmtDate(s.minDate)}–${fmtDate(s.maxDate)}`:"-");setText("mobiletaInvalidRows",fmt(s.invalidRows));
-    const sample=state.rows.slice(0,20);if($("mobiletaPreviewBody"))$("mobiletaPreviewBody").innerHTML=sample.length?sample.map(r=>`<tr><td>${fmt(r.source_row_no)}</td><td>${esc(r.raw_mode)}</td><td><strong>${esc(r.emp_code)}</strong></td><td>${fmtDate(r.inout_date)}</td><td>${esc(r.inout_time)}</td><td><span class="mobileta-row-ok">พร้อมนำเข้า</span></td></tr>`).join(""):`<tr><td colspan="6" class="table-empty">ไม่พบข้อมูลที่ถูกต้อง</td></tr>`;
-    $("mobiletaDownloadErrorsBtn")?.classList.toggle("hidden",!state.errors.length);
-  }
-
-  function downloadErrors(){if(!state.errors.length)return;const csv="\ufeff"+["บรรทัด,ข้อมูลต้นฉบับ,สาเหตุ",...state.errors.map(e=>[e.line_no,`"${String(e.raw_line).replace(/"/g,'""')}"`,e.error].join(","))].join("\n");app()?.downloadFile?.(`MobileTA_Errors_${new Date().toISOString().slice(0,10)}.csv`,csv,"text/csv;charset=utf-8")}
-
-  function isoDatesBetween(start,end){
-    const out=[];
-    if(!start||!end)return out;
-    const d=new Date(`${start}T00:00:00Z`),last=new Date(`${end}T00:00:00Z`);
-    while(d<=last){out.push(d.toISOString().slice(0,10));d.setUTCDate(d.getUTCDate()+1)}
-    return out;
-  }
-
-  function isTimeoutError(err){
-    const text=String(err?.message||err||"").toLowerCase();
-    return text.includes("statement timeout")||text.includes("canceling statement")||text.includes("57014");
-  }
-
-  async function classifyBatchInChunks(batchId,totalInserted){
-    let cursorDate=null,cursorEmp=null,groupLimit=120;
-    let classified=0,deduped=0,remaining=Math.max(Number(totalInserted||0),1);
-    let calls=0,retries=0;
-
-    while(true){
-      if(calls>20000)throw new Error("CLASSIFY_SAFETY_LIMIT_EXCEEDED");
-      try{
-        const result=await rpc("ta_classify_mobileta_import_chunk",{
-          p_batch_id:batchId,
-          p_after_date:cursorDate,
-          p_after_emp_code:cursorEmp,
-          p_group_limit:groupLimit
-        });
-        const r=Array.isArray(result)?result[0]:result||{};
-        const processedGroups=Number(r.processed_groups||0);
-        const stepClassified=Number(r.classified_rows||0);
-        const stepDuplicates=Number(r.duplicate_rows||0);
-        remaining=Number(r.remaining_rows||0);
-        classified+=stepClassified;
-        deduped+=stepDuplicates;
-        calls++;retries=0;
-
-        if(r.next_date){cursorDate=String(r.next_date).slice(0,10);cursorEmp=r.next_emp_code||""}
-        const processedRows=classified+deduped;
-        const denominator=Math.max(processedRows+remaining,1);
-        const ratio=Math.min(1,processedRows/denominator);
-        setProgress(74+ratio*14,`กำหนด IN/OUT ${fmt(processedRows)} รายการ · คงเหลือ ${fmt(remaining)} · ครั้งละ ${fmt(groupLimit)} กลุ่ม`);
-
-        if(r.done===true||remaining===0)return {classifiedRows:classified,duplicateRows:deduped,calls};
-        if(processedGroups===0)throw new Error("CLASSIFY_NO_PROGRESS");
-      }catch(err){
-        if(isTimeoutError(err)&&groupLimit>10&&retries<6){
-          groupLimit=Math.max(10,Math.floor(groupLimit/2));
-          retries++;
-          setProgress(74,`คำสั่งใช้เวลานาน ระบบลดขนาดงานเหลือ ${fmt(groupLimit)} กลุ่มและลองใหม่...`);
-          await new Promise(r=>setTimeout(r,350));
-          continue;
-        }
-        throw err;
-      }
-    }
-  }
-
-  async function finalizeBatch(batchId){
-    let attempt=0;
-    while(true){
-      try{
-        setProgress(89,"กำลังปิด Batch และบันทึกสถานะสำเร็จ...");
-        const finish=await rpc("ta_complete_mobileta_import",{p_batch_id:batchId});
-        return Array.isArray(finish)?finish[0]:finish||{};
-      }catch(err){
-        attempt++;
-        if(isTimeoutError(err)&&attempt<3){
-          setProgress(89,`ขั้นตอนปิด Batch ใช้เวลานาน กำลังลองใหม่ครั้งที่ ${attempt+1}...`);
-          await new Promise(r=>setTimeout(r,600*attempt));
-          continue;
-        }
-        throw err;
-      }
-    }
-  }
-
-  async function rebuildDateInChunks(batchId,date,dateIndex,dateCount){
-    let cursorEmp=null,empLimit=60,retries=0,calls=0;
-    let deleted=0,inserted=0;
-    while(true){
-      if(calls>10000)throw new Error("REBUILD_SAFETY_LIMIT_EXCEEDED");
-      try{
-        const result=await rpc("ta_rebuild_mobileta_attendance_chunk",{
-          p_batch_id:batchId,
-          p_work_date:date,
-          p_after_emp_code:cursorEmp,
-          p_emp_limit:empLimit
-        });
-        const r=Array.isArray(result)?result[0]:result||{};
-        const processed=Number(r.processed_employees||0);
-        deleted+=Number(r.deleted_rows||0);
-        inserted+=Number(r.inserted_rows||0);
-        calls++;retries=0;
-        if(r.next_emp_code)cursorEmp=String(r.next_emp_code);
-        const dayBase=89+(dateIndex/Math.max(dateCount,1))*10;
-        const daySpan=10/Math.max(dateCount,1);
-        setProgress(Math.min(99,dayBase+daySpan*.7),`ประมวลผล Attendance ${fmtDate(date)} · ถึงรหัส ${cursorEmp||"-"} · ครั้งละ ${fmt(empLimit)} คน`);
-        if(r.done===true||processed===0)return {deleted,inserted,calls};
-      }catch(err){
-        if(isTimeoutError(err)&&empLimit>5&&retries<6){
-          empLimit=Math.max(5,Math.floor(empLimit/2));
-          retries++;
-          setProgress(89,`Attendance วันที่ ${fmtDate(date)} ใช้เวลานาน ระบบลดเหลือ ${fmt(empLimit)} คนและลองใหม่...`);
-          await new Promise(r=>setTimeout(r,400));
-          continue;
-        }
-        throw err;
-      }
-    }
-  }
-
-  async function rebuildBatchAttendance(batchId,minDate,maxDate){
-    const dates=isoDatesBetween(minDate,maxDate);
-    let rebuildDeleted=0,rebuildInserted=0;
-    const failedDates=[];
-    for(let i=0;i<dates.length;i++){
-      const date=dates[i];
-      try{
-        const r=await rebuildDateInChunks(batchId,date,i,dates.length);
-        rebuildDeleted+=Number(r.deleted||0);
-        rebuildInserted+=Number(r.inserted||0);
-      }catch(stepError){
-        failedDates.push(date);
-        console.warn("MobileTA attendance rebuild failed",date,stepError);
-      }
-      setProgress(89+((i+1)/Math.max(dates.length,1))*10,`ประมวลผล Attendance วันที่ ${fmtDate(date)} (${i+1}/${dates.length})`);
-    }
-    await rpc("ta_mark_mobileta_rebuild_result",{
-      p_batch_id:batchId,
-      p_success:failedDates.length===0,
-      p_failed_dates:failedDates,
-      p_error_message:failedDates.length?`Attendance timeout: ${failedDates.join(", ")}`:null
-    });
-    return {rebuildDeleted,rebuildInserted,failedDates};
-  }
-
-  async function resumeBatch(batchId){
-    if(!batchId||state.importing)return;
-    if(!confirm("ยืนยันดำเนินการต่อจาก Batch ที่ข้อมูลถูกเก็บไว้แล้ว?"))return;
-    state.importing=true;
-    state.batchId=batchId;
-    status("กำลังดำเนินการต่อ","working");
-    $("mobiletaProgressPanel")?.classList.remove("hidden");
-    setProgress(74,"กำลังตรวจสถานะ Batch...");
-    let phase="resume";
-    try{
-      const infoData=await rpc("ta_get_mobileta_import_resume_state",{p_batch_id:batchId});
-      const info=Array.isArray(infoData)?infoData[0]:infoData||{};
-      if(!info.batch_id)throw new Error("ไม่พบข้อมูล Batch");
-      if(info.batch_status==="CANCELLED")throw new Error("Batch นี้ถูกยกเลิกแล้ว");
-
-      let classifiedAdded=0,duplicateAdded=0;
-      if(Number(info.remaining_all_rows||0)>0){
-        phase="classify";
-        const cr=await classifyBatchInChunks(batchId,Number(info.remaining_all_rows||info.inserted_rows||1));
-        classifiedAdded=Number(cr.classifiedRows||0);
-        duplicateAdded=Number(cr.duplicateRows||0);
-      }
-
-      phase="complete";
-      const finalRow=await finalizeBatch(batchId);
-
-      let rebuildDeleted=0,rebuildInserted=0,failedDates=[];
-      if($("mobiletaRebuildAttendance")?.checked){
-        phase="rebuild";
-        const rr=await rebuildBatchAttendance(batchId,info.min_date,info.max_date);
-        rebuildDeleted=rr.rebuildDeleted;
-        rebuildInserted=rr.rebuildInserted;
-        failedDates=rr.failedDates;
-      }
-
-      const result={
-        ...finalRow,
-        inserted_rows:Number(finalRow.inserted_rows||info.inserted_rows||0),
-        existing_duplicate_rows:Number(finalRow.existing_duplicate_rows||info.existing_duplicate_rows||0)+duplicateAdded,
-        unmatched_employee_rows:Number(finalRow.unmatched_employee_rows||info.unmatched_employee_rows||0),
-        classified_rows:Number(finalRow.classified_rows||info.classified_rows||0)+classifiedAdded,
-        rebuild_deleted_rows:rebuildDeleted,
-        rebuild_inserted_rows:rebuildInserted,
-        rebuild_failed_dates:failedDates,
-        min_date:finalRow.min_date||info.min_date,
-        max_date:finalRow.max_date||info.max_date
-      };
-      setProgress(100,failedDates.length?"ดำเนินการต่อสำเร็จ แต่ Attendance บางวันต้องประมวลผลซ้ำ":"ดำเนินการต่อเรียบร้อย");
-      renderResult(result,false);
-      status(failedDates.length?"สำเร็จ มีคำเตือน Attendance":"นำเข้าข้อมูลสำเร็จ",failedDates.length?"error":"ready");
-      if(app()?.state){app().state.attendance=[]}
-      app()?.toast?.("ดำเนินการต่อจาก Batch สำเร็จ","success");
-      await loadHistory();
-    }catch(err){
-      renderResult({error:app()?.humanError?.(err)||String(err),phase,rollback:false,batchId},true);
-      status("ดำเนินการต่อไม่สำเร็จ","error");
-      app()?.toast?.(app()?.humanError?.(err)||String(err),"error");
-    }finally{
-      state.importing=false;
-      if($("mobiletaImportBtn"))$("mobiletaImportBtn").disabled=!state.rows.length;
-      if($("mobiletaPreviewBtn"))$("mobiletaPreviewBtn").disabled=false;
-    }
-  }
-
-  async function runImport(){
-    if(!state.rows.length||!state.stats)return app()?.toast?.("กรุณาตรวจสอบไฟล์ก่อนนำเข้า","error");
-    if(state.importing)return;
-    if(!confirm(`ยืนยันนำเข้าข้อมูลลงเวลา ${fmt(state.rows.length)} รายการ?`))return;
-
-    state.importing=true;
-    status("กำลังนำเข้าข้อมูล","working");
-    $("mobiletaImportBtn").disabled=true;
-    $("mobiletaPreviewBtn").disabled=true;
-    $("mobiletaProgressPanel")?.classList.remove("hidden");
-    setProgress(1,"กำลังเปิดรายการนำเข้า...");
-
-    let inserted=0,existingDup=0,unmatched=0,uploaded=0;
-    let phase="upload";
-    let completed=false;
-    let uploadFinished=false;
-    let classifiedRows=0,rebuildDeleted=0,rebuildInserted=0;
-    const failedRebuildDates=[];
-
-    try{
-      const batch=await rpc("ta_begin_mobileta_import",{
-        p_file_name:state.file.name,
-        p_file_size:state.stats.fileSize,
-        p_raw_rows:state.stats.rawRows,
-        p_valid_rows:state.stats.validRows,
-        p_file_duplicate_rows:state.stats.fileDuplicates,
-        p_min_date:state.stats.minDate,
-        p_max_date:state.stats.maxDate,
-        p_note:$("mobiletaImportNote")?.value||null
+      const matrix=parseCsvText(await file.text()); if(matrix.length<2)throw new Error('ไฟล์ไม่มีข้อมูล');
+      const headers=matrix.shift().map(normHeader);
+      const required={employeeid:['employeeid'],inoutdate:['inoutdate'],inouttime:['inouttime'],inoutmode:['inoutmode'],gpsname:['gpsname'],gpslocation:['gpslocation']};
+      const idx={};
+      for(const [key,aliases] of Object.entries(required)){idx[key]=headers.findIndex(h=>aliases.includes(h));if(idx[key]<0&&['gpsname','gpslocation'].includes(key))continue;if(idx[key]<0)throw new Error(`ไม่พบคอลัมน์ ${key}`);}
+      const seen=new Set(),rows=[],errors=[],employees=new Set();let dup=0,minDate=null,maxDate=null;
+      matrix.forEach((r,i)=>{
+        const source_row_no=i+2,employee_id=String(r[idx.employeeid]??'').trim(),inout_date=String(r[idx.inoutdate]??'').trim();
+        const rawTime=String(r[idx.inouttime]??'').trim(),inout_time=validTime(rawTime)?toHms(rawTime):rawTime;
+        const inout_mode=modeOf(r[idx.inoutmode]); const gps_name=idx.gpsname>=0?String(r[idx.gpsname]??'').trim():'';
+        const gps_location=idx.gpslocation>=0?String(r[idx.gpslocation]??'').trim():'';
+        const problems=[];if(!employee_id)problems.push('ไม่พบ EmployeeId');if(!validDate(inout_date))problems.push('วันที่ต้องเป็น YYYY-MM-DD');if(!validTime(rawTime))problems.push('เวลาไม่ถูกต้อง');if(!inout_mode)problems.push('InOutMode ต้องเป็น เข้า/ออก หรือ IN/OUT');
+        const raw={source_row_no,employee_id,inout_date,inout_time,inout_mode:inout_mode||String(r[idx.inoutmode]??''),gps_name,gps_location};
+        if(problems.length){errors.push({...raw,error:problems.join('; ')});return;}
+        const key=`${employee_id}|${inout_date}|${inout_time}|${inout_mode}`;
+        if(seen.has(key)){dup++;return;}seen.add(key);employees.add(employee_id);minDate=!minDate||inout_date<minDate?inout_date:minDate;maxDate=!maxDate||inout_date>maxDate?inout_date:maxDate;
+        rows.push({...raw,row_hash:key});
       });
-      state.batchId=typeof batch==="string"?batch:(batch?.batch_id||batch?.id);
-      if(!state.batchId)throw new Error("ไม่พบ Batch ID จากระบบ");
-
-      if(state.errors.length){
-        await rpc("ta_log_mobileta_import_errors",{
-          p_batch_id:state.batchId,
-          p_errors:state.errors.slice(0,1000)
-        });
-      }
-
-      const chunkSize=500,total=state.rows.length;
-      for(let start=0;start<total;start+=chunkSize){
-        const chunk=state.rows.slice(start,start+chunkSize);
-        const result=await rpc("ta_import_mobileta_chunk",{
-          p_batch_id:state.batchId,
-          p_rows:chunk
-        });
-        const r=Array.isArray(result)?result[0]:result||{};
-        uploaded+=chunk.length;
-        inserted+=Number(r.inserted_rows||0);
-        existingDup+=Number(r.duplicate_rows||0);
-        unmatched+=Number(r.unmatched_rows||0);
-        const pct=5+(uploaded/total)*68;
-        setProgress(pct,`ส่งข้อมูล ${fmt(uploaded)} จาก ${fmt(total)} รายการ`);
-        setText("mobiletaUploadedRows",fmt(uploaded));
-        setText("mobiletaInsertedRows",fmt(inserted));
-        setText("mobiletaExistingDuplicates",fmt(existingDup));
-        setText("mobiletaUnmatchedRows",fmt(unmatched));
-      }
-
-      uploadFinished=true;
-      phase="classify";
-      const classifyResult=await classifyBatchInChunks(state.batchId,inserted);
-      classifiedRows+=Number(classifyResult.classifiedRows||0);
-      existingDup+=Number(classifyResult.duplicateRows||0);
-      setText("mobiletaExistingDuplicates",fmt(existingDup));
-
-      phase="complete";
-      const finalRow=await finalizeBatch(state.batchId);
-      completed=true;
-
-      if($("mobiletaRebuildAttendance")?.checked){
-        phase="rebuild";
-        const rr=await rebuildBatchAttendance(state.batchId,state.stats.minDate,state.stats.maxDate);
-        rebuildDeleted=rr.rebuildDeleted;
-        rebuildInserted=rr.rebuildInserted;
-        failedRebuildDates.push(...rr.failedDates);
-      }
-
-      const result={
-        ...finalRow,
-        inserted_rows:Number(finalRow.inserted_rows||inserted),
-        existing_duplicate_rows:Number(finalRow.existing_duplicate_rows||existingDup),
-        unmatched_employee_rows:Number(finalRow.unmatched_employee_rows||unmatched),
-        classified_rows:Number(finalRow.classified_rows||classifiedRows),
-        rebuild_deleted_rows:rebuildDeleted,
-        rebuild_inserted_rows:rebuildInserted,
-        rebuild_failed_dates:failedRebuildDates
-      };
-
-      setProgress(100,failedRebuildDates.length?"นำเข้าสำเร็จ แต่ Attendance บางวันต้องประมวลผลซ้ำ":"นำเข้าข้อมูลเรียบร้อย");
-      renderResult(result,false);
-      status(failedRebuildDates.length?"นำเข้าสำเร็จ มีคำเตือน Attendance":"นำเข้าข้อมูลสำเร็จ",failedRebuildDates.length?"error":"ready");
-      if(app()?.state){app().state.attendance=[]}
-      app()?.toast?.(failedRebuildDates.length?`นำเข้าสำเร็จ แต่ Attendance ${failedRebuildDates.length} วันยังไม่สำเร็จ`:"นำเข้าข้อมูลลงเวลา MobileTA เรียบร้อย",failedRebuildDates.length?"info":"success");
-      await loadHistory();
-    }catch(err){
-      const shouldRollback=Boolean(state.batchId&&!completed&&!uploadFinished);
-      if(shouldRollback){
-        try{
-          await rpc("ta_cancel_mobileta_import",{
-            p_batch_id:state.batchId,
-            p_reason:app()?.humanError?.(err)||String(err),
-            p_rollback:true
-          });
-        }catch(_){}
-      }
-      renderResult({
-        error:app()?.humanError?.(err)||String(err),
-        phase,
-        rollback:shouldRollback,
-        batchId:state.batchId
-      },true);
-      status("นำเข้าไม่สำเร็จ","error");
-      app()?.toast?.(app()?.humanError?.(err)||String(err),"error");
-    }finally{
-      state.importing=false;
-      $("mobiletaImportBtn").disabled=!state.rows.length;
-      $("mobiletaPreviewBtn").disabled=false;
-    }
+      csvState.file=file;csvState.rows=rows;csvState.errors=errors;csvState.stats={rawRows:matrix.length,validRows:rows.length,fileDuplicates:dup,uniqueEmployees:employees.size,minDate,maxDate,invalidRows:errors.length,fileSize:file.size};
+      renderCsvPreview();csvStatus(errors.length?'ตรวจสอบแล้ว มีรายการผิดรูปแบบ':'ไฟล์พร้อมนำเข้า',errors.length?'error':'ready');$('timeCsvImportBtn').disabled=!rows.length;
+    }catch(e){app()?.toast?.(e.message||String(e),'error');csvStatus('ตรวจสอบไฟล์ไม่สำเร็จ','error');}
+    finally{app()?.hideLoading?.();}
   }
+  function renderCsvPreview(){
+    const s=csvState.stats;if(!s)return;$('timeCsvPreviewPanel')?.classList.remove('hidden');
+    [['timeCsvRawRows',s.rawRows],['timeCsvValidRows',s.validRows],['timeCsvFileDuplicates',s.fileDuplicates],['timeCsvEmployees',s.uniqueEmployees],['timeCsvInvalidRows',s.invalidRows]].forEach(([id,v])=>{if($(id))$(id).textContent=fmt(v)});
+    if($('timeCsvDateRange'))$('timeCsvDateRange').textContent=s.minDate?`${fmtDate(s.minDate)}–${fmtDate(s.maxDate)}`:'-';
+    if($('timeCsvPreviewBody'))$('timeCsvPreviewBody').innerHTML=csvState.rows.slice(0,20).map(r=>`<tr><td>${fmt(r.source_row_no)}</td><td><strong>${esc(r.employee_id)}</strong></td><td>${fmtDate(r.inout_date)}</td><td>${esc(r.inout_time)}</td><td><span class="fc-badge ${r.inout_mode==='IN'?'active':'warning'}">${r.inout_mode==='IN'?'เข้า':'ออก'}</span></td><td>${esc(r.gps_name||'-')}</td><td>${esc(r.gps_location||'-')}</td></tr>`).join('');
+    $('timeCsvDownloadErrorsBtn')?.classList.toggle('hidden',!csvState.errors.length);
+  }
+  function downloadCsvErrors(){
+    if(!csvState.errors.length)return;const rows=[['แถว','EmployeeId','InOutDate','InOutTime','InOutMode','GPSName','GpsLocation','Error'],...csvState.errors.map(r=>[r.source_row_no,r.employee_id,r.inout_date,r.inout_time,r.inout_mode,r.gps_name,r.gps_location,r.error])];
+    download('TextTime_CSV_Errors.csv','\uFEFF'+rows.map(x=>x.map(csvCell).join(',')).join('\n'));
+  }
+  function downloadCsvTemplate(){
+    const rows=[['EmployeeId','InOutDate','InOutTime','InOutMode','GPSName','GpsLocation'],['0043973','2026-06-02','08:30','เข้า','','สำนักงานใหญ่ วิภาวดี 62'],['0043973','2026-06-02','18:00','ออก','','สำนักงานใหญ่ วิภาวดี 62']];
+    download('TextTime_CSV_Template.csv','\uFEFF'+rows.map(x=>x.map(csvCell).join(',')).join('\n'));
+  }
+  async function runAttendanceJob(startDate,endDate,batchId){
+    csvProgress(72,'กำลังสร้าง Job ประมวลผล Attendance...');
+    const job=await rpc('ta_create_attendance_rebuild_job',{p_start_date:startDate,p_end_date:endDate,p_batch_size:100,p_note:`สร้างจาก CSV Batch ${batchId}`});
+    await rpc('ta_link_time_csv_rebuild_job',{p_batch_id:batchId,p_job_id:job.id});
+    let current=job,guard=0;
+    while(!['COMPLETED','COMPLETED_WITH_ERRORS','FAILED','CANCELLED'].includes(current.status)&&guard<20000){
+      current=await rpc('ta_process_attendance_rebuild_step',{p_job_id:job.id});guard++;
+      csvProgress(72+(Number(current.progress_percent||0)*.28),`Attendance ${current.processed_tasks||0}/${current.total_tasks||0} Task • ${current.current_work_date?fmtDate(current.current_work_date):''}`);
+    }
+    return current;
+  }
+  async function runCsvImport(){
+    if(!csvState.rows.length||!csvState.stats)return app()?.toast?.('กรุณาตรวจสอบไฟล์ก่อน','error');
+    $('timeCsvImportBtn').disabled=true;$('timeCsvPreviewBtn').disabled=true;app()?.showLoading?.('กำลังเริ่มนำเข้า CSV...');
+    try{
+      const s=csvState.stats;
+      const begun=await rpc('ta_begin_time_csv_import',{p_file_name:csvState.file.name,p_file_size:csvState.file.size,p_raw_rows:s.rawRows,p_valid_rows:s.validRows,p_file_duplicate_rows:s.fileDuplicates,p_min_date:s.minDate,p_max_date:s.maxDate,p_note:$('timeCsvImportNote')?.value||null});
+      const batchId=begun.id;csvState.batchId=batchId;let uploaded=0,inserted=0,dups=0,unmatched=0,conflicts=0;const size=1000;
+      for(let i=0;i<csvState.rows.length;i+=size){
+        const chunk=csvState.rows.slice(i,i+size);const r=await rpc('ta_import_time_csv_chunk',{p_batch_id:batchId,p_rows:chunk});
+        uploaded+=chunk.length;inserted+=Number(r.inserted_rows||0);dups+=Number(r.existing_duplicate_rows||0);unmatched+=Number(r.unmatched_employee_rows||0);conflicts+=Number(r.gps_conflict_rows||0);
+        csvProgress((uploaded/csvState.rows.length)*70,`ส่งข้อมูล ${fmt(uploaded)} / ${fmt(csvState.rows.length)} รายการ`);
+        [['timeCsvUploadedRows',uploaded],['timeCsvInsertedRows',inserted],['timeCsvExistingDuplicates',dups],['timeCsvUnmatchedRows',unmatched],['timeCsvGpsConflicts',conflicts]].forEach(([id,v])=>{if($(id))$(id).textContent=fmt(v)});
+      }
+      const finished=await rpc('ta_finish_time_csv_import',{p_batch_id:batchId});let job=null;
+      if($('timeCsvRebuildAttendance')?.checked)job=await runAttendanceJob(s.minDate,s.maxDate,batchId);else csvProgress(100,'นำเข้า CSV สำเร็จ');
+      const warn=job?.status==='COMPLETED_WITH_ERRORS'?`<div class="mobileta-import-warning"><strong>Attendance สำเร็จบางส่วน</strong><div>ตรวจ Error Log ที่เมนูประมวลผล Attendance</div></div>`:'';
+      $('timeCsvResultPanel').innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลา CSV เรียบร้อย</h3><p>ใช้ค่าเข้า/ออกจากไฟล์โดยตรง ไม่ต้องจำแนก ALL</p>${warn}<div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(finished.inserted_rows)}</strong></div><div><span>ซ้ำฐานข้อมูล</span><strong>${fmt(finished.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${fmt(finished.unmatched_employee_rows)}</strong></div><div><span>GPS Conflict</span><strong>${fmt(finished.gps_conflict_rows)}</strong></div><div><span>Attendance Job</span><strong>${esc(job?.status||'ไม่ได้ประมวลผล')}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(finished.min_date)}–${fmtDate(finished.max_date)}</strong></div></div></div>`;
+      csvProgress(100,'เสร็จสมบูรณ์');csvStatus('นำเข้าสำเร็จ','ready');app()?.toast?.('นำเข้า CSV และประมวลผลเรียบร้อย','success');await loadCsvHistory();
+    }catch(e){$('timeCsvResultPanel').innerHTML=`<div class="mobileta-result-card error"><h3>นำเข้าข้อมูลไม่สำเร็จ</h3><p>${esc(e.message||String(e))}</p></div>`;csvStatus('นำเข้าไม่สำเร็จ','error');app()?.toast?.(e.message||String(e),'error');}
+    finally{app()?.hideLoading?.();$('timeCsvImportBtn').disabled=!csvState.rows.length;$('timeCsvPreviewBtn').disabled=false;}
+  }
+  async function loadCsvHistory(){
+    const body =
+      $('timeCsvHistoryBody');
 
-  function renderResult(r,isError){
-    const el=$("mobiletaResultPanel");if(!el)return;
-    if(isError){
-      const rollbackText=r.rollback?"ระบบ Rollback ข้อมูลของ Batch นี้แล้ว":"ข้อมูลที่ส่งขึ้นฐานข้อมูลแล้วถูกเก็บไว้ ไม่ได้ Rollback ทั้ง Batch";
-      const resumeButton=!r.rollback&&r.batchId?`<div style="margin-top:12px"><button class="btn btn-primary btn-sm" data-mobileta-resume="${esc(r.batchId)}">ดำเนินการต่อจาก Batch นี้</button></div>`:"";
-      el.innerHTML=`<div class="mobileta-result-card error"><h3>นำเข้าข้อมูลไม่สำเร็จ</h3><p>${esc(r.error||"เกิดข้อผิดพลาด")}</p><small>ขั้นตอน: ${esc(r.phase||"unknown")} · ${esc(rollbackText)}</small>${resumeButton}</div>`;
+    if(!body){
       return;
     }
-    const failed=Array.isArray(r.rebuild_failed_dates)?r.rebuild_failed_dates:[];
-    const warning=failed.length?`<div class="mobileta-import-warning"><strong>Attendance ยังประมวลผลไม่สำเร็จ ${fmt(failed.length)} วัน</strong><div>${failed.map(fmtDate).join(", ")}</div><small>ข้อมูลลงเวลานำเข้าสำเร็จแล้ว และไม่ได้ถูก Rollback</small></div>`:"";
-    el.innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลาเรียบร้อย</h3><p>ระบบนำเข้าข้อมูลและกำหนดประเภท IN/OUT แบบกลุ่มย่อยด้วย Cursor เพื่อลดปัญหา Statement Timeout</p>${warning}<div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(r.inserted_rows)}</strong></div><div><span>ซ้ำในฐานข้อมูล</span><strong>${fmt(r.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${fmt(r.unmatched_employee_rows)}</strong></div><div><span>จำแนก IN/OUT</span><strong>${fmt(r.classified_rows)}</strong></div><div><span>Attendance ลบ/สร้าง</span><strong>${fmt(r.rebuild_deleted_rows)} / ${fmt(r.rebuild_inserted_rows)}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</strong></div></div></div>`;
+
+    body.innerHTML =
+      '<tr><td colspan="11" class="table-empty">กำลังโหลดประวัติ CSV...</td></tr>';
+
+    if(!client()){
+      body.innerHTML =
+        '<tr><td colspan="11" class="table-empty">Supabase Client ยังไม่พร้อม</td></tr>';
+      return;
+    }
+    try{const rows=await rpc('ta_get_time_csv_import_history',{p_limit:30})||[];body.innerHTML=rows.length?rows.map(r=>`<tr><td>${fmtDateTime(r.created_at)}</td><td><strong>${esc(r.file_name)}</strong></td><td>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</td><td>${fmt(r.raw_rows)}</td><td>${fmt(r.inserted_rows)}</td><td>${fmt(Number(r.file_duplicate_rows||0)+Number(r.existing_duplicate_rows||0))}</td><td>${fmt(r.unmatched_employee_rows)}</td><td>${fmt(r.gps_conflict_rows)}</td><td>${r.attendance_job_id?'<span class="mobileta-row-ok">สร้างแล้ว</span>':'-'}</td><td><span class="mobileta-status-pill ${r.status==='COMPLETED'?'ready':'error'}">${esc(r.status)}</span></td><td>${esc(r.created_by_email||'-')}</td></tr>`).join(''):'<tr><td colspan="11" class="table-empty">ยังไม่มีประวัติ</td></tr>';}
+    catch(e){
+      const message =
+        app()?.humanError?.(e)
+        || e.message
+        || String(e);
+
+      body.innerHTML =
+        `<tr><td colspan="11" class="table-empty">${esc(message)}</td></tr>`;
+
+      app()?.toast?.(
+        message,
+        'error'
+      );
+    }
   }
 
-  async function loadHistory(){
-    const body=$("mobiletaHistoryBody");if(!body||!client())return;body.innerHTML='<tr><td colspan="11" class="table-empty">กำลังโหลด...</td></tr>';
+  /* Work patterns ---------------------------------------------------- */
+  const wp={
+    patterns:[],
+    templates:[],
+    employees:[],
+    editing:null,
+    canViewParameters:false,
+    canManageParameters:false,
+    parameterAccessLoaded:false
+  };
+  const dowNames=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
+  const dowText=a=>(a||[]).map(x=>dowNames[Number(x)]||x).join(', ')||'-';
+  const hours=m=>(Number(m||0)/60).toLocaleString('th-TH',{maximumFractionDigits:2});
+  function ensureWpModals(){
+    if($('workPatternModal'))return;
+    document.body.insertAdjacentHTML('beforeend',`<div id="workPatternModal" class="modal-backdrop hidden"><div class="modal"><div class="modal-header"><h3>พารามิเตอร์รูปแบบการทำงาน</h3><button class="btn btn-light btn-icon" data-close-wp="workPatternModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสรูปแบบ</label><input id="wpCode" class="input"></div><div class="field"><label>ชื่อรูปแบบ</label><input id="wpName" class="input"></div></div><div class="form-row"><div class="field"><label>วันทำงาน/สัปดาห์</label><input id="wpDays" class="input" type="number" min="1" max="7"></div><div class="field"><label>นาทีต่อวันรวมพัก</label><input id="wpScheduled" class="input" type="number"></div><div class="field"><label>OT หลัง (นาที)</label><input id="wpOt" class="input" type="number"></div></div><div class="form-row"><div class="field"><label>เวลาเริ่มต้น</label><input id="wpStart" class="input" type="time"></div><div class="field"><label>เวลาสิ้นสุด</label><input id="wpEnd" class="input" type="time"></div><div class="field"><label>พัก (นาที)</label><input id="wpBreak" class="input" type="number"></div></div><div class="field"><label>วันหยุดตั้งต้น</label><div class="dow-checks">${dowNames.map((d,i)=>`<label><input type="checkbox" data-wp-dow="${i}"> ${d}</label>`).join('')}</div></div><div class="form-row"><div class="field"><label>ยกยอดข้ามเดือน</label><input id="wpCarry" class="input" type="number" min="0" max="24"></div><label class="mobileta-option-card"><input id="wpActive" type="checkbox" checked><span><strong>เปิดใช้งาน</strong><small>ใช้กำหนดรายบุคคลได้</small></span></label></div><div class="field"><label>หมายเหตุ</label><input id="wpNote" class="input"></div></div><div class="modal-footer"><button class="btn btn-light" data-close-wp="workPatternModal">ยกเลิก</button><button id="wpSaveBtn" class="btn btn-primary">บันทึก</button></div></div></div><div id="employeePatternModal" class="modal-backdrop hidden"><div class="modal"><div class="modal-header"><h3>กำหนดรูปแบบรายบุคคล</h3><button class="btn btn-light btn-icon" data-close-wp="employeePatternModal">×</button></div><div class="modal-body"><input id="epEmpCode" type="hidden"><div id="epEmployee" class="assignment-info"></div><div class="form-row"><div class="field"><label>รูปแบบการทำงาน</label><select id="epPattern" class="select"></select></div><div class="field"><label>Template เริ่มต้น</label><select id="epTemplate" class="select"></select></div></div><div class="form-row"><div class="field"><label>เริ่มใช้</label><input id="epFrom" type="date" class="input"></div><div class="field"><label>สิ้นสุด</label><input id="epTo" type="date" class="input"></div></div><div class="field"><label>หมายเหตุ</label><input id="epNote" class="input"></div></div><div class="modal-footer"><button class="btn btn-light" data-close-wp="employeePatternModal">ยกเลิก</button><button id="epSaveBtn" class="btn btn-primary">บันทึก</button></div></div></div>`);
+    qsa('[data-close-wp]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.closeWp)?.classList.add('hidden')));
+    $('wpSaveBtn')?.addEventListener('click',savePattern);$('epSaveBtn')?.addEventListener('click',saveEmployeePattern);
+  }
+  function effectiveWorkPatternRole(){
+    return String(
+      app()?.state?.profile?.role
+      || window.TimeClockApp?.state?.profile?.role
+      || ''
+    ).toUpperCase();
+  }
+
+  function canViewWorkPatternParameters(){
+    return wp.parameterAccessLoaded===true
+      && wp.canViewParameters===true
+      && effectiveWorkPatternRole()==='HR_ADMIN';
+  }
+
+  function canManageWorkPatternParameters(){
+    return wp.parameterAccessLoaded===true
+      && wp.canManageParameters===true
+      && effectiveWorkPatternRole()==='HR_ADMIN';
+  }
+
+  function applyWorkPatternParameterVisibility(){
+    const panel=$('workPatternAdminPanel');
+    const visible=canViewWorkPatternParameters();
+    const manageable=canManageWorkPatternParameters();
+
+    if(panel){
+      panel.classList.toggle('hidden',!visible);
+      panel.setAttribute('aria-hidden',visible?'false':'true');
+      panel.inert=!visible;
+    }
+
+    const addButton=$('workPatternNewBtn');
+    if(addButton){
+      addButton.classList.toggle('hidden',!manageable);
+      addButton.disabled=!manageable;
+    }
+
+    if(!visible){
+      const body=$('workPatternBody');
+      if(body)body.innerHTML='';
+    }
+  }
+
+  async function loadWorkPatternParameterAccess(){
+    wp.parameterAccessLoaded=false;
+    wp.canViewParameters=false;
+    wp.canManageParameters=false;
+    applyWorkPatternParameterVisibility();
+
     try{
-      const data=await rpc("ta_get_mobileta_import_history",{p_limit:30});
-      const rows=Array.isArray(data)?data:[];
-      body.innerHTML=rows.length?rows.map(r=>{
-        const hasData=Number(r.inserted_rows||0)>0;
-        const canResume=hasData&&r.status!=="CANCELLED"&&(r.status!=="COMPLETED"||!r.rebuild_attendance);
-        const action=canResume?`<button class="btn btn-light btn-sm" data-mobileta-resume="${esc(r.id)}">${r.status==="COMPLETED"?"สร้าง Attendance":"ดำเนินการต่อ"}</button>`:"-";
-        return `<tr><td>${fmtDateTime(r.created_at)}</td><td><strong>${esc(r.file_name)}</strong><small style="display:block;color:var(--slate-500)">${fmt(Number(r.file_size||0)/1024)} KB</small></td><td>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</td><td>${fmt(r.raw_rows)}</td><td>${fmt(r.inserted_rows)}</td><td>${fmt(Number(r.file_duplicate_rows||0)+Number(r.existing_duplicate_rows||0))}</td><td>${fmt(r.unmatched_employee_rows)}</td><td>${r.rebuild_attendance?'<span class="mobileta-row-ok">ประมวลผลแล้ว</span>':'-'}</td><td><span class="mobileta-status-pill ${r.status==='COMPLETED'?'ready':r.status==='FAILED'||r.status==='CANCELLED'?'error':'working'}">${esc(r.status)}</span></td><td>${esc(r.created_by_email||'-')}</td><td>${action}</td></tr>`;
-      }).join(""):'<tr><td colspan="11" class="table-empty">ยังไม่มีประวัติการนำเข้า</td></tr>';
-    }catch(err){body.innerHTML=`<tr><td colspan="11" class="table-empty">${esc(app()?.humanError?.(err)||String(err))}</td></tr>`}
+      let access;
+      try{
+        access=await rpc(
+          'ta_get_work_pattern_parameter_access_v657',
+          {}
+        );
+      }catch(error){
+        access=await rpc(
+          'ta_get_work_pattern_parameter_access_v656',
+          {}
+        );
+      }
+
+      wp.canViewParameters=
+        access?.can_view_parameters===true
+        || access?.can_manage_parameters===true;
+
+      wp.canManageParameters=
+        access?.can_manage_parameters===true;
+
+      wp.parameterAccessLoaded=true;
+    }catch(error){
+      wp.parameterAccessLoaded=true;
+
+      const hrFallback =
+        effectiveWorkPatternRole() ===
+        'HR_ADMIN';
+
+      wp.canViewParameters =
+        hrFallback;
+
+      wp.canManageParameters =
+        hrFallback;
+
+      if(hrFallback){
+        console.warn(
+          'Work Pattern parameter access helper unavailable; using HR Admin UI fallback',
+          error
+        );
+      }
+    }
+
+    applyWorkPatternParameterVisibility();
+    return wp.canViewParameters;
   }
 
-  function init(){
-    $("mobiletaPreviewBtn")?.addEventListener("click",parseFile);$("mobiletaImportBtn")?.addEventListener("click",runImport);$("mobiletaResetBtn")?.addEventListener("click",reset);$("mobiletaDownloadErrorsBtn")?.addEventListener("click",downloadErrors);$("mobiletaRefreshHistoryBtn")?.addEventListener("click",loadHistory);$("mobiletaFile")?.addEventListener("change",()=>{state.rows=[];state.errors=[];state.stats=null;$("mobiletaImportBtn").disabled=true;status($("mobiletaFile")?.files?.[0]?.name||"ยังไม่ได้เลือกไฟล์","neutral")});
-    document.addEventListener("click",event=>{const btn=event.target.closest?.("[data-mobileta-resume]");if(!btn)return;event.preventDefault();resumeBatch(btn.dataset.mobiletaResume)});
-    document.querySelectorAll('[data-page="admin-time-import"]').forEach(b=>b.addEventListener("click",()=>{setTimeout(()=>{setText("pageTitle","นำเข้าข้อมูลลงเวลา");setText("pageSubtitle","นำเข้า Text File MobileTA ตรวจข้อมูลซ้ำ และประมวลผล Attendance");loadHistory()},0)}));
-    document.querySelectorAll('[data-admin-open="admin-time-import"]').forEach(b=>b.addEventListener("click",()=>{setTimeout(()=>{setText("pageTitle","นำเข้าข้อมูลลงเวลา");setText("pageSubtitle","นำเข้า Text File MobileTA ตรวจข้อมูลซ้ำ และประมวลผล Attendance");loadHistory()},0)}));
-    window.TimeClockMobileTAImport={loadHistory,parseFile,resumeBatch,version:VERSION};
+  async function loadWorkPatterns(){
+    const patternBody =
+      $('workPatternBody');
+
+    const templateBox =
+      $('workTemplateCards');
+
+    if(patternBody){
+      patternBody.innerHTML =
+        '<tr><td colspan="9" class="table-empty">กำลังโหลดรูปแบบการทำงาน...</td></tr>';
+    }
+
+    if(templateBox){
+      templateBox.innerHTML =
+        '<div class="work-pattern-runtime-state">กำลังโหลด Template รูปแบบการทำงาน...</div>';
+    }
+
+    if(!client()){
+      const message =
+        'Supabase Client ยังไม่พร้อม';
+
+      if(patternBody){
+        patternBody.innerHTML =
+          `<tr><td colspan="9" class="table-empty">${esc(message)}</td></tr>`;
+      }
+
+      if(templateBox){
+        templateBox.innerHTML =
+          `<div class="work-pattern-runtime-state error">${esc(message)}</div>`;
+      }
+
+      return;
+    }
+
+    ensureWpModals();
+    await loadWorkPatternParameterAccess();
+
+    try{
+      const [patterns,templates]=await Promise.all([
+        rpc('ta_get_work_patterns'),
+        rpc('ta_get_work_templates')
+      ]);
+
+      wp.patterns=patterns||[];
+      wp.templates=templates||[];
+
+      renderPatterns();
+      renderTemplates();
+      fillPatternOptions();
+
+    }catch(e){
+      const message =
+        app()?.humanError?.(e)
+        || e.message
+        || String(e);
+
+      if(patternBody){
+        patternBody.innerHTML =
+          `<tr><td colspan="9" class="table-empty">${esc(message)}</td></tr>`;
+      }
+
+      if(templateBox){
+        templateBox.innerHTML =
+          `<div class="work-pattern-runtime-state error">${esc(message)}</div>`;
+      }
+
+      app()?.toast?.(
+        message,
+        'error'
+      );
+    }
   }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+  function renderPatterns(){
+    applyWorkPatternParameterVisibility();
+    const body=$('workPatternBody');
+    if(!body)return;
+    if(!canViewWorkPatternParameters()){
+      body.innerHTML='';
+      return;
+    }
+    body.innerHTML=wp.patterns.length?wp.patterns.map(r=>`<tr><td><strong>${esc(r.pattern_code)}</strong></td><td>${esc(r.pattern_name)}</td><td>${r.work_days_per_week}</td><td>${hours(r.scheduled_minutes_including_break)} ชม.</td><td>${hours(r.ot_threshold_minutes)} ชม.</td><td>${esc(dowText(r.weekly_off_dows))}</td><td>${r.carry_forward_months} เดือน</td><td><span class="fc-badge ${r.is_active?'active':'danger'}">${r.is_active?'ใช้งาน':'ปิด'}</span></td><td>${canManageWorkPatternParameters()?`<button class="btn btn-light btn-sm" data-edit-pattern="${esc(r.pattern_code)}">แก้ไข</button>`:'-'}</td></tr>`).join(''):'<tr><td colspan="9" class="table-empty">ไม่พบข้อมูล</td></tr>';
+  }
+  function renderTemplates(){
+    const box=$('workTemplateCards');if(!box)return;
+    const findCode=code=>wp.templates.find(t=>String(t.template_code||'').toUpperCase()===code);
+    const normal6=findCode('SINGLE_0830_1730');
+    const normal5=findCode('SINGLE_0830_1800');
+    const late=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='NORMAL_LATE_CUSTOMER');
+    const early=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='EARLY_SHIFT_CUSTOMER');
+
+    const formatSegments=t=>(t?.segments||[]).map(s=>({
+      type:String(s.segment_type||'WORK').toUpperCase(),
+      start:s.planned_start_time?String(s.planned_start_time).slice(0,5):'ยืดหยุ่น',
+      end:s.planned_end_time?String(s.planned_end_time).slice(0,5):'ไม่กำหนด'
+    }));
+
+    const cards=[
+      {
+        badge:'NORMAL',
+        title:'กะปกติ',
+        code:'เลือกอัตโนมัติตามรูปแบบ 5/6 วัน',
+        note:'TECH_6D ใช้ 08:30–17:30 • TECH_5D ใช้ 08:30–18:00',
+        segments:[
+          {type:'TECH_6D',start:'08:30',end:'17:30'},
+          {type:'TECH_5D',start:'08:30',end:'18:00'}
+        ],
+        ready:!!normal6&&!!normal5
+      },
+      {
+        badge:late?.template_type||'FLEX',
+        title:'กะปกติ + งานลูกค้าช่วงดึก',
+        code:late?.template_code||'ยังไม่พบ Template',
+        note:'กะปกติ ตามด้วยช่วงรอคอย และงานลูกค้าช่วงดึก',
+        segments:formatSegments(late),
+        ready:!!late
+      },
+      {
+        badge:early?.template_type||'FLEX',
+        title:'ออกกะแรกก่อนเวลา + งานลูกค้า',
+        code:early?.template_code||'ยังไม่พบ Template',
+        note:'ออกกะแรกก่อนเวลา ตามด้วยช่วงรอคอย และงานลูกค้า',
+        segments:formatSegments(early),
+        ready:!!early
+      }
+    ];
+
+    box.innerHTML=cards.map(card=>`<article class="work-template-card ${card.ready?'':'template-missing'}">
+      <div>
+        <span class="fc-badge ${card.ready?'active':'danger'}">${esc(card.badge)}</span>
+        <h3>${esc(card.title)}</h3>
+        <small>${esc(card.code)}</small>
+      </div>
+      <p>${esc(card.note)}</p>
+      <div class="work-template-segments">
+        ${card.segments.length?card.segments.map(s=>`<span class="segment-${String(s.type).toLowerCase()}"><b>${esc(s.type)}</b> ${esc(s.start)}–${esc(s.end)}</span>`).join(''):'<span class="segment-waiting"><b>ตรวจสอบ</b> ยังไม่พบ Template ในฐานข้อมูล</span>'}
+      </div>
+    </article>`).join('');
+  }
+  const EMPLOYEE_TEMPLATE_LABELS={
+    NORMAL:'กะปกติ',
+    NORMAL_LATE_CUSTOMER:'กะปกติ + งานลูกค้าช่วงดึก',
+    EARLY_SHIFT_CUSTOMER:'ออกกะแรกก่อนเวลา + งานลูกค้า'
+  };
+  function employeeTemplateCategory(templateCode){
+    const code=String(templateCode||'').toUpperCase();
+    const t=wp.templates.find(x=>String(x.template_code||'').toUpperCase()===code);
+    const text=`${t?.template_name||''} ${t?.note||''} ${code}`.toLowerCase();
+    if(text.includes('ออกกะแรกก่อนเวลา')||code.includes('EARLY'))return 'EARLY_SHIFT_CUSTOMER';
+    if((text.includes('งานลูกค้าช่วงดึก')||code.includes('LATE')||code.includes('NIGHT'))&&!text.includes('ออกกะแรก'))return 'NORMAL_LATE_CUSTOMER';
+    if(code==='SINGLE_0830_1730'||code==='SINGLE_0830_1800'||text.includes('กะเดียว'))return 'NORMAL';
+    return '';
+  }
+  function localEmployeeTemplateOptions(patternCode){
+    const normalCode=patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730';
+    const late=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='NORMAL_LATE_CUSTOMER');
+    const early=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='EARLY_SHIFT_CUSTOMER');
+    return [
+      {category_code:'NORMAL',category_name:EMPLOYEE_TEMPLATE_LABELS.NORMAL,template_code:normalCode,display_order:1},
+      {category_code:'NORMAL_LATE_CUSTOMER',category_name:EMPLOYEE_TEMPLATE_LABELS.NORMAL_LATE_CUSTOMER,template_code:late?.template_code||'',display_order:2},
+      {category_code:'EARLY_SHIFT_CUSTOMER',category_name:EMPLOYEE_TEMPLATE_LABELS.EARLY_SHIFT_CUSTOMER,template_code:early?.template_code||'',display_order:3}
+    ];
+  }
+  async function loadEmployeeTemplateOptions(patternCode,selectedCode=null){
+    const select=$('epTemplate');if(!select)return;
+    let options=[];
+    try{
+      options=await rpc('ta_get_employee_template_options_v655',{p_pattern_code:patternCode})||[];
+    }catch(e){
+      options=localEmployeeTemplateOptions(patternCode);
+    }
+    if(!options.length)options=localEmployeeTemplateOptions(patternCode);
+    options=[...options].sort((a,b)=>Number(a.display_order||0)-Number(b.display_order||0));
+    select.innerHTML=options.map(o=>`<option value="${esc(o.template_code||'')}" data-template-category="${esc(o.category_code)}" ${o.template_code?'':'disabled'}>${esc(o.category_name||EMPLOYEE_TEMPLATE_LABELS[o.category_code]||o.template_name||o.template_code||'ยังไม่พบ Template')}</option>`).join('');
+    let target=options.find(o=>String(o.template_code)===String(selectedCode));
+    if(!target&&selectedCode){
+      const category=employeeTemplateCategory(selectedCode);
+      target=options.find(o=>o.category_code===category);
+    }
+    if(!target)target=options.find(o=>o.category_code==='NORMAL'&&o.template_code)||options.find(o=>o.template_code);
+    if(target?.template_code)select.value=target.template_code;
+  }
+  function employeeTemplateLabel(templateCode){
+    const category=employeeTemplateCategory(templateCode);
+    return EMPLOYEE_TEMPLATE_LABELS[category]||templateCode||'-';
+  }
+  function fillPatternOptions(){const pOpts=wp.patterns.filter(x=>x.is_active).map(x=>`<option value="${esc(x.pattern_code)}">${esc(x.pattern_name)}</option>`).join('');const tOpts=wp.templates.filter(x=>x.is_active).map(x=>`<option value="${esc(x.template_code)}">${esc(x.template_name)}</option>`).join('');if($('epPattern'))$('epPattern').innerHTML=pOpts;if($('epTemplate'))$('epTemplate').innerHTML='<option value="">เลือก Template</option>';if($('assignWorkTemplate'))$('assignWorkTemplate').innerHTML=tOpts;}
+  function openPattern(code){if(!canManageWorkPatternParameters()){app()?.toast?.('พารามิเตอร์รูปแบบการทำงานสำหรับ HR Admin เท่านั้น','error');return;}ensureWpModals();const r=wp.patterns.find(x=>x.pattern_code===code)||{pattern_code:'',pattern_name:'',work_days_per_week:6,scheduled_minutes_including_break:540,ot_threshold_minutes:540,break_minutes:60,default_start_time:'08:30',default_end_time:'17:30',weekly_off_dows:[0],carry_forward_months:3,is_active:true,note:''};wp.editing=r;$('wpCode').value=r.pattern_code||'';$('wpCode').disabled=!!r.pattern_code;$('wpName').value=r.pattern_name||'';$('wpDays').value=r.work_days_per_week||6;$('wpScheduled').value=r.scheduled_minutes_including_break||540;$('wpOt').value=r.ot_threshold_minutes||540;$('wpBreak').value=r.break_minutes||60;$('wpStart').value=String(r.default_start_time||'08:30').slice(0,5);$('wpEnd').value=String(r.default_end_time||'17:30').slice(0,5);$('wpCarry').value=r.carry_forward_months??3;$('wpActive').checked=r.is_active!==false;$('wpNote').value=r.note||'';qsa('[data-wp-dow]').forEach(c=>c.checked=(r.weekly_off_dows||[]).map(Number).includes(Number(c.dataset.wpDow)));$('workPatternModal').classList.remove('hidden');}
+  async function savePattern(){if(!canManageWorkPatternParameters()){app()?.toast?.('ไม่มีสิทธิ์แก้ไขพารามิเตอร์รูปแบบการทำงาน','error');return;}try{const weekly=qsa('[data-wp-dow]').filter(x=>x.checked).map(x=>Number(x.dataset.wpDow));if(!weekly.length)throw new Error('กรุณาเลือกวันหยุดตั้งต้นอย่างน้อย 1 วัน');await rpc('ta_upsert_work_pattern',{p_data:{pattern_code:$('wpCode').value,pattern_name:$('wpName').value,work_days_per_week:Number($('wpDays').value),scheduled_minutes_including_break:Number($('wpScheduled').value),standard_work_minutes:Number($('wpScheduled').value),break_minutes:Number($('wpBreak').value),ot_threshold_minutes:Number($('wpOt').value),weekly_off_dows:weekly,default_start_time:$('wpStart').value,default_end_time:$('wpEnd').value,allow_comp_off:true,carry_forward_months:Number($('wpCarry').value),is_active:$('wpActive').checked,note:$('wpNote').value}});$('workPatternModal').classList.add('hidden');app()?.toast?.('บันทึกรูปแบบการทำงานแล้ว','success');await loadWorkPatterns();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
+  async function loadEmployeePatterns(){
+    const body=$('employeePatternBody');if(!body)return;
+    body.innerHTML='<tr><td colspan="10" class="table-empty">กำลังโหลด...</td></tr>';
+    try{
+      const effectiveDate=$('employeePatternDate')?.value||new Date().toISOString().slice(0,10);
+      const rows=await rpc('ta_get_employee_pattern_assignments',{
+        p_search:$('employeePatternSearch')?.value||null,
+        p_effective_date:effectiveDate,
+        p_limit:1000
+      })||[];
+      let positions=[];
+      if(rows.length){
+        try{
+          positions=await rpc('ta_get_employee_positions_v655',{
+            p_emp_codes:rows.map(r=>r.emp_code),
+            p_effective_date:effectiveDate
+          })||[];
+        }catch(e){}
+      }
+      const positionMap=new Map(positions.map(p=>[String(p.emp_code),p.position_name]));
+      wp.employees=rows.map(r=>({
+        ...r,
+        position_name:r.position_name||positionMap.get(String(r.emp_code))||'-'
+      }));
+      body.innerHTML=wp.employees.length?wp.employees.map(r=>`<tr><td><strong>${esc(r.emp_code)}</strong></td><td>${esc(r.full_name||'-')}</td><td>${esc(r.department||'-')}</td><td>${esc(r.position_name||'-')}</td><td>${esc([r.area,r.sub_area].filter(Boolean).join(' / ')||'-')}</td><td>${esc(r.pattern_name||r.pattern_code)}</td><td>${esc(dowText(r.weekly_off_dows))}</td><td>${esc(employeeTemplateLabel(r.default_template_code||(r.pattern_code==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730')))}</td><td>${fmtDate(r.effective_from)||'-'}</td><td><button class="btn btn-light btn-sm" data-assign-pattern="${esc(r.emp_code)}">กำหนด</button></td></tr>`).join(''):'<tr><td colspan="10" class="table-empty">ไม่พบพนักงานใน Scope</td></tr>';
+    }catch(e){
+      const message =
+        app()?.humanError?.(e)
+        || e.message
+        || String(e);
+
+      body.innerHTML =
+        `<tr><td colspan="10" class="table-empty">${esc(message)}</td></tr>`;
+
+      app()?.toast?.(
+        message,
+        'error'
+      );
+    }
+  }
+  async function openEmployeePattern(emp){
+    ensureWpModals();
+    const r=wp.employees.find(x=>String(x.emp_code)===String(emp));if(!r)return;
+    $('epEmpCode').value=r.emp_code;
+    $('epEmployee').innerHTML=`<strong>${esc(r.emp_code)} • ${esc(r.full_name||'')}</strong><small>${esc([r.department,r.position_name].filter(Boolean).join(' • ')||'-')}</small>`;
+    const patternCode=r.pattern_code||'TECH_6D';
+    $('epPattern').value=patternCode;
+    $('epFrom').value=new Date().toISOString().slice(0,10);
+    $('epTo').value='';
+    $('epNote').value='';
+    $('employeePatternModal').classList.remove('hidden');
+    await loadEmployeeTemplateOptions(
+      patternCode,
+      r.default_template_code||(patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730')
+    );
+  }
+  async function saveEmployeePattern(){
+    try{
+      if(!$('epTemplate').value){
+        app()?.toast?.('ไม่พบ Template ที่พร้อมใช้งาน','error');
+        return;
+      }
+      await rpc('ta_assign_employee_work_pattern',{
+        p_emp_code:$('epEmpCode').value,
+        p_pattern_code:$('epPattern').value,
+        p_effective_from:$('epFrom').value,
+        p_effective_to:$('epTo').value||null,
+        p_override_weekly_off_dows:null,
+        p_default_template_code:$('epTemplate').value,
+        p_note:$('epNote').value||null
+      });
+      $('employeePatternModal').classList.add('hidden');
+      app()?.toast?.('กำหนดรูปแบบรายบุคคลแล้ว','success');
+      await loadEmployeePatterns();
+    }catch(e){
+      app()?.toast?.(e.message||String(e),'error');
+    }
+  }
+
+  async function loadDailyPlanForModal(){const modal=$('assignModal');if(!modal||modal.classList.contains('hidden'))return;const emp=$('assignEmpCode')?.value,date=$('assignWorkDate')?.value;if(!emp||!date)return;const pattern=$('assignWorkTemplate')?.dataset?.patternCode||$('assignShiftCode')?.dataset?.patternCode||'TECH_6D';const fallback=pattern==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730';try{const plan=await rpc('ta_get_daily_work_plan',{p_emp_code:emp,p_work_date:date});const target=plan?.template_code||fallback;if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===target))$('assignWorkTemplate').value=target;$('assignCustomerStart').value=plan?.customer_window_start?String(plan.customer_window_start).slice(0,5):'22:00';$('assignCustomerEnd').value=plan?.customer_window_end?String(plan.customer_window_end).slice(0,5):'';toggleCustomerWindow();}catch(e){if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===fallback))$('assignWorkTemplate').value=fallback;toggleCustomerWindow();}}
+  function toggleCustomerWindow(){const code=$('assignWorkTemplate')?.value||'';const flexible=!code.startsWith('SINGLE_');$('assignCustomerWindowRow')?.classList.toggle('hidden',!flexible);}
+  async function saveDailyPlanAfterShift(){const modal=$('assignModal');if(!modal||!modal.classList.contains('hidden'))return;const emp=$('assignEmpCode')?.value,date=$('assignWorkDate')?.value,template=$('assignWorkTemplate')?.value;if(!emp||!date||!template)return;try{await rpc('ta_save_daily_work_plan',{p_emp_code:emp,p_work_date:date,p_template_code:template,p_customer_window_start:$('assignCustomerStart')?.value||null,p_customer_window_end:$('assignCustomerEnd')?.value||null,p_status:$('assignConfirm')?.value==='true'?'CONFIRMED':'PLANNED',p_note:$('assignNote')?.value||null});}catch(e){app()?.toast?.(`บันทึกกะสำเร็จ แต่บันทึกรูปแบบช่วงงานไม่สำเร็จ: ${e.message||e}`,'error');}}
+
+  function bindV620(){
+    ensureWpModals();
+    $('timeCsvPreviewBtn')?.addEventListener('click',inspectCsv);$('timeCsvImportBtn')?.addEventListener('click',runCsvImport);$('timeCsvResetBtn')?.addEventListener('click',resetCsv);$('timeCsvTemplateBtn')?.addEventListener('click',downloadCsvTemplate);$('timeCsvDownloadErrorsBtn')?.addEventListener('click',downloadCsvErrors);$('timeCsvRefreshHistoryBtn')?.addEventListener('click',loadCsvHistory);$('timeCsvFile')?.addEventListener('change',()=>csvStatus($('timeCsvFile')?.files?.[0]?.name||'ยังไม่ได้เลือกไฟล์','neutral'));
+    $('workPatternRefreshBtn')?.addEventListener('click',async()=>{await loadWorkPatterns();await loadEmployeePatterns();});$('workPatternNewBtn')?.addEventListener('click',()=>openPattern(null));$('employeePatternLoadBtn')?.addEventListener('click',loadEmployeePatterns);$('employeePatternSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')loadEmployeePatterns();});$('epPattern')?.addEventListener('change',()=>loadEmployeeTemplateOptions($('epPattern').value,null));
+    document.addEventListener('click',e=>{const edit=e.target.closest('[data-edit-pattern]');if(edit&&canManageWorkPatternParameters())openPattern(edit.dataset.editPattern);const assign=e.target.closest('[data-assign-pattern]');if(assign)openEmployeePattern(assign.dataset.assignPattern);});
+    $('assignWorkTemplate')?.addEventListener('change',toggleCustomerWindow);
+    const assignModal=$('assignModal');if(assignModal)new MutationObserver(()=>{if(!assignModal.classList.contains('hidden'))setTimeout(loadDailyPlanForModal,30);}).observe(assignModal,{attributes:true,attributeFilter:['class']});
+    $('saveAssignmentBtn')?.addEventListener('click',()=>setTimeout(saveDailyPlanAfterShift,900));
+    $('deleteAssignmentBtn')?.addEventListener('click',()=>{const emp=$('assignEmpCode')?.value,date=$('assignWorkDate')?.value;setTimeout(async()=>{if($('assignModal')?.classList.contains('hidden')&&emp&&date){try{await rpc('ta_delete_daily_work_plan',{p_emp_code:emp,p_work_date:date});}catch(e){}}},900);});
+    const today=new Date().toISOString().slice(0,10);if($('employeePatternDate'))$('employeePatternDate').value=today;
+    applyWorkPatternParameterVisibility();
+    document.addEventListener(
+      'timeclock:effective-role-changed',
+      async () => {
+        applyWorkPatternParameterVisibility();
+
+        if(
+          app()?.state?.currentPage ===
+          'work-patterns'
+        ){
+          await loadWorkPatterns();
+          await loadEmployeePatterns();
+        }
+      }
+    );
+
+    window.addEventListener(
+      'ta:session-ready',
+      async () => {
+        if(
+          app()?.state?.currentPage ===
+          'work-patterns'
+        ){
+          await loadWorkPatterns();
+          await loadEmployeePatterns();
+        }
+
+        if(
+          app()?.state?.currentPage ===
+          'admin-time-import'
+        ){
+          await loadCsvHistory();
+        }
+      }
+    );
+  }
+
+  async function loadWorkPatternWorkspace(){
+    await loadWorkPatterns();
+    await loadEmployeePatterns();
+  }
+
+  async function loadCsvImportWorkspace(){
+    await loadCsvHistory();
+  }
+
+  window.TimeClockWorkPatterns = {
+    version:'6.11.6',
+    load:loadWorkPatternWorkspace,
+    loadPatterns:loadWorkPatterns,
+    loadEmployees:loadEmployeePatterns
+  };
+
+  window.TimeClockCsvImport = {
+    version:'6.11.6',
+    load:loadCsvImportWorkspace,
+    loadHistory:loadCsvHistory,
+    inspect:inspectCsv,
+    runImport:runCsvImport,
+    reset:resetCsv
+  };
+
+  document.documentElement.dataset.csvImportModule =
+    '6.11.6-ready';
+
+  document.documentElement.dataset.workPatternModule =
+    '6.11.6-ready';
+
+  document.readyState==='loading'
+    ? document.addEventListener(
+        'DOMContentLoaded',
+        bindV620
+      )
+    : bindV620();
 })();
 
 ;
@@ -16401,12 +16639,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.5 System Period Management ===== */
+/* ===== V6.11.6 System Period Management ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.5";
+    "6.11.6";
 
   const app = () =>
     window.TimeClockApp;
@@ -17503,11 +17741,11 @@ ${skippedSummary(compatibility.skipped)}
 
     if(!modal){
       console.error(
-        "V6.11.5: systemPeriodModal not found"
+        "V6.11.6: systemPeriodModal not found"
       );
 
       app()?.toast?.(
-        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.5",
+        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.6",
         "error"
       );
 
@@ -17615,11 +17853,11 @@ ${skippedSummary(compatibility.skipped)}
       || !noteInput
     ){
       console.error(
-        "V6.11.5: System Period modal fields incomplete"
+        "V6.11.6: System Period modal fields incomplete"
       );
 
       app()?.toast?.(
-        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.5 ใหม่ทั้งหมด",
+        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.6 ใหม่ทั้งหมด",
         "error"
       );
 
@@ -19040,7 +19278,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   document.documentElement.dataset.systemPeriodModule =
-    "6.11.5-ready";
+    "6.11.6-ready";
 
   window.TimeClockSystemPeriods={
     VERSION,
