@@ -10170,3 +10170,114 @@ body.theme-dark .work-pattern-runtime-state.error,
   background:#2a1b1e;
   color:#e1a2aa;
 }
+
+
+/* ==========================================================================
+   V6.11.8 Work Pattern -> Schedule -> Attendance Linkage
+   ========================================================================== */
+
+.schedule-shift-segments-v6118{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  width:100%;
+  margin-top:1px;
+}
+
+.schedule-shift-segments-v6118 small{
+  display:grid!important;
+  grid-template-columns:auto 1fr;
+  align-items:center;
+  gap:4px;
+  width:100%;
+  min-width:0;
+  margin:0!important;
+  font-size:7.4px!important;
+  line-height:1.25!important;
+  opacity:.96!important;
+}
+
+.schedule-shift-segments-v6118 small b{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:31px;
+  padding:1px 3px;
+  border-radius:5px;
+  background:rgba(255,255,255,.62);
+  font-size:6.8px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.schedule-shift-segments-v6118 small span{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-weight:800;
+}
+
+.weekly-schedule-table
+.schedule-cell.has-split-work-v6118{
+  min-height:50px!important;
+  padding-top:4px!important;
+  padding-bottom:4px!important;
+}
+
+.attendance-work-segment-lines{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:138px;
+}
+
+.attendance-work-segment-lines span{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  white-space:nowrap;
+}
+
+.attendance-work-segment-lines b{
+  display:inline-flex;
+  min-width:36px;
+  padding:2px 4px;
+  border-radius:5px;
+  background:#eaf3ff;
+  color:#245b91;
+  font-size:7.5px;
+  font-weight:900;
+}
+
+.attendance-work-segment-lines em{
+  font-style:normal;
+  color:#425c75;
+  font-size:8.5px;
+  font-weight:750;
+}
+
+.work-segment-empty{
+  color:#98a5b2;
+}
+
+body.theme-dark
+.schedule-shift-segments-v6118 small b,
+.dark
+.schedule-shift-segments-v6118 small b{
+  background:rgba(255,255,255,.1);
+}
+
+body.theme-dark
+.attendance-work-segment-lines b,
+.dark
+.attendance-work-segment-lines b{
+  background:#173453;
+  color:#bedcff;
+}
+
+body.theme-dark
+.attendance-work-segment-lines em,
+.dark
+.attendance-work-segment-lines em{
+  color:#c1cfdd;
+}
