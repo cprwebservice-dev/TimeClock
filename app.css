@@ -8851,3 +8851,120 @@ body.theme-dark .sidebar-collapse-btn{
 }
 
 .schedule-load-status{margin:10px 0 0;padding:10px 13px;border:1px solid #d7e0eb;border-radius:11px;font-size:11.5px;font-weight:650;line-height:1.5}.schedule-load-status.hidden{display:none!important}.schedule-load-status.loading{border-color:#b9d3f0;background:#f1f7fd;color:#245f99}.schedule-load-status.success{border-color:#b9e2cb;background:#f1fbf5;color:#23764a}.schedule-load-status.warning{border-color:#f1d79a;background:#fff9eb;color:#976307}.schedule-load-status.error{border-color:#efc0c5;background:#fff2f3;color:#b4232c}#loadScheduleBtn[aria-busy="true"]{cursor:wait;opacity:.75}
+
+
+/* ==========================================================================
+   V6.10.25 Schedule Start Date / Position / Pre-employment Guard
+   ========================================================================== */
+
+.enterprise-schedule-table .sticky-col-1{
+  left:0!important;
+}
+
+.enterprise-schedule-table .sticky-col-2{
+  left:92px!important;
+  box-shadow:none!important;
+}
+
+.enterprise-schedule-table .sticky-col-3{
+  position:sticky;
+  left:302px;
+  z-index:5;
+  background:#fff;
+}
+
+.enterprise-schedule-table .sticky-col-4{
+  position:sticky;
+  left:418px;
+  z-index:5;
+  background:#fff;
+  box-shadow:7px 0 10px -10px rgba(15,23,42,.45);
+}
+
+.enterprise-schedule-table thead .sticky-col-3,
+.enterprise-schedule-table thead .sticky-col-4{
+  z-index:9;
+  background:#eaf1fa;
+}
+
+.enterprise-schedule-table tbody tr:hover .sticky-col-3,
+.enterprise-schedule-table tbody tr:hover .sticky-col-4{
+  background:#f8fbff;
+}
+
+.schedule-emp-start-date{
+  min-width:116px;
+  text-align:center;
+  font-size:10px!important;
+  font-weight:750;
+  color:#45566d;
+}
+
+.schedule-emp-position{
+  min-width:180px;
+  max-width:180px;
+  padding:8px 10px!important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:10px!important;
+  color:#45566d;
+}
+
+.pre-employment-day{
+  cursor:not-allowed!important;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #f8fafc,
+      #f8fafc 5px,
+      #f1f5f9 5px,
+      #f1f5f9 10px
+    )!important;
+}
+
+.pre-employment-cell{
+  width:auto!important;
+  min-width:42px;
+  padding:0 5px;
+  background:transparent!important;
+  color:#94a3b8!important;
+  font-size:7.5px!important;
+  font-weight:750!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+
+body.theme-dark .enterprise-schedule-table .sticky-col-3,
+body.theme-dark .enterprise-schedule-table .sticky-col-4{
+  background:#111c2d;
+}
+
+body.theme-dark .enterprise-schedule-table thead .sticky-col-3,
+body.theme-dark .enterprise-schedule-table thead .sticky-col-4{
+  background:#17263b;
+}
+
+body.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+body.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-4{
+  background:#152338;
+}
+
+body.theme-dark .schedule-emp-start-date,
+body.theme-dark .schedule-emp-position{
+  color:#cbd5e1;
+}
+
+body.theme-dark .pre-employment-day{
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      #101827,
+      #101827 5px,
+      #162033 5px,
+      #162033 10px
+    )!important;
+}
+
+body.theme-dark .pre-employment-cell{
+  color:#708097!important;
+}

@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.10.24";
-document.documentElement.dataset.timeClockBuild = "6.10.24";
+window.__TIME_CLOCK_BUILD__ = "V6.10.25";
+document.documentElement.dataset.timeClockBuild = "6.10.25";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.10.24";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.10.24',
+  version: '6.10.25',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.24 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.25 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.24 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.10.25 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -424,6 +424,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     const fields = [
+      "start_date",
       "position_name",
       "department",
       "area",
@@ -654,7 +655,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.24"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.10.25"
         );
       }
 
@@ -1481,7 +1482,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.24"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.25"
           );
         }
 
@@ -2188,7 +2189,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.24"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.10.25"
             );
           }
 
@@ -3799,9 +3800,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d.getDate()}</span><small>${thaiDays[dow]} ${thaiMonths[d.getMonth()]}${meta.holiday?" • หยุด":""}</small></th>`;
       }).join("");
 
-      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th>${headDays}</tr></thead><tbody>`;
+      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head" style="min-width:92px">รหัส</th><th class="sticky-col-2 schedule-name-head" style="min-width:210px">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-start-head" style="min-width:116px">วันเริ่มงาน</th><th class="sticky-col-4 schedule-position-head" style="min-width:180px">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
 
-      if (!map.size) html += emptyRow(period.dates.length + 2);
+      if (!map.size) html += emptyRow(period.dates.length + 4);
 
       const today = todayISO();
 
@@ -3826,10 +3827,34 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           ? "schedule-name-missing"
           : "";
 
-        html += `<tr data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><div class="schedule-name-line"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td>`;
+        const employeeStartDate =
+          String(
+            obj.meta.start_date
+            || ""
+          ).slice(0,10);
+
+        const employeePosition =
+          String(
+            obj.meta.position_name
+            || ""
+          ).trim();
+
+        html += `<tr data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}"><td class="sticky-col-1 schedule-emp-code" data-select-emp="${safe(emp)}" title="เลือกทั้งแถว">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" data-select-emp="${safe(emp)}"><div class="schedule-name-line"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-start-date">${safe(formatDate(employeeStartDate))}</td><td class="sticky-col-4 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
+
+          const beforeEmployment =
+            Boolean(
+              employeeStartDate
+              && date < employeeStartDate
+            );
+
+          if (beforeEmployment) {
+            html += `<td class="day-col empty-schedule-day pre-employment-day" title="ก่อนวันเริ่มงาน ${safe(formatDate(employeeStartDate))}"><span class="schedule-cell disabled pre-employment-cell">ยังไม่เริ่ม</span></td>`;
+            continue;
+          }
+
           if (!r) {
             html += `<td class="day-col empty-schedule-day"><span class="schedule-cell disabled">-</span></td>`;
             continue;
@@ -5790,11 +5815,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.24 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.10.25 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SHIFT_BEFORE_EMPLOYEE_START_DATE")) return "ไม่สามารถกำหนดกะก่อนวันเริ่มงานของพนักงานได้ กรุณาเลือกวันที่ตั้งแต่วันเริ่มงานเป็นต้นไป";
       if (msg.includes("SHIFT_NOT_APPLICABLE_TO_WORK_PATTERN")) return "กะที่เลือกไม่รองรับรูปแบบการทำงาน 5 วัน/6 วันของพนักงาน กรุณาเลือกกะให้ตรงกลุ่ม";
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
@@ -8743,7 +8769,7 @@ ${skippedSummary(compatibility.skipped)}
   function openPatternModal(){if(!selectedScheduleCells().length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");$("schedulePatternModal")?.classList.remove("hidden");}
   async function applyPattern(){const patterns={};qsa("[data-pattern-dow]").forEach(s=>patterns[Number(s.dataset.patternDow)]=s.value);const payload=selectedCellMeta().map(x=>({emp_code:x.emp,work_date:x.date,shift_code:patterns[new Date(`${x.date}T00:00:00`).getDay()]||"D",note:"รูปแบบกะ 7 วัน"}));$("schedulePatternModal")?.classList.add("hidden");await saveSchedulePayload(payload,"กำหนดรูปแบบกะ 7 วัน");}
   async function copyPreviousWeek(){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่องปลายทางก่อน","error");const payload=items.map(x=>{const d=new Date(`${x.date}T00:00:00`);d.setDate(d.getDate()-7);const sourceDate=d.toISOString().slice(0,10);const source=rowAt(x.emp,sourceDate);return {emp_code:x.emp,work_date:x.date,shift_code:codeOf(source)||"D",note:`คัดลอกจาก ${sourceDate}`};});await saveSchedulePayload(payload,"คัดลอกกะจากสัปดาห์ก่อน");}
-  function scheduleExportRows(){const rows=app()?.state?.schedule||[];return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","กะอัตโนมัติ","กะที่กำหนด","กะใช้งาน","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ"],...rows.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.day_type||"WORKDAY",r.auto_shift_code||"",r.assigned_shift_code||"",codeOf(r)||"",r.schedule_status||"",r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time)])];}
+  function scheduleExportRows(){const rows=app()?.state?.schedule||[];return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","วันเริ่มงาน","ตำแหน่ง","หน่วยงาน","พื้นที่","ประเภทวัน","กะอัตโนมัติ","กะที่กำหนด","กะใช้งาน","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ"],...rows.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,fmtDate(r.start_date),r.position_name||"",r.department,r.zone||r.area,r.day_type||"WORKDAY",r.auto_shift_code||"",r.assigned_shift_code||"",codeOf(r)||"",r.schedule_status||"",r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time)])];}
   function exportSchedule(format){const rows=scheduleExportRows();if(rows.length<=1)return app()?.toast("ไม่มีข้อมูลตารางกะ","error");const period=window.TimeClockSchedulePeriod?.range?.()||{};const name=`${period.startDate||$("scheduleMonth")?.value}_${period.endDate||""}`;format==="excel"?exportExcel(`Schedule_${name}.xls`,rows,`ตารางจัดกะ ${name}`):printRows(rows,`ตารางจัดกะ ${name}`,`สถานะเดือน ${scheduleMonthStatus.status}`);}
   async function loadScheduleStatus(){if(!$("scheduleMonth")?.value)return;try{scheduleMonthStatus=await rpc("ta_get_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null})||{status:"DRAFT"};}catch(e){scheduleMonthStatus={status:"DRAFT"};}renderScheduleStatus();}
   function renderScheduleStatus(){const s=scheduleMonthStatus.status||"DRAFT",chip=$("scheduleMonthStatusChip");if(chip){chip.textContent=s;chip.className=`fc-chip status-${s}`;}if($("scheduleMonthStatusText"))$("scheduleMonthStatusText").textContent=s==="LOCKED"?"ตารางกะถูกล็อก":s==="PUBLISHED"?"ประกาศตารางกะแล้ว":"ตารางกะฉบับร่าง";if($("scheduleMonthStatusMeta"))$("scheduleMonthStatusMeta").textContent=scheduleMonthStatus.updated_at?`ปรับปรุง ${fmtDateTime(scheduleMonthStatus.updated_at)}${scheduleMonthStatus.published_by_email?` โดย ${scheduleMonthStatus.published_by_email}`:""}`:"ยังไม่ได้ประกาศ";if($("schedulePublishBtn"))$("schedulePublishBtn").textContent=s==="PUBLISHED"||s==="LOCKED"?"กลับเป็นฉบับร่าง":"ประกาศกะ";if($("scheduleLockBtn"))$("scheduleLockBtn").textContent=s==="LOCKED"?"ปลดล็อกเดือน":"ล็อกเดือน";qs("#page-schedule .schedule-workspace")?.classList.toggle("schedule-locked-overlay",s==="LOCKED");qsa("#scheduleTableWrap [data-schedule-cell]").forEach(c=>{c.classList.toggle("is-published",s==="PUBLISHED");c.classList.toggle("is-locked",s==="LOCKED");});}
