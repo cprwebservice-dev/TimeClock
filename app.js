@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.9";
-document.documentElement.dataset.timeClockBuild = "6.11.9";
+window.__TIME_CLOCK_BUILD__ = "V6.11.10";
+document.documentElement.dataset.timeClockBuild = "6.11.10";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.9',
+  version: '6.11.10',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.9 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.10 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.9 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.10 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.9"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.10"
         );
       }
 
@@ -1205,6 +1205,44 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       );
     }
 
+    function attendancePlannedCellV61110(
+      value,
+      shiftNo,
+      side,
+      row
+    ) {
+      const time =
+        workSegmentTimeV6118(
+          value
+        );
+
+      const isOpenShift2End =
+        shiftNo === 2
+        && side === "END"
+        && time === "-"
+        && Boolean(
+          row?.shift_2_planned_start_at
+        )
+        && String(
+          row?.effective_work_template_code
+          || row?.template_code
+          || ""
+        )
+          .trim()
+          .toUpperCase() ===
+          "SPLIT_FLEX";
+
+      if(isOpenShift2End) {
+        return `<span class="attendance-planned-open-v61110">ตามเวลาออก</span>`;
+      }
+
+      if(time === "-") {
+        return `<span class="attendance-punch-empty-v6119">-</span>`;
+      }
+
+      return `<span class="attendance-planned-value-v61110 shift-${shiftNo}"><b>${safe(time)}</b></span>`;
+    }
+
     function attendancePunchCellV6119(
       value,
       shiftNo,
@@ -1335,7 +1373,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         error
       } =
         await state.client.rpc(
-          "ta_get_attendance_shift_punch_meta_v6119",
+          "ta_get_attendance_shift_punch_meta_v61110",
           {
             p_start_date:
               startDate,
@@ -1354,7 +1392,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             error.message
             || ""
           ).includes(
-            "ta_get_attendance_shift_punch_meta_v6119"
+            "ta_get_attendance_shift_punch_meta_v61110"
           )
         ) {
           throw new Error(
@@ -1415,11 +1453,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         ["pattern_code","รูปแบบงาน",r => r.pattern_code],
         ["template_code","Template",r => normalizeTemplateCodeV665(r.template_code)],
         ["day_type","ประเภทวัน",r => attendanceLabel(r.day_type)],
-        ["shift_start","เวลาเริ่มกะ",r => formatTime(attendanceShiftTime(r,"start"))],
-        ["shift_end","เวลาสิ้นสุดกะ",r => formatTime(attendanceShiftTime(r,"end"))],
         ["shift_code","กะ",r => attendanceShiftCode(r)],
+        ["shift_1_start","เริ่มกะ กะที่ 1",r => workSegmentTimeV6118(r.shift_1_planned_start_at)],
+        ["shift_1_end","สิ้นสุดกะ กะที่ 1",r => workSegmentTimeV6118(r.shift_1_planned_end_at)],
         ["shift_1_in","เวลาเข้า กะที่ 1",r => workSegmentTimeV6118(r.shift_1_actual_in_at)],
         ["shift_1_out","เวลาออก กะที่ 1",r => workSegmentTimeV6118(r.shift_1_actual_out_at)],
+        ["shift_2_start","เริ่มกะ กะที่ 2",r => workSegmentTimeV6118(r.shift_2_planned_start_at)],
+        ["shift_2_end","สิ้นสุดกะ กะที่ 2",r => r.shift_2_planned_end_at ? workSegmentTimeV6118(r.shift_2_planned_end_at) : (r.shift_2_planned_start_at ? "ตามเวลาออก" : "-")],
         ["shift_2_in","เวลาเข้า กะที่ 2",r => workSegmentTimeV6118(r.shift_2_actual_in_at)],
         ["shift_2_out","เวลาออก กะที่ 2",r => workSegmentTimeV6118(r.shift_2_actual_out_at)],
         ["display_status","สถานะ",r => attendanceDisplayLabel(r)],
@@ -1749,7 +1789,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.9"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.10"
           );
         }
 
@@ -2456,7 +2496,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.9"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.10"
             );
           }
 
@@ -2999,12 +3039,64 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
     }
 
-    function fillShiftSelect(patternCode = null, selectedValue = null) {
+    function isNightShiftV61110(shift) {
+      return Boolean(
+        shift?.is_night_shift === true
+        || String(
+          shift?.shift_code
+          || ""
+        ).toUpperCase().startsWith("N")
+        || String(
+          shift?.shift_name
+          || ""
+        ).toLowerCase().includes("กลางคืน")
+        || String(
+          shift?.shift_name
+          || ""
+        ).toLowerCase().includes("กะดึก")
+      );
+    }
+
+    function fillShiftSelect(
+      patternCode = null,
+      selectedValue = null,
+      templateCode = null
+    ) {
       const select = $("assignShiftCode");
       if (!select) return;
-      const old = selectedValue || select.value;
+
+      const old =
+        selectedValue
+        || select.value;
+
+      const activeTemplate =
+        String(
+          templateCode
+          || $("assignWorkTemplate")
+            ?.dataset
+            ?.employeeDefaultTemplate
+          || $("assignWorkTemplate")
+            ?.value
+          || ""
+        )
+          .trim()
+          .toUpperCase();
+
+      const splitCustomer =
+        activeTemplate ===
+        "SPLIT_FLEX";
+
       const active = state.filters.shifts.filter(s => {
         if (s.is_active === false) return false;
+
+        if(
+          splitCustomer
+          && s.is_workday !== false
+          && isNightShiftV61110(s)
+        ) {
+          return false;
+        }
+
         if (!patternCode || s.is_workday === false) return true;
         return shiftPatternCodes(s).includes(patternCode);
       });
@@ -3919,11 +4011,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           <td data-att-col="pattern_code">${badge(r.pattern_code||"-","badge-blue")}</td>
           <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${safe(workTemplateLabelV6118(r.template_code))}</td>
           <td data-att-col="day_type">${safe(attendanceLabel(r.day_type||"-"))}</td>
-          <td data-att-col="shift_start" class="nowrap">${formatTime(attendanceShiftTime(r,"start"))}</td>
-          <td data-att-col="shift_end" class="nowrap">${formatTime(attendanceShiftTime(r,"end"))}</td>
           <td data-att-col="shift_code">${badge(code, shiftBadgeClass(code))}</td>
+          <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_start">${attendancePlannedCellV61110(r.shift_1_planned_start_at,1,"START",r)}</td>
+          <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_end">${attendancePlannedCellV61110(r.shift_1_planned_end_at,1,"END",r)}</td>
           <td class="attendance-punch-cell-v6119 shift-1" data-att-col="shift_1_in">${attendancePunchCellV6119(r.shift_1_actual_in_at,1,"IN")}</td>
           <td class="attendance-punch-cell-v6119 shift-1" data-att-col="shift_1_out">${attendancePunchCellV6119(r.shift_1_actual_out_at,1,"OUT")}</td>
+          <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_start">${attendancePlannedCellV61110(r.shift_2_planned_start_at,2,"START",r)}</td>
+          <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_end">${attendancePlannedCellV61110(r.shift_2_planned_end_at,2,"END",r)}</td>
           <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_in">${attendancePunchCellV6119(r.shift_2_actual_in_at,2,"IN")}</td>
           <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_out">${attendancePunchCellV6119(r.shift_2_actual_out_at,2,"OUT")}</td>
           <td data-att-col="display_status">${badge(attendanceDisplayLabel(r), statusBadgeClass(displayStatus))}</td>
@@ -3937,7 +4031,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           <td data-att-col="absence_minutes" class="text-right${optionalClass("absence_minutes")}">${formatNumber(attendanceAbsenceMinutes(r))}</td>
           <td data-att-col="comp_off_balance" class="text-right${optionalClass("comp_off_balance")}">${r.comp_off_earned?"ได้รับ":""}${r.comp_off_balance!=null?` ${formatNumber(r.comp_off_balance)}`:"-"}</td>
         </tr>`;
-      }).join("") : emptyRow(26);
+      }).join("") : emptyRow(28);
       document.dispatchEvent(new CustomEvent("timeclock:attendance-rendered", { detail: { count: state.attendance.length } }));
     }
 
@@ -4509,18 +4603,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               r.customer_window_end
             );
 
+          const customerEndLabel =
+            customerEnd !== "-"
+              ? customerEnd
+              : (
+                  r.work_plan_status
+                    ? "ตามเวลาออก"
+                    : "-"
+                );
+
           const splitWorkTemplate =
             effectiveWorkTemplate ===
               "SPLIT_FLEX"
             && showShiftTime
             && customerStart !== "-"
-            && customerEnd !== "-";
+            && customerEndLabel !== "-";
 
           const scheduleTimeHtml =
             splitWorkTemplate
               ? `<div class="schedule-shift-segments-v6118">
                   <small><b>กะที่ 1</b><span>${safe(shiftTimeLabel)}</span></small>
-                  <small><b>กะที่ 2</b><span>${safe(`${customerStart}–${customerEnd}`)}</span></small>
+                  <small><b>กะที่ 2</b><span>${safe(`${customerStart}–${customerEndLabel}`)}</span></small>
                 </div>`
               : (
                   shiftTimeLabel
@@ -4575,7 +4678,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             r.pattern_code,
             scheduleWorkTemplateLabelV6118(r),
             splitWorkTemplate
-              ? `กะที่ 2 ${customerStart}-${customerEnd}`
+              ? `กะที่ 2 ${customerStart}-${customerEndLabel}`
               : null,
             r.calculation_status,
             Number(r.overtime_minutes||0)>0 ? `OT ${(Number(r.overtime_minutes)/60).toFixed(1)} ชม.` : null,
@@ -4814,6 +4917,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       select.disabled =
         true;
 
+      fillShiftSelect(
+        patternCode,
+        $("assignShiftCode")?.value
+        || null,
+        target.template_code
+      );
+
       select.dispatchEvent(
         new Event(
           "change",
@@ -4884,8 +4994,18 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           ? val("assignCustomerStart")
           : null;
 
+      const customerEndMode =
+        splitTemplate
+          ? (
+              val("assignCustomerEndMode")
+              || "ACTUAL_OUT"
+            )
+          : "NONE";
+
       const customerEnd =
         splitTemplate
+        && customerEndMode ===
+          "FIXED"
           ? val("assignCustomerEnd")
           : null;
 
@@ -4901,13 +5021,23 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       if(
         splitTemplate
-        && (
-          !customerStart
-          || !customerEnd
-        )
+        && !customerStart
       ) {
         toast(
-          "กะปกติ + งานลูกค้าช่วงดึก ต้องระบุคาดว่าจะเริ่มงานลูกค้าและคาดว่าจะสิ้นสุด",
+          "กะปกติ + งานลูกค้าช่วงดึก ต้องระบุคาดว่าจะเริ่มงานลูกค้า",
+          "error"
+        );
+        return;
+      }
+
+      if(
+        splitTemplate
+        && customerEndMode ===
+          "FIXED"
+        && !customerEnd
+      ) {
+        toast(
+          "กรุณาระบุเวลาคาดว่าจะสิ้นสุด หรือเลือก ตามเวลาออกจริง",
           "error"
         );
         return;
@@ -4923,7 +5053,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             saveError
         } =
           await state.client.rpc(
-            "ta_assign_shift_with_work_plan_v6119",
+            "ta_assign_shift_with_work_plan_v61110",
             {
               p_emp_code:
                 val("assignEmpCode"),
@@ -4939,6 +5069,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               p_customer_window_end:
                 customerEnd
                 || null,
+              p_customer_end_mode:
+                customerEndMode,
               p_note:
                 val("assignNote")
                 || null,
@@ -4957,7 +5089,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               saveError.message
               || ""
             ).includes(
-              "ta_assign_shift_with_work_plan_v6119"
+              "ta_assign_shift_with_work_plan_v61110"
             )
           ) {
             throw new Error(
@@ -4985,6 +5117,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             customerStart;
           currentRow.customer_window_end =
             customerEnd;
+          currentRow.customer_end_mode =
+            customerEndMode;
+          currentRow.work_plan_status =
+            savedConfirm
+              ? "CONFIRMED"
+              : "PLANNED";
           renderSchedule();
         }
         closeModal("assignModal");
@@ -5009,7 +5147,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          // V6.11.9:
+          // V6.11.10:
           // Attendance was recalculated inside the same SQL transaction
           // that saved the shift. Reload only; do not calculate twice.
 
@@ -5101,7 +5239,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          // V6.11.9:
+          // V6.11.10:
           // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
@@ -6717,17 +6855,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.9 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.9 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.9 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.9 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.9 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
       if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
-      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.9";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.10";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
@@ -6736,7 +6874,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
       if (msg.includes("WORKDAY_SHIFT_REQUIRES_START_AND_END")) return "กะวันทำงานต้องระบุเวลาเริ่มและเวลาสิ้นสุด";
-      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.9 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
+      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
+      if (msg.includes("INVALID_CUSTOMER_END_MODE")) return "รูปแบบเวลาสิ้นสุดงานลูกค้าไม่ถูกต้อง";
+      if (msg.includes("CUSTOMER_WINDOW_START_REQUIRED_FOR_SPLIT_FLEX")) return "กรุณาระบุคาดว่าจะเริ่มงานลูกค้า";
+      if (msg.includes("CUSTOMER_WINDOW_END_REQUIRED_FOR_FIXED_MODE")) return "กรุณาระบุเวลาสิ้นสุด หรือเลือก ตามเวลาออกจริง";
       if (msg.includes("WORK_TEMPLATE_MUST_MATCH_EMPLOYEE_DEFAULT")) return "รูปแบบช่วงงานต้องตรงกับ Template เริ่มต้นของพนักงาน กรุณาแก้ Template ที่ Tab รูปแบบการทำงาน";
       if (msg.includes("EMPLOYEE_DEFAULT_TEMPLATE_NOT_FOUND")) return "ไม่พบ Template เริ่มต้นของพนักงาน กรุณากำหนดที่ Tab รูปแบบการทำงานก่อน";
       if (msg.includes("CUSTOMER_WINDOW_REQUIRED_FOR_SPLIT_FLEX")) return "กะปกติ + งานลูกค้าช่วงดึก ต้องระบุเวลาเริ่มงานลูกค้าและเวลาสิ้นสุดให้ครบ";
@@ -6776,6 +6917,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       attendanceWorkSegmentsTextV6118,
       attendanceWorkSegmentsHtmlV6118,
       attendancePunchCellV6119,
+      attendancePlannedCellV61110,
       enrichAttendanceWorkSegmentsV6118,
       loadAttendanceFilterOptions,
       loadAttendanceEmployeeOptions,
@@ -8509,8 +8651,16 @@ ${skippedSummary(compatibility.skipped)}
     const keys=[
       "work_date","emp_code","full_name","department",
       "zone","sub_area","pattern_code","template_code",
-      "day_type","shift_start","shift_end","shift_code",
-      "first_in","last_out","display_status",
+      "day_type","shift_code",
+      "shift_1_planned_start_at",
+      "shift_1_planned_end_at",
+      "shift_1_actual_in_at",
+      "shift_1_actual_out_at",
+      "shift_2_planned_start_at",
+      "shift_2_planned_end_at",
+      "shift_2_actual_in_at",
+      "shift_2_actual_out_at",
+      "display_status",
       "net_work_minutes","regular_minutes",
       "overtime_minutes","waiting_minutes",
       "break_deducted_minutes","late_minutes",
@@ -8693,11 +8843,13 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="pattern_code"><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td>
             <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${esc(app()?.workTemplateLabelV6118?.(r.template_code)||r.template_code||"-")}</td>
             <td data-att-col="day_type">${esc(statusLabel(r.day_type||"-"))}</td>
-            <td data-att-col="shift_start">${fmtTime(shiftTime(r,"start"))}</td>
-            <td data-att-col="shift_end">${fmtTime(shiftTime(r,"end"))}</td>
             <td data-att-col="shift_code"><span class="badge badge-blue">${esc(codeOf(r)||"-")}</span></td>
+            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_start">${app()?.attendancePlannedCellV61110?.(r.shift_1_planned_start_at,1,"START",r)||"-"}</td>
+            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_end">${app()?.attendancePlannedCellV61110?.(r.shift_1_planned_end_at,1,"END",r)||"-"}</td>
             <td class="attendance-punch-cell-v6119 shift-1" data-att-col="shift_1_in">${app()?.attendancePunchCellV6119?.(r.shift_1_actual_in_at,1,"IN")||"-"}</td>
             <td class="attendance-punch-cell-v6119 shift-1" data-att-col="shift_1_out">${app()?.attendancePunchCellV6119?.(r.shift_1_actual_out_at,1,"OUT")||"-"}</td>
+            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_start">${app()?.attendancePlannedCellV61110?.(r.shift_2_planned_start_at,2,"START",r)||"-"}</td>
+            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_end">${app()?.attendancePlannedCellV61110?.(r.shift_2_planned_end_at,2,"END",r)||"-"}</td>
             <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_in">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_in_at,2,"IN")||"-"}</td>
             <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_out">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_out_at,2,"OUT")||"-"}</td>
             <td data-att-col="display_status"><span class="fc-badge ${badgeClass}">${esc(attendanceStatusText(r))}</span></td>
@@ -8712,7 +8864,7 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${esc(comp)}</td>
           </tr>`;
         }).join("")
-      : `<tr><td colspan="26" class="fc-empty">ไม่พบข้อมูล</td></tr>`;
+      : `<tr><td colspan="28" class="fc-empty">ไม่พบข้อมูล</td></tr>`;
 
     $("attendanceCount").textContent=
       `${num(all.length)} รายการ`;
@@ -10999,7 +11151,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.11.9 CSV Import + Technician Work Patterns RESTORED ===== */
+/* ===== V6.11.10 CSV Import + Technician Work Patterns RESTORED ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -11508,7 +11660,7 @@ ${skippedSummary(compatibility.skipped)}
         try{
           assignmentMeta=
             await rpc(
-              'ta_get_employee_pattern_assignment_meta_v6119',
+              'ta_get_employee_pattern_assignment_meta_v61110',
               {
                 p_emp_codes:
                   rows.map(
@@ -11592,8 +11744,25 @@ ${skippedSummary(compatibility.skipped)}
                   <td><span class="employee-template-chip-v6119 ${templateClass}">${esc(employeeTemplateLabel(templateCode))}</span></td>
                   <td class="nowrap">${esc(fmtDate(r.effective_from)||'-')}</td>
                   <td class="nowrap">${r.effective_to?esc(fmtDate(r.effective_to)):'<span class="employee-pattern-open-ended-v6119">ไม่กำหนด</span>'}</td>
-                  <td class="nowrap">${esc(fmtDateTime(r.recorded_at)||'-')}</td>
-                  <td><span class="employee-pattern-recorder-v6119" title="${esc(r.recorded_by||'-')}">${esc(r.recorded_by||'-')}</span></td>
+                  <td class="nowrap">${esc(fmtDateTime(
+                    r.recorded_at
+                    || r.ui_saved_at
+                    || r.updated_at
+                    || r.created_at
+                  )||'-')}</td>
+                  <td><span class="employee-pattern-recorder-v6119" title="${esc(
+                    r.recorded_by
+                    || r.ui_saved_by_email
+                    || r.updated_by_email
+                    || r.created_by_email
+                    || '-'
+                  )}">${esc(
+                    r.recorded_by
+                    || r.ui_saved_by_email
+                    || r.updated_by_email
+                    || r.created_by_email
+                    || '-'
+                  )}</span></td>
                   <td><button class="btn btn-light btn-sm" data-assign-pattern="${esc(r.emp_code)}">กำหนด</button></td>
                 </tr>`;
               }
@@ -11652,7 +11821,7 @@ ${skippedSummary(compatibility.skipped)}
         app()?.toast?.('ไม่พบ Template ที่พร้อมใช้งาน','error');
         return;
       }
-      await rpc('ta_assign_employee_work_pattern',{
+      await rpc('ta_assign_employee_work_pattern_v61110',{
         p_emp_code:$('epEmpCode').value,
         p_pattern_code:$('epPattern').value,
         p_effective_from:$('epFrom').value,
@@ -11774,14 +11943,30 @@ ${skippedSummary(compatibility.skipped)}
             ).slice(0,5)
           : '22:00';
 
+      const hasFixedEnd =
+        Boolean(
+          plan?.customer_window_end
+        );
+
+      if(
+        $('assignCustomerEndMode')
+      ){
+        $('assignCustomerEndMode')
+          .value=
+          hasFixedEnd
+            ? 'FIXED'
+            : 'ACTUAL_OUT';
+      }
+
       $('assignCustomerEnd').value=
-        plan?.customer_window_end
+        hasFixedEnd
           ? String(
               plan.customer_window_end
             ).slice(0,5)
           : '';
 
       toggleCustomerWindow();
+      toggleCustomerEndModeV61110();
 
     }catch(e){
       const current=
@@ -11807,6 +11992,46 @@ ${skippedSummary(compatibility.skipped)}
       toggleCustomerWindow();
     }
   }
+  function toggleCustomerEndModeV61110(){
+    const mode=
+      String(
+        $('assignCustomerEndMode')
+          ?.value
+        || 'ACTUAL_OUT'
+      )
+        .trim()
+        .toUpperCase();
+
+    const fixed=
+      mode ===
+      'FIXED';
+
+    $('assignCustomerEndFixedWrap')
+      ?.classList
+      .toggle(
+        'hidden',
+        !fixed
+      );
+
+    if(
+      $('assignCustomerEnd')
+    ){
+      $('assignCustomerEnd')
+        .required=
+        fixed;
+    }
+
+    if(
+      $('assignCustomerEndModeHelp')
+    ){
+      $('assignCustomerEndModeHelp')
+        .textContent=
+        fixed
+          ? 'กำหนดเวลา: ใช้เวลานี้เป็นเวลาสิ้นสุดกะที่ 2'
+          : 'ตามเวลาออกจริง: ระบบจะใช้ OUT จริงเป็นเวลาสิ้นสุดกะที่ 2';
+    }
+  }
+
   function toggleCustomerWindow(){
     const code=
       String(
@@ -11829,20 +12054,14 @@ ${skippedSummary(compatibility.skipped)}
       );
 
     if(
-      $('assignCustomerEnd')
+      $('assignCustomerStart')
     ){
-      $('assignCustomerEnd')
+      $('assignCustomerStart')
         .required=
         split;
     }
 
-    if(
-      $('assignCustomerStart')
-    ){
-      $('assignCustomerStart')
-        .required=
-        split;
-    }
+    toggleCustomerEndModeV61110();
   }
 
   function bindV620(){
@@ -11851,6 +12070,7 @@ ${skippedSummary(compatibility.skipped)}
     $('workPatternRefreshBtn')?.addEventListener('click',async()=>{await loadWorkPatterns();await loadEmployeePatterns();});$('workPatternNewBtn')?.addEventListener('click',()=>openPattern(null));$('employeePatternLoadBtn')?.addEventListener('click',loadEmployeePatterns);$('employeePatternSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')loadEmployeePatterns();});$('epPattern')?.addEventListener('change',()=>loadEmployeeTemplateOptions($('epPattern').value,null));
     document.addEventListener('click',e=>{const edit=e.target.closest('[data-edit-pattern]');if(edit&&canManageWorkPatternParameters())openPattern(edit.dataset.editPattern);const assign=e.target.closest('[data-assign-pattern]');if(assign)openEmployeePattern(assign.dataset.assignPattern);});
     $('assignWorkTemplate')?.addEventListener('change',toggleCustomerWindow);
+    $('assignCustomerEndMode')?.addEventListener('change',toggleCustomerEndModeV61110);
     const assignModal=$('assignModal');if(assignModal)new MutationObserver(()=>{if(!assignModal.classList.contains('hidden'))setTimeout(loadDailyPlanForModal,30);}).observe(assignModal,{attributes:true,attributeFilter:['class']});
     const today=new Date().toISOString().slice(0,10);if($('employeePatternDate'))$('employeePatternDate').value=today;
     applyWorkPatternParameterVisibility();
@@ -11900,14 +12120,14 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.11.9',
+    version:'6.11.10',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns
   };
 
   window.TimeClockCsvImport = {
-    version:'6.11.9',
+    version:'6.11.10',
     load:loadCsvImportWorkspace,
     loadHistory:loadCsvHistory,
     inspect:inspectCsv,
@@ -11916,10 +12136,10 @@ ${skippedSummary(compatibility.skipped)}
   };
 
   document.documentElement.dataset.csvImportModule =
-    '6.11.9-ready';
+    '6.11.10-ready';
 
   document.documentElement.dataset.workPatternModule =
-    '6.11.9-ready';
+    '6.11.10-ready';
 
   document.readyState==='loading'
     ? document.addEventListener(
@@ -17648,12 +17868,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.9 System Period Management ===== */
+/* ===== V6.11.10 System Period Management ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.9";
+    "6.11.10";
 
   const app = () =>
     window.TimeClockApp;
@@ -18750,11 +18970,11 @@ ${skippedSummary(compatibility.skipped)}
 
     if(!modal){
       console.error(
-        "V6.11.9: systemPeriodModal not found"
+        "V6.11.10: systemPeriodModal not found"
       );
 
       app()?.toast?.(
-        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.9",
+        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.10",
         "error"
       );
 
@@ -18862,11 +19082,11 @@ ${skippedSummary(compatibility.skipped)}
       || !noteInput
     ){
       console.error(
-        "V6.11.9: System Period modal fields incomplete"
+        "V6.11.10: System Period modal fields incomplete"
       );
 
       app()?.toast?.(
-        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.9 ใหม่ทั้งหมด",
+        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.10 ใหม่ทั้งหมด",
         "error"
       );
 
@@ -20287,7 +20507,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   document.documentElement.dataset.systemPeriodModule =
-    "6.11.9-ready";
+    "6.11.10-ready";
 
   window.TimeClockSystemPeriods={
     VERSION,
