@@ -10680,3 +10680,452 @@ body.theme-dark .work-pattern-hero-v61111,.dark .work-pattern-hero-v61111{border
 @media(max-width:1100px){.schedule-team-drawer{width:min(680px,72vw)}}@media(max-width:720px){.schedule-team-drawer{width:100vw}.schedule-team-drawer-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.team-employee-main{grid-template-columns:38px minmax(0,1fr)}.team-att-status{grid-column:2}.team-employee-detail-grid{grid-template-columns:1fr 1fr}.team-employee-detail-grid>div:first-child{grid-column:1/-1}}
 
 .team-employee-card.status-upcoming{border-left-color:#5a8ec8}.team-att-status.tone-upcoming{background:rgba(90,142,200,.13);color:#8bc6ff}.team-drawer-filter-chip.tone-upcoming{color:#91caff}
+
+
+/* ============================================================================
+   V6.11.14 Team View Visual Alignment + Compact Daily Labels
+   Team view now follows the same visual language as Person view.
+   ============================================================================ */
+
+/* --- Team workspace / table: same surface language as individual schedule --- */
+#scheduleTeamWorkspace{
+  background:var(--surface,#fff)!important;
+  border-color:var(--border,#e5e7eb)!important;
+}
+
+#scheduleTeamWorkspace .schedule-panel-header,
+#scheduleTeamWorkspace .schedule-team-toolbar{
+  background:var(--surface,#fff)!important;
+  border-color:var(--border,#e5e7eb)!important;
+}
+
+.schedule-team-grid-wrap{
+  max-height:70vh;
+  background:var(--surface,#fff)!important;
+  border-top:1px solid var(--border,#e5e7eb);
+}
+
+.schedule-team-table{
+  border-collapse:separate!important;
+  border-spacing:0!important;
+  background:var(--surface,#fff);
+}
+
+.schedule-team-table thead th{
+  height:48px;
+  padding:6px 6px!important;
+  background:#f4f7fb!important;
+  border-right:1px solid #e8edf4;
+  border-bottom:1px solid #e8edf4;
+  color:#475569!important;
+  font-size:9px;
+  vertical-align:middle;
+}
+
+.schedule-team-table thead th.weekend{
+  background:#fff7ed!important;
+  color:#c2410c!important;
+}
+
+.schedule-team-table thead th.public-holiday-head{
+  background:#fff1e6!important;
+  color:#c2410c!important;
+  box-shadow:inset 0 -3px 0 #f97316!important;
+}
+
+.schedule-team-head small{
+  color:#94a3b8!important;
+  font-size:7.5px!important;
+  font-weight:650;
+}
+
+.schedule-team-head strong{
+  margin:1px 0;
+  color:#334155!important;
+  font-size:16px!important;
+  line-height:1!important;
+  font-weight:900;
+}
+
+.schedule-team-head span{
+  color:#94a3b8!important;
+  font-size:7px!important;
+}
+
+.schedule-team-unit-head{
+  min-width:210px!important;
+  padding-left:12px!important;
+  text-align:left!important;
+}
+
+.schedule-team-unit-cell,
+.schedule-team-day{
+  padding:4px!important;
+  border-right:1px solid #e8edf4;
+  border-bottom:1px solid #e8edf4;
+  background:var(--surface,#fff);
+  vertical-align:middle!important;
+}
+
+/* --- Team name cell: compact and consistent with sticky person columns --- */
+.schedule-team-unit-card{
+  min-height:84px!important;
+  padding:9px 10px!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+.schedule-team-unit-card strong{
+  color:#1e3a5f!important;
+  font-size:10px!important;
+  line-height:1.35;
+  font-weight:900;
+}
+
+.schedule-team-unit-card small{
+  margin-top:3px!important;
+  color:#94a3b8!important;
+  font-size:8px!important;
+}
+
+.schedule-team-open-btn{
+  min-height:27px!important;
+  padding:4px 7px!important;
+  border-radius:8px!important;
+  font-size:8px!important;
+}
+
+/* --- Daily team label: neutral card; color only the category chips --- */
+.schedule-team-summary-card{
+  gap:5px!important;
+  width:100%;
+  min-height:84px!important;
+  height:84px;
+  padding:7px 7px 6px!important;
+  border:1px solid #dbe3ed!important;
+  border-radius:9px!important;
+  background:#fbfdff!important;
+  color:#334155!important;
+  box-shadow:0 1px 3px rgba(15,23,42,.05)!important;
+  transform:none!important;
+}
+
+.schedule-team-summary-card:hover{
+  transform:none!important;
+  border-color:#60a5fa!important;
+  background:#f8fbff!important;
+  box-shadow:0 3px 9px rgba(15,23,42,.09)!important;
+}
+
+.schedule-team-summary-card.has-review{
+  border-color:#fb923c!important;
+  box-shadow:inset 0 0 0 1px #fb923c,0 1px 3px rgba(15,23,42,.05)!important;
+}
+
+.schedule-team-summary-head{
+  min-height:15px;
+  align-items:center!important;
+}
+
+.schedule-team-summary-head>div{
+  align-items:center!important;
+  gap:3px!important;
+}
+
+.schedule-team-summary-head>div span{
+  color:#64748b!important;
+  font-size:7px!important;
+  font-weight:750;
+}
+
+.schedule-team-summary-head strong{
+  color:#1e3a5f!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:950;
+}
+
+.schedule-team-alert{
+  width:15px!important;
+  height:15px!important;
+  font-size:8px!important;
+  box-shadow:none!important;
+}
+
+/* 2x2 compact chip layout keeps all summary categories readable */
+.schedule-team-summary-pills{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:3px!important;
+}
+
+.team-count-pill{
+  min-height:22px;
+  padding:3px 5px!important;
+  border-radius:6px!important;
+  line-height:1;
+}
+
+.team-count-pill b{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:7px!important;
+  font-weight:850!important;
+}
+
+.team-count-pill em{
+  font-size:9px!important;
+  font-weight:950!important;
+}
+
+/* Match the exact Person-view category palette */
+.team-count-pill.tone-day{
+  background:#dbeafe!important;
+  border-color:#60a5fa!important;
+  color:#123f75!important;
+}
+
+.team-count-pill.tone-night{
+  background:#ede9fe!important;
+  border-color:#a78bfa!important;
+  color:#5425a8!important;
+}
+
+.team-count-pill.tone-off{
+  background:#e8edf3!important;
+  border-color:#94a3b8!important;
+  color:#334155!important;
+}
+
+.team-count-pill.tone-leave{
+  background:#dcfce7!important;
+  border-color:#4ade80!important;
+  color:#166534!important;
+}
+
+.schedule-team-summary-foot{
+  margin-top:0!important;
+  color:#64748b!important;
+  font-size:6.8px!important;
+  line-height:1;
+}
+
+.schedule-team-progress.compact{
+  height:3px!important;
+  margin-top:-1px!important;
+  background:#e8edf4!important;
+}
+
+.schedule-team-progress.compact span.planned{
+  background:#bfdbfe!important;
+}
+
+.schedule-team-progress.compact span.confirmed{
+  background:#22c55e!important;
+  box-shadow:none!important;
+}
+
+/* Empty cells follow person-view OFF/neutral treatment */
+.schedule-team-card.empty{
+  min-height:84px!important;
+  padding:6px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:9px!important;
+  background:#f8fafc!important;
+  color:#94a3b8!important;
+}
+
+.schedule-team-card.empty strong{
+  font-size:10px!important;
+}
+
+.schedule-team-card.empty small{
+  font-size:7px!important;
+}
+
+/* Toolbar and mini KPI use the same clean panel palette as Person view */
+.schedule-team-toolbar{
+  padding:9px 12px!important;
+  border-bottom:1px solid var(--border,#e5e7eb);
+}
+
+.schedule-team-tip{
+  color:#64748b!important;
+  font-size:9px!important;
+}
+
+.schedule-mini-kpi{
+  min-width:100px!important;
+  padding:7px 9px!important;
+  border-color:#e2e8f0!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+}
+
+.schedule-mini-kpi span{
+  color:#64748b!important;
+  font-size:7px!important;
+}
+
+.schedule-mini-kpi strong{
+  margin-top:2px!important;
+  color:#1e3a5f!important;
+  font-size:15px!important;
+}
+
+.schedule-mini-kpi.warning strong{
+  color:#c2410c!important;
+}
+
+/* --- Dark mode: exact family used by Person schedule labels --- */
+body.theme-dark #scheduleTeamWorkspace,
+.dark #scheduleTeamWorkspace,
+body.theme-dark #scheduleTeamWorkspace .schedule-panel-header,
+.dark #scheduleTeamWorkspace .schedule-panel-header,
+body.theme-dark #scheduleTeamWorkspace .schedule-team-toolbar,
+.dark #scheduleTeamWorkspace .schedule-team-toolbar,
+body.theme-dark .schedule-team-grid-wrap,
+.dark .schedule-team-grid-wrap,
+body.theme-dark .schedule-team-table,
+.dark .schedule-team-table{
+  background:#101820!important;
+  border-color:#293443!important;
+}
+
+body.theme-dark .schedule-team-table thead th,
+.dark .schedule-team-table thead th{
+  background:#182331!important;
+  border-color:#293443!important;
+  color:#cbd5e1!important;
+}
+
+body.theme-dark .schedule-team-table thead th.weekend,
+.dark .schedule-team-table thead th.weekend{
+  background:#2d241d!important;
+  color:#ffbf86!important;
+}
+
+body.theme-dark .schedule-team-table thead th.public-holiday-head,
+.dark .schedule-team-table thead th.public-holiday-head{
+  background:#332318!important;
+  color:#ffbf86!important;
+}
+
+body.theme-dark .schedule-team-head strong,
+.dark .schedule-team-head strong{
+  color:#e2e8f0!important;
+}
+
+body.theme-dark .schedule-team-unit-cell,
+.dark .schedule-team-unit-cell,
+body.theme-dark .schedule-team-day,
+.dark .schedule-team-day{
+  background:#101820!important;
+  border-color:#293443!important;
+}
+
+body.theme-dark .schedule-team-unit-card strong,
+.dark .schedule-team-unit-card strong{
+  color:#e2e8f0!important;
+}
+
+body.theme-dark .schedule-team-summary-card,
+.dark .schedule-team-summary-card{
+  background:#16212e!important;
+  border-color:#344255!important;
+  color:#e2e8f0!important;
+  box-shadow:0 1px 3px rgba(0,0,0,.22)!important;
+}
+
+body.theme-dark .schedule-team-summary-card:hover,
+.dark .schedule-team-summary-card:hover{
+  background:#192738!important;
+  border-color:#4d95e8!important;
+}
+
+body.theme-dark .schedule-team-summary-head strong,
+.dark .schedule-team-summary-head strong{
+  color:#e2e8f0!important;
+}
+
+body.theme-dark .schedule-team-summary-head>div span,
+.dark .schedule-team-summary-head>div span,
+body.theme-dark .schedule-team-summary-foot,
+.dark .schedule-team-summary-foot{
+  color:#94a3b8!important;
+}
+
+body.theme-dark .team-count-pill.tone-day,
+.dark .team-count-pill.tone-day{
+  background:#153b68!important;
+  border-color:#4d95e8!important;
+  color:#d7eaff!important;
+}
+
+body.theme-dark .team-count-pill.tone-night,
+.dark .team-count-pill.tone-night{
+  background:#34245d!important;
+  border-color:#8b6cdb!important;
+  color:#eee8ff!important;
+}
+
+body.theme-dark .team-count-pill.tone-off,
+.dark .team-count-pill.tone-off{
+  background:#293443!important;
+  border-color:#64748b!important;
+  color:#e2e8f0!important;
+}
+
+body.theme-dark .team-count-pill.tone-leave,
+.dark .team-count-pill.tone-leave{
+  background:#153d2a!important;
+  border-color:#3ca56a!important;
+  color:#d4f7e1!important;
+}
+
+body.theme-dark .schedule-team-progress.compact,
+.dark .schedule-team-progress.compact{
+  background:#293443!important;
+}
+
+body.theme-dark .schedule-team-progress.compact span.planned,
+.dark .schedule-team-progress.compact span.planned{
+  background:#315d84!important;
+}
+
+body.theme-dark .schedule-team-progress.compact span.confirmed,
+.dark .schedule-team-progress.compact span.confirmed{
+  background:#3ca56a!important;
+}
+
+body.theme-dark .schedule-team-card.empty,
+.dark .schedule-team-card.empty,
+body.theme-dark .schedule-mini-kpi,
+.dark .schedule-mini-kpi{
+  background:#16212e!important;
+  border-color:#344255!important;
+  color:#94a3b8!important;
+}
+
+body.theme-dark .schedule-mini-kpi strong,
+.dark .schedule-mini-kpi strong{
+  color:#e2e8f0!important;
+}
+
+body.theme-dark .schedule-team-tip,
+.dark .schedule-team-tip{
+  color:#94a3b8!important;
+}
+
+@media(max-width:1200px){
+  .schedule-team-summary-card{
+    min-height:82px!important;
+    height:82px;
+  }
+  .schedule-team-unit-card,
+  .schedule-team-card.empty{
+    min-height:82px!important;
+  }
+}
