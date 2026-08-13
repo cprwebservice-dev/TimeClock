@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.14";
-document.documentElement.dataset.timeClockBuild = "6.11.14";
+window.__TIME_CLOCK_BUILD__ = "V6.11.15";
+document.documentElement.dataset.timeClockBuild = "6.11.15";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.14";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.14',
+  version: '6.11.15',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.14 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.15 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.14 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.15 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.14"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.15"
         );
       }
 
@@ -1789,7 +1789,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.14"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.15"
           );
         }
 
@@ -2496,7 +2496,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.14"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.15"
             );
           }
 
@@ -4880,7 +4880,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
 
       for (const team of teams) {
-        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card"><div><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คน</small></div><button class="btn btn-light btn-sm schedule-team-open-btn" type="button" data-team-open="${safe(team.unit)}">ดูรายคน</button></div></td>`;
+        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
 
         for (const date of period.dates) {
           const day = team.days.get(date);
@@ -4892,18 +4892,30 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const planPercent = day.total ? Math.round((day.planned / day.total) * 100) : 0;
           const confirmPercent = day.total ? Math.round((day.confirmed / day.total) * 100) : 0;
           const offTotal = day.off + day.holiday;
-          const summaryPills = [
-            {key:'day',label:'กะเช้า',count:day.day,tone:'day'},
-            {key:'night',label:'กะดึก',count:day.night,tone:'night'},
-            {key:'off',label:'หยุด',count:offTotal,tone:'off'},
-            {key:'leave',label:'ลา',count:day.leave,tone:'leave'}
-          ].filter(item => item.count > 0 || ['day','night','off'].includes(item.key));
+          const extraBadges = [
+            day.leave > 0
+              ? `<span class="team-day-extra tone-leave"><i></i>ลา ${safe(formatNumber(day.leave))}</span>`
+              : '',
+            day.review > 0
+              ? `<span class="team-day-extra tone-review"><i></i>ตรวจสอบ ${safe(formatNumber(day.review))}</span>`
+              : ''
+          ].filter(Boolean).join('');
 
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card ${day.review>0?'has-review':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อพนักงาน ${safe(team.unit)} วันที่ ${safe(formatDate(date))}">
-            <div class="schedule-team-summary-head"><div><span>รวม</span><strong>${safe(formatNumber(day.total))}</strong><span>คน</span></div>${day.review>0?`<span class="schedule-team-alert" title="ต้องตรวจสอบ ${safe(formatNumber(day.review))} รายการ">!</span>`:''}</div>
-            <div class="schedule-team-summary-pills">${summaryPills.map(item=>`<span class="team-count-pill tone-${safe(item.tone)}"><b>${safe(item.label)}</b><em>${safe(formatNumber(item.count))}</em></span>`).join('')}</div>
-            <div class="schedule-team-summary-foot"><span>ยืนยัน ${safe(formatNumber(day.confirmed))}/${safe(formatNumber(day.total))}</span><span>${safe(String(confirmPercent))}%</span></div>
-            <div class="schedule-team-progress compact"><span class="planned" style="width:${Math.max(0, Math.min(100, planPercent))}%"></span><span class="confirmed" style="width:${Math.max(0, Math.min(100, confirmPercent))}%"></span></div>
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อพนักงาน ${safe(team.unit)} วันที่ ${safe(formatDate(date))}">
+            <div class="team-day-top-v61115">
+              <span class="team-day-total-v61115"><small>รวม</small><strong>${safe(formatNumber(day.total))}</strong><small>คน</small></span>
+              <span class="team-day-confirm-v61115 ${day.confirmed===day.total && day.total>0?'is-complete':''}"><i>✓</i>${safe(formatNumber(day.confirmed))}/${safe(formatNumber(day.total))}</span>
+            </div>
+            <div class="team-day-counts-v61115">
+              <span class="team-day-count-v61115 tone-day"><i></i><small>เช้า</small><strong>${safe(formatNumber(day.day))}</strong></span>
+              <span class="team-day-count-v61115 tone-night"><i></i><small>ดึก</small><strong>${safe(formatNumber(day.night))}</strong></span>
+              <span class="team-day-count-v61115 tone-off"><i></i><small>หยุด</small><strong>${safe(formatNumber(offTotal))}</strong></span>
+            </div>
+            <div class="team-day-bottom-v61115">
+              <span class="team-day-progress-text-v61115">วางกะ ${safe(String(planPercent))}%</span>
+              <span class="team-day-extras-v61115">${extraBadges || '<span class="team-day-extra-empty">พร้อมใช้งาน</span>'}</span>
+            </div>
+            <div class="schedule-team-progress compact team-day-progress-v61115"><span class="planned" style="width:${Math.max(0, Math.min(100, planPercent))}%"></span><span class="confirmed" style="width:${Math.max(0, Math.min(100, confirmPercent))}%"></span></div>
           </button></td>`;
         }
         html += `</tr>`;
@@ -5677,7 +5689,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          // V6.11.14:
+          // V6.11.15:
           // Attendance was recalculated inside the same SQL transaction
           // that saved the shift. Reload only; do not calculate twice.
 
@@ -5769,7 +5781,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          // V6.11.14:
+          // V6.11.15:
           // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
@@ -7426,17 +7438,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.14 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.14 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.14 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.14 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.14 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
       if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
-      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.14";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.15";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
@@ -7445,8 +7457,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
       if (msg.includes("WORKDAY_SHIFT_REQUIRES_START_AND_END")) return "กะวันทำงานต้องระบุเวลาเริ่มและเวลาสิ้นสุด";
-      if (msg.includes("ta_get_employee_pattern_assignment_meta_v61111")) return "กรุณารัน SQL V6.11.14 เพื่อโหลดข้อมูล Template เริ่มต้น วันที่มีผล และผู้บันทึกให้ครบ";
-      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.14 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
+      if (msg.includes("ta_get_employee_pattern_assignment_meta_v61111")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดข้อมูล Template เริ่มต้น วันที่มีผล และผู้บันทึกให้ครบ";
+      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
       if (msg.includes("INVALID_CUSTOMER_END_MODE")) return "รูปแบบเวลาสิ้นสุดงานลูกค้าไม่ถูกต้อง";
       if (msg.includes("CUSTOMER_WINDOW_START_REQUIRED_FOR_SPLIT_FLEX")) return "กรุณาระบุคาดว่าจะเริ่มงานลูกค้า";
       if (msg.includes("CUSTOMER_WINDOW_END_REQUIRED_FOR_FIXED_MODE")) return "กรุณาระบุเวลาสิ้นสุด หรือเลือก ตามเวลาออกจริง";
@@ -11723,7 +11735,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.11.14 CSV Import + Technician Work Patterns RESTORED ===== */
+/* ===== V6.11.15 CSV Import + Technician Work Patterns RESTORED ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -12721,14 +12733,14 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.11.14',
+    version:'6.11.15',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns
   };
 
   window.TimeClockCsvImport = {
-    version:'6.11.14',
+    version:'6.11.15',
     load:loadCsvImportWorkspace,
     loadHistory:loadCsvHistory,
     inspect:inspectCsv,
@@ -12737,10 +12749,10 @@ ${skippedSummary(compatibility.skipped)}
   };
 
   document.documentElement.dataset.csvImportModule =
-    '6.11.14-ready';
+    '6.11.15-ready';
 
   document.documentElement.dataset.workPatternModule =
-    '6.11.14-ready';
+    '6.11.15-ready';
 
   document.readyState==='loading'
     ? document.addEventListener(
@@ -18469,12 +18481,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.14 System Period Management ===== */
+/* ===== V6.11.15 System Period Management ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.14";
+    "6.11.15";
 
   const app = () =>
     window.TimeClockApp;
@@ -19571,11 +19583,11 @@ ${skippedSummary(compatibility.skipped)}
 
     if(!modal){
       console.error(
-        "V6.11.14: systemPeriodModal not found"
+        "V6.11.15: systemPeriodModal not found"
       );
 
       app()?.toast?.(
-        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.14",
+        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.15",
         "error"
       );
 
@@ -19683,11 +19695,11 @@ ${skippedSummary(compatibility.skipped)}
       || !noteInput
     ){
       console.error(
-        "V6.11.14: System Period modal fields incomplete"
+        "V6.11.15: System Period modal fields incomplete"
       );
 
       app()?.toast?.(
-        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.14 ใหม่ทั้งหมด",
+        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.15 ใหม่ทั้งหมด",
         "error"
       );
 
@@ -21108,7 +21120,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   document.documentElement.dataset.systemPeriodModule =
-    "6.11.14-ready";
+    "6.11.15-ready";
 
   window.TimeClockSystemPeriods={
     VERSION,
