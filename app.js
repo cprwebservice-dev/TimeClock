@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.12";
-document.documentElement.dataset.timeClockBuild = "6.11.12";
+window.__TIME_CLOCK_BUILD__ = "V6.11.13";
+document.documentElement.dataset.timeClockBuild = "6.11.13";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.12";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.12',
+  version: '6.11.13',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.12 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.13 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.12 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.13 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.12"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.13"
         );
       }
 
@@ -1789,7 +1789,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.12"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.13"
           );
         }
 
@@ -2496,7 +2496,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.12"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.13"
             );
           }
 
@@ -4538,6 +4538,239 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
     }
 
+    const scheduleTeamDrawerState = {
+      unit: '',
+      date: '',
+      filter: 'ALL',
+      rows: [],
+      loading: false
+    };
+
+    function scheduleTeamAttendanceStatus(row) {
+      const shiftMeta = scheduleResolveShiftMeta(row);
+      const dayType = String(row?.day_type || '').trim().toUpperCase();
+      const raw = String(
+        row?.display_status
+        || row?.attendance_result
+        || row?.attendance_status
+        || row?.calculation_status
+        || ''
+      ).trim().toUpperCase();
+      const leave = Boolean(row?.leave_request_id || row?.leave_type_code)
+        || dayType === 'LEAVE'
+        || raw.includes('LEAVE');
+
+      if (leave) return 'LEAVE';
+      if (['off','holiday'].includes(shiftMeta.tone) || ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)) return 'OFF';
+      if (raw === 'ABSENCE' || raw === 'ABSENT' || Number(row?.absence_minutes || 0) > 0) return 'ABSENCE';
+      if (Number(row?.late_minutes || 0) > 0) return 'LATE';
+
+      const plannedWork = shiftMeta.isWorking;
+      const hasIn = Boolean(row?.actual_in_at || row?.first_in);
+      const hasOut = Boolean(row?.actual_out_at || row?.last_out);
+      const workDate = String(row?.work_date || '').slice(0,10);
+      const isFuture = Boolean(workDate && workDate > todayISO());
+      const isPastOrToday = !isFuture;
+      if (plannedWork && isFuture) return 'UPCOMING';
+      if (plannedWork && isPastOrToday && !hasIn && !hasOut) return 'ABSENCE';
+      return 'NORMAL';
+    }
+
+    function scheduleTeamStatusMeta(status) {
+      return ({
+        NORMAL:{label:'ปกติ',tone:'normal'},
+        LATE:{label:'สาย',tone:'late'},
+        ABSENCE:{label:'ขาดงาน',tone:'absence'},
+        OFF:{label:'หยุด',tone:'off'},
+        LEAVE:{label:'ลา',tone:'leave'},
+        UPCOMING:{label:'รอทำงาน',tone:'upcoming'}
+      })[status] || {label:'ปกติ',tone:'normal'};
+    }
+
+    function scheduleTeamActualTime(row, side) {
+      const value = side === 'IN'
+        ? (row?.actual_in_at || row?.first_in)
+        : (row?.actual_out_at || row?.last_out);
+      return formatTime(value);
+    }
+
+    function scheduleTeamPlannedTime(row) {
+      const meta = scheduleResolveShiftMeta(row);
+      if (!meta.isWorking) return meta.label;
+      return meta.label || '-';
+    }
+
+    async function fetchScheduleTeamDayAttendance(unit, date, baseRows) {
+      const empCodes = [...new Set((baseRows || []).map(row => String(row.emp_code || '').trim()).filter(Boolean))];
+      if (!empCodes.length) return [];
+
+      const attempts = [
+        ['ta_get_attendance_detail_v61020', {
+          p_start_date: date,
+          p_end_date: date,
+          p_area: null,
+          p_sub_area: null,
+          p_department: unit || null,
+          p_emp_codes: empCodes,
+          p_attendance_statuses: null,
+          p_schedule_statuses: null,
+          p_limit: 5000
+        }],
+        ['ta_get_attendance_detail_v664', {
+          p_start_date: date,
+          p_end_date: date,
+          p_zone: null,
+          p_department: unit || null,
+          p_emp_codes: empCodes,
+          p_attendance_statuses: null,
+          p_schedule_statuses: null,
+          p_limit: 5000
+        }],
+        ['ta_get_attendance_detail_v640', {
+          p_start_date: date,
+          p_end_date: date,
+          p_zone: null,
+          p_department: unit || null,
+          p_emp_codes: empCodes,
+          p_attendance_statuses: null,
+          p_schedule_statuses: null,
+          p_limit: 5000
+        }]
+      ];
+
+      let data = [];
+      for (const [fn,args] of attempts) {
+        const response = await state.client.rpc(fn,args);
+        if (!response.error) {
+          data = Array.isArray(response.data) ? response.data : [];
+          break;
+        }
+        if (!window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          console.warn('Team drawer attendance detail:', response.error);
+          break;
+        }
+      }
+
+      const byEmp = new Map(data.map(row => [String(row.emp_code || '').trim(), row]));
+      return (baseRows || []).map(scheduleRow => {
+        const attendanceRow = byEmp.get(String(scheduleRow.emp_code || '').trim()) || {};
+        return {
+          ...scheduleRow,
+          ...attendanceRow,
+          emp_code: scheduleRow.emp_code || attendanceRow.emp_code,
+          full_name: attendanceRow.full_name || scheduleRow.full_name,
+          department: attendanceRow.department || scheduleRow.department,
+          assigned_shift_code: scheduleRow.assigned_shift_code,
+          effective_shift_code: scheduleRow.effective_shift_code,
+          auto_shift_code: scheduleRow.auto_shift_code,
+          shift_code: scheduleRow.shift_code,
+          shift_start_time: scheduleRow.shift_start_time,
+          shift_end_time: scheduleRow.shift_end_time,
+          effective_shift_start_time: scheduleRow.effective_shift_start_time,
+          effective_shift_end_time: scheduleRow.effective_shift_end_time
+        };
+      });
+    }
+
+    function renderScheduleTeamDrawer() {
+      const list = $('scheduleTeamDrawerList');
+      const summary = $('scheduleTeamDrawerSummary');
+      const filters = $('scheduleTeamDrawerFilter');
+      if (!list || !summary || !filters) return;
+
+      const rows = scheduleTeamDrawerState.rows || [];
+      const counts = {ALL: rows.length, NORMAL:0, LATE:0, ABSENCE:0, OFF:0, LEAVE:0, UPCOMING:0};
+      rows.forEach(row => {
+        const status = scheduleTeamAttendanceStatus(row);
+        counts[status] = (counts[status] || 0) + 1;
+      });
+
+      const cards = [
+        ['ALL','ทั้งหมด','all'],
+        ['NORMAL','ปกติ','normal'],
+        ['LATE','สาย','late'],
+        ['ABSENCE','ขาดงาน','absence'],
+        ['OFF','หยุด','off'],
+        ['LEAVE','ลา','leave'],
+        ['UPCOMING','รอทำงาน','upcoming']
+      ];
+      summary.innerHTML = cards.slice(0,5).map(([key,label,tone]) => `<button type="button" class="team-drawer-kpi tone-${tone} ${scheduleTeamDrawerState.filter===key?'active':''}" data-team-drawer-filter="${key}"><span>${safe(label)}</span><strong>${safe(formatNumber(counts[key] || 0))}</strong></button>`).join('');
+      filters.innerHTML = cards.map(([key,label,tone]) => `<button type="button" class="team-drawer-filter-chip tone-${tone} ${scheduleTeamDrawerState.filter===key?'active':''}" data-team-drawer-filter="${key}">${safe(label)} <b>${safe(formatNumber(counts[key] || 0))}</b></button>`).join('');
+
+      const visible = rows.filter(row => scheduleTeamDrawerState.filter === 'ALL' || scheduleTeamAttendanceStatus(row) === scheduleTeamDrawerState.filter);
+      if (!visible.length) {
+        list.innerHTML = `<div class="team-drawer-empty">ไม่พบพนักงานในสถานะที่เลือก</div>`;
+        return;
+      }
+
+      list.innerHTML = visible
+        .sort((a,b) => {
+          const order={ABSENCE:0,LATE:1,NORMAL:2,UPCOMING:3,LEAVE:4,OFF:5};
+          const sa=scheduleTeamAttendanceStatus(a), sb=scheduleTeamAttendanceStatus(b);
+          return (order[sa]??9)-(order[sb]??9) || String(a.full_name||'').localeCompare(String(b.full_name||''),'th');
+        })
+        .map(row => {
+          const shift = scheduleResolveShiftMeta(row);
+          const status = scheduleTeamAttendanceStatus(row);
+          const statusMeta = scheduleTeamStatusMeta(status);
+          const actualIn = scheduleTeamActualTime(row,'IN');
+          const actualOut = scheduleTeamActualTime(row,'OUT');
+          const initials = String(row.full_name || row.emp_code || '?').trim().slice(0,2);
+          const lateText = status === 'LATE' && Number(row.late_minutes||0)>0 ? ` • สาย ${formatNumber(row.late_minutes)} นาที` : '';
+          return `<article class="team-employee-card status-${safe(statusMeta.tone)}">
+            <div class="team-employee-main">
+              <div class="team-employee-avatar">${safe(initials)}</div>
+              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
+              <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
+            </div>
+            <div class="team-employee-detail-grid">
+              <div><span>กะทำงาน</span><strong class="team-shift-text tone-${safe(shift.tone)}">${safe(shift.code || '-')}</strong><small>${safe(scheduleTeamPlannedTime(row))}</small></div>
+              <div><span>เวลาเข้า</span><strong>${safe(actualIn)}</strong></div>
+              <div><span>เวลาออก</span><strong>${safe(actualOut)}</strong></div>
+            </div>
+          </article>`;
+        }).join('');
+    }
+
+    async function openScheduleTeamDrawer(unit, date) {
+      const drawer = $('scheduleTeamDrawer');
+      const backdrop = $('scheduleTeamDrawerBackdrop');
+      if (!drawer || !backdrop) return;
+
+      scheduleTeamDrawerState.unit = unit;
+      scheduleTeamDrawerState.date = date;
+      scheduleTeamDrawerState.filter = 'ALL';
+      scheduleTeamDrawerState.loading = true;
+
+      const baseRows = scheduleFilteredRows(state.schedule).filter(row => scheduleUnitLabel(row) === unit && String(row.work_date || '').slice(0,10) === date);
+      $('scheduleTeamDrawerTitle').textContent = unit;
+      $('scheduleTeamDrawerSubtitle').textContent = `${formatDate(date)} • ${formatNumber(new Set(baseRows.map(row=>row.emp_code)).size)} คน`;
+      $('scheduleTeamDrawerList').innerHTML = `<div class="team-drawer-loading"><span class="spinner"></span><strong>กำลังโหลดเวลาลงงาน...</strong></div>`;
+
+      drawer.classList.remove('hidden');
+      backdrop.classList.remove('hidden');
+      drawer.setAttribute('aria-hidden','false');
+      document.body.classList.add('schedule-drawer-open');
+
+      try {
+        scheduleTeamDrawerState.rows = await fetchScheduleTeamDayAttendance(unit,date,baseRows);
+      } catch (error) {
+        console.error('Team drawer:', error);
+        scheduleTeamDrawerState.rows = baseRows;
+        $('scheduleTeamDrawerNote').textContent = 'โหลดรายละเอียดเวลาไม่สำเร็จบางส่วน จึงแสดงข้อมูลจากปฏิทินจัดกะที่มีอยู่';
+      } finally {
+        scheduleTeamDrawerState.loading = false;
+        renderScheduleTeamDrawer();
+      }
+    }
+
+    function closeScheduleTeamDrawer() {
+      $('scheduleTeamDrawer')?.classList.add('hidden');
+      $('scheduleTeamDrawerBackdrop')?.classList.add('hidden');
+      $('scheduleTeamDrawer')?.setAttribute('aria-hidden','true');
+      document.body.classList.remove('schedule-drawer-open');
+    }
+
     function renderScheduleTeamView(rows, period, dateMeta) {
       const wrap = $("scheduleTeamWrap");
       if (!wrap) return;
@@ -4656,24 +4889,22 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             continue;
           }
 
-          const dominant = [...day.labels.values()].sort((a,b) => b.count - a.count || a.label.localeCompare(b.label, 'th'))[0] || {label:'-',tone:'off'};
           const planPercent = day.total ? Math.round((day.planned / day.total) * 100) : 0;
           const confirmPercent = day.total ? Math.round((day.confirmed / day.total) * 100) : 0;
           const offTotal = day.off + day.holiday;
-          const metaBits = [
-            day.day ? `เช้า ${formatNumber(day.day)}` : '',
-            day.night ? `ดึก ${formatNumber(day.night)}` : '',
-            offTotal ? `หยุด ${formatNumber(offTotal)}` : '',
-            day.leave ? `ลา ${formatNumber(day.leave)}` : ''
-          ].filter(Boolean).join(' • ');
+          const summaryPills = [
+            {key:'day',label:'กะเช้า',count:day.day,tone:'day'},
+            {key:'night',label:'กะดึก',count:day.night,tone:'night'},
+            {key:'off',label:'หยุด',count:offTotal,tone:'off'},
+            {key:'leave',label:'ลา',count:day.leave,tone:'leave'}
+          ].filter(item => item.count > 0 || ['day','night','off'].includes(item.key));
 
-          html += `<td class="schedule-team-day"><div class="schedule-team-card tone-${safe(dominant.tone)} ${day.review>0?'has-review':''}">
-            <div class="schedule-team-card-head"><span class="schedule-team-shift-pill tone-${safe(dominant.tone)}">${safe(dominant.label)}</span>${day.review>0?`<span class="schedule-team-alert" title="ต้องตรวจสอบ ${safe(formatNumber(day.review))} รายการ">!</span>`:''}</div>
-            <strong>${safe(formatNumber(day.working))} / ${safe(formatNumber(day.total))} คนทำงาน</strong>
-            <small>วางกะ ${safe(formatNumber(day.planned))} • ยืนยัน ${safe(formatNumber(day.confirmed))}</small>
-            <div class="schedule-team-meta">${safe(metaBits || 'ไม่มีรายการเพิ่มเติม')}</div>
-            <div class="schedule-team-progress" title="วางกะ ${safe(String(planPercent))}% • ยืนยัน ${safe(String(confirmPercent))}%"><span class="planned" style="width:${Math.max(0, Math.min(100, planPercent))}%"></span><span class="confirmed" style="width:${Math.max(0, Math.min(100, confirmPercent))}%"></span></div>
-          </div></td>`;
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card ${day.review>0?'has-review':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อพนักงาน ${safe(team.unit)} วันที่ ${safe(formatDate(date))}">
+            <div class="schedule-team-summary-head"><div><strong>${safe(formatNumber(day.total))}</strong><span>คน</span></div>${day.review>0?`<span class="schedule-team-alert" title="ต้องตรวจสอบ ${safe(formatNumber(day.review))} รายการ">!</span>`:''}</div>
+            <div class="schedule-team-summary-pills">${summaryPills.map(item=>`<span class="team-count-pill tone-${safe(item.tone)}"><b>${safe(item.label)}</b><em>${safe(formatNumber(item.count))}</em></span>`).join('')}</div>
+            <div class="schedule-team-summary-foot"><span>ยืนยัน ${safe(formatNumber(day.confirmed))}/${safe(formatNumber(day.total))}</span><span>${safe(String(confirmPercent))}%</span></div>
+            <div class="schedule-team-progress compact"><span class="planned" style="width:${Math.max(0, Math.min(100, planPercent))}%"></span><span class="confirmed" style="width:${Math.max(0, Math.min(100, confirmPercent))}%"></span></div>
+          </button></td>`;
         }
         html += `</tr>`;
       }
@@ -5446,7 +5677,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          // V6.11.12:
+          // V6.11.13:
           // Attendance was recalculated inside the same SQL transaction
           // that saved the shift. Reload only; do not calculate twice.
 
@@ -5538,7 +5769,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          // V6.11.12:
+          // V6.11.13:
           // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
@@ -7022,6 +7253,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
       });
       $("scheduleTeamWrap")?.addEventListener("click", event => {
+        const dayTrigger = event.target.closest('[data-team-day-unit][data-team-day-date]');
+        if (dayTrigger) {
+          openScheduleTeamDrawer(
+            String(dayTrigger.dataset.teamDayUnit || ''),
+            String(dayTrigger.dataset.teamDayDate || '')
+          );
+          return;
+        }
+
         const trigger = event.target.closest('[data-team-open]');
         if (!trigger) return;
         const team = String(trigger.dataset.teamOpen || '');
@@ -7029,6 +7269,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         setVal('scheduleTeamFocus', team);
         setScheduleView('PERSON');
         renderSchedule();
+      });
+      $("scheduleTeamDrawerClose")?.addEventListener("click", closeScheduleTeamDrawer);
+      $("scheduleTeamDrawerBackdrop")?.addEventListener("click", closeScheduleTeamDrawer);
+      $("scheduleTeamDrawer")?.addEventListener("click", event => {
+        const filter = event.target.closest('[data-team-drawer-filter]');
+        if (!filter) return;
+        scheduleTeamDrawerState.filter = String(filter.dataset.teamDrawerFilter || 'ALL');
+        renderScheduleTeamDrawer();
       });
       $("schedulePatternSummary")?.addEventListener("click", event => {
         const chip = event.target.closest("[data-schedule-pattern-chip]");
@@ -7040,6 +7288,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         renderSchedule();
       });
       applyScheduleViewMode();
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !$('scheduleTeamDrawer')?.classList.contains('hidden')) {
+          closeScheduleTeamDrawer();
+        }
+      });
       $("saveAssignmentBtn").addEventListener("click", saveAssignment);
       $("deleteAssignmentBtn").addEventListener("click", deleteAssignment);
       $("assignConfirm")?.addEventListener("change", updateAssignConfirmHelp);
@@ -7173,17 +7426,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.12 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.12 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.12 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.12 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.12 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.13 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.13 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.13 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.13 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.13 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
       if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
-      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.12";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.13";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
@@ -7192,8 +7445,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
       if (msg.includes("WORKDAY_SHIFT_REQUIRES_START_AND_END")) return "กะวันทำงานต้องระบุเวลาเริ่มและเวลาสิ้นสุด";
-      if (msg.includes("ta_get_employee_pattern_assignment_meta_v61111")) return "กรุณารัน SQL V6.11.12 เพื่อโหลดข้อมูล Template เริ่มต้น วันที่มีผล และผู้บันทึกให้ครบ";
-      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.12 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
+      if (msg.includes("ta_get_employee_pattern_assignment_meta_v61111")) return "กรุณารัน SQL V6.11.13 เพื่อโหลดข้อมูล Template เริ่มต้น วันที่มีผล และผู้บันทึกให้ครบ";
+      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.13 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
       if (msg.includes("INVALID_CUSTOMER_END_MODE")) return "รูปแบบเวลาสิ้นสุดงานลูกค้าไม่ถูกต้อง";
       if (msg.includes("CUSTOMER_WINDOW_START_REQUIRED_FOR_SPLIT_FLEX")) return "กรุณาระบุคาดว่าจะเริ่มงานลูกค้า";
       if (msg.includes("CUSTOMER_WINDOW_END_REQUIRED_FOR_FIXED_MODE")) return "กรุณาระบุเวลาสิ้นสุด หรือเลือก ตามเวลาออกจริง";
@@ -11470,7 +11723,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.11.12 CSV Import + Technician Work Patterns RESTORED ===== */
+/* ===== V6.11.13 CSV Import + Technician Work Patterns RESTORED ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -12468,14 +12721,14 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.11.12',
+    version:'6.11.13',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns
   };
 
   window.TimeClockCsvImport = {
-    version:'6.11.12',
+    version:'6.11.13',
     load:loadCsvImportWorkspace,
     loadHistory:loadCsvHistory,
     inspect:inspectCsv,
@@ -12484,10 +12737,10 @@ ${skippedSummary(compatibility.skipped)}
   };
 
   document.documentElement.dataset.csvImportModule =
-    '6.11.12-ready';
+    '6.11.13-ready';
 
   document.documentElement.dataset.workPatternModule =
-    '6.11.12-ready';
+    '6.11.13-ready';
 
   document.readyState==='loading'
     ? document.addEventListener(
@@ -18216,12 +18469,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.12 System Period Management ===== */
+/* ===== V6.11.13 System Period Management ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.12";
+    "6.11.13";
 
   const app = () =>
     window.TimeClockApp;
@@ -19318,11 +19571,11 @@ ${skippedSummary(compatibility.skipped)}
 
     if(!modal){
       console.error(
-        "V6.11.12: systemPeriodModal not found"
+        "V6.11.13: systemPeriodModal not found"
       );
 
       app()?.toast?.(
-        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.12",
+        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.13",
         "error"
       );
 
@@ -19430,11 +19683,11 @@ ${skippedSummary(compatibility.skipped)}
       || !noteInput
     ){
       console.error(
-        "V6.11.12: System Period modal fields incomplete"
+        "V6.11.13: System Period modal fields incomplete"
       );
 
       app()?.toast?.(
-        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.12 ใหม่ทั้งหมด",
+        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.13 ใหม่ทั้งหมด",
         "error"
       );
 
@@ -20855,7 +21108,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   document.documentElement.dataset.systemPeriodModule =
-    "6.11.12-ready";
+    "6.11.13-ready";
 
   window.TimeClockSystemPeriods={
     VERSION,
