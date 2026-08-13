@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.10 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.11 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.10 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.11 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.10-20260811" rel="stylesheet"/>
+<link href="./app.css?v=6.11.11-20260811" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.10</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.11</span></div>
 </form>
 </div>
 </section>
@@ -278,7 +278,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.10 Organization Structure &amp; Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.11 Organization Structure &amp; Manager Scope</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -740,23 +740,45 @@
 
 <!-- Technician Work Patterns -->
 <section class="page work-pattern-page" id="page-work-patterns">
-<div class="work-pattern-hero">
-<div><span class="eyebrow">TECHNICIAN WORK MODEL</span><h2>รูปแบบการทำงานช่างเทคนิค</h2><p>กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น เกณฑ์ OT และรูปแบบงานหนึ่งช่วง/หลายช่วง</p></div>
-<button class="btn btn-light" id="workPatternRefreshBtn">รีเฟรชข้อมูล</button>
+<div class="work-pattern-hero work-pattern-hero-v61111">
+<div class="work-pattern-hero-copy-v61111">
+<span class="eyebrow">TECHNICIAN WORK MODEL</span>
+<h2>รูปแบบการทำงานช่างเทคนิค</h2>
+<p>กำหนดรูปแบบ 5/6 วัน และ Template เริ่มต้นรายบุคคล เพื่อเชื่อมต่อกับปฏิทินจัดกะและการคำนวณเวลาทำงาน</p>
+<div class="work-pattern-hero-tags-v61111"><span>5 วัน / 6 วัน</span><span>Template รายบุคคล</span><span>เชื่อมปฏิทินจัดกะ</span></div>
+</div>
+<button type="button" class="btn btn-primary work-pattern-refresh-v61111" id="workPatternRefreshBtn">↻ รีเฟรชข้อมูล</button>
 </div>
 <div aria-hidden="true" class="panel section-gap hidden" id="workPatternAdminPanel">
 <div class="panel-header"><div><h3>พารามิเตอร์รูปแบบการทำงาน</h3><p>แสดงและแก้ไขได้เฉพาะ HR Admin</p></div><button class="btn btn-orange" id="workPatternNewBtn">+ เพิ่มรูปแบบ</button></div>
 <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>วันทำงาน/สัปดาห์</th><th>เวลา/วันรวมพัก</th><th>OT หลัง</th><th>วันหยุดตั้งต้น</th><th>ยกยอด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="workPatternBody"></tbody></table></div></div>
 </div>
 <div class="panel section-gap">
-<div class="panel-header"><div><h3>กำหนดรูปแบบรายบุคคล</h3><p>หัวหน้างานกำหนดได้เฉพาะพนักงานภายใต้ Scope ของตนเอง และกำหนดวันที่เริ่มใช้</p></div></div>
+<div class="panel-header work-pattern-panel-head-v61111">
+<div><span class="work-pattern-section-kicker-v61111">EMPLOYEE ASSIGNMENT</span><h3>กำหนดรูปแบบรายบุคคล</h3><p>แสดงพนักงานภายใต้ Scope พร้อม Template เริ่มต้น ช่วงวันที่มีผล และข้อมูลผู้บันทึก</p></div>
+<div class="work-pattern-panel-badge-v61111">ข้อมูลตาม Scope</div>
+</div>
 <div class="panel-body">
-<div class="fc-toolbar"><div class="field"><label>ค้นหารหัสหรือชื่อ</label><input class="input" id="employeePatternSearch" placeholder="เช่น 7512172"/></div><div class="field"><label>วันที่อ้างอิง</label><input class="input" id="employeePatternDate" type="date"/></div><div class="toolbar-actions"><button class="btn btn-primary" id="employeePatternLoadBtn">ค้นหา</button></div></div>
+<div class="work-pattern-summary-v61111">
+<article><span>พนักงานที่แสดง</span><strong id="wpSummaryTotalV61111">0</strong></article>
+<article><span>กำหนดแล้ว</span><strong id="wpSummaryAssignedV61111">0</strong></article>
+<article><span>กะปกติ</span><strong id="wpSummaryNormalV61111">0</strong></article>
+<article class="late"><span>งานลูกค้าช่วงดึก</span><strong id="wpSummaryLateV61111">0</strong></article>
+</div>
+<div class="work-pattern-filterbar-v61111">
+<div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="employeePatternSearch" placeholder="รหัสพนักงาน หรือ ชื่อ-นามสกุล"/></div>
+<div class="field"><label>วันที่อ้างอิง</label><input class="input" id="employeePatternDate" type="date"/></div>
+<div class="toolbar-actions"><button type="button" class="btn btn-primary" id="employeePatternLoadBtn">⌕ ค้นหา</button></div>
+</div>
+<div class="work-pattern-load-note-v61111 hidden" id="workPatternMetaWarningV61111"></div>
 <div class="table-wrap section-gap"><table class="employee-pattern-table-v6119"><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>ตำแหน่ง</th><th>พื้นที่</th><th>รูปแบบ</th><th>วันหยุดตั้งต้น</th><th>Template เริ่มต้น</th><th>เริ่มใช้</th><th>สิ้นสุด</th><th>วันที่บันทึกเวลา</th><th>ผู้บันทึก</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
 </div>
 </div>
 <div class="panel section-gap">
-<div class="panel-header"><div><h3>Template รูปแบบการทำงาน</h3><p>ใช้เป็น Template เริ่มต้นรายบุคคล 2 รูปแบบ โดยกะปกติเลือกเวลาให้อัตโนมัติตามกลุ่ม 5 วันหรือ 6 วัน</p></div></div>
+<div class="panel-header work-pattern-panel-head-v61111">
+<div><span class="work-pattern-section-kicker-v61111">WORK TEMPLATE</span><h3>Template รูปแบบการทำงาน</h3><p>ใช้เป็น Template เริ่มต้นของพนักงาน และเชื่อมค่าไปยัง Popup กำหนดกะทำงานอัตโนมัติ</p></div>
+<div class="work-pattern-panel-badge-v61111 subtle">2 Template</div>
+</div>
 <div class="work-template-grid panel-body" id="workTemplateCards"></div>
 </div>
 </section>
@@ -988,7 +1010,7 @@
 </section>
 </div>
 </section>
-<!-- User Account Management V6.11.10 -->
+<!-- User Account Management V6.11.11 -->
 <section class="page admin-page user-account-page" id="page-admin-accounts">
 <div class="user-account-hero">
 <div>
@@ -1237,7 +1259,7 @@
 <div style="display:flex;gap:9px;flex-wrap:wrap"><button class="btn btn-light" id="previewImportBtn">ตรวจสอบก่อนนำเข้า</button><button class="btn btn-primary" id="runImportBtn">นำเข้าข้อมูล</button><button class="btn btn-success" id="downloadTemplateBtn">ดาวน์โหลด Template</button></div>
 <div class="employee-import-guide section-gap">
 <div>
-<strong>คอลัมน์ Employee Template V6.11.10</strong>
+<strong>คอลัมน์ Employee Template V6.11.11</strong>
 <p>employee_id, full_name, email, position_name, department, org_code, pc, car_team, start_date, resign_date</p>
 </div>
 <div class="employee-import-guide-note">
@@ -1312,7 +1334,7 @@
 <div class="field"><label>Publishable Key / Anon Key</label><textarea class="textarea" id="configKey" placeholder="sb_publishable_... หรือ anon key"></textarea></div>
 <div style="padding:12px;border-radius:10px;background:var(--amber-100);color:var(--amber-600);font-size:11px">ใช้เฉพาะ Publishable/Anon key สำหรับ Browser ห้ามใส่ Service Role key
           <div class="supabase-default-note-v61010">
-            V6.11.10 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
+            V6.11.11 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
             User ใหม่ไม่ต้องตั้งค่าส่วนนี้เอง
           </div></div>
 </div>
@@ -1382,7 +1404,7 @@
 <div>
 <div class="org-modal-title-row">
 <h3 id="orgUnitModalTitle">เพิ่มหน่วยงาน</h3>
-<span class="org-modal-version">V6.11.10</span>
+<span class="org-modal-version">V6.11.11</span>
 </div>
 <p>กำหนดรหัส Zone ระดับ และหน่วยงานแม่</p>
 </div>
@@ -1585,7 +1607,7 @@
 <div class="modal-footer"><button class="btn btn-success" id="orgScopeTemplateBtn" style="margin-right:auto">ดาวน์โหลด Template</button><button class="btn btn-light" data-org-close="orgScopeUploadModal">ยกเลิก</button><button class="btn btn-primary" disabled="" id="orgScopeImportBtn">นำเข้า Manager Scope</button></div>
 </div>
 </div>
-<!-- Create User Account Modal V6.11.10 -->
+<!-- Create User Account Modal V6.11.11 -->
 <div class="modal-backdrop hidden" id="accountCreateModal">
 <div class="modal large account-create-modal">
 <div class="modal-header">
@@ -1673,7 +1695,7 @@
 </div>
 </div>
 </div>
-<!-- Edit User Account Modal V6.11.10 -->
+<!-- Edit User Account Modal V6.11.11 -->
 <div class="modal-backdrop hidden" id="accountEditModal">
 <div class="modal large account-edit-modal">
 <div class="modal-header">
@@ -1735,7 +1757,7 @@
 </div>
 </div>
 </div>
-<!-- Invite Acceptance Modal V6.11.10 -->
+<!-- Invite Acceptance Modal V6.11.11 -->
 <div class="modal-backdrop hidden account-invite-backdrop" id="inviteAcceptModal">
 <div class="modal account-invite-accept-modal">
 <div class="modal-header account-invite-accept-header">
@@ -1768,7 +1790,7 @@
 </div>
 </div>
 </div>
-<!-- Password Recovery OTP V6.11.10 -->
+<!-- Password Recovery OTP V6.11.11 -->
 <div class="modal-backdrop hidden account-recovery-backdrop" id="recoveryOtpModal">
 <div class="modal account-recovery-otp-modal">
 <div class="modal-header account-recovery-otp-header">
@@ -1813,7 +1835,7 @@
 </div>
 </div>
 </div>
-<!-- Password Recovery Confirmation V6.11.10 -->
+<!-- Password Recovery Confirmation V6.11.11 -->
 <div class="modal-backdrop hidden account-recovery-backdrop" id="recoveryConfirmModal">
 <div class="modal account-recovery-confirm-modal">
 <div class="modal-header account-recovery-confirm-header">
@@ -2151,6 +2173,6 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=6.11.10-20260811"></script>
+<script src="./app.js?v=6.11.11-20260811"></script>
 </body>
 </html>

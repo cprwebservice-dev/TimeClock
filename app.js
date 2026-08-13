@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.10";
-document.documentElement.dataset.timeClockBuild = "6.11.10";
+window.__TIME_CLOCK_BUILD__ = "V6.11.11";
+document.documentElement.dataset.timeClockBuild = "6.11.11";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.10";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.10',
+  version: '6.11.11',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -103,7 +103,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.10 ก่อนจัดกะ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.11 ก่อนจัดกะ"
     );
   }
 
@@ -127,7 +127,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.10 ก่อนบันทึกกะแบบหลายรายการ"
+      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.11 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -656,7 +656,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       ) {
         throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.10"
+          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.11"
         );
       }
 
@@ -1789,7 +1789,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             )
         ) {
           throw new Error(
-            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.10"
+            "SECURE_SCOPE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.11"
           );
         }
 
@@ -2496,7 +2496,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               )
           ) {
             throw new Error(
-              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.10"
+              "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.11"
             );
           }
 
@@ -5147,7 +5147,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           returnContext?.source ===
           "attendance-detail"
         ) {
-          // V6.11.10:
+          // V6.11.11:
           // Attendance was recalculated inside the same SQL transaction
           // that saved the shift. Reload only; do not calculate twice.
 
@@ -5239,7 +5239,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const savedEmp = val("assignEmpCode");
           const savedDate = val("assignWorkDate");
 
-          // V6.11.10:
+          // V6.11.11:
           // Delete + Attendance recalculation is atomic in SQL.
 
           switchPage("attendance");
@@ -6855,17 +6855,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อโหลดตารางกะตาม User Scope";
-      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
-      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 ก่อนบันทึกหรือแก้ไขกะ";
-      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อโหลดตัวกรองตาม User Scope";
-      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.11 เพื่อโหลดตารางกะตาม User Scope";
+      if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.11 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
+      if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.11 ก่อนบันทึกหรือแก้ไขกะ";
+      if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.11 เพื่อโหลดตัวกรองตาม User Scope";
+      if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.11 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
       if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
-      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.10";
+      if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.11";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
@@ -6874,7 +6874,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
       if (msg.includes("WORKDAY_SHIFT_REQUIRES_START_AND_END")) return "กะวันทำงานต้องระบุเวลาเริ่มและเวลาสิ้นสุด";
-      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.10 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
+      if (msg.includes("ta_get_employee_pattern_assignment_meta_v61111")) return "กรุณารัน SQL V6.11.11 เพื่อโหลดข้อมูล Template เริ่มต้น วันที่มีผล และผู้บันทึกให้ครบ";
+      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.11 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
       if (msg.includes("INVALID_CUSTOMER_END_MODE")) return "รูปแบบเวลาสิ้นสุดงานลูกค้าไม่ถูกต้อง";
       if (msg.includes("CUSTOMER_WINDOW_START_REQUIRED_FOR_SPLIT_FLEX")) return "กรุณาระบุคาดว่าจะเริ่มงานลูกค้า";
       if (msg.includes("CUSTOMER_WINDOW_END_REQUIRED_FOR_FIXED_MODE")) return "กรุณาระบุเวลาสิ้นสุด หรือเลือก ตามเวลาออกจริง";
@@ -11151,7 +11152,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.11.10 CSV Import + Technician Work Patterns RESTORED ===== */
+/* ===== V6.11.11 CSV Import + Technician Work Patterns RESTORED ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -11557,12 +11558,10 @@ ${skippedSummary(compatibility.skipped)}
       }
     ];
 
-    box.innerHTML=cards.map(card=>`<article class="work-template-card ${card.ready?'':'template-missing'}">
-      <div>
-        <span class="fc-badge ${card.ready?'active':'danger'}">${esc(card.badge)}</span>
-        <h3>${esc(card.title)}</h3>
-        <small>${esc(card.code)}</small>
-      </div>
+    box.innerHTML=cards.map((card,index)=>`<article class="work-template-card work-template-card-v61111 ${index===1?'late-template':''} ${card.ready?'':'template-missing'}">
+      <div class="work-template-card-head-v61111"><span class="fc-badge ${card.ready?'active':'danger'}">${esc(card.badge)}</span><span class="template-number-v61111">0${index+1}</span></div>
+      <h3>${esc(card.title)}</h3>
+      <small class="work-template-code-v61111">${esc(card.code)}</small>
       <p>${esc(card.note)}</p>
       <div class="work-template-segments">
         ${card.segments.length?card.segments.map(s=>`<span class="segment-${String(s.type).toLowerCase()}"><b>${esc(s.type)}</b> ${esc(s.start)}–${esc(s.end)}</span>`).join(''):'<span class="segment-waiting"><b>ตรวจสอบ</b> ยังไม่พบ Template ในฐานข้อมูล</span>'}
@@ -11575,6 +11574,17 @@ ${skippedSummary(compatibility.skipped)}
   };
   function employeeTemplateCategory(templateCode){
     const code=String(templateCode||'').toUpperCase();
+
+    if(
+      [
+        'SINGLE_0830',
+        'SINGLE_0830_1730',
+        'SINGLE_0830_1800'
+      ].includes(code)
+    ){
+      return 'NORMAL';
+    }
+
     const t=wp.templates.find(x=>String(x.template_code||'').toUpperCase()===code);
     const text=`${t?.template_name||''} ${t?.note||''} ${code}`.toLowerCase();
     if(
@@ -11625,8 +11635,33 @@ ${skippedSummary(compatibility.skipped)}
   function fillPatternOptions(){const pOpts=wp.patterns.filter(x=>x.is_active).map(x=>`<option value="${esc(x.pattern_code)}">${esc(x.pattern_name)}</option>`).join('');const tOpts=wp.templates.filter(x=>x.is_active&&!String(x.template_code||'').toUpperCase().includes('EARLY')).map(x=>`<option value="${esc(x.template_code)}">${esc(x.template_name)}</option>`).join('');if($('epPattern'))$('epPattern').innerHTML=pOpts;if($('epTemplate'))$('epTemplate').innerHTML='<option value="">เลือก Template</option>';if($('assignWorkTemplate'))$('assignWorkTemplate').innerHTML=tOpts;}
   function openPattern(code){if(!canManageWorkPatternParameters()){app()?.toast?.('พารามิเตอร์รูปแบบการทำงานสำหรับ HR Admin เท่านั้น','error');return;}ensureWpModals();const r=wp.patterns.find(x=>x.pattern_code===code)||{pattern_code:'',pattern_name:'',work_days_per_week:6,scheduled_minutes_including_break:540,ot_threshold_minutes:540,break_minutes:60,default_start_time:'08:30',default_end_time:'17:30',weekly_off_dows:[0],carry_forward_months:3,is_active:true,note:''};wp.editing=r;$('wpCode').value=r.pattern_code||'';$('wpCode').disabled=!!r.pattern_code;$('wpName').value=r.pattern_name||'';$('wpDays').value=r.work_days_per_week||6;$('wpScheduled').value=r.scheduled_minutes_including_break||540;$('wpOt').value=r.ot_threshold_minutes||540;$('wpBreak').value=r.break_minutes||60;$('wpStart').value=String(r.default_start_time||'08:30').slice(0,5);$('wpEnd').value=String(r.default_end_time||'17:30').slice(0,5);$('wpCarry').value=r.carry_forward_months??3;$('wpActive').checked=r.is_active!==false;$('wpNote').value=r.note||'';qsa('[data-wp-dow]').forEach(c=>c.checked=(r.weekly_off_dows||[]).map(Number).includes(Number(c.dataset.wpDow)));$('workPatternModal').classList.remove('hidden');}
   async function savePattern(){if(!canManageWorkPatternParameters()){app()?.toast?.('ไม่มีสิทธิ์แก้ไขพารามิเตอร์รูปแบบการทำงาน','error');return;}try{const weekly=qsa('[data-wp-dow]').filter(x=>x.checked).map(x=>Number(x.dataset.wpDow));if(!weekly.length)throw new Error('กรุณาเลือกวันหยุดตั้งต้นอย่างน้อย 1 วัน');await rpc('ta_upsert_work_pattern',{p_data:{pattern_code:$('wpCode').value,pattern_name:$('wpName').value,work_days_per_week:Number($('wpDays').value),scheduled_minutes_including_break:Number($('wpScheduled').value),standard_work_minutes:Number($('wpScheduled').value),break_minutes:Number($('wpBreak').value),ot_threshold_minutes:Number($('wpOt').value),weekly_off_dows:weekly,default_start_time:$('wpStart').value,default_end_time:$('wpEnd').value,allow_comp_off:true,carry_forward_months:Number($('wpCarry').value),is_active:$('wpActive').checked,note:$('wpNote').value}});$('workPatternModal').classList.add('hidden');app()?.toast?.('บันทึกรูปแบบการทำงานแล้ว','success');await loadWorkPatterns();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
+  function assignmentStateLabelV61111(value){
+    const s=String(value||'').toUpperCase();
+    if(s==='ACTIVE')return {text:'ใช้งานอยู่',cls:'active'};
+    if(s==='FUTURE')return {text:'รอเริ่มใช้',cls:'future'};
+    if(s==='EXPIRED')return {text:'สิ้นสุดแล้ว',cls:'expired'};
+    return {text:'ยังไม่กำหนด',cls:'none'};
+  }
+
+  function renderEmployeePatternSummaryV61111(){
+    const rows=wp.employees||[];
+    const assigned=rows.filter(r=>r.has_assignment).length;
+    const normal=rows.filter(r=>employeeTemplateCategory(r.default_template_code)==='NORMAL').length;
+    const late=rows.filter(r=>employeeTemplateCategory(r.default_template_code)==='NORMAL_LATE_CUSTOMER').length;
+    const set=(id,v)=>{const n=$(id);if(n)n.textContent=Number(v||0).toLocaleString('th-TH');};
+    set('wpSummaryTotalV61111',rows.length);
+    set('wpSummaryAssignedV61111',assigned);
+    set('wpSummaryNormalV61111',normal);
+    set('wpSummaryLateV61111',late);
+  }
+
   async function loadEmployeePatterns(){
     const body=$('employeePatternBody');if(!body)return;
+    const warning=$('workPatternMetaWarningV61111');
+    if(warning){
+      warning.classList.add('hidden');
+      warning.textContent='';
+    }
     body.innerHTML='<tr><td colspan="13" class="table-empty">กำลังโหลด...</td></tr>';
     try{
       const effectiveDate=$('employeePatternDate')?.value||new Date().toISOString().slice(0,10);
@@ -11660,7 +11695,7 @@ ${skippedSummary(compatibility.skipped)}
         try{
           assignmentMeta=
             await rpc(
-              'ta_get_employee_pattern_assignment_meta_v61110',
+              'ta_get_employee_pattern_assignment_meta_v61111',
               {
                 p_emp_codes:
                   rows.map(
@@ -11672,10 +11707,18 @@ ${skippedSummary(compatibility.skipped)}
             )
             || [];
         }catch(error){
-          console.warn(
+          console.error(
             'Employee Pattern assignment metadata:',
             error
           );
+          const warning=$('workPatternMetaWarningV61111');
+          if(warning){
+            warning.classList.remove('hidden');
+            warning.textContent=
+              app()?.humanError?.(error)
+              || error?.message
+              || 'โหลดข้อมูล Assignment ไม่สำเร็จ';
+          }
         }
       }
 
@@ -11693,22 +11736,22 @@ ${skippedSummary(compatibility.skipped)}
 
       wp.employees=
         rows.map(
-          r=>({
-            ...r,
-            ...(
-              assignmentMap.get(
-                String(r.emp_code)
-              )
-              || {}
-            ),
-            position_name:
-              r.position_name
-              || positionMap.get(
-                String(r.emp_code)
-              )
-              || '-'
-          })
+          r=>{
+            const meta=assignmentMap.get(String(r.emp_code))||{};
+            return {
+              ...r,
+              ...meta,
+              effective_from:meta.effective_from||r.effective_from||null,
+              effective_to:meta.effective_to??r.effective_to??null,
+              default_template_code:meta.default_template_code||r.default_template_code||null,
+              has_assignment:meta.has_assignment??Boolean(r.effective_from||r.default_template_code),
+              assignment_state:meta.assignment_state||(r.effective_from?'ACTIVE':'NOT_ASSIGNED'),
+              position_name:r.position_name||positionMap.get(String(r.emp_code))||'-'
+            };
+          }
         );
+
+      renderEmployeePatternSummaryV61111();
 
       body.innerHTML=
         wp.employees.length
@@ -11728,42 +11771,29 @@ ${skippedSummary(compatibility.skipped)}
                   );
 
                 const templateClass=
-                  templateCategory===
-                    'NORMAL_LATE_CUSTOMER'
-                    ? 'late'
-                    : 'normal';
+                  templateCategory==='NORMAL_LATE_CUSTOMER'?'late':'normal';
+                const assignmentState=assignmentStateLabelV61111(r.assignment_state);
+                const recordedBy=
+                  r.recorded_by
+                  || r.ui_saved_by_email
+                  || r.updated_by_email
+                  || r.created_by_email
+                  || (r.has_assignment?'ข้อมูลเดิม • ไม่พบผู้บันทึกย้อนหลัง':'-');
 
-                return `<tr>
+                return `<tr class="employee-pattern-row-v61111 ${r.has_assignment?'is-assigned':'is-unassigned'}">
                   <td><strong>${esc(r.emp_code)}</strong></td>
                   <td>${esc(r.full_name||'-')}</td>
                   <td>${esc(r.department||'-')}</td>
                   <td>${esc(r.position_name||'-')}</td>
                   <td>${esc([r.area,r.sub_area].filter(Boolean).join(' / ')||'-')}</td>
-                  <td>${esc(r.pattern_name||r.pattern_code||'-')}</td>
-                  <td>${esc(dowText(r.weekly_off_dows))}</td>
+                  <td><div class="employee-pattern-type-v61111"><strong>${esc(r.pattern_name||r.pattern_code||'-')}</strong><span class="assignment-state-v61111 ${assignmentState.cls}">${esc(assignmentState.text)}</span></div></td>
+                  <td><span class="weekly-off-chip-v61111">${esc(dowText(r.weekly_off_dows))}</span></td>
                   <td><span class="employee-template-chip-v6119 ${templateClass}">${esc(employeeTemplateLabel(templateCode))}</span></td>
-                  <td class="nowrap">${esc(fmtDate(r.effective_from)||'-')}</td>
-                  <td class="nowrap">${r.effective_to?esc(fmtDate(r.effective_to)):'<span class="employee-pattern-open-ended-v6119">ไม่กำหนด</span>'}</td>
-                  <td class="nowrap">${esc(fmtDateTime(
-                    r.recorded_at
-                    || r.ui_saved_at
-                    || r.updated_at
-                    || r.created_at
-                  )||'-')}</td>
-                  <td><span class="employee-pattern-recorder-v6119" title="${esc(
-                    r.recorded_by
-                    || r.ui_saved_by_email
-                    || r.updated_by_email
-                    || r.created_by_email
-                    || '-'
-                  )}">${esc(
-                    r.recorded_by
-                    || r.ui_saved_by_email
-                    || r.updated_by_email
-                    || r.created_by_email
-                    || '-'
-                  )}</span></td>
-                  <td><button class="btn btn-light btn-sm" data-assign-pattern="${esc(r.emp_code)}">กำหนด</button></td>
+                  <td class="nowrap">${r.effective_from?`<span class="effective-date-v61111 start">${esc(fmtDate(r.effective_from))}</span>`:'<span class="data-missing-v61111">ยังไม่กำหนด</span>'}</td>
+                  <td class="nowrap">${r.effective_to?`<span class="effective-date-v61111 end">${esc(fmtDate(r.effective_to))}</span>`:(r.has_assignment?'<span class="employee-pattern-open-ended-v6119">ไม่กำหนด</span>':'<span class="data-missing-v61111">-</span>')}</td>
+                  <td class="nowrap">${(r.recorded_at||r.ui_saved_at||r.updated_at||r.created_at)?`<span class="recorded-time-v61111">${esc(fmtDateTime(r.recorded_at||r.ui_saved_at||r.updated_at||r.created_at))}</span>`:(r.has_assignment?'<span class="data-missing-v61111">ข้อมูลเดิม</span>':'<span class="data-missing-v61111">-</span>')}</td>
+                  <td><span class="employee-pattern-recorder-v6119 ${recordedBy.startsWith('ข้อมูลเดิม')?'legacy':''}" title="${esc(recordedBy)}">${esc(recordedBy)}</span></td>
+                  <td><button class="btn btn-light btn-sm employee-pattern-action-v61111" data-assign-pattern="${esc(r.emp_code)}">✎ กำหนด</button></td>
                 </tr>`;
               }
             ).join('')
@@ -12120,14 +12150,14 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.11.10',
+    version:'6.11.11',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns
   };
 
   window.TimeClockCsvImport = {
-    version:'6.11.10',
+    version:'6.11.11',
     load:loadCsvImportWorkspace,
     loadHistory:loadCsvHistory,
     inspect:inspectCsv,
@@ -12136,10 +12166,10 @@ ${skippedSummary(compatibility.skipped)}
   };
 
   document.documentElement.dataset.csvImportModule =
-    '6.11.10-ready';
+    '6.11.11-ready';
 
   document.documentElement.dataset.workPatternModule =
-    '6.11.10-ready';
+    '6.11.11-ready';
 
   document.readyState==='loading'
     ? document.addEventListener(
@@ -17868,12 +17898,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.10 System Period Management ===== */
+/* ===== V6.11.11 System Period Management ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.10";
+    "6.11.11";
 
   const app = () =>
     window.TimeClockApp;
@@ -18970,11 +19000,11 @@ ${skippedSummary(compatibility.skipped)}
 
     if(!modal){
       console.error(
-        "V6.11.10: systemPeriodModal not found"
+        "V6.11.11: systemPeriodModal not found"
       );
 
       app()?.toast?.(
-        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.10",
+        "ไม่พบหน้าต่างเพิ่มรอบระบบ กรุณารีเฟรชไฟล์หน้าเว็บ V6.11.11",
         "error"
       );
 
@@ -19082,11 +19112,11 @@ ${skippedSummary(compatibility.skipped)}
       || !noteInput
     ){
       console.error(
-        "V6.11.10: System Period modal fields incomplete"
+        "V6.11.11: System Period modal fields incomplete"
       );
 
       app()?.toast?.(
-        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.10 ใหม่ทั้งหมด",
+        "องค์ประกอบหน้าต่างเพิ่มรอบระบบไม่ครบ กรุณา Deploy V6.11.11 ใหม่ทั้งหมด",
         "error"
       );
 
@@ -20507,7 +20537,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   document.documentElement.dataset.systemPeriodModule =
-    "6.11.10-ready";
+    "6.11.11-ready";
 
   window.TimeClockSystemPeriods={
     VERSION,
