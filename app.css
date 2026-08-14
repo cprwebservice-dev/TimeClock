@@ -12621,3 +12621,135 @@ body.theme-dark .team-detail-card.tone-shift2,
 .dark .team-detail-card.tone-shift2{background:linear-gradient(180deg,#4a3116 0%,#3d2812 100%)!important;border-color:#866031!important}
 body.theme-dark .team-detail-card.tone-shift2.is-muted,
 .dark .team-detail-card.tone-shift2.is-muted{background:linear-gradient(180deg,#243444 0%,#1d2c39 100%)!important;border-color:#42586d!important}
+
+/* ===== v6.11.16c Team label confirmation semantics ===== */
+.schedule-team-summary-card.team-day-card-v61115{
+  height:auto!important;
+  min-height:82px!important;
+  justify-content:flex-start!important;
+}
+
+.team-day-top-confirm-v61116{
+  min-height:22px!important;
+  justify-content:flex-start!important;
+}
+
+.team-day-standard-v61116,
+.team-day-change-status-v61116{
+  width:100%;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  padding:4px 7px;
+  border-radius:8px;
+  font-size:7px;
+  font-weight:850;
+  line-height:1.1;
+  box-sizing:border-box;
+}
+
+.team-day-standard-v61116{
+  justify-content:flex-start;
+  background:#ecfdf5;
+  border:1px solid #c7f0dc;
+  color:#16734b;
+}
+
+.team-day-standard-v61116 i{
+  width:13px;
+  height:13px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+  background:#22c55e;
+  color:#fff;
+  font-size:8px;
+  font-style:normal;
+  flex:0 0 auto;
+}
+
+.team-day-change-status-v61116{
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  color:#b45309;
+}
+
+.team-day-change-status-v61116 b,
+.team-day-change-status-v61116 em{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.team-day-change-status-v61116 b{
+  font-weight:900;
+}
+
+.team-day-change-status-v61116 em{
+  font-style:normal;
+  font-weight:850;
+}
+
+.team-day-change-status-v61116.is-complete{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#15803d;
+}
+
+.team-day-change-status-v61116.is-pending{
+  background:#fff7ed;
+  border-color:#fdba74;
+  color:#b45309;
+}
+
+.team-day-bottom-extras-v61116{
+  min-height:14px!important;
+  justify-content:flex-end!important;
+}
+
+.schedule-team-progress.compact.team-day-progress-v61115,
+.team-day-progress-text-v61115,
+.team-day-total-v61115,
+.team-day-confirm-v61115{
+  display:none!important;
+}
+
+.schedule-team-summary-card.team-day-card-v61115.is-standard-v61116{
+  border-color:#d8e8e0!important;
+}
+
+.schedule-team-summary-card.team-day-card-v61115.has-change-v61116{
+  border-color:#f4c98e!important;
+  box-shadow:inset 3px 0 0 #f59e0b,0 7px 16px rgba(245,158,11,.07)!important;
+}
+
+body.theme-dark .team-day-standard-v61116,
+.dark .team-day-standard-v61116{
+  background:#193d31;
+  border-color:#2b684e;
+  color:#b8efd2;
+}
+
+body.theme-dark .team-day-change-status-v61116.is-pending,
+.dark .team-day-change-status-v61116.is-pending{
+  background:#4a3119;
+  border-color:#7a5529;
+  color:#ffd09a;
+}
+
+body.theme-dark .team-day-change-status-v61116.is-complete,
+.dark .team-day-change-status-v61116.is-complete{
+  background:#193d31;
+  border-color:#2b684e;
+  color:#b8efd2;
+}
+
+@media(max-width:1200px){
+  .schedule-team-summary-card.team-day-card-v61115{
+    height:auto!important;
+    min-height:82px!important;
+  }
+}
