@@ -4475,7 +4475,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         );
         await enrichScheduleManagerMetaV61122(state.schedule);
         await enrichScheduleManagerNamesV61121(state.schedule);
-        await enrichScheduleOrgManagersV61123(state.schedule, period);
+        await enrichScheduleManagerMapV61124(state.schedule, period);
+        const unresolvedManagerRowsV61124 = state.schedule.filter(row =>
+          !Array.isArray(row?._team_manager_names_v61123)
+          || row._team_manager_names_v61123.length === 0
+        );
+        if (unresolvedManagerRowsV61124.length) {
+          await enrichScheduleOrgManagersV61123(unresolvedManagerRowsV61124, period);
+        }
 
         renderSchedule();
         const employeeCount=new Set(state.schedule.map(r=>String(r.emp_code||"")).filter(Boolean)).size;
@@ -4765,7 +4772,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         });
         cache.loadedUnits = true;
       } catch (error) {
-        console.warn('Schedule org-unit metadata V6.11.23:', error);
+        console.warn('Schedule org-unit metadata V6.11.24:', error);
       }
       return cache.units;
     }
@@ -4783,7 +4790,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         cache.detailById.set(id, data || null);
         return data || null;
       } catch (error) {
-        console.warn('Schedule org manager detail V6.11.23:', id, error);
+        console.warn('Schedule org manager detail V6.11.24:', id, error);
         cache.detailById.set(id, null);
         return null;
       }
@@ -4832,7 +4839,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             });
           }
         } catch (error) {
-          console.warn('Schedule manager employee-name fallback V6.11.23:', error);
+          console.warn('Schedule manager employee-name fallback V6.11.24:', error);
         }
       }
 
@@ -4876,7 +4883,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       for (let i = 0; i < requests.length; i += 6) {
         const batch = requests.slice(i, i + 6);
         await Promise.all(batch.map(async request => {
-          const names = await scheduleResolveScopeManagerNamesV61123(request.unit, request.date);
+          // Team header should show the current Manager assignment, not the historical
+          // schedule date. This avoids a blank label when the viewed week is outside the
+          // Manager Scope effective period.
+          const names = await scheduleResolveScopeManagerNamesV61123(request.unit, todayISO());
           request.rows.forEach(row => {
             row._team_manager_names_v61123 = names;
             row._team_org_id_v61123 = request.unit.org_id;
@@ -4884,6 +4894,58 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           });
         }));
       }
+    }
+
+    async function enrichScheduleManagerMapV61124(rows = [], period = null) {
+      if (!rows?.length || !state.client) return 0;
+      const empCodes = [...new Set(
+        (rows || [])
+          .map(row => String(row?.emp_code || row?.EmployeeId || '').trim())
+          .filter(Boolean)
+      )];
+      if (!empCodes.length) return 0;
+
+      const namesByEmp = new Map();
+      try {
+        for (let i = 0; i < empCodes.length; i += 200) {
+          const batch = empCodes.slice(i, i + 200);
+          const { data, error } = await state.client.rpc(
+            'ta_get_schedule_manager_map_v61124',
+            {
+              p_emp_codes: batch,
+              // Manager shown in the team header is the current organizational Manager.
+              // Do not bind the label to the historical week being viewed.
+              p_work_date: todayISO()
+            }
+          );
+          if (error) throw error;
+          (data || []).forEach(item => {
+            const emp = String(item?.emp_code || '').trim();
+            const managerCode = String(item?.manager_emp_code || '').trim();
+            const name = String(item?.manager_name || item?.manager_email || '').trim();
+            // A numeric employee code is not a display name. Leave that row unresolved so
+            // the Org Unit Manager fallback can resolve display_name/email correctly.
+            const isCodeOnly = !!name && (/^\d+$/.test(name) || (managerCode && name === managerCode));
+            if (!emp || !name || isCodeOnly) return;
+            if (!namesByEmp.has(emp)) namesByEmp.set(emp, new Set());
+            namesByEmp.get(emp).add(name);
+          });
+        }
+      } catch (error) {
+        console.warn('Schedule team manager resolver V6.11.25:', error);
+        return 0;
+      }
+
+      let resolvedRows = 0;
+      (rows || []).forEach(row => {
+        const emp = String(row?.emp_code || row?.EmployeeId || '').trim();
+        const names = [...(namesByEmp.get(emp) || new Set())];
+        if (!names.length) return;
+        row._team_manager_names_v61123 = names;
+        row._team_manager_source_v61124 = 'SERVER_CURRENT_MANAGER_RESOLVER';
+        resolvedRows += 1;
+      });
+      return resolvedRows;
     }
 
     function scheduleTeamManagerLabelV61121(team) {
