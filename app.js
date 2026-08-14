@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.18";
-document.documentElement.dataset.timeClockBuild = "6.11.18";
+window.__TIME_CLOCK_BUILD__ = "V6.11.19";
+document.documentElement.dataset.timeClockBuild = "6.11.19";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.18";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.18',
+  version: '6.11.19',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1512,8 +1512,22 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("toastStack").appendChild(el);
       setTimeout(() => el.remove(), 4500);
     }
-    function openModal(id) { $(id).classList.remove("hidden"); }
-    function closeModal(id) { $(id).classList.add("hidden"); }
+    function openModal(id) {
+      const modal = $(id);
+      if (!modal) return;
+      modal.classList.remove("hidden");
+      if (id === "assignModal") {
+        document.body.classList.add("team-assignment-modal-open");
+      }
+    }
+    function closeModal(id) {
+      const modal = $(id);
+      if (!modal) return;
+      modal.classList.add("hidden");
+      if (id === "assignModal") {
+        document.body.classList.remove("team-assignment-modal-open");
+      }
+    }
     function getConfig() {
       try {
         const stored =
@@ -7776,9 +7790,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   const pct = (n,d) => d > 0 ? Math.max(0, Math.min(100, Math.round(Number(n||0) / Number(d||1) * 100))) : 0;
 
   function applyTheme(theme){
-    document.body.classList.toggle('theme-dark', theme === 'dark');
+    const dark = theme === 'dark';
+    document.body.classList.toggle('theme-dark', dark);
+    document.body.classList.toggle('dark', dark);
+    document.body.classList.toggle('dark-mode', dark);
+    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
     localStorage.setItem('tc_theme', theme);
-    if ($('themeToggleBtn')) $('themeToggleBtn').textContent = theme === 'dark' ? '☀' : '☾';
+    try {
+      const settingsKey = 'ta_enterprise_settings_v4';
+      const storedSettings = JSON.parse(localStorage.getItem(settingsKey) || '{}');
+      storedSettings.theme = theme;
+      localStorage.setItem(settingsKey, JSON.stringify(storedSettings));
+    } catch (_) {}
+    if ($('themeToggleBtn')) $('themeToggleBtn').textContent = dark ? '☀' : '☾';
   }
   function bootEnterprise(){
     applyTheme(localStorage.getItem('tc_theme') || 'light');
@@ -8760,7 +8784,12 @@ ${skippedSummary(compatibility.skipped)}
   function applyVisuals(){
     document.documentElement.style.fontFamily = settings.font === "system" ? "system-ui,sans-serif" : "'Noto Sans Thai',sans-serif";
     document.body.classList.toggle("accent-orange",settings.accent==="orange"); document.body.classList.toggle("accent-teal",settings.accent==="teal");
-    let dark=settings.theme==="dark" || (settings.theme==="system"&&matchMedia("(prefers-color-scheme: dark)").matches); document.body.classList.toggle("dark-mode",dark);
+    let dark=settings.theme==="dark" || (settings.theme==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);
+    document.body.classList.toggle("dark-mode",dark);
+    document.body.classList.toggle("theme-dark",dark);
+    document.body.classList.toggle("dark",dark);
+    document.documentElement.style.colorScheme=dark?"dark":"light";
+    try { localStorage.setItem("tc_theme",dark?"dark":"light"); } catch (_) {}
     qsa("[data-theme-choice]").forEach(x=>x.classList.toggle("active",x.dataset.themeChoice===settings.theme));
     Object.entries(settings.shiftColors).forEach(([k,v])=>document.documentElement.style.setProperty(`--shift-${k.toLowerCase()}`,v));
     document.title=`${settings.systemName} | ${settings.companyName}`;

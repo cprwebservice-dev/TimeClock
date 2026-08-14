@@ -13233,3 +13233,472 @@ body.theme-dark .schedule-team-drawer-note::after,
 .dark .schedule-team-drawer-note::after{
   color:#9fb7ca;
 }
+
+/* ========================================================================== */
+/* V6.11.19 — Team Daily assignment modal stack + Dark Mode UX unification   */
+/* ========================================================================== */
+
+/* ---------- Overlay stacking: popup must always sit above Team Daily Detail ---------- */
+.modal-backdrop{
+  z-index:1600!important;
+}
+
+#assignModal{
+  z-index:1720!important;
+}
+
+#assignModal .modal{
+  position:relative;
+  z-index:1;
+}
+
+.loading-overlay{
+  z-index:1900!important;
+}
+
+.toast-stack{
+  z-index:2050!important;
+}
+
+body.team-assignment-modal-open .schedule-team-drawer,
+body.team-assignment-modal-open .schedule-team-drawer-backdrop{
+  pointer-events:none!important;
+}
+
+body.team-assignment-modal-open .schedule-team-drawer{
+  filter:saturate(.82) brightness(.82);
+}
+
+/* ---------- Dark theme token alignment ---------- */
+body.theme-dark,
+body.dark{
+  --surface:#172635;
+  --surface-soft:#111d29;
+  --text-main:#e7eef6;
+  --text-muted:#9cafc0;
+  --line:#334a5f;
+  --slate-900:#e7eef6;
+  --slate-700:#c6d4e1;
+  --slate-600:#aebdca;
+  --slate-500:#91a4b6;
+  --slate-300:#3a5065;
+  --slate-200:#2b3e50;
+  --slate-100:#1d2d3c;
+  background:#0d1723!important;
+  color:#e7eef6!important;
+}
+
+body.theme-dark .main-shell,
+body.dark .main-shell,
+body.theme-dark .content,
+body.dark .content,
+body.theme-dark .page,
+body.dark .page{
+  background:#0d1723!important;
+  color:#e7eef6!important;
+}
+
+/* ---------- Top bar / sidebar ---------- */
+body.theme-dark .topbar,
+body.dark .topbar{
+  background:#142230!important;
+  border-color:#2b4053!important;
+  color:#e8f0f7!important;
+  box-shadow:0 5px 18px rgba(0,0,0,.18)!important;
+}
+
+body.theme-dark .sidebar,
+body.dark .sidebar{
+  background:#0c2238!important;
+  border-right-color:#263d52!important;
+  box-shadow:7px 0 26px rgba(0,0,0,.18)!important;
+}
+
+body.theme-dark .sidebar::before,
+body.dark .sidebar::before{
+  display:none!important;
+}
+
+body.theme-dark .nav-item .nav-icon,
+body.dark .nav-item .nav-icon{
+  background:#17314a!important;
+  color:#cfe5f8!important;
+  box-shadow:none!important;
+}
+
+body.theme-dark .nav-item:hover .nav-icon,
+body.dark .nav-item:hover .nav-icon{
+  background:#1c3b57!important;
+}
+
+body.theme-dark .nav-item.active,
+body.dark .nav-item.active{
+  background:#173d63!important;
+  border-color:#305d85!important;
+  box-shadow:inset 3px 0 #f59e0b!important;
+}
+
+body.theme-dark .nav-item.active .nav-icon,
+body.dark .nav-item.active .nav-icon{
+  background:#245b8d!important;
+}
+
+body.theme-dark .sidebar-user,
+body.dark .sidebar-user{
+  background:#132c43!important;
+  border-color:#29445d!important;
+}
+
+/* ---------- Main cards / panels ---------- */
+body.theme-dark .panel,
+body.dark .panel,
+body.theme-dark .settings-panel,
+body.dark .settings-panel,
+body.theme-dark .admin-health-card,
+body.dark .admin-health-card,
+body.theme-dark .admin-module-card,
+body.dark .admin-module-card,
+body.theme-dark .kpi-card,
+body.dark .kpi-card,
+body.theme-dark .quick-item,
+body.dark .quick-item,
+body.theme-dark .review-kpi,
+body.dark .review-kpi,
+body.theme-dark .v650-kpi,
+body.dark .v650-kpi{
+  background:#172635!important;
+  border-color:#30475b!important;
+  color:#e7eef6!important;
+  box-shadow:0 7px 22px rgba(0,0,0,.12)!important;
+}
+
+body.theme-dark .panel:hover,
+body.dark .panel:hover,
+body.theme-dark .admin-module-card:hover,
+body.dark .admin-module-card:hover,
+body.theme-dark .quick-item:hover,
+body.dark .quick-item:hover{
+  border-color:#3d5c76!important;
+}
+
+body.theme-dark .panel-header,
+body.dark .panel-header,
+body.theme-dark .settings-panel-head,
+body.dark .settings-panel-head{
+  background:#1a2a39!important;
+  border-color:#30475b!important;
+}
+
+body.theme-dark .panel-body,
+body.dark .panel-body{
+  background:#172635!important;
+  color:#e7eef6!important;
+}
+
+body.theme-dark .panel-header h3,
+body.dark .panel-header h3,
+body.theme-dark .page-heading h1,
+body.dark .page-heading h1,
+body.theme-dark .page-heading h2,
+body.dark .page-heading h2{
+  color:#eef5fb!important;
+}
+
+body.theme-dark .panel-header p,
+body.dark .panel-header p,
+body.theme-dark .muted,
+body.dark .muted,
+body.theme-dark .field-help,
+body.dark .field-help{
+  color:#9cafc0!important;
+}
+
+/* ---------- Forms ---------- */
+body.theme-dark .input,
+body.dark .input,
+body.theme-dark .select,
+body.dark .select,
+body.theme-dark .textarea,
+body.dark .textarea,
+body.theme-dark .global-search,
+body.dark .global-search{
+  background:#111e2a!important;
+  border-color:#354c61!important;
+  color:#edf4fa!important;
+  box-shadow:none!important;
+}
+
+body.theme-dark .input:hover,
+body.dark .input:hover,
+body.theme-dark .select:hover,
+body.dark .select:hover,
+body.theme-dark .textarea:hover,
+body.dark .textarea:hover{
+  border-color:#48677f!important;
+}
+
+body.theme-dark .input:focus,
+body.dark .input:focus,
+body.theme-dark .select:focus,
+body.dark .select:focus,
+body.theme-dark .textarea:focus,
+body.dark .textarea:focus{
+  border-color:#5a92c5!important;
+  box-shadow:0 0 0 3px rgba(69,137,196,.18)!important;
+}
+
+body.theme-dark .input::placeholder,
+body.dark .input::placeholder,
+body.theme-dark .textarea::placeholder,
+body.dark .textarea::placeholder{
+  color:#71879b!important;
+}
+
+body.theme-dark .input:disabled,
+body.dark .input:disabled,
+body.theme-dark .select:disabled,
+body.dark .select:disabled,
+body.theme-dark .textarea:disabled,
+body.dark .textarea:disabled{
+  background:#172432!important;
+  color:#7f93a5!important;
+  border-color:#2d4052!important;
+  opacity:1!important;
+}
+
+body.theme-dark select option,
+body.dark select option{
+  background:#142331;
+  color:#e7eef6;
+}
+
+body.theme-dark .field label,
+body.dark .field label{
+  color:#cbd8e4!important;
+}
+
+/* ---------- Buttons ---------- */
+body.theme-dark .btn-light,
+body.dark .btn-light{
+  background:#1c2d3d!important;
+  border-color:#395268!important;
+  color:#d8e5ef!important;
+  box-shadow:none!important;
+}
+
+body.theme-dark .btn-light:hover,
+body.dark .btn-light:hover{
+  background:#23384a!important;
+  border-color:#4a6880!important;
+}
+
+body.theme-dark .btn-primary,
+body.dark .btn-primary{
+  background:#2466a2!important;
+  box-shadow:0 5px 14px rgba(0,0,0,.18)!important;
+}
+
+body.theme-dark .btn-primary:hover,
+body.dark .btn-primary:hover{
+  background:#2a74b5!important;
+}
+
+/* ---------- Tables ---------- */
+body.theme-dark .table-wrap,
+body.dark .table-wrap,
+body.theme-dark .directory-table-wrap,
+body.dark .directory-table-wrap{
+  background:#152432!important;
+  border-color:#30475b!important;
+}
+
+body.theme-dark table,
+body.dark table{
+  background:#152432!important;
+  color:#dce7f0!important;
+}
+
+body.theme-dark thead th,
+body.dark thead th,
+body.theme-dark .page table th,
+body.dark .page table th{
+  background:#1d3041!important;
+  color:#cfe0ee!important;
+  border-color:#344c60!important;
+}
+
+body.theme-dark tbody td,
+body.dark tbody td,
+body.theme-dark .page table td,
+body.dark .page table td{
+  background:#172635;
+  color:#dce7f0;
+  border-color:#293f52!important;
+}
+
+body.theme-dark tbody tr:hover td,
+body.dark tbody tr:hover td{
+  background:#203446!important;
+}
+
+body.theme-dark .table-empty,
+body.dark .table-empty,
+body.theme-dark .fc-empty,
+body.dark .fc-empty{
+  color:#91a4b6!important;
+}
+
+/* ---------- Neutral status / chips ---------- */
+body.theme-dark .badge-gray,
+body.dark .badge-gray,
+body.theme-dark .status-pill,
+body.dark .status-pill,
+body.theme-dark .settings-status-dot,
+body.dark .settings-status-dot,
+body.theme-dark .connection-chip,
+body.dark .connection-chip{
+  background:#213344!important;
+  border-color:#36516a!important;
+  color:#c8d7e4!important;
+}
+
+body.theme-dark .badge-blue,
+body.dark .badge-blue{
+  background:#173a5a!important;
+  color:#a9d3f7!important;
+}
+
+body.theme-dark .badge-orange,
+body.dark .badge-orange,
+body.theme-dark .badge-amber,
+body.dark .badge-amber{
+  background:#493117!important;
+  color:#f7c982!important;
+}
+
+body.theme-dark .badge-green,
+body.dark .badge-green{
+  background:#173a31!important;
+  color:#94dfbf!important;
+}
+
+body.theme-dark .badge-red,
+body.dark .badge-red{
+  background:#49242a!important;
+  color:#f3adb5!important;
+}
+
+/* ---------- Admin center / setting cards ---------- */
+body.theme-dark .admin-module-icon,
+body.dark .admin-module-icon,
+body.theme-dark .kpi-icon,
+body.dark .kpi-icon{
+  background:#21374a!important;
+  color:#a9d4f6!important;
+  box-shadow:none!important;
+}
+
+body.theme-dark .admin-checklist label,
+body.dark .admin-checklist label,
+body.theme-dark .about-grid>div,
+body.dark .about-grid>div,
+body.theme-dark .developer-role-card,
+body.dark .developer-role-card,
+body.theme-dark .shift-color-card,
+body.dark .shift-color-card,
+body.theme-dark .theme-choice,
+body.dark .theme-choice{
+  background:#1b2c3b!important;
+  border-color:#30485c!important;
+  color:#dce7f0!important;
+}
+
+body.theme-dark .settings-actions,
+body.dark .settings-actions{
+  background:#142230!important;
+  border-color:#30475b!important;
+}
+
+/* ---------- Modal ---------- */
+body.theme-dark .modal,
+body.dark .modal{
+  background:#172635!important;
+  border-color:#3a5268!important;
+  color:#e7eef6!important;
+  box-shadow:0 30px 90px rgba(0,0,0,.48)!important;
+}
+
+body.theme-dark .modal-header,
+body.dark .modal-header{
+  background:#1b2c3b!important;
+  border-color:#344b60!important;
+}
+
+body.theme-dark .modal-body,
+body.dark .modal-body{
+  background:#172635!important;
+  color:#dce7f0!important;
+}
+
+body.theme-dark .modal-footer,
+body.dark .modal-footer{
+  background:#142230!important;
+  border-color:#344b60!important;
+}
+
+body.theme-dark .modal-backdrop,
+body.dark .modal-backdrop{
+  background:rgba(3,10,18,.72)!important;
+  backdrop-filter:blur(6px)!important;
+}
+
+/* ---------- Loading / toast ---------- */
+body.theme-dark .loading-overlay,
+body.dark .loading-overlay{
+  background:rgba(7,15,24,.78)!important;
+}
+
+body.theme-dark .loading-box,
+body.dark .loading-box,
+body.theme-dark .toast,
+body.dark .toast{
+  background:#1a2b3a!important;
+  border-color:#3a5368!important;
+  color:#e6eef5!important;
+  box-shadow:0 18px 48px rgba(0,0,0,.32)!important;
+}
+
+/* ---------- Team Daily Detail modal relationship ---------- */
+body.theme-dark.team-assignment-modal-open .schedule-team-drawer,
+body.dark.team-assignment-modal-open .schedule-team-drawer{
+  filter:saturate(.72) brightness(.70)!important;
+}
+
+/* ---------- Scrollbar ---------- */
+body.theme-dark *,
+body.dark *{
+  scrollbar-color:#49647b #152330;
+}
+
+body.theme-dark *::-webkit-scrollbar,
+body.dark *::-webkit-scrollbar{
+  width:10px;
+  height:10px;
+}
+
+body.theme-dark *::-webkit-scrollbar-track,
+body.dark *::-webkit-scrollbar-track{
+  background:#152330;
+}
+
+body.theme-dark *::-webkit-scrollbar-thumb,
+body.dark *::-webkit-scrollbar-thumb{
+  background:#49647b;
+  border:2px solid #152330;
+  border-radius:999px;
+}
+
+body.theme-dark *::-webkit-scrollbar-thumb:hover,
+body.dark *::-webkit-scrollbar-thumb:hover{
+  background:#5a7890;
+}
