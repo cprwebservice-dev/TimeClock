@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.15";
-document.documentElement.dataset.timeClockBuild = "6.11.15";
+window.__TIME_CLOCK_BUILD__ = "V6.11.16";
+document.documentElement.dataset.timeClockBuild = "6.11.16";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.15";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.15',
+  version: '6.11.16',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1451,17 +1451,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         ["zone","พื้นที่",r => r.zone || r.area],
         ["sub_area","พื้นที่ย่อย",r => r.sub_area],
         ["pattern_code","รูปแบบงาน",r => r.pattern_code],
-        ["template_code","Template",r => normalizeTemplateCodeV665(r.template_code)],
+        ["template_code","รูปแบบช่วงงาน",r => workTemplateLabelV6118(r.template_code)],
         ["day_type","ประเภทวัน",r => attendanceLabel(r.day_type)],
         ["shift_code","กะ",r => attendanceShiftCode(r)],
         ["shift_1_start","เริ่มกะ กะที่ 1",r => workSegmentTimeV6118(r.shift_1_planned_start_at)],
         ["shift_1_end","สิ้นสุดกะ กะที่ 1",r => workSegmentTimeV6118(r.shift_1_planned_end_at)],
         ["shift_1_in","เวลาเข้า กะที่ 1",r => workSegmentTimeV6118(r.shift_1_actual_in_at)],
         ["shift_1_out","เวลาออก กะที่ 1",r => workSegmentTimeV6118(r.shift_1_actual_out_at)],
-        ["shift_2_start","เริ่มกะ กะที่ 2",r => workSegmentTimeV6118(r.shift_2_planned_start_at)],
-        ["shift_2_end","สิ้นสุดกะ กะที่ 2",r => r.shift_2_planned_end_at ? workSegmentTimeV6118(r.shift_2_planned_end_at) : (r.shift_2_planned_start_at ? "ตามเวลาออก" : "-")],
-        ["shift_2_in","เวลาเข้า กะที่ 2",r => workSegmentTimeV6118(r.shift_2_actual_in_at)],
-        ["shift_2_out","เวลาออก กะที่ 2",r => workSegmentTimeV6118(r.shift_2_actual_out_at)],
+        ["shift_2_start","เริ่มงานลูกค้าช่วงดึก",r => workSegmentTimeV6118(r.shift_2_planned_start_at)],
+        ["shift_2_end","สิ้นสุดงานลูกค้าช่วงดึก",r => r.shift_2_planned_end_at ? workSegmentTimeV6118(r.shift_2_planned_end_at) : (r.shift_2_planned_start_at ? "ตามเวลาออก" : "-")],
+        ["shift_2_in","เวลาเข้างานลูกค้าช่วงดึก",r => workSegmentTimeV6118(r.shift_2_actual_in_at)],
+        ["shift_2_out","เวลาออกงานลูกค้าช่วงดึก",r => workSegmentTimeV6118(r.shift_2_actual_out_at)],
         ["display_status","สถานะ",r => attendanceDisplayLabel(r)],
         ["net_work_minutes","ชั่วโมงสุทธิ",r => (Number(r.net_work_minutes || 0)/60).toFixed(2)],
         ["regular_minutes","ชั่วโมงปกติ",r => (Number(r.regular_minutes || 0)/60).toFixed(2)],
@@ -4280,10 +4280,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     function scheduleWorkTemplateCodeV6118(row) {
       return String(
-        row?.employee_default_template_code
+        row?.daily_work_template_code
         || row?.effective_work_template_code
-        || row?.daily_work_template_code
         || row?.template_code
+        || row?.employee_default_template_code
         || ""
       )
         .trim()
@@ -5381,7 +5381,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         true;
 
       select.innerHTML =
-        '<option value="">กำลังโหลด Template เริ่มต้น...</option>';
+        '<option value="">กำลังโหลดรูปแบบช่วงงาน...</option>';
 
       const options =
         await assignmentTemplateOptions(
@@ -5402,8 +5402,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           .trim()
           .toUpperCase();
 
+      const usable = options.filter(
+        option => {
+          const code = String(
+            option?.template_code
+            || ''
+          ).trim().toUpperCase();
+          return Boolean(code)
+            && !code.includes('EARLY');
+        }
+      );
+
       let target =
-        options.find(
+        usable.find(
           option =>
             String(
               option.template_code
@@ -5415,28 +5426,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         );
 
       if(!target){
-        const selectedCategory =
-          selected ===
-            "SPLIT_FLEX"
-            ? "NORMAL_LATE_CUSTOMER"
-            : "NORMAL";
-
         target =
-          options.find(
-            option =>
-              String(
-                option.category_code
-                || ""
-              )
-                .trim()
-                .toUpperCase() ===
-              selectedCategory
-          );
-      }
-
-      if(!target){
-        target =
-          options.find(
+          usable.find(
             option =>
               String(
                 option.template_code
@@ -5446,30 +5437,38 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
                 .toUpperCase() ===
               fallback
           )
-          || options[0];
+          || usable.find(
+            option =>
+              String(
+                option.category_code
+                || ""
+              )
+                .trim()
+                .toUpperCase() ===
+              "NORMAL"
+          )
+          || usable[0];
       }
 
       if(!target?.template_code){
         select.innerHTML =
-          '<option value="">ไม่พบ Template เริ่มต้น</option>';
+          '<option value="">ไม่พบรูปแบบช่วงงาน</option>';
 
         setText(
           "assignWorkTemplateHelp",
-          "ไม่พบ Template เริ่มต้นของพนักงาน กรุณากำหนดที่ Tab รูปแบบการทำงาน"
+          "ไม่พบ Template ที่พร้อมใช้งาน กรุณาตรวจสอบ Tab รูปแบบการทำงาน"
         );
 
         return;
       }
 
-      select.innerHTML =
-        `<option
-          value="${safe(target.template_code)}"
-          selected
-        >${safe(
-          target.category_name
-          || target.template_name
-          || target.template_code
-        )}</option>`;
+      select.innerHTML = usable.map(option => {
+        const code = String(option.template_code || '').trim().toUpperCase();
+        const label = code === 'SPLIT_FLEX'
+          ? 'กะปกติ + งานลูกค้าช่วงดึก (เฉพาะวันนี้)'
+          : (option.category_name || option.template_name || 'กะปกติ');
+        return `<option value="${safe(option.template_code)}">${safe(label)}</option>`;
+      }).join('');
 
       select.value =
         target.template_code;
@@ -5478,19 +5477,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         patternCode;
 
       select.dataset.employeeDefaultTemplate =
-        target.template_code;
+        fallback;
 
       setText(
         "assignWorkTemplateHelp",
-        `${
-          target.category_name
-          || target.template_name
-          || target.template_code
-        } • กำหนดจาก Template เริ่มต้นของพนักงาน • หากต้องการเปลี่ยนให้แก้ที่ Tab รูปแบบการทำงาน`
+        "เลือกเป็นรายวัน • ค่าเริ่มต้นคือกะปกติ • เลือกงานลูกค้าช่วงดึกเฉพาะวันที่มีงานจริง"
       );
 
       select.disabled =
-        true;
+        false;
 
       fillShiftSelect(
         patternCode,
@@ -5538,7 +5533,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("assignShiftCode").dataset.patternCode = patternCode;
       await fillAssignmentTemplateSelect(
         patternCode,
-        r?.employee_default_template_code
+        r?.daily_work_template_code
+        || (
+          r?.work_plan_status
+            ? r?.effective_work_template_code
+            : null
+        )
         || (
           patternCode ===
             "TECH_5D"
@@ -7495,13 +7495,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("DEFAULT_SHIFT_DURATION_NOT_MATCH_PATTERN")) return "กะตั้งต้นต้องมีชั่วโมงรวมพักและชั่วโมงสุทธิตรงตามมาตรฐานของรูปแบบการทำงาน";
       if (msg.includes("SHIFT_REQUIRES_WORK_PATTERN")) return "กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบสำหรับกะนี้";
       if (msg.includes("WORKDAY_SHIFT_REQUIRES_START_AND_END")) return "กะวันทำงานต้องระบุเวลาเริ่มและเวลาสิ้นสุด";
-      if (msg.includes("ta_get_employee_pattern_assignment_meta_v61111")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดข้อมูล Template เริ่มต้น วันที่มีผล และผู้บันทึกให้ครบ";
-      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อเชื่อม Template รายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
+      if (msg.includes("ta_get_employee_pattern_assignment_meta_v61111")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดข้อมูล Template วันทำงานปกติ วันที่มีผล และผู้บันทึกให้ครบ";
+      if (msg.includes("WORK_PLAN_LINKAGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อเชื่อมรูปแบบการทำงานรายบุคคลกับปฏิทินจัดกะและรายละเอียดเวลาทำงาน";
       if (msg.includes("INVALID_CUSTOMER_END_MODE")) return "รูปแบบเวลาสิ้นสุดงานลูกค้าไม่ถูกต้อง";
       if (msg.includes("CUSTOMER_WINDOW_START_REQUIRED_FOR_SPLIT_FLEX")) return "กรุณาระบุคาดว่าจะเริ่มงานลูกค้า";
       if (msg.includes("CUSTOMER_WINDOW_END_REQUIRED_FOR_FIXED_MODE")) return "กรุณาระบุเวลาสิ้นสุด หรือเลือก ตามเวลาออกจริง";
-      if (msg.includes("WORK_TEMPLATE_MUST_MATCH_EMPLOYEE_DEFAULT")) return "รูปแบบช่วงงานต้องตรงกับ Template เริ่มต้นของพนักงาน กรุณาแก้ Template ที่ Tab รูปแบบการทำงาน";
-      if (msg.includes("EMPLOYEE_DEFAULT_TEMPLATE_NOT_FOUND")) return "ไม่พบ Template เริ่มต้นของพนักงาน กรุณากำหนดที่ Tab รูปแบบการทำงานก่อน";
+      if (msg.includes("WORK_TEMPLATE_MUST_MATCH_EMPLOYEE_DEFAULT")) return "ฐานข้อมูลยังใช้กฎล็อก Template แบบเดิม กรุณารัน SQL V6.11.16 DAILY WORK TEMPLATE FLEX ก่อนใช้งานรูปแบบรายวัน";
+      if (msg.includes("EMPLOYEE_DEFAULT_TEMPLATE_NOT_FOUND")) return "ไม่พบรูปแบบการทำงานของพนักงาน กรุณากำหนด 5/6 วัน ที่ Tab รูปแบบการทำงานก่อน";
       if (msg.includes("CUSTOMER_WINDOW_REQUIRED_FOR_SPLIT_FLEX")) return "กะปกติ + งานลูกค้าช่วงดึก ต้องระบุเวลาเริ่มงานลูกค้าและเวลาสิ้นสุดให้ครบ";
       if (msg.includes("CUSTOMER_WINDOW_START_END_MUST_DIFFER")) return "เวลาเริ่มงานลูกค้าและเวลาสิ้นสุดต้องไม่เป็นเวลาเดียวกัน";
       if (msg.includes("WORK_TEMPLATE_REQUIRED")) return "กรุณาเลือกรูปแบบช่วงงาน";
@@ -8479,7 +8479,7 @@ ${skippedSummary(compatibility.skipped)}
     }
     if(type==="schedule"){
       const month=`${start.slice(0,7)}-01`;const data=await window.TimeClockShiftAPI.getMonthlySchedule(app(),{p_month:month,p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept,p_emp_codes:null,p_schedule_statuses:null});
-      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","Template","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,r.template_code,r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,r.schedule_status,r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),(Number(r.paid_work_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
+      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","รูปแบบช่วงงาน","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,app()?.workTemplateLabelV6118?.(r.template_code||r.effective_work_template_code)||r.template_code||r.effective_work_template_code||"-",r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(String(r.template_code||r.effective_work_template_code||'').toUpperCase()==='SPLIT_FLEX'?"ตามเวลาออก":""),r.schedule_status,r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),(Number(r.paid_work_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
     }
     if(type==="summary"){
       const raw=await rpc("ta_get_dashboard_overview_v640",{p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept});const d=Array.isArray(raw)?raw[0]||{}:raw||{};
@@ -10567,7 +10567,7 @@ ${skippedSummary(compatibility.skipped)}
   function openPatternModal(){if(!selectedScheduleCells().length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");$("schedulePatternModal")?.classList.remove("hidden");}
   async function applyPattern(){const patterns={};qsa("[data-pattern-dow]").forEach(s=>patterns[Number(s.dataset.patternDow)]=s.value);const payload=selectedCellMeta().map(x=>({emp_code:x.emp,work_date:x.date,shift_code:patterns[new Date(`${x.date}T00:00:00`).getDay()]||"D",note:"รูปแบบกะ 7 วัน"}));$("schedulePatternModal")?.classList.add("hidden");await saveSchedulePayload(payload,"กำหนดรูปแบบกะ 7 วัน");}
   async function copyPreviousWeek(){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่องปลายทางก่อน","error");const payload=items.map(x=>{const d=new Date(`${x.date}T00:00:00`);d.setDate(d.getDate()-7);const sourceDate=d.toISOString().slice(0,10);const source=rowAt(x.emp,sourceDate);return {emp_code:x.emp,work_date:x.date,shift_code:codeOf(source)||"D",note:`คัดลอกจาก ${sourceDate}`};});await saveSchedulePayload(payload,"คัดลอกกะจากสัปดาห์ก่อน");}
-  function scheduleExportRows(){const rows=app()?.state?.schedule||[];return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","วันเริ่มงาน","ตำแหน่ง","หน่วยงาน","พื้นที่","ประเภทวัน","กะอัตโนมัติ","กะที่กำหนด","กะใช้งาน","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ"],...rows.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,fmtDate(r.start_date),r.position_name||"",r.department,r.zone||r.area,r.day_type||"WORKDAY",r.auto_shift_code||"",r.assigned_shift_code||"",codeOf(r)||"",r.schedule_status||"",r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time)])];}
+  function scheduleExportRows(){const rows=app()?.state?.schedule||[];return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","วันเริ่มงาน","ตำแหน่ง","หน่วยงาน","พื้นที่","ประเภทวัน","กะอัตโนมัติ","กะที่กำหนด","กะใช้งาน","รูปแบบช่วงงาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ"],...rows.map(r=>{const template=String(r.daily_work_template_code||r.effective_work_template_code||r.template_code||r.employee_default_template_code||'').toUpperCase();return [fmtDate(r.work_date),r.emp_code,r.full_name,fmtDate(r.start_date),r.position_name||"",r.department,r.zone||r.area,r.day_type||"WORKDAY",r.auto_shift_code||"",r.assigned_shift_code||"",codeOf(r)||"",template==='SPLIT_FLEX'?"กะปกติ + งานลูกค้าช่วงดึก":"กะปกติ",fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(template==='SPLIT_FLEX'?"ตามเวลาออก":""),r.schedule_status||"",r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time)];})];}
   function exportSchedule(format){const rows=scheduleExportRows();if(rows.length<=1)return app()?.toast("ไม่มีข้อมูลตารางกะ","error");const period=window.TimeClockSchedulePeriod?.range?.()||{};const name=`${period.startDate||$("scheduleMonth")?.value}_${period.endDate||""}`;format==="excel"?exportExcel(`Schedule_${name}.xls`,rows,`ตารางจัดกะ ${name}`):printRows(rows,`ตารางจัดกะ ${name}`,`สถานะเดือน ${scheduleMonthStatus.status}`);}
   async function loadScheduleStatus(){if(!$("scheduleMonth")?.value)return;try{scheduleMonthStatus=await rpc("ta_get_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null})||{status:"DRAFT"};}catch(e){scheduleMonthStatus={status:"DRAFT"};}renderScheduleStatus();}
   function renderScheduleStatus(){const s=scheduleMonthStatus.status||"DRAFT",chip=$("scheduleMonthStatusChip");if(chip){chip.textContent=s;chip.className=`fc-chip status-${s}`;}if($("scheduleMonthStatusText"))$("scheduleMonthStatusText").textContent=s==="LOCKED"?"ตารางกะถูกล็อก":s==="PUBLISHED"?"ประกาศตารางกะแล้ว":"ตารางกะฉบับร่าง";if($("scheduleMonthStatusMeta"))$("scheduleMonthStatusMeta").textContent=scheduleMonthStatus.updated_at?`ปรับปรุง ${fmtDateTime(scheduleMonthStatus.updated_at)}${scheduleMonthStatus.published_by_email?` โดย ${scheduleMonthStatus.published_by_email}`:""}`:"ยังไม่ได้ประกาศ";if($("schedulePublishBtn"))$("schedulePublishBtn").textContent=s==="PUBLISHED"||s==="LOCKED"?"กลับเป็นฉบับร่าง":"ประกาศกะ";if($("scheduleLockBtn"))$("scheduleLockBtn").textContent=s==="LOCKED"?"ปลดล็อกเดือน":"ล็อกเดือน";qs("#page-schedule .schedule-workspace")?.classList.toggle("schedule-locked-overlay",s==="LOCKED");qsa("#scheduleTableWrap [data-schedule-cell]").forEach(c=>{c.classList.toggle("is-published",s==="PUBLISHED");c.classList.toggle("is-locked",s==="LOCKED");});}
@@ -11960,7 +11960,7 @@ ${skippedSummary(compatibility.skipped)}
   const hours=m=>(Number(m||0)/60).toLocaleString('th-TH',{maximumFractionDigits:2});
   function ensureWpModals(){
     if($('workPatternModal'))return;
-    document.body.insertAdjacentHTML('beforeend',`<div id="workPatternModal" class="modal-backdrop hidden"><div class="modal"><div class="modal-header"><h3>พารามิเตอร์รูปแบบการทำงาน</h3><button class="btn btn-light btn-icon" data-close-wp="workPatternModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสรูปแบบ</label><input id="wpCode" class="input"></div><div class="field"><label>ชื่อรูปแบบ</label><input id="wpName" class="input"></div></div><div class="form-row"><div class="field"><label>วันทำงาน/สัปดาห์</label><input id="wpDays" class="input" type="number" min="1" max="7"></div><div class="field"><label>นาทีต่อวันรวมพัก</label><input id="wpScheduled" class="input" type="number"></div><div class="field"><label>OT หลัง (นาที)</label><input id="wpOt" class="input" type="number"></div></div><div class="form-row"><div class="field"><label>เวลาเริ่มต้น</label><input id="wpStart" class="input" type="time"></div><div class="field"><label>เวลาสิ้นสุด</label><input id="wpEnd" class="input" type="time"></div><div class="field"><label>พัก (นาที)</label><input id="wpBreak" class="input" type="number"></div></div><div class="field"><label>วันหยุดตั้งต้น</label><div class="dow-checks">${dowNames.map((d,i)=>`<label><input type="checkbox" data-wp-dow="${i}"> ${d}</label>`).join('')}</div></div><div class="form-row"><div class="field"><label>ยกยอดข้ามเดือน</label><input id="wpCarry" class="input" type="number" min="0" max="24"></div><label class="mobileta-option-card"><input id="wpActive" type="checkbox" checked><span><strong>เปิดใช้งาน</strong><small>ใช้กำหนดรายบุคคลได้</small></span></label></div><div class="field"><label>หมายเหตุ</label><input id="wpNote" class="input"></div></div><div class="modal-footer"><button class="btn btn-light" data-close-wp="workPatternModal">ยกเลิก</button><button id="wpSaveBtn" class="btn btn-primary">บันทึก</button></div></div></div><div id="employeePatternModal" class="modal-backdrop hidden"><div class="modal"><div class="modal-header"><h3>กำหนดรูปแบบรายบุคคล</h3><button class="btn btn-light btn-icon" data-close-wp="employeePatternModal">×</button></div><div class="modal-body"><input id="epEmpCode" type="hidden"><div id="epEmployee" class="assignment-info"></div><div class="form-row"><div class="field"><label>รูปแบบการทำงาน</label><select id="epPattern" class="select"></select></div><div class="field"><label>Template เริ่มต้น</label><select id="epTemplate" class="select"></select><small class="field-help">ค่าที่กำหนดจะเป็นค่าเริ่มต้นของ ปฏิทินจัดกะ › รูปแบบช่วงงาน</small></div></div><div class="form-row"><div class="field"><label>เริ่มใช้</label><input id="epFrom" type="date" class="input"></div><div class="field"><label>สิ้นสุด</label><input id="epTo" type="date" class="input"></div></div><div class="field"><label>หมายเหตุ</label><input id="epNote" class="input"></div></div><div class="modal-footer"><button class="btn btn-light" data-close-wp="employeePatternModal">ยกเลิก</button><button id="epSaveBtn" class="btn btn-primary">บันทึก</button></div></div></div>`);
+    document.body.insertAdjacentHTML('beforeend',`<div id="workPatternModal" class="modal-backdrop hidden"><div class="modal"><div class="modal-header"><h3>พารามิเตอร์รูปแบบการทำงาน</h3><button class="btn btn-light btn-icon" data-close-wp="workPatternModal">×</button></div><div class="modal-body"><div class="form-row"><div class="field"><label>รหัสรูปแบบ</label><input id="wpCode" class="input"></div><div class="field"><label>ชื่อรูปแบบ</label><input id="wpName" class="input"></div></div><div class="form-row"><div class="field"><label>วันทำงาน/สัปดาห์</label><input id="wpDays" class="input" type="number" min="1" max="7"></div><div class="field"><label>นาทีต่อวันรวมพัก</label><input id="wpScheduled" class="input" type="number"></div><div class="field"><label>OT หลัง (นาที)</label><input id="wpOt" class="input" type="number"></div></div><div class="form-row"><div class="field"><label>เวลาเริ่มต้น</label><input id="wpStart" class="input" type="time"></div><div class="field"><label>เวลาสิ้นสุด</label><input id="wpEnd" class="input" type="time"></div><div class="field"><label>พัก (นาที)</label><input id="wpBreak" class="input" type="number"></div></div><div class="field"><label>วันหยุดตั้งต้น</label><div class="dow-checks">${dowNames.map((d,i)=>`<label><input type="checkbox" data-wp-dow="${i}"> ${d}</label>`).join('')}</div></div><div class="form-row"><div class="field"><label>ยกยอดข้ามเดือน</label><input id="wpCarry" class="input" type="number" min="0" max="24"></div><label class="mobileta-option-card"><input id="wpActive" type="checkbox" checked><span><strong>เปิดใช้งาน</strong><small>ใช้กำหนดรายบุคคลได้</small></span></label></div><div class="field"><label>หมายเหตุ</label><input id="wpNote" class="input"></div></div><div class="modal-footer"><button class="btn btn-light" data-close-wp="workPatternModal">ยกเลิก</button><button id="wpSaveBtn" class="btn btn-primary">บันทึก</button></div></div></div><div id="employeePatternModal" class="modal-backdrop hidden"><div class="modal"><div class="modal-header"><h3>กำหนดรูปแบบรายบุคคล</h3><button class="btn btn-light btn-icon" data-close-wp="employeePatternModal">×</button></div><div class="modal-body"><input id="epEmpCode" type="hidden"><div id="epEmployee" class="assignment-info"></div><div class="form-row"><div class="field"><label>รูปแบบการทำงาน</label><select id="epPattern" class="select"></select></div><div class="field"><label>Template วันทำงานปกติ</label><select id="epTemplate" class="select"></select><small class="field-help">ระบบใช้กะปกติเป็น Default • งานลูกค้าช่วงดึกเลือกเฉพาะวันจากปฏิทินจัดกะ</small></div></div><div class="work-pattern-daily-note-v61116"><strong>รูปแบบช่วงงานเป็นรายวัน</strong><small>พนักงานคนเดียวกันสามารถเป็นกะปกติในบางวัน และ “กะปกติ + งานลูกค้าช่วงดึก” ในวันที่มีงานลูกค้าได้</small></div><div class="form-row"><div class="field"><label>เริ่มใช้</label><input id="epFrom" type="date" class="input"></div><div class="field"><label>สิ้นสุด</label><input id="epTo" type="date" class="input"></div></div><div class="field"><label>หมายเหตุ</label><input id="epNote" class="input"></div></div><div class="modal-footer"><button class="btn btn-light" data-close-wp="employeePatternModal">ยกเลิก</button><button id="epSaveBtn" class="btn btn-primary">บันทึก</button></div></div></div>`);
     qsa('[data-close-wp]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.closeWp)?.classList.add('hidden')));
     $('wpSaveBtn')?.addEventListener('click',savePattern);$('epSaveBtn')?.addEventListener('click',saveEmployeePattern);
   }
@@ -12170,10 +12170,10 @@ ${skippedSummary(compatibility.skipped)}
         ready:!!normal6&&!!normal5
       },
       {
-        badge:late?.template_type||'FLEX',
+        badge:'DAILY',
         title:'กะปกติ + งานลูกค้าช่วงดึก',
         code:late?.template_code||'ยังไม่พบ Template',
-        note:'กะปกติ ตามด้วยช่วงรอคอย และงานลูกค้าช่วงดึก',
+        note:'Daily Override • เลือกเฉพาะวันที่มีงานลูกค้าช่วงดึกจากปฏิทินจัดกะ ไม่ใช้เป็นค่าเริ่มต้นทุกวัน',
         segments:formatSegments(late),
         ready:!!late
       }
@@ -12219,10 +12219,8 @@ ${skippedSummary(compatibility.skipped)}
   }
   function localEmployeeTemplateOptions(patternCode){
     const normalCode=patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730';
-    const late=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='NORMAL_LATE_CUSTOMER');
     return [
-      {category_code:'NORMAL',category_name:EMPLOYEE_TEMPLATE_LABELS.NORMAL,template_code:normalCode,display_order:1},
-      {category_code:'NORMAL_LATE_CUSTOMER',category_name:EMPLOYEE_TEMPLATE_LABELS.NORMAL_LATE_CUSTOMER,template_code:late?.template_code||'',display_order:2}
+      {category_code:'NORMAL',category_name:'กะปกติ (ค่าเริ่มต้นวันทำงาน)',template_code:normalCode,display_order:1}
     ];
   }
   async function loadEmployeeTemplateOptions(patternCode,selectedCode=null){
@@ -12238,9 +12236,11 @@ ${skippedSummary(compatibility.skipped)}
       .filter(o=>
         !String(o?.category_code||'').toUpperCase().includes('EARLY')
         && !String(o?.template_code||'').toUpperCase().includes('EARLY')
+        && employeeTemplateCategory(o?.template_code)==='NORMAL'
       )
       .sort((a,b)=>Number(a.display_order||0)-Number(b.display_order||0));
-    select.innerHTML=options.map(o=>`<option value="${esc(o.template_code||'')}" data-template-category="${esc(o.category_code)}" ${o.template_code?'':'disabled'}>${esc(o.category_name||EMPLOYEE_TEMPLATE_LABELS[o.category_code]||o.template_name||o.template_code||'ยังไม่พบ Template')}</option>`).join('');
+    if(!options.length)options=localEmployeeTemplateOptions(patternCode);
+    select.innerHTML=options.map(o=>`<option value="${esc(o.template_code||'')}" data-template-category="${esc(o.category_code)}" ${o.template_code?'':'disabled'}>${esc('กะปกติ • '+(patternCode==='TECH_5D'?'08:30–18:00':'08:30–17:30'))}</option>`).join('');
     let target=options.find(o=>String(o.template_code)===String(selectedCode));
     if(!target&&selectedCode){
       const category=employeeTemplateCategory(selectedCode);
@@ -12248,6 +12248,8 @@ ${skippedSummary(compatibility.skipped)}
     }
     if(!target)target=options.find(o=>o.category_code==='NORMAL'&&o.template_code)||options.find(o=>o.template_code);
     if(target?.template_code)select.value=target.template_code;
+    select.disabled=true;
+    select.title='Default วันทำงานถูกกำหนดอัตโนมัติจากรูปแบบ 5/6 วัน';
   }
   function employeeTemplateLabel(templateCode){
     const category=employeeTemplateCategory(templateCode);
@@ -12267,13 +12269,12 @@ ${skippedSummary(compatibility.skipped)}
   function renderEmployeePatternSummaryV61111(){
     const rows=wp.employees||[];
     const assigned=rows.filter(r=>r.has_assignment).length;
-    const normal=rows.filter(r=>employeeTemplateCategory(r.default_template_code)==='NORMAL').length;
-    const late=rows.filter(r=>employeeTemplateCategory(r.default_template_code)==='NORMAL_LATE_CUSTOMER').length;
+    const normal=rows.filter(r=>r.has_assignment && employeeTemplateCategory(r.default_template_code)==='NORMAL').length;
     const set=(id,v)=>{const n=$(id);if(n)n.textContent=Number(v||0).toLocaleString('th-TH');};
     set('wpSummaryTotalV61111',rows.length);
     set('wpSummaryAssignedV61111',assigned);
     set('wpSummaryNormalV61111',normal);
-    set('wpSummaryLateV61111',late);
+    if($('wpSummaryLateV61111'))$('wpSummaryLateV61111').textContent='รายวัน';
   }
 
   async function loadEmployeePatterns(){
@@ -12506,7 +12507,7 @@ ${skippedSummary(compatibility.skipped)}
       );
 
       app()?.toast?.(
-        'กำหนดรูปแบบรายบุคคลแล้ว • ปฏิทินจัดกะจะใช้ Template นี้เป็นค่าเริ่มต้น',
+        'กำหนดรูปแบบรายบุคคลแล้ว • วันทำงานจะเริ่มจากกะปกติ และสามารถเลือกงานลูกค้าช่วงดึกเป็นรายวันในปฏิทินจัดกะ',
         'success'
       );
 
@@ -12564,12 +12565,12 @@ ${skippedSummary(compatibility.skipped)}
         );
 
       const target=
-        plan?.employee_default_template_code
-        || $('assignWorkTemplate')
-          ?.dataset
-          ?.employeeDefaultTemplate
-        || $('assignWorkTemplate')
-          ?.value
+        plan?.daily_work_template_code
+        || (
+          plan?.work_plan_status
+            ? plan?.effective_work_template_code
+            : null
+        )
         || fallback;
 
       if(
@@ -12678,8 +12679,8 @@ ${skippedSummary(compatibility.skipped)}
       $('assignCustomerEndModeHelp')
         .textContent=
         fixed
-          ? 'กำหนดเวลา: ใช้เวลานี้เป็นเวลาสิ้นสุดกะที่ 2'
-          : 'ตามเวลาออกจริง: ระบบจะใช้ OUT จริงเป็นเวลาสิ้นสุดกะที่ 2';
+          ? 'กำหนดเวลา: ใช้เวลานี้เป็นเวลาสิ้นสุดงานลูกค้าช่วงดึก'
+          : 'ตามเวลาออกจริง: ระบบจะใช้ OUT จริงเป็นเวลาสิ้นสุดงานลูกค้าช่วงดึก';
     }
   }
 
@@ -12710,6 +12711,29 @@ ${skippedSummary(compatibility.skipped)}
       $('assignCustomerStart')
         .required=
         split;
+    }
+
+    if($('assignWorkTemplateHelp')){
+      $('assignWorkTemplateHelp').textContent = split
+        ? 'Daily Override • ใช้เฉพาะวันนี้ และต้องระบุเวลาเริ่มงานลูกค้า'
+        : 'กะปกติของวันนี้ • หากมีงานลูกค้าช่วงดึกให้เปลี่ยนรูปแบบช่วงงานเฉพาะวันนั้น';
+    }
+
+    const pattern =
+      $('assignWorkTemplate')
+        ?.dataset
+        ?.patternCode
+      || $('assignShiftCode')
+        ?.dataset
+        ?.patternCode
+      || null;
+
+    if(pattern){
+      fillShiftSelect(
+        pattern,
+        $('assignShiftCode')?.value || null,
+        code
+      );
     }
 
     toggleCustomerEndModeV61110();

@@ -12098,3 +12098,79 @@ body.theme-dark .team-shift-stack small.secondary b,
 .dark .team-shift-stack small.secondary b{
   color:#fdba74!important;
 }
+
+/* ===== V6.11.16 Daily Work Template Flex ===== */
+.work-pattern-daily-note-v61116{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin:4px 0 14px;
+  padding:11px 13px;
+  border:1px solid #bfdbfe;
+  border-radius:12px;
+  background:#eff6ff;
+}
+.work-pattern-daily-note-v61116 strong{
+  color:#1e3a8a;
+  font-size:12px;
+}
+.work-pattern-daily-note-v61116 small{
+  color:#52677e;
+  line-height:1.45;
+}
+#epTemplate:disabled{
+  opacity:1!important;
+  color:#1e3a5f!important;
+  background:#f8fafc!important;
+  cursor:not-allowed;
+}
+#assignWorkTemplate{
+  border-color:#bfdbfe;
+  background:#fff;
+  font-weight:700;
+  color:#1e3a5f;
+}
+#assignWorkTemplate:focus{
+  border-color:#60a5fa;
+  box-shadow:0 0 0 3px rgba(96,165,250,.14);
+}
+#assignCustomerWindowRow:not(.hidden){
+  padding:12px;
+  border:1px solid #fed7aa;
+  border-radius:12px;
+  background:#fffaf3;
+  margin-top:8px;
+}
+.schedule-shift-segments-v6118 small:nth-child(2){
+  border-color:#f1c58e!important;
+  background:#fff7ed!important;
+}
+.schedule-shift-segments-v6118 small:nth-child(2) b{
+  color:#b45309!important;
+}
+body.theme-dark .work-pattern-daily-note-v61116,
+.dark .work-pattern-daily-note-v61116{
+  border-color:#365d85;
+  background:#20364b;
+}
+body.theme-dark .work-pattern-daily-note-v61116 strong,
+.dark .work-pattern-daily-note-v61116 strong{
+  color:#bfdbfe;
+}
+body.theme-dark .work-pattern-daily-note-v61116 small,
+.dark .work-pattern-daily-note-v61116 small{
+  color:#a9bbcc;
+}
+body.theme-dark #epTemplate:disabled,
+.dark #epTemplate:disabled,
+body.theme-dark #assignWorkTemplate,
+.dark #assignWorkTemplate{
+  border-color:#40566d!important;
+  background:#223140!important;
+  color:#e5edf5!important;
+}
+body.theme-dark #assignCustomerWindowRow:not(.hidden),
+.dark #assignCustomerWindowRow:not(.hidden){
+  border-color:#6b5435;
+  background:#352c22;
+}

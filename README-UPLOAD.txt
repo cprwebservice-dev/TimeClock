@@ -885,3 +885,19 @@ V6.11.15 Team View UX Refresh
 - Removed hard-coded black surfaces from view switch, team workspace and team drawer in light mode.
 - Dark mode now uses navy/slate surfaces instead of near-black backgrounds.
 - Drawer keeps existing attendance/detail logic.
+
+===============================================================================
+V6.11.16 — Daily Work Template Flex
+===============================================================================
+แนวทางใหม่:
+- รูปแบบรายบุคคล 5 วัน/6 วัน ใช้ "กะปกติ" เป็นค่าเริ่มต้น
+- "กะปกติ + งานลูกค้าช่วงดึก" ไม่เป็น Default ทุกวันอีกต่อไป
+- วันที่มีงานลูกค้าช่วงดึก ให้เลือกที่ ปฏิทินจัดกะ > กำหนดกะทำงาน > รูปแบบช่วงงานของวันนี้
+- พนักงานคนเดียวกันจึงสามารถสลับระหว่างกะปกติ และกะปกติ+งานลูกค้าช่วงดึกได้เป็นรายวัน
+
+ลำดับ Deploy:
+1) รัน SQL_ที่ต้องรัน_V6.11.16_DAILY_WORK_TEMPLATE_FLEX.sql
+2) รัน SQL_สำหรับตรวจสอบ_V6.11.16_DAILY_WORK_TEMPLATE_FLEX.sql และตรวจผล PASS
+3) Upload index.html, app.js, app.css, 404.html, .nojekyll
+4) กรณีมีข้อมูล Attendance เดิมที่เคยคำนวณโดยใช้ SPLIT_FLEX เป็น Default ให้ใช้เมนูประมวลผล Attendance ใหม่เฉพาะช่วงวันที่ที่ต้องการ
+===============================================================================
