@@ -4603,6 +4603,31 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return formatTime(value);
     }
 
+    function scheduleTeamSegmentActualTime(row, segmentNo, side) {
+      const value = segmentNo === 2
+        ? (side === 'IN'
+          ? (row?.shift_2_actual_in_at || row?.actual_in_shift_2_at || row?.actual_in_2_at)
+          : (row?.shift_2_actual_out_at || row?.actual_out_shift_2_at || row?.actual_out_2_at))
+        : (side === 'IN'
+          ? (row?.shift_1_actual_in_at || row?.actual_in_at || row?.first_in)
+          : (row?.shift_1_actual_out_at || row?.actual_out_at || row?.last_out));
+      return formatTime(value);
+    }
+
+    function scheduleTeamSegmentPlannedRange(row, segmentNo) {
+      const startRaw = segmentNo === 2
+        ? (row?.shift_2_planned_start_at || row?.customer_window_start)
+        : (row?.shift_1_planned_start_at || row?.effective_shift_start_time || row?.shift_start_time);
+      const endRaw = segmentNo === 2
+        ? (row?.shift_2_planned_end_at || row?.customer_window_end)
+        : (row?.shift_1_planned_end_at || row?.effective_shift_end_time || row?.shift_end_time);
+      const start = formatTime(startRaw);
+      const end = formatTime(endRaw);
+      if (segmentNo === 2 && start !== '-' && !endRaw) return `${start}–ตามเวลาออก`;
+      if (start === '-' && end === '-') return '-';
+      return `${start}–${end}`;
+    }
+
     function scheduleTeamPlannedTime(row) {
       const meta = scheduleResolveShiftMeta(row);
       if (!meta.isWorking) return meta.label;
@@ -4660,13 +4685,42 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
       }
 
+      let punchMetaRows = [];
+      const punchAttempts = [
+        ['ta_get_attendance_shift_punch_meta_v61110', {
+          p_start_date: date,
+          p_end_date: date,
+          p_emp_codes: empCodes
+        }],
+        ['ta_get_attendance_shift_punch_meta_v6119', {
+          p_start_date: date,
+          p_end_date: date,
+          p_emp_codes: empCodes
+        }]
+      ];
+      for (const [fn,args] of punchAttempts) {
+        const response = await state.client.rpc(fn,args);
+        if (!response.error) {
+          punchMetaRows = Array.isArray(response.data) ? response.data : [];
+          break;
+        }
+        if (!window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          console.warn('Team drawer shift punch meta:', response.error);
+          break;
+        }
+      }
+
       const byEmp = new Map(data.map(row => [String(row.emp_code || '').trim(), row]));
+      const byEmpPunch = new Map(punchMetaRows.map(row => [String(row.emp_code || '').trim(), row]));
       return (baseRows || []).map(scheduleRow => {
-        const attendanceRow = byEmp.get(String(scheduleRow.emp_code || '').trim()) || {};
+        const key = String(scheduleRow.emp_code || '').trim();
+        const attendanceRow = byEmp.get(key) || {};
+        const punchRow = byEmpPunch.get(key) || {};
         return {
           ...scheduleRow,
           ...attendanceRow,
-          emp_code: scheduleRow.emp_code || attendanceRow.emp_code,
+          ...punchRow,
+          emp_code: scheduleRow.emp_code || attendanceRow.emp_code || punchRow.emp_code,
           full_name: attendanceRow.full_name || scheduleRow.full_name,
           department: attendanceRow.department || scheduleRow.department,
           assigned_shift_code: scheduleRow.assigned_shift_code,
@@ -4727,12 +4781,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const initials = String(row.full_name || row.emp_code || '?').trim().slice(0,2);
           const lateText = status === 'LATE' && Number(row.late_minutes||0)>0 ? ` • สาย ${formatNumber(row.late_minutes)} นาที` : '';
           const templateCode = scheduleWorkTemplateCodeV6118(row);
-          const customerStart = formatTime(row.customer_window_start);
-          const customerEnd = formatTime(row.customer_window_end);
-          const customerEndLabel = customerEnd !== '-' ? customerEnd : (row.customer_window_start ? 'ตามเวลาออก' : '-');
-          const splitWorkTemplate = templateCode === 'SPLIT_FLEX' && shift.isWorking && customerStart !== '-' && customerEndLabel !== '-';
+          const shift1Plan = scheduleTeamSegmentPlannedRange(row, 1);
+          const shift2Plan = scheduleTeamSegmentPlannedRange(row, 2);
+          const shift1In = scheduleTeamSegmentActualTime(row, 1, 'IN');
+          const shift1Out = scheduleTeamSegmentActualTime(row, 1, 'OUT');
+          const shift2In = scheduleTeamSegmentActualTime(row, 2, 'IN');
+          const shift2Out = scheduleTeamSegmentActualTime(row, 2, 'OUT');
+          const splitWorkTemplate = templateCode === 'SPLIT_FLEX' || shift2Plan !== '-' || shift2In !== '-' || shift2Out !== '-';
           const shiftDetailHtml = splitWorkTemplate
-            ? `<div class="team-shift-stack"><small><b>กะ 1</b><span>${safe(scheduleTeamPlannedTime(row))}</span></small><small class="secondary"><b>กะ 2</b><span>${safe(`${customerStart}–${customerEndLabel}`)}</span></small></div><small class="team-shift-meta">กะปกติ + งานลูกค้าช่วงดึก</small>`
+            ? `<div class="team-shift-stack"><small><b>กะ 1</b><span>${safe(shift1Plan)}</span></small><small class="secondary"><b>กะ 2</b><span>${safe(shift2Plan)}</span></small></div><small class="team-shift-meta">กะปกติ + งานลูกค้าช่วงดึก</small>`
             : `<strong class="team-shift-text tone-${safe(shift.tone)}">${safe(shift.code || '-')}</strong><small>${safe(scheduleTeamPlannedTime(row))}</small>`;
           return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''}">
             <div class="team-employee-main">
@@ -4740,11 +4797,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
               <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
             </div>
-            <div class="team-employee-detail-grid ${splitWorkTemplate ? 'double-shift' : ''}">
-              <div><span>กะทำงาน</span>${shiftDetailHtml}</div>
-              <div><span>เวลาเข้า</span><strong>${safe(actualIn)}</strong></div>
-              <div><span>เวลาออก</span><strong>${safe(actualOut)}</strong></div>
+            <div class="team-employee-detail-grid segments-${splitWorkTemplate ? 'five' : 'three'} ${splitWorkTemplate ? 'double-shift' : ''}">
+              <div class="team-detail-card is-shift"><span>กะทำงาน</span>${shiftDetailHtml}</div>
+              <div class="team-detail-card tone-shift1"><span>เข้า กะ 1</span><strong>${safe(shift1In)}</strong><small>${safe(shift1Plan)}</small></div>
+              <div class="team-detail-card tone-shift1"><span>ออก กะ 1</span><strong>${safe(shift1Out)}</strong><small>${safe(shift1Plan)}</small></div>
+              <div class="team-detail-card tone-shift2 ${splitWorkTemplate ? '' : 'is-muted'}"><span>เข้า กะ 2</span><strong>${safe(splitWorkTemplate ? shift2In : '-')}</strong><small>${safe(splitWorkTemplate ? shift2Plan : 'ไม่มี')}</small></div>
+              <div class="team-detail-card tone-shift2 ${splitWorkTemplate ? '' : 'is-muted'}"><span>ออก กะ 2</span><strong>${safe(splitWorkTemplate ? shift2Out : '-')}</strong><small>${safe(splitWorkTemplate ? shift2Plan : 'ไม่มี')}</small></div>
             </div>
+            <div class="team-employee-summary-line">เวลาเข้า/ออกรวมวันนี้: <b>${safe(actualIn)}</b> · <b>${safe(actualOut)}</b></div>
           </article>`;
         }).join('');
     }
