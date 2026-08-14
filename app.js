@@ -4469,6 +4469,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           period,
           state.schedule
         );
+        await enrichScheduleManagerNamesV61121(state.schedule);
 
         renderSchedule();
         const employeeCount=new Set(state.schedule.map(r=>String(r.emp_code||"")).filter(Boolean)).size;
@@ -4614,6 +4615,72 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         || row?.zone
         || "ไม่ระบุหน่วยงาน"
       ).trim() || "ไม่ระบุหน่วยงาน";
+    }
+
+
+    const scheduleManagerNameCacheV61121 = new Map();
+
+    function scheduleManagerCodeV61121(row) {
+      return String(
+        row?.manager_department
+        || row?.manager_division
+        || row?.manager_gm
+        || row?.manager_avp
+        || ""
+      ).trim();
+    }
+
+    async function enrichScheduleManagerNamesV61121(rows = []) {
+      const managerCodes = [...new Set(
+        (rows || [])
+          .map(scheduleManagerCodeV61121)
+          .filter(Boolean)
+      )];
+      if (!managerCodes.length) return;
+
+      const rowNameMap = new Map(
+        (rows || []).map(row => [
+          String(row?.emp_code || '').trim(),
+          String(row?.full_name || '').trim()
+        ])
+      );
+
+      managerCodes.forEach(code => {
+        const localName = rowNameMap.get(code);
+        if (localName && scheduleHasMeaningfulName(localName, code)) {
+          scheduleManagerNameCacheV61121.set(code, localName);
+        }
+      });
+
+      const unresolved = managerCodes.filter(code => !scheduleManagerNameCacheV61121.has(code));
+      if (!unresolved.length || !state.client) return;
+
+      try {
+        for (let i = 0; i < unresolved.length; i += 100) {
+          const batch = unresolved.slice(i, i + 100);
+          const { data, error } = await state.client
+            .from('employees')
+            .select('EmployeeId,full_name')
+            .in('EmployeeId', batch);
+          if (error) throw error;
+          (data || []).forEach(employee => {
+            const code = String(employee?.EmployeeId || '').trim();
+            const name = String(employee?.full_name || '').trim();
+            if (code && name) scheduleManagerNameCacheV61121.set(code, name);
+          });
+        }
+      } catch (error) {
+        console.warn('Schedule manager name enrichment:', error);
+      }
+    }
+
+    function scheduleTeamManagerLabelV61121(team) {
+      const counts = team?.managers instanceof Map ? [...team.managers.entries()] : [];
+      if (!counts.length) return '-';
+      counts.sort((a,b) => Number(b[1] || 0) - Number(a[1] || 0) || String(a[0]).localeCompare(String(b[0]), 'th'));
+      const code = String(counts[0]?.[0] || '').trim();
+      if (!code) return '-';
+      return scheduleManagerNameCacheV61121.get(code) || code;
     }
 
     function scheduleResolveShiftMeta(row) {
@@ -5006,6 +5073,359 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       document.body.classList.remove('schedule-drawer-open');
     }
 
+
+    const employeeMonthCalendarStateV61121 = {
+      empCode: '',
+      month: '',
+      scheduleRows: [],
+      attendanceRows: [],
+      loading: false
+    };
+
+    function employeeMonthBoundsV61121(monthValue) {
+      const match = String(monthValue || '').trim().match(/^(\d{4})-(\d{2})$/);
+      const now = new Date();
+      const year = match ? Number(match[1]) : now.getFullYear();
+      const month = match ? Number(match[2]) : now.getMonth() + 1;
+      const start = `${year}-${String(month).padStart(2,'0')}-01`;
+      const endDate = new Date(year, month, 0);
+      const end = `${year}-${String(month).padStart(2,'0')}-${String(endDate.getDate()).padStart(2,'0')}`;
+      return {
+        year,
+        month,
+        value: `${year}-${String(month).padStart(2,'0')}`,
+        start,
+        end,
+        days: endDate.getDate()
+      };
+    }
+
+    function employeeMonthShiftV61121(monthValue, delta) {
+      const bounds = employeeMonthBoundsV61121(monthValue);
+      const d = new Date(bounds.year, bounds.month - 1 + Number(delta || 0), 1);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    }
+
+    function employeeMonthCanEditV61121(empCode) {
+      if (scheduleManagerOwnEmployee(empCode)) return false;
+      const role = String(
+        state.profile?._realRole
+        || state.profile?.role
+        || ''
+      ).trim().toUpperCase();
+      return ['HR_ADMIN','MANAGER','ADMIN','SUPER_ADMIN'].includes(role);
+    }
+
+    async function fetchEmployeeMonthScheduleV61121(empCode, monthValue) {
+      const bounds = employeeMonthBoundsV61121(monthValue);
+      const data = await window.TimeClockShiftAPI.getMonthlySchedule(
+        window.TimeClockApp || { state },
+        {
+          p_month: `${bounds.value}-01`,
+          p_start_date: bounds.start,
+          p_end_date: bounds.end,
+          p_zone: null,
+          p_department: null,
+          p_emp_codes: [empCode],
+          p_schedule_statuses: null
+        }
+      );
+      const rows = (data || []).filter(row => {
+        const date = String(row?.work_date || '').slice(0,10);
+        return String(row?.emp_code || '') === String(empCode)
+          && date >= bounds.start
+          && date <= bounds.end;
+      });
+      await enrichScheduleWorkPlanMetaV6118(
+        { startDate: bounds.start, endDate: bounds.end },
+        rows
+      );
+      return rows;
+    }
+
+    async function fetchEmployeeMonthAttendanceV61121(empCode, monthValue) {
+      const bounds = employeeMonthBoundsV61121(monthValue);
+      const common = {
+        p_start_date: bounds.start,
+        p_end_date: bounds.end,
+        p_emp_codes: [empCode],
+        p_attendance_statuses: null,
+        p_schedule_statuses: null,
+        p_limit: 5000
+      };
+
+      let response = await state.client.rpc(
+        'ta_get_attendance_detail_v61020',
+        { ...common, p_area: null, p_sub_area: null, p_department: null }
+      );
+      if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        response = await state.client.rpc(
+          'ta_get_attendance_detail_v664',
+          { ...common, p_zone: null, p_department: null }
+        );
+      }
+      if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        response = await state.client.rpc(
+          'ta_get_attendance_detail_v640',
+          { ...common, p_zone: null, p_department: null }
+        );
+      }
+      if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        response = await state.client.rpc(
+          'ta_get_attendance_detail_v619',
+          { ...common, p_area: null, p_sub_area: null, p_department: null }
+        );
+      }
+      if (response.error) throw response.error;
+
+      const byDate = new Map();
+      (response.data || []).forEach(row => {
+        const date = String(row?.work_date || '').slice(0,10);
+        if (date) byDate.set(date, { ...row });
+      });
+
+      const punchResponse = await state.client.rpc(
+        'ta_get_attendance_shift_punch_meta_v61110',
+        {
+          p_start_date: bounds.start,
+          p_end_date: bounds.end,
+          p_emp_codes: [empCode]
+        }
+      );
+      if (!punchResponse.error) {
+        (punchResponse.data || []).forEach(meta => {
+          const date = String(meta?.work_date || '').slice(0,10);
+          if (!date) return;
+          const row = byDate.get(date) || { emp_code: empCode, work_date: date };
+          Object.assign(row, meta);
+          byDate.set(date, row);
+        });
+      }
+
+      return [...byDate.values()]
+        .map(row => normalizeAttendanceStatusFromPunchesV61120(row))
+        .sort((a,b) => String(a.work_date).localeCompare(String(b.work_date)));
+    }
+
+    function employeeMonthStatusMetaV61121(row, workDate) {
+      if (!row) {
+        return {
+          status: 'UNPROCESSED',
+          label: workDate > todayISO() ? 'รอทำงาน' : 'รอประมวลผล',
+          tone: 'neutral'
+        };
+      }
+      const status = attendanceDisplayStatus(row);
+      if (status === 'ABSENCE') return { status, label: 'ขาดงาน', tone: 'danger' };
+      if (status === 'LEAVE') return { status, label: 'ลา', tone: 'leave' };
+      if (status === 'DAY_OFF') return { status, label: 'วันหยุด', tone: 'off' };
+      if (Number(row?.late_minutes || 0) > 0) return { status: 'LATE', label: 'สาย', tone: 'late' };
+      if (Number(row?.early_leave_minutes || 0) > 0) return { status: 'EARLY', label: 'กลับก่อน', tone: 'early' };
+      return { status: status || 'NORMAL', label: 'ปกติ', tone: 'normal' };
+    }
+
+    function employeeMonthAnomalyHtmlV61121(row) {
+      if (!row) return '';
+      const bits = [];
+      const status = attendanceDisplayStatus(row);
+      if (status === 'ABSENCE') bits.push('<span class="month-anomaly danger">ขาดงาน</span>');
+      if (Number(row?.late_minutes || 0) > 0) {
+        bits.push(`<span class="month-anomaly late">สาย ${safe(formatNumber(row.late_minutes))} นาที</span>`);
+      }
+      if (Number(row?.early_leave_minutes || 0) > 0) {
+        bits.push(`<span class="month-anomaly early">กลับก่อน ${safe(formatNumber(row.early_leave_minutes))} นาที</span>`);
+      }
+      if (status === 'LEAVE') bits.push('<span class="month-anomaly leave">ลา</span>');
+      return bits.join('');
+    }
+
+    function renderEmployeeMonthCalendarV61121() {
+      const modal = $('employeeMonthScheduleModal');
+      const grid = $('employeeMonthScheduleGrid');
+      if (!modal || !grid) return;
+
+      const bounds = employeeMonthBoundsV61121(employeeMonthCalendarStateV61121.month);
+      const scheduleRows = employeeMonthCalendarStateV61121.scheduleRows || [];
+      const attendanceRows = employeeMonthCalendarStateV61121.attendanceRows || [];
+      const scheduleByDate = new Map(scheduleRows.map(row => [String(row.work_date || '').slice(0,10), row]));
+      const attendanceByDate = new Map(attendanceRows.map(row => [String(row.work_date || '').slice(0,10), row]));
+      const firstSchedule = scheduleRows[0] || {};
+      const employeeName = firstSchedule.full_name
+        || state.schedule.find(row => String(row.emp_code) === String(employeeMonthCalendarStateV61121.empCode))?.full_name
+        || employeeMonthCalendarStateV61121.empCode;
+      const position = firstSchedule.position_name || '';
+      const department = firstSchedule.department || '';
+      const canEdit = employeeMonthCanEditV61121(employeeMonthCalendarStateV61121.empCode);
+
+      setText('employeeMonthScheduleTitle', employeeName);
+      setText(
+        'employeeMonthScheduleSubtitle',
+        `${employeeMonthCalendarStateV61121.empCode}${position ? ` • ${position}` : ''}${department ? ` • ${department}` : ''}`
+      );
+      const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+      setText('employeeMonthScheduleMonthLabel', `${monthNames[bounds.month-1]} ${bounds.year + 543}`);
+
+      let workdays = 0;
+      let absenceDays = 0;
+      let lateDays = 0;
+      let earlyDays = 0;
+      let splitDays = 0;
+      scheduleRows.forEach(scheduleRow => {
+        const shift = scheduleResolveShiftMeta(scheduleRow);
+        if (shift.isWorking) workdays += 1;
+        if (scheduleWorkTemplateCodeV6118(scheduleRow) === 'SPLIT_FLEX') splitDays += 1;
+      });
+      attendanceRows.forEach(row => {
+        if (attendanceDisplayStatus(row) === 'ABSENCE') absenceDays += 1;
+        if (Number(row?.late_minutes || 0) > 0) lateDays += 1;
+        if (Number(row?.early_leave_minutes || 0) > 0) earlyDays += 1;
+      });
+
+      $('employeeMonthScheduleSummary').innerHTML = `
+        <div class="month-overview-kpi"><span>วันทำงาน</span><strong>${safe(formatNumber(workdays))}</strong><small>วัน</small></div>
+        <div class="month-overview-kpi danger"><span>ขาดงาน</span><strong>${safe(formatNumber(absenceDays))}</strong><small>วัน</small></div>
+        <div class="month-overview-kpi late"><span>มาสาย</span><strong>${safe(formatNumber(lateDays))}</strong><small>วัน</small></div>
+        <div class="month-overview-kpi early"><span>กลับก่อน</span><strong>${safe(formatNumber(earlyDays))}</strong><small>วัน</small></div>
+        <div class="month-overview-kpi split"><span>ปกติ + งานดึก</span><strong>${safe(formatNumber(splitDays))}</strong><small>วัน</small></div>`;
+
+      const dowNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
+      const firstDow = new Date(bounds.year, bounds.month - 1, 1).getDay();
+      let html = dowNames.map((name,index) => `<div class="employee-month-dow ${index===0||index===6?'weekend':''}">${name}</div>`).join('');
+      for (let blank = 0; blank < firstDow; blank += 1) {
+        html += '<div class="employee-month-day is-blank"></div>';
+      }
+
+      for (let day = 1; day <= bounds.days; day += 1) {
+        const workDate = `${bounds.value}-${String(day).padStart(2,'0')}`;
+        const scheduleRow = scheduleByDate.get(workDate) || null;
+        const attendanceRow = attendanceByDate.get(workDate) || null;
+        const merged = scheduleRow || attendanceRow ? { ...(scheduleRow || {}), ...(attendanceRow || {}) } : null;
+        const d = new Date(`${workDate}T00:00:00`);
+        const dow = d.getDay();
+        const shift = merged ? scheduleResolveShiftMeta(merged) : { code:'-', label:'-', tone:'off', isWorking:false };
+        const statusMeta = employeeMonthStatusMetaV61121(attendanceRow ? merged : null, workDate);
+        const actualIn = merged ? scheduleTeamSegmentActualTime(merged, 1, 'IN') : '-';
+        const actualOut = merged ? scheduleTeamSegmentActualTime(merged, 1, 'OUT') : '-';
+        const split = merged && scheduleWorkTemplateCodeV6118(merged) === 'SPLIT_FLEX';
+        const shift2In = split ? scheduleTeamSegmentActualTime(merged, 2, 'IN') : '-';
+        const shift2Out = split ? scheduleTeamSegmentActualTime(merged, 2, 'OUT') : '-';
+        const anomalyHtml = employeeMonthAnomalyHtmlV61121(attendanceRow ? merged : null);
+        const editButton = canEdit && scheduleRow
+          ? `<button type="button" class="employee-month-edit-btn" data-employee-month-edit-date="${safe(workDate)}">จัดกะ</button>`
+          : '';
+        const isToday = workDate === todayISO();
+        const holiday = Boolean(scheduleRow?.is_public_holiday || scheduleRow?.day_type === 'PUBLIC_HOLIDAY');
+        const weeklyOff = Boolean(scheduleRow?.is_weekly_off || scheduleRow?.day_type === 'WEEKLY_OFF');
+
+        html += `<div class="employee-month-day ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} tone-${safe(statusMeta.tone)}" data-month-date="${safe(workDate)}">
+          <div class="employee-month-day-head"><strong>${safe(String(day))}</strong><span class="month-status-dot tone-${safe(statusMeta.tone)}" title="${safe(statusMeta.label)}"></span></div>
+          <div class="employee-month-shift tone-${safe(shift.tone)}"><b>${safe(shift.code || '-')}</b><small>${safe(shift.label || '-')}</small>${split?'<em>+ งานลูกค้าช่วงดึก</em>':''}</div>
+          <div class="employee-month-punch"><span>เข้า <b>${safe(actualIn)}</b></span><span>ออก <b>${safe(actualOut)}</b></span></div>
+          ${split ? `<div class="employee-month-punch secondary"><span>กะ 2 เข้า <b>${safe(shift2In)}</b></span><span>ออก <b>${safe(shift2Out)}</b></span></div>` : ''}
+          <div class="employee-month-anomalies">${anomalyHtml || `<span class="month-anomaly ${safe(statusMeta.tone)}">${safe(statusMeta.label)}</span>`}</div>
+          ${editButton}
+        </div>`;
+      }
+
+      grid.innerHTML = html;
+      $('employeeMonthRecalcBtn')?.classList.toggle('hidden', !state.client);
+      $('employeeMonthEditHint')?.classList.toggle('hidden', !canEdit);
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden','false');
+    }
+
+    async function openEmployeeMonthCalendarV61121(empCode, monthValue = null) {
+      const code = String(empCode || '').trim();
+      if (!code) return;
+      const month = employeeMonthBoundsV61121(
+        monthValue || val('scheduleMonth') || todayISO().slice(0,7)
+      ).value;
+      employeeMonthCalendarStateV61121.empCode = code;
+      employeeMonthCalendarStateV61121.month = month;
+      employeeMonthCalendarStateV61121.loading = true;
+      $('employeeMonthScheduleModal')?.classList.remove('hidden');
+      $('employeeMonthScheduleModal')?.setAttribute('aria-hidden','false');
+      if ($('employeeMonthScheduleGrid')) {
+        $('employeeMonthScheduleGrid').innerHTML = '<div class="employee-month-loading"><span class="spinner"></span><strong>กำลังโหลดปฏิทินรายเดือน...</strong></div>';
+      }
+      try {
+        const [scheduleRows, attendanceRows] = await Promise.all([
+          fetchEmployeeMonthScheduleV61121(code, month),
+          fetchEmployeeMonthAttendanceV61121(code, month)
+        ]);
+        employeeMonthCalendarStateV61121.scheduleRows = scheduleRows;
+        employeeMonthCalendarStateV61121.attendanceRows = attendanceRows;
+        await enrichScheduleManagerNamesV61121(scheduleRows);
+        renderEmployeeMonthCalendarV61121();
+      } catch (error) {
+        console.error('Employee month calendar:', error);
+        toast(humanError(error), 'error');
+        if ($('employeeMonthScheduleGrid')) {
+          $('employeeMonthScheduleGrid').innerHTML = `<div class="employee-month-error">โหลดปฏิทินรายเดือนไม่สำเร็จ<br><small>${safe(humanError(error))}</small></div>`;
+        }
+      } finally {
+        employeeMonthCalendarStateV61121.loading = false;
+      }
+    }
+
+    function closeEmployeeMonthCalendarV61121() {
+      $('employeeMonthScheduleModal')?.classList.add('hidden');
+      $('employeeMonthScheduleModal')?.setAttribute('aria-hidden','true');
+      window.TimeClockEmployeeMonthReturnContext = null;
+    }
+
+    async function recalculateEmployeeMonthV61121() {
+      const code = employeeMonthCalendarStateV61121.empCode;
+      const month = employeeMonthCalendarStateV61121.month;
+      if (!code || !month) return;
+      if (!confirm(`ประมวลผลเวลาทำงานใหม่ของ ${code} เดือน ${month} ทั้งเดือน?`)) return;
+      const button = $('employeeMonthRecalcBtn');
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'กำลังประมวลผล...';
+      }
+      showLoading('กำลังประมวลผลเวลาทำงานทั้งเดือน...');
+      try {
+        const { data, error } = await state.client.rpc(
+          'ta_recalculate_employee_month_v61121',
+          {
+            p_emp_code: code,
+            p_month: `${month}-01`
+          }
+        );
+        if (error) {
+          if (window.TimeClockShiftAPI?.missingFunction?.(error)) {
+            throw new Error('MONTHLY_EMPLOYEE_RECALC_RPC_REQUIRED');
+          }
+          throw error;
+        }
+        toast(
+          data?.deferred
+            ? 'ยังไม่มีข้อมูลลงเวลาในบางวัน ระบบจะคำนวณเมื่อมี Attendance'
+            : 'ประมวลผลเวลาทำงานทั้งเดือนเรียบร้อย',
+          'success'
+        );
+        await openEmployeeMonthCalendarV61121(code, month);
+      } catch (error) {
+        toast(humanError(error), 'error');
+      } finally {
+        hideLoading();
+        if (button) {
+          button.disabled = false;
+          button.textContent = '↻ ประมวลผลเดือนนี้';
+        }
+      }
+    }
+
+    window.TimeClockEmployeeMonthCalendarV61121 = {
+      open: openEmployeeMonthCalendarV61121,
+      close: closeEmployeeMonthCalendarV61121,
+      refresh: () => openEmployeeMonthCalendarV61121(
+        employeeMonthCalendarStateV61121.empCode,
+        employeeMonthCalendarStateV61121.month
+      )
+    };
+
     function renderScheduleTeamView(rows, period, dateMeta) {
       const wrap = $("scheduleTeamWrap");
       if (!wrap) return;
@@ -5033,12 +5453,20 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           units.set(unit, {
             unit,
             employees: new Set(),
+            managers: new Map(),
             days: new Map()
           });
         }
 
         const group = units.get(unit);
         group.employees.add(String(row.emp_code || ''));
+        const managerCodeV61121 = scheduleManagerCodeV61121(row);
+        if (managerCodeV61121) {
+          group.managers.set(
+            managerCodeV61121,
+            Number(group.managers.get(managerCodeV61121) || 0) + 1
+          );
+        }
 
         if (!group.days.has(date)) {
           group.days.set(date, {
@@ -5121,7 +5549,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
 
       for (const team of teams) {
-        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
+        const managerLabelV61121 = scheduleTeamManagerLabelV61121(team);
+        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabelV61121)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
 
         for (const date of period.dates) {
           const day = team.days.get(date);
@@ -5290,7 +5719,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             ? `<span class="schedule-self-readonly-badge" title="Manager ดูกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง">ตนเอง • ดูอย่างเดียว</span>`
             : "";
 
-        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-start-date">${safe(formatDate(employeeStartDate))}</td><td class="sticky-col-4 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-start-date">${safe(formatDate(employeeStartDate))}</td><td class="sticky-col-4 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
@@ -5740,6 +6169,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         x =>
           x.emp_code === empCode
           && String(x.work_date).slice(0,10) === workDate
+      ) || employeeMonthCalendarStateV61121.scheduleRows.find(
+        x =>
+          String(x.emp_code || '') === String(empCode || '')
+          && String(x.work_date || '').slice(0,10) === String(workDate || '').slice(0,10)
       );
       const patternCode = r?.pattern_code || r?.resolved_pattern_code || (String(r?.pc || "").match(/4/) ? "TECH_5D" : "TECH_6D");
       const selectedShift = r?.assigned_shift_code || r?.suggested_shift_code || r?.effective_shift_code || r?.default_shift_code || (patternCode === "TECH_5D" ? "D5" : "D6");
@@ -5968,6 +6401,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
 
         const teamReturnContext = window.TimeClockTeamDailyReturnContext;
+        const monthReturnContext = window.TimeClockEmployeeMonthReturnContext;
         await loadSchedule();
         if (teamReturnContext?.source === 'team-daily-detail') {
           await openScheduleTeamDrawer(
@@ -5977,6 +6411,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           scheduleTeamDrawerState.filter = teamReturnContext.filter || 'ALL';
           renderScheduleTeamDrawer();
           window.TimeClockTeamDailyReturnContext = null;
+        }
+        if (monthReturnContext?.source === 'employee-month-calendar') {
+          await openEmployeeMonthCalendarV61121(
+            monthReturnContext.empCode || savedEmp,
+            monthReturnContext.month || savedDate.slice(0,7)
+          );
+          window.TimeClockEmployeeMonthReturnContext = null;
         }
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
@@ -6073,6 +6514,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
 
         const teamReturnContext = window.TimeClockTeamDailyReturnContext;
+        const monthReturnContext = window.TimeClockEmployeeMonthReturnContext;
         await loadSchedule();
         if (teamReturnContext?.source === 'team-daily-detail') {
           await openScheduleTeamDrawer(
@@ -6082,6 +6524,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           scheduleTeamDrawerState.filter = teamReturnContext.filter || 'ALL';
           renderScheduleTeamDrawer();
           window.TimeClockTeamDailyReturnContext = null;
+        }
+        if (monthReturnContext?.source === 'employee-month-calendar') {
+          await openEmployeeMonthCalendarV61121(
+            monthReturnContext.empCode || val('assignEmpCode'),
+            monthReturnContext.month || String(val('assignWorkDate') || '').slice(0,7)
+          );
+          window.TimeClockEmployeeMonthReturnContext = null;
         }
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
@@ -7561,6 +8010,52 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         setScheduleView('PERSON');
         renderSchedule();
       });
+      $("scheduleTableWrap")?.addEventListener("click", event => {
+        const calendarButton = event.target.closest('[data-person-month-calendar]');
+        if (!calendarButton) return;
+        event.preventDefault();
+        event.stopPropagation();
+        openEmployeeMonthCalendarV61121(
+          String(calendarButton.dataset.emp || '').trim(),
+          String(calendarButton.dataset.month || val('scheduleMonth') || '').slice(0,7)
+        );
+      }, true);
+
+      $("employeeMonthScheduleClose")?.addEventListener("click", closeEmployeeMonthCalendarV61121);
+      $("employeeMonthScheduleCloseFooter")?.addEventListener("click", closeEmployeeMonthCalendarV61121);
+      $("employeeMonthScheduleModal")?.addEventListener("click", event => {
+        if (event.target === $('employeeMonthScheduleModal')) {
+          closeEmployeeMonthCalendarV61121();
+          return;
+        }
+        const edit = event.target.closest('[data-employee-month-edit-date]');
+        if (edit) {
+          const workDate = String(edit.dataset.employeeMonthEditDate || '').slice(0,10);
+          if (!workDate) return;
+          window.TimeClockEmployeeMonthReturnContext = {
+            source: 'employee-month-calendar',
+            empCode: employeeMonthCalendarStateV61121.empCode,
+            month: employeeMonthCalendarStateV61121.month,
+            workDate
+          };
+          openAssignment(employeeMonthCalendarStateV61121.empCode, workDate);
+          return;
+        }
+        const nav = event.target.closest('[data-employee-month-nav]');
+        if (nav) {
+          const action = String(nav.dataset.employeeMonthNav || '');
+          const month = action === 'today'
+            ? todayISO().slice(0,7)
+            : employeeMonthShiftV61121(employeeMonthCalendarStateV61121.month, action === 'prev' ? -1 : 1);
+          openEmployeeMonthCalendarV61121(employeeMonthCalendarStateV61121.empCode, month);
+        }
+      });
+      $("employeeMonthRecalcBtn")?.addEventListener("click", recalculateEmployeeMonthV61121);
+      $("employeeMonthRefreshBtn")?.addEventListener("click", () => openEmployeeMonthCalendarV61121(
+        employeeMonthCalendarStateV61121.empCode,
+        employeeMonthCalendarStateV61121.month
+      ));
+
       $("scheduleTeamDrawerClose")?.addEventListener("click", closeScheduleTeamDrawer);
       $("scheduleTeamDrawerBackdrop")?.addEventListener("click", closeScheduleTeamDrawer);
       $("scheduleTeamDrawer")?.addEventListener("click", event => {
@@ -7596,7 +8091,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       });
       applyScheduleViewMode();
       document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && !$('scheduleTeamDrawer')?.classList.contains('hidden')) {
+        if (event.key !== 'Escape') return;
+        if (!$('assignModal')?.classList.contains('hidden')) return;
+        if (!$('employeeMonthScheduleModal')?.classList.contains('hidden')) {
+          closeEmployeeMonthCalendarV61121();
+          return;
+        }
+        if (!$('scheduleTeamDrawer')?.classList.contains('hidden')) {
           closeScheduleTeamDrawer();
         }
       });
@@ -7744,6 +8245,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("MISSING_V61028")) return "กรุณารัน SQL V6.10.28 ก่อนติดตั้ง V6.11.15";
       if (msg.includes("ATTENDANCE_RECALC")) return "บันทึกกะไม่สำเร็จ เนื่องจากการประมวลผล Attendance ใหม่ไม่สำเร็จ ระบบไม่ได้บันทึกกะบางส่วน";
+      if (msg.includes("MONTHLY_EMPLOYEE_RECALC_RPC_REQUIRED")) return "ยังไม่ได้ติดตั้ง SQL V6.11.21 สำหรับประมวลผลรายบุคคลทั้งเดือน กรุณารัน SQL ที่ต้องรัน V6.11.21 ก่อน";
       if (msg.includes("MANAGER_SELF_SCHEDULE_FORBIDDEN")) return "Manager สามารถดูตารางกะของตนเองได้ แต่ไม่สามารถจัดกะ แก้ไข ยืนยัน หรือลบกะของตนเอง";
       if (msg.includes("ACTIVE_MANAGER_PROFILE_NOT_FOUND_FOR_EMAIL")) return "ไม่พบ Profile ที่เป็น MANAGER และ Active สำหรับ Email นี้ กรุณาตรวจ Role ก่อนเพิ่ม Scope";
       if (msg.includes("SHIFT_BEFORE_EMPLOYEE_START_DATE")) return "ไม่สามารถกำหนดกะก่อนวันเริ่มงานของพนักงานได้ กรุณาเลือกวันที่ตั้งแต่วันเริ่มงานเป็นต้นไป";

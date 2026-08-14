@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.20-20260814b" rel="stylesheet"/>
+<link href="./app.css?v=6.11.21-20260814" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1396,6 +1396,50 @@
 <div class="modal-footer"><button class="btn btn-light" data-close-modal="configModal">ยกเลิก</button><button class="btn btn-primary" id="saveConfigBtn">บันทึกการตั้งค่า</button></div>
 </div>
 </div>
+
+<!-- Employee Monthly Schedule Overview V6.11.21 -->
+<div class="modal-backdrop hidden employee-month-modal-backdrop-v61121" id="employeeMonthScheduleModal" aria-hidden="true">
+  <div class="modal employee-month-modal-v61121">
+    <div class="modal-header employee-month-modal-header-v61121">
+      <div>
+        <span class="eyebrow">MONTHLY PERSONAL OVERVIEW</span>
+        <h3 id="employeeMonthScheduleTitle">ปฏิทินรายบุคคล</h3>
+        <p id="employeeMonthScheduleSubtitle">-</p>
+      </div>
+      <button class="btn btn-light btn-icon" id="employeeMonthScheduleClose" type="button" aria-label="ปิด">×</button>
+    </div>
+    <div class="employee-month-toolbar-v61121">
+      <div class="employee-month-nav-v61121">
+        <button class="btn btn-light btn-sm" type="button" data-employee-month-nav="prev">‹ เดือนก่อน</button>
+        <div class="employee-month-current-v61121"><small>เดือนที่แสดง</small><strong id="employeeMonthScheduleMonthLabel">-</strong></div>
+        <button class="btn btn-light btn-sm" type="button" data-employee-month-nav="next">เดือนถัดไป ›</button>
+        <button class="btn btn-soft btn-sm" type="button" data-employee-month-nav="today">เดือนปัจจุบัน</button>
+      </div>
+      <div class="employee-month-actions-v61121">
+        <span class="employee-month-edit-hint-v61121" id="employeeMonthEditHint">คลิก “จัดกะ” ในแต่ละวันเพื่อแก้ไข</span>
+        <button class="btn btn-light" id="employeeMonthRefreshBtn" type="button">↻ รีเฟรช</button>
+        <button class="btn btn-primary" id="employeeMonthRecalcBtn" type="button">↻ ประมวลผลเดือนนี้</button>
+      </div>
+    </div>
+    <div class="modal-body employee-month-modal-body-v61121">
+      <div class="employee-month-summary-v61121" id="employeeMonthScheduleSummary"></div>
+      <div class="employee-month-legend-v61121">
+        <span><i class="tone-normal"></i>ปกติ</span>
+        <span><i class="tone-late"></i>สาย</span>
+        <span><i class="tone-early"></i>กลับก่อน</span>
+        <span><i class="tone-danger"></i>ขาดงาน</span>
+        <span><i class="tone-leave"></i>ลา</span>
+        <span><i class="tone-off"></i>วันหยุด</span>
+      </div>
+      <div class="employee-month-grid-v61121" id="employeeMonthScheduleGrid"></div>
+    </div>
+    <div class="modal-footer employee-month-modal-footer-v61121">
+      <small>กะมาตรฐานจะแสดงอัตโนมัติ • วันที่ปรับกะจะมีผลทันทีหลังบันทึกและระบบประมวลผล Attendance ใหม่</small>
+      <button class="btn btn-light" id="employeeMonthScheduleCloseFooter" type="button">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <!-- Shift Assignment Modal -->
 <div class="modal-backdrop hidden" id="assignModal">
 <div class="modal">
@@ -2224,6 +2268,6 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=6.11.20-20260814b"></script>
+<script src="./app.js?v=6.11.21-20260814"></script>
 </body>
 </html>
