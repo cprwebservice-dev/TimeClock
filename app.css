@@ -12753,3 +12753,135 @@ body.theme-dark .team-day-change-status-v61116.is-complete,
     min-height:82px!important;
   }
 }
+
+/* ===== V6.11.17 Save = Confirm + calmer team overview ===== */
+.assignment-save-policy-v61117{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:-4px 0 14px;
+  padding:9px 11px;
+  border:1px solid #d7e5f2;
+  border-radius:12px;
+  background:#f7fbff;
+  color:#405a73;
+}
+.assignment-save-policy-v61117>span{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:25px;
+  height:25px;
+  flex:0 0 auto;
+  border-radius:8px;
+  background:#e8f2fc;
+  color:#2774b7;
+  font-weight:900;
+}
+.assignment-save-policy-v61117 strong{
+  display:block;
+  color:#244765;
+  font-size:12px;
+}
+.assignment-save-policy-v61117 small{
+  display:block;
+  margin-top:2px;
+  color:#708396;
+  font-size:10.5px;
+  line-height:1.35;
+}
+
+/* Default team cells should stay quiet and neutral. */
+.schedule-team-summary-card.team-day-card-v61115.is-standard-v61117{
+  border-color:#dce6ef!important;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;
+  box-shadow:0 3px 9px rgba(30,64,175,.035)!important;
+}
+.schedule-team-summary-card.team-day-card-v61115.is-standard-v61117:hover{
+  border-color:#b9d5ef!important;
+  background:#f8fbff!important;
+  box-shadow:0 6px 14px rgba(37,99,235,.07)!important;
+}
+
+/* Only manual deviations receive a small, low-emphasis marker. */
+.schedule-team-summary-card.team-day-card-v61115.has-change-v61117{
+  border-color:#e6d8c7!important;
+  box-shadow:inset 2px 0 0 #d99a45,0 4px 10px rgba(15,23,42,.04)!important;
+}
+.team-day-top-manual-v61117{
+  min-height:15px!important;
+  justify-content:flex-start!important;
+}
+.team-day-manual-change-v61117{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  width:auto;
+  max-width:100%;
+  padding:2px 6px;
+  border:1px solid #ead7bc;
+  border-radius:999px;
+  background:#fffaf3;
+  color:#9a641f;
+  font-size:6.6px;
+  font-weight:850;
+  line-height:1.15;
+  white-space:nowrap;
+}
+.team-day-manual-change-v61117 i{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#d99a45;
+  flex:0 0 auto;
+}
+
+/* Retire the previous strong green standard badge even if stale HTML is cached. */
+.team-day-standard-v61116{
+  background:#f4f7fa!important;
+  border-color:#dde5ec!important;
+  color:#6b7f91!important;
+}
+.team-day-standard-v61116 i{
+  background:#94a3b8!important;
+}
+.schedule-team-summary-card.team-day-card-v61115.is-standard-v61116{
+  border-color:#dce6ef!important;
+  background:#ffffff!important;
+  box-shadow:0 3px 9px rgba(30,64,175,.035)!important;
+}
+
+body.theme-dark .assignment-save-policy-v61117,
+.dark .assignment-save-policy-v61117{
+  border-color:#3c566d;
+  background:#1d3040;
+  color:#b5c6d5;
+}
+body.theme-dark .assignment-save-policy-v61117>span,
+.dark .assignment-save-policy-v61117>span{
+  background:#28445c;
+  color:#b8dcff;
+}
+body.theme-dark .assignment-save-policy-v61117 strong,
+.dark .assignment-save-policy-v61117 strong{color:#e2eef8}
+body.theme-dark .assignment-save-policy-v61117 small,
+.dark .assignment-save-policy-v61117 small{color:#9eb1c2}
+body.theme-dark .schedule-team-summary-card.team-day-card-v61115.is-standard-v61117,
+.dark .schedule-team-summary-card.team-day-card-v61115.is-standard-v61117{
+  border-color:#3a5268!important;
+  background:linear-gradient(180deg,#203142 0%,#1b2b39 100%)!important;
+  box-shadow:none!important;
+}
+body.theme-dark .schedule-team-summary-card.team-day-card-v61115.has-change-v61117,
+.dark .schedule-team-summary-card.team-day-card-v61115.has-change-v61117{
+  border-color:#65523b!important;
+  box-shadow:inset 2px 0 0 #c28b43!important;
+}
+body.theme-dark .team-day-manual-change-v61117,
+.dark .team-day-manual-change-v61117{
+  border-color:#6b5437;
+  background:#352b1f;
+  color:#e5c18d;
+}
+body.theme-dark .team-day-manual-change-v61117 i,
+.dark .team-day-manual-change-v61117 i{background:#c99249}

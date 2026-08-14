@@ -901,3 +901,21 @@ V6.11.16 — Daily Work Template Flex
 3) Upload index.html, app.js, app.css, 404.html, .nojekyll
 4) กรณีมีข้อมูล Attendance เดิมที่เคยคำนวณโดยใช้ SPLIT_FLEX เป็น Default ให้ใช้เมนูประมวลผล Attendance ใหม่เฉพาะช่วงวันที่ที่ต้องการ
 ===============================================================================
+
+
+V6.11.17 — Save Shift = Confirm Automatically
+===============================================
+แนวทางใหม่:
+- กะมาตรฐาน Default ทำงานอัตโนมัติ ไม่ต้องมีขั้นตอนยืนยัน
+- เมื่อหัวหน้างานเลือก/เปลี่ยนกะแล้วกด “บันทึกกะ” ถือว่า Confirm และมีผลทันที
+- Quick Shift / Paste / Fill / Pattern ที่หัวหน้างานบันทึก จะ Confirm อัตโนมัติเช่นกัน
+- ตัดช่อง “สถานะการยืนยันกะ”, ปุ่ม “ยืนยันที่เลือก” และ “ยืนยันกะที่จัดไว้ทั้งหมด” ออกจาก Schedule UI
+- สิทธิ์ Manager ใช้ “บันทึกกะ” เป็นสิทธิ์เดียว ระบบ sync can_confirm_schedule ตาม can_edit_schedule เพื่อรองรับ RPC รุ่นเดิม
+- มุมมองทีม: กะมาตรฐานใช้พื้น Neutral ไม่มีแถบเขียวเด่น; แสดงเฉพาะ badge “ปรับกะ X” แบบสีส้มอ่อนเมื่อมีการเปลี่ยนจริง
+
+ลำดับติดตั้ง:
+1) ต้องติดตั้ง V6.11.16 Daily Work Template Flex แล้ว
+2) รัน SQL_ที่ต้องรัน_V6.11.17_AUTO_CONFIRM_ON_SAVE.sql
+3) รัน SQL_สำหรับตรวจสอบ_V6.11.17_AUTO_CONFIRM_ON_SAVE.sql และตรวจให้ทุกผลเป็น PASS
+4) Deploy index.html, app.js, app.css, 404.html และ .nojekyll จาก ZIP นี้
+5) Ctrl + Shift + R แล้ว Login ใหม่

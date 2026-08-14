@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.16 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.17 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.16 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.17 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.16-20260814c" rel="stylesheet"/>
+<link href="./app.css?v=6.11.17-20260814" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.16</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.17</span></div>
 </form>
 </div>
 </section>
@@ -278,7 +278,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.16 Daily Work Template Flex</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.17 Auto-confirm on Save</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -478,8 +478,8 @@
 <div class="schedule-kpi-grid section-gap">
 <div class="schedule-kpi"><span>พนักงาน</span><strong id="scheduleEmployeeCount">0</strong></div>
 <div class="schedule-kpi"><span>รายการปรับกะ</span><strong id="scheduleAssignedCount">0</strong></div>
-<div class="schedule-kpi"><span>ยืนยันการปรับแล้ว</span><strong id="scheduleConfirmedCount">0</strong></div>
-<div class="schedule-kpi warning"><span>รอยืนยันการปรับ</span><strong id="scheduleReviewCount">0</strong></div>
+<div class="schedule-kpi"><span>งานลูกค้าช่วงดึก</span><strong id="scheduleConfirmedCount">0</strong></div>
+<div class="schedule-kpi warning"><span>ต้องตรวจสอบ</span><strong id="scheduleReviewCount">0</strong></div>
 <div class="schedule-kpi"><span id="scheduleSelectedKpiLabel">ช่องที่เลือก</span><strong id="scheduleSelectedKpi">0</strong></div>
 </div>
 <div class="schedule-view-shell section-gap">
@@ -490,7 +490,7 @@
 <div class="schedule-view-helper">
 <div>
 <strong id="scheduleViewHintTitle">สรุปข้อมูลรายหน่วยงาน</strong>
-<small id="scheduleViewHintText">ดูภาพรวมกะของแต่ละทีม โดยกะมาตรฐานไม่ต้องยืนยัน และหัวหน้างานยืนยันเฉพาะรายการที่ปรับจากกะมาตรฐาน</small>
+<small id="scheduleViewHintText">ดูภาพรวมกะมาตรฐาน รายการที่หัวหน้างานปรับ และจุดที่ต้องตรวจสอบรายทีม แล้วคลิกดูรายคนต่อได้</small>
 </div>
 <div class="field schedule-team-focus-field">
 <label>โฟกัสทีม (ตัวกรองเสริม)</label>
@@ -501,7 +501,7 @@
 <div class="panel section-gap schedule-workspace" id="scheduleTeamWorkspace" data-schedule-view-panel="TEAM">
 <div class="panel-header schedule-panel-header schedule-panel-header-team">
 <div><h3>ตารางกะสรุปรายหน่วยงาน</h3><p>สรุปภาพรวมกำลังคนตามหน่วยงานในสัปดาห์ที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล</p></div>
-<div class="schedule-legend"><span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-green">กะมาตรฐาน = ไม่ต้องยืนยัน</span><span class="badge badge-red-soft">ปรับจากมาตรฐาน = ต้องยืนยัน</span></div>
+<div class="schedule-legend"><span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span></div>
 </div>
 <div class="schedule-team-toolbar">
 <div class="schedule-team-tip">มุมมองทีมเหมาะสำหรับดูภาพรวมการครอบคลุมกำลังคน ก่อนเจาะลงไปดูรายบุคคล</div>
@@ -534,7 +534,7 @@
 <button class="btn btn-light" id="schedulePasteBtn">วาง</button>
 <button class="btn btn-danger-soft" id="scheduleClearCellsBtn">ล้างกะ</button>
 <button class="btn btn-light" id="scheduleClearSelectionBtn">ยกเลิกเลือก</button>
-<button class="btn btn-success" id="scheduleConfirmSelectedBtn">ยืนยันที่เลือก</button>
+
 </div>
 </div>
 <div class="schedule-summary-strip" id="scheduleSummaryStrip">
@@ -1049,7 +1049,7 @@
 </div>
 <div class="table-wrap">
 <table>
-<thead><tr><th>Manager</th><th>ครอบคลุม</th><th>ดู</th><th>จัดกะ</th><th>ยืนยันกะ</th><th>รับรองเวลา</th><th>พิจารณาคำขอ</th><th>ช่วงใช้</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+<thead><tr><th>Manager</th><th>ครอบคลุม</th><th>ดู</th><th>จัดกะ</th><th>รับรองเวลา</th><th>พิจารณาคำขอ</th><th>ช่วงใช้</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
 <tbody id="orgManagerBody"></tbody>
 </table>
 </div>
@@ -1396,10 +1396,8 @@
 <div class="modal-body">
 <input id="assignEmpCode" type="hidden"><input id="assignWorkDate" type="hidden">
 <div id="assignEmployeeInfo" style="padding:13px;border-radius:12px;background:var(--blue-100);color:var(--blue-700);margin-bottom:15px;font-weight:700"></div>
-<div class="form-row">
-<div class="field"><label>กะทำงาน</label><select class="select" id="assignShiftCode"></select></div>
-<div class="field"><label>ยืนยันการปรับกะ</label><select class="select" id="assignConfirm"><option value="false">รอยืนยันการปรับ</option><option value="true">ยืนยันการปรับทันที</option></select><small class="field-help" id="assignConfirmHelp">กะมาตรฐานไม่ต้องยืนยัน • ระบบเปิดการยืนยันเฉพาะเมื่อปรับจากมาตรฐาน</small></div>
-</div>
+<div class="field"><label>กะทำงาน</label><select class="select" id="assignShiftCode"></select><small class="field-help">เมื่อหัวหน้างานกด “บันทึกกะ” ระบบจะถือว่าเป็นการยืนยันการจัดกะและมีผลทันที</small></div>
+<div class="assignment-save-policy-v61117"><span>✓</span><div><strong>บันทึกครั้งเดียว</strong><small>ไม่ต้องยืนยันกะแยกอีกครั้ง • การเปลี่ยนกะจะถูกบันทึกพร้อมผู้ดำเนินการและวันเวลา</small></div></div>
 <div class="field"><label>รูปแบบช่วงงานของวันนี้</label><select class="select" id="assignWorkTemplate"><option value="">กำลังโหลดรูปแบบช่วงงาน...</option></select><small class="field-help" id="assignWorkTemplateHelp">ค่าเริ่มต้นเป็นกะปกติ และสามารถเลือกงานลูกค้าช่วงดึกเฉพาะวันที่ต้องใช้งาน</small></div>
 <div class="form-row hidden" id="assignCustomerWindowRow"><div class="field"><label>คาดว่าจะเริ่มงานลูกค้า *</label><input class="input" id="assignCustomerStart" type="time" value="22:00"/><small class="field-help">ใช้เป็นเวลาเริ่มงานลูกค้าช่วงดึก</small></div><div class="field"><label>คาดว่าจะสิ้นสุด</label><select class="select" id="assignCustomerEndMode"><option value="ACTUAL_OUT" selected>ตามเวลาออกจริง</option><option value="FIXED">กำหนดเวลา</option></select><div class="assign-customer-end-fixed hidden" id="assignCustomerEndFixedWrap"><input class="input" id="assignCustomerEnd" type="time"/><small class="field-help">รองรับข้ามวัน เช่น 22:00–03:00</small></div><small class="field-help" id="assignCustomerEndModeHelp">ตามเวลาออกจริง: ระบบจะใช้ OUT จริงเป็นเวลาสิ้นสุดงานลูกค้าช่วงดึก</small></div></div>
 <div class="field"><label>หมายเหตุ</label><input class="input" id="assignNote" placeholder="หมายเหตุการจัดกะ / งานลูกค้า"/></div>
@@ -1582,7 +1580,7 @@
 <div class="manager-scope-permission-grid">
 <label><input checked="" id="omCanView" type="checkbox"/><span>ดูข้อมูล</span></label>
 <label><input id="omCanEdit" type="checkbox"/><span>บันทึกกะ</span></label>
-<label><input id="omCanConfirm" type="checkbox"/><span>ยืนยันกะ</span></label>
+
 <label><input id="omCanCertify" type="checkbox"/><span>รับรองเวลา</span></label>
 <label><input id="omCanDecide" type="checkbox"/><span>พิจารณาคำขอ</span></label>
 </div>
@@ -2073,7 +2071,6 @@
 <th>ค่า Scope</th>
 <th>ดู</th>
 <th>จัดกะ</th>
-<th>ยืนยันกะ</th>
 <th>รับรองเวลา</th>
 <th>พิจารณาคำขอ</th>
 <th>ช่วงใช้</th>
@@ -2082,7 +2079,7 @@
 </tr>
 </thead>
 <tbody id="umManagerScopeBody">
-<tr><td class="fc-empty" colspan="10">เลือก Role Manager เพื่อกำหนด Scope</td></tr>
+<tr><td class="fc-empty" colspan="9">เลือก Role Manager เพื่อกำหนด Scope</td></tr>
 </tbody>
 </table>
 </div>
@@ -2133,7 +2130,7 @@
 <div class="manager-scope-permission-grid">
 <label><input checked="" id="msCanView" type="checkbox"><span>ดูข้อมูล</span></input></label>
 <label><input id="msCanEdit" type="checkbox"><span>บันทึกกะ</span></input></label>
-<label><input id="msCanConfirm" type="checkbox"><span>ยืนยันกะ</span></input></label>
+
 <label><input id="msCanCertify" type="checkbox"><span>รับรองเวลา</span></input></label>
 <label><input id="msCanDecide" type="checkbox"><span>พิจารณาคำขอแก้ไขกะ</span></input></label>
 </div>
@@ -2202,13 +2199,12 @@
 <th>ค่า Scope</th>
 <th>ดู</th>
 <th>จัดกะ</th>
-<th>ยืนยันกะ</th>
 <th>รับรองเวลา</th>
 <th>พิจารณาคำขอ</th>
 </tr>
 </thead>
 <tbody id="managerScopeUploadBody">
-<tr><td class="fc-empty" colspan="9">ยังไม่มีข้อมูล Preview</td></tr>
+<tr><td class="fc-empty" colspan="8">ยังไม่มีข้อมูล Preview</td></tr>
 </tbody>
 </table>
 </div>
@@ -2221,6 +2217,6 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=6.11.16-20260814c"></script>
+<script src="./app.js?v=6.11.17-20260814"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.16";
-document.documentElement.dataset.timeClockBuild = "6.11.16";
+window.__TIME_CLOCK_BUILD__ = "V6.11.17";
+document.documentElement.dataset.timeClockBuild = "6.11.17";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.16";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.16',
+  version: '6.11.17',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1499,20 +1499,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       });
     }
 
-    function updateAssignConfirmHelp() {
-      const select = $("assignConfirm");
-      if (!select) return;
-      const requiresConfirmation = assignmentWouldChangeStandardV61116();
-      select.disabled = !requiresConfirmation;
-      if (!requiresConfirmation) {
-        setVal("assignConfirm", "false");
-        setText("assignConfirmHelp", "กะมาตรฐาน: ไม่ต้องยืนยัน ระบบใช้กะมาตรฐานของพนักงานตามปกติ");
-        return;
-      }
-      const confirmed = val("assignConfirm") === "true";
-      setText("assignConfirmHelp", confirmed
-        ? "รายการนี้ปรับจากกะมาตรฐาน • ยืนยันการปรับทันที พร้อมบันทึกผู้ยืนยันและวันเวลา"
-        : "รายการนี้ปรับจากกะมาตรฐาน • ต้องให้หัวหน้างานยืนยันการปรับกะ");
+    function assignmentSaveIsAutoConfirmedV61117() {
+      return Boolean(val("assignShiftCode"));
     }
 
     function showLoading(text = "กำลังประมวลผล...") { setText("loadingText", text); $("loadingOverlay").classList.remove("hidden"); }
@@ -3246,7 +3234,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("dashboardQuick").innerHTML = [
         ["ขาดเวลาเข้า", d.missing_in_rows, "attendance"],
         ["ขาดเวลาออก", d.missing_out_rows, "attendance"],
-        ["กะที่ยืนยันแล้ว", d.confirmed_rows, "schedule"]
+        ["กะที่หัวหน้างานบันทึก", d.confirmed_rows, "schedule"]
       ].map(x => `<button class="quick-item" data-go-page="${x[2]}"><div><strong>${safe(x[0])}</strong><span> คลิกเพื่อดูรายละเอียด</span></div><span class="badge badge-blue">${formatNumber(x[1])}</span></button>`).join("");
     }
 
@@ -4510,8 +4498,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
       if (text) {
         text.textContent = mode === "TEAM"
-          ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานไม่ต้องยืนยัน • หัวหน้างานยืนยันเฉพาะรายการที่ปรับจากกะมาตรฐาน"
-          : "ใช้จัดกะรายบุคคลแบบละเอียด พร้อมเลือกหลายช่อง คัดลอก วาง และยืนยันกะได้จากหน้าจอเดียว";
+          ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานทำงานอัตโนมัติ • เมื่อหัวหน้างานปรับกะและกดบันทึก ระบบมีผลทันที"
+          : "ใช้จัดกะรายบุคคลแบบละเอียด พร้อมเลือกหลายช่อง คัดลอก วาง และบันทึกกะได้จากหน้าจอเดียว";
       }
 
       if (mode === "TEAM") {
@@ -4957,8 +4945,6 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           group.days.set(date, {
             total: 0,
             changed: 0,
-            confirmedChanged: 0,
-            pendingChanged: 0,
             review: 0,
             working: 0,
             off: 0,
@@ -4973,10 +4959,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
         const day = group.days.get(date);
         day.total += 1;
-        const confirmationState = scheduleChangeConfirmationStatusV61116(row);
-        if (confirmationState.requires) day.changed += 1;
-        if (confirmationState.confirmed) day.confirmedChanged += 1;
-        if (confirmationState.pending) day.pendingChanged += 1;
+        if (scheduleRequiresManagerConfirmationV61116(row)) day.changed += 1;
         if (String(row.schedule_status || '').toUpperCase() === 'NEED_REVIEW') {
           day.review += 1;
         }
@@ -5063,14 +5046,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               ? `<span class="team-day-extra tone-review"><i></i>ตรวจสอบ ${safe(formatNumber(day.review))}</span>`
               : ''
           ].filter(Boolean).join('');
-          const confirmationBadge = day.changed > 0
-            ? `<span class="team-day-change-status-v61116 ${day.pendingChanged > 0 ? 'is-pending' : 'is-complete'}"><b>ปรับกะ ${safe(formatNumber(day.changed))}</b><em>${day.pendingChanged > 0 ? `ยืนยัน ${safe(formatNumber(day.confirmedChanged))}/${safe(formatNumber(day.changed))}` : 'ยืนยันครบ'}</em></span>`
-            : `<span class="team-day-standard-v61116"><i>✓</i>กะมาตรฐาน</span>`;
+          const changeBadge = day.changed > 0
+            ? `<span class="team-day-manual-change-v61117"><i></i>ปรับกะ ${safe(formatNumber(day.changed))}</span>`
+            : '';
 
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61116':'is-standard-v61116'}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อ • กะมาตรฐานไม่ต้องยืนยัน • ยืนยันเฉพาะรายการที่ปรับจากมาตรฐาน">
-            <div class="team-day-top-v61115 team-day-top-confirm-v61116">
-              ${confirmationBadge}
-            </div>
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อ • กะมาตรฐานทำงานอัตโนมัติ • รายการที่หัวหน้างานบันทึกมีผลทันที">
+            ${changeBadge ? `<div class="team-day-top-v61115 team-day-top-manual-v61117">${changeBadge}</div>` : ''}
             <div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 ${[day.day, day.night, day.split, offTotal].filter(value => value > 0).length <= 2 ? 'is-compact' : ''}">
               ${visibleShiftChips || '<span class="team-day-extra-empty">ไม่มีกะทำงาน</span>'}
             </div>
@@ -5366,12 +5347,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               ? "วันหยุดประจำสัปดาห์"
               : "วันทำงาน";
 
-          const confirmationStateV61116 = scheduleChangeConfirmationStatusV61116(r);
-          const statusLabel = !confirmationStateV61116.requires
-            ? "กะมาตรฐาน • ไม่ต้องยืนยัน"
-            : confirmationStateV61116.confirmed
-              ? "ปรับจากมาตรฐาน • ยืนยันแล้ว"
-              : "ปรับจากมาตรฐาน • รอยืนยัน";
+          const changedFromStandardV61117 = scheduleRequiresManagerConfirmationV61116(r);
+          const statusLabel = changedFromStandardV61117
+            ? "หัวหน้างานกำหนด • บันทึกแล้ว"
+            : "ตามกะมาตรฐาน";
 
           const calcBits = [
             shiftTimeLabel
@@ -5411,12 +5390,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       html += `</tbody></table>`;
       $("scheduleTableWrap").innerHTML = html;
       setText("scheduleEmployeeCount", formatNumber(map.size));
-      const changedRowsV61116 = rows.filter(scheduleRequiresManagerConfirmationV61116);
-      const confirmedChangedRowsV61116 = changedRowsV61116.filter(r => String(r.schedule_status || '').toUpperCase() === "CONFIRMED");
-      const pendingChangedRowsV61116 = changedRowsV61116.filter(r => String(r.schedule_status || '').toUpperCase() !== "CONFIRMED");
-      setText("scheduleAssignedCount", formatNumber(changedRowsV61116.length));
-      setText("scheduleConfirmedCount", formatNumber(confirmedChangedRowsV61116.length));
-      setText("scheduleReviewCount", formatNumber(pendingChangedRowsV61116.length));
+      const changedRowsV61117 = rows.filter(scheduleRequiresManagerConfirmationV61116);
+      const splitRowsV61117 = rows.filter(r => scheduleWorkTemplateCodeV6118(r) === "SPLIT_FLEX");
+      const reviewRowsV61117 = rows.filter(r => String(r.schedule_status || '').toUpperCase() === "NEED_REVIEW");
+      setText("scheduleAssignedCount", formatNumber(changedRowsV61117.length));
+      setText("scheduleConfirmedCount", formatNumber(splitRowsV61117.length));
+      setText("scheduleReviewCount", formatNumber(reviewRowsV61117.length));
       document.dispatchEvent(new CustomEvent("timeclock:schedule-rendered", {
         detail: {
           startDate: period.startDate,
@@ -5659,7 +5638,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       setText("assignEmployeeInfo", `${r?.full_name || empCode} | ${formatDate(workDate)} | ${SHIFT_PATTERN_META[patternCode]?.label || patternCode} | กะปัจจุบัน ${r?.assigned_shift_code || r?.effective_shift_code || r?.auto_shift_code || "-"}`);
       fillShiftSelect(patternCode, selectedShift);
       setVal("assignShiftCode", selectedShift);
-      setVal("assignConfirm", r?.is_confirmed ? "true" : "false"); setVal("assignNote", r?.schedule_note || ""); setVal("assignReason", "กำหนดกะจากหน้าปฏิทิน");
+      setVal("assignNote", r?.schedule_note || ""); setVal("assignReason", "กำหนดกะจากหน้าปฏิทิน");
       $("assignShiftCode").dataset.patternCode = patternCode;
       await fillAssignmentTemplateSelect(
         patternCode,
@@ -5676,7 +5655,6 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             : "SINGLE_0830_1730"
         )
       );
-      updateAssignConfirmHelp();
       $("deleteAssignmentBtn").classList.toggle("hidden", !r?.assigned_shift_code);
       openModal("assignModal");
     }
@@ -5783,8 +5761,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
                 val("assignReason")
                 || "กำหนดกะจากหน้าปฏิทิน",
               p_confirm_now:
-                assignmentWouldChangeStandardV61116()
-                && val("assignConfirm") === "true"
+                assignmentSaveIsAutoConfirmedV61117()
             }
           );
 
@@ -5807,7 +5784,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const savedEmp = val("assignEmpCode");
         const savedDate = val("assignWorkDate");
         const savedShift = val("assignShiftCode");
-        const savedConfirm = assignmentWouldChangeStandardV61116() && val("assignConfirm") === "true";
+        const savedConfirm = assignmentSaveIsAutoConfirmedV61117();
         const currentRow = state.schedule.find(x => x.emp_code === savedEmp && String(x.work_date).slice(0,10) === savedDate);
         if (currentRow) {
           currentRow.assigned_shift_code = savedShift;
@@ -6134,7 +6111,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       setText("umManagerScopeEmail",managerEmail);
       $("umManagerScopeBody").innerHTML =
-        `<tr><td colspan="10" class="fc-empty">กำลังโหลด Scope...</td></tr>`;
+        `<tr><td colspan="9" class="fc-empty">กำลังโหลด Scope...</td></tr>`;
 
       try {
         const { data,error } = await state.client.rpc(
@@ -6151,7 +6128,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       } catch (error) {
         managerScopeRows = [];
         $("umManagerScopeBody").innerHTML =
-          `<tr><td colspan="10" class="fc-empty">${safe(humanError(error))}</td></tr>`;
+          `<tr><td colspan="9" class="fc-empty">${safe(humanError(error))}</td></tr>`;
       }
     }
 
@@ -6161,7 +6138,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       if (val("umRole") !== "MANAGER") {
         body.innerHTML =
-          `<tr><td colspan="10" class="fc-empty">Scope ใช้เฉพาะ Role Manager</td></tr>`;
+          `<tr><td colspan="9" class="fc-empty">Scope ใช้เฉพาะ Role Manager</td></tr>`;
         return;
       }
 
@@ -6191,7 +6168,6 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               </td>
               <td>${managerScopePermissionBadge(scope.can_view)}</td>
               <td>${managerScopePermissionBadge(scope.can_edit_schedule)}</td>
-              <td>${managerScopePermissionBadge(scope.can_confirm_schedule)}</td>
               <td>${managerScopePermissionBadge(scope.can_certify_attendance)}</td>
               <td>${managerScopePermissionBadge(scope.can_decide_shift_request)}</td>
               <td class="nowrap">${safe(range)}</td>
@@ -6212,7 +6188,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               </td>
             </tr>`;
           }).join("")
-        : `<tr><td colspan="10" class="fc-empty">Manager นี้ยังไม่มี Scope — จะเห็นเฉพาะข้อมูลของตนเอง</td></tr>`;
+        : `<tr><td colspan="9" class="fc-empty">Manager นี้ยังไม่มี Scope — จะเห็นเฉพาะข้อมูลของตนเอง</td></tr>`;
     }
 
     async function loadUsers() {
@@ -6392,8 +6368,6 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         scope?.can_view !== false;
       $("msCanEdit").checked =
         !!scope?.can_edit_schedule;
-      $("msCanConfirm").checked =
-        !!scope?.can_confirm_schedule;
       $("msCanCertify").checked =
         !!scope?.can_certify_attendance;
       $("msCanDecide").checked =
@@ -6526,7 +6500,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             p_can_edit_schedule:
               $("msCanEdit").checked,
             p_can_confirm_schedule:
-              $("msCanConfirm").checked,
+              $("msCanEdit").checked,
             p_can_certify_attendance:
               $("msCanCertify").checked,
             p_can_decide_shift_request:
@@ -6599,7 +6573,6 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         "include_descendants",
         "can_view",
         "can_edit_schedule",
-        "can_confirm_schedule",
         "can_certify_attendance",
         "can_decide_shift_request",
         "effective_from",
@@ -6632,7 +6605,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         "ยังไม่ได้เลือกไฟล์"
       );
       $("managerScopeUploadBody").innerHTML =
-        `<tr><td colspan="9" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>`;
+        `<tr><td colspan="8" class="fc-empty">ยังไม่มีข้อมูล Preview</td></tr>`;
       $("managerScopeUploadErrors").classList.add("hidden");
       $("managerScopeUploadErrors").innerHTML = "";
       openModal("managerScopeUploadModal");
@@ -6670,16 +6643,18 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
 
         managerScopeUploadRows = rows
-          .map(row =>
-            Object.fromEntries(
+          .map(row => {
+            const normalized = Object.fromEntries(
               Object.entries(row).map(
                 ([key,value]) => [
                   String(key || "").trim(),
                   String(value ?? "").trim()
                 ]
               )
-            )
-          )
+            );
+            normalized.can_confirm_schedule = normalized.can_edit_schedule || "false";
+            return normalized;
+          })
           .filter(row =>
             row.manager_email
             || row.scope_type
@@ -6702,11 +6677,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
                   <td>${safe(row.scope_value)}</td>
                   <td>${safe(row.can_view || "true")}</td>
                   <td>${safe(row.can_edit_schedule || "false")}</td>
-                  <td>${safe(row.can_confirm_schedule || "false")}</td>
                   <td>${safe(row.can_certify_attendance || "false")}</td>
                   <td>${safe(row.can_decide_shift_request || "false")}</td>
                 </tr>`).join("")
-            : `<tr><td colspan="9" class="fc-empty">ไม่พบข้อมูลในไฟล์</td></tr>`;
+            : `<tr><td colspan="8" class="fc-empty">ไม่พบข้อมูลในไฟล์</td></tr>`;
 
         $("importManagerScopeBtn").disabled =
           !managerScopeUploadRows.length;
@@ -7475,9 +7449,6 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       });
       $("saveAssignmentBtn").addEventListener("click", saveAssignment);
       $("deleteAssignmentBtn").addEventListener("click", deleteAssignment);
-      $("assignConfirm")?.addEventListener("change", updateAssignConfirmHelp);
-      $("assignShiftCode")?.addEventListener("change", updateAssignConfirmHelp);
-      $("assignWorkTemplate")?.addEventListener("change", updateAssignConfirmHelp);
       $("newShiftBtn").addEventListener("click", resetNewShiftForm);
       $("saveShiftMasterBtn").addEventListener("click", saveShiftMaster);
       $("shiftPatternFilter")?.addEventListener("change", renderShiftMasterTable);
@@ -7603,7 +7574,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const msg = err?.message || err?.error_description || String(err || "เกิดข้อผิดพลาด");
       if (msg.includes("SCHEDULE_HAS_UNCONFIRMED_SHIFTS")) {
         const count = msg.match(/SCHEDULE_HAS_UNCONFIRMED_SHIFTS:\s*(\d+)/)?.[1];
-        return `ยังมีกะที่จัดไว้แต่ยังไม่ยืนยัน${count ? ` ${Number(count).toLocaleString("th-TH")} รายการ` : ""} กรุณายืนยันกะก่อนประกาศหรือล็อกเดือน`;
+        return `พบรายการจัดกะเดิมที่สถานะยังไม่สมบูรณ์${count ? ` ${Number(count).toLocaleString("th-TH")} รายการ` : ""} กรุณาเปิดรายการและกดบันทึกใหม่ก่อนประกาศหรือล็อกเดือน`;
       }
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
@@ -7995,7 +7966,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         .find(button =>
           button.querySelector('strong')
             ?.textContent
-            ?.includes('กะที่ยืนยันแล้ว')
+            ?.includes('กะที่หัวหน้างานบันทึก')
         );
     const confirmed = num(
       confirmedButton
@@ -8022,9 +7993,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     ].map(([label,value,p]) => `<button class="attention-tile ${p>=10?'high':p>=5?'medium':''}" data-go-page="attendance"><span>${label}</span><strong>${fmt(value)}</strong><small>${p}% ของรายการทั้งหมด</small></button>`).join('');
 
     if ($('scheduleReadiness')) $('scheduleReadiness').innerHTML = `
-      <div class="readiness-number"><strong>${confirmedPct}%</strong><span>กะที่ยืนยันเทียบรายการทั้งหมด</span></div>
+      <div class="readiness-number"><strong>${confirmedPct}%</strong><span>สัดส่วนรายการที่หัวหน้างานกำหนดกะ</span></div>
       <div class="readiness-track"><i style="width:${confirmedPct}%"></i></div>
-      <div class="readiness-meta"><div><span>ยืนยันแล้ว</span><strong>${fmt(confirmed)}</strong></div><div><span>คงเหลือโดยประมาณ</span><strong>${fmt(Math.max(0,d.total-confirmed))}</strong></div></div>`;
+      <div class="readiness-meta"><div><span>หัวหน้างานบันทึก</span><strong>${fmt(confirmed)}</strong></div><div><span>กะมาตรฐาน / อื่น ๆ</span><strong>${fmt(Math.max(0,d.total-confirmed))}</strong></div></div>`;
 
     const insights = [];
     insights.push({type: completePct >= 90 ? 'good' : completePct >= 75 ? 'warn' : 'bad', icon:'✓', title:'ความครบถ้วนของเวลา', text:`ลงเวลาครบ ${fmt(d.complete)} จาก ${fmt(d.total)} รายการ`, value:`${completePct}%`});
@@ -8437,7 +8408,12 @@ ${skippedSummary(compatibility.skipped)}
     const before=validPayload.map(p=>{const x=rowForKey(`${p.emp_code}|${p.work_date}`);return {...p,shift_code:currentCode(x.row)};});
     app().showLoading(`กำลังบันทึก ${validPayload.length.toLocaleString("th-TH")} รายการ...`);
     try{
-      await window.TimeClockShiftAPI.assignBulk(app(), validPayload, reason, confirmNow);
+      const autoConfirmOnSaveV61117 = validPayload.some(item =>
+        item.shift_code !== null
+        && item.shift_code !== undefined
+        && String(item.shift_code).trim() !== ""
+      );
+      await window.TimeClockShiftAPI.assignBulk(app(), validPayload, reason, autoConfirmOnSaveV61117);
       undoStack.push({label:historyLabel,before,after:validPayload.map(x=>({...x}))}); if(undoStack.length>30)undoStack.shift(); redoStack.length=0; updateHistoryButtons();
       app().toast(
         `บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,
@@ -8450,8 +8426,7 @@ ${skippedSummary(compatibility.skipped)}
   function copySelection(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการคัดลอก","error");clipboard=rows.map(x=>currentCode(x.row)||"D");refreshSelectionUI();app().toast(`คัดลอก ${clipboard.length} กะแล้ว`,"success");}
   async function pasteSelection(){const targets=selectedRows();if(!clipboard.length)return app()?.toast("ยังไม่มีกะในคลิปบอร์ด","error");if(!targets.length)return app()?.toast("กรุณาเลือกช่องปลายทาง","error");await savePayload(targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"})),"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");}
   async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!confirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
-  async function confirmSelected(){const selected=selectedRows();if(!selected.length)return app()?.toast("กรุณาเลือกรายการปรับกะที่ต้องการยืนยัน","error");const rows=selected.filter(x=>window.TimeClockScheduleConfirmation?.requiresConfirmation?.(x.row));if(!rows.length)return app()?.toast("ช่องที่เลือกเป็นกะมาตรฐาน จึงไม่ต้องยืนยัน","info");const skipped=selected.length-rows.length;if(!confirm(`ยืนยันรายการที่ปรับจากกะมาตรฐาน ${rows.length} รายการ${skipped?` • ข้ามกะมาตรฐาน ${skipped} รายการ`:""}?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:currentCode(x.row),note:"ยืนยันการปรับกะจาก Schedule Pro"})).filter(x=>x.shift_code),"ยืนยันรายการปรับจากกะมาตรฐาน",true,"ยืนยันการปรับกะ");}
-  async function applyHistory(item,mode){const payload=(mode==="undo"?item.before:item.after).map(x=>({...x,note:`${mode} ${item.label}`}));app().showLoading(`กำลัง ${mode==="undo"?"ย้อนกลับ":"ทำซ้ำ"}...`);try{await window.TimeClockShiftAPI.assignBulk(app(),payload,`${mode} ${item.label}`,false);(mode==="undo"?redoStack:undoStack).push(item);updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับและประมวลผลเวลาใหม่แล้ว":"ทำซ้ำและประมวลผลเวลาใหม่แล้ว","success");}catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}}
+  async function applyHistory(item,mode){const payload=(mode==="undo"?item.before:item.after).map(x=>({...x,note:`${mode} ${item.label}`}));app().showLoading(`กำลัง ${mode==="undo"?"ย้อนกลับ":"ทำซ้ำ"}...`);try{const autoConfirmOnSaveV61117=payload.some(x=>x.shift_code!==null&&x.shift_code!==undefined&&String(x.shift_code).trim()!=="");await window.TimeClockShiftAPI.assignBulk(app(),payload,`${mode} ${item.label}`,autoConfirmOnSaveV61117);(mode==="undo"?redoStack:undoStack).push(item);updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับและประมวลผลเวลาใหม่แล้ว":"ทำซ้ำและประมวลผลเวลาใหม่แล้ว","success");}catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}}
   function undo(){const x=undoStack.pop();if(x)applyHistory(x,"undo");}
   function redo(){const x=redoStack.pop();if(x)applyHistory(x,"redo");}
   function moveActive(dx,dy,extend=false){const c=getCell(activeKey)||cells()[0];if(!c)return;const td=c.closest("td"),tr=td.parentElement;const rows=[...tr.parentElement.children];let ri=rows.indexOf(tr)+dy;ri=Math.max(0,Math.min(rows.length-1,ri));const targetRow=rows[ri];const cellsRow=[...targetRow.querySelectorAll("[data-schedule-cell]")];const sourceCells=[...tr.querySelectorAll("[data-schedule-cell]")];let ci=sourceCells.indexOf(c)+dx;ci=Math.max(0,Math.min(cellsRow.length-1,ci));const target=cellsRow[ci];if(target){selectCell(target,false,extend);target.scrollIntoView({block:"nearest",inline:"nearest"});}}
@@ -8542,7 +8517,7 @@ ${skippedSummary(compatibility.skipped)}
       )
     );
     document.querySelectorAll("[data-quick-shift]").forEach(b=>b.addEventListener("click",()=>bulkAssign(b.dataset.quickShift)));
-    $("scheduleCopyBtn")?.addEventListener("click",copySelection); $("schedulePasteBtn")?.addEventListener("click",pasteSelection); $("scheduleClearCellsBtn")?.addEventListener("click",clearCells); $("scheduleClearSelectionBtn")?.addEventListener("click",clearSelection); $("scheduleConfirmSelectedBtn")?.addEventListener("click",confirmSelected); $("scheduleUndoBtn")?.addEventListener("click",undo); $("scheduleRedoBtn")?.addEventListener("click",redo);
+    $("scheduleCopyBtn")?.addEventListener("click",copySelection); $("schedulePasteBtn")?.addEventListener("click",pasteSelection); $("scheduleClearCellsBtn")?.addEventListener("click",clearCells); $("scheduleClearSelectionBtn")?.addEventListener("click",clearSelection); $("scheduleUndoBtn")?.addEventListener("click",undo); $("scheduleRedoBtn")?.addEventListener("click",redo);
     $("schedulePrevMonthBtn")?.addEventListener("click",()=>shiftMonth(-1));
     $("scheduleNextMonthBtn")?.addEventListener("click",()=>shiftMonth(1));
     $("schedulePatternFilter")?.addEventListener("change",updateSmartShiftButtons);
@@ -8611,11 +8586,11 @@ ${skippedSummary(compatibility.skipped)}
     }
     if(type==="schedule"){
       const month=`${start.slice(0,7)}-01`;const data=await window.TimeClockShiftAPI.getMonthlySchedule(app(),{p_month:month,p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept,p_emp_codes:null,p_schedule_statuses:null});
-      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","รูปแบบช่วงงาน","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","สถานะ","ยืนยันแล้ว","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,app()?.workTemplateLabelV6118?.(r.template_code||r.effective_work_template_code)||r.template_code||r.effective_work_template_code||"-",r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(String(r.template_code||r.effective_work_template_code||'').toUpperCase()==='SPLIT_FLEX'?"ตามเวลาออก":""),r.schedule_status,r.is_confirmed?"ใช่":"ไม่ใช่",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),(Number(r.paid_work_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
+      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","รูปแบบช่วงงาน","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","สถานะ","แหล่งการจัดกะ","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,app()?.workTemplateLabelV6118?.(r.template_code||r.effective_work_template_code)||r.template_code||r.effective_work_template_code||"-",r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(String(r.template_code||r.effective_work_template_code||'').toUpperCase()==='SPLIT_FLEX'?"ตามเวลาออก":""),r.schedule_status,r.assigned_shift_code?"หัวหน้างานบันทึก":"กะมาตรฐานอัตโนมัติ",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),(Number(r.paid_work_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
     }
     if(type==="summary"){
       const raw=await rpc("ta_get_dashboard_overview_v640",{p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept});const d=Array.isArray(raw)?raw[0]||{}:raw||{};
-      return [["รายการ","จำนวน"],["พนักงานทั้งหมด",d.total_employees],["รายการทั้งหมด",d.total_rows],["ลงเวลาครบ",d.complete_time_rows],["ไม่พบเวลาเข้า",d.missing_in_rows],["ไม่พบเวลาออก",d.missing_out_rows],["ไม่มีข้อมูลเวลา",d.absent_rows??d.no_time_rows],["ทำงานวันหยุด",d.worked_on_offday_rows],["กะยืนยันแล้ว",d.confirmed_rows],["ชั่วโมงสุทธิ",d.paid_work_hours],["ชั่วโมงปกติ",d.regular_hours],["OT",d.overtime_hours],["ช่วงรอคอย",d.waiting_hours],["ชั่วโมงทำงานวันหยุด",d.offday_work_hours],["วันที่ได้รับวันหยุดชดเชย",d.comp_off_earned_rows],["พนักงาน TECH_6D",d.tech_6d_rows],["พนักงาน TECH_5D",d.tech_5d_rows]];
+      return [["รายการ","จำนวน"],["พนักงานทั้งหมด",d.total_employees],["รายการทั้งหมด",d.total_rows],["ลงเวลาครบ",d.complete_time_rows],["ไม่พบเวลาเข้า",d.missing_in_rows],["ไม่พบเวลาออก",d.missing_out_rows],["ไม่มีข้อมูลเวลา",d.absent_rows??d.no_time_rows],["ทำงานวันหยุด",d.worked_on_offday_rows],["กะที่หัวหน้างานบันทึก",d.confirmed_rows],["ชั่วโมงสุทธิ",d.paid_work_hours],["ชั่วโมงปกติ",d.regular_hours],["OT",d.overtime_hours],["ช่วงรอคอย",d.waiting_hours],["ชั่วโมงทำงานวันหยุด",d.offday_work_hours],["วันที่ได้รับวันหยุดชดเชย",d.comp_off_earned_rows],["พนักงาน TECH_6D",d.tech_6d_rows],["พนักงาน TECH_5D",d.tech_5d_rows]];
     }
     throw new Error("ไม่พบประเภทรายงาน");
   }
@@ -8923,7 +8898,7 @@ ${skippedSummary(compatibility.skipped)}
   function reportPageHtml(){
     const cards=[
       ["attendance","◷","รายละเอียดเวลาทำงาน","เวลาเข้า–ออก กะ ชั่วโมงสุทธิ สาย และกลับก่อน"],
-      ["schedule","▣","ตารางจัดกะรายเดือน","กะอัตโนมัติ กะที่กำหนด สถานะยืนยัน และประเภทวัน"],
+      ["schedule","▣","ตารางจัดกะรายเดือน","กะอัตโนมัติ กะที่หัวหน้างานบันทึก รูปแบบช่วงงาน และประเภทวัน"],
       ["summary","▦","สรุป Dashboard","สรุปจำนวนพนักงานและสถานะสำคัญ"],
       ["late","◴","มาสายและกลับก่อน","เฉพาะรายการที่มีนาทีมาสายหรือกลับก่อน"]
     ];
@@ -9300,7 +9275,7 @@ ${skippedSummary(compatibility.skipped)}
     `;
   }
   function auditPageHtml(){return `<section id="page-admin-audit" class="page audit-center-page"><div class="audit-hero"><div><span class="eyebrow">SYSTEM AUDIT CENTER</span><h2>ประวัติการเปลี่ยนแปลง</h2><p>ตรวจสอบการจัดกะ การยืนยัน/ล็อกตาราง และการปิดรายการ Review</p></div><button id="auditExportBtn" class="btn btn-success">Export Excel</button></div><div class="panel section-gap"><div class="panel-body"><div class="fc-toolbar"><div class="field"><label>วันที่เริ่มต้น</label><input id="auditStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="auditEnd" class="input" type="date"></div><div class="field"><label>ประเภท</label><select id="auditType" class="select"><option value="">ทั้งหมด</option><option value="SHIFT_ASSIGNMENT">การจัดกะ</option><option value="SCHEDULE_MONTH">สถานะตารางกะ</option><option value="REVIEW">Review</option></select></div><div class="field"><label>ค้นหา</label><input id="auditSearch" class="input" placeholder="ผู้ดำเนินการ รหัส หรือรายละเอียด"></div><div class="toolbar-actions"><button id="auditLoadBtn" class="btn btn-primary">ค้นหา</button></div></div></div></div><div class="panel section-gap"><div class="panel-header"><div><h3>Audit Log</h3><p id="auditCount">0 รายการ</p></div></div><div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันเวลา</th><th>ประเภท</th><th>การทำงาน</th><th>ผู้ดำเนินการ</th><th>รายการ</th><th>รายละเอียด</th></tr></thead><tbody id="auditBody"></tbody></table></div></div></div></section>`;}
-  function assistantPageHtml(){return `<section id="page-smart-assistant" class="page smart-assistant-page"><div class="assistant-hero"><div><span class="eyebrow">SMART DATA ASSISTANT</span><h2>ผู้ช่วยวิเคราะห์ Time-Clock</h2><p>สรุปจากข้อมูลที่ระบบโหลดจริง โดยไม่ส่งข้อมูลออกไปภายนอก</p></div><span class="fc-chip status-PUBLISHED">Local Insight Engine</span></div><div class="assistant-shell section-gap"><div class="assistant-chat"><div id="assistantMessages" class="assistant-messages"><div class="assistant-message bot"><strong>สวัสดีครับ</strong>ถามข้อมูล เช่น “วันนี้ Missing OUT กี่คน”, “หน่วยงานไหนมาสายมากสุด” หรือ “กะเดือนนี้ยืนยันแล้วกี่เปอร์เซ็นต์”</div></div><div class="assistant-inputbar"><input id="assistantInput" class="input" placeholder="พิมพ์คำถามเกี่ยวกับข้อมูล Time-Clock"><button id="assistantSendBtn" class="btn btn-primary">ถาม</button></div></div><aside><div class="panel"><div class="panel-header"><div><h3>คำถามแนะนำ</h3><p>กดเพื่อถามได้ทันที</p></div></div><div class="panel-body assistant-prompts"><button class="assistant-prompt">วันนี้ Missing IN กี่คน</button><button class="assistant-prompt">วันนี้ Missing OUT กี่คน</button><button class="assistant-prompt">หน่วยงานไหนมาสายมากที่สุด</button><button class="assistant-prompt">กะเดือนนี้ยืนยันแล้วกี่เปอร์เซ็นต์</button><button class="assistant-prompt">สรุปรายการรอตรวจสอบ</button><div class="assistant-disclaimer">รุ่นนี้เป็น Rule-based Insight จากข้อมูลในระบบ ไม่ได้เชื่อมบริการ AI ภายนอก</div></div></div></aside></div></section>`;}
+  function assistantPageHtml(){return `<section id="page-smart-assistant" class="page smart-assistant-page"><div class="assistant-hero"><div><span class="eyebrow">SMART DATA ASSISTANT</span><h2>ผู้ช่วยวิเคราะห์ Time-Clock</h2><p>สรุปจากข้อมูลที่ระบบโหลดจริง โดยไม่ส่งข้อมูลออกไปภายนอก</p></div><span class="fc-chip status-PUBLISHED">Local Insight Engine</span></div><div class="assistant-shell section-gap"><div class="assistant-chat"><div id="assistantMessages" class="assistant-messages"><div class="assistant-message bot"><strong>สวัสดีครับ</strong>ถามข้อมูล เช่น “วันนี้ Missing OUT กี่คน”, “หน่วยงานไหนมาสายมากสุด” หรือ “เดือนนี้หัวหน้างานปรับกะกี่รายการ”</div></div><div class="assistant-inputbar"><input id="assistantInput" class="input" placeholder="พิมพ์คำถามเกี่ยวกับข้อมูล Time-Clock"><button id="assistantSendBtn" class="btn btn-primary">ถาม</button></div></div><aside><div class="panel"><div class="panel-header"><div><h3>คำถามแนะนำ</h3><p>กดเพื่อถามได้ทันที</p></div></div><div class="panel-body assistant-prompts"><button class="assistant-prompt">วันนี้ Missing IN กี่คน</button><button class="assistant-prompt">วันนี้ Missing OUT กี่คน</button><button class="assistant-prompt">หน่วยงานไหนมาสายมากที่สุด</button><button class="assistant-prompt">เดือนนี้หัวหน้างานปรับกะกี่รายการ</button><button class="assistant-prompt">สรุปรายการรอตรวจสอบ</button><div class="assistant-disclaimer">รุ่นนี้เป็น Rule-based Insight จากข้อมูลในระบบ ไม่ได้เชื่อมบริการ AI ภายนอก</div></div></div></aside></div></section>`;}
 
   /* ------------------------------------------------------------------
      Attendance Enterprise Grid
@@ -10116,12 +10091,10 @@ ${skippedSummary(compatibility.skipped)}
         calculation.schedule_source
         || row.schedule_source
         || "-"],
-      ["ยืนยันกะ",
-        row.is_confirmed
-        || String(row.schedule_status||"")
-          .toUpperCase()==="CONFIRMED"
-          ? "ยืนยันแล้ว"
-          : "ยังไม่ยืนยัน"],
+      ["การบันทึกกะ",
+        scheduleRequiresManagerConfirmationV61116(row)
+          ? "หัวหน้างานกำหนดแล้ว"
+          : "กะมาตรฐานอัตโนมัติ"],
       ["การรับรองเวลา",
         certification.status === "CERTIFIED"
           ? "รับรองแล้ว"
@@ -10595,9 +10568,9 @@ ${skippedSummary(compatibility.skipped)}
      Schedule completion
      ------------------------------------------------------------------ */
   let scheduleMonthStatus={status:"DRAFT"};
-  function enhanceSchedule(){const workspace=qs("#page-schedule .schedule-workspace");if(!workspace||$("scheduleWorkflowBar"))return;qs(".schedule-summary-strip",workspace)?.insertAdjacentHTML("afterend",`<div id="scheduleWorkflowBar" class="schedule-workflow-bar"><div class="workflow-summary"><span id="scheduleMonthStatusChip" class="fc-chip status-DRAFT">DRAFT</span><div><strong id="scheduleMonthStatusText">ตารางกะฉบับร่าง</strong><div id="scheduleMonthStatusMeta" class="fc-note">ยังไม่ได้ประกาศ</div></div></div><div class="workflow-actions"><button id="scheduleFillDownBtn" class="btn btn-light">Fill Down</button><button id="scheduleFillRightBtn" class="btn btn-light">Fill Right</button><button id="schedulePatternBtn" class="btn btn-light">รูปแบบ 7 วัน</button><button id="schedulePrevWeekCopyBtn" class="btn btn-light">คัดลอกสัปดาห์ก่อน</button><button id="scheduleExportExcelBtn" class="btn btn-success">Excel</button><button id="schedulePrintBtn" class="btn btn-orange">Print/PDF</button><button id="scheduleHistoryBtn" class="btn btn-light">ประวัติ</button><button id="scheduleConfirmAllBtn" class="btn btn-success">ยืนยันกะที่จัดไว้ทั้งหมด</button><button id="schedulePublishBtn" class="btn btn-primary">ประกาศกะ</button><button id="scheduleLockBtn" class="btn btn-danger-soft">ล็อกเดือน</button></div></div>`);
+  function enhanceSchedule(){const workspace=qs("#page-schedule .schedule-workspace");if(!workspace||$("scheduleWorkflowBar"))return;qs(".schedule-summary-strip",workspace)?.insertAdjacentHTML("afterend",`<div id="scheduleWorkflowBar" class="schedule-workflow-bar"><div class="workflow-summary"><span id="scheduleMonthStatusChip" class="fc-chip status-DRAFT">DRAFT</span><div><strong id="scheduleMonthStatusText">ตารางกะฉบับร่าง</strong><div id="scheduleMonthStatusMeta" class="fc-note">ยังไม่ได้ประกาศ</div></div></div><div class="workflow-actions"><button id="scheduleFillDownBtn" class="btn btn-light">Fill Down</button><button id="scheduleFillRightBtn" class="btn btn-light">Fill Right</button><button id="schedulePatternBtn" class="btn btn-light">รูปแบบ 7 วัน</button><button id="schedulePrevWeekCopyBtn" class="btn btn-light">คัดลอกสัปดาห์ก่อน</button><button id="scheduleExportExcelBtn" class="btn btn-success">Excel</button><button id="schedulePrintBtn" class="btn btn-orange">Print/PDF</button><button id="scheduleHistoryBtn" class="btn btn-light">ประวัติ</button><button id="schedulePublishBtn" class="btn btn-primary">ประกาศกะ</button><button id="scheduleLockBtn" class="btn btn-danger-soft">ล็อกเดือน</button></div></div>`);
     document.body.insertAdjacentHTML("beforeend",scheduleModalsHtml());
-    $("scheduleFillDownBtn")?.addEventListener("click",()=>fillSchedule("down"));$("scheduleFillRightBtn")?.addEventListener("click",()=>fillSchedule("right"));$("schedulePatternBtn")?.addEventListener("click",openPatternModal);$("schedulePrevWeekCopyBtn")?.addEventListener("click",copyPreviousWeek);$("scheduleExportExcelBtn")?.addEventListener("click",()=>exportSchedule("excel"));$("schedulePrintBtn")?.addEventListener("click",()=>exportSchedule("print"));$("scheduleHistoryBtn")?.addEventListener("click",loadScheduleHistory);$("scheduleConfirmAllBtn")?.addEventListener("click",confirmAllAssigned);$("schedulePublishBtn")?.addEventListener("click",publishSchedule);$("scheduleLockBtn")?.addEventListener("click",toggleScheduleLock);$("applySchedulePatternBtn")?.addEventListener("click",applyPattern);$("scheduleHistoryClose")?.addEventListener("click",()=>$("scheduleHistoryModal")?.classList.add("hidden"));$("schedulePatternClose")?.addEventListener("click",()=>$("schedulePatternModal")?.classList.add("hidden"));
+    $("scheduleFillDownBtn")?.addEventListener("click",()=>fillSchedule("down"));$("scheduleFillRightBtn")?.addEventListener("click",()=>fillSchedule("right"));$("schedulePatternBtn")?.addEventListener("click",openPatternModal);$("schedulePrevWeekCopyBtn")?.addEventListener("click",copyPreviousWeek);$("scheduleExportExcelBtn")?.addEventListener("click",()=>exportSchedule("excel"));$("schedulePrintBtn")?.addEventListener("click",()=>exportSchedule("print"));$("scheduleHistoryBtn")?.addEventListener("click",loadScheduleHistory);$("schedulePublishBtn")?.addEventListener("click",publishSchedule);$("scheduleLockBtn")?.addEventListener("click",toggleScheduleLock);$("applySchedulePatternBtn")?.addEventListener("click",applyPattern);$("scheduleHistoryClose")?.addEventListener("click",()=>$("scheduleHistoryModal")?.classList.add("hidden"));$("schedulePatternClose")?.addEventListener("click",()=>$("schedulePatternModal")?.classList.add("hidden"));
     document.addEventListener(
       "click",
       async event => {
@@ -10687,24 +10660,23 @@ ${skippedSummary(compatibility.skipped)}
         }
       }
     );
-    const guardLocked=e=>{if(scheduleMonthStatus.status!=="LOCKED")return;const blocked=e.target.closest("#page-schedule [data-quick-shift],#page-schedule #scheduleClearCellsBtn,#page-schedule #scheduleConfirmSelectedBtn,#page-schedule [data-schedule-cell],#saveAssignmentBtn,#deleteAssignmentBtn");if(blocked){e.preventDefault();e.stopImmediatePropagation();app()?.toast("ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข","error");}};
+    const guardLocked=e=>{if(scheduleMonthStatus.status!=="LOCKED")return;const blocked=e.target.closest("#page-schedule [data-quick-shift],#page-schedule #scheduleClearCellsBtn,#page-schedule [data-schedule-cell],#saveAssignmentBtn,#deleteAssignmentBtn");if(blocked){e.preventDefault();e.stopImmediatePropagation();app()?.toast("ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข","error");}};
     document.addEventListener("click",guardLocked,true);document.addEventListener("dblclick",guardLocked,true);
   }
   function scheduleModalsHtml(){return `<div id="schedulePatternModal" class="modal-backdrop hidden fc-modal-wide"><div class="modal"><div class="modal-header"><h3>กำหนดรูปแบบกะ 7 วัน</h3><button id="schedulePatternClose" class="btn btn-light btn-icon">×</button></div><div class="modal-body"><p class="fc-note">เลือกรูปแบบตามวันในสัปดาห์ แล้วนำไปใช้กับช่องที่เลือก</p><div class="schedule-pattern-grid">${["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"].map((d,i)=>`<label class="schedule-pattern-day"><span>${d}</span><select class="select" data-pattern-dow="${i}"><option>D</option><option>N</option><option>OFF</option><option>HOL</option><option>LV</option></select></label>`).join("")}</div></div><div class="modal-footer"><button id="applySchedulePatternBtn" class="btn btn-primary">นำไปใช้กับช่องที่เลือก</button></div></div></div><div id="scheduleHistoryModal" class="modal-backdrop hidden fc-modal-wide"><div class="modal"><div class="modal-header"><h3>ประวัติการจัดกะ</h3><button id="scheduleHistoryClose" class="btn btn-light btn-icon">×</button></div><div class="modal-body"><div class="table-wrap" style="max-height:65vh"><table><thead><tr><th>วันเวลา</th><th>รหัส</th><th>วันที่</th><th>เดิม</th><th>ใหม่</th><th>การทำงาน</th><th>ผู้ดำเนินการ</th><th>เหตุผล</th></tr></thead><tbody id="scheduleHistoryBody"></tbody></table></div></div></div></div>`;}
   function selectedScheduleCells(){return qsa("#scheduleTableWrap .schedule-data-cell.cell-selected [data-schedule-cell],#scheduleTableWrap td.cell-selected [data-schedule-cell]");}
   function rowAt(emp,date){return (app()?.state?.schedule||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date).slice(0,10)===String(date).slice(0,10));}
-  async function saveSchedulePayload(payload,reason,confirmNow=false){if(!payload.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");if(scheduleMonthStatus.status==="LOCKED")return app()?.toast("ตารางกะเดือนนี้ถูกล็อก","error");app()?.showLoading?.(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);try{await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,confirmNow);app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");await app()?.loadSchedule?.();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
+  async function saveSchedulePayload(payload,reason,confirmNow=false){if(!payload.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");if(scheduleMonthStatus.status==="LOCKED")return app()?.toast("ตารางกะเดือนนี้ถูกล็อก","error");app()?.showLoading?.(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);try{const autoConfirmOnSaveV61117=payload.some(item=>item.shift_code!==null&&item.shift_code!==undefined&&String(item.shift_code).trim()!=="");await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,autoConfirmOnSaveV61117);app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");await app()?.loadSchedule?.();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
   function selectedCellMeta(){return selectedScheduleCells().map(c=>{const td=c.closest("td"),tr=td.closest("tr");return {cell:c,td,tr,emp:c.dataset.emp,date:c.dataset.date,row:rowAt(c.dataset.emp,c.dataset.date),ri:[...tr.parentElement.children].indexOf(tr),ci:[...tr.children].indexOf(td)};});}
   async function fillSchedule(direction){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่วงกะก่อน","error");const groups=new Map();items.forEach(x=>{const k=direction==="down"?x.ci:x.ri;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x);});const payload=[];groups.forEach(g=>{g.sort((a,b)=>direction==="down"?a.ri-b.ri:a.ci-b.ci);const source=codeOf(g[0].row)||g[0].cell.dataset.shift||"D";g.forEach(x=>payload.push({emp_code:x.emp,work_date:x.date,shift_code:source,note:`${direction==="down"?"Fill Down":"Fill Right"} จาก Schedule V6`}));});await saveSchedulePayload(payload,direction==="down"?"Fill Down จาก Schedule V6":"Fill Right จาก Schedule V6");}
   function openPatternModal(){if(!selectedScheduleCells().length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");$("schedulePatternModal")?.classList.remove("hidden");}
   async function applyPattern(){const patterns={};qsa("[data-pattern-dow]").forEach(s=>patterns[Number(s.dataset.patternDow)]=s.value);const payload=selectedCellMeta().map(x=>({emp_code:x.emp,work_date:x.date,shift_code:patterns[new Date(`${x.date}T00:00:00`).getDay()]||"D",note:"รูปแบบกะ 7 วัน"}));$("schedulePatternModal")?.classList.add("hidden");await saveSchedulePayload(payload,"กำหนดรูปแบบกะ 7 วัน");}
   async function copyPreviousWeek(){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่องปลายทางก่อน","error");const payload=items.map(x=>{const d=new Date(`${x.date}T00:00:00`);d.setDate(d.getDate()-7);const sourceDate=d.toISOString().slice(0,10);const source=rowAt(x.emp,sourceDate);return {emp_code:x.emp,work_date:x.date,shift_code:codeOf(source)||"D",note:`คัดลอกจาก ${sourceDate}`};});await saveSchedulePayload(payload,"คัดลอกกะจากสัปดาห์ก่อน");}
-  function scheduleExportRows(){const rows=app()?.state?.schedule||[];return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","วันเริ่มงาน","ตำแหน่ง","หน่วยงาน","พื้นที่","ประเภทวัน","กะอัตโนมัติ","กะที่กำหนด","กะใช้งาน","รูปแบบช่วงงาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","ประเภทการจัดกะ","สถานะยืนยันการปรับ","เวลาเริ่มกะ","เวลาสิ้นสุดกะ"],...rows.map(r=>{const template=String(r.daily_work_template_code||r.effective_work_template_code||r.template_code||r.employee_default_template_code||'').toUpperCase();const requires=window.TimeClockScheduleConfirmation?.requiresConfirmation?.(r);const confirmed=requires&&(r.is_confirmed||String(r.schedule_status||'').toUpperCase()==='CONFIRMED');return [fmtDate(r.work_date),r.emp_code,r.full_name,fmtDate(r.start_date),r.position_name||"",r.department,r.zone||r.area,r.day_type||"WORKDAY",r.auto_shift_code||"",r.assigned_shift_code||"",codeOf(r)||"",template==='SPLIT_FLEX'?"กะปกติ + งานลูกค้าช่วงดึก":"กะปกติ",fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(template==='SPLIT_FLEX'?"ตามเวลาออก":""),requires?"ปรับจากกะมาตรฐาน":"กะมาตรฐาน",requires?(confirmed?"ยืนยันแล้ว":"รอยืนยัน"):"ไม่ต้องยืนยัน",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time)];})];}
+  function scheduleExportRows(){const rows=app()?.state?.schedule||[];return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","วันเริ่มงาน","ตำแหน่ง","หน่วยงาน","พื้นที่","ประเภทวัน","กะอัตโนมัติ","กะที่กำหนด","กะใช้งาน","รูปแบบช่วงงาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","ประเภทการจัดกะ","สถานะการบันทึก","เวลาเริ่มกะ","เวลาสิ้นสุดกะ"],...rows.map(r=>{const template=String(r.daily_work_template_code||r.effective_work_template_code||r.template_code||r.employee_default_template_code||'').toUpperCase();const changed=window.TimeClockScheduleConfirmation?.requiresConfirmation?.(r);return [fmtDate(r.work_date),r.emp_code,r.full_name,fmtDate(r.start_date),r.position_name||"",r.department,r.zone||r.area,r.day_type||"WORKDAY",r.auto_shift_code||"",r.assigned_shift_code||"",codeOf(r)||"",template==='SPLIT_FLEX'?"กะปกติ + งานลูกค้าช่วงดึก":"กะปกติ",fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(template==='SPLIT_FLEX'?"ตามเวลาออก":""),changed?"หัวหน้างานกำหนด":"กะมาตรฐาน",changed?"บันทึกแล้ว":"อัตโนมัติ",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time)];})];}
   function exportSchedule(format){const rows=scheduleExportRows();if(rows.length<=1)return app()?.toast("ไม่มีข้อมูลตารางกะ","error");const period=window.TimeClockSchedulePeriod?.range?.()||{};const name=`${period.startDate||$("scheduleMonth")?.value}_${period.endDate||""}`;format==="excel"?exportExcel(`Schedule_${name}.xls`,rows,`ตารางจัดกะ ${name}`):printRows(rows,`ตารางจัดกะ ${name}`,`สถานะเดือน ${scheduleMonthStatus.status}`);}
   async function loadScheduleStatus(){if(!$("scheduleMonth")?.value)return;try{scheduleMonthStatus=await rpc("ta_get_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null})||{status:"DRAFT"};}catch(e){scheduleMonthStatus={status:"DRAFT"};}renderScheduleStatus();}
   function renderScheduleStatus(){const s=scheduleMonthStatus.status||"DRAFT",chip=$("scheduleMonthStatusChip");if(chip){chip.textContent=s;chip.className=`fc-chip status-${s}`;}if($("scheduleMonthStatusText"))$("scheduleMonthStatusText").textContent=s==="LOCKED"?"ตารางกะถูกล็อก":s==="PUBLISHED"?"ประกาศตารางกะแล้ว":"ตารางกะฉบับร่าง";if($("scheduleMonthStatusMeta"))$("scheduleMonthStatusMeta").textContent=scheduleMonthStatus.updated_at?`ปรับปรุง ${fmtDateTime(scheduleMonthStatus.updated_at)}${scheduleMonthStatus.published_by_email?` โดย ${scheduleMonthStatus.published_by_email}`:""}`:"ยังไม่ได้ประกาศ";if($("schedulePublishBtn"))$("schedulePublishBtn").textContent=s==="PUBLISHED"||s==="LOCKED"?"กลับเป็นฉบับร่าง":"ประกาศกะ";if($("scheduleLockBtn"))$("scheduleLockBtn").textContent=s==="LOCKED"?"ปลดล็อกเดือน":"ล็อกเดือน";qs("#page-schedule .schedule-workspace")?.classList.toggle("schedule-locked-overlay",s==="LOCKED");qsa("#scheduleTableWrap [data-schedule-cell]").forEach(c=>{c.classList.toggle("is-published",s==="PUBLISHED");c.classList.toggle("is-locked",s==="LOCKED");});}
   async function setScheduleStatus(action){const label={PUBLISH:"ประกาศตารางกะ",DRAFT:"กลับเป็นฉบับร่าง",LOCK:"ล็อกตารางกะ",UNLOCK:"ปลดล็อกตารางกะ"}[action];if(!confirm(`${label} เดือน ${$("scheduleMonth")?.value}?`))return;try{app()?.showLoading?.(`กำลัง${label}...`);scheduleMonthStatus=await rpc("ta_set_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null,p_action:action,p_note:`ดำเนินการจากหน้า Schedule V${VERSION}`});renderScheduleStatus();app()?.toast(`${label}เรียบร้อย`,"success");loadNotifications();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
-  async function confirmAllAssigned(){const rows=(app()?.state?.schedule||[]).filter(r=>window.TimeClockScheduleConfirmation?.requiresConfirmation?.(r)&&!(r.is_confirmed||String(r.schedule_status||'').toUpperCase()==='CONFIRMED'));if(!rows.length)return app()?.toast("ไม่มีรายการที่ปรับจากกะมาตรฐานและรอยืนยัน","info");if(!confirm(`ยืนยันรายการปรับกะที่รอยืนยันทั้งหมด ${rows.length.toLocaleString("th-TH")} รายการ?`))return;await saveSchedulePayload(rows.map(r=>({emp_code:r.emp_code,work_date:String(r.work_date).slice(0,10),shift_code:r.assigned_shift_code||r.effective_shift_code||r.auto_shift_code,note:"ยืนยันรายการปรับกะทั้งหมดประจำเดือน"})),"ยืนยันรายการปรับจากกะมาตรฐานทั้งหมด",true);}
   function publishSchedule(){setScheduleStatus(["PUBLISHED","LOCKED"].includes(scheduleMonthStatus.status)?"DRAFT":"PUBLISH");}
   function toggleScheduleLock(){setScheduleStatus(scheduleMonthStatus.status==="LOCKED"?"UNLOCK":"LOCK");}
   async function loadScheduleHistory(){try{const rows=await rpc("ta_get_shift_assignment_history",{p_emp_code:null,p_work_date:null,p_limit:500})||[];$("scheduleHistoryBody").innerHTML=rows.length?rows.map(r=>`<tr><td>${fmtDateTime(r.changed_at)}</td><td>${esc(r.emp_code)}</td><td>${fmtDate(r.work_date)}</td><td>${esc(r.old_shift_code||"-")}</td><td>${esc(r.new_shift_code||"-")}</td><td>${esc(r.action_type)}</td><td>${esc(r.changed_by_email||"-")}</td><td>${esc(r.change_reason||r.note||"-")}</td></tr>`).join(""):`<tr><td colspan="8" class="fc-empty">ไม่พบประวัติ</td></tr>`;$("scheduleHistoryModal")?.classList.remove("hidden");}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}}
@@ -11716,9 +11688,9 @@ ${skippedSummary(compatibility.skipped)}
     if(q.includes("missing out")||q.includes("ไม่พบเวลาออก")){const n=Number(dash.missing_out_rows||0);return `พบรายการไม่พบเวลาออก ${num(n)} รายการ ตามช่วงข้อมูล Dashboard ล่าสุด`;}
     if(q.includes("ไม่มีเวลา")||q.includes("absent")){const n=Number(dash.absent_rows||dash.no_time_rows||0);return `พบพนักงาน/วันทำงานที่ไม่มีข้อมูลเวลา ${num(n)} รายการ`;}
     if(q.includes("มาสาย")&&q.includes("หน่วยงาน")){const m={};att.forEach(r=>{if(Number(r.late_minutes||0)>0){const k=r.department||"ไม่ระบุ";m[k]=(m[k]||0)+Number(r.late_minutes||0);}});const top=Object.entries(m).sort((a,b)=>b[1]-a[1])[0];return top?`หน่วยงานที่มีนาทีมาสายรวมสูงสุดคือ ${top[0]} จำนวน ${num(top[1])} นาที จากข้อมูลรายละเอียดเวลาที่โหลดล่าสุด`:`ยังไม่มีข้อมูลมาสายในรายละเอียดเวลาที่โหลดล่าสุด`;}
-    if(q.includes("ยืนยัน")&&q.includes("กะ")){const changed=sch.filter(r=>window.TimeClockScheduleConfirmation?.requiresConfirmation?.(r)),confirmed=changed.filter(r=>r.is_confirmed||String(r.schedule_status||'').toUpperCase()==="CONFIRMED").length;return changed.length?`รายการที่ปรับจากกะมาตรฐานยืนยันแล้ว ${num(confirmed)} จาก ${num(changed.length)} รายการ • กะมาตรฐานไม่ต้องยืนยัน`:`ช่วงข้อมูลที่โหลดไม่มีรายการปรับจากกะมาตรฐาน จึงไม่ต้องยืนยันกะ`;}
+    if(q.includes("ยืนยัน")&&q.includes("กะ")){return "ระบบปัจจุบันไม่มีขั้นตอนยืนยันกะแยกต่างหาก เมื่อหัวหน้างานเลือกหรือปรับกะแล้วกดบันทึก ระบบถือว่าเป็นการยืนยันและมีผลทันที ส่วนกะมาตรฐานทำงานอัตโนมัติโดยไม่ต้องบันทึก";}
     if(q.includes("สรุป")||q.includes("dashboard")){return `พนักงาน ${num(dash.total_employees)} คน • รายการทั้งหมด ${num(dash.total_rows)} • ลงเวลาครบ ${num(dash.complete_time_rows)} • เวลาไม่ครบ ${num(Number(dash.missing_in_rows||0)+Number(dash.missing_out_rows||0))}`;}
-    return "ยังไม่พบรูปแบบคำถามนี้ ลองถามเรื่อง Missing IN, Missing OUT, ไม่มีเวลา, หน่วยงานที่มาสาย, เปอร์เซ็นต์ยืนยันกะ หรือสรุป Dashboard";
+    return "ยังไม่พบรูปแบบคำถามนี้ ลองถามเรื่อง Missing IN, Missing OUT, ไม่มีเวลา, หน่วยงานที่มาสาย, รายการปรับกะ หรือสรุป Dashboard";
   }
 
   /* ------------------------------------------------------------------
@@ -14642,7 +14614,6 @@ ${skippedSummary(compatibility.skipped)}
           <td>${manager.include_descendants ? "รวมหน่วยงานลูก" : "เฉพาะหน่วยงานนี้"}</td>
           <td>${permission(manager.can_view)}</td>
           <td>${permission(manager.can_edit_schedule)}</td>
-          <td>${permission(manager.can_confirm_schedule)}</td>
           <td>${permission(manager.can_certify_attendance)}</td>
           <td>${permission(manager.can_decide_shift_request)}</td>
           <td class="nowrap">${fmtDate(manager.effective_from)} – ${fmtDate(manager.effective_to)}</td>
@@ -14654,7 +14625,7 @@ ${skippedSummary(compatibility.skipped)}
             <button class="btn btn-danger-soft btn-sm" data-org-delete-manager="${esc(manager.scope_id)}">ลบ</button>
           </div></td>
         </tr>`).join("")
-      : '<tr><td colspan="10" class="fc-empty">ยังไม่ได้กำหนด Manager</td></tr>';
+      : '<tr><td colspan="9" class="fc-empty">ยังไม่ได้กำหนด Manager</td></tr>';
 
     $("orgDeactivateBtn").disabled = !unit.is_active;
   }
@@ -15229,11 +15200,6 @@ ${skippedSummary(compatibility.skipped)}
         manager?.can_edit_schedule
       );
 
-    $("omCanConfirm").checked =
-      Boolean(
-        manager?.can_confirm_schedule
-      );
-
     $("omCanCertify").checked =
       Boolean(
         manager?.can_certify_attendance
@@ -15353,7 +15319,7 @@ ${skippedSummary(compatibility.skipped)}
               $("omCanEdit").checked,
 
             p_can_confirm_schedule:
-              $("omCanConfirm").checked,
+              $("omCanEdit").checked,
 
             p_can_certify_attendance:
               $("omCanCertify").checked,
@@ -15489,7 +15455,7 @@ ${skippedSummary(compatibility.skipped)}
   function downloadTemplate(kind) {
     const headers = kind==="org"
       ? ["org_code","org_name","zone","area","sub_area","org_level_code","org_level_name","level_order","parent_org_code","sort_order","effective_from","effective_to","is_active","note"]
-      : ["manager_email","scope_type","scope_value","scope_label","include_descendants","can_view","can_edit_schedule","can_confirm_schedule","can_certify_attendance","can_decide_shift_request","effective_from","effective_to","is_active","note"];
+      : ["manager_email","scope_type","scope_value","scope_label","include_descendants","can_view","can_edit_schedule","can_certify_attendance","can_decide_shift_request","effective_from","effective_to","is_active","note"];
 
     A().downloadFile?.(
       kind==="org"
