@@ -4475,6 +4475,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         );
         await enrichScheduleManagerMetaV61122(state.schedule);
         await enrichScheduleManagerNamesV61121(state.schedule);
+        await enrichScheduleOrgManagersV61123(state.schedule, period);
 
         renderSchedule();
         const employeeCount=new Set(state.schedule.map(r=>String(r.emp_code||"")).filter(Boolean)).size;
@@ -4639,7 +4640,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const batch = empCodes.slice(i, i + 150);
           const { data, error } = await state.client
             .from('employees')
-            .select('EmployeeId,manager_department,manager_division,manager_gm,manager_avp')
+            .select('EmployeeId,org_code,manager_department,manager_division,manager_gm,manager_avp')
             .in('EmployeeId', batch);
           if (error) throw error;
           (data || []).forEach(employee => {
@@ -4652,7 +4653,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const empCode = String(row?.emp_code || row?.EmployeeId || '').trim();
           const meta = metaByEmp.get(empCode);
           if (!meta) return;
-          ['manager_department','manager_division','manager_gm','manager_avp'].forEach(field => {
+          ['org_code','manager_department','manager_division','manager_gm','manager_avp'].forEach(field => {
             const current = String(row?.[field] || '').trim();
             const incoming = String(meta?.[field] || '').trim();
             if (!current && incoming) row[field] = incoming;
@@ -4717,7 +4718,184 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
     }
 
+    const scheduleOrgManagerStateV61123 = {
+      loadedUnits: false,
+      units: [],
+      byCode: new Map(),
+      byName: new Map(),
+      detailById: new Map(),
+      employeeNameByCode: new Map()
+    };
+
+    function scheduleNormalizeOrgKeyV61123(value) {
+      return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ');
+    }
+
+    function scheduleManagerEffectiveV61123(manager, workDate = null) {
+      if (!manager || manager.is_active === false) return false;
+      const date = String(workDate || todayISO()).slice(0,10);
+      const from = String(manager.effective_from || '').slice(0,10);
+      const to = String(manager.effective_to || '').slice(0,10);
+      if (from && date < from) return false;
+      if (to && date > to) return false;
+      return true;
+    }
+
+    async function scheduleLoadOrgUnitsV61123() {
+      const cache = scheduleOrgManagerStateV61123;
+      if (cache.loadedUnits || !state.client) return cache.units;
+      try {
+        const { data, error } = await state.client
+          .from('ta_org_units')
+          .select('org_id,org_code,org_name,parent_org_id,is_active,effective_from,effective_to')
+          .order('level_order', { ascending: true })
+          .order('sort_order', { ascending: true });
+        if (error) throw error;
+        cache.units = data || [];
+        cache.byCode.clear();
+        cache.byName.clear();
+        cache.units.forEach(unit => {
+          const codeKey = scheduleNormalizeOrgKeyV61123(unit?.org_code);
+          const nameKey = scheduleNormalizeOrgKeyV61123(unit?.org_name);
+          if (codeKey) cache.byCode.set(codeKey, unit);
+          if (nameKey && !cache.byName.has(nameKey)) cache.byName.set(nameKey, unit);
+        });
+        cache.loadedUnits = true;
+      } catch (error) {
+        console.warn('Schedule org-unit metadata V6.11.23:', error);
+      }
+      return cache.units;
+    }
+
+    async function scheduleGetOrgDetailV61123(orgId) {
+      const id = String(orgId || '').trim();
+      if (!id || !state.client) return null;
+      const cache = scheduleOrgManagerStateV61123;
+      if (cache.detailById.has(id)) return cache.detailById.get(id);
+      try {
+        const { data, error } = await state.client.rpc('ta_get_org_unit_detail_v690', {
+          p_org_id: id
+        });
+        if (error) throw error;
+        cache.detailById.set(id, data || null);
+        return data || null;
+      } catch (error) {
+        console.warn('Schedule org manager detail V6.11.23:', id, error);
+        cache.detailById.set(id, null);
+        return null;
+      }
+    }
+
+    async function scheduleResolveScopeManagerNamesV61123(unit, workDate = null) {
+      if (!unit) return [];
+      const cache = scheduleOrgManagerStateV61123;
+      const managerRows = [];
+      let current = unit;
+      let depth = 0;
+
+      while (current && depth < 12) {
+        const detail = await scheduleGetOrgDetailV61123(current.org_id);
+        const direct = (detail?.managers || []).filter(manager =>
+          scheduleManagerEffectiveV61123(manager, workDate)
+          && (depth === 0 || manager.include_descendants === true)
+        );
+        if (direct.length) {
+          managerRows.push(...direct);
+          break;
+        }
+        const parentId = String(current.parent_org_id || '').trim();
+        if (!parentId) break;
+        current = cache.units.find(item => String(item?.org_id || '') === parentId) || null;
+        depth += 1;
+      }
+
+      const missingCodes = [...new Set(managerRows
+        .map(manager => String(manager?.emp_code || '').trim())
+        .filter(code => code && !cache.employeeNameByCode.has(code))
+      )];
+      if (missingCodes.length && state.client) {
+        try {
+          for (let i = 0; i < missingCodes.length; i += 100) {
+            const batch = missingCodes.slice(i, i + 100);
+            const { data, error } = await state.client
+              .from('employees')
+              .select('EmployeeId,full_name')
+              .in('EmployeeId', batch);
+            if (error) throw error;
+            (data || []).forEach(employee => {
+              const code = String(employee?.EmployeeId || '').trim();
+              const name = String(employee?.full_name || '').trim();
+              if (code && name) cache.employeeNameByCode.set(code, name);
+            });
+          }
+        } catch (error) {
+          console.warn('Schedule manager employee-name fallback V6.11.23:', error);
+        }
+      }
+
+      return [...new Set(managerRows.map(manager => {
+        const code = String(manager?.emp_code || '').trim();
+        return String(
+          manager?.display_name
+          || cache.employeeNameByCode.get(code)
+          || manager?.manager_email
+          || code
+          || ''
+        ).trim();
+      }).filter(Boolean))];
+    }
+
+    async function enrichScheduleOrgManagersV61123(rows = [], period = null) {
+      if (!rows?.length || !state.client) return;
+      await scheduleLoadOrgUnitsV61123();
+      const cache = scheduleOrgManagerStateV61123;
+      if (!cache.units.length) return;
+
+      const groupRequests = new Map();
+      (rows || []).forEach(row => {
+        const teamLabel = scheduleUnitLabel(row);
+        const nameUnit = cache.byName.get(scheduleNormalizeOrgKeyV61123(teamLabel));
+        const codeUnit = cache.byCode.get(scheduleNormalizeOrgKeyV61123(row?.org_code));
+        const unit = nameUnit || codeUnit || null;
+        if (!unit) return;
+        const key = String(unit.org_id || '');
+        if (!groupRequests.has(key)) {
+          groupRequests.set(key, {
+            unit,
+            date: String(row?.work_date || period?.startDate || todayISO()).slice(0,10),
+            rows: []
+          });
+        }
+        groupRequests.get(key).rows.push(row);
+      });
+
+      const requests = [...groupRequests.values()];
+      for (let i = 0; i < requests.length; i += 6) {
+        const batch = requests.slice(i, i + 6);
+        await Promise.all(batch.map(async request => {
+          const names = await scheduleResolveScopeManagerNamesV61123(request.unit, request.date);
+          request.rows.forEach(row => {
+            row._team_manager_names_v61123 = names;
+            row._team_org_id_v61123 = request.unit.org_id;
+            row._team_org_code_v61123 = request.unit.org_code;
+          });
+        }));
+      }
+    }
+
     function scheduleTeamManagerLabelV61121(team) {
+      const nameCounts = team?.managerNames instanceof Map ? [...team.managerNames.entries()] : [];
+      if (nameCounts.length) {
+        nameCounts.sort((a,b) => Number(b[1] || 0) - Number(a[1] || 0) || String(a[0]).localeCompare(String(b[0]), 'th'));
+        const names = nameCounts.map(item => String(item[0] || '').trim()).filter(Boolean);
+        if (names.length === 1) return names[0];
+        if (names.length === 2) return names.join(' / ');
+        if (names.length > 2) return `${names.slice(0,2).join(' / ')} +${names.length - 2}`;
+      }
+
       const counts = team?.managers instanceof Map ? [...team.managers.entries()] : [];
       if (!counts.length) return '-';
       counts.sort((a,b) => Number(b[1] || 0) - Number(a[1] || 0) || String(a[0]).localeCompare(String(b[0]), 'th'));
@@ -5498,6 +5676,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             unit,
             employees: new Set(),
             managers: new Map(),
+            managerNames: new Map(),
             days: new Map()
           });
         }
@@ -5511,6 +5690,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             Number(group.managers.get(managerCodeV61121) || 0) + 1
           );
         }
+        const managerNamesV61123 = Array.isArray(row?._team_manager_names_v61123)
+          ? row._team_manager_names_v61123
+          : [];
+        managerNamesV61123.forEach(name => {
+          const managerName = String(name || '').trim();
+          if (!managerName) return;
+          group.managerNames.set(
+            managerName,
+            Number(group.managerNames.get(managerName) || 0) + 1
+          );
+        });
 
         if (!group.days.has(date)) {
           group.days.set(date, {
