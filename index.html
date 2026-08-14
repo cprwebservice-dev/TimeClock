@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.15-20260813-teamdrawer-color2" rel="stylesheet"/>
+<link href="./app.css?v=6.11.15-20260814b" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -456,7 +456,7 @@
 <input id="schedulePeriodStart" type="hidden">
 <div class="field schedule-period-field"><label>สัปดาห์ที่แสดง</label><div class="schedule-period-label" id="schedulePeriodLabel">-</div></div>
 <div class="field"><label>พื้นที่</label><select class="select" id="scheduleZone"><option value="">ทุกพื้นที่</option></select></div>
-<div class="field"><label>หน่วยงาน</label><select class="select" id="scheduleDepartment"><option value="">ทุกหน่วยงาน</option></select></div>
+<div class="field"><label>ทีม / หน่วยงาน</label><select class="select" id="scheduleDepartment"><option value="">ทุกทีม / ทุกหน่วยงาน</option></select></div>
 <div class="field"><label>รูปแบบการทำงาน</label><select class="select" id="schedulePatternFilter"><option value="">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option><option value="UNASSIGNED">ยังไม่ได้กำหนด</option></select></div>
 <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="scheduleSearch" placeholder="รหัสหรือชื่อ"/></div>
 <div class="toolbar-actions schedule-month-actions">
@@ -493,8 +493,8 @@
 <small id="scheduleViewHintText">ดูภาพรวมจำนวนคนทำงาน ยืนยันแล้ว และจุดที่ต้องตรวจสอบรายทีม แล้วคลิกดูรายคนต่อได้</small>
 </div>
 <div class="field schedule-team-focus-field">
-<label>โฟกัสทีม</label>
-<select class="select" id="scheduleTeamFocus"><option value="">ทุกทีม</option></select>
+<label>โฟกัสทีม (ตัวกรองเสริม)</label>
+<select class="select" id="scheduleTeamFocus"><option value="">ทุกทีม / ทุกหน่วยงาน</option></select>
 </div>
 </div>
 </div>
@@ -2221,6 +2221,6 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=6.11.15-20260813"></script>
+<script src="./app.js?v=6.11.15-20260814b"></script>
 </body>
 </html>

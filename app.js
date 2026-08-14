@@ -2682,10 +2682,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     function scheduleFilteredRows(rows = state.schedule) {
       const filter = val("schedulePatternFilter");
       const term = val("scheduleSearch").trim().toLowerCase();
+      const departmentFilter = String(
+        val("scheduleDepartment")
+        || val("scheduleTeamFocus")
+        || ""
+      ).trim();
 
       return (rows || []).filter(row => {
         const pattern = scheduleRowPattern(row);
         if (filter && pattern !== filter) return false;
+        if (
+          departmentFilter
+          && scheduleUnitLabel(row) !== departmentFilter
+        ) return false;
         if (
           term
           && !`${row.emp_code || ""} ${row.full_name || ""}`
@@ -4530,9 +4539,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     function fillScheduleTeamFocusOptions(rows = []) {
       const select = $("scheduleTeamFocus");
       if (!select) return;
-      const old = select.value || '';
+      const old = select.value || val("scheduleDepartment") || '';
       const units = [...new Set((rows || []).map(scheduleUnitLabel))].sort((a,b) => a.localeCompare(b, 'th'));
-      select.innerHTML = `<option value="">ทุกทีม</option>` + units.map(unit => `<option value="${safe(unit)}">${safe(unit)}</option>`).join('');
+      select.innerHTML = `<option value="">ทุกทีม / ทุกหน่วยงาน</option>` + units.map(unit => `<option value="${safe(unit)}">${safe(unit)}</option>`).join('');
       if ([...select.options].some(option => option.value === old)) {
         select.value = old;
       }
@@ -4717,14 +4726,22 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const actualOut = scheduleTeamActualTime(row,'OUT');
           const initials = String(row.full_name || row.emp_code || '?').trim().slice(0,2);
           const lateText = status === 'LATE' && Number(row.late_minutes||0)>0 ? ` • สาย ${formatNumber(row.late_minutes)} นาที` : '';
-          return `<article class="team-employee-card status-${safe(statusMeta.tone)}">
+          const templateCode = scheduleWorkTemplateCodeV6118(row);
+          const customerStart = formatTime(row.customer_window_start);
+          const customerEnd = formatTime(row.customer_window_end);
+          const customerEndLabel = customerEnd !== '-' ? customerEnd : (row.customer_window_start ? 'ตามเวลาออก' : '-');
+          const splitWorkTemplate = templateCode === 'SPLIT_FLEX' && shift.isWorking && customerStart !== '-' && customerEndLabel !== '-';
+          const shiftDetailHtml = splitWorkTemplate
+            ? `<div class="team-shift-stack"><small><b>กะ 1</b><span>${safe(scheduleTeamPlannedTime(row))}</span></small><small class="secondary"><b>กะ 2</b><span>${safe(`${customerStart}–${customerEndLabel}`)}</span></small></div><small class="team-shift-meta">กะปกติ + งานลูกค้าช่วงดึก</small>`
+            : `<strong class="team-shift-text tone-${safe(shift.tone)}">${safe(shift.code || '-')}</strong><small>${safe(scheduleTeamPlannedTime(row))}</small>`;
+          return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''}">
             <div class="team-employee-main">
               <div class="team-employee-avatar">${safe(initials)}</div>
               <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
               <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
             </div>
-            <div class="team-employee-detail-grid">
-              <div><span>กะทำงาน</span><strong class="team-shift-text tone-${safe(shift.tone)}">${safe(shift.code || '-')}</strong><small>${safe(scheduleTeamPlannedTime(row))}</small></div>
+            <div class="team-employee-detail-grid ${splitWorkTemplate ? 'double-shift' : ''}">
+              <div><span>กะทำงาน</span>${shiftDetailHtml}</div>
               <div><span>เวลาเข้า</span><strong>${safe(actualIn)}</strong></div>
               <div><span>เวลาออก</span><strong>${safe(actualOut)}</strong></div>
             </div>
@@ -4775,7 +4792,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const wrap = $("scheduleTeamWrap");
       if (!wrap) return;
 
-      const focusTeam = val("scheduleTeamFocus");
+      const focusTeam = String(
+        val("scheduleDepartment")
+        || val("scheduleTeamFocus")
+        || ""
+      ).trim();
       const sourceRows = focusTeam
         ? (rows || []).filter(row => scheduleUnitLabel(row) === focusTeam)
         : (rows || []);
@@ -4813,6 +4834,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             leave: 0,
             day: 0,
             night: 0,
+            split: 0,
             labels: new Map()
           });
         }
@@ -4831,17 +4853,24 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         if (shiftMeta.isWorking) {
           day.working += 1;
         }
+        const templateCode = scheduleWorkTemplateCodeV6118(row);
+        const splitWorkTemplate = templateCode === 'SPLIT_FLEX' && shiftMeta.isWorking;
         if (shiftMeta.tone === 'off') day.off += 1;
         if (shiftMeta.tone === 'holiday') day.holiday += 1;
         if (shiftMeta.tone === 'leave') day.leave += 1;
-        if (shiftMeta.tone === 'day') day.day += 1;
-        if (shiftMeta.tone === 'night') day.night += 1;
+        if (splitWorkTemplate) {
+          day.split += 1;
+        } else if (shiftMeta.tone === 'day') {
+          day.day += 1;
+        } else if (shiftMeta.tone === 'night') {
+          day.night += 1;
+        }
 
-        const labelKey = `${shiftMeta.tone}||${shiftMeta.label}`;
+        const labelKey = `${splitWorkTemplate ? 'split' : shiftMeta.tone}||${splitWorkTemplate ? 'กะปกติ+ดึก' : shiftMeta.label}`;
         if (!day.labels.has(labelKey)) {
           day.labels.set(labelKey, {
-            label: shiftMeta.label,
-            tone: shiftMeta.tone,
+            label: splitWorkTemplate ? 'กะปกติ+ดึก' : shiftMeta.label,
+            tone: splitWorkTemplate ? 'split' : shiftMeta.tone,
             count: 0
           });
         }
@@ -4892,6 +4921,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const planPercent = day.total ? Math.round((day.planned / day.total) * 100) : 0;
           const confirmPercent = day.total ? Math.round((day.confirmed / day.total) * 100) : 0;
           const offTotal = day.off + day.holiday;
+          const visibleShiftChips = [
+            day.day > 0 ? `<span class="team-day-count-v61115 tone-day"><i></i><small>เช้า</small><strong>${safe(formatNumber(day.day))}</strong></span>` : '',
+            day.night > 0 ? `<span class="team-day-count-v61115 tone-night"><i></i><small>ดึก</small><strong>${safe(formatNumber(day.night))}</strong></span>` : '',
+            day.split > 0 ? `<span class="team-day-count-v61115 tone-split"><i></i><small>ปกติ+ดึก</small><strong>${safe(formatNumber(day.split))}</strong></span>` : '',
+            offTotal > 0 ? `<span class="team-day-count-v61115 tone-off"><i></i><small>หยุด</small><strong>${safe(formatNumber(offTotal))}</strong></span>` : ''
+          ].filter(Boolean).join('');
           const extraBadges = [
             day.leave > 0
               ? `<span class="team-day-extra tone-leave"><i></i>ลา ${safe(formatNumber(day.leave))}</span>`
@@ -4906,10 +4941,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               <span class="team-day-total-v61115"><small>รวม</small><strong>${safe(formatNumber(day.total))}</strong><small>คน</small></span>
               <span class="team-day-confirm-v61115 ${day.confirmed===day.total && day.total>0?'is-complete':''}"><i>✓</i>${safe(formatNumber(day.confirmed))}/${safe(formatNumber(day.total))}</span>
             </div>
-            <div class="team-day-counts-v61115">
-              <span class="team-day-count-v61115 tone-day"><i></i><small>เช้า</small><strong>${safe(formatNumber(day.day))}</strong></span>
-              <span class="team-day-count-v61115 tone-night"><i></i><small>ดึก</small><strong>${safe(formatNumber(day.night))}</strong></span>
-              <span class="team-day-count-v61115 tone-off"><i></i><small>หยุด</small><strong>${safe(formatNumber(offTotal))}</strong></span>
+            <div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 ${[day.day, day.night, day.split, offTotal].filter(value => value > 0).length <= 2 ? 'is-compact' : ''}">
+              ${visibleShiftChips || '<span class="team-day-extra-empty">ไม่มีกะทำงาน</span>'}
             </div>
             <div class="team-day-bottom-v61115">
               <span class="team-day-progress-text-v61115">วางกะ ${safe(String(planPercent))}%</span>
@@ -7252,6 +7285,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           }
         }
       );
+
+      $("scheduleDepartment")?.addEventListener("change", () => {
+        setVal("scheduleTeamFocus", val("scheduleDepartment"));
+        renderSchedule();
+      });
 
       $("scheduleSearch").addEventListener("input", renderSchedule);
       $("schedulePatternFilter")?.addEventListener("change", renderSchedule);
