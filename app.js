@@ -431,7 +431,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       "area",
       "zone",
       "sub_area",
-      "pc"
+      "pc",
+      "manager_department",
+      "manager_division",
+      "manager_gm",
+      "manager_avp"
     ];
 
     fields.forEach(field => {
@@ -4469,6 +4473,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           period,
           state.schedule
         );
+        await enrichScheduleManagerMetaV61122(state.schedule);
         await enrichScheduleManagerNamesV61121(state.schedule);
 
         renderSchedule();
@@ -4619,6 +4624,44 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
 
     const scheduleManagerNameCacheV61121 = new Map();
+
+    async function enrichScheduleManagerMetaV61122(rows = []) {
+      const empCodes = [...new Set(
+        (rows || [])
+          .map(row => String(row?.emp_code || row?.EmployeeId || '').trim())
+          .filter(Boolean)
+      )];
+      if (!empCodes.length || !state.client) return;
+
+      const metaByEmp = new Map();
+      try {
+        for (let i = 0; i < empCodes.length; i += 150) {
+          const batch = empCodes.slice(i, i + 150);
+          const { data, error } = await state.client
+            .from('employees')
+            .select('EmployeeId,manager_department,manager_division,manager_gm,manager_avp')
+            .in('EmployeeId', batch);
+          if (error) throw error;
+          (data || []).forEach(employee => {
+            const code = String(employee?.EmployeeId || '').trim();
+            if (code) metaByEmp.set(code, employee);
+          });
+        }
+
+        (rows || []).forEach(row => {
+          const empCode = String(row?.emp_code || row?.EmployeeId || '').trim();
+          const meta = metaByEmp.get(empCode);
+          if (!meta) return;
+          ['manager_department','manager_division','manager_gm','manager_avp'].forEach(field => {
+            const current = String(row?.[field] || '').trim();
+            const incoming = String(meta?.[field] || '').trim();
+            if (!current && incoming) row[field] = incoming;
+          });
+        });
+      } catch (error) {
+        console.warn('Schedule manager metadata enrichment V6.11.22:', error);
+      }
+    }
 
     function scheduleManagerCodeV61121(row) {
       return String(
@@ -5355,6 +5398,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         ]);
         employeeMonthCalendarStateV61121.scheduleRows = scheduleRows;
         employeeMonthCalendarStateV61121.attendanceRows = attendanceRows;
+        await enrichScheduleManagerMetaV61122(scheduleRows);
         await enrichScheduleManagerNamesV61121(scheduleRows);
         renderEmployeeMonthCalendarV61121();
       } catch (error) {
