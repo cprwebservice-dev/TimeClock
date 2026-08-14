@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.26";
-document.documentElement.dataset.timeClockBuild = "6.11.26";
+window.__TIME_CLOCK_BUILD__ = "V6.11.27";
+document.documentElement.dataset.timeClockBuild = "6.11.27";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.26";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.26',
+  version: '6.11.27',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1023,10 +1023,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return side === "start" ? start : end;
     }
     function normalizeTemplateCodeV665(value) {
-      const code = String(value || "").trim();
-      return code === "SINGLE_" + "0830"
-        ? "SINGLE_0830_1730"
-        : code;
+      const code = String(value || "").trim().toUpperCase();
+      if (["SINGLE_0830", "SINGLE_0830_1730", "ST6"].includes(code)) return "ST6";
+      if (["SINGLE_0830_1800", "ST5"].includes(code)) return "ST5";
+      if (code === "EARLY_SPLIT_FLEX") return "SPLIT_FLEX";
+      return code;
     }
 
     function attendanceClockMinutes(value) {
@@ -1288,9 +1289,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       if(
         normalized ===
-          "SINGLE_0830_1730"
+          "ST6"
         || normalized ===
-          "SINGLE_0830_1800"
+          "ST5"
         || normalized ===
           "SINGLE_0830"
       ) {
@@ -4446,7 +4447,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     function scheduleNormalizeTemplateCodeV61116(value) {
       const code = String(value || '').trim().toUpperCase();
-      if (code === 'SINGLE_0830') return 'SINGLE_0830_1730';
+      if (['SINGLE_0830','SINGLE_0830_1730','ST6'].includes(code)) return 'ST6';
+      if (['SINGLE_0830_1800','ST5'].includes(code)) return 'ST5';
       if (code === 'EARLY_SPLIT_FLEX') return 'SPLIT_FLEX';
       return code;
     }
@@ -5565,6 +5567,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return bits.join('');
     }
 
+    function employeeMonthTemplateCodeV61127(row) {
+      const raw = scheduleWorkTemplateCodeV6118(row);
+      return normalizeTemplateCodeV665(raw) || '-';
+    }
+
     function renderEmployeeMonthCalendarV61121() {
       const modal = $('employeeMonthScheduleModal');
       const grid = $('employeeMonthScheduleGrid');
@@ -5582,7 +5589,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const position = firstSchedule.position_name || '';
       const department = firstSchedule.department || '';
       const canEdit = employeeMonthCanEditV61121(employeeMonthCalendarStateV61121.empCode);
+      const patternCode = String(firstSchedule.pattern_code || firstSchedule.work_pattern_code || '').trim().toUpperCase();
+      const defaultTemplateCode = normalizeTemplateCodeV665(
+        firstSchedule.employee_default_template_code || firstSchedule.default_template_code || ''
+      );
+      const avatarText = String(employeeName || employeeMonthCalendarStateV61121.empCode || '?')
+        .trim().replace(/\s+/g,'').slice(0,2);
 
+      setText('employeeMonthScheduleAvatar', avatarText || 'พน');
       setText('employeeMonthScheduleTitle', employeeName);
       setText(
         'employeeMonthScheduleSubtitle',
@@ -5590,6 +5604,18 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       );
       const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
       setText('employeeMonthScheduleMonthLabel', `${monthNames[bounds.month-1]} ${bounds.year + 543}`);
+      setText(
+        'employeeMonthSchedulePatternMeta',
+        [
+          patternCode === 'TECH_5D' ? 'ทำงาน 5 วัน/สัปดาห์' : patternCode === 'TECH_6D' ? 'ทำงาน 6 วัน/สัปดาห์' : patternCode,
+          defaultTemplateCode ? `กะมาตรฐาน ${defaultTemplateCode}` : ''
+        ].filter(Boolean).join(' • ') || 'รูปแบบการทำงานตามข้อมูลพนักงาน'
+      );
+      const headerMode = $('employeeMonthHeaderMode');
+      if (headerMode) {
+        headerMode.className = `employee-month-header-mode-v61127 ${canEdit ? 'editable' : 'readonly'}`;
+        headerMode.textContent = canEdit ? 'แก้ไขกะได้' : 'ดูข้อมูลอย่างเดียว';
+      }
 
       let workdays = 0;
       let absenceDays = 0;
@@ -5607,12 +5633,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         if (Number(row?.early_leave_minutes || 0) > 0) earlyDays += 1;
       });
 
+      const anomalyDays = new Set(
+        attendanceRows
+          .filter(row => attendanceDisplayStatus(row) === 'ABSENCE' || Number(row?.late_minutes || 0) > 0 || Number(row?.early_leave_minutes || 0) > 0)
+          .map(row => String(row?.work_date || '').slice(0,10))
+          .filter(Boolean)
+      ).size;
       $('employeeMonthScheduleSummary').innerHTML = `
-        <div class="month-overview-kpi"><span>วันทำงาน</span><strong>${safe(formatNumber(workdays))}</strong><small>วัน</small></div>
-        <div class="month-overview-kpi danger"><span>ขาดงาน</span><strong>${safe(formatNumber(absenceDays))}</strong><small>วัน</small></div>
-        <div class="month-overview-kpi late"><span>มาสาย</span><strong>${safe(formatNumber(lateDays))}</strong><small>วัน</small></div>
-        <div class="month-overview-kpi early"><span>กลับก่อน</span><strong>${safe(formatNumber(earlyDays))}</strong><small>วัน</small></div>
-        <div class="month-overview-kpi split"><span>ปกติ + งานดึก</span><strong>${safe(formatNumber(splitDays))}</strong><small>วัน</small></div>`;
+        <div class="month-overview-kpi primary"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></div>
+        <div class="month-overview-kpi danger"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>วันที่ไม่มีเวลาเข้า/ออกครบ</small></div><strong>${safe(formatNumber(absenceDays))}</strong></div>
+        <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>จำนวนวันที่มาสาย</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
+        <div class="month-overview-kpi early"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></div>
+        <div class="month-overview-kpi split"><div class="month-kpi-icon">ดึก</div><div><span>งานลูกค้าช่วงดึก</span><small>วันที่มีช่วงงานกะที่ 2</small></div><strong>${safe(formatNumber(splitDays))}</strong></div>
+        <div class="month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>ตรวจรายละเอียดจาก Badge ในแต่ละวัน</small></div>`;
 
       const dowNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
       const firstDow = new Date(bounds.year, bounds.month - 1, 1).getDay();
@@ -5636,18 +5669,30 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const shift2In = split ? scheduleTeamSegmentActualTime(merged, 2, 'IN') : '-';
         const shift2Out = split ? scheduleTeamSegmentActualTime(merged, 2, 'OUT') : '-';
         const anomalyHtml = employeeMonthAnomalyHtmlV61121(attendanceRow ? merged : null);
+        const templateCode = merged ? employeeMonthTemplateCodeV61127(merged) : '-';
         const editButton = canEdit && scheduleRow
-          ? `<button type="button" class="employee-month-edit-btn" data-employee-month-edit-date="${safe(workDate)}">จัดกะ</button>`
+          ? `<button type="button" class="employee-month-edit-btn" data-employee-month-edit-date="${safe(workDate)}"><span>✎</span> จัดกะ</button>`
           : '';
         const isToday = workDate === todayISO();
         const holiday = Boolean(scheduleRow?.is_public_holiday || scheduleRow?.day_type === 'PUBLIC_HOLIDAY');
         const weeklyOff = Boolean(scheduleRow?.is_weekly_off || scheduleRow?.day_type === 'WEEKLY_OFF');
+        const dayName = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][dow];
 
         html += `<div class="employee-month-day ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} tone-${safe(statusMeta.tone)}" data-month-date="${safe(workDate)}">
-          <div class="employee-month-day-head"><strong>${safe(String(day))}</strong><span class="month-status-dot tone-${safe(statusMeta.tone)}" title="${safe(statusMeta.label)}"></span></div>
-          <div class="employee-month-shift tone-${safe(shift.tone)}"><b>${safe(shift.code || '-')}</b><small>${safe(shift.label || '-')}</small>${split?'<em>+ งานลูกค้าช่วงดึก</em>':''}</div>
-          <div class="employee-month-punch"><span>เข้า <b>${safe(actualIn)}</b></span><span>ออก <b>${safe(actualOut)}</b></span></div>
-          ${split ? `<div class="employee-month-punch secondary"><span>กะ 2 เข้า <b>${safe(shift2In)}</b></span><span>ออก <b>${safe(shift2Out)}</b></span></div>` : ''}
+          <div class="employee-month-day-head">
+            <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
+            <span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span>
+          </div>
+          <div class="employee-month-shift tone-${safe(shift.tone)}">
+            <div class="employee-month-shift-top-v61127"><b>${safe(shift.code || '-')}</b>${templateCode !== '-' ? `<span class="month-template-code-v61127">${safe(templateCode)}</span>` : ''}</div>
+            <small>${safe(shift.label || '-')}</small>
+            ${split?'<em>+ งานลูกค้าช่วงดึก</em>':''}
+          </div>
+          <div class="employee-month-punch-grid-v61127">
+            <div><span>เวลาเข้า</span><b>${safe(actualIn)}</b></div>
+            <div><span>เวลาออก</span><b>${safe(actualOut)}</b></div>
+          </div>
+          ${split ? `<div class="employee-month-punch-grid-v61127 secondary"><div><span>กะ 2 เข้า</span><b>${safe(shift2In)}</b></div><div><span>กะ 2 ออก</span><b>${safe(shift2Out)}</b></div></div>` : ''}
           <div class="employee-month-anomalies">${anomalyHtml || `<span class="month-anomaly ${safe(statusMeta.tone)}">${safe(statusMeta.label)}</span>`}</div>
           ${editButton}
         </div>`;
@@ -6297,8 +6342,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             category_code: "NORMAL",
             category_name: "กะปกติ",
             template_code: pattern === "TECH_5D"
-              ? "SINGLE_0830_1800"
-              : "SINGLE_0830_1730",
+              ? "ST5"
+              : "ST6",
             display_order: 1
           },
           {
@@ -6370,8 +6415,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const fallback =
         patternCode ===
           "TECH_5D"
-          ? "SINGLE_0830_1800"
-          : "SINGLE_0830_1730";
+          ? "ST5"
+          : "ST6";
 
       const selected =
         String(
@@ -6535,8 +6580,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         || (
           patternCode ===
             "TECH_5D"
-            ? "SINGLE_0830_1800"
-            : "SINGLE_0830_1730"
+            ? "ST5"
+            : "ST6"
         )
       );
       $("deleteAssignmentBtn").classList.toggle("hidden", !r?.assigned_shift_code);
@@ -13307,9 +13352,9 @@ ${skippedSummary(compatibility.skipped)}
   }
   function renderTemplates(){
     const box=$('workTemplateCards');if(!box)return;
-    const findCode=code=>wp.templates.find(t=>String(t.template_code||'').toUpperCase()===code);
-    const normal6=findCode('SINGLE_0830_1730');
-    const normal5=findCode('SINGLE_0830_1800');
+    const findCode=code=>wp.templates.find(t=>normalizeTemplateCodeV665(t.template_code)===code);
+    const normal6=findCode('ST6');
+    const normal5=findCode('ST5');
     const late=wp.templates.find(t=>employeeTemplateCategory(t.template_code)==='NORMAL_LATE_CUSTOMER');
 
     const formatSegments=t=>(t?.segments||[]).map(s=>({
@@ -13322,11 +13367,11 @@ ${skippedSummary(compatibility.skipped)}
       {
         badge:'NORMAL',
         title:'กะปกติ',
-        code:'เลือกอัตโนมัติตามรูปแบบ 5/6 วัน',
-        note:'TECH_6D ใช้ 08:30–17:30 • TECH_5D ใช้ 08:30–18:00',
+        code:'ST6 / ST5',
+        note:'ST6 = TECH_6D 08:30–17:30 • ST5 = TECH_5D 08:30–18:00',
         segments:[
-          {type:'TECH_6D',start:'08:30',end:'17:30'},
-          {type:'TECH_5D',start:'08:30',end:'18:00'}
+          {type:'ST6',start:'08:30',end:'17:30'},
+          {type:'ST5',start:'08:30',end:'18:00'}
         ],
         ready:!!normal6&&!!normal5
       },
@@ -13361,7 +13406,9 @@ ${skippedSummary(compatibility.skipped)}
       [
         'SINGLE_0830',
         'SINGLE_0830_1730',
-        'SINGLE_0830_1800'
+        'SINGLE_0830_1800',
+        'ST6',
+        'ST5'
       ].includes(code)
     ){
       return 'NORMAL';
@@ -13375,11 +13422,11 @@ ${skippedSummary(compatibility.skipped)}
       || code.includes('NIGHT')
       || code==='SPLIT_FLEX'
     )return 'NORMAL_LATE_CUSTOMER';
-    if(code==='SINGLE_0830_1730'||code==='SINGLE_0830_1800'||text.includes('กะเดียว'))return 'NORMAL';
+    if(['ST6','ST5','SINGLE_0830_1730','SINGLE_0830_1800','SINGLE_0830'].includes(code)||text.includes('กะเดียว'))return 'NORMAL';
     return '';
   }
   function localEmployeeTemplateOptions(patternCode){
-    const normalCode=patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730';
+    const normalCode=patternCode==='TECH_5D'?'ST5':'ST6';
     return [
       {category_code:'NORMAL',category_name:'กะปกติ (ค่าเริ่มต้นวันทำงาน)',template_code:normalCode,display_order:1}
     ];
@@ -13394,6 +13441,7 @@ ${skippedSummary(compatibility.skipped)}
     }
     if(!options.length)options=localEmployeeTemplateOptions(patternCode);
     options=[...options]
+      .map(o=>({ ...o, template_code: normalizeTemplateCodeV665(o?.template_code) }))
       .filter(o=>
         !String(o?.category_code||'').toUpperCase().includes('EARLY')
         && !String(o?.template_code||'').toUpperCase().includes('EARLY')
@@ -13544,8 +13592,8 @@ ${skippedSummary(compatibility.skipped)}
                   r.default_template_code
                   || (
                     r.pattern_code==='TECH_5D'
-                      ? 'SINGLE_0830_1800'
-                      : 'SINGLE_0830_1730'
+                      ? 'ST5'
+                      : 'ST6'
                   );
 
                 const templateCategory=
@@ -13625,7 +13673,7 @@ ${skippedSummary(compatibility.skipped)}
     $('employeePatternModal').classList.remove('hidden');
     await loadEmployeeTemplateOptions(
       patternCode,
-      r.default_template_code||(patternCode==='TECH_5D'?'SINGLE_0830_1800':'SINGLE_0830_1730')
+      r.default_template_code||(patternCode==='TECH_5D'?'ST5':'ST6')
     );
   }
   async function saveEmployeePattern(){
@@ -13712,8 +13760,8 @@ ${skippedSummary(compatibility.skipped)}
 
     const fallback=
       pattern==='TECH_5D'
-        ? 'SINGLE_0830_1800'
-        : 'SINGLE_0830_1730';
+        ? 'ST5'
+        : 'ST6';
 
     try{
       const plan=
@@ -19698,12 +19746,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.26 System Period Management - All Schedule Views ===== */
+/* ===== V6.11.27 System Period Management - All Schedule Views ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.26";
+    "6.11.27";
 
   const app = () =>
     window.TimeClockApp;
@@ -22391,7 +22439,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   document.documentElement.dataset.systemPeriodModule =
-    "6.11.26-ready";
+    "6.11.27-ready";
 
   window.TimeClockSystemPeriods={
     VERSION,
