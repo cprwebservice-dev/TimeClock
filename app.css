@@ -14495,3 +14495,294 @@ body.theme-dark .employee-month-legend-v61121,
   }
   .employee-month-current-v61121{min-width:150px}
 }
+
+/* ==========================================================================
+   V6.11.26 System Period x Schedule — all views / all editing paths
+   ========================================================================== */
+
+.schedule-period-chip.override{
+  background:#fff6e8;
+  border-color:#f2c788;
+  color:#9a5b10;
+}
+
+.schedule-period-chip.warning{
+  background:#fff9e7;
+  border-color:#ead48d;
+  color:#80610b;
+}
+
+.schedule-context-period-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-height:38px;
+  margin:0 0 10px;
+  padding:8px 11px;
+  border:1px solid #d8e3ee;
+  border-radius:11px;
+  background:#f7fafc;
+  color:#51677c;
+  font-size:10px;
+  line-height:1.35;
+}
+
+.schedule-context-period-meta strong{
+  color:#254666;
+  font-size:10.5px;
+  font-weight:850;
+  white-space:nowrap;
+}
+
+.schedule-context-period-meta.open{
+  border-color:#c9e4d5;
+  background:#f3faf6;
+  color:#47705a;
+}
+.schedule-context-period-meta.open strong{color:#26704a}
+
+.schedule-context-period-meta.warning{
+  border-color:#edd8a0;
+  background:#fffaf0;
+  color:#7d681f;
+}
+.schedule-context-period-meta.warning strong{color:#8e6712}
+
+.schedule-context-period-meta.closed{
+  border-color:#e8c8cc;
+  background:#fff6f6;
+  color:#88545a;
+}
+.schedule-context-period-meta.closed strong{color:#a23e49}
+
+.schedule-context-period-meta.override{
+  border-color:#efcf9f;
+  background:#fff8ed;
+  color:#875f28;
+}
+.schedule-context-period-meta.override strong{color:#a76114}
+
+.schedule-context-period-meta.neutral{
+  border-color:#dbe4ec;
+  background:#f7f9fb;
+  color:#687b8d;
+}
+
+#scheduleTeamPeriodMeta{
+  margin:8px 12px 4px;
+}
+
+#employeeMonthSystemPeriodMeta{
+  margin:0 0 12px;
+}
+
+#assignSystemPeriodMeta{
+  margin-bottom:11px;
+}
+
+/* Team overview: period closed remains clickable for read-only detail */
+.schedule-team-summary-card.system-period-team-closed{
+  position:relative;
+  border-color:#d7dee7!important;
+  background:linear-gradient(180deg,#fbfcfd 0%,#f4f7fa 100%)!important;
+  box-shadow:inset 0 0 0 1px rgba(100,116,139,.04)!important;
+}
+
+.schedule-team-summary-card.system-period-team-closed:hover{
+  border-color:#bcc9d6!important;
+  background:linear-gradient(180deg,#ffffff 0%,#f3f6f9 100%)!important;
+}
+
+.schedule-team-summary-card.system-period-team-closed .team-day-count-v61115,
+.schedule-team-summary-card.system-period-team-closed .team-day-extra{
+  filter:saturate(.62);
+  opacity:.86;
+}
+
+.schedule-team-summary-card.system-period-team-override{
+  position:relative;
+  box-shadow:inset 0 0 0 1px rgba(245,158,11,.13)!important;
+}
+
+.system-period-team-lock{
+  top:5px!important;
+  right:5px!important;
+  width:16px!important;
+  height:16px!important;
+}
+
+/* Team Daily Detail */
+.team-assign-btn-v61118:disabled,
+.team-assign-btn-v61118.period-action-disabled{
+  border-color:#d6dee6!important;
+  background:#f2f5f8!important;
+  color:#7b8b99!important;
+  cursor:not-allowed!important;
+  box-shadow:none!important;
+  opacity:1!important;
+}
+
+/* Monthly Personal Overview */
+.employee-month-day.system-period-month-closed{
+  position:relative;
+  border-color:#d9e0e7!important;
+  background:linear-gradient(180deg,#fbfcfd 0%,#f5f7f9 100%)!important;
+}
+
+.employee-month-day.system-period-month-closed > :not(.system-period-month-lock){
+  filter:saturate(.72);
+}
+
+.employee-month-day.system-period-month-override{
+  position:relative;
+  box-shadow:inset 0 0 0 1px rgba(245,158,11,.12);
+}
+
+.system-period-month-lock{
+  top:7px!important;
+  right:7px!important;
+  width:17px!important;
+  height:17px!important;
+}
+
+.employee-month-edit-btn:disabled,
+.employee-month-edit-btn.period-action-disabled{
+  border-color:#d4dde6!important;
+  background:#eef2f6!important;
+  color:#738596!important;
+  cursor:not-allowed!important;
+  box-shadow:none!important;
+  opacity:1!important;
+}
+
+/* Assignment modal read-only state */
+.system-period-assignment-readonly .assignment-save-policy-v61117{
+  opacity:.62;
+}
+
+.system-period-assignment-readonly input:disabled,
+.system-period-assignment-readonly select:disabled,
+.system-period-assignment-readonly textarea:disabled{
+  background:#f2f5f8!important;
+  border-color:#d6e0e8!important;
+  color:#738393!important;
+  -webkit-text-fill-color:#738393!important;
+  opacity:1!important;
+  cursor:not-allowed!important;
+}
+
+.system-period-assignment-readonly #saveAssignmentBtn:disabled,
+.system-period-assignment-readonly #deleteAssignmentBtn:disabled{
+  filter:none!important;
+  opacity:.62!important;
+  cursor:not-allowed!important;
+}
+
+/* Dark mode */
+body.theme-dark .schedule-period-chip.override,
+.dark .schedule-period-chip.override{
+  background:#46331d;
+  border-color:#795a2f;
+  color:#f0c98d;
+}
+
+body.theme-dark .schedule-period-chip.warning,
+.dark .schedule-period-chip.warning{
+  background:#3c351d;
+  border-color:#695e30;
+  color:#ead58a;
+}
+
+body.theme-dark .schedule-context-period-meta,
+.dark .schedule-context-period-meta{
+  border-color:#334b62;
+  background:#1b2a38;
+  color:#abc0d1;
+}
+body.theme-dark .schedule-context-period-meta strong,
+.dark .schedule-context-period-meta strong{color:#d7e7f5}
+
+body.theme-dark .schedule-context-period-meta.open,
+.dark .schedule-context-period-meta.open{
+  border-color:#315846;
+  background:#193329;
+  color:#aed2bf;
+}
+body.theme-dark .schedule-context-period-meta.open strong,
+.dark .schedule-context-period-meta.open strong{color:#bde2cb}
+
+body.theme-dark .schedule-context-period-meta.warning,
+.dark .schedule-context-period-meta.warning{
+  border-color:#675a31;
+  background:#362f1b;
+  color:#e2cf91;
+}
+body.theme-dark .schedule-context-period-meta.warning strong,
+.dark .schedule-context-period-meta.warning strong{color:#f0d58a}
+
+body.theme-dark .schedule-context-period-meta.closed,
+.dark .schedule-context-period-meta.closed{
+  border-color:#694047;
+  background:#372126;
+  color:#e2b3b9;
+}
+body.theme-dark .schedule-context-period-meta.closed strong,
+.dark .schedule-context-period-meta.closed strong{color:#f0b3ba}
+
+body.theme-dark .schedule-context-period-meta.override,
+.dark .schedule-context-period-meta.override{
+  border-color:#745332;
+  background:#3b2b1b;
+  color:#e7c391;
+}
+body.theme-dark .schedule-context-period-meta.override strong,
+.dark .schedule-context-period-meta.override strong{color:#f2cb92}
+
+body.theme-dark .schedule-team-summary-card.system-period-team-closed,
+.dark .schedule-team-summary-card.system-period-team-closed{
+  border-color:#405367!important;
+  background:linear-gradient(180deg,#21303d 0%,#1b2935 100%)!important;
+}
+
+body.theme-dark .team-assign-btn-v61118:disabled,
+.dark .team-assign-btn-v61118:disabled,
+body.theme-dark .team-assign-btn-v61118.period-action-disabled,
+.dark .team-assign-btn-v61118.period-action-disabled{
+  border-color:#41566a!important;
+  background:#263541!important;
+  color:#92a5b5!important;
+}
+
+body.theme-dark .employee-month-day.system-period-month-closed,
+.dark .employee-month-day.system-period-month-closed{
+  border-color:#3b4f62!important;
+  background:linear-gradient(180deg,#1e2d39 0%,#192630 100%)!important;
+}
+
+body.theme-dark .employee-month-edit-btn:disabled,
+.dark .employee-month-edit-btn:disabled{
+  border-color:#43586b!important;
+  background:#253541!important;
+  color:#91a4b4!important;
+}
+
+body.theme-dark .system-period-assignment-readonly input:disabled,
+.dark .system-period-assignment-readonly input:disabled,
+body.theme-dark .system-period-assignment-readonly select:disabled,
+.dark .system-period-assignment-readonly select:disabled,
+body.theme-dark .system-period-assignment-readonly textarea:disabled,
+.dark .system-period-assignment-readonly textarea:disabled{
+  background:#1e2d39!important;
+  border-color:#3c5267!important;
+  color:#9db1c2!important;
+  -webkit-text-fill-color:#9db1c2!important;
+}
+
+@media(max-width:700px){
+  .schedule-context-period-meta{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:3px;
+  }
+}

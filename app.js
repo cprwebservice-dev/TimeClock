@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.20";
-document.documentElement.dataset.timeClockBuild = "6.11.20";
+window.__TIME_CLOCK_BUILD__ = "V6.11.26";
+document.documentElement.dataset.timeClockBuild = "6.11.26";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.20";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.20',
+  version: '6.11.26',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -98,6 +98,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       p_confirm_now: Boolean(params.confirm_now ?? params.p_confirm_now)
     };
 
+    const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
+      [full.p_work_date],
+      true
+    );
+    if (periodCheck && !periodCheck.allowed) {
+      throw new Error(periodCheck.message || "SYSTEM_PERIOD_SCHEDULE_CLOSED");
+    }
+
     let response = await client.rpc("ta_assign_shift_single_v651", full);
     if (!response.error) return response.data;
     if (!missingFunction(response.error)) throw response.error;
@@ -118,6 +126,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     })).filter(row => row.emp_code && row.work_date);
     if (!cleanRows.length) return { saved_rows: 0 };
 
+    const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
+      cleanRows.map(row => row.work_date),
+      true
+    );
+    if (periodCheck && !periodCheck.allowed) {
+      throw new Error(periodCheck.message || "SYSTEM_PERIOD_SCHEDULE_CLOSED");
+    }
+
     let response = await client.rpc("ta_assign_shifts_bulk_v651", {
       p_rows: cleanRows,
       p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
@@ -134,6 +150,25 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   async function deleteBulk(app, empCodes, startDate, endDate, changeReason) {
     const client = app?.state?.client;
     if (!client) throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
+
+    const rangeDates = [];
+    const start = new Date(`${String(startDate).slice(0,10)}T00:00:00`);
+    const end = new Date(`${String(endDate).slice(0,10)}T00:00:00`);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+      const from = start <= end ? start : end;
+      const to = start <= end ? end : start;
+      for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+        rangeDates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+      }
+    }
+    const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
+      rangeDates,
+      true
+    );
+    if (periodCheck && !periodCheck.allowed) {
+      throw new Error(periodCheck.message || "SYSTEM_PERIOD_SCHEDULE_CLOSED");
+    }
+
     const response = await client.rpc(
       "ta_delete_shift_assignments_bulk_v61022",
       {
@@ -5268,6 +5303,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const visible = rows.filter(row => scheduleTeamDrawerState.filter === 'ALL' || scheduleTeamAttendanceStatus(row) === scheduleTeamDrawerState.filter);
       if (!visible.length) {
         list.innerHTML = `<div class="team-drawer-empty">ไม่พบพนักงานในสถานะที่เลือก</div>`;
+        document.dispatchEvent(new CustomEvent("timeclock:team-daily-rendered", {
+          detail: { date: scheduleTeamDrawerState.date || null }
+        }));
         return;
       }
 
@@ -5315,6 +5353,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             <div class="team-employee-summary-line">เวลาเข้า/ออกรวมวันนี้: <b>${safe(actualIn)}</b> · <b>${safe(actualOut)}</b></div>
           </article>`;
         }).join('');
+
+      document.dispatchEvent(new CustomEvent("timeclock:team-daily-rendered", {
+        detail: { date: scheduleTeamDrawerState.date || null }
+      }));
     }
 
     async function openScheduleTeamDrawer(unit, date) {
@@ -5326,6 +5368,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       scheduleTeamDrawerState.date = date;
       scheduleTeamDrawerState.filter = 'ALL';
       scheduleTeamDrawerState.loading = true;
+      drawer.dataset.periodDate = String(date || '').slice(0,10);
 
       const baseRows = scheduleFilteredRows(state.schedule).filter(row => scheduleUnitLabel(row) === unit && String(row.work_date || '').slice(0,10) === date);
       $('scheduleTeamDrawerTitle').textContent = unit;
@@ -5615,6 +5658,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $('employeeMonthEditHint')?.classList.toggle('hidden', !canEdit);
       modal.classList.remove('hidden');
       modal.setAttribute('aria-hidden','false');
+      document.dispatchEvent(new CustomEvent("timeclock:employee-month-rendered", {
+        detail: { month: bounds.value, empCode: employeeMonthCalendarStateV61121.empCode }
+      }));
     }
 
     async function openEmployeeMonthCalendarV61121(empCode, monthValue = null) {
@@ -6495,9 +6541,22 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       );
       $("deleteAssignmentBtn").classList.toggle("hidden", !r?.assigned_shift_code);
       openModal("assignModal");
+      document.dispatchEvent(new CustomEvent("timeclock:schedule-assignment-opened", {
+        detail: { empCode, workDate }
+      }));
     }
 
     async function saveAssignment() {
+      const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
+        [val("assignWorkDate")],
+        true
+      );
+      if (periodCheck && !periodCheck.allowed) {
+        toast(periodCheck.message || "รอบระบบปิดการจัดกะสำหรับวันที่นี้", "warning");
+        await window.TimeClockSystemPeriods?.refreshScheduleGuard?.(true);
+        return;
+      }
+
       const selectedTemplate =
         String(
           val("assignWorkTemplate")
@@ -6720,6 +6779,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     async function deleteAssignment() {
+      const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
+        [val("assignWorkDate")],
+        true
+      );
+      if (periodCheck && !periodCheck.allowed) {
+        toast(periodCheck.message || "รอบระบบปิดการจัดกะสำหรับวันที่นี้", "warning");
+        await window.TimeClockSystemPeriods?.refreshScheduleGuard?.(true);
+        return;
+      }
       if (!confirm("ยืนยันการลบกะที่จัดไว้รายการนี้?")) return;
       showLoading(
         window.TimeClockTeamDailyReturnContext?.source === 'team-daily-detail'
@@ -9368,6 +9436,14 @@ ${skippedSummary(compatibility.skipped)}
       if (!proceed) return;
     }
 
+    const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
+      validPayload.map(item => item.work_date),
+      true
+    );
+    if (periodCheck && !periodCheck.allowed) {
+      return app()?.toast(periodCheck.message || "มีวันที่อยู่ในรอบที่ปิดการจัดกะ", "warning");
+    }
+
     const before=validPayload.map(p=>{const x=rowForKey(`${p.emp_code}|${p.work_date}`);return {...p,shift_code:currentCode(x.row)};});
     app().showLoading(`กำลังบันทึก ${validPayload.length.toLocaleString("th-TH")} รายการ...`);
     try{
@@ -9389,7 +9465,13 @@ ${skippedSummary(compatibility.skipped)}
   function copySelection(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการคัดลอก","error");clipboard=rows.map(x=>currentCode(x.row)||"D");refreshSelectionUI();app().toast(`คัดลอก ${clipboard.length} กะแล้ว`,"success");}
   async function pasteSelection(){const targets=selectedRows();if(!clipboard.length)return app()?.toast("ยังไม่มีกะในคลิปบอร์ด","error");if(!targets.length)return app()?.toast("กรุณาเลือกช่องปลายทาง","error");await savePayload(targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"})),"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");}
   async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!confirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
-  async function applyHistory(item,mode){const payload=(mode==="undo"?item.before:item.after).map(x=>({...x,note:`${mode} ${item.label}`}));app().showLoading(`กำลัง ${mode==="undo"?"ย้อนกลับ":"ทำซ้ำ"}...`);try{const autoConfirmOnSaveV61117=payload.some(x=>x.shift_code!==null&&x.shift_code!==undefined&&String(x.shift_code).trim()!=="");await window.TimeClockShiftAPI.assignBulk(app(),payload,`${mode} ${item.label}`,autoConfirmOnSaveV61117);(mode==="undo"?redoStack:undoStack).push(item);updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับและประมวลผลเวลาใหม่แล้ว":"ทำซ้ำและประมวลผลเวลาใหม่แล้ว","success");}catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}}
+  async function applyHistory(item,mode){
+    const payload=(mode==="undo"?item.before:item.after).map(x=>({...x,note:`${mode} ${item.label}`}));
+    const periodCheck=await window.TimeClockSystemPeriods?.checkScheduleDates?.(payload.map(x=>x.work_date),true);
+    if(periodCheck&&!periodCheck.allowed){app()?.toast(periodCheck.message||"ไม่สามารถแก้ไขรายการย้อนหลังในรอบที่ปิดแล้ว","warning");return;}
+    app().showLoading(`กำลัง ${mode==="undo"?"ย้อนกลับ":"ทำซ้ำ"}...`);
+    try{const autoConfirmOnSaveV61117=payload.some(x=>x.shift_code!==null&&x.shift_code!==undefined&&String(x.shift_code).trim()!=="");await window.TimeClockShiftAPI.assignBulk(app(),payload,`${mode} ${item.label}`,autoConfirmOnSaveV61117);(mode==="undo"?redoStack:undoStack).push(item);updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับและประมวลผลเวลาใหม่แล้ว":"ทำซ้ำและประมวลผลเวลาใหม่แล้ว","success");}catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}
+  }
   function undo(){const x=undoStack.pop();if(x)applyHistory(x,"undo");}
   function redo(){const x=redoStack.pop();if(x)applyHistory(x,"redo");}
   function moveActive(dx,dy,extend=false){const c=getCell(activeKey)||cells()[0];if(!c)return;const td=c.closest("td"),tr=td.parentElement;const rows=[...tr.parentElement.children];let ri=rows.indexOf(tr)+dy;ri=Math.max(0,Math.min(rows.length-1,ri));const targetRow=rows[ri];const cellsRow=[...targetRow.querySelectorAll("[data-schedule-cell]")];const sourceCells=[...tr.querySelectorAll("[data-schedule-cell]")];let ci=sourceCells.indexOf(c)+dx;ci=Math.max(0,Math.min(cellsRow.length-1,ci));const target=cellsRow[ci];if(target){selectCell(target,false,extend);target.scrollIntoView({block:"nearest",inline:"nearest"});}}
@@ -11634,7 +11716,14 @@ ${skippedSummary(compatibility.skipped)}
   function scheduleModalsHtml(){return `<div id="schedulePatternModal" class="modal-backdrop hidden fc-modal-wide"><div class="modal"><div class="modal-header"><h3>กำหนดรูปแบบกะ 7 วัน</h3><button id="schedulePatternClose" class="btn btn-light btn-icon">×</button></div><div class="modal-body"><p class="fc-note">เลือกรูปแบบตามวันในสัปดาห์ แล้วนำไปใช้กับช่องที่เลือก</p><div class="schedule-pattern-grid">${["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"].map((d,i)=>`<label class="schedule-pattern-day"><span>${d}</span><select class="select" data-pattern-dow="${i}"><option>D</option><option>N</option><option>OFF</option><option>HOL</option><option>LV</option></select></label>`).join("")}</div></div><div class="modal-footer"><button id="applySchedulePatternBtn" class="btn btn-primary">นำไปใช้กับช่องที่เลือก</button></div></div></div><div id="scheduleHistoryModal" class="modal-backdrop hidden fc-modal-wide"><div class="modal"><div class="modal-header"><h3>ประวัติการจัดกะ</h3><button id="scheduleHistoryClose" class="btn btn-light btn-icon">×</button></div><div class="modal-body"><div class="table-wrap" style="max-height:65vh"><table><thead><tr><th>วันเวลา</th><th>รหัส</th><th>วันที่</th><th>เดิม</th><th>ใหม่</th><th>การทำงาน</th><th>ผู้ดำเนินการ</th><th>เหตุผล</th></tr></thead><tbody id="scheduleHistoryBody"></tbody></table></div></div></div></div>`;}
   function selectedScheduleCells(){return qsa("#scheduleTableWrap .schedule-data-cell.cell-selected [data-schedule-cell],#scheduleTableWrap td.cell-selected [data-schedule-cell]");}
   function rowAt(emp,date){return (app()?.state?.schedule||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date).slice(0,10)===String(date).slice(0,10));}
-  async function saveSchedulePayload(payload,reason,confirmNow=false){if(!payload.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");if(scheduleMonthStatus.status==="LOCKED")return app()?.toast("ตารางกะเดือนนี้ถูกล็อก","error");app()?.showLoading?.(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);try{const autoConfirmOnSaveV61117=payload.some(item=>item.shift_code!==null&&item.shift_code!==undefined&&String(item.shift_code).trim()!=="");await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,autoConfirmOnSaveV61117);app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");await app()?.loadSchedule?.();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
+  async function saveSchedulePayload(payload,reason,confirmNow=false){
+    if(!payload.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");
+    if(scheduleMonthStatus.status==="LOCKED")return app()?.toast("ตารางกะเดือนนี้ถูกล็อก","error");
+    const periodCheck=await window.TimeClockSystemPeriods?.checkScheduleDates?.(payload.map(item=>item.work_date),true);
+    if(periodCheck&&!periodCheck.allowed)return app()?.toast(periodCheck.message||"มีวันที่อยู่ในรอบที่ปิดการจัดกะ","warning");
+    app()?.showLoading?.(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);
+    try{const autoConfirmOnSaveV61117=payload.some(item=>item.shift_code!==null&&item.shift_code!==undefined&&String(item.shift_code).trim()!=="");await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,autoConfirmOnSaveV61117);app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");await app()?.loadSchedule?.();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}
+  }
   function selectedCellMeta(){return selectedScheduleCells().map(c=>{const td=c.closest("td"),tr=td.closest("tr");return {cell:c,td,tr,emp:c.dataset.emp,date:c.dataset.date,row:rowAt(c.dataset.emp,c.dataset.date),ri:[...tr.parentElement.children].indexOf(tr),ci:[...tr.children].indexOf(td)};});}
   async function fillSchedule(direction){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่วงกะก่อน","error");const groups=new Map();items.forEach(x=>{const k=direction==="down"?x.ci:x.ri;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x);});const payload=[];groups.forEach(g=>{g.sort((a,b)=>direction==="down"?a.ri-b.ri:a.ci-b.ci);const source=codeOf(g[0].row)||g[0].cell.dataset.shift||"D";g.forEach(x=>payload.push({emp_code:x.emp,work_date:x.date,shift_code:source,note:`${direction==="down"?"Fill Down":"Fill Right"} จาก Schedule V6`}));});await saveSchedulePayload(payload,direction==="down"?"Fill Down จาก Schedule V6":"Fill Right จาก Schedule V6");}
   function openPatternModal(){if(!selectedScheduleCells().length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");$("schedulePatternModal")?.classList.remove("hidden");}
@@ -19609,12 +19698,12 @@ ${skippedSummary(compatibility.skipped)}
 })();
 
 
-/* ===== V6.11.15 System Period Management ===== */
+/* ===== V6.11.26 System Period Management - All Schedule Views ===== */
 (function(){
   "use strict";
 
   const VERSION =
-    "6.11.15";
+    "6.11.26";
 
   const app = () =>
     window.TimeClockApp;
@@ -21260,317 +21349,359 @@ ${skippedSummary(compatibility.skipped)}
   function scheduleCellDate(cell){
     return cell?.dataset?.date
       || cell?.dataset?.periodOriginalDate
-      || cell
-        ?.getAttribute(
-          "data-date"
-        )
+      || cell?.dataset?.teamDayDate
+      || cell?.dataset?.employeeMonthEditDate
+      || cell?.dataset?.monthDate
+      || cell?.getAttribute("data-date")
       || "";
+  }
+
+  function periodManagerClosed(period){
+    if(!period?.configured) return false;
+    return period.schedule_open === false
+      || period.schedule_deadline_passed === true
+      || ["CLOSED_MANUAL","CLOSED_DEADLINE"].includes(
+        String(period.schedule_status || "").toUpperCase()
+      );
+  }
+
+  function periodDueSoon(period){
+    return String(period?.schedule_status || "").toUpperCase() === "DUE_SOON";
+  }
+
+  function uniqueDates(values){
+    return [...new Set((values || [])
+      .map(value => String(value || "").slice(0,10))
+      .filter(value => /^\d{4}-\d{2}-\d{2}$/.test(value)))];
+  }
+
+  async function loadStatusesForDates(dates, forceFresh=false){
+    const cleanDates=uniqueDates(dates);
+    const months=[...new Set(cleanDates.map(monthKey))];
+    const statuses=new Map();
+    await Promise.all(months.map(async month=>{
+      const sample=cleanDates.find(date=>monthKey(date)===month);
+      try{
+        statuses.set(month,await getForDate(sample,forceFresh));
+      }catch(error){
+        console.warn("System Period date status:",error);
+        statuses.set(month,null);
+      }
+    }));
+    return {dates:cleanDates,months,statuses};
+  }
+
+  function periodBlockedMessage(blockedDates,statuses){
+    const months=[...new Set(blockedDates.map(monthKey))];
+    const details=months.map(month=>{
+      const period=statuses.get(month);
+      const reason=period?.schedule_open===false
+        || String(period?.schedule_status||"").toUpperCase()==="CLOSED_MANUAL"
+        ? "ปิดรอบโดย HR"
+        : "เกินวันสุดท้ายจัดกะ";
+      return `${monthLabel(`${month}-01`)}: ${reason} • Deadline ${formatDate(period?.schedule_edit_deadline)}`;
+    });
+    return `ไม่สามารถบันทึกการจัดกะได้ เนื่องจากรอบระบบปิดสำหรับ Manager\n${details.join("\n")}`;
+  }
+
+  async function checkScheduleDates(dates,forceFresh=false){
+    const loaded=await loadStatusesForDates(dates,forceFresh);
+    const currentRole=role();
+    const blockedDates=[];
+    const managerClosedDates=[];
+
+    loaded.dates.forEach(date=>{
+      const period=loaded.statuses.get(monthKey(date));
+      if(periodManagerClosed(period)) managerClosedDates.push(date);
+      if(currentRole==="MANAGER" && periodManagerClosed(period)) blockedDates.push(date);
+    });
+
+    return {
+      allowed: blockedDates.length===0,
+      role:currentRole,
+      blockedDates,
+      managerClosedDates,
+      statuses:loaded.statuses,
+      months:loaded.months,
+      message:blockedDates.length
+        ? periodBlockedMessage(blockedDates,loaded.statuses)
+        : ""
+    };
+  }
+
+  function lockIconHtml(extraClass=""){
+    return `<span class="system-period-cell-lock ${extraClass}" role="img" aria-label="ปิดรอบ" title="ปิดรอบ"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7.5a4 4 0 0 1 8 0V10"></path></svg></span>`;
+  }
+
+  function periodChip(period,month,currentRole){
+    const label=monthLabel(`${month}-01`);
+    if(!period?.configured){
+      return `<span class="schedule-period-chip neutral">${esc(label)}: ยังไม่กำหนดรอบ • ใช้สิทธิ์เดิม</span>`;
+    }
+    const deadline=formatDate(period.schedule_edit_deadline);
+    const managerClosed=periodManagerClosed(period);
+    if(currentRole==="HR_ADMIN" && managerClosed){
+      return `<span class="schedule-period-chip override">${esc(label)}: ปิดสำหรับ Manager • HR Admin Override • ${esc(deadline)}</span>`;
+    }
+    if(currentRole==="MANAGER" && managerClosed){
+      return `<span class="schedule-period-chip closed">${esc(label)}: ปิดจัดกะ • ${esc(deadline)}</span>`;
+    }
+    if(periodDueSoon(period)){
+      return `<span class="schedule-period-chip warning">${esc(label)}: จัดกะได้ • ใกล้ Deadline ${esc(deadline)}</span>`;
+    }
+    return `<span class="schedule-period-chip open">${esc(label)}: จัดกะได้ • ${esc(deadline)}</span>`;
+  }
+
+  function applyIndividualCellPeriod(cell,period,currentRole){
+    const closed=currentRole==="MANAGER" && periodManagerClosed(period);
+    const td=cell.closest("td");
+
+    if(!closed){
+      td?.classList.remove("system-period-closed-cell");
+      cell.querySelector(".system-period-cell-lock")?.remove();
+      if(cell.dataset.periodOriginalDate){
+        cell.dataset.scheduleCell="1";
+        cell.dataset.date=cell.dataset.periodOriginalDate;
+        if(cell.dataset.periodOriginalEmp) cell.dataset.emp=cell.dataset.periodOriginalEmp;
+        if(cell.dataset.periodOriginalShift) cell.dataset.shift=cell.dataset.periodOriginalShift;
+        if(cell.dataset.periodOriginalStatus) cell.dataset.status=cell.dataset.periodOriginalStatus;
+        delete cell.dataset.periodOriginalDate;
+        delete cell.dataset.periodOriginalEmp;
+        delete cell.dataset.periodOriginalShift;
+        delete cell.dataset.periodOriginalStatus;
+      }
+      cell.title=cell.dataset.periodOriginalTitle||cell.title||"";
+      if(cell.dataset.periodOriginalTitle) delete cell.dataset.periodOriginalTitle;
+      return;
+    }
+
+    if(cell.dataset.scheduleCell==="1"){
+      cell.dataset.periodOriginalDate=cell.dataset.date||"";
+      cell.dataset.periodOriginalEmp=cell.dataset.emp||"";
+      cell.dataset.periodOriginalShift=cell.dataset.shift||"";
+      cell.dataset.periodOriginalStatus=cell.dataset.status||"";
+      cell.dataset.periodOriginalTitle=cell.title||"";
+      cell.removeAttribute("data-schedule-cell");
+      cell.removeAttribute("data-emp");
+      cell.removeAttribute("data-date");
+      cell.removeAttribute("data-shift");
+      cell.removeAttribute("data-status");
+    }
+    td?.classList.add("system-period-closed-cell");
+    if(!cell.querySelector(".system-period-cell-lock")) cell.insertAdjacentHTML("beforeend",lockIconHtml());
+    cell.title=`ปิดรอบจัดกะ • ดูข้อมูลได้อย่างเดียว • Deadline ${formatDate(period?.schedule_edit_deadline)}`;
+  }
+
+  function applyTeamDayPeriod(button,period,currentRole){
+    const managerClosed=periodManagerClosed(period);
+    const closed=currentRole==="MANAGER" && managerClosed;
+    if(!button.dataset.periodOriginalTitle) button.dataset.periodOriginalTitle=button.title||"";
+    button.classList.toggle("system-period-team-closed",closed);
+    button.classList.toggle("system-period-team-override",currentRole==="HR_ADMIN"&&managerClosed);
+    button.querySelector(".system-period-team-lock")?.remove();
+    if(closed){
+      button.insertAdjacentHTML("beforeend",lockIconHtml("system-period-team-lock"));
+      button.title=`ปิดรอบจัดกะ • คลิกเพื่อดูรายละเอียดแบบอ่านอย่างเดียว • Deadline ${formatDate(period?.schedule_edit_deadline)}`;
+    }else if(currentRole==="HR_ADMIN"&&managerClosed){
+      button.title=`รอบนี้ปิดสำหรับ Manager • HR Admin สามารถ Override ได้ • Deadline ${formatDate(period?.schedule_edit_deadline)}`;
+    }else{
+      button.title=button.dataset.periodOriginalTitle||button.title||"";
+    }
+  }
+
+  function ensureContextMeta(anchorId,id,className){
+    const anchor=$(anchorId);
+    if(!anchor) return null;
+    let meta=$(id);
+    if(!meta){
+      anchor.insertAdjacentHTML("beforebegin",`<div id="${id}" class="${className}"></div>`);
+      meta=$(id);
+    }
+    return meta;
+  }
+
+  function setContextPeriodMeta(meta,period,date,currentRole,label="รอบจัดกะ"){
+    if(!meta) return;
+    if(!period?.configured){
+      meta.className=`${meta.className.split(" ")[0]} neutral`;
+      meta.innerHTML=`<strong>${esc(label)}</strong><span>เดือนนี้ยังไม่กำหนดรอบ • ใช้งานตามสิทธิ์เดิม</span>`;
+      return;
+    }
+    const managerClosed=periodManagerClosed(period);
+    const deadline=formatDate(period.schedule_edit_deadline);
+    if(currentRole==="HR_ADMIN"&&managerClosed){
+      meta.className=`${meta.className.split(" ")[0]} override`;
+      meta.innerHTML=`<strong>HR Admin Override</strong><span>รอบปิดสำหรับ Manager • คุณยังจัดกะได้ • Deadline ${esc(deadline)}</span>`;
+    }else if(currentRole==="MANAGER"&&managerClosed){
+      meta.className=`${meta.className.split(" ")[0]} closed`;
+      meta.innerHTML=`<strong>🔒 ปิดรอบจัดกะ</strong><span>ดูข้อมูลได้อย่างเดียว • Deadline ${esc(deadline)}</span>`;
+    }else if(periodDueSoon(period)){
+      meta.className=`${meta.className.split(" ")[0]} warning`;
+      meta.innerHTML=`<strong>${esc(label)} • ใกล้ Deadline</strong><span>จัดกะได้ถึง ${esc(deadline)}</span>`;
+    }else{
+      meta.className=`${meta.className.split(" ")[0]} open`;
+      meta.innerHTML=`<strong>${esc(label)} • เปิด</strong><span>จัดกะได้ถึง ${esc(deadline)}</span>`;
+    }
+  }
+
+  function applyDrawerPeriod(period,currentRole){
+    const drawer=$("scheduleTeamDrawer");
+    if(!drawer||drawer.classList.contains("hidden")) return;
+    const meta=ensureContextMeta("scheduleTeamDrawerNote","scheduleTeamPeriodMeta","schedule-context-period-meta team");
+    setContextPeriodMeta(meta,period,"",currentRole,"Team Daily Detail");
+    const closed=currentRole==="MANAGER"&&periodManagerClosed(period);
+    drawer.querySelectorAll("[data-team-assign]").forEach(button=>{
+      if(!button.dataset.periodOriginalHtml) button.dataset.periodOriginalHtml=button.innerHTML;
+      if(!button.dataset.periodOriginalTitle) button.dataset.periodOriginalTitle=button.title||"";
+      button.disabled=closed;
+      button.classList.toggle("period-action-disabled",closed);
+      if(closed){
+        button.innerHTML='<span>🔒</span> ปิดรอบ';
+        button.title=`ปิดรอบจัดกะ • Deadline ${formatDate(period?.schedule_edit_deadline)}`;
+      }else{
+        button.innerHTML=button.dataset.periodOriginalHtml;
+        button.title=button.dataset.periodOriginalTitle;
+      }
+    });
+  }
+
+  function applyMonthPeriod(statuses,currentRole){
+    const modal=$("employeeMonthScheduleModal");
+    if(!modal||modal.classList.contains("hidden")) return;
+    const days=[...modal.querySelectorAll("[data-month-date]")];
+    days.forEach(day=>{
+      const date=day.dataset.monthDate;
+      const period=statuses.get(monthKey(date));
+      const closed=currentRole==="MANAGER"&&periodManagerClosed(period);
+      day.classList.toggle("system-period-month-closed",closed);
+      day.classList.toggle("system-period-month-override",currentRole==="HR_ADMIN"&&periodManagerClosed(period));
+      day.querySelector(".system-period-month-lock")?.remove();
+      if(closed) day.insertAdjacentHTML("afterbegin",lockIconHtml("system-period-month-lock"));
+      const edit=day.querySelector("[data-employee-month-edit-date]");
+      if(edit){
+        if(!edit.dataset.periodOriginalText) edit.dataset.periodOriginalText=edit.textContent||"จัดกะ";
+        edit.disabled=closed;
+        edit.classList.toggle("period-action-disabled",closed);
+        edit.textContent=closed?"🔒 ปิดรอบ":edit.dataset.periodOriginalText;
+      }
+    });
+    const first=days[0]?.dataset?.monthDate;
+    if(first){
+      const period=statuses.get(monthKey(first));
+      const summary=$("employeeMonthScheduleSummary");
+      if(summary){
+        let meta=$("employeeMonthSystemPeriodMeta");
+        if(!meta){
+          summary.insertAdjacentHTML("beforebegin",'<div id="employeeMonthSystemPeriodMeta" class="schedule-context-period-meta month"></div>');
+          meta=$("employeeMonthSystemPeriodMeta");
+        }
+        setContextPeriodMeta(meta,period,first,currentRole,"ปฏิทินรายบุคคล");
+      }
+      const hint=$("employeeMonthEditHint");
+      if(hint){
+        if(currentRole==="MANAGER" && periodManagerClosed(period)){
+          hint.classList.remove("hidden");
+          hint.textContent="รอบนี้ปิดแล้ว • ดู Overview ได้ แต่ไม่สามารถปรับกะ";
+        }else{
+          hint.textContent="คลิก “จัดกะ” ในแต่ละวันเพื่อแก้ไข";
+        }
+      }
+    }
+  }
+
+  function applyAssignmentPeriod(period,currentRole){
+    const modal=$("assignModal");
+    if(!modal||modal.classList.contains("hidden")) return;
+    const info=$("assignEmployeeInfo");
+    let meta=$("assignSystemPeriodMeta");
+    if(info&&!meta){
+      info.insertAdjacentHTML("beforebegin",'<div id="assignSystemPeriodMeta" class="schedule-context-period-meta assignment"></div>');
+      meta=$("assignSystemPeriodMeta");
+    }
+    setContextPeriodMeta(meta,period,$("assignWorkDate")?.value||"",currentRole,"กำหนดกะทำงาน");
+    const closed=currentRole==="MANAGER"&&periodManagerClosed(period);
+    const ids=["assignShiftCode","assignWorkTemplate","assignCustomerStart","assignCustomerEndMode","assignCustomerEnd","assignNote","assignReason","saveAssignmentBtn","deleteAssignmentBtn"];
+    ids.forEach(id=>{
+      const control=$(id);
+      if(!control) return;
+      if(control.dataset.periodLockApplied!=="1"){
+        control.dataset.periodWasDisabled=control.disabled?"1":"0";
+      }
+      if(closed){
+        control.dataset.periodLockApplied="1";
+        control.disabled=true;
+      }else if(control.dataset.periodLockApplied==="1"){
+        control.disabled=control.dataset.periodWasDisabled==="1";
+        delete control.dataset.periodLockApplied;
+        delete control.dataset.periodWasDisabled;
+      }
+    });
+    modal.querySelector(".modal")?.classList.toggle("system-period-assignment-readonly",closed);
   }
 
   async function applySchedulePeriodGuard(forceFresh=false){
     ensureSchedulePeriodMeta();
 
-    const cells=[
-      ...document.querySelectorAll(
-        "#scheduleTableWrap [data-schedule-cell], #scheduleTableWrap [data-period-original-date]"
-      )
-    ];
+    const individualCells=[...document.querySelectorAll(
+      "#scheduleTableWrap [data-schedule-cell], #scheduleTableWrap [data-period-original-date]"
+    )];
+    const teamDays=[...document.querySelectorAll("#scheduleTeamTableWrap [data-team-day-date], #scheduleTableWrap [data-team-day-date]")];
+    const drawerButtons=[...document.querySelectorAll("#scheduleTeamDrawer [data-team-assign]")];
+    const drawerDate=$("scheduleTeamDrawer")?.dataset?.periodDate || null;
+    const monthDays=[...document.querySelectorAll("#employeeMonthScheduleModal [data-month-date]")];
+    const assignDate=$("assignModal")&&!$("assignModal").classList.contains("hidden")
+      ? $("assignWorkDate")?.value
+      : null;
 
-    const dates=[
-      ...new Set(
-        cells
-          .map(
-            scheduleCellDate
-          )
-          .filter(Boolean)
-      )
-    ];
+    const tableDates=uniqueDates([
+      ...individualCells.map(scheduleCellDate),
+      ...teamDays.map(button=>button.dataset.teamDayDate)
+    ]);
+    const allDates=uniqueDates([
+      ...tableDates,
+      ...drawerButtons.map(button=>button.dataset.date),
+      drawerDate,
+      ...monthDays.map(day=>day.dataset.monthDate),
+      assignDate
+    ]);
+    if(!allDates.length) return;
 
-    if(!dates.length){
-      return;
+    const loaded=await loadStatusesForDates(allDates,forceFresh);
+    const statuses=loaded.statuses;
+    const currentRole=role();
+
+    individualCells.forEach(cell=>{
+      const date=scheduleCellDate(cell);
+      if(date) applyIndividualCellPeriod(cell,statuses.get(monthKey(date)),currentRole);
+    });
+
+    teamDays.forEach(button=>{
+      const date=String(button.dataset.teamDayDate||"").slice(0,10);
+      if(date) applyTeamDayPeriod(button,statuses.get(monthKey(date)),currentRole);
+    });
+
+    const effectiveDrawerDate=drawerButtons[0]?.dataset?.date || drawerDate;
+    if(effectiveDrawerDate) applyDrawerPeriod(statuses.get(monthKey(effectiveDrawerDate)),currentRole);
+    applyMonthPeriod(statuses,currentRole);
+    if(assignDate) applyAssignmentPeriod(statuses.get(monthKey(assignDate)),currentRole);
+
+    if($("scheduleSystemPeriodMeta")){
+      const tableMonths=[...new Set(tableDates.map(monthKey))];
+      $("scheduleSystemPeriodMeta").innerHTML=tableMonths.map(month=>
+        periodChip(statuses.get(month),month,currentRole)
+      ).join("");
     }
 
-    const months=[
-      ...new Set(
-        dates.map(
-          monthKey
-        )
-      )
-    ];
-
-    const statuses=
-      new Map();
-
-    await Promise.all(
-      months.map(
-        async month => {
-          const sample=
-            dates.find(
-              date =>
-                monthKey(date)===
-                month
-            );
-          try{
-            statuses.set(
-              month,
-              await getForDate(
-                sample,
-                forceFresh
-              )
-            );
-          }catch(_){
-            statuses.set(
-              month,
-              null
-            );
-          }
-        }
-      )
-    );
-
-    const currentRole=
-      String(
-        app()?.state?.profile?.role
-        || ""
-      ).toUpperCase();
-
-    cells.forEach(
-      cell => {
-        const date=
-          scheduleCellDate(
-            cell
-          );
-
-        if(!date) return;
-
-        const period=
-          statuses.get(
-            monthKey(date)
-          );
-
-        const closed=
-          currentRole==="MANAGER"
-          && period?.configured
-          && period
-            ?.can_schedule_edit === false;
-
-        const td=
-          cell.closest("td");
-
-        if(!closed){
-          td?.classList.remove(
-            "system-period-closed-cell"
-          );
-
-          cell
-            .querySelector(
-              ".system-period-cell-lock"
-            )
-            ?.remove();
-
-          if(
-            cell.dataset
-              .periodOriginalDate
-          ){
-            cell.dataset
-              .scheduleCell =
-              "1";
-
-            cell.dataset.date =
-              cell.dataset
-                .periodOriginalDate;
-
-            if(
-              cell.dataset
-                .periodOriginalEmp
-            ){
-              cell.dataset.emp =
-                cell.dataset
-                  .periodOriginalEmp;
-            }
-
-            if(
-              cell.dataset
-                .periodOriginalShift
-            ){
-              cell.dataset.shift =
-                cell.dataset
-                  .periodOriginalShift;
-            }
-
-            if(
-              cell.dataset
-                .periodOriginalStatus
-            ){
-              cell.dataset.status =
-                cell.dataset
-                  .periodOriginalStatus;
-            }
-
-            delete cell.dataset
-              .periodOriginalDate;
-
-            delete cell.dataset
-              .periodOriginalEmp;
-
-            delete cell.dataset
-              .periodOriginalShift;
-
-            delete cell.dataset
-              .periodOriginalStatus;
-          }
-
-          cell.title =
-            cell.dataset
-              .periodOriginalTitle
-            || cell.title
-            || "";
-
-          if(
-            cell.dataset
-              .periodOriginalTitle
-          ){
-            delete cell.dataset
-              .periodOriginalTitle;
-          }
-
-          return;
-        }
-
-        if(
-          cell.dataset
-            .scheduleCell === "1"
-        ){
-          cell.dataset
-            .periodOriginalDate=
-            cell.dataset.date || "";
-
-          cell.dataset
-            .periodOriginalEmp=
-            cell.dataset.emp || "";
-
-          cell.dataset
-            .periodOriginalShift=
-            cell.dataset.shift || "";
-
-          cell.dataset
-            .periodOriginalStatus=
-            cell.dataset.status || "";
-
-          cell.dataset
-            .periodOriginalTitle=
-            cell.title || "";
-
-          cell.removeAttribute(
-            "data-schedule-cell"
-          );
-          cell.removeAttribute(
-            "data-emp"
-          );
-          cell.removeAttribute(
-            "data-date"
-          );
-          cell.removeAttribute(
-            "data-shift"
-          );
-          cell.removeAttribute(
-            "data-status"
-          );
-        }
-
-        td?.classList.add(
-          "system-period-closed-cell"
-        );
-
-        if(
-          !cell.querySelector(
-            ".system-period-cell-lock"
-          )
-        ){
-          cell.insertAdjacentHTML(
-            "beforeend",
-            `<span
-              class="system-period-cell-lock"
-              role="img"
-              aria-label="ปิดรอบ"
-              title="ปิดรอบ"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-                focusable="false"
-              >
-                <rect
-                  x="5"
-                  y="10"
-                  width="14"
-                  height="10"
-                  rx="2"
-                ></rect>
-                <path
-                  d="M8 10V7.5a4 4 0 0 1 8 0V10"
-                ></path>
-              </svg>
-            </span>`
-          );
-        }
-
-        cell.title=
-          `ปิดรอบจัดกะ • Deadline ${formatDate(
-            period
-              ?.schedule_edit_deadline
-          )}`;
-      }
-    );
-
-    if(
-      $("scheduleSystemPeriodMeta")
-    ){
-      $("scheduleSystemPeriodMeta")
-        .innerHTML=
-        months.map(
-          month => {
-            const period=
-              statuses.get(month);
-
-            if(!period?.configured){
-              return `<span class="schedule-period-chip neutral">${esc(
-                monthLabel(
-                  `${month}-01`
-                )
-              )}: ยังไม่กำหนดรอบ</span>`;
-            }
-
-            const open=
-              currentRole==="HR_ADMIN"
-              || period
-                ?.can_schedule_edit;
-
-            return `<span class="schedule-period-chip ${open?"open":"closed"}">${esc(
-              monthLabel(
-                `${month}-01`
-              )
-            )}: ${open?"จัดกะได้":"ปิดจัดกะ"} • ${esc(
-              formatDate(
-                period
-                  ?.schedule_edit_deadline
-              )
-            )}</span>`;
-          }
-        ).join("");
-    }
+    document.dispatchEvent(new CustomEvent("timeclock:schedule-period-guard-applied",{
+      detail:{role:currentRole,months:loaded.months}
+    }));
   }
 
   async function onScheduleRendered(){
     try{
-      await applySchedulePeriodGuard(
-        true
-      );
+      await applySchedulePeriodGuard(true);
     }catch(error){
-      console.warn(
-        "System Period schedule guard:",
-        error
-      );
+      console.warn("System Period schedule guard:",error);
     }
   }
 
@@ -22229,6 +22360,18 @@ ${skippedSummary(compatibility.skipped)}
       onScheduleRendered
     );
 
+    [
+      "timeclock:team-daily-rendered",
+      "timeclock:employee-month-rendered",
+      "timeclock:schedule-assignment-opened"
+    ].forEach(eventName=>{
+      document.addEventListener(eventName,()=>{
+        applySchedulePeriodGuard(false).catch(error=>
+          console.warn("System Period context guard:",error)
+        );
+      });
+    });
+
     bindSystemPeriodDelegation();
     bindSystemPeriodPageLifecycle();
     fillYearOptions();
@@ -22248,12 +22391,13 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   document.documentElement.dataset.systemPeriodModule =
-    "6.11.15-ready";
+    "6.11.26-ready";
 
   window.TimeClockSystemPeriods={
     VERSION,
     load,
     getForDate,
+    checkScheduleDates,
     openNewPeriod:
       openNew,
     closePeriodModal:
