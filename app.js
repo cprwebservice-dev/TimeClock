@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.17";
-document.documentElement.dataset.timeClockBuild = "6.11.17";
+window.__TIME_CLOCK_BUILD__ = "V6.11.18";
+document.documentElement.dataset.timeClockBuild = "6.11.18";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.17";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.17',
+  version: '6.11.18',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -4854,7 +4854,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             <div class="team-employee-main">
               <div class="team-employee-avatar">${safe(initials)}</div>
               <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
-              <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
+              <div class="team-employee-actions-v61118">
+                <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
+                <button type="button" class="team-assign-btn-v61118" data-team-assign data-emp="${safe(row.emp_code || '')}" data-date="${safe(String(row.work_date || scheduleTeamDrawerState.date || '').slice(0,10))}" title="จัดกะและประมวลผลเวลาทำงานใหม่"><span>✎</span> จัดกะ</button>
+              </div>
             </div>
             <div class="team-employee-detail-grid segments-${splitWorkTemplate ? 'five' : 'three'} ${splitWorkTemplate ? 'double-shift' : ''}">
               <div class="team-detail-card is-shift"><span>กะทำงาน</span>${shiftDetailHtml}</div>
@@ -5614,6 +5617,16 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     async function openAssignment(empCode, workDate) {
+      const teamDailyContext = window.TimeClockTeamDailyReturnContext;
+      if (
+        teamDailyContext?.source === 'team-daily-detail'
+        && (
+          String(teamDailyContext.empCode || '') !== String(empCode || '')
+          || String(teamDailyContext.workDate || '').slice(0,10) !== String(workDate || '').slice(0,10)
+        )
+      ) {
+        window.TimeClockTeamDailyReturnContext = null;
+      }
       if(
         scheduleManagerOwnEmployee(
           empCode
@@ -5726,7 +5739,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         return;
       }
 
-      showLoading("กำลังบันทึกกะและรูปแบบช่วงงาน...");
+      showLoading(
+        window.TimeClockTeamDailyReturnContext?.source === 'team-daily-detail'
+          ? "กำลังบันทึกกะและประมวลผลเวลาทำงาน..."
+          : "กำลังบันทึกกะและรูปแบบช่วงงาน..."
+      );
 
       try {
         const {
@@ -5854,14 +5871,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           return;
         }
 
+        const teamReturnContext = window.TimeClockTeamDailyReturnContext;
         await loadSchedule();
+        if (teamReturnContext?.source === 'team-daily-detail') {
+          await openScheduleTeamDrawer(
+            teamReturnContext.unit || scheduleUnitLabel(currentRow || {}),
+            teamReturnContext.date || savedDate
+          );
+          scheduleTeamDrawerState.filter = teamReturnContext.filter || 'ALL';
+          renderScheduleTeamDrawer();
+          window.TimeClockTeamDailyReturnContext = null;
+        }
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
     }
 
     async function deleteAssignment() {
       if (!confirm("ยืนยันการลบกะที่จัดไว้รายการนี้?")) return;
-      showLoading("กำลังลบกะ...");
+      showLoading(
+        window.TimeClockTeamDailyReturnContext?.source === 'team-daily-detail'
+          ? "กำลังลบกะและประมวลผลเวลาทำงาน..."
+          : "กำลังลบกะ..."
+      );
       try {
         const {
           data:
@@ -5945,7 +5976,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           return;
         }
 
+        const teamReturnContext = window.TimeClockTeamDailyReturnContext;
         await loadSchedule();
+        if (teamReturnContext?.source === 'team-daily-detail') {
+          await openScheduleTeamDrawer(
+            teamReturnContext.unit,
+            teamReturnContext.date || val("assignWorkDate")
+          );
+          scheduleTeamDrawerState.filter = teamReturnContext.filter || 'ALL';
+          renderScheduleTeamDrawer();
+          window.TimeClockTeamDailyReturnContext = null;
+        }
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
     }
@@ -7427,6 +7468,22 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("scheduleTeamDrawerClose")?.addEventListener("click", closeScheduleTeamDrawer);
       $("scheduleTeamDrawerBackdrop")?.addEventListener("click", closeScheduleTeamDrawer);
       $("scheduleTeamDrawer")?.addEventListener("click", event => {
+        const assign = event.target.closest('[data-team-assign]');
+        if (assign) {
+          const empCode = String(assign.dataset.emp || '').trim();
+          const workDate = String(assign.dataset.date || scheduleTeamDrawerState.date || '').slice(0,10);
+          if (!empCode || !workDate) return;
+          window.TimeClockTeamDailyReturnContext = {
+            source: 'team-daily-detail',
+            unit: scheduleTeamDrawerState.unit,
+            date: scheduleTeamDrawerState.date || workDate,
+            filter: scheduleTeamDrawerState.filter || 'ALL',
+            empCode,
+            workDate
+          };
+          openAssignment(empCode, workDate);
+          return;
+        }
         const filter = event.target.closest('[data-team-drawer-filter]');
         if (!filter) return;
         scheduleTeamDrawerState.filter = String(filter.dataset.teamDrawerFilter || 'ALL');

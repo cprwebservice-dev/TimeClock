@@ -12885,3 +12885,351 @@ body.theme-dark .team-day-manual-change-v61117,
 }
 body.theme-dark .team-day-manual-change-v61117 i,
 .dark .team-day-manual-change-v61117 i{background:#c99249}
+
+/* ===== V6.11.18 Schedule Toolbar + Team Daily Assignment ===== */
+#page-schedule > .panel{
+  overflow:hidden;
+  border-color:#d8e4ef;
+  box-shadow:0 8px 24px rgba(30,64,175,.055);
+}
+
+.schedule-toolbar-v61118{
+  display:grid!important;
+  grid-template-columns:minmax(620px,1fr) auto;
+  align-items:end!important;
+  gap:14px!important;
+  padding:2px 0 3px;
+}
+
+.schedule-filter-group-v61118{
+  display:grid;
+  grid-template-columns:minmax(150px,.82fr) minmax(190px,1.08fr) minmax(165px,.9fr) minmax(160px,.9fr);
+  align-items:end;
+  gap:10px;
+  min-width:0;
+}
+
+.schedule-filter-group-v61118 .field{
+  min-width:0!important;
+  margin:0;
+}
+
+.schedule-filter-group-v61118 .field label{
+  margin-bottom:6px;
+  color:#354b63;
+  font-size:11px;
+  font-weight:800;
+}
+
+.schedule-filter-group-v61118 .select,
+.schedule-filter-group-v61118 .input{
+  min-height:42px;
+  border-color:#d4dfeb;
+  background:#fff;
+  box-shadow:0 1px 2px rgba(15,23,42,.02);
+}
+
+.schedule-filter-group-v61118 .select:focus,
+.schedule-filter-group-v61118 .input:focus{
+  border-color:#8dbdf1;
+  box-shadow:0 0 0 3px rgba(59,130,246,.10);
+}
+
+.schedule-week-control-v61118{
+  display:flex;
+  align-items:stretch;
+  gap:7px;
+  padding:6px;
+  border:1px solid #dbe6f0;
+  border-radius:15px;
+  background:linear-gradient(180deg,#fbfdff 0%,#f5f9fd 100%);
+  box-shadow:0 5px 14px rgba(15,23,42,.045);
+}
+
+.schedule-week-nav-v61118{
+  display:flex;
+  align-items:stretch;
+  gap:5px;
+}
+
+.schedule-week-nav-v61118 .btn{
+  min-height:48px;
+  margin:0;
+  border-radius:10px;
+  white-space:nowrap;
+}
+
+.schedule-week-btn-v61118{
+  padding:0 11px!important;
+  border-color:#d9e4ef!important;
+  background:#fff!important;
+  color:#47627d!important;
+  font-weight:750!important;
+}
+
+.schedule-week-btn-v61118:hover{
+  border-color:#abcdf0!important;
+  background:#f4f9ff!important;
+  color:#205f9d!important;
+}
+
+.schedule-week-current-v61118{
+  padding:0 11px!important;
+  border-color:#cfdfef!important;
+  background:#edf5fd!important;
+  color:#28689f!important;
+  font-weight:800!important;
+}
+
+.schedule-period-field-v61118{
+  min-width:232px!important;
+  max-width:270px;
+  min-height:48px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  gap:1px;
+  padding:5px 11px 6px;
+  border:1px solid #c9dcef;
+  border-radius:10px;
+  background:#fff;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.75),0 2px 5px rgba(37,99,235,.045);
+}
+
+.schedule-period-caption-v61118{
+  color:#7890a8;
+  font-size:8.5px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+
+.schedule-period-field-v61118 .schedule-period-label{
+  min-height:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#173d65!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  line-height:1.3;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.schedule-load-btn-v61118{
+  min-height:48px;
+  padding:0 15px!important;
+  border-radius:10px!important;
+  box-shadow:0 6px 13px rgba(37,99,235,.18)!important;
+  white-space:nowrap;
+}
+
+.schedule-load-btn-v61118 > span{
+  display:inline-block;
+  margin-right:4px;
+  font-size:15px;
+  line-height:1;
+}
+
+#page-schedule .schedule-load-status{
+  margin:10px 0 0!important;
+  padding:8px 12px!important;
+  border-radius:10px!important;
+  box-shadow:none!important;
+}
+
+#page-schedule .schedule-pattern-summary{
+  gap:6px!important;
+  padding-top:8px!important;
+}
+
+#page-schedule .pattern-summary-chip{
+  min-height:31px;
+  padding:5px 11px!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+}
+
+/* Team Daily Detail: schedule directly from the employee row. */
+.team-employee-actions-v61118{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+  min-width:0;
+}
+
+.team-assign-btn-v61118{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  min-height:29px;
+  padding:5px 9px;
+  border:1px solid #c9def3;
+  border-radius:9px;
+  background:linear-gradient(180deg,#f9fcff 0%,#edf6ff 100%);
+  color:#24659f;
+  font-family:inherit;
+  font-size:10.5px;
+  font-weight:850;
+  line-height:1;
+  cursor:pointer;
+  box-shadow:0 2px 5px rgba(37,99,235,.06);
+  transition:border-color .15s ease,background .15s ease,transform .15s ease,box-shadow .15s ease;
+}
+
+.team-assign-btn-v61118 span{
+  color:#3b82f6;
+  font-size:12px;
+  font-weight:900;
+}
+
+.team-assign-btn-v61118:hover{
+  transform:translateY(-1px);
+  border-color:#8fbceb;
+  background:#eaf4ff;
+  box-shadow:0 5px 10px rgba(37,99,235,.10);
+}
+
+.team-assign-btn-v61118:focus-visible{
+  outline:2px solid #60a5fa;
+  outline-offset:2px;
+}
+
+.schedule-team-drawer-note::after{
+  content:" • กด ‘จัดกะ’ ที่รายชื่อเพื่อแก้ไขกะ และระบบจะประมวลผลเวลาทำงานใหม่หลังบันทึก";
+  color:#55728f;
+  font-weight:700;
+}
+
+@media(max-width:1500px){
+  .schedule-toolbar-v61118{
+    grid-template-columns:1fr!important;
+  }
+  .schedule-week-control-v61118{
+    width:100%;
+    justify-content:space-between;
+  }
+  .schedule-week-nav-v61118{
+    flex:1;
+  }
+  .schedule-period-field-v61118{
+    flex:1;
+    max-width:none;
+  }
+}
+
+@media(max-width:980px){
+  .schedule-filter-group-v61118{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .schedule-week-control-v61118{
+    flex-wrap:wrap;
+  }
+  .schedule-week-nav-v61118{
+    width:100%;
+    overflow-x:auto;
+  }
+  .schedule-load-btn-v61118{
+    margin-left:auto;
+  }
+}
+
+@media(max-width:680px){
+  .schedule-filter-group-v61118{
+    grid-template-columns:1fr;
+  }
+  .schedule-week-nav-v61118{
+    display:grid;
+    grid-template-columns:auto minmax(180px,1fr) auto;
+    gap:5px;
+  }
+  .schedule-week-current-v61118{
+    grid-column:1/-1;
+    min-height:38px!important;
+  }
+  .schedule-week-btn-v61118 span{
+    display:none;
+  }
+  .schedule-period-field-v61118{
+    min-width:0!important;
+    max-width:none;
+  }
+  .schedule-load-btn-v61118{
+    width:100%;
+  }
+  .team-employee-actions-v61118{
+    grid-column:2;
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+}
+
+body.theme-dark .schedule-filter-group-v61118 .field label,
+.dark .schedule-filter-group-v61118 .field label{
+  color:#c5d5e4;
+}
+
+body.theme-dark .schedule-filter-group-v61118 .select,
+.dark .schedule-filter-group-v61118 .select,
+body.theme-dark .schedule-filter-group-v61118 .input,
+.dark .schedule-filter-group-v61118 .input,
+body.theme-dark .schedule-week-control-v61118,
+.dark .schedule-week-control-v61118,
+body.theme-dark .schedule-period-field-v61118,
+.dark .schedule-period-field-v61118{
+  border-color:#3a5269!important;
+  background:#1e2e3d!important;
+  color:#d8e6f2!important;
+}
+
+body.theme-dark .schedule-week-btn-v61118,
+.dark .schedule-week-btn-v61118{
+  border-color:#40586f!important;
+  background:#213244!important;
+  color:#bdd0e2!important;
+}
+
+body.theme-dark .schedule-week-current-v61118,
+.dark .schedule-week-current-v61118{
+  border-color:#45637f!important;
+  background:#284057!important;
+  color:#d6ebff!important;
+}
+
+body.theme-dark .schedule-period-caption-v61118,
+.dark .schedule-period-caption-v61118{
+  color:#93a9bc;
+}
+
+body.theme-dark .schedule-period-field-v61118 .schedule-period-label,
+.dark .schedule-period-field-v61118 .schedule-period-label{
+  color:#e1edf7!important;
+}
+
+body.theme-dark .team-assign-btn-v61118,
+.dark .team-assign-btn-v61118{
+  border-color:#436582;
+  background:#21384b;
+  color:#c9e6ff;
+  box-shadow:none;
+}
+
+body.theme-dark .team-assign-btn-v61118 span,
+.dark .team-assign-btn-v61118 span{
+  color:#86c4ff;
+}
+
+body.theme-dark .team-assign-btn-v61118:hover,
+.dark .team-assign-btn-v61118:hover{
+  border-color:#5f83a2;
+  background:#28445a;
+}
+
+body.theme-dark .schedule-team-drawer-note::after,
+.dark .schedule-team-drawer-note::after{
+  color:#9fb7ca;
+}

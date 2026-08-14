@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.17 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.18 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.17 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.18 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.17-20260814" rel="stylesheet"/>
+<link href="./app.css?v=6.11.18-20260814" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.17</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.18</span></div>
 </form>
 </div>
 </section>
@@ -278,7 +278,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.17 Auto-confirm on Save</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.10.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.18 Schedule UX + Team Daily Assignment</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -451,19 +451,26 @@
 <section class="page" id="page-schedule">
 <div class="panel">
 <div class="panel-body">
-<div class="toolbar">
+<div class="toolbar schedule-toolbar-v61118">
 <input id="scheduleMonth" type="hidden">
 <input id="schedulePeriodStart" type="hidden">
-<div class="field schedule-period-field"><label>สัปดาห์ที่แสดง</label><div class="schedule-period-label" id="schedulePeriodLabel">-</div></div>
+<div class="schedule-filter-group-v61118">
 <div class="field"><label>พื้นที่</label><select class="select" id="scheduleZone"><option value="">ทุกพื้นที่</option></select></div>
 <div class="field"><label>ทีม / หน่วยงาน</label><select class="select" id="scheduleDepartment"><option value="">ทุกทีม / ทุกหน่วยงาน</option></select></div>
 <div class="field"><label>รูปแบบการทำงาน</label><select class="select" id="schedulePatternFilter"><option value="">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option><option value="UNASSIGNED">ยังไม่ได้กำหนด</option></select></div>
 <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="scheduleSearch" placeholder="รหัสหรือชื่อ"/></div>
-<div class="toolbar-actions schedule-month-actions">
-<button class="btn btn-light" id="schedulePrevMonthBtn" title="สัปดาห์ก่อน">‹ สัปดาห์ก่อน</button>
-<button class="btn btn-light" id="scheduleTodayBtn">สัปดาห์ปัจจุบัน</button>
-<button class="btn btn-light" id="scheduleNextMonthBtn" title="สัปดาห์ถัดไป">สัปดาห์ถัดไป ›</button>
-<button class="btn btn-primary" id="loadScheduleBtn">โหลดตารางกะ</button>
+</div>
+<div class="schedule-week-control-v61118">
+<div class="schedule-week-nav-v61118">
+<button class="btn btn-light schedule-week-btn-v61118" id="schedulePrevMonthBtn" title="สัปดาห์ก่อน">‹ <span>สัปดาห์ก่อน</span></button>
+<div class="schedule-period-field schedule-period-field-v61118">
+<span class="schedule-period-caption-v61118">สัปดาห์ที่แสดง</span>
+<div class="schedule-period-label" id="schedulePeriodLabel">-</div>
+</div>
+<button class="btn btn-light schedule-week-current-v61118" id="scheduleTodayBtn">สัปดาห์ปัจจุบัน</button>
+<button class="btn btn-light schedule-week-btn-v61118" id="scheduleNextMonthBtn" title="สัปดาห์ถัดไป"><span>สัปดาห์ถัดไป</span> ›</button>
+</div>
+<button class="btn btn-primary schedule-load-btn-v61118" id="loadScheduleBtn"><span>↻</span> โหลดตารางกะ</button>
 </div>
 </input></input></div>
 </div>
@@ -2217,6 +2224,6 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=6.11.17-20260814"></script>
+<script src="./app.js?v=6.11.18-20260814"></script>
 </body>
 </html>
