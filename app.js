@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.19";
-document.documentElement.dataset.timeClockBuild = "6.11.19";
+window.__TIME_CLOCK_BUILD__ = "V6.11.20";
+document.documentElement.dataset.timeClockBuild = "6.11.20";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.19";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.19',
+  version: '6.11.20',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1003,49 +1003,90 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return hour * 60 + minute;
     }
 
-    function attendanceAbsenceMinutes(r) {
-      const backendValue = Number(r?.absence_minutes);
-      if (Number.isFinite(backendValue) && backendValue > 0) {
-        return backendValue;
-      }
+    function attendancePunchStateV61120(r) {
+      const shift1In = r?.shift_1_actual_in_at || r?.actual_in_at || r?.first_in;
+      const shift1Out = r?.shift_1_actual_out_at || r?.actual_out_at || r?.last_out;
+      const shift2Planned = Boolean(
+        r?.shift_2_planned_start_at
+        || r?.shift_2_planned_end_at
+      );
+      const paidSegmentCount = Number(r?.paid_segment_count || 0);
+      const templateCode = String(
+        r?.effective_work_template_code
+        || r?.template_code
+        || ''
+      ).trim().toUpperCase();
+      const shift2Required = paidSegmentCount > 1
+        || shift2Planned
+        || templateCode === 'SPLIT_FLEX';
+      const shift2In = r?.shift_2_actual_in_at
+        || r?.actual_in_shift_2_at
+        || r?.actual_in_2_at;
+      const shift2Out = r?.shift_2_actual_out_at
+        || r?.actual_out_shift_2_at
+        || r?.actual_out_2_at;
 
-      const dayType = String(r?.day_type || "")
+      const shift1Complete = Boolean(shift1In && shift1Out);
+      const shift2Complete = !shift2Required || Boolean(shift2In && shift2Out);
+      const complete = shift1Complete && shift2Complete;
+
+      return {
+        shift1In,
+        shift1Out,
+        shift2In,
+        shift2Out,
+        shift2Required,
+        shift1Complete,
+        shift2Complete,
+        complete,
+        anyPunch: Boolean(shift1In || shift1Out || shift2In || shift2Out)
+      };
+    }
+
+    function attendanceAbsenceMinutes(r) {
+      const dayType = String(r?.day_type || '')
         .trim()
         .toUpperCase();
       const rawStatus = String(
         r?.calculation_status
         || r?.attendance_result
         || r?.attendance_status
-        || ""
+        || ''
       ).toUpperCase();
 
       const isLeave =
         Boolean(r?.leave_request_id || r?.leave_type_code)
-        || dayType === "LEAVE"
+        || dayType === 'LEAVE'
         || [
-          "LEAVE_APPROVED",
-          "LEAVE_WITH_TIME",
-          "PARTIAL_LEAVE",
-          "PARTIAL_LEAVE_NO_TIME"
+          'LEAVE_APPROVED',
+          'LEAVE_WITH_TIME',
+          'PARTIAL_LEAVE',
+          'PARTIAL_LEAVE_NO_TIME'
         ].includes(rawStatus);
 
       if (
         isLeave
-        || dayType !== "WORKDAY"
+        || dayType !== 'WORKDAY'
       ) {
         return 0;
       }
 
-      const inTime = r?.actual_in_at || r?.first_in;
-      const outTime = r?.actual_out_at || r?.last_out;
+      // V6.11.20: Punches enriched from ta_get_attendance_shift_punch_meta_v61110
+      // are the final source of truth for presence. A stale backend ABSENCE value must
+      // never override a complete IN/OUT pair (including cross-midnight night shifts).
+      const punchState = attendancePunchStateV61120(r);
+      if (punchState.complete) return 0;
 
-      if (inTime && outTime) return 0;
+      const backendValue = Number(r?.absence_minutes);
+      if (Number.isFinite(backendValue) && backendValue > 0) {
+        return backendValue;
+      }
 
       const start = attendanceClockMinutes(
-        attendanceShiftTime(r,"start")
+        attendanceShiftTime(r,'start')
       );
       const end = attendanceClockMinutes(
-        attendanceShiftTime(r,"end")
+        attendanceShiftTime(r,'end')
       );
 
       if (start != null && end != null) {
@@ -1064,45 +1105,92 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     function attendanceDisplayStatus(r) {
-      const backend = String(r?.display_status || "")
+      const backend = String(r?.display_status || '')
         .trim()
         .toUpperCase();
-
-      if (backend) return backend;
-      if (attendanceAbsenceMinutes(r) > 0) return "ABSENCE";
-
-      const dayType = String(r?.day_type || "")
+      const dayType = String(r?.day_type || '')
         .trim()
         .toUpperCase();
       const rawStatus = String(
         r?.calculation_status
         || r?.attendance_result
         || r?.attendance_status
-        || "NORMAL"
+        || 'NORMAL'
       ).toUpperCase();
 
       if (
         r?.leave_request_id
         || r?.leave_type_code
-        || dayType === "LEAVE"
+        || dayType === 'LEAVE'
         || [
-          "LEAVE_APPROVED",
-          "LEAVE_WITH_TIME",
-          "PARTIAL_LEAVE",
-          "PARTIAL_LEAVE_NO_TIME"
+          'LEAVE_APPROVED',
+          'LEAVE_WITH_TIME',
+          'PARTIAL_LEAVE',
+          'PARTIAL_LEAVE_NO_TIME'
         ].includes(rawStatus)
       ) {
-        return "LEAVE";
+        return 'LEAVE';
       }
 
       if (
-        ["WEEKLY_OFF","COMP_OFF","HOLIDAY"].includes(dayType)
+        ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
       ) {
-        return "DAY_OFF";
+        return 'DAY_OFF';
       }
 
-      if (rawStatus === "OVERTIME") return "NORMAL";
-      return rawStatus || "NORMAL";
+      const punchState = attendancePunchStateV61120(r);
+      if (punchState.complete) {
+        // Preserve meaningful non-absence statuses after complete punches exist.
+        const staleAbsenceStatuses = new Set([
+          'ABSENCE','ABSENT','NO_TIME','MISSING_BOTH','MISSING_IN','MISSING_OUT'
+        ]);
+        if (backend && !staleAbsenceStatuses.has(backend)) return backend;
+        if (rawStatus && !staleAbsenceStatuses.has(rawStatus)) {
+          return rawStatus === 'OVERTIME' ? 'NORMAL' : rawStatus;
+        }
+        if (Number(r?.late_minutes || 0) > 0) return 'LATE';
+        return 'NORMAL';
+      }
+
+      if (attendanceAbsenceMinutes(r) > 0) return 'ABSENCE';
+      if (backend) return backend;
+      if (rawStatus === 'OVERTIME') return 'NORMAL';
+      return rawStatus || 'NORMAL';
+    }
+
+    function normalizeAttendanceStatusFromPunchesV61120(r) {
+      if (!r) return r;
+      const punchState = attendancePunchStateV61120(r);
+      const originalStatus = String(r.display_status || '').trim().toUpperCase();
+      const originalAbsence = Number(r.absence_minutes || 0);
+
+      r.absence_minutes = attendanceAbsenceMinutes(r);
+      r.display_status = attendanceDisplayStatus(r);
+
+      if (r.absence_minutes > 0) {
+        r.absence_reason = !punchState.anyPunch
+          ? 'MISSING_BOTH'
+          : !punchState.shift1In
+            ? 'MISSING_IN'
+            : !punchState.shift1Out
+              ? 'MISSING_OUT'
+              : punchState.shift2Required && !punchState.shift2In
+                ? 'MISSING_IN'
+                : punchState.shift2Required && !punchState.shift2Out
+                  ? 'MISSING_OUT'
+                  : (r.absence_reason || 'MISSING_TIME');
+      } else if (punchState.complete) {
+        r.absence_reason = null;
+      }
+
+      r._attendance_status_corrected_by_punch_v61120 = Boolean(
+        punchState.complete
+        && (
+          ['ABSENCE','ABSENT','NO_TIME','MISSING_BOTH','MISSING_IN','MISSING_OUT'].includes(originalStatus)
+          || originalAbsence > 0
+        )
+      );
+      return r;
     }
 
     function attendanceDisplayLabel(r) {
@@ -3429,7 +3517,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           requestEmployeeCodes,
 
         p_attendance_statuses:
-          statuses,
+          null,
 
         p_schedule_statuses:
           null,
@@ -3448,7 +3536,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         "V6.10.20";
 
       let serverStatusFilter =
-        true;
+        false;
 
       let serverSubAreaFilter =
         true;
@@ -3479,7 +3567,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             requestEmployeeCodes,
 
           p_attendance_statuses:
-            statuses,
+            null,
 
           p_schedule_statuses:
             null,
@@ -3782,37 +3870,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           return enriched;
         });
 
-      if(
-        !serverStatusFilter
-        && statuses?.length
-      ) {
-        const wanted =
-          new Set(
-            statuses.map(
-              status =>
-                String(status)
-                  .toUpperCase()
-            )
-          );
-
-        rows =
-          rows.filter(row =>
-            wanted.has(
-              attendanceDisplayStatus(
-                row
-              )
-            )
-            || wanted.has(
-              String(
-                row.calculation_status
-                || row.attendance_result
-                || row.attendance_status
-                || ""
-              )
-                .toUpperCase()
-            )
-          );
-      }
+      // V6.11.20: status filtering is intentionally deferred until after
+      // punch-meta enrichment. This prevents stale backend ABSENCE values from
+      // excluding rows that actually have complete IN/OUT punches.
 
       return rows;
     }
@@ -3952,6 +4012,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           val("attStart"),
           val("attEnd")
         );
+
+        state.attendance.forEach(
+          normalizeAttendanceStatusFromPunchesV61120
+        );
+
+        if (val("attStatus")) {
+          const wantedStatus = String(val("attStatus") || '').toUpperCase();
+          state.attendance = state.attendance.filter(row =>
+            attendanceDisplayStatus(row) === wantedStatus
+          );
+        }
 
         if(
           !attendanceEmployeeFilter.options
@@ -4644,17 +4715,24 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       if (leave) return 'LEAVE';
       if (['off','holiday'].includes(shiftMeta.tone) || ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)) return 'OFF';
-      if (raw === 'ABSENCE' || raw === 'ABSENT' || Number(row?.absence_minutes || 0) > 0) return 'ABSENCE';
-      if (Number(row?.late_minutes || 0) > 0) return 'LATE';
 
-      const plannedWork = shiftMeta.isWorking;
-      const hasIn = Boolean(row?.actual_in_at || row?.first_in);
-      const hasOut = Boolean(row?.actual_out_at || row?.last_out);
       const workDate = String(row?.work_date || '').slice(0,10);
       const isFuture = Boolean(workDate && workDate > todayISO());
-      const isPastOrToday = !isFuture;
+      const plannedWork = shiftMeta.isWorking;
       if (plannedWork && isFuture) return 'UPCOMING';
-      if (plannedWork && isPastOrToday && !hasIn && !hasOut) return 'ABSENCE';
+
+      // V6.11.20: after punch-meta enrichment, complete IN/OUT beats a stale
+      // ABSENCE/absence_minutes returned by an older attendance calculation row.
+      const punchState = attendancePunchStateV61120(row);
+      if (plannedWork && punchState.complete) {
+        if (Number(row?.late_minutes || 0) > 0 || raw === 'LATE') return 'LATE';
+        return 'NORMAL';
+      }
+
+      if (raw === 'ABSENCE' || raw === 'ABSENT' || Number(row?.absence_minutes || 0) > 0) return 'ABSENCE';
+      if (Number(row?.late_minutes || 0) > 0) return 'LATE';
+      if (plannedWork && !isFuture && !punchState.anyPunch) return 'ABSENCE';
+      if (plannedWork && !isFuture && !punchState.complete) return 'ABSENCE';
       return 'NORMAL';
     }
 
@@ -4670,9 +4748,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     function scheduleTeamActualTime(row, side) {
+      const shift2Out = row?.shift_2_actual_out_at
+        || row?.actual_out_shift_2_at
+        || row?.actual_out_2_at;
       const value = side === 'IN'
-        ? (row?.actual_in_at || row?.first_in)
-        : (row?.actual_out_at || row?.last_out);
+        ? (row?.shift_1_actual_in_at || row?.actual_in_at || row?.first_in)
+        : (shift2Out || row?.shift_1_actual_out_at || row?.actual_out_at || row?.last_out);
       return formatTime(value);
     }
 
@@ -4789,7 +4870,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const key = String(scheduleRow.emp_code || '').trim();
         const attendanceRow = byEmp.get(key) || {};
         const punchRow = byEmpPunch.get(key) || {};
-        return {
+        const merged = {
           ...scheduleRow,
           ...attendanceRow,
           ...punchRow,
@@ -4805,6 +4886,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           effective_shift_start_time: scheduleRow.effective_shift_start_time,
           effective_shift_end_time: scheduleRow.effective_shift_end_time
         };
+        return normalizeAttendanceStatusFromPunchesV61120(merged);
       });
     }
 
@@ -7704,6 +7786,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       attendanceShiftCode,
       attendanceShiftTime,
       normalizeTemplateCodeV665,
+      attendancePunchStateV61120,
+      normalizeAttendanceStatusFromPunchesV61120,
       attendanceAbsenceMinutes,
       attendanceDisplayStatus,
       attendanceDisplayLabel,
