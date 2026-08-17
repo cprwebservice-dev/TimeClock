@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.38 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.39 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.38 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.39 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.38-20260817" rel="stylesheet"/>
+<link href="./app.css?v=6.11.39-20260817" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.38</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.39</span></div>
 </form>
 </div>
 </section>
@@ -230,6 +230,7 @@
 <button class="settings-tab" data-settings-tab="developer">⌘ <span>Developer</span></button>
 <button class="settings-tab" data-settings-tab="features">◆ <span>Feature Flags</span></button>
 <button class="settings-tab" data-settings-tab="shifts">▦ <span>Shift Colors</span></button>
+<button class="settings-tab" id="certificationReasonsSettingsTab" data-settings-tab="certification-reasons">◷ <span>เหตุผลรับรองเวลา</span></button>
 <button class="settings-tab" data-settings-tab="connection">⌁ <span>Connection</span></button>
 <button class="settings-tab" data-settings-tab="about">ⓘ <span>About</span></button>
 </aside>
@@ -271,6 +272,25 @@
 <div class="shift-color-grid" id="shiftColorGrid"></div>
 <div class="settings-actions"><button class="btn btn-light" id="resetShiftColorsBtn">คืนค่าสีเริ่มต้น</button><button class="btn btn-primary" data-save-settings="">บันทึกสีของกะ</button></div>
 </div>
+
+<div class="settings-panel certification-reasons-settings-v61139" data-settings-panel="certification-reasons">
+  <div class="settings-panel-head">
+    <div><h3>เหตุผลการรับรองเวลา</h3><p>Master เหตุผลสำหรับ Manager / HR Admin ใช้รับรองเวลาปฏิบัติงานรายวัน</p></div>
+    <span class="settings-status-dot">HR Admin Master</span>
+  </div>
+  <div class="cert-reason-toolbar-v61139">
+    <label class="cert-reason-search-v61139"><span>⌕</span><input class="input" id="certReasonSearch" placeholder="ค้นหารหัส หรือรายละเอียดเหตุผล"/></label>
+    <button class="btn btn-light" id="certReasonRefreshBtn" type="button">↻ รีเฟรช</button>
+    <button class="btn btn-primary" id="certReasonAddBtn" type="button">＋ เพิ่มเหตุผล</button>
+  </div>
+  <div class="table-wrap cert-reason-table-wrap-v61139">
+    <table class="data-table cert-reason-table-v61139">
+      <thead><tr><th>รหัสเหตุผล</th><th>รายละเอียด</th><th>หมายเหตุ</th><th>สถานะ</th><th>ลำดับ</th><th>จัดการ</th></tr></thead>
+      <tbody id="certReasonTableBody"><tr><td colspan="6" class="empty-cell">กดรีเฟรชเพื่อโหลดเหตุผล</td></tr></tbody>
+    </table>
+  </div>
+  <div class="cert-reason-footnote-v61139">เหตุผลที่เคยถูกใช้งานแล้วควร “ปิดใช้งาน” แทนการลบ เพื่อรักษาประวัติย้อนหลัง</div>
+</div>
 <div class="settings-panel" data-settings-panel="connection">
 <div class="settings-panel-head"><div><h3>Supabase Connection</h3><p>แสดงข้อมูลเชื่อมต่อจาก Browser Storage โดยปิดบังค่า Key</p></div><span class="connection-chip" id="connectionStatus">Not tested</span></div>
 <div class="settings-form-grid"><div class="field settings-span-2"><label>Project URL</label><input class="input" id="setConnectionUrl" readonly=""/></div><div class="field settings-span-2"><label>Publishable / Anon Key</label><input class="input" id="setConnectionKey" readonly=""/></div><div class="field"><label>Project Reference</label><input class="input" id="setProjectRef" readonly=""/></div><div class="field"><label>Session</label><input class="input" id="setSessionStatus" readonly=""/></div></div>
@@ -278,7 +298,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.38</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.38 Monthly Fast Load</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.39</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.39 Time Certification</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -604,6 +624,7 @@
 <button class="admin-module-card" data-admin-open="admin-import"><span class="admin-module-icon">⇧</span><div><strong>นำเข้าพนักงาน</strong><small>ตรวจสอบไฟล์ CSV ก่อนนำเข้าฐานข้อมูล</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-time-import"><span class="admin-module-icon">⇩</span><div><strong>นำเข้าข้อมูลลงเวลา CSV</strong><small>ไฟล์ EmployeeId, InOutDate, InOutTime, InOutMode และ GPS</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-attendance-rebuild"><span class="admin-module-icon">↻</span><div><strong>ประมวลผล Attendance ใหม่</strong><small>ประมวลผลตามช่วงวันที่ พร้อม Progress และ Error Log</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card certification-admin-card-v61139" data-admin-open="system-settings" data-certification-settings-shortcut><span class="admin-module-icon">◷</span><div><strong>เหตุผลการรับรองเวลา</strong><small>เพิ่ม แก้ไข และเปิด/ปิดเหตุผลสำหรับ Time Certification</small></div><em>ตั้งค่า ›</em></button>
 <button class="admin-module-card" data-admin-open="system-settings"><span class="admin-module-icon">⚙</span><div><strong>System Settings</strong><small>Theme, Developer Mode, Feature Flags และ Connection</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="report"><span class="admin-module-icon">▤</span><div><strong>ศูนย์รายงาน</strong><small>ส่งออกรายงานและตรวจประวัติการดาวน์โหลด</small></div><em>เปิด ›</em></button>
 </div>
@@ -1397,6 +1418,70 @@
 </div>
 </div>
 
+
+<!-- Time Certification Modal V6.11.39 -->
+<div class="modal-backdrop hidden time-certification-backdrop-v61139" id="timeCertificationModal" aria-hidden="true">
+  <div class="modal large time-certification-modal-v61139">
+    <div class="modal-header time-certification-modal-head-v61139">
+      <div><span class="eyebrow">TIME CERTIFICATION</span><h3 id="timeCertificationTitle">รับรองเวลาทำงาน</h3><p id="timeCertificationSubtitle">Manager / HR Admin</p></div>
+      <button class="btn btn-light btn-icon" id="timeCertificationClose" type="button" aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body time-certification-body-v61139">
+      <input id="timeCertificationEmpCode" type="hidden"/><input id="timeCertificationWorkDate" type="hidden"/>
+      <div class="time-cert-context-v61139" id="timeCertificationContext"></div>
+      <div class="time-cert-columns-v61139">
+        <section class="time-cert-card-v61139">
+          <div class="time-cert-section-title-v61139"><span>1</span><div><strong>ข้อมูลเวลาเดิม</strong><small>ข้อมูลกะและ Punch จริงจะไม่ถูกแก้ไข</small></div></div>
+          <div class="time-cert-facts-v61139" id="timeCertificationFacts"></div>
+        </section>
+        <section class="time-cert-card-v61139 emphasis">
+          <div class="time-cert-section-title-v61139"><span>2</span><div><strong>เวลาที่รับรอง</strong><small>เวลาเริ่มต้องไม่ก่อนเวลาเริ่มกะ • เวลาสิ้นสุดเกินกะได้</small></div></div>
+          <div class="form-row">
+            <div class="field"><label>วันที่เริ่มรับรอง</label><input class="input" id="timeCertificationStartDate" type="date" readonly/></div>
+            <div class="field"><label>เวลาเริ่มรับรอง *</label><input class="input" id="timeCertificationStartTime" type="time"/></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>วันที่สิ้นสุด *</label><input class="input" id="timeCertificationEndDate" type="date"/></div>
+            <div class="field"><label>เวลาสิ้นสุดรับรอง *</label><input class="input" id="timeCertificationEndTime" type="time"/></div>
+          </div>
+          <div class="time-cert-duration-v61139" id="timeCertificationDuration"></div>
+        </section>
+      </div>
+      <section class="time-cert-card-v61139 reason-card">
+        <div class="time-cert-section-title-v61139"><span>3</span><div><strong>เหตุผลและผู้รับรอง</strong><small>เลือกเหตุผลจาก Master ที่ HR Admin กำหนด</small></div></div>
+        <div class="form-row">
+          <div class="field"><label>เหตุผลการรับรองเวลา *</label><div class="time-cert-reason-picker-v61139"><input class="input" id="timeCertificationReasonSearch" type="search" placeholder="ค้นหารหัสหรือเหตุผล เช่น W10 / ไม่ได้รูดบัตร" autocomplete="off"/><select class="select" id="timeCertificationReason"><option value="">กำลังโหลดเหตุผล...</option></select></div></div>
+          <div class="field"><label>ผู้รับรอง</label><input class="input" id="timeCertificationApprover" readonly/></div>
+        </div>
+        <div class="field"><label>หมายเหตุ <span id="timeCertificationNoteRequired"></span></label><textarea class="textarea" id="timeCertificationNote" placeholder="รายละเอียดเพิ่มเติม / กรณี W90 ต้องระบุเหตุผล"></textarea></div>
+      </section>
+      <div class="time-cert-rule-v61139" id="timeCertificationRule"><span>i</span><div><strong>กติกาการรับรอง</strong><small>เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ และเวลาสิ้นสุดรับรองสามารถเกินเวลาสิ้นสุดกะได้ตามเวลาปฏิบัติงานจริง</small></div></div>
+      <div class="time-cert-existing-v61139 hidden" id="timeCertificationExisting"></div>
+    </div>
+    <div class="modal-footer time-certification-footer-v61139">
+      <button class="btn btn-danger-soft hidden" id="timeCertificationRevokeBtn" type="button" style="margin-right:auto">ยกเลิกการรับรอง</button>
+      <button class="btn btn-light" id="timeCertificationCancelBtn" type="button">ปิด</button>
+      <button class="btn btn-primary" id="timeCertificationSaveBtn" type="button">✓ บันทึกการรับรอง</button>
+    </div>
+  </div>
+</div>
+
+<!-- Time Certification Reason Editor V6.11.39 -->
+<div class="modal-backdrop hidden cert-reason-editor-backdrop-v61139" id="certReasonModal" aria-hidden="true">
+  <div class="modal cert-reason-editor-v61139">
+    <div class="modal-header"><div><span class="eyebrow">HR ADMIN MASTER</span><h3 id="certReasonModalTitle">เพิ่มเหตุผลการรับรองเวลา</h3></div><button class="btn btn-light btn-icon" id="certReasonModalClose" type="button">×</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="field"><label>รหัสเหตุผล *</label><input class="input" id="certReasonCode" maxlength="10" placeholder="เช่น W10"/></div><div class="field"><label>ลำดับ</label><input class="input" id="certReasonSort" type="number" min="0" value="0"/></div></div>
+      <div class="field"><label>รายละเอียดเหตุผล *</label><input class="input" id="certReasonName" placeholder="รายละเอียดที่ Manager เห็นใน Dropdown"/></div>
+      <div class="cert-reason-editor-options-v61139">
+        <label class="checkbox-line"><input id="certReasonRequiresNote" type="checkbox"/> บังคับระบุหมายเหตุ</label>
+        <label class="checkbox-line"><input id="certReasonActive" type="checkbox" checked/> เปิดใช้งาน</label>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" id="certReasonModalCancel" type="button">ยกเลิก</button><button class="btn btn-primary" id="certReasonModalSave" type="button">บันทึกเหตุผล</button></div>
+  </div>
+</div>
+
 <!-- Employee Monthly Schedule Overview V6.11.21 -->
 <div class="modal-backdrop hidden employee-month-modal-backdrop-v61121" id="employeeMonthScheduleModal" aria-hidden="true">
   <div class="modal employee-month-modal-v61121">
@@ -1438,6 +1523,7 @@
         <span><i class="tone-danger"></i>ขาดงาน</span>
         <span><i class="tone-leave"></i>ลา</span>
         <span><i class="tone-off"></i>วันหยุด</span>
+        <span class="time-cert-legend-v61139"><i></i>รับรองแล้ว</span>
         <small>คลิก “จัดกะ” ที่มุมล่างของวันเพื่อปรับกะ</small>
       </div>
       <div class="employee-month-grid-v61121" id="employeeMonthScheduleGrid"></div>
@@ -2327,6 +2413,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.11.38-20260817"></script>
+<script src="./app.js?v=6.11.39-20260817"></script>
 </body>
 </html>

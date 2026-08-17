@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.38";
-document.documentElement.dataset.timeClockBuild = "6.11.38";
+window.__TIME_CLOCK_BUILD__ = "V6.11.39";
+document.documentElement.dataset.timeClockBuild = "6.11.39";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.38";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.38',
+  version: '6.11.39',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1210,8 +1210,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     function attendancePunchStateV61120(r) {
-      const shift1In = r?.shift_1_actual_in_at || r?.actual_in_at || r?.first_in;
-      const shift1Out = r?.shift_1_actual_out_at || r?.actual_out_at || r?.last_out;
+      const certifiedActive = String(r?.certification_status || '').trim().toUpperCase() === 'CERTIFIED' && r?.certified_start_at && r?.certified_end_at;
+      const shift1In = certifiedActive ? r.certified_start_at : (r?.shift_1_actual_in_at || r?.actual_in_at || r?.first_in);
+      const shift1Out = certifiedActive ? r.certified_end_at : (r?.shift_1_actual_out_at || r?.actual_out_at || r?.last_out);
       const shift2Planned = Boolean(
         r?.shift_2_planned_start_at
         || r?.shift_2_planned_end_at
@@ -1222,9 +1223,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         || r?.template_code
         || ''
       ).trim().toUpperCase();
-      const shift2Required = paidSegmentCount > 1
+      const shift2Required = certifiedActive ? false : (paidSegmentCount > 1
         || shift2Planned
-        || templateCode === 'SPLIT_FLEX';
+        || templateCode === 'SPLIT_FLEX');
       const shift2In = r?.shift_2_actual_in_at
         || r?.actual_in_shift_2_at
         || r?.actual_in_2_at;
@@ -5341,6 +5342,326 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return meta.label || '-';
     }
 
+
+    const timeCertificationStateV61139 = {
+      row: null,
+      source: '',
+      reasons: null,
+      reasonLoadedAt: 0
+    };
+
+    function timeCertificationRoleV61139() {
+      return String(state.profile?._realRole || state.profile?.role || '').trim().toUpperCase();
+    }
+
+    function timeCertificationCanActV61139(empCode) {
+      const currentRole = timeCertificationRoleV61139();
+      if (!['HR_ADMIN','MANAGER'].includes(currentRole)) return false;
+      if (currentRole === 'MANAGER' && scheduleManagerOwnEmployee(empCode)) return false;
+      return true;
+    }
+
+    function timeCertificationActiveV61139(row) {
+      return String(row?.certification_status || '').trim().toUpperCase() === 'CERTIFIED'
+        && Boolean(row?.certified_start_at && row?.certified_end_at);
+    }
+
+    function timeCertificationBadgeV61139(row) {
+      const status = String(row?.certification_status || '').trim().toUpperCase();
+      if (status === 'CERTIFIED' && row?.certified_start_at && row?.certified_end_at) {
+        return '<span class="time-cert-badge-v61139 certified">✓ รับรองแล้ว</span>';
+      }
+      if (status === 'STALE') return '<span class="time-cert-badge-v61139 stale">! ต้องรับรองใหม่</span>';
+      if (status === 'REVOKED') return '<span class="time-cert-badge-v61139 revoked">ยกเลิกการรับรอง</span>';
+      return '';
+    }
+
+    function timeCertificationButtonV61139(row, source) {
+      const empCode = String(row?.emp_code || '').trim();
+      const workDate = String(row?.work_date || '').slice(0,10);
+      if (!empCode || !workDate || !timeCertificationCanActV61139(empCode)) return '';
+      const active = timeCertificationActiveV61139(row);
+      return `<button type="button" class="time-cert-action-v61139 ${active ? 'is-certified' : ''}" data-time-certify data-cert-source="${safe(source || '')}" data-emp="${safe(empCode)}" data-date="${safe(workDate)}"><span>${active ? '✓' : '◷'}</span>${active ? 'ดูการรับรอง' : 'รับรองเวลา'}</button>`;
+    }
+
+    function timeCertificationIsoDateV61139(value, fallback = '') {
+      const text = String(value || '');
+      if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0,10);
+      return fallback;
+    }
+
+    function timeCertificationTimeV61139(value) {
+      const text = String(value || '');
+      if (!text) return '';
+      if (text.includes('T')) return text.slice(11,16);
+      const match = text.match(/(\d{2}):(\d{2})/);
+      return match ? `${match[1]}:${match[2]}` : '';
+    }
+
+    function timeCertificationDateTimeLocalV61139(date, time) {
+      if (!date || !time) return '';
+      return `${date}T${time}:00`;
+    }
+
+    function timeCertificationDateTimeMsV61139(date, time) {
+      const value = timeCertificationDateTimeLocalV61139(date, time);
+      const ms = value ? new Date(value).getTime() : NaN;
+      return Number.isFinite(ms) ? ms : null;
+    }
+
+    async function loadTimeCertificationReasonsV61139(force = false) {
+      if (!state.client) return [];
+      if (!force && Array.isArray(timeCertificationStateV61139.reasons) && Date.now() - timeCertificationStateV61139.reasonLoadedAt < 120000) {
+        return timeCertificationStateV61139.reasons;
+      }
+      const { data, error } = await state.client.rpc('ta_list_time_certification_reasons_v61139', { p_include_inactive: false });
+      if (error) throw error;
+      timeCertificationStateV61139.reasons = Array.isArray(data) ? data : [];
+      timeCertificationStateV61139.reasonLoadedAt = Date.now();
+      return timeCertificationStateV61139.reasons;
+    }
+
+    function renderTimeCertificationReasonOptionsV61139(reasons, selected = '') {
+      const select = $('timeCertificationReason');
+      if (!select) return;
+      const current = String(selected || select.value || '').trim().toUpperCase();
+      const query = String(val('timeCertificationReasonSearch') || '').trim().toLowerCase();
+      const visible = (reasons || []).filter(reason => {
+        const code = String(reason.reason_code || '').trim().toUpperCase();
+        const text = `${code} ${String(reason.reason_name || '')}`.toLowerCase();
+        return !query || text.includes(query) || code === current;
+      });
+      select.innerHTML = `<option value="">เลือกเหตุผลการรับรองเวลา${query ? ` • พบ ${visible.length}` : ''}</option>` + visible.map(reason => `<option value="${safe(reason.reason_code)}" ${current === String(reason.reason_code || '').toUpperCase() ? 'selected' : ''}>${safe(reason.reason_code)} · ${safe(reason.reason_name)}</option>`).join('');
+      if (current && visible.some(reason => String(reason.reason_code || '').toUpperCase() === current)) select.value = current;
+      updateTimeCertificationNoteRuleV61139();
+    }
+
+    function updateTimeCertificationNoteRuleV61139() {
+      const code = String(val('timeCertificationReason') || '').trim().toUpperCase();
+      const reason = (timeCertificationStateV61139.reasons || []).find(item => String(item.reason_code || '').toUpperCase() === code);
+      const required = Boolean(reason?.requires_note);
+      const marker = $('timeCertificationNoteRequired');
+      if (marker) marker.textContent = required ? '• จำเป็น' : '• ไม่บังคับ';
+      $('timeCertificationNote')?.classList.toggle('is-required', required);
+    }
+
+    function updateTimeCertificationDurationV61139() {
+      const startDate = val('timeCertificationStartDate');
+      const startTime = val('timeCertificationStartTime');
+      const endDate = val('timeCertificationEndDate');
+      const endTime = val('timeCertificationEndTime');
+      const startMs = timeCertificationDateTimeMsV61139(startDate,startTime);
+      const endMs = timeCertificationDateTimeMsV61139(endDate,endTime);
+      const box = $('timeCertificationDuration');
+      if (!box) return;
+      if (startMs == null || endMs == null || endMs <= startMs) {
+        box.className = 'time-cert-duration-v61139 invalid';
+        box.innerHTML = '<span>!</span><b>ตรวจสอบช่วงเวลารับรอง</b>';
+        return;
+      }
+      const mins = Math.round((endMs - startMs) / 60000);
+      const nextDay = endDate > startDate;
+      box.className = 'time-cert-duration-v61139 valid';
+      box.innerHTML = `<span>✓</span><b>${safe(minutesToHours(mins))}</b><small>${nextDay ? `สิ้นสุดวันถัดไป +${Math.max(1,Math.round((new Date(endDate)-new Date(startDate))/86400000))} วัน` : 'ภายในวันเดียวกัน'}</small>`;
+    }
+
+    async function timeCertificationPeriodMetaV61139(workDate) {
+      try {
+        const check = await window.TimeClockSystemPeriods?.checkScheduleDates?.([workDate], true);
+        const statuses = check?.statuses;
+        if (statuses instanceof Map) return statuses.get(String(workDate).slice(0,7)) || null;
+        if (statuses && typeof statuses === 'object') return statuses[String(workDate).slice(0,7)] || null;
+      } catch (_) {}
+      return null;
+    }
+
+    async function openTimeCertificationModalV61139(row, source = '') {
+      if (!row) return;
+      const empCode = String(row.emp_code || '').trim();
+      const workDate = String(row.work_date || '').slice(0,10);
+      if (!empCode || !workDate) return;
+      if (!timeCertificationCanActV61139(empCode)) {
+        return toast('บัญชีนี้ไม่มีสิทธิ์รับรองเวลาของพนักงานรายนี้','error');
+      }
+
+      const shiftStartRaw = row.shift_1_planned_start_at || row.effective_shift_start_time || row.shift_start_time;
+      const shiftEndRaw = row.shift_1_planned_end_at || row.effective_shift_end_time || row.shift_end_time;
+      const shiftStartTime = timeCertificationTimeV61139(shiftStartRaw);
+      const shiftEndTime = timeCertificationTimeV61139(shiftEndRaw);
+      if (!shiftStartTime || !shiftEndTime) {
+        return toast('ไม่พบเวลาเริ่ม/สิ้นสุดกะ กรุณากำหนดหรือประมวลผลกะก่อนรับรองเวลา','error');
+      }
+
+      const shiftStartDate = timeCertificationIsoDateV61139(shiftStartRaw, workDate);
+      let shiftEndDate = timeCertificationIsoDateV61139(shiftEndRaw, workDate);
+      if (shiftEndDate === workDate) {
+        const startMin = attendanceClockMinutes(shiftStartTime);
+        const endMin = attendanceClockMinutes(shiftEndTime);
+        if (startMin != null && endMin != null && endMin <= startMin) {
+          const d = new Date(`${workDate}T00:00:00`); d.setDate(d.getDate()+1); shiftEndDate = d.toISOString().slice(0,10);
+        }
+      }
+
+      timeCertificationStateV61139.row = { ...row };
+      timeCertificationStateV61139.source = source;
+      setVal('timeCertificationEmpCode', empCode);
+      setVal('timeCertificationWorkDate', workDate);
+      setVal('timeCertificationStartDate', workDate);
+
+      const rawIn = scheduleTeamSegmentActualTime(row,1,'IN');
+      const rawOut = scheduleTeamSegmentActualTime(row,1,'OUT');
+      const active = timeCertificationActiveV61139(row);
+      const late = Number(row.late_minutes || 0) > 0;
+      const missingIn = rawIn === '-';
+      const missingOut = rawOut === '-';
+
+      let defaultStartTime = active ? timeCertificationTimeV61139(row.certified_start_at) : '';
+      if (!defaultStartTime) {
+        defaultStartTime = (late || missingIn) ? shiftStartTime : (timeCertificationTimeV61139(row.shift_1_actual_in_at || row.actual_in_at || row.first_in) || shiftStartTime);
+        const shiftStartMin = attendanceClockMinutes(shiftStartTime);
+        const candidateMin = attendanceClockMinutes(defaultStartTime);
+        if (shiftStartMin != null && candidateMin != null && candidateMin < shiftStartMin) defaultStartTime = shiftStartTime;
+      }
+      let defaultEndDate = active ? timeCertificationIsoDateV61139(row.certified_end_at, shiftEndDate) : shiftEndDate;
+      let defaultEndTime = active ? timeCertificationTimeV61139(row.certified_end_at) : '';
+      if (!defaultEndTime) {
+        defaultEndTime = timeCertificationTimeV61139(row.shift_1_actual_out_at || row.actual_out_at || row.last_out) || shiftEndTime;
+        const actualOutDate = timeCertificationIsoDateV61139(row.shift_1_actual_out_at || row.actual_out_at, '');
+        if (actualOutDate) defaultEndDate = actualOutDate;
+        if (missingOut) { defaultEndDate = shiftEndDate; defaultEndTime = shiftEndTime; }
+      }
+
+      setVal('timeCertificationStartTime', defaultStartTime);
+      setVal('timeCertificationEndDate', defaultEndDate);
+      setVal('timeCertificationEndTime', defaultEndTime);
+      setVal('timeCertificationNote', row.certification_note || '');
+      setVal('timeCertificationReasonSearch', '');
+      setVal('timeCertificationApprover', state.profile?.display_name || state.profile?.email || state.user?.email || '-');
+
+      setText('timeCertificationTitle', active ? 'รายละเอียด / แก้ไขการรับรองเวลา' : 'รับรองเวลาทำงาน');
+      setText('timeCertificationSubtitle', `${row.full_name || empCode} • ${formatDate(workDate)}`);
+      $('timeCertificationContext').innerHTML = `<div><span>พนักงาน</span><strong>${safe(row.full_name || empCode)}</strong><small>${safe(empCode)}${row.position_name ? ` • ${safe(row.position_name)}` : ''}</small></div><div><span>วันที่</span><strong>${safe(formatDate(workDate))}</strong><small>${safe(row.department || '')}</small></div><div><span>กะ</span><strong>${safe(row.effective_shift_code || row.assigned_shift_code || row.shift_code || '-')}</strong><small>${safe(shiftStartTime)}–${safe(shiftEndTime)}${shiftEndDate > workDate ? ' • +1 วัน' : ''}</small></div>`;
+      $('timeCertificationFacts').innerHTML = `<div><span>เวลาเข้า (จริง)</span><strong>${safe(rawIn)}</strong></div><div><span>เวลาออก (จริง)</span><strong>${safe(rawOut)}</strong></div><div><span>สถานะ Attendance</span><strong>${safe(employeeMonthStatusMetaV61121(row,workDate).label || attendanceDisplayLabel(row))}</strong></div><div><span>กะมาตรฐาน</span><strong>${safe(shiftStartTime)}–${safe(shiftEndTime)}</strong></div>`;
+
+      $('timeCertificationExisting')?.classList.toggle('hidden', !active && String(row.certification_status || '').toUpperCase() !== 'STALE');
+      if ($('timeCertificationExisting')) {
+        $('timeCertificationExisting').innerHTML = active
+          ? `<span>✓</span><div><strong>รับรองแล้ว</strong><small>${safe(row.certification_reason_code || '-')} · ${safe(row.certification_reason_name || 'ไม่ระบุเหตุผล')} • ${safe(formatDateTime(row.certified_at || ''))}</small></div>`
+          : '<span>!</span><div><strong>การรับรองเดิมไม่สอดคล้องกับกะปัจจุบัน</strong><small>กรุณาตรวจสอบและบันทึกรับรองใหม่</small></div>';
+      }
+      $('timeCertificationRevokeBtn')?.classList.toggle('hidden', !active);
+
+      try {
+        const reasons = await loadTimeCertificationReasonsV61139();
+        renderTimeCertificationReasonOptionsV61139(reasons, row.certification_reason_code || '');
+      } catch (error) {
+        renderTimeCertificationReasonOptionsV61139([], '');
+        toast(humanError(error),'error');
+      }
+
+      const period = await timeCertificationPeriodMetaV61139(workDate);
+      const currentRole = timeCertificationRoleV61139();
+      const closedForManager = currentRole === 'MANAGER' && period?.configured && period?.can_certify_attendance === false;
+      const saveBtn = $('timeCertificationSaveBtn');
+      if (saveBtn) {
+        saveBtn.disabled = Boolean(closedForManager);
+        saveBtn.textContent = closedForManager ? '🔒 ปิดรอบรับรองเวลา' : '✓ บันทึกการรับรอง';
+      }
+      if ($('timeCertificationRevokeBtn')) $('timeCertificationRevokeBtn').disabled = Boolean(closedForManager);
+      const rule = $('timeCertificationRule');
+      if (rule) {
+        const deadline = period?.attendance_certify_deadline ? formatDate(period.attendance_certify_deadline) : '';
+        rule.classList.toggle('is-closed', Boolean(closedForManager));
+        rule.querySelector('small').textContent = closedForManager
+          ? `รอบรับรองเวลาปิดแล้ว${deadline ? ` • Deadline ${deadline}` : ''}`
+          : `เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ (${shiftStartTime}) และเวลาสิ้นสุดรับรองสามารถเกินเวลาสิ้นสุดกะ (${shiftEndTime}) ได้ตามเวลาปฏิบัติงานจริง`;
+      }
+
+      updateTimeCertificationDurationV61139();
+      $('timeCertificationModal')?.classList.remove('hidden');
+      $('timeCertificationModal')?.setAttribute('aria-hidden','false');
+    }
+
+    function closeTimeCertificationModalV61139() {
+      $('timeCertificationModal')?.classList.add('hidden');
+      $('timeCertificationModal')?.setAttribute('aria-hidden','true');
+      timeCertificationStateV61139.row = null;
+      timeCertificationStateV61139.source = '';
+    }
+
+    async function refreshTimeCertificationSourceV61139(empCode, workDate, source) {
+      if (source === 'employee-month') {
+        employeeMonthCacheInvalidateV61138(empCode, workDate.slice(0,7));
+        await openEmployeeMonthCalendarV61121(empCode, workDate.slice(0,7), { forceFresh: true });
+        return;
+      }
+      if (source === 'team-daily') {
+        await openScheduleTeamDrawer(scheduleTeamDrawerState.unit, scheduleTeamDrawerState.date || workDate);
+      }
+    }
+
+    async function saveTimeCertificationV61139() {
+      const row = timeCertificationStateV61139.row;
+      if (!row) return;
+      const empCode = val('timeCertificationEmpCode');
+      const workDate = val('timeCertificationWorkDate');
+      const startDate = val('timeCertificationStartDate');
+      const startTime = val('timeCertificationStartTime');
+      const endDate = val('timeCertificationEndDate');
+      const endTime = val('timeCertificationEndTime');
+      const reasonCode = String(val('timeCertificationReason') || '').trim().toUpperCase();
+      const note = String(val('timeCertificationNote') || '').trim();
+      if (!startTime || !endDate || !endTime || !reasonCode) return toast('กรุณาระบุช่วงเวลาและเหตุผลการรับรองให้ครบ','error');
+      const reason = (timeCertificationStateV61139.reasons || []).find(x => String(x.reason_code || '').toUpperCase() === reasonCode);
+      if (reason?.requires_note && !note) return toast('เหตุผลนี้ต้องระบุหมายเหตุเพิ่มเติม','error');
+
+      const startMs = timeCertificationDateTimeMsV61139(startDate,startTime);
+      const endMs = timeCertificationDateTimeMsV61139(endDate,endTime);
+      if (startMs == null || endMs == null || endMs <= startMs) return toast('เวลาสิ้นสุดรับรองต้องมากกว่าเวลาเริ่มรับรอง','error');
+
+      const shiftStartTime = timeCertificationTimeV61139(row.shift_1_planned_start_at || row.effective_shift_start_time || row.shift_start_time);
+      const shiftStartMs = timeCertificationDateTimeMsV61139(workDate,shiftStartTime);
+      if (shiftStartMs != null && startMs < shiftStartMs) return toast(`เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ ${shiftStartTime}`,'error');
+
+      const source = timeCertificationStateV61139.source;
+      try {
+        showLoading('กำลังบันทึกและประมวลผล Attendance...');
+        const { error } = await state.client.rpc('ta_save_time_certification_v61139', {
+          p_emp_code: empCode,
+          p_work_date: workDate,
+          p_certified_start_at: timeCertificationDateTimeLocalV61139(startDate,startTime),
+          p_certified_end_at: timeCertificationDateTimeLocalV61139(endDate,endTime),
+          p_reason_code: reasonCode,
+          p_note: note || null
+        });
+        if (error) throw error;
+        closeTimeCertificationModalV61139();
+        toast('บันทึกรับรองเวลาและประมวลผล Attendance เรียบร้อย','success');
+        await refreshTimeCertificationSourceV61139(empCode,workDate,source);
+      } catch (error) {
+        toast(humanError(error),'error');
+      } finally { hideLoading(); }
+    }
+
+    async function revokeTimeCertificationV61139() {
+      const row = timeCertificationStateV61139.row;
+      if (!row) return;
+      const confirmed = await window.TimeClockModal?.confirm?.({ title:'ยกเลิกการรับรองเวลา', message:'ระบบจะยกเลิกเวลาที่รับรองและคำนวณ Attendance กลับจากข้อมูล Punch จริง ต้องการดำเนินการต่อหรือไม่?', confirmText:'ยกเลิกการรับรอง', tone:'danger' });
+      if (!confirmed) return;
+      const empCode = val('timeCertificationEmpCode');
+      const workDate = val('timeCertificationWorkDate');
+      const source = timeCertificationStateV61139.source;
+      try {
+        showLoading('กำลังยกเลิกการรับรองและประมวลผลใหม่...');
+        const { error } = await state.client.rpc('ta_revoke_time_certification_v61139', { p_emp_code:empCode, p_work_date:workDate, p_note:'ยกเลิกจาก Time Certification Modal' });
+        if (error) throw error;
+        closeTimeCertificationModalV61139();
+        toast('ยกเลิกการรับรองเวลาแล้ว','success');
+        await refreshTimeCertificationSourceV61139(empCode,workDate,source);
+      } catch (error) { toast(humanError(error),'error'); }
+      finally { hideLoading(); }
+    }
+
     async function fetchScheduleTeamDayAttendance(unit, date, baseRows) {
       const empCodes = [...new Set((baseRows || []).map(row => String(row.emp_code || '').trim()).filter(Boolean))];
       if (!empCodes.length) return [];
@@ -5417,16 +5738,30 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
       }
 
+      let certificationRows = [];
+      const certificationResponse = await state.client.rpc(
+        'ta_get_time_certification_range_v61139',
+        { p_start_date: date, p_end_date: date, p_emp_codes: empCodes }
+      );
+      if (!certificationResponse.error) {
+        certificationRows = Array.isArray(certificationResponse.data) ? certificationResponse.data : [];
+      } else if (!window.TimeClockShiftAPI?.missingFunction?.(certificationResponse.error)) {
+        console.warn('Team drawer time certification:', certificationResponse.error);
+      }
+
       const byEmp = new Map(data.map(row => [String(row.emp_code || '').trim(), row]));
       const byEmpPunch = new Map(punchMetaRows.map(row => [String(row.emp_code || '').trim(), row]));
+      const byEmpCertification = new Map(certificationRows.map(row => [String(row.emp_code || '').trim(), row]));
       return (baseRows || []).map(scheduleRow => {
         const key = String(scheduleRow.emp_code || '').trim();
         const attendanceRow = byEmp.get(key) || {};
         const punchRow = byEmpPunch.get(key) || {};
+        const certificationRow = byEmpCertification.get(key) || {};
         const merged = {
           ...scheduleRow,
           ...attendanceRow,
           ...punchRow,
+          ...certificationRow,
           emp_code: scheduleRow.emp_code || attendanceRow.emp_code || punchRow.emp_code,
           full_name: attendanceRow.full_name || scheduleRow.full_name,
           department: attendanceRow.department || scheduleRow.department,
@@ -5508,6 +5843,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
               <div class="team-employee-actions-v61118">
                 <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
+                ${timeCertificationBadgeV61139(row)}
+                ${timeCertificationButtonV61139(row,'team-daily')}
                 <button type="button" class="team-assign-btn-v61118" data-team-assign data-emp="${safe(row.emp_code || '')}" data-date="${safe(String(row.work_date || scheduleTeamDrawerState.date || '').slice(0,10))}" title="จัดกะและประมวลผลเวลาทำงานใหม่"><span>✎</span> จัดกะ</button>
               </div>
             </div>
@@ -5747,16 +6084,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           }
         );
 
+        const certificationPromise = state.client.rpc(
+          'ta_get_time_certification_range_v61139',
+          {
+            p_start_date: bounds.start,
+            p_end_date: bounds.end,
+            p_emp_codes: [empCode]
+          }
+        );
+
         const [
           scheduleData,
           workPlanResponse,
           attendanceData,
-          punchResponse
+          punchResponse,
+          certificationResponse
         ] = await Promise.all([
           schedulePromise,
           workPlanPromise,
           attendancePromise,
-          punchPromise
+          punchPromise,
+          certificationPromise
         ]);
 
         const scheduleRows = (scheduleData || [])
@@ -5805,6 +6153,16 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               emp_code: empCode,
               work_date: date
             };
+            Object.assign(row, meta);
+            byDate.set(date, row);
+          });
+        }
+
+        if (!certificationResponse.error) {
+          (certificationResponse.data || []).forEach(meta => {
+            const date = String(meta?.work_date || '').slice(0,10);
+            if (!date) return;
+            const row = byDate.get(date) || { emp_code: empCode, work_date: date };
             Object.assign(row, meta);
             byDate.set(date, row);
           });
@@ -5955,6 +6313,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         if (Number(row?.early_leave_minutes || 0) > 0) earlyDays += 1;
       });
 
+      const certifiedDays = attendanceRows.filter(row => timeCertificationActiveV61139(row)).length;
+
       const anomalyDays = new Set(
         attendanceRows
           .filter(row => attendanceDisplayStatus(row) === 'ABSENCE' || Number(row?.late_minutes || 0) > 0 || Number(row?.early_leave_minutes || 0) > 0)
@@ -5968,7 +6328,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>จำนวนวันที่มาสาย</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
         <div class="month-overview-kpi early"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></div>
         <div class="month-overview-kpi split"><div class="month-kpi-icon">ดึก</div><div><span>งานลูกค้าช่วงดึก</span><small>วันที่มีช่วงงานกะที่ 2</small></div><strong>${safe(formatNumber(splitDays))}</strong></div>
-        <div class="month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>ตรวจรายละเอียดจาก Badge ในแต่ละวัน</small></div>`;
+        <div class="month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>รับรองแล้ว ${safe(formatNumber(certifiedDays))} วัน • ตรวจรายละเอียดจาก Badge ในแต่ละวัน</small></div>`;
 
       const dowNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
       const firstDow = new Date(bounds.year, bounds.month - 1, 1).getDay();
@@ -5996,6 +6356,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const editButton = canEdit && scheduleRow
           ? `<button type="button" class="employee-month-edit-btn" data-employee-month-edit-date="${safe(workDate)}"><span>✎</span> จัดกะ</button>`
           : '';
+        const certificationButton = merged ? timeCertificationButtonV61139(merged,'employee-month') : '';
+        const certificationBadge = merged ? timeCertificationBadgeV61139(merged) : '';
         const isToday = workDate === todayISO();
         const holiday = Boolean(scheduleRow?.is_public_holiday || scheduleRow?.day_type === 'PUBLIC_HOLIDAY');
         const weeklyOff = Boolean(scheduleRow?.is_weekly_off || scheduleRow?.day_type === 'WEEKLY_OFF');
@@ -6006,6 +6368,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
             <span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span>
           </div>
+          ${certificationBadge ? `<div class="employee-month-cert-badge-wrap-v61139">${certificationBadge}</div>` : ``}
           <div class="employee-month-shift tone-${safe(shift.tone)}">
             <div class="employee-month-shift-top-v61127"><b>${safe(shift.code || '-')}</b>${templateCode !== '-' ? `<span class="month-template-code-v61127">${safe(templateCode)}</span>` : ''}</div>
             <small>${safe(shift.label || '-')}</small>
@@ -6017,7 +6380,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           </div>
           ${split ? `<div class="employee-month-punch-grid-v61127 secondary"><div><span>กะ 2 เข้า</span><b>${safe(shift2In)}</b></div><div><span>กะ 2 ออก</span><b>${safe(shift2Out)}</b></div></div>` : ''}
           <div class="employee-month-anomalies">${anomalyHtml || `<span class="month-anomaly ${safe(statusMeta.tone)}">${safe(statusMeta.label)}</span>`}</div>
-          ${editButton}
+          <div class="employee-month-day-actions-v61139">${certificationButton}${editButton}</div>
         </div>`;
       }
 
@@ -8808,6 +9171,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           closeEmployeeMonthCalendarV61121();
           return;
         }
+        const certify = event.target.closest('[data-time-certify]');
+        if (certify) {
+          const workDate = String(certify.dataset.date || '').slice(0,10);
+          const scheduleRow = (employeeMonthCalendarStateV61121.scheduleRows || []).find(row => String(row.work_date || '').slice(0,10) === workDate) || {};
+          const attendanceRow = (employeeMonthCalendarStateV61121.attendanceRows || []).find(row => String(row.work_date || '').slice(0,10) === workDate) || {};
+          openTimeCertificationModalV61139({ ...scheduleRow, ...attendanceRow, emp_code: employeeMonthCalendarStateV61121.empCode, work_date: workDate },'employee-month');
+          return;
+        }
         const edit = event.target.closest('[data-employee-month-edit-date]');
         if (edit) {
           const workDate = String(edit.dataset.employeeMonthEditDate || '').slice(0,10);
@@ -8830,6 +9201,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           openEmployeeMonthCalendarV61121(employeeMonthCalendarStateV61121.empCode, month);
         }
       });
+      $("timeCertificationClose")?.addEventListener("click", closeTimeCertificationModalV61139);
+      $("timeCertificationCancelBtn")?.addEventListener("click", closeTimeCertificationModalV61139);
+      $("timeCertificationModal")?.addEventListener("click", event => { if (event.target === $("timeCertificationModal")) closeTimeCertificationModalV61139(); });
+      $("timeCertificationReason")?.addEventListener("change", updateTimeCertificationNoteRuleV61139);
+      $("timeCertificationReasonSearch")?.addEventListener("input", () => renderTimeCertificationReasonOptionsV61139(timeCertificationStateV61139.reasons || [], val("timeCertificationReason")));
+      ["timeCertificationStartTime","timeCertificationEndDate","timeCertificationEndTime"].forEach(id => $(id)?.addEventListener("input", updateTimeCertificationDurationV61139));
+      $("timeCertificationSaveBtn")?.addEventListener("click", saveTimeCertificationV61139);
+      $("timeCertificationRevokeBtn")?.addEventListener("click", revokeTimeCertificationV61139);
+
       $("employeeMonthRecalcBtn")?.addEventListener("click", recalculateEmployeeMonthV61121);
       $("employeeMonthRefreshBtn")?.addEventListener("click", () => {
         employeeMonthCacheInvalidateV61138(
@@ -8846,6 +9226,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("scheduleTeamDrawerClose")?.addEventListener("click", closeScheduleTeamDrawer);
       $("scheduleTeamDrawerBackdrop")?.addEventListener("click", closeScheduleTeamDrawer);
       $("scheduleTeamDrawer")?.addEventListener("click", event => {
+        const certify = event.target.closest('[data-time-certify]');
+        if (certify) {
+          const empCode = String(certify.dataset.emp || '').trim();
+          const workDate = String(certify.dataset.date || scheduleTeamDrawerState.date || '').slice(0,10);
+          const row = (scheduleTeamDrawerState.rows || []).find(item => String(item.emp_code || '').trim() === empCode && String(item.work_date || '').slice(0,10) === workDate);
+          if (row) openTimeCertificationModalV61139(row,'team-daily');
+          return;
+        }
         const assign = event.target.closest('[data-team-assign]');
         if (assign) {
           const empCode = String(assign.dataset.emp || '').trim();
@@ -9027,6 +9415,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
+      if (msg.includes("TIME_CERTIFICATION_SHIFT_REQUIRED")) return "ไม่พบเวลาเริ่ม/สิ้นสุดกะ กรุณากำหนดกะหรือประมวลผล Attendance ก่อนรับรองเวลา";
+      if (msg.includes("TIME_CERTIFICATION_START_BEFORE_SHIFT")) return "เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ";
+      if (msg.includes("TIME_CERTIFICATION_END_MUST_BE_AFTER_START")) return "เวลาสิ้นสุดรับรองต้องมากกว่าเวลาเริ่มรับรอง";
+      if (msg.includes("TIME_CERTIFICATION_REASON_REQUIRED")) return "กรุณาเลือกเหตุผลการรับรองเวลา";
+      if (msg.includes("TIME_CERTIFICATION_REASON_NOT_ACTIVE")) return "เหตุผลที่เลือกถูกปิดใช้งาน กรุณาเลือกเหตุผลอื่น";
+      if (msg.includes("TIME_CERTIFICATION_NOTE_REQUIRED")) return "เหตุผลนี้ต้องระบุหมายเหตุเพิ่มเติม";
+      if (msg.includes("TIME_CERTIFICATION_PERMISSION_DENIED") || msg.includes("TIME_CERTIFICATION_SCOPE_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์รับรองเวลาของพนักงานรายนี้";
+      if (msg.includes("TIME_CERTIFICATION_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.39 Time Certification ก่อนใช้งานเมนูรับรองเวลา";
       if (msg.includes("SYSTEM_PERIOD_TARGET_ALREADY_EXISTS")) return "มีรอบของเดือนปลายทางอยู่แล้ว ไม่สามารถคัดลอกทับได้";
       if (msg.includes("SYSTEM_PERIOD_INVALID_SCHEDULE_DEADLINE")) return "วันสุดท้ายจัดกะต้องไม่ก่อนเดือนรอบการทำงาน";
       if (msg.includes("SYSTEM_PERIOD_INVALID_CERTIFICATION_DEADLINE")) return "วันสุดท้ายรับรองเวลาต้องไม่ก่อนเดือนรอบการทำงาน";
@@ -9098,7 +9494,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       closeModal,
       ensureSupabaseClient,
       applyProfile,
-      switchPage
+      switchPage,
+      openTimeCertificationModalV61139,
+      loadTimeCertificationReasonsV61139
     });
 
     document.addEventListener("DOMContentLoaded", boot);
@@ -22917,4 +23315,71 @@ ${skippedSummary(compatibility.skipped)}
   } else {
     fillDefaultSupabaseFields();
   }
+})();
+
+
+/* ===== V6.11.39 Time Certification Reason Settings ===== */
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const app = () => window.TimeClockApp;
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let rows = [];
+  let editingCode = '';
+
+  function realRole(){ return String(app()?.state?.profile?._realRole || app()?.state?.profile?.role || '').toUpperCase(); }
+  async function rpc(name,args={}){ const c=app()?.state?.client; if(!c) throw new Error('ยังไม่ได้เชื่อมต่อ Supabase'); const {data,error}=await c.rpc(name,args); if(error) throw error; return data; }
+  function visibleRows(){ const q=String($("certReasonSearch")?.value || '').trim().toLowerCase(); return rows.filter(r => !q || `${r.reason_code} ${r.reason_name}`.toLowerCase().includes(q)); }
+  function render(){
+    const body=$("certReasonTableBody"); if(!body)return;
+    const data=visibleRows();
+    body.innerHTML=data.length?data.map(r=>`<tr><td><b class="cert-reason-code-v61139">${esc(r.reason_code)}</b></td><td>${esc(r.reason_name)}</td><td>${r.requires_note?'<span class="badge badge-orange">บังคับ</span>':'<span class="muted">ไม่บังคับ</span>'}</td><td><span class="cert-reason-status-v61139 ${r.is_active?'active':'inactive'}">${r.is_active?'ใช้งาน':'ปิดใช้งาน'}</span></td><td>${Number(r.sort_order||0).toLocaleString('th-TH')}</td><td><button class="btn btn-light btn-sm" data-cert-reason-edit="${esc(r.reason_code)}">✎ แก้ไข</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty-cell">ไม่พบเหตุผลตามคำค้นหา</td></tr>';
+  }
+  async function load(){
+    if(realRole()!=='HR_ADMIN') return;
+    const body=$("certReasonTableBody"); if(body)body.innerHTML='<tr><td colspan="6" class="empty-cell">กำลังโหลดเหตุผล...</td></tr>';
+    try{ rows=await rpc('ta_list_time_certification_reasons_v61139',{p_include_inactive:true})||[]; render(); }
+    catch(e){ if(body)body.innerHTML=`<tr><td colspan="6" class="empty-cell">${esc(app()?.humanError?.(e)||e.message||e)}</td></tr>`; }
+  }
+  function openEditor(row=null){
+    editingCode=row?.reason_code||'';
+    $("certReasonModalTitle").textContent=row?'แก้ไขเหตุผลการรับรองเวลา':'เพิ่มเหตุผลการรับรองเวลา';
+    $("certReasonCode").value=row?.reason_code||''; $("certReasonCode").readOnly=Boolean(row);
+    $("certReasonName").value=row?.reason_name||''; $("certReasonSort").value=Number(row?.sort_order||0);
+    $("certReasonRequiresNote").checked=Boolean(row?.requires_note); $("certReasonActive").checked=row?Boolean(row.is_active):true;
+    $("certReasonModal").classList.remove('hidden'); $("certReasonModal").setAttribute('aria-hidden','false');
+  }
+  function closeEditor(){ $("certReasonModal")?.classList.add('hidden'); $("certReasonModal")?.setAttribute('aria-hidden','true'); editingCode=''; }
+  async function save(){
+    const code=String($("certReasonCode")?.value||'').trim().toUpperCase(); const name=String($("certReasonName")?.value||'').trim();
+    if(!code||!name){ app()?.toast?.('กรุณาระบุรหัสและรายละเอียดเหตุผล','error'); return; }
+    try{
+      const btn=$("certReasonModalSave"); if(btn)btn.disabled=true;
+      await rpc('ta_admin_save_time_certification_reason_v61139',{p_reason_code:code,p_reason_name:name,p_requires_note:Boolean($("certReasonRequiresNote")?.checked),p_sort_order:Number($("certReasonSort")?.value||0),p_is_active:Boolean($("certReasonActive")?.checked)});
+      closeEditor(); app()?.toast?.('บันทึกเหตุผลการรับรองเวลาแล้ว','success');
+      if(app()?.loadTimeCertificationReasonsV61139) await app().loadTimeCertificationReasonsV61139(true);
+      await load();
+    }catch(e){ app()?.toast?.(app()?.humanError?.(e)||e.message||String(e),'error'); }
+    finally{ const btn=$("certReasonModalSave"); if(btn)btn.disabled=false; }
+  }
+  function activateTab(){
+    const tab=$("certificationReasonsSettingsTab"); if(!tab)return;
+    [...document.querySelectorAll('[data-settings-tab]')].forEach(x=>x.classList.toggle('active',x===tab));
+    [...document.querySelectorAll('[data-settings-panel]')].forEach(x=>x.classList.toggle('active',x.dataset.settingsPanel==='certification-reasons'));
+    load();
+  }
+  function syncVisibility(){ $("certificationReasonsSettingsTab")?.classList.toggle('hidden',realRole()!=='HR_ADMIN'); }
+  document.addEventListener('click',e=>{
+    const tab=e.target.closest('[data-settings-tab="certification-reasons"]'); if(tab){ load(); return; }
+    const shortcut=e.target.closest('[data-certification-settings-shortcut]'); if(shortcut){ setTimeout(activateTab,80); return; }
+    const edit=e.target.closest('[data-cert-reason-edit]'); if(edit){ const row=rows.find(x=>String(x.reason_code)===String(edit.dataset.certReasonEdit)); if(row)openEditor(row); }
+  });
+  document.addEventListener('timeclock:profile-ready',syncVisibility);
+  document.addEventListener('DOMContentLoaded',()=>{
+    syncVisibility();
+    $("certReasonRefreshBtn")?.addEventListener('click',load); $("certReasonAddBtn")?.addEventListener('click',()=>openEditor()); $("certReasonSearch")?.addEventListener('input',render);
+    $("certReasonModalClose")?.addEventListener('click',closeEditor); $("certReasonModalCancel")?.addEventListener('click',closeEditor); $("certReasonModalSave")?.addEventListener('click',save);
+    $("certReasonModal")?.addEventListener('click',e=>{if(e.target===$("certReasonModal"))closeEditor();});
+  });
+  window.TimeClockCertificationReasons={load,render,activateTab};
 })();
