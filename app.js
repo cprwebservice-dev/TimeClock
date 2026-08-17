@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.29";
-document.documentElement.dataset.timeClockBuild = "6.11.29";
+window.__TIME_CLOCK_BUILD__ = "V6.11.34";
+document.documentElement.dataset.timeClockBuild = "6.11.34";
 
 
 /* ===== js/config.js ===== */
@@ -13,12 +13,178 @@ document.documentElement.dataset.timeClockBuild = "6.11.29";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.29',
+  version: '6.11.34',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
 
 ;
+
+
+
+/* ===== V6.11.34 Unified Modal UX ===== */
+(() => {
+  "use strict";
+
+  let activeResolve = null;
+  let activeMode = "confirm";
+
+  const $ = id => document.getElementById(id);
+  const escapeHtml = value => String(value ?? "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'\"':"&quot;","'":"&#39;"}[c]));
+  const nl2br = value => escapeHtml(value).replace(/\n/g,"<br>");
+
+  function modalEls() {
+    return {
+      backdrop: $("globalActionModal"),
+      title: $("globalActionModalTitle"),
+      eyebrow: $("globalActionModalEyebrow"),
+      icon: $("globalActionModalIcon"),
+      message: $("globalActionModalMessage"),
+      inputWrap: $("globalActionModalInputWrap"),
+      inputLabel: $("globalActionModalInputLabel"),
+      input: $("globalActionModalInput"),
+      inputHelp: $("globalActionModalInputHelp"),
+      cancel: $("globalActionModalCancel"),
+      confirm: $("globalActionModalConfirm"),
+      close: $("globalActionModalClose")
+    };
+  }
+
+  function settle(value) {
+    const el = modalEls();
+    el.backdrop?.classList.add("hidden");
+    el.backdrop?.setAttribute("aria-hidden","true");
+    document.body.classList.remove("modal-open-v61134");
+    const resolve = activeResolve;
+    activeResolve = null;
+    if (resolve) resolve(value);
+  }
+
+  function normalizeOptions(input, fallbackTitle) {
+    if (typeof input === "string") return { message: input, title: fallbackTitle };
+    return { ...(input || {}), title: input?.title || fallbackTitle };
+  }
+
+  function open(mode, input) {
+    const options = normalizeOptions(input, mode === "prompt" ? "ระบุรายละเอียด" : "ยืนยันการดำเนินการ");
+    const el = modalEls();
+    if (!el.backdrop) {
+      if (mode === "prompt") return Promise.resolve(window.prompt(options.message || options.title, options.defaultValue || ""));
+      return Promise.resolve(window.confirm(options.message || options.title));
+    }
+
+    if (activeResolve) settle(mode === "prompt" ? null : false);
+    activeMode = mode;
+    el.backdrop.dataset.tone = options.tone || (mode === "prompt" ? "primary" : "warning");
+    el.title.textContent = options.title || "ยืนยันการดำเนินการ";
+    el.eyebrow.textContent = options.eyebrow || (mode === "prompt" ? "กรอกข้อมูล" : "ยืนยันรายการ");
+    el.message.innerHTML = nl2br(options.message || "กรุณาตรวจสอบข้อมูลก่อนดำเนินการ");
+    el.icon.textContent = options.icon || (mode === "prompt" ? "✎" : (options.tone === "danger" ? "!" : "?"));
+    el.cancel.textContent = options.cancelText || "ยกเลิก";
+    el.confirm.textContent = options.confirmText || (mode === "prompt" ? "บันทึก" : "ยืนยัน");
+    el.confirm.className = `btn ${options.tone === "danger" ? "btn-danger" : options.tone === "warning" ? "btn-orange" : "btn-primary"}`;
+
+    if (mode === "prompt") {
+      el.inputWrap.classList.remove("hidden");
+      el.inputLabel.textContent = options.inputLabel || "หมายเหตุ";
+      el.input.placeholder = options.placeholder || "ระบุรายละเอียด...";
+      el.input.value = options.defaultValue || "";
+      el.input.required = Boolean(options.required);
+      el.inputHelp.textContent = options.helpText || (options.required ? "จำเป็นต้องระบุข้อมูล" : "สามารถเว้นว่างได้");
+    } else {
+      el.inputWrap.classList.add("hidden");
+      el.input.value = "";
+      el.input.required = false;
+    }
+
+    el.backdrop.classList.remove("hidden");
+    el.backdrop.setAttribute("aria-hidden","false");
+    document.body.classList.add("modal-open-v61134");
+
+    return new Promise(resolve => {
+      activeResolve = resolve;
+      requestAnimationFrame(() => (mode === "prompt" ? el.input : el.confirm)?.focus());
+    });
+  }
+
+  async function confirmModal(input, options = {}) {
+    const merged = typeof input === "string" ? { ...options, message: input } : input;
+    return Boolean(await open("confirm", merged));
+  }
+
+  async function promptModal(input, options = {}) {
+    const merged = typeof input === "string" ? { ...options, message: input } : input;
+    return await open("prompt", merged);
+  }
+
+  function printPreview(input = {}) {
+    const modal = $("globalPrintModal");
+    const frame = $("globalPrintFrame");
+    if (!modal || !frame) return;
+    $("globalPrintModalTitle").textContent = input.title || "ตัวอย่างก่อนพิมพ์";
+    frame.srcdoc = input.html || "";
+    modal.classList.remove("hidden");
+    modal.setAttribute("aria-hidden","false");
+    document.body.classList.add("modal-open-v61134");
+  }
+
+  function closePrint() {
+    const modal = $("globalPrintModal");
+    const frame = $("globalPrintFrame");
+    modal?.classList.add("hidden");
+    modal?.setAttribute("aria-hidden","true");
+    if (frame) frame.srcdoc = "";
+    document.body.classList.remove("modal-open-v61134");
+  }
+
+  function bind() {
+    const el = modalEls();
+    el.cancel?.addEventListener("click", () => settle(activeMode === "prompt" ? null : false));
+    el.close?.addEventListener("click", () => settle(activeMode === "prompt" ? null : false));
+    el.confirm?.addEventListener("click", () => {
+      if (activeMode === "prompt") {
+        if (el.input.required && !el.input.value.trim()) {
+          el.input.focus();
+          el.input.classList.add("modal-input-invalid-v61134");
+          return;
+        }
+        el.input.classList.remove("modal-input-invalid-v61134");
+        settle(el.input.value);
+      } else settle(true);
+    });
+    el.backdrop?.addEventListener("click", event => {
+      if (event.target === el.backdrop) settle(activeMode === "prompt" ? null : false);
+    });
+    el.input?.addEventListener("input", () => el.input.classList.remove("modal-input-invalid-v61134"));
+
+    $("globalPrintModalClose")?.addEventListener("click", closePrint);
+    $("globalPrintModalCancel")?.addEventListener("click", closePrint);
+    $("globalPrintModal")?.addEventListener("click", event => { if (event.target.id === "globalPrintModal") closePrint(); });
+    $("globalPrintModalPrint")?.addEventListener("click", () => {
+      try { $("globalPrintFrame")?.contentWindow?.focus(); $("globalPrintFrame")?.contentWindow?.print(); }
+      catch (_) { window.TimeClockApp?.toast?.("ไม่สามารถเปิดหน้าพิมพ์ได้", "error"); }
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      if (!$("globalActionModal")?.classList.contains("hidden")) {
+        event.preventDefault();
+        settle(activeMode === "prompt" ? null : false);
+      } else if (!$("globalPrintModal")?.classList.contains("hidden")) {
+        event.preventDefault();
+        closePrint();
+      }
+    }, true);
+  }
+
+  window.TimeClockModal = { confirm: confirmModal, prompt: promptModal, printPreview, closePrint };
+  window.tcConfirm = confirmModal;
+  window.tcPrompt = promptModal;
+  window.tcPrintPreview = printPreview;
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+  else bind();
+})();
 
 /* ===== js/shift-api.js ===== */
 (() => {
@@ -3170,7 +3336,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       const label = SHIFT_PATTERN_META[patternCode]?.label || patternCode;
 
-      if (!confirm(
+      if (!await window.tcConfirm(
         `ยืนยันคำนวณผลใหม่สำหรับ ${label} ช่วง ${formatDate(startDate)}–${formatDate(endDate)}?\n\nระบบจะแบ่งประมวลผลเป็นชุดเล็กเพื่อป้องกัน Timeout`
       )) return;
 
@@ -5771,7 +5937,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const code = employeeMonthCalendarStateV61121.empCode;
       const month = employeeMonthCalendarStateV61121.month;
       if (!code || !month) return;
-      if (!confirm(`ประมวลผลเวลาทำงานใหม่ของ ${code} เดือน ${month} ทั้งเดือน?`)) return;
+      if (!await window.tcConfirm(`ประมวลผลเวลาทำงานใหม่ของ ${code} เดือน ${month} ทั้งเดือน?`)) return;
       const button = $('employeeMonthRecalcBtn');
       if (button) {
         button.disabled = true;
@@ -6851,7 +7017,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         await window.TimeClockSystemPeriods?.refreshScheduleGuard?.(true);
         return;
       }
-      if (!confirm("ยืนยันการลบกะที่จัดไว้รายการนี้?")) return;
+      if (!await window.tcConfirm("ยืนยันการลบกะที่จัดไว้รายการนี้?")) return;
       showLoading(
         window.TimeClockTeamDailyReturnContext?.source === 'team-daily-detail'
           ? "กำลังลบกะและประมวลผลเวลาทำงาน..."
@@ -7067,7 +7233,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     async function deleteHoliday(date) {
-      if (!confirm(`ยืนยันการลบวันหยุด ${formatDate(date)}?`)) return;
+      if (!await window.tcConfirm(`ยืนยันการลบวันหยุด ${formatDate(date)}?`)) return;
       showLoading("กำลังลบวันหยุดและประมวลผลใหม่...");
       try { const { error } = await state.client.rpc("ta_delete_holiday", { p_holiday_date: date, p_change_reason: "ลบจากหน้า HR Admin" }); if (error) throw error; toast("ลบวันหยุดเรียบร้อย", "success"); await loadHolidays(); }
       catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
@@ -7550,7 +7716,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       if (!scope) return;
 
-      if (!confirm(
+      if (!await window.tcConfirm(
         `ยืนยันลบ Scope ${managerScopeTypeLabel(scope.scope_type)}: ${scope.scope_value}?`
       )) return;
 
@@ -9403,7 +9569,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         : ""
     ].join("\n");
 
-    if (!confirm(message)) return;
+    if (!await window.tcConfirm(message)) return;
 
     await savePayload(
       mapped,
@@ -9491,7 +9657,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     if (compatibility.skipped.length) {
-      const proceed = confirm(
+      const proceed = await window.tcConfirm(
         `พบรายการที่ไม่รองรับ ${compatibility.skipped.length.toLocaleString("th-TH")} ช่อง
 
 ${skippedSummary(compatibility.skipped)}
@@ -9529,7 +9695,7 @@ ${skippedSummary(compatibility.skipped)}
   async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
   function copySelection(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการคัดลอก","error");clipboard=rows.map(x=>currentCode(x.row)||"D");refreshSelectionUI();app().toast(`คัดลอก ${clipboard.length} กะแล้ว`,"success");}
   async function pasteSelection(){const targets=selectedRows();if(!clipboard.length)return app()?.toast("ยังไม่มีกะในคลิปบอร์ด","error");if(!targets.length)return app()?.toast("กรุณาเลือกช่องปลายทาง","error");await savePayload(targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"})),"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");}
-  async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!confirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
+  async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!await window.tcConfirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
   async function applyHistory(item,mode){
     const payload=(mode==="undo"?item.before:item.after).map(x=>({...x,note:`${mode} ${item.label}`}));
     const periodCheck=await window.TimeClockSystemPeriods?.checkScheduleDates?.(payload.map(x=>x.work_date),true);
@@ -9670,7 +9836,7 @@ ${skippedSummary(compatibility.skipped)}
   function download(name,content,type){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);downloads.set(name,url);const a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}
   function makeCsv(rows){return "\ufeff"+rows.map(r=>r.map(csvCell).join(",")).join("\n");}
   function makeExcel(rows,title){return `\ufeff<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,'Noto Sans Thai',sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #94a3b8;padding:6px;font-size:11px}th{background:#dbeafe}</style></head><body><h2>${safe(title)}</h2><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;}
-  function printRows(rows,title,range){const w=window.open("","_blank");if(!w)throw new Error("Browser ปิดกั้นหน้าต่าง Print");w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safe(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:'Noto Sans Thai',Arial,sans-serif}h1{font-size:18px;margin:0}p{font-size:10px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #94a3b8;padding:4px;font-size:8px}th{background:#e2e8f0}</style></head><body><h1>${safe(title)}</h1><p>${safe(range)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`);w.document.close();setTimeout(()=>w.print(),250);}
+  function printRows(rows,title,range){const html=`<!doctype html><html><head><meta charset="utf-8"><title>${safe(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:'Noto Sans Thai',Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:18px;margin:0}p{font-size:10px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #94a3b8;padding:4px;font-size:8px}th{background:#e2e8f0}</style></head><body><h1>${safe(title)}</h1><p>${safe(range)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;window.tcPrintPreview({title,html});}
 
   async function build(type){
     const start=val("reportStart"),end=val("reportEnd"),zone=val("reportZone")||null,dept=val("reportDepartment")||null;
@@ -9971,9 +10137,8 @@ ${skippedSummary(compatibility.skipped)}
     download(name,`\ufeff${html}`,"application/vnd.ms-excel;charset=utf-8");
   }
   function printRows(rows,title,subtitle=""){
-    const w=window.open("","_blank"); if(!w) return app()?.toast("Browser ปิดกั้นหน้าต่าง Print กรุณาอนุญาต Popup","error");
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:'Noto Sans Thai',Arial,sans-serif;color:#0f172a}h1{font-size:19px;margin:0}p{font-size:11px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #94a3b8;padding:5px;font-size:9px;vertical-align:top}th{background:#e2e8f0}footer{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:8px;color:#64748b}</style></head><body><h1>${esc(title)}</h1><p>${esc(subtitle)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table><footer>Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer></body></html>`);
-    w.document.close(); setTimeout(()=>{w.focus();w.print();},250);
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:'Noto Sans Thai',Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:19px;margin:0}p{font-size:11px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #94a3b8;padding:5px;font-size:9px;vertical-align:top}th{background:#e2e8f0}footer{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:8px;color:#64748b}</style></head><body><h1>${esc(title)}</h1><p>${esc(subtitle)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table><footer>Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer></body></html>`;
+    window.tcPrintPreview({title,html});
   }
 
   /* ------------------------------------------------------------------
@@ -11799,7 +11964,7 @@ ${skippedSummary(compatibility.skipped)}
   function exportSchedule(format){const rows=scheduleExportRows();if(rows.length<=1)return app()?.toast("ไม่มีข้อมูลตารางกะ","error");const period=window.TimeClockSchedulePeriod?.range?.()||{};const name=`${period.startDate||$("scheduleMonth")?.value}_${period.endDate||""}`;format==="excel"?exportExcel(`Schedule_${name}.xls`,rows,`ตารางจัดกะ ${name}`):printRows(rows,`ตารางจัดกะ ${name}`,`สถานะเดือน ${scheduleMonthStatus.status}`);}
   async function loadScheduleStatus(){if(!$("scheduleMonth")?.value)return;try{scheduleMonthStatus=await rpc("ta_get_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null})||{status:"DRAFT"};}catch(e){scheduleMonthStatus={status:"DRAFT"};}renderScheduleStatus();}
   function renderScheduleStatus(){const s=scheduleMonthStatus.status||"DRAFT",chip=$("scheduleMonthStatusChip");if(chip){chip.textContent=s;chip.className=`fc-chip status-${s}`;}if($("scheduleMonthStatusText"))$("scheduleMonthStatusText").textContent=s==="LOCKED"?"ตารางกะถูกล็อก":s==="PUBLISHED"?"ประกาศตารางกะแล้ว":"ตารางกะฉบับร่าง";if($("scheduleMonthStatusMeta"))$("scheduleMonthStatusMeta").textContent=scheduleMonthStatus.updated_at?`ปรับปรุง ${fmtDateTime(scheduleMonthStatus.updated_at)}${scheduleMonthStatus.published_by_email?` โดย ${scheduleMonthStatus.published_by_email}`:""}`:"ยังไม่ได้ประกาศ";if($("schedulePublishBtn"))$("schedulePublishBtn").textContent=s==="PUBLISHED"||s==="LOCKED"?"กลับเป็นฉบับร่าง":"ประกาศกะ";if($("scheduleLockBtn"))$("scheduleLockBtn").textContent=s==="LOCKED"?"ปลดล็อกเดือน":"ล็อกเดือน";qs("#page-schedule .schedule-workspace")?.classList.toggle("schedule-locked-overlay",s==="LOCKED");qsa("#scheduleTableWrap [data-schedule-cell]").forEach(c=>{c.classList.toggle("is-published",s==="PUBLISHED");c.classList.toggle("is-locked",s==="LOCKED");});}
-  async function setScheduleStatus(action){const label={PUBLISH:"ประกาศตารางกะ",DRAFT:"กลับเป็นฉบับร่าง",LOCK:"ล็อกตารางกะ",UNLOCK:"ปลดล็อกตารางกะ"}[action];if(!confirm(`${label} เดือน ${$("scheduleMonth")?.value}?`))return;try{app()?.showLoading?.(`กำลัง${label}...`);scheduleMonthStatus=await rpc("ta_set_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null,p_action:action,p_note:`ดำเนินการจากหน้า Schedule V${VERSION}`});renderScheduleStatus();app()?.toast(`${label}เรียบร้อย`,"success");loadNotifications();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
+  async function setScheduleStatus(action){const label={PUBLISH:"ประกาศตารางกะ",DRAFT:"กลับเป็นฉบับร่าง",LOCK:"ล็อกตารางกะ",UNLOCK:"ปลดล็อกตารางกะ"}[action];if(!await window.tcConfirm(`${label} เดือน ${$("scheduleMonth")?.value}?`))return;try{app()?.showLoading?.(`กำลัง${label}...`);scheduleMonthStatus=await rpc("ta_set_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null,p_action:action,p_note:`ดำเนินการจากหน้า Schedule V${VERSION}`});renderScheduleStatus();app()?.toast(`${label}เรียบร้อย`,"success");loadNotifications();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
   function publishSchedule(){setScheduleStatus(["PUBLISHED","LOCKED"].includes(scheduleMonthStatus.status)?"DRAFT":"PUBLISH");}
   function toggleScheduleLock(){setScheduleStatus(scheduleMonthStatus.status==="LOCKED"?"UNLOCK":"LOCK");}
   async function loadScheduleHistory(){try{const rows=await rpc("ta_get_shift_assignment_history",{p_emp_code:null,p_work_date:null,p_limit:500})||[];$("scheduleHistoryBody").innerHTML=rows.length?rows.map(r=>`<tr><td>${fmtDateTime(r.changed_at)}</td><td>${esc(r.emp_code)}</td><td>${fmtDate(r.work_date)}</td><td>${esc(r.old_shift_code||"-")}</td><td>${esc(r.new_shift_code||"-")}</td><td>${esc(r.action_type)}</td><td>${esc(r.changed_by_email||"-")}</td><td>${esc(r.change_reason||r.note||"-")}</td></tr>`).join(""):`<tr><td colspan="8" class="fc-empty">ไม่พบประวัติ</td></tr>`;$("scheduleHistoryModal")?.classList.remove("hidden");}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}}
@@ -14119,7 +14284,7 @@ ${skippedSummary(compatibility.skipped)}
     const start=$("attRebuildStart")?.value,end=$("attRebuildEnd")?.value,batch=Number($("attRebuildBatchSize")?.value||100),note=$("attRebuildNote")?.value?.trim()||null;
     if(!start||!end)return toast("กรุณาระบุช่วงวันที่","error");
     if(start>end)return toast("วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด","error");
-    if(!confirm(`สร้างงานประมวลผล Attendance ใหม่ช่วง ${start} ถึง ${end}?\n\nระบบจะแบ่งประมวลผลเป็นชุดย่อยและบันทึก Error Log โดยไม่หยุดทั้งงาน`))return;
+    if(!await window.tcConfirm(`สร้างงานประมวลผล Attendance ใหม่ช่วง ${start} ถึง ${end}?\n\nระบบจะแบ่งประมวลผลเป็นชุดย่อยและบันทึก Error Log โดยไม่หยุดทั้งงาน`))return;
     try{
       $("attRebuildStartBtn").disabled=true;
       app()?.showLoading?.("กำลังสร้างรายการประมวลผล Attendance...");
@@ -14155,7 +14320,7 @@ ${skippedSummary(compatibility.skipped)}
 
   async function control(action){
     const id=state.activeJob?.id||state.selectedJobId;if(!id)return;
-    if(action==="CANCEL"&&!confirm("ยืนยันยกเลิก Job นี้? Task ที่ประมวลผลสำเร็จแล้วจะยังคงอยู่"))return;
+    if(action==="CANCEL"&&!await window.tcConfirm("ยืนยันยกเลิก Job นี้? Task ที่ประมวลผลสำเร็จแล้วจะยังคงอยู่"))return;
     try{
       if(action==="PAUSE")state.stop=true;
       const job=await rpc("ta_control_attendance_rebuild_job",{p_job_id:id,p_action:action});
@@ -14167,7 +14332,7 @@ ${skippedSummary(compatibility.skipped)}
 
   async function retryErrors(){
     const id=state.activeJob?.id||state.selectedJobId;if(!id)return;
-    if(!confirm("นำ Task ที่ล้มเหลวกลับมาประมวลผลอีกครั้ง?"))return;
+    if(!await window.tcConfirm("นำ Task ที่ล้มเหลวกลับมาประมวลผลอีกครั้ง?"))return;
     try{const job=await rpc("ta_retry_attendance_rebuild_errors",{p_job_id:id});renderProgress(job);await loadHistory(false);runWorker(id);}catch(e){toast(human(e),"error");}
   }
 
@@ -14677,7 +14842,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   async function decideShiftRequest(id,decision) {
-    const note = prompt(
+    const note = await window.tcPrompt(
       decision === "APPROVED"
         ? "หมายเหตุการอนุมัติ"
         : "ระบุเหตุผลที่ไม่อนุมัติ"
@@ -14716,7 +14881,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   async function cancelShiftRequest(id) {
-    const note = prompt("เหตุผลการยกเลิกคำขอ");
+    const note = await window.tcPrompt("เหตุผลการยกเลิกคำขอ");
     if (note === null) return;
 
     app()?.showLoading?.("กำลังยกเลิกคำขอ...");
@@ -14777,7 +14942,7 @@ ${skippedSummary(compatibility.skipped)}
       }
     } catch (_) {}
 
-    const note = prompt(
+    const note = await window.tcPrompt(
       action === "REVOKE"
         ? "เหตุผลการยกเลิกการรับรอง"
         : "หมายเหตุการรับรองเวลาทำงาน"
@@ -15376,7 +15541,7 @@ ${skippedSummary(compatibility.skipped)}
     }
 
     if (
-      !confirm(
+      !await window.tcConfirm(
         orgDropDescription(
           dragged,
           target,
@@ -15832,7 +15997,7 @@ ${skippedSummary(compatibility.skipped)}
     const unit = state.detail?.unit;
     if(
       !unit
-      || !confirm(`ยืนยันปิดใช้งาน ${unit.org_code} • ${unit.org_name}?`)
+      || !await window.tcConfirm(`ยืนยันปิดใช้งาน ${unit.org_code} • ${unit.org_name}?`)
     ) return;
 
     A().showLoading?.("กำลังปิดใช้งานหน่วยงาน...");
@@ -16532,7 +16697,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   async function deleteManager(scopeId) {
-    if(!confirm("ยืนยันลบ Manager Scope รายการนี้?")) return;
+    if(!await window.tcConfirm("ยืนยันลบ Manager Scope รายการนี้?")) return;
     A().showLoading?.("กำลังลบ Manager...");
     try {
       await rpc("ta_delete_manager_scope_v690",{p_scope_id:scopeId});
@@ -21192,7 +21357,7 @@ ${skippedSummary(compatibility.skipped)}
         : "การรับรองเวลา";
 
     if(
-      !confirm(
+      !await window.tcConfirm(
         `${next?"เปิด":"ปิด"}${label} สำหรับรอบ ${monthLabel(
           month
         )}?`
@@ -21249,7 +21414,7 @@ ${skippedSummary(compatibility.skipped)}
       );
 
     if(
-      !confirm(
+      !await window.tcConfirm(
         `คัดลอกรอบ ${monthLabel(
           `${sourceKey}-01`
         )} ไปเป็น ${monthLabel(
