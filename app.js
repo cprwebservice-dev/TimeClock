@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.43";
-document.documentElement.dataset.timeClockBuild = "6.11.43";
+window.__TIME_CLOCK_BUILD__ = "V6.11.44";
+document.documentElement.dataset.timeClockBuild = "6.11.44";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.43";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.43',
+  version: '6.11.44',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5366,6 +5366,24 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         && Boolean(row?.certified_start_at && row?.certified_end_at);
     }
 
+    function timeCertificationStaleV61144(row) {
+      return String(row?.certification_status || '').trim().toUpperCase() === 'STALE';
+    }
+
+    function timeCertificationPeriodManagerClosedV61144(period) {
+      if (!period?.configured) return false;
+      return period?.can_certify_attendance === false
+        || period?.certification_open === false
+        || period?.certification_deadline_passed === true
+        || ['CLOSED_MANUAL','CLOSED_DEADLINE'].includes(
+          String(period?.certification_status || '').trim().toUpperCase()
+        );
+    }
+
+    function timeCertificationPeriodDueSoonV61144(period) {
+      return String(period?.certification_status || '').trim().toUpperCase() === 'DUE_SOON';
+    }
+
     function timeCertificationBadgeV61139(row) {
       const status = String(row?.certification_status || '').trim().toUpperCase();
       if (status === 'CERTIFIED' && row?.certified_start_at && row?.certified_end_at) {
@@ -5439,7 +5457,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (timeCertificationBlockedReasonV61143(row)) return '';
 
       const active = timeCertificationActiveV61139(row);
-      return `<button type="button" class="time-cert-action-v61139 ${active ? 'is-certified' : ''}" data-time-certify data-cert-source="${safe(source || '')}" data-emp="${safe(empCode)}" data-date="${safe(workDate)}"><span>${active ? '✓' : '◷'}</span>${active ? 'ดูการรับรอง' : 'รับรองเวลา'}</button>`;
+      const stale = timeCertificationStaleV61144(row);
+      const stateClass = active ? 'is-certified' : stale ? 'is-stale' : '';
+      const icon = active ? '✓' : stale ? '↻' : '◷';
+      const label = active ? 'ดูการรับรอง' : stale ? 'รับรองใหม่' : 'รับรองเวลา';
+
+      return `<button type="button" class="time-cert-action-v61139 ${stateClass}" data-time-certify data-cert-source="${safe(source || '')}" data-emp="${safe(empCode)}" data-date="${safe(workDate)}" data-cert-state="${active ? 'CERTIFIED' : stale ? 'STALE' : 'NONE'}"><span>${icon}</span>${label}</button>`;
     }
 
     function timeCertificationIsoDateV61139(value, fallback = '') {
@@ -5525,12 +5548,13 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     async function timeCertificationPeriodMetaV61139(workDate) {
       try {
-        const check = await window.TimeClockSystemPeriods?.checkScheduleDates?.([workDate], true);
-        const statuses = check?.statuses;
-        if (statuses instanceof Map) return statuses.get(String(workDate).slice(0,7)) || null;
-        if (statuses && typeof statuses === 'object') return statuses[String(workDate).slice(0,7)] || null;
-      } catch (_) {}
-      return null;
+        return await window.TimeClockSystemPeriods?.getForDate?.(
+          String(workDate || '').slice(0,10),
+          true
+        ) || null;
+      } catch (_) {
+        return null;
+      }
     }
 
     async function openTimeCertificationModalV61139(row, source = '') {
@@ -5607,16 +5631,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       setVal('timeCertificationReasonSearch', '');
       setVal('timeCertificationApprover', state.profile?.display_name || state.profile?.email || state.user?.email || '-');
 
-      setText('timeCertificationTitle', active ? 'รายละเอียด / แก้ไขการรับรองเวลา' : 'รับรองเวลาทำงาน');
+      const staleCertification = timeCertificationStaleV61144(row);
+      setText(
+        'timeCertificationTitle',
+        active
+          ? 'รายละเอียด / แก้ไขการรับรองเวลา'
+          : staleCertification
+            ? 'รับรองเวลาใหม่'
+            : 'รับรองเวลาทำงาน'
+      );
       setText('timeCertificationSubtitle', `${row.full_name || empCode} • ${formatDate(workDate)}`);
       $('timeCertificationContext').innerHTML = `<div><span>พนักงาน</span><strong>${safe(row.full_name || empCode)}</strong><small>${safe(empCode)}${row.position_name ? ` • ${safe(row.position_name)}` : ''}</small></div><div><span>วันที่</span><strong>${safe(formatDate(workDate))}</strong><small>${safe(row.department || '')}</small></div><div><span>กะ</span><strong>${safe(row.effective_shift_code || row.assigned_shift_code || row.shift_code || '-')}</strong><small>${safe(shiftStartTime)}–${safe(shiftEndTime)}${shiftEndDate > workDate ? ' • +1 วัน' : ''}</small></div>`;
       $('timeCertificationFacts').innerHTML = `<div><span>เวลาเข้า (จริง)</span><strong>${safe(rawIn)}</strong></div><div><span>เวลาออก (จริง)</span><strong>${safe(rawOut)}</strong></div><div><span>สถานะ Attendance</span><strong>${safe(employeeMonthStatusMetaV61121(row,workDate).label || attendanceDisplayLabel(row))}</strong></div><div><span>กะมาตรฐาน</span><strong>${safe(shiftStartTime)}–${safe(shiftEndTime)}</strong></div>`;
 
       $('timeCertificationExisting')?.classList.toggle('hidden', !active && String(row.certification_status || '').toUpperCase() !== 'STALE');
       if ($('timeCertificationExisting')) {
+        const oldCertifiedStart = timeCertificationTimeV61139(row.certified_start_at) || '-';
+        const oldCertifiedEnd = timeCertificationTimeV61139(row.certified_end_at) || '-';
+        const oldShiftStart = timeCertificationTimeV61139(row.certification_shift_start_at) || '-';
+        const oldShiftEnd = timeCertificationTimeV61139(row.certification_shift_end_at) || '-';
         $('timeCertificationExisting').innerHTML = active
           ? `<span>✓</span><div><strong>รับรองแล้ว</strong><small>${safe(row.certification_reason_code || '-')} · ${safe(row.certification_reason_name || 'ไม่ระบุเหตุผล')} • ${safe(formatDateTime(row.certified_at || ''))}</small></div>`
-          : '<span>!</span><div><strong>การรับรองเดิมไม่สอดคล้องกับกะปัจจุบัน</strong><small>กรุณาตรวจสอบและบันทึกรับรองใหม่</small></div>';
+          : `<span>!</span><div><strong>กะมีการเปลี่ยนแปลงหลังการรับรองครั้งล่าสุด</strong><small>การรับรองเดิม ${safe(oldCertifiedStart)}–${safe(oldCertifiedEnd)} • กะเดิม ${safe(row.certification_shift_code || '-')} ${safe(oldShiftStart)}–${safe(oldShiftEnd)} • กรุณาตรวจสอบกะปัจจุบันและรับรองใหม่</small></div>`;
       }
       $('timeCertificationRevokeBtn')?.classList.toggle('hidden', !active);
 
@@ -5630,20 +5666,43 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       const period = await timeCertificationPeriodMetaV61139(workDate);
       const currentRole = timeCertificationRoleV61139();
-      const closedForManager = currentRole === 'MANAGER' && period?.configured && period?.can_certify_attendance === false;
+      const managerPeriodClosed = timeCertificationPeriodManagerClosedV61144(period);
+      const closedForManager = currentRole === 'MANAGER' && managerPeriodClosed;
+      const hrOverride = currentRole === 'HR_ADMIN' && managerPeriodClosed;
+      const dueSoon = timeCertificationPeriodDueSoonV61144(period);
       const saveBtn = $('timeCertificationSaveBtn');
+
       if (saveBtn) {
         saveBtn.disabled = Boolean(closedForManager);
-        saveBtn.textContent = closedForManager ? '🔒 ปิดรอบรับรองเวลา' : '✓ บันทึกการรับรอง';
+        saveBtn.classList.toggle('is-hr-override-v61144', hrOverride);
+        saveBtn.classList.toggle('is-period-due-v61144', !closedForManager && dueSoon);
+        saveBtn.textContent = closedForManager
+          ? '🔒 ปิดรอบรับรองเวลา'
+          : staleCertification
+            ? '↻ บันทึกรับรองใหม่'
+            : '✓ บันทึกการรับรอง';
       }
-      if ($('timeCertificationRevokeBtn')) $('timeCertificationRevokeBtn').disabled = Boolean(closedForManager);
+
+      if ($('timeCertificationRevokeBtn')) {
+        $('timeCertificationRevokeBtn').disabled = Boolean(closedForManager);
+      }
+
       const rule = $('timeCertificationRule');
       if (rule) {
-        const deadline = period?.attendance_certify_deadline ? formatDate(period.attendance_certify_deadline) : '';
+        const deadline = period?.attendance_certify_deadline
+          ? formatDate(period.attendance_certify_deadline)
+          : '';
         rule.classList.toggle('is-closed', Boolean(closedForManager));
+        rule.classList.toggle('is-override-v61144', Boolean(hrOverride));
+        rule.classList.toggle('is-due-v61144', Boolean(!closedForManager && dueSoon));
+
         rule.querySelector('small').textContent = closedForManager
-          ? `รอบรับรองเวลาปิดแล้ว${deadline ? ` • Deadline ${deadline}` : ''}`
-          : `เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ (${shiftStartTime}) และเวลาสิ้นสุดรับรองสามารถเกินเวลาสิ้นสุดกะ (${shiftEndTime}) ได้ตามเวลาปฏิบัติงานจริง`;
+          ? `รอบรับรองเวลาปิดสำหรับ Manager${deadline ? ` • Deadline ${deadline}` : ''}`
+          : hrOverride
+            ? `รอบรับรองเวลาปิดสำหรับ Manager${deadline ? ` • Deadline ${deadline}` : ''} • HR Admin Override`
+            : dueSoon
+              ? `รอบรับรองเวลาใกล้ครบกำหนด${deadline ? ` • Deadline ${deadline}` : ''} • เวลาเริ่มต้องไม่ก่อน ${shiftStartTime}`
+              : `เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ (${shiftStartTime}) และเวลาสิ้นสุดรับรองสามารถเกินเวลาสิ้นสุดกะ (${shiftEndTime}) ได้ตามเวลาปฏิบัติงานจริง`;
       }
 
       updateTimeCertificationDurationV61139();
@@ -22287,6 +22346,20 @@ ${skippedSummary(compatibility.skipped)}
     return String(period?.schedule_status || "").toUpperCase() === "DUE_SOON";
   }
 
+  function certificationPeriodManagerClosedV61144(period){
+    if(!period?.configured) return false;
+    return period.can_certify_attendance === false
+      || period.certification_open === false
+      || period.certification_deadline_passed === true
+      || ["CLOSED_MANUAL","CLOSED_DEADLINE"].includes(
+        String(period.certification_status || "").toUpperCase()
+      );
+  }
+
+  function certificationPeriodDueSoonV61144(period){
+    return String(period?.certification_status || "").toUpperCase() === "DUE_SOON";
+  }
+
   function uniqueDates(values){
     return [...new Set((values || [])
       .map(value => String(value || "").slice(0,10))
@@ -22557,6 +22630,117 @@ ${skippedSummary(compatibility.skipped)}
     modal.querySelector(".modal")?.classList.toggle("system-period-assignment-readonly",closed);
   }
 
+  function applyCertificationPeriodButtonV61144(button,period,currentRole){
+    if(!button) return;
+
+    if(!button.dataset.certOriginalHtml){
+      button.dataset.certOriginalHtml=button.innerHTML;
+    }
+    if(!button.dataset.certOriginalTitle){
+      button.dataset.certOriginalTitle=button.title||"";
+    }
+
+    const managerClosed=certificationPeriodManagerClosedV61144(period);
+    const closed=currentRole==="MANAGER"&&managerClosed;
+    const override=currentRole==="HR_ADMIN"&&managerClosed;
+    const dueSoon=certificationPeriodDueSoonV61144(period);
+    const deadline=formatDate(period?.attendance_certify_deadline);
+
+    button.classList.toggle("time-cert-period-closed-v61144",closed);
+    button.classList.toggle("time-cert-period-override-v61144",override);
+    button.classList.toggle("time-cert-period-due-v61144",!closed&&dueSoon);
+
+    if(closed){
+      button.disabled=true;
+      button.innerHTML="<span>🔒</span>ปิดรอบรับรอง";
+      button.title=`ปิดรอบรับรองเวลาสำหรับ Manager • Deadline ${deadline}`;
+      return;
+    }
+
+    button.disabled=false;
+    button.innerHTML=button.dataset.certOriginalHtml;
+
+    if(override){
+      button.title=`รอบรับรองปิดสำหรับ Manager • HR Admin Override • Deadline ${deadline}`;
+    }else if(dueSoon){
+      button.title=`รับรองเวลาได้ • ใกล้ Deadline ${deadline}`;
+    }else if(period?.configured){
+      button.title=`รับรองเวลาได้ • Deadline ${deadline}`;
+    }else{
+      button.title=button.dataset.certOriginalTitle||"รับรองเวลา";
+    }
+  }
+
+  function setCertificationContextMetaV61144(meta,period,currentRole){
+    if(!meta) return;
+
+    const baseClass=meta.className.split(" ")[0];
+    if(!period?.configured){
+      meta.className=`${baseClass} neutral certification`;
+      meta.innerHTML="<strong>รับรองเวลา</strong><span>เดือนนี้ยังไม่กำหนดรอบ • ใช้งานตามสิทธิ์เดิม</span>";
+      return;
+    }
+
+    const managerClosed=certificationPeriodManagerClosedV61144(period);
+    const deadline=formatDate(period.attendance_certify_deadline);
+
+    if(currentRole==="HR_ADMIN"&&managerClosed){
+      meta.className=`${baseClass} override certification`;
+      meta.innerHTML=`<strong>รับรองเวลา • HR Admin Override</strong><span>รอบปิดสำหรับ Manager • Deadline ${esc(deadline)}</span>`;
+    }else if(currentRole==="MANAGER"&&managerClosed){
+      meta.className=`${baseClass} closed certification`;
+      meta.innerHTML=`<strong>🔒 ปิดรอบรับรองเวลา</strong><span>ดูรายละเอียดได้ แต่บันทึกรับรองใหม่ไม่ได้ • Deadline ${esc(deadline)}</span>`;
+    }else if(certificationPeriodDueSoonV61144(period)){
+      meta.className=`${baseClass} warning certification`;
+      meta.innerHTML=`<strong>รับรองเวลา • ใกล้ Deadline</strong><span>รับรองได้ถึง ${esc(deadline)}</span>`;
+    }else{
+      meta.className=`${baseClass} open certification`;
+      meta.innerHTML=`<strong>รับรองเวลา • เปิด</strong><span>รับรองได้ถึง ${esc(deadline)}</span>`;
+    }
+  }
+
+  function applyCertificationContextV61144(statuses,currentRole){
+    const drawer=$("scheduleTeamDrawer");
+    if(drawer&&!drawer.classList.contains("hidden")){
+      const date=drawer.dataset.periodDate
+        || drawer.querySelector("[data-time-certify]")?.dataset?.date
+        || "";
+      if(date){
+        const meta=ensureContextMeta(
+          "scheduleTeamDrawerNote",
+          "scheduleTeamCertificationPeriodMetaV61144",
+          "schedule-context-period-meta certification"
+        );
+        setCertificationContextMetaV61144(
+          meta,
+          statuses.get(monthKey(date)),
+          currentRole
+        );
+      }
+    }
+
+    const modal=$("employeeMonthScheduleModal");
+    if(modal&&!modal.classList.contains("hidden")){
+      const first=modal.querySelector("[data-month-date]")?.dataset?.monthDate||"";
+      if(first){
+        const summary=$("employeeMonthScheduleSummary");
+        let meta=$("employeeMonthCertificationPeriodMetaV61144");
+        if(summary&&!meta){
+          summary.insertAdjacentHTML(
+            "beforebegin",
+            '<div id="employeeMonthCertificationPeriodMetaV61144" class="schedule-context-period-meta certification"></div>'
+          );
+          meta=$("employeeMonthCertificationPeriodMetaV61144");
+        }
+        setCertificationContextMetaV61144(
+          meta,
+          statuses.get(monthKey(first)),
+          currentRole
+        );
+      }
+    }
+  }
+
   async function applySchedulePeriodGuard(forceFresh=false){
     ensureSchedulePeriodMeta();
 
@@ -22567,6 +22751,7 @@ ${skippedSummary(compatibility.skipped)}
     const drawerButtons=[...document.querySelectorAll("#scheduleTeamDrawer [data-team-assign]")];
     const drawerDate=$("scheduleTeamDrawer")?.dataset?.periodDate || null;
     const monthDays=[...document.querySelectorAll("#employeeMonthScheduleModal [data-month-date]")];
+    const certificationButtons=[...document.querySelectorAll("[data-time-certify]")];
     const assignDate=$("assignModal")&&!$("assignModal").classList.contains("hidden")
       ? $("assignWorkDate")?.value
       : null;
@@ -22580,6 +22765,7 @@ ${skippedSummary(compatibility.skipped)}
       ...drawerButtons.map(button=>button.dataset.date),
       drawerDate,
       ...monthDays.map(day=>day.dataset.monthDate),
+      ...certificationButtons.map(button=>button.dataset.date),
       assignDate
     ]);
     if(!allDates.length) return;
@@ -22602,6 +22788,18 @@ ${skippedSummary(compatibility.skipped)}
     if(effectiveDrawerDate) applyDrawerPeriod(statuses.get(monthKey(effectiveDrawerDate)),currentRole);
     applyMonthPeriod(statuses,currentRole);
     if(assignDate) applyAssignmentPeriod(statuses.get(monthKey(assignDate)),currentRole);
+
+    certificationButtons.forEach(button=>{
+      const date=String(button.dataset.date||"").slice(0,10);
+      if(date){
+        applyCertificationPeriodButtonV61144(
+          button,
+          statuses.get(monthKey(date)),
+          currentRole
+        );
+      }
+    });
+    applyCertificationContextV61144(statuses,currentRole);
 
     if($("scheduleSystemPeriodMeta")){
       const tableMonths=[...new Set(tableDates.map(monthKey))];
@@ -23316,6 +23514,19 @@ ${skippedSummary(compatibility.skipped)}
     load,
     getForDate,
     checkScheduleDates,
+    checkCertificationDate: async (date,forceFresh=false) => {
+      const period=await getForDate(date,forceFresh);
+      const currentRole=role();
+      const managerClosed=certificationPeriodManagerClosedV61144(period);
+      return {
+        period,
+        role:currentRole,
+        allowed:!(currentRole==="MANAGER"&&managerClosed),
+        managerClosed,
+        hrAdminOverride:currentRole==="HR_ADMIN"&&managerClosed,
+        dueSoon:certificationPeriodDueSoonV61144(period)
+      };
+    },
     openNewPeriod:
       openNew,
     closePeriodModal:
