@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.35";
-document.documentElement.dataset.timeClockBuild = "6.11.35";
+window.__TIME_CLOCK_BUILD__ = "V6.11.36";
+document.documentElement.dataset.timeClockBuild = "6.11.36";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.35";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.35',
+  version: '6.11.36',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5946,7 +5946,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       showLoading('กำลังประมวลผลเวลาทำงานทั้งเดือน...');
       try {
         const { data, error } = await state.client.rpc(
-          'ta_recalculate_employee_month_v61121',
+          'ta_recalculate_employee_month_v61136',
           {
             p_emp_code: code,
             p_month: `${month}-01`
@@ -5954,15 +5954,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         );
         if (error) {
           if (window.TimeClockShiftAPI?.missingFunction?.(error)) {
-            throw new Error('MONTHLY_EMPLOYEE_RECALC_RPC_REQUIRED');
+            throw new Error('MONTHLY_EMPLOYEE_REBUILD_RPC_V61136_REQUIRED');
           }
           throw error;
         }
+        const rebuiltRows = Number(data?.rebuild_inserted_rows || 0);
+        const processedEnd = data?.processed_end_date || data?.end_date || '';
         toast(
-          data?.deferred
-            ? 'ยังไม่มีข้อมูลลงเวลาในบางวัน ระบบจะคำนวณเมื่อมี Attendance'
-            : 'ประมวลผลเวลาทำงานทั้งเดือนเรียบร้อย',
-          'success'
+          data?.reason === 'FUTURE_MONTH'
+            ? 'เดือนที่เลือกยังเป็นอนาคต จึงยังไม่สร้าง Attendance'
+            : data?.deferred
+              ? 'ประมวลผลแล้ว แต่ยังไม่มี Attendance ที่พร้อมคำนวณ'
+              : `ประมวลผลเดือนนี้เรียบร้อย${rebuiltRows ? ` • Attendance ${formatNumber(rebuiltRows)} วัน` : ''}${processedEnd ? ` • ถึง ${formatDate(processedEnd)}` : ''}`,
+          data?.deferred ? 'warning' : 'success'
         );
         await openEmployeeMonthCalendarV61121(code, month);
       } catch (error) {
