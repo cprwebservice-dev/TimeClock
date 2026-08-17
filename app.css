@@ -17000,3 +17000,619 @@ body.darkmode .schedule-load-status.error,
 body[data-color-mode="dark"] .schedule-load-status.error{
   border-color:#7c3f49!important;background:#2b171c!important;color:#ffc1c7!important;
 }
+
+
+/* ==========================================================================
+   V6.11.31 Work Patterns Tab Darkmode Polish
+   ========================================================================== */
+
+html[data-theme="dark"] #page-work-patterns,
+body[data-theme="dark"] #page-work-patterns,
+html.dark #page-work-patterns,
+body.dark #page-work-patterns,
+html.dark-theme #page-work-patterns,
+body.dark-theme #page-work-patterns,
+html.theme-dark #page-work-patterns,
+body.theme-dark #page-work-patterns,
+body.darkmode #page-work-patterns,
+body[data-color-mode="dark"] #page-work-patterns{
+  --wp-bg:#091524;
+  --wp-surface:#0f1f32;
+  --wp-surface-2:#13263e;
+  --wp-surface-3:#172c46;
+  --wp-line:rgba(145,173,205,.17);
+  --wp-line-strong:rgba(145,173,205,.27);
+  --wp-text:#e7eef8;
+  --wp-text-soft:#c0ccdc;
+  --wp-text-muted:#91a3ba;
+  --wp-blue:#66a9ff;
+  --wp-blue-soft:rgba(102,169,255,.15);
+  --wp-orange:#f2b661;
+  --wp-orange-soft:rgba(242,182,97,.14);
+  --wp-green:#4bd094;
+  --wp-green-soft:rgba(75,208,148,.14);
+  --wp-red:#ff9299;
+  --wp-red-soft:rgba(255,146,153,.13);
+}
+
+html[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111,
+body[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111,
+html.dark #page-work-patterns .work-pattern-hero-v61111,
+body.dark #page-work-patterns .work-pattern-hero-v61111,
+html.dark-theme #page-work-patterns .work-pattern-hero-v61111,
+body.dark-theme #page-work-patterns .work-pattern-hero-v61111,
+html.theme-dark #page-work-patterns .work-pattern-hero-v61111,
+body.theme-dark #page-work-patterns .work-pattern-hero-v61111,
+body.darkmode #page-work-patterns .work-pattern-hero-v61111,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-hero-v61111{
+  border:1px solid var(--wp-line)!important;
+  background:
+    radial-gradient(circle at 92% 15%,rgba(243,161,67,.13),transparent 25%),
+    linear-gradient(135deg,#10243a 0%,#142943 58%,#24251f 100%)!important;
+  box-shadow:0 18px 38px rgba(2,8,20,.36)!important;
+  color:var(--wp-text)!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111::before,
+body[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111::before,
+html.dark #page-work-patterns .work-pattern-hero-v61111::before,
+body.dark #page-work-patterns .work-pattern-hero-v61111::before,
+html.dark-theme #page-work-patterns .work-pattern-hero-v61111::before,
+body.dark-theme #page-work-patterns .work-pattern-hero-v61111::before,
+html.theme-dark #page-work-patterns .work-pattern-hero-v61111::before,
+body.theme-dark #page-work-patterns .work-pattern-hero-v61111::before,
+body.darkmode #page-work-patterns .work-pattern-hero-v61111::before,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-hero-v61111::before{
+  background:linear-gradient(180deg,#4f9cf5,#e7a24f)!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+body[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+html.dark #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+body.dark #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+html.dark-theme #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+body.dark-theme #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+html.theme-dark #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+body.theme-dark #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+body.darkmode #page-work-patterns .work-pattern-hero-v61111 .eyebrow,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-hero-v61111 .eyebrow{
+  color:#8fc3ff!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111 h2,
+body[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111 h2,
+html.dark #page-work-patterns .work-pattern-hero-v61111 h2,
+body.dark #page-work-patterns .work-pattern-hero-v61111 h2,
+html.dark-theme #page-work-patterns .work-pattern-hero-v61111 h2,
+body.dark-theme #page-work-patterns .work-pattern-hero-v61111 h2,
+html.theme-dark #page-work-patterns .work-pattern-hero-v61111 h2,
+body.theme-dark #page-work-patterns .work-pattern-hero-v61111 h2,
+body.darkmode #page-work-patterns .work-pattern-hero-v61111 h2,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-hero-v61111 h2{
+  color:var(--wp-text)!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111 p,
+body[data-theme="dark"] #page-work-patterns .work-pattern-hero-v61111 p,
+html.dark #page-work-patterns .work-pattern-hero-v61111 p,
+body.dark #page-work-patterns .work-pattern-hero-v61111 p,
+html.dark-theme #page-work-patterns .work-pattern-hero-v61111 p,
+body.dark-theme #page-work-patterns .work-pattern-hero-v61111 p,
+html.theme-dark #page-work-patterns .work-pattern-hero-v61111 p,
+body.theme-dark #page-work-patterns .work-pattern-hero-v61111 p,
+body.darkmode #page-work-patterns .work-pattern-hero-v61111 p,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-hero-v61111 p{
+  color:var(--wp-text-soft)!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .work-pattern-hero-tags-v61111 span,
+body[data-theme="dark"] #page-work-patterns .work-pattern-hero-tags-v61111 span,
+html.dark #page-work-patterns .work-pattern-hero-tags-v61111 span,
+body.dark #page-work-patterns .work-pattern-hero-tags-v61111 span,
+html.dark-theme #page-work-patterns .work-pattern-hero-tags-v61111 span,
+body.dark-theme #page-work-patterns .work-pattern-hero-tags-v61111 span,
+html.theme-dark #page-work-patterns .work-pattern-hero-tags-v61111 span,
+body.theme-dark #page-work-patterns .work-pattern-hero-tags-v61111 span,
+body.darkmode #page-work-patterns .work-pattern-hero-tags-v61111 span,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-hero-tags-v61111 span{
+  background:rgba(255,255,255,.045)!important;
+  color:#c9d9eb!important;
+  border-color:rgba(135,173,217,.24)!important;
+}
+
+/* panels */
+html[data-theme="dark"] #page-work-patterns .panel,
+body[data-theme="dark"] #page-work-patterns .panel,
+html.dark #page-work-patterns .panel,
+body.dark #page-work-patterns .panel,
+html.dark-theme #page-work-patterns .panel,
+body.dark-theme #page-work-patterns .panel,
+html.theme-dark #page-work-patterns .panel,
+body.theme-dark #page-work-patterns .panel,
+body.darkmode #page-work-patterns .panel,
+body[data-color-mode="dark"] #page-work-patterns .panel{
+  background:linear-gradient(180deg,var(--wp-surface) 0%,#0c1a2a 100%)!important;
+  border-color:var(--wp-line)!important;
+  box-shadow:0 16px 36px rgba(2,8,20,.30)!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .panel-header,
+body[data-theme="dark"] #page-work-patterns .panel-header,
+html.dark #page-work-patterns .panel-header,
+body.dark #page-work-patterns .panel-header,
+html.dark-theme #page-work-patterns .panel-header,
+body.dark-theme #page-work-patterns .panel-header,
+html.theme-dark #page-work-patterns .panel-header,
+body.theme-dark #page-work-patterns .panel-header,
+body.darkmode #page-work-patterns .panel-header,
+body[data-color-mode="dark"] #page-work-patterns .panel-header{
+  background:linear-gradient(180deg,#112238 0%,#0f1f32 100%)!important;
+  border-bottom:1px solid var(--wp-line)!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .panel-header h3,
+body[data-theme="dark"] #page-work-patterns .panel-header h3,
+html.dark #page-work-patterns .panel-header h3,
+body.dark #page-work-patterns .panel-header h3,
+html.dark-theme #page-work-patterns .panel-header h3,
+body.dark-theme #page-work-patterns .panel-header h3,
+html.theme-dark #page-work-patterns .panel-header h3,
+body.theme-dark #page-work-patterns .panel-header h3,
+body.darkmode #page-work-patterns .panel-header h3,
+body[data-color-mode="dark"] #page-work-patterns .panel-header h3{
+  color:var(--wp-text)!important;
+}
+html[data-theme="dark"] #page-work-patterns .panel-header p,
+body[data-theme="dark"] #page-work-patterns .panel-header p,
+html.dark #page-work-patterns .panel-header p,
+body.dark #page-work-patterns .panel-header p,
+html.dark-theme #page-work-patterns .panel-header p,
+body.dark-theme #page-work-patterns .panel-header p,
+html.theme-dark #page-work-patterns .panel-header p,
+body.theme-dark #page-work-patterns .panel-header p,
+body.darkmode #page-work-patterns .panel-header p,
+body[data-color-mode="dark"] #page-work-patterns .panel-header p{
+  color:var(--wp-text-muted)!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .work-pattern-section-kicker-v61111,
+body[data-theme="dark"] #page-work-patterns .work-pattern-section-kicker-v61111,
+html.dark #page-work-patterns .work-pattern-section-kicker-v61111,
+body.dark #page-work-patterns .work-pattern-section-kicker-v61111,
+html.dark-theme #page-work-patterns .work-pattern-section-kicker-v61111,
+body.dark-theme #page-work-patterns .work-pattern-section-kicker-v61111,
+html.theme-dark #page-work-patterns .work-pattern-section-kicker-v61111,
+body.theme-dark #page-work-patterns .work-pattern-section-kicker-v61111,
+body.darkmode #page-work-patterns .work-pattern-section-kicker-v61111,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-section-kicker-v61111{
+  color:#7eb7f4!important;
+}
+
+html[data-theme="dark"] #page-work-patterns .work-pattern-panel-badge-v61111,
+body[data-theme="dark"] #page-work-patterns .work-pattern-panel-badge-v61111,
+html.dark #page-work-patterns .work-pattern-panel-badge-v61111,
+body.dark #page-work-patterns .work-pattern-panel-badge-v61111,
+html.dark-theme #page-work-patterns .work-pattern-panel-badge-v61111,
+body.dark-theme #page-work-patterns .work-pattern-panel-badge-v61111,
+html.theme-dark #page-work-patterns .work-pattern-panel-badge-v61111,
+body.theme-dark #page-work-patterns .work-pattern-panel-badge-v61111,
+body.darkmode #page-work-patterns .work-pattern-panel-badge-v61111,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-panel-badge-v61111{
+  background:var(--wp-blue-soft)!important;
+  border-color:rgba(102,169,255,.26)!important;
+  color:#a9d0ff!important;
+}
+html[data-theme="dark"] #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+body[data-theme="dark"] #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+html.dark #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+body.dark #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+html.dark-theme #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+body.dark-theme #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+html.theme-dark #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+body.theme-dark #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+body.darkmode #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-panel-badge-v61111.subtle{
+  background:var(--wp-orange-soft)!important;
+  border-color:rgba(242,182,97,.25)!important;
+  color:#ffd29a!important;
+}
+
+/* summary cards */
+html[data-theme="dark"] #page-work-patterns .work-pattern-summary-v61111 article,
+body[data-theme="dark"] #page-work-patterns .work-pattern-summary-v61111 article,
+html.dark #page-work-patterns .work-pattern-summary-v61111 article,
+body.dark #page-work-patterns .work-pattern-summary-v61111 article,
+html.dark-theme #page-work-patterns .work-pattern-summary-v61111 article,
+body.dark-theme #page-work-patterns .work-pattern-summary-v61111 article,
+html.theme-dark #page-work-patterns .work-pattern-summary-v61111 article,
+body.theme-dark #page-work-patterns .work-pattern-summary-v61111 article,
+body.darkmode #page-work-patterns .work-pattern-summary-v61111 article,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-summary-v61111 article{
+  background:linear-gradient(180deg,#13263e 0%,#102135 100%)!important;
+  border-color:var(--wp-line)!important;
+}
+html[data-theme="dark"] #page-work-patterns .work-pattern-summary-v61111 span,
+body[data-theme="dark"] #page-work-patterns .work-pattern-summary-v61111 span,
+html.dark #page-work-patterns .work-pattern-summary-v61111 span,
+body.dark #page-work-patterns .work-pattern-summary-v61111 span,
+html.dark-theme #page-work-patterns .work-pattern-summary-v61111 span,
+body.dark-theme #page-work-patterns .work-pattern-summary-v61111 span,
+html.theme-dark #page-work-patterns .work-pattern-summary-v61111 span,
+body.theme-dark #page-work-patterns .work-pattern-summary-v61111 span,
+body.darkmode #page-work-patterns .work-pattern-summary-v61111 span,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-summary-v61111 span{
+  color:var(--wp-text-muted)!important;
+}
+html[data-theme="dark"] #page-work-patterns .work-pattern-summary-v61111 strong,
+body[data-theme="dark"] #page-work-patterns .work-pattern-summary-v61111 strong,
+html.dark #page-work-patterns .work-pattern-summary-v61111 strong,
+body.dark #page-work-patterns .work-pattern-summary-v61111 strong,
+html.dark-theme #page-work-patterns .work-pattern-summary-v61111 strong,
+body.dark-theme #page-work-patterns .work-pattern-summary-v61111 strong,
+html.theme-dark #page-work-patterns .work-pattern-summary-v61111 strong,
+body.theme-dark #page-work-patterns .work-pattern-summary-v61111 strong,
+body.darkmode #page-work-patterns .work-pattern-summary-v61111 strong,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-summary-v61111 strong{
+  color:var(--wp-text)!important;
+}
+
+/* filter */
+html[data-theme="dark"] #page-work-patterns .work-pattern-filterbar-v61111,
+body[data-theme="dark"] #page-work-patterns .work-pattern-filterbar-v61111,
+html.dark #page-work-patterns .work-pattern-filterbar-v61111,
+body.dark #page-work-patterns .work-pattern-filterbar-v61111,
+html.dark-theme #page-work-patterns .work-pattern-filterbar-v61111,
+body.dark-theme #page-work-patterns .work-pattern-filterbar-v61111,
+html.theme-dark #page-work-patterns .work-pattern-filterbar-v61111,
+body.theme-dark #page-work-patterns .work-pattern-filterbar-v61111,
+body.darkmode #page-work-patterns .work-pattern-filterbar-v61111,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-filterbar-v61111{
+  background:#0d1d2f!important;
+  border-color:var(--wp-line)!important;
+}
+html[data-theme="dark"] #page-work-patterns .input,
+html[data-theme="dark"] #page-work-patterns .select,
+body[data-theme="dark"] #page-work-patterns .input,
+body[data-theme="dark"] #page-work-patterns .select,
+html.dark #page-work-patterns .input,
+html.dark #page-work-patterns .select,
+body.dark #page-work-patterns .input,
+body.dark #page-work-patterns .select,
+html.dark-theme #page-work-patterns .input,
+html.dark-theme #page-work-patterns .select,
+body.dark-theme #page-work-patterns .input,
+body.dark-theme #page-work-patterns .select,
+html.theme-dark #page-work-patterns .input,
+html.theme-dark #page-work-patterns .select,
+body.theme-dark #page-work-patterns .input,
+body.theme-dark #page-work-patterns .select,
+body.darkmode #page-work-patterns .input,
+body.darkmode #page-work-patterns .select,
+body[data-color-mode="dark"] #page-work-patterns .input,
+body[data-color-mode="dark"] #page-work-patterns .select{
+  background:#112338!important;
+  border-color:var(--wp-line-strong)!important;
+  color:var(--wp-text)!important;
+}
+html[data-theme="dark"] #page-work-patterns .field label,
+body[data-theme="dark"] #page-work-patterns .field label,
+html.dark #page-work-patterns .field label,
+body.dark #page-work-patterns .field label,
+html.dark-theme #page-work-patterns .field label,
+body.dark-theme #page-work-patterns .field label,
+html.theme-dark #page-work-patterns .field label,
+body.theme-dark #page-work-patterns .field label,
+body.darkmode #page-work-patterns .field label,
+body[data-color-mode="dark"] #page-work-patterns .field label{
+  color:var(--wp-text-soft)!important;
+}
+
+/* assignment table */
+html[data-theme="dark"] #page-work-patterns .table-wrap,
+body[data-theme="dark"] #page-work-patterns .table-wrap,
+html.dark #page-work-patterns .table-wrap,
+body.dark #page-work-patterns .table-wrap,
+html.dark-theme #page-work-patterns .table-wrap,
+body.dark-theme #page-work-patterns .table-wrap,
+html.theme-dark #page-work-patterns .table-wrap,
+body.theme-dark #page-work-patterns .table-wrap,
+body.darkmode #page-work-patterns .table-wrap,
+body[data-color-mode="dark"] #page-work-patterns .table-wrap{
+  background:#0c1a2b!important;
+  border-color:var(--wp-line)!important;
+}
+html[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119,
+body[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119,
+html.dark #page-work-patterns .employee-pattern-table-v6119,
+body.dark #page-work-patterns .employee-pattern-table-v6119,
+html.dark-theme #page-work-patterns .employee-pattern-table-v6119,
+body.dark-theme #page-work-patterns .employee-pattern-table-v6119,
+html.theme-dark #page-work-patterns .employee-pattern-table-v6119,
+body.theme-dark #page-work-patterns .employee-pattern-table-v6119,
+body.darkmode #page-work-patterns .employee-pattern-table-v6119,
+body[data-color-mode="dark"] #page-work-patterns .employee-pattern-table-v6119{
+  background:#0c1a2b!important;
+  color:var(--wp-text)!important;
+}
+html[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119 thead th,
+body[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119 thead th,
+html.dark #page-work-patterns .employee-pattern-table-v6119 thead th,
+body.dark #page-work-patterns .employee-pattern-table-v6119 thead th,
+html.dark-theme #page-work-patterns .employee-pattern-table-v6119 thead th,
+body.dark-theme #page-work-patterns .employee-pattern-table-v6119 thead th,
+html.theme-dark #page-work-patterns .employee-pattern-table-v6119 thead th,
+body.theme-dark #page-work-patterns .employee-pattern-table-v6119 thead th,
+body.darkmode #page-work-patterns .employee-pattern-table-v6119 thead th,
+body[data-color-mode="dark"] #page-work-patterns .employee-pattern-table-v6119 thead th{
+  background:#132a46!important;
+  color:#dce8f7!important;
+  border-color:var(--wp-line)!important;
+}
+html[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody td,
+body[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody td,
+html.dark #page-work-patterns .employee-pattern-table-v6119 tbody td,
+body.dark #page-work-patterns .employee-pattern-table-v6119 tbody td,
+html.dark-theme #page-work-patterns .employee-pattern-table-v6119 tbody td,
+body.dark-theme #page-work-patterns .employee-pattern-table-v6119 tbody td,
+html.theme-dark #page-work-patterns .employee-pattern-table-v6119 tbody td,
+body.theme-dark #page-work-patterns .employee-pattern-table-v6119 tbody td,
+body.darkmode #page-work-patterns .employee-pattern-table-v6119 tbody td,
+body[data-color-mode="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody td{
+  background:#0f1f32!important;
+  color:var(--wp-text-soft)!important;
+  border-color:var(--wp-line)!important;
+}
+html[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+body[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+html.dark #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+body.dark #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+html.dark-theme #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+body.dark-theme #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+html.theme-dark #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+body.theme-dark #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+body.darkmode #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+body[data-color-mode="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td{
+  background:#102238!important;
+}
+html[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+body[data-theme="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+html.dark #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+body.dark #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+html.dark-theme #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+body.dark-theme #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+html.theme-dark #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+body.theme-dark #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+body.darkmode #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+body[data-color-mode="dark"] #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td{
+  background:#152b45!important;
+}
+
+/* chips */
+html[data-theme="dark"] #page-work-patterns .assignment-state-v61111.active,
+body[data-theme="dark"] #page-work-patterns .assignment-state-v61111.active,
+html.dark #page-work-patterns .assignment-state-v61111.active,
+body.dark #page-work-patterns .assignment-state-v61111.active,
+html.dark-theme #page-work-patterns .assignment-state-v61111.active,
+body.dark-theme #page-work-patterns .assignment-state-v61111.active,
+html.theme-dark #page-work-patterns .assignment-state-v61111.active,
+body.theme-dark #page-work-patterns .assignment-state-v61111.active,
+body.darkmode #page-work-patterns .assignment-state-v61111.active,
+body[data-color-mode="dark"] #page-work-patterns .assignment-state-v61111.active{background:var(--wp-green-soft)!important;color:#a9f2d0!important}
+html[data-theme="dark"] #page-work-patterns .assignment-state-v61111.future,
+body[data-theme="dark"] #page-work-patterns .assignment-state-v61111.future,
+html.dark #page-work-patterns .assignment-state-v61111.future,
+body.dark #page-work-patterns .assignment-state-v61111.future,
+html.dark-theme #page-work-patterns .assignment-state-v61111.future,
+body.dark-theme #page-work-patterns .assignment-state-v61111.future,
+html.theme-dark #page-work-patterns .assignment-state-v61111.future,
+body.theme-dark #page-work-patterns .assignment-state-v61111.future,
+body.darkmode #page-work-patterns .assignment-state-v61111.future,
+body[data-color-mode="dark"] #page-work-patterns .assignment-state-v61111.future{background:var(--wp-orange-soft)!important;color:#ffd79e!important}
+html[data-theme="dark"] #page-work-patterns .assignment-state-v61111.expired,
+html[data-theme="dark"] #page-work-patterns .assignment-state-v61111.none,
+body[data-theme="dark"] #page-work-patterns .assignment-state-v61111.expired,
+body[data-theme="dark"] #page-work-patterns .assignment-state-v61111.none,
+html.dark #page-work-patterns .assignment-state-v61111.expired,
+html.dark #page-work-patterns .assignment-state-v61111.none,
+body.dark #page-work-patterns .assignment-state-v61111.expired,
+body.dark #page-work-patterns .assignment-state-v61111.none,
+html.dark-theme #page-work-patterns .assignment-state-v61111.expired,
+html.dark-theme #page-work-patterns .assignment-state-v61111.none,
+body.dark-theme #page-work-patterns .assignment-state-v61111.expired,
+body.dark-theme #page-work-patterns .assignment-state-v61111.none,
+html.theme-dark #page-work-patterns .assignment-state-v61111.expired,
+html.theme-dark #page-work-patterns .assignment-state-v61111.none,
+body.theme-dark #page-work-patterns .assignment-state-v61111.expired,
+body.theme-dark #page-work-patterns .assignment-state-v61111.none,
+body.darkmode #page-work-patterns .assignment-state-v61111.expired,
+body.darkmode #page-work-patterns .assignment-state-v61111.none,
+body[data-color-mode="dark"] #page-work-patterns .assignment-state-v61111.expired,
+body[data-color-mode="dark"] #page-work-patterns .assignment-state-v61111.none{background:#253548!important;color:#b8c6d7!important}
+
+html[data-theme="dark"] #page-work-patterns .weekly-off-chip-v61111,
+body[data-theme="dark"] #page-work-patterns .weekly-off-chip-v61111,
+html.dark #page-work-patterns .weekly-off-chip-v61111,
+body.dark #page-work-patterns .weekly-off-chip-v61111,
+html.dark-theme #page-work-patterns .weekly-off-chip-v61111,
+body.dark-theme #page-work-patterns .weekly-off-chip-v61111,
+html.theme-dark #page-work-patterns .weekly-off-chip-v61111,
+body.theme-dark #page-work-patterns .weekly-off-chip-v61111,
+body.darkmode #page-work-patterns .weekly-off-chip-v61111,
+body[data-color-mode="dark"] #page-work-patterns .weekly-off-chip-v61111{background:#23364b!important;color:#c6d4e3!important}
+html[data-theme="dark"] #page-work-patterns .effective-date-v61111.start,
+body[data-theme="dark"] #page-work-patterns .effective-date-v61111.start,
+html.dark #page-work-patterns .effective-date-v61111.start,
+body.dark #page-work-patterns .effective-date-v61111.start,
+html.dark-theme #page-work-patterns .effective-date-v61111.start,
+body.dark-theme #page-work-patterns .effective-date-v61111.start,
+html.theme-dark #page-work-patterns .effective-date-v61111.start,
+body.theme-dark #page-work-patterns .effective-date-v61111.start,
+body.darkmode #page-work-patterns .effective-date-v61111.start,
+body[data-color-mode="dark"] #page-work-patterns .effective-date-v61111.start{background:var(--wp-blue-soft)!important;color:#acd2ff!important}
+html[data-theme="dark"] #page-work-patterns .effective-date-v61111.end,
+body[data-theme="dark"] #page-work-patterns .effective-date-v61111.end,
+html.dark #page-work-patterns .effective-date-v61111.end,
+body.dark #page-work-patterns .effective-date-v61111.end,
+html.dark-theme #page-work-patterns .effective-date-v61111.end,
+body.dark-theme #page-work-patterns .effective-date-v61111.end,
+html.theme-dark #page-work-patterns .effective-date-v61111.end,
+body.theme-dark #page-work-patterns .effective-date-v61111.end,
+body.darkmode #page-work-patterns .effective-date-v61111.end,
+body[data-color-mode="dark"] #page-work-patterns .effective-date-v61111.end{background:var(--wp-orange-soft)!important;color:#ffd59d!important}
+
+html[data-theme="dark"] #page-work-patterns .recorded-time-v61111,
+html[data-theme="dark"] #page-work-patterns .employee-pattern-recorder-v6119,
+body[data-theme="dark"] #page-work-patterns .recorded-time-v61111,
+body[data-theme="dark"] #page-work-patterns .employee-pattern-recorder-v6119,
+html.dark #page-work-patterns .recorded-time-v61111,
+html.dark #page-work-patterns .employee-pattern-recorder-v6119,
+body.dark #page-work-patterns .recorded-time-v61111,
+body.dark #page-work-patterns .employee-pattern-recorder-v6119,
+html.dark-theme #page-work-patterns .recorded-time-v61111,
+html.dark-theme #page-work-patterns .employee-pattern-recorder-v6119,
+body.dark-theme #page-work-patterns .recorded-time-v61111,
+body.dark-theme #page-work-patterns .employee-pattern-recorder-v6119,
+html.theme-dark #page-work-patterns .recorded-time-v61111,
+html.theme-dark #page-work-patterns .employee-pattern-recorder-v6119,
+body.theme-dark #page-work-patterns .recorded-time-v61111,
+body.theme-dark #page-work-patterns .employee-pattern-recorder-v6119,
+body.darkmode #page-work-patterns .recorded-time-v61111,
+body.darkmode #page-work-patterns .employee-pattern-recorder-v6119,
+body[data-color-mode="dark"] #page-work-patterns .recorded-time-v61111,
+body[data-color-mode="dark"] #page-work-patterns .employee-pattern-recorder-v6119{color:#afbed0!important}
+
+html[data-theme="dark"] #page-work-patterns .data-missing-v61111,
+body[data-theme="dark"] #page-work-patterns .data-missing-v61111,
+html.dark #page-work-patterns .data-missing-v61111,
+body.dark #page-work-patterns .data-missing-v61111,
+html.dark-theme #page-work-patterns .data-missing-v61111,
+body.dark-theme #page-work-patterns .data-missing-v61111,
+html.theme-dark #page-work-patterns .data-missing-v61111,
+body.theme-dark #page-work-patterns .data-missing-v61111,
+body.darkmode #page-work-patterns .data-missing-v61111,
+body[data-color-mode="dark"] #page-work-patterns .data-missing-v61111{color:#768ba4!important}
+
+/* template cards */
+html[data-theme="dark"] #page-work-patterns .work-template-card,
+body[data-theme="dark"] #page-work-patterns .work-template-card,
+html.dark #page-work-patterns .work-template-card,
+body.dark #page-work-patterns .work-template-card,
+html.dark-theme #page-work-patterns .work-template-card,
+body.dark-theme #page-work-patterns .work-template-card,
+html.theme-dark #page-work-patterns .work-template-card,
+body.theme-dark #page-work-patterns .work-template-card,
+body.darkmode #page-work-patterns .work-template-card,
+body[data-color-mode="dark"] #page-work-patterns .work-template-card{
+  background:linear-gradient(180deg,#13263e,#0f1f32)!important;
+  border-color:var(--wp-line)!important;
+  color:var(--wp-text)!important;
+}
+html[data-theme="dark"] #page-work-patterns .work-template-card-v61111.late-template,
+body[data-theme="dark"] #page-work-patterns .work-template-card-v61111.late-template,
+html.dark #page-work-patterns .work-template-card-v61111.late-template,
+body.dark #page-work-patterns .work-template-card-v61111.late-template,
+html.dark-theme #page-work-patterns .work-template-card-v61111.late-template,
+body.dark-theme #page-work-patterns .work-template-card-v61111.late-template,
+html.theme-dark #page-work-patterns .work-template-card-v61111.late-template,
+body.theme-dark #page-work-patterns .work-template-card-v61111.late-template,
+body.darkmode #page-work-patterns .work-template-card-v61111.late-template,
+body[data-color-mode="dark"] #page-work-patterns .work-template-card-v61111.late-template{
+  background:linear-gradient(180deg,#2a261e,#211e19)!important;
+  border-color:rgba(242,182,97,.28)!important;
+}
+html[data-theme="dark"] #page-work-patterns .work-template-card p,
+body[data-theme="dark"] #page-work-patterns .work-template-card p,
+html.dark #page-work-patterns .work-template-card p,
+body.dark #page-work-patterns .work-template-card p,
+html.dark-theme #page-work-patterns .work-template-card p,
+body.dark-theme #page-work-patterns .work-template-card p,
+html.theme-dark #page-work-patterns .work-template-card p,
+body.theme-dark #page-work-patterns .work-template-card p,
+body.darkmode #page-work-patterns .work-template-card p,
+body[data-color-mode="dark"] #page-work-patterns .work-template-card p{color:var(--wp-text-muted)!important}
+html[data-theme="dark"] #page-work-patterns .work-template-code-v61111,
+body[data-theme="dark"] #page-work-patterns .work-template-code-v61111,
+html.dark #page-work-patterns .work-template-code-v61111,
+body.dark #page-work-patterns .work-template-code-v61111,
+html.dark-theme #page-work-patterns .work-template-code-v61111,
+body.dark-theme #page-work-patterns .work-template-code-v61111,
+html.theme-dark #page-work-patterns .work-template-code-v61111,
+body.theme-dark #page-work-patterns .work-template-code-v61111,
+body.darkmode #page-work-patterns .work-template-code-v61111,
+body[data-color-mode="dark"] #page-work-patterns .work-template-code-v61111{background:#22354a!important;color:#b9cce0!important}
+html[data-theme="dark"] #page-work-patterns .template-number-v61111,
+body[data-theme="dark"] #page-work-patterns .template-number-v61111,
+html.dark #page-work-patterns .template-number-v61111,
+body.dark #page-work-patterns .template-number-v61111,
+html.dark-theme #page-work-patterns .template-number-v61111,
+body.dark-theme #page-work-patterns .template-number-v61111,
+html.theme-dark #page-work-patterns .template-number-v61111,
+body.theme-dark #page-work-patterns .template-number-v61111,
+body.darkmode #page-work-patterns .template-number-v61111,
+body[data-color-mode="dark"] #page-work-patterns .template-number-v61111{color:#7f93aa!important}
+html[data-theme="dark"] #page-work-patterns .segment-work,
+body[data-theme="dark"] #page-work-patterns .segment-work,
+html.dark #page-work-patterns .segment-work,
+body.dark #page-work-patterns .segment-work,
+html.dark-theme #page-work-patterns .segment-work,
+body.dark-theme #page-work-patterns .segment-work,
+html.theme-dark #page-work-patterns .segment-work,
+body.theme-dark #page-work-patterns .segment-work,
+body.darkmode #page-work-patterns .segment-work,
+body[data-color-mode="dark"] #page-work-patterns .segment-work{background:#173a61!important;color:#d3e8ff!important}
+html[data-theme="dark"] #page-work-patterns .segment-waiting,
+body[data-theme="dark"] #page-work-patterns .segment-waiting,
+html.dark #page-work-patterns .segment-waiting,
+body.dark #page-work-patterns .segment-waiting,
+html.dark-theme #page-work-patterns .segment-waiting,
+body.dark-theme #page-work-patterns .segment-waiting,
+html.theme-dark #page-work-patterns .segment-waiting,
+body.theme-dark #page-work-patterns .segment-waiting,
+body.darkmode #page-work-patterns .segment-waiting,
+body[data-color-mode="dark"] #page-work-patterns .segment-waiting{background:#463116!important;color:#ffdaa5!important}
+html[data-theme="dark"] #page-work-patterns .segment-break,
+html[data-theme="dark"] #page-work-patterns .segment-travel,
+body[data-theme="dark"] #page-work-patterns .segment-break,
+body[data-theme="dark"] #page-work-patterns .segment-travel,
+html.dark #page-work-patterns .segment-break,
+html.dark #page-work-patterns .segment-travel,
+body.dark #page-work-patterns .segment-break,
+body.dark #page-work-patterns .segment-travel,
+html.dark-theme #page-work-patterns .segment-break,
+html.dark-theme #page-work-patterns .segment-travel,
+body.dark-theme #page-work-patterns .segment-break,
+body.dark-theme #page-work-patterns .segment-travel,
+html.theme-dark #page-work-patterns .segment-break,
+html.theme-dark #page-work-patterns .segment-travel,
+body.theme-dark #page-work-patterns .segment-break,
+body.theme-dark #page-work-patterns .segment-travel,
+body.darkmode #page-work-patterns .segment-break,
+body.darkmode #page-work-patterns .segment-travel,
+body[data-color-mode="dark"] #page-work-patterns .segment-break,
+body[data-color-mode="dark"] #page-work-patterns .segment-travel{background:#243548!important;color:#c4d1df!important}
+
+/* informational note / warnings */
+html[data-theme="dark"] #page-work-patterns .work-pattern-daily-note-v61116,
+body[data-theme="dark"] #page-work-patterns .work-pattern-daily-note-v61116,
+html.dark #page-work-patterns .work-pattern-daily-note-v61116,
+body.dark #page-work-patterns .work-pattern-daily-note-v61116,
+html.dark-theme #page-work-patterns .work-pattern-daily-note-v61116,
+body.dark-theme #page-work-patterns .work-pattern-daily-note-v61116,
+html.theme-dark #page-work-patterns .work-pattern-daily-note-v61116,
+body.theme-dark #page-work-patterns .work-pattern-daily-note-v61116,
+body.darkmode #page-work-patterns .work-pattern-daily-note-v61116,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-daily-note-v61116{
+  background:#152b43!important;border-color:#31587e!important
+}
+html[data-theme="dark"] #page-work-patterns .work-pattern-load-note-v61111,
+body[data-theme="dark"] #page-work-patterns .work-pattern-load-note-v61111,
+html.dark #page-work-patterns .work-pattern-load-note-v61111,
+body.dark #page-work-patterns .work-pattern-load-note-v61111,
+html.dark-theme #page-work-patterns .work-pattern-load-note-v61111,
+body.dark-theme #page-work-patterns .work-pattern-load-note-v61111,
+html.theme-dark #page-work-patterns .work-pattern-load-note-v61111,
+body.theme-dark #page-work-patterns .work-pattern-load-note-v61111,
+body.darkmode #page-work-patterns .work-pattern-load-note-v61111,
+body[data-color-mode="dark"] #page-work-patterns .work-pattern-load-note-v61111{
+  background:#2a171c!important;border-color:#6f3d46!important;color:#ffc0c6!important
+}
