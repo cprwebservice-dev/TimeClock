@@ -16290,3 +16290,713 @@ body.theme-dark #employeeMonthScheduleModal [style*="background:#fff"]{
   body.theme-dark #page-schedule .schedule-view-helper{background:#102233!important}
   body.theme-dark #employeeMonthScheduleModal .employee-month-toolbar-v61121{background:#0e1d2b!important}
 }
+
+
+/* ==========================================================================
+   V6.11.30 Schedule Tab Darkmode Polish
+   - Fix start date / position columns not following darkmode
+   - Refine entire schedule tab for better readability
+   ========================================================================== */
+
+#page-schedule .panel{
+  overflow:hidden;
+}
+
+.schedule-workspace,
+.schedule-view-shell,
+.schedule-panel-header,
+.schedule-panel-header-team,
+.schedule-team-toolbar,
+.schedule-summary-strip,
+.schedule-commandbar,
+.schedule-grid-wrap,
+.schedule-grid-body,
+.schedule-team-grid-wrap,
+.schedule-team-drawer{
+  transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,color .18s ease;
+}
+
+/* stronger sticky-column defaults for light mode too */
+.enterprise-schedule-table .sticky-col-1,
+.enterprise-schedule-table .sticky-col-2,
+.enterprise-schedule-table .sticky-col-3,
+.enterprise-schedule-table .sticky-col-4{
+  background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%);
+}
+
+.enterprise-schedule-table tbody tr:hover .sticky-col-1,
+.enterprise-schedule-table tbody tr:hover .sticky-col-2,
+.enterprise-schedule-table tbody tr:hover .sticky-col-3,
+.enterprise-schedule-table tbody tr:hover .sticky-col-4{
+  background:#f8fbff;
+}
+
+.enterprise-schedule-table thead .sticky-col-1,
+.enterprise-schedule-table thead .sticky-col-2,
+.enterprise-schedule-table thead .sticky-col-3,
+.enterprise-schedule-table thead .sticky-col-4{
+  background:#eaf1fa;
+}
+
+.schedule-emp-start-date,
+.schedule-emp-position{
+  background:transparent;
+}
+
+/* unified dark-mode selector family */
+html[data-theme="dark"] #page-schedule,
+body[data-theme="dark"] #page-schedule,
+html.dark #page-schedule,
+body.dark #page-schedule,
+html.dark-theme #page-schedule,
+body.dark-theme #page-schedule,
+html.theme-dark #page-schedule,
+body.theme-dark #page-schedule,
+body.darkmode #page-schedule,
+body[data-color-mode="dark"] #page-schedule{
+  --sch-bg:#091524;
+  --sch-bg-2:#0d1b2d;
+  --sch-bg-3:#112238;
+  --sch-panel:#102033;
+  --sch-panel-2:#142741;
+  --sch-panel-3:#19304e;
+  --sch-line:rgba(146,173,205,.16);
+  --sch-line-strong:rgba(146,173,205,.26);
+  --sch-text:#e6eef8;
+  --sch-text-soft:#c1cee0;
+  --sch-text-faint:#8ea2bb;
+  --sch-blue:#63a7ff;
+  --sch-blue-soft:rgba(99,167,255,.14);
+  --sch-violet:#9a84ff;
+  --sch-violet-soft:rgba(154,132,255,.16);
+  --sch-green:#45cb8d;
+  --sch-green-soft:rgba(69,203,141,.16);
+  --sch-amber:#f6b95d;
+  --sch-amber-soft:rgba(246,185,93,.16);
+  --sch-red:#ff8f8f;
+  --sch-red-soft:rgba(255,143,143,.14);
+  background:transparent!important;
+}
+
+html[data-theme="dark"] #page-schedule .panel,
+body[data-theme="dark"] #page-schedule .panel,
+html.dark #page-schedule .panel,
+body.dark #page-schedule .panel,
+html.dark-theme #page-schedule .panel,
+body.dark-theme #page-schedule .panel,
+html.theme-dark #page-schedule .panel,
+body.theme-dark #page-schedule .panel,
+body.darkmode #page-schedule .panel,
+body[data-color-mode="dark"] #page-schedule .panel{
+  background:linear-gradient(180deg,var(--sch-panel) 0%,var(--sch-bg-2) 100%)!important;
+  border-color:var(--sch-line)!important;
+  box-shadow:0 18px 36px rgba(2,8,20,.36)!important;
+}
+
+html[data-theme="dark"] #page-schedule .filter-panel,
+body[data-theme="dark"] #page-schedule .filter-panel,
+html.dark #page-schedule .filter-panel,
+body.dark #page-schedule .filter-panel,
+html.dark-theme #page-schedule .filter-panel,
+body.dark-theme #page-schedule .filter-panel,
+html.theme-dark #page-schedule .filter-panel,
+body.theme-dark #page-schedule .filter-panel,
+body.darkmode #page-schedule .filter-panel,
+body[data-color-mode="dark"] #page-schedule .filter-panel{
+  background:rgba(12,22,37,.78)!important;
+  border-color:var(--sch-line)!important;
+  backdrop-filter:blur(14px);
+}
+
+html[data-theme="dark"] #page-schedule .schedule-panel-header,
+html[data-theme="dark"] #page-schedule .schedule-panel-header-team,
+body[data-theme="dark"] #page-schedule .schedule-panel-header,
+body[data-theme="dark"] #page-schedule .schedule-panel-header-team,
+html.dark #page-schedule .schedule-panel-header,
+html.dark #page-schedule .schedule-panel-header-team,
+body.dark #page-schedule .schedule-panel-header,
+body.dark #page-schedule .schedule-panel-header-team,
+html.dark-theme #page-schedule .schedule-panel-header,
+html.dark-theme #page-schedule .schedule-panel-header-team,
+body.dark-theme #page-schedule .schedule-panel-header,
+body.dark-theme #page-schedule .schedule-panel-header-team,
+html.theme-dark #page-schedule .schedule-panel-header,
+html.theme-dark #page-schedule .schedule-panel-header-team,
+body.theme-dark #page-schedule .schedule-panel-header,
+body.theme-dark #page-schedule .schedule-panel-header-team,
+body.darkmode #page-schedule .schedule-panel-header,
+body.darkmode #page-schedule .schedule-panel-header-team,
+body[data-color-mode="dark"] #page-schedule .schedule-panel-header,
+body[data-color-mode="dark"] #page-schedule .schedule-panel-header-team{
+  background:linear-gradient(135deg,#12253d 0%,#13263e 60%,#1f2635 100%)!important;
+  border-bottom:1px solid var(--sch-line)!important;
+}
+
+html[data-theme="dark"] #page-schedule .schedule-commandbar,
+html[data-theme="dark"] #page-schedule .schedule-team-toolbar,
+html[data-theme="dark"] #page-schedule .schedule-summary-strip,
+html[data-theme="dark"] #page-schedule .schedule-view-switch,
+body[data-theme="dark"] #page-schedule .schedule-commandbar,
+body[data-theme="dark"] #page-schedule .schedule-team-toolbar,
+body[data-theme="dark"] #page-schedule .schedule-summary-strip,
+body[data-theme="dark"] #page-schedule .schedule-view-switch,
+html.dark #page-schedule .schedule-commandbar,
+html.dark #page-schedule .schedule-team-toolbar,
+html.dark #page-schedule .schedule-summary-strip,
+html.dark #page-schedule .schedule-view-switch,
+body.dark #page-schedule .schedule-commandbar,
+body.dark #page-schedule .schedule-team-toolbar,
+body.dark #page-schedule .schedule-summary-strip,
+body.dark #page-schedule .schedule-view-switch,
+html.dark-theme #page-schedule .schedule-commandbar,
+html.dark-theme #page-schedule .schedule-team-toolbar,
+html.dark-theme #page-schedule .schedule-summary-strip,
+html.dark-theme #page-schedule .schedule-view-switch,
+body.dark-theme #page-schedule .schedule-commandbar,
+body.dark-theme #page-schedule .schedule-team-toolbar,
+body.dark-theme #page-schedule .schedule-summary-strip,
+body.dark-theme #page-schedule .schedule-view-switch,
+html.theme-dark #page-schedule .schedule-commandbar,
+html.theme-dark #page-schedule .schedule-team-toolbar,
+html.theme-dark #page-schedule .schedule-summary-strip,
+html.theme-dark #page-schedule .schedule-view-switch,
+body.theme-dark #page-schedule .schedule-commandbar,
+body.theme-dark #page-schedule .schedule-team-toolbar,
+body.theme-dark #page-schedule .schedule-summary-strip,
+body.theme-dark #page-schedule .schedule-view-switch,
+body.darkmode #page-schedule .schedule-commandbar,
+body.darkmode #page-schedule .schedule-team-toolbar,
+body.darkmode #page-schedule .schedule-summary-strip,
+body.darkmode #page-schedule .schedule-view-switch,
+body[data-color-mode="dark"] #page-schedule .schedule-commandbar,
+body[data-color-mode="dark"] #page-schedule .schedule-team-toolbar,
+body[data-color-mode="dark"] #page-schedule .schedule-summary-strip,
+body[data-color-mode="dark"] #page-schedule .schedule-view-switch{
+  background:linear-gradient(180deg,var(--sch-panel-2) 0%,var(--sch-panel) 100%)!important;
+  border-color:var(--sch-line)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+}
+
+html[data-theme="dark"] #page-schedule .schedule-kpi,
+body[data-theme="dark"] #page-schedule .schedule-kpi,
+html.dark #page-schedule .schedule-kpi,
+body.dark #page-schedule .schedule-kpi,
+html.dark-theme #page-schedule .schedule-kpi,
+body.dark-theme #page-schedule .schedule-kpi,
+html.theme-dark #page-schedule .schedule-kpi,
+body.theme-dark #page-schedule .schedule-kpi,
+body.darkmode #page-schedule .schedule-kpi,
+body[data-color-mode="dark"] #page-schedule .schedule-kpi{
+  background:linear-gradient(180deg,#12253d 0%,#102132 100%)!important;
+  border:1px solid var(--sch-line)!important;
+}
+
+html[data-theme="dark"] #page-schedule .schedule-kpi span,
+body[data-theme="dark"] #page-schedule .schedule-kpi span,
+html.dark #page-schedule .schedule-kpi span,
+body.dark #page-schedule .schedule-kpi span,
+html.dark-theme #page-schedule .schedule-kpi span,
+body.dark-theme #page-schedule .schedule-kpi span,
+html.theme-dark #page-schedule .schedule-kpi span,
+body.theme-dark #page-schedule .schedule-kpi span,
+body.darkmode #page-schedule .schedule-kpi span,
+body[data-color-mode="dark"] #page-schedule .schedule-kpi span{
+  color:var(--sch-text-faint)!important;
+}
+
+html[data-theme="dark"] #page-schedule .schedule-kpi strong,
+body[data-theme="dark"] #page-schedule .schedule-kpi strong,
+html.dark #page-schedule .schedule-kpi strong,
+body.dark #page-schedule .schedule-kpi strong,
+html.dark-theme #page-schedule .schedule-kpi strong,
+body.dark-theme #page-schedule .schedule-kpi strong,
+html.theme-dark #page-schedule .schedule-kpi strong,
+body.theme-dark #page-schedule .schedule-kpi strong,
+body.darkmode #page-schedule .schedule-kpi strong,
+body[data-color-mode="dark"] #page-schedule .schedule-kpi strong{
+  color:var(--sch-text)!important;
+}
+
+/* the actual fix for start date + position columns */
+html[data-theme="dark"] .enterprise-schedule-table .sticky-col-1,
+html[data-theme="dark"] .enterprise-schedule-table .sticky-col-2,
+html[data-theme="dark"] .enterprise-schedule-table .sticky-col-3,
+html[data-theme="dark"] .enterprise-schedule-table .sticky-col-4,
+body[data-theme="dark"] .enterprise-schedule-table .sticky-col-1,
+body[data-theme="dark"] .enterprise-schedule-table .sticky-col-2,
+body[data-theme="dark"] .enterprise-schedule-table .sticky-col-3,
+body[data-theme="dark"] .enterprise-schedule-table .sticky-col-4,
+html.dark .enterprise-schedule-table .sticky-col-1,
+html.dark .enterprise-schedule-table .sticky-col-2,
+html.dark .enterprise-schedule-table .sticky-col-3,
+html.dark .enterprise-schedule-table .sticky-col-4,
+body.dark .enterprise-schedule-table .sticky-col-1,
+body.dark .enterprise-schedule-table .sticky-col-2,
+body.dark .enterprise-schedule-table .sticky-col-3,
+body.dark .enterprise-schedule-table .sticky-col-4,
+html.dark-theme .enterprise-schedule-table .sticky-col-1,
+html.dark-theme .enterprise-schedule-table .sticky-col-2,
+html.dark-theme .enterprise-schedule-table .sticky-col-3,
+html.dark-theme .enterprise-schedule-table .sticky-col-4,
+body.dark-theme .enterprise-schedule-table .sticky-col-1,
+body.dark-theme .enterprise-schedule-table .sticky-col-2,
+body.dark-theme .enterprise-schedule-table .sticky-col-3,
+body.dark-theme .enterprise-schedule-table .sticky-col-4,
+html.theme-dark .enterprise-schedule-table .sticky-col-1,
+html.theme-dark .enterprise-schedule-table .sticky-col-2,
+html.theme-dark .enterprise-schedule-table .sticky-col-3,
+html.theme-dark .enterprise-schedule-table .sticky-col-4,
+body.theme-dark .enterprise-schedule-table .sticky-col-1,
+body.theme-dark .enterprise-schedule-table .sticky-col-2,
+body.theme-dark .enterprise-schedule-table .sticky-col-3,
+body.theme-dark .enterprise-schedule-table .sticky-col-4,
+body.darkmode .enterprise-schedule-table .sticky-col-1,
+body.darkmode .enterprise-schedule-table .sticky-col-2,
+body.darkmode .enterprise-schedule-table .sticky-col-3,
+body.darkmode .enterprise-schedule-table .sticky-col-4,
+body[data-color-mode="dark"] .enterprise-schedule-table .sticky-col-1,
+body[data-color-mode="dark"] .enterprise-schedule-table .sticky-col-2,
+body[data-color-mode="dark"] .enterprise-schedule-table .sticky-col-3,
+body[data-color-mode="dark"] .enterprise-schedule-table .sticky-col-4{
+  background:linear-gradient(180deg,#0f2033 0%,#102234 100%)!important;
+  border-right-color:var(--sch-line)!important;
+}
+
+html[data-theme="dark"] .enterprise-schedule-table thead .sticky-col-1,
+html[data-theme="dark"] .enterprise-schedule-table thead .sticky-col-2,
+html[data-theme="dark"] .enterprise-schedule-table thead .sticky-col-3,
+html[data-theme="dark"] .enterprise-schedule-table thead .sticky-col-4,
+body[data-theme="dark"] .enterprise-schedule-table thead .sticky-col-1,
+body[data-theme="dark"] .enterprise-schedule-table thead .sticky-col-2,
+body[data-theme="dark"] .enterprise-schedule-table thead .sticky-col-3,
+body[data-theme="dark"] .enterprise-schedule-table thead .sticky-col-4,
+html.dark .enterprise-schedule-table thead .sticky-col-1,
+html.dark .enterprise-schedule-table thead .sticky-col-2,
+html.dark .enterprise-schedule-table thead .sticky-col-3,
+html.dark .enterprise-schedule-table thead .sticky-col-4,
+body.dark .enterprise-schedule-table thead .sticky-col-1,
+body.dark .enterprise-schedule-table thead .sticky-col-2,
+body.dark .enterprise-schedule-table thead .sticky-col-3,
+body.dark .enterprise-schedule-table thead .sticky-col-4,
+html.dark-theme .enterprise-schedule-table thead .sticky-col-1,
+html.dark-theme .enterprise-schedule-table thead .sticky-col-2,
+html.dark-theme .enterprise-schedule-table thead .sticky-col-3,
+html.dark-theme .enterprise-schedule-table thead .sticky-col-4,
+body.dark-theme .enterprise-schedule-table thead .sticky-col-1,
+body.dark-theme .enterprise-schedule-table thead .sticky-col-2,
+body.dark-theme .enterprise-schedule-table thead .sticky-col-3,
+body.dark-theme .enterprise-schedule-table thead .sticky-col-4,
+html.theme-dark .enterprise-schedule-table thead .sticky-col-1,
+html.theme-dark .enterprise-schedule-table thead .sticky-col-2,
+html.theme-dark .enterprise-schedule-table thead .sticky-col-3,
+html.theme-dark .enterprise-schedule-table thead .sticky-col-4,
+body.theme-dark .enterprise-schedule-table thead .sticky-col-1,
+body.theme-dark .enterprise-schedule-table thead .sticky-col-2,
+body.theme-dark .enterprise-schedule-table thead .sticky-col-3,
+body.theme-dark .enterprise-schedule-table thead .sticky-col-4,
+body.darkmode .enterprise-schedule-table thead .sticky-col-1,
+body.darkmode .enterprise-schedule-table thead .sticky-col-2,
+body.darkmode .enterprise-schedule-table thead .sticky-col-3,
+body.darkmode .enterprise-schedule-table thead .sticky-col-4,
+body[data-color-mode="dark"] .enterprise-schedule-table thead .sticky-col-1,
+body[data-color-mode="dark"] .enterprise-schedule-table thead .sticky-col-2,
+body[data-color-mode="dark"] .enterprise-schedule-table thead .sticky-col-3,
+body[data-color-mode="dark"] .enterprise-schedule-table thead .sticky-col-4{
+  background:#13273f!important;
+  color:var(--sch-text-soft)!important;
+}
+
+html[data-theme="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+html[data-theme="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+html[data-theme="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+html[data-theme="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+body[data-theme="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+body[data-theme="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+body[data-theme="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+body[data-theme="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+html.dark .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+html.dark .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+html.dark .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+html.dark .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+body.dark .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+body.dark .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+body.dark .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+body.dark .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+html.dark-theme .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+html.dark-theme .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+html.dark-theme .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+html.dark-theme .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+body.dark-theme .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+body.dark-theme .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+body.dark-theme .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+body.dark-theme .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+html.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+html.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+html.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+html.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+body.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+body.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+body.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+body.theme-dark .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+body.darkmode .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+body.darkmode .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+body.darkmode .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+body.darkmode .enterprise-schedule-table tbody tr:hover .sticky-col-4,
+body[data-color-mode="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-1,
+body[data-color-mode="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-2,
+body[data-color-mode="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-3,
+body[data-color-mode="dark"] .enterprise-schedule-table tbody tr:hover .sticky-col-4{
+  background:#152a43!important;
+}
+
+html[data-theme="dark"] .schedule-emp-code,
+html[data-theme="dark"] .schedule-emp-name strong,
+body[data-theme="dark"] .schedule-emp-code,
+body[data-theme="dark"] .schedule-emp-name strong,
+html.dark .schedule-emp-code,
+html.dark .schedule-emp-name strong,
+body.dark .schedule-emp-code,
+body.dark .schedule-emp-name strong,
+html.dark-theme .schedule-emp-code,
+html.dark-theme .schedule-emp-name strong,
+body.dark-theme .schedule-emp-code,
+body.dark-theme .schedule-emp-name strong,
+html.theme-dark .schedule-emp-code,
+html.theme-dark .schedule-emp-name strong,
+body.theme-dark .schedule-emp-code,
+body.theme-dark .schedule-emp-name strong,
+body.darkmode .schedule-emp-code,
+body.darkmode .schedule-emp-name strong,
+body[data-color-mode="dark"] .schedule-emp-code,
+body[data-color-mode="dark"] .schedule-emp-name strong{
+  color:var(--sch-text)!important;
+}
+
+html[data-theme="dark"] .schedule-emp-name small,
+html[data-theme="dark"] .schedule-emp-start-date,
+html[data-theme="dark"] .schedule-emp-position,
+body[data-theme="dark"] .schedule-emp-name small,
+body[data-theme="dark"] .schedule-emp-start-date,
+body[data-theme="dark"] .schedule-emp-position,
+html.dark .schedule-emp-name small,
+html.dark .schedule-emp-start-date,
+html.dark .schedule-emp-position,
+body.dark .schedule-emp-name small,
+body.dark .schedule-emp-start-date,
+body.dark .schedule-emp-position,
+html.dark-theme .schedule-emp-name small,
+html.dark-theme .schedule-emp-start-date,
+html.dark-theme .schedule-emp-position,
+body.dark-theme .schedule-emp-name small,
+body.dark-theme .schedule-emp-start-date,
+body.dark-theme .schedule-emp-position,
+html.theme-dark .schedule-emp-name small,
+html.theme-dark .schedule-emp-start-date,
+html.theme-dark .schedule-emp-position,
+body.theme-dark .schedule-emp-name small,
+body.theme-dark .schedule-emp-start-date,
+body.theme-dark .schedule-emp-position,
+body.darkmode .schedule-emp-name small,
+body.darkmode .schedule-emp-start-date,
+body.darkmode .schedule-emp-position,
+body[data-color-mode="dark"] .schedule-emp-name small,
+body[data-color-mode="dark"] .schedule-emp-start-date,
+body[data-color-mode="dark"] .schedule-emp-position{
+  color:var(--sch-text-soft)!important;
+}
+
+html[data-theme="dark"] .enterprise-schedule-table,
+body[data-theme="dark"] .enterprise-schedule-table,
+html.dark .enterprise-schedule-table,
+body.dark .enterprise-schedule-table,
+html.dark-theme .enterprise-schedule-table,
+body.dark-theme .enterprise-schedule-table,
+html.theme-dark .enterprise-schedule-table,
+body.theme-dark .enterprise-schedule-table,
+body.darkmode .enterprise-schedule-table,
+body[data-color-mode="dark"] .enterprise-schedule-table{
+  background:var(--sch-panel)!important;
+}
+
+html[data-theme="dark"] .enterprise-schedule-table th,
+html[data-theme="dark"] .enterprise-schedule-table td,
+body[data-theme="dark"] .enterprise-schedule-table th,
+body[data-theme="dark"] .enterprise-schedule-table td,
+html.dark .enterprise-schedule-table th,
+html.dark .enterprise-schedule-table td,
+body.dark .enterprise-schedule-table th,
+body.dark .enterprise-schedule-table td,
+html.dark-theme .enterprise-schedule-table th,
+html.dark-theme .enterprise-schedule-table td,
+body.dark-theme .enterprise-schedule-table th,
+body.dark-theme .enterprise-schedule-table td,
+html.theme-dark .enterprise-schedule-table th,
+html.theme-dark .enterprise-schedule-table td,
+body.theme-dark .enterprise-schedule-table th,
+body.theme-dark .enterprise-schedule-table td,
+body.darkmode .enterprise-schedule-table th,
+body.darkmode .enterprise-schedule-table td,
+body[data-color-mode="dark"] .enterprise-schedule-table th,
+body[data-color-mode="dark"] .enterprise-schedule-table td{
+  border-color:var(--sch-line)!important;
+}
+
+html[data-theme="dark"] .enterprise-schedule-table thead th,
+body[data-theme="dark"] .enterprise-schedule-table thead th,
+html.dark .enterprise-schedule-table thead th,
+body.dark .enterprise-schedule-table thead th,
+html.dark-theme .enterprise-schedule-table thead th,
+body.dark-theme .enterprise-schedule-table thead th,
+html.theme-dark .enterprise-schedule-table thead th,
+body.theme-dark .enterprise-schedule-table thead th,
+body.darkmode .enterprise-schedule-table thead th,
+body[data-color-mode="dark"] .enterprise-schedule-table thead th{
+  background:#13263f!important;
+  color:var(--sch-text-soft)!important;
+}
+
+html[data-theme="dark"] .enterprise-schedule-table thead th small,
+body[data-theme="dark"] .enterprise-schedule-table thead th small,
+html.dark .enterprise-schedule-table thead th small,
+body.dark .enterprise-schedule-table thead th small,
+html.dark-theme .enterprise-schedule-table thead th small,
+body.dark-theme .enterprise-schedule-table thead th small,
+html.theme-dark .enterprise-schedule-table thead th small,
+body.theme-dark .enterprise-schedule-table thead th small,
+body.darkmode .enterprise-schedule-table thead th small,
+body[data-color-mode="dark"] .enterprise-schedule-table thead th small{
+  color:var(--sch-text-faint)!important;
+}
+
+html[data-theme="dark"] .enterprise-schedule-table thead th.weekend,
+body[data-theme="dark"] .enterprise-schedule-table thead th.weekend,
+html.dark .enterprise-schedule-table thead th.weekend,
+body.dark .enterprise-schedule-table thead th.weekend,
+html.dark-theme .enterprise-schedule-table thead th.weekend,
+body.dark-theme .enterprise-schedule-table thead th.weekend,
+html.theme-dark .enterprise-schedule-table thead th.weekend,
+body.theme-dark .enterprise-schedule-table thead th.weekend,
+body.darkmode .enterprise-schedule-table thead th.weekend,
+body[data-color-mode="dark"] .enterprise-schedule-table thead th.weekend{
+  background:#2a2a25!important;
+  color:#ffd29a!important;
+}
+
+html[data-theme="dark"] .schedule-data-cell,
+body[data-theme="dark"] .schedule-data-cell,
+html.dark .schedule-data-cell,
+body.dark .schedule-data-cell,
+html.dark-theme .schedule-data-cell,
+body.dark-theme .schedule-data-cell,
+html.theme-dark .schedule-data-cell,
+body.theme-dark .schedule-data-cell,
+body.darkmode .schedule-data-cell,
+body[data-color-mode="dark"] .schedule-data-cell{
+  background:#0f1e31!important;
+}
+
+html[data-theme="dark"] .schedule-data-cell.cell-selected,
+body[data-theme="dark"] .schedule-data-cell.cell-selected,
+html.dark .schedule-data-cell.cell-selected,
+body.dark .schedule-data-cell.cell-selected,
+html.dark-theme .schedule-data-cell.cell-selected,
+body.dark-theme .schedule-data-cell.cell-selected,
+html.theme-dark .schedule-data-cell.cell-selected,
+body.theme-dark .schedule-data-cell.cell-selected,
+body.darkmode .schedule-data-cell.cell-selected,
+body[data-color-mode="dark"] .schedule-data-cell.cell-selected{
+  background:rgba(83,146,228,.16)!important;
+  box-shadow:inset 0 0 0 2px #4e8fe6!important;
+}
+
+html[data-theme="dark"] .schedule-cell,
+body[data-theme="dark"] .schedule-cell,
+html.dark .schedule-cell,
+body.dark .schedule-cell,
+html.dark-theme .schedule-cell,
+body.dark-theme .schedule-cell,
+html.theme-dark .schedule-cell,
+body.theme-dark .schedule-cell,
+body.darkmode .schedule-cell,
+body[data-color-mode="dark"] .schedule-cell{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03), 0 4px 10px rgba(0,0,0,.18);
+}
+
+html[data-theme="dark"] .schedule-cell.shift-D,
+body[data-theme="dark"] .schedule-cell.shift-D,
+html.dark .schedule-cell.shift-D,
+body.dark .schedule-cell.shift-D,
+html.dark-theme .schedule-cell.shift-D,
+body.dark-theme .schedule-cell.shift-D,
+html.theme-dark .schedule-cell.shift-D,
+body.theme-dark .schedule-cell.shift-D,
+body.darkmode .schedule-cell.shift-D,
+body[data-color-mode="dark"] .schedule-cell.shift-D{
+  background:#173a62!important;color:#d7e8ff!important;
+}
+
+html[data-theme="dark"] .schedule-cell.shift-N,
+body[data-theme="dark"] .schedule-cell.shift-N,
+html.dark .schedule-cell.shift-N,
+body.dark .schedule-cell.shift-N,
+html.dark-theme .schedule-cell.shift-N,
+body.dark-theme .schedule-cell.shift-N,
+html.theme-dark .schedule-cell.shift-N,
+body.theme-dark .schedule-cell.shift-N,
+body.darkmode .schedule-cell.shift-N,
+body[data-color-mode="dark"] .schedule-cell.shift-N{
+  background:#322357!important;color:#efe6ff!important;
+}
+
+html[data-theme="dark"] .schedule-cell.shift-OFF,
+body[data-theme="dark"] .schedule-cell.shift-OFF,
+html.dark .schedule-cell.shift-OFF,
+body.dark .schedule-cell.shift-OFF,
+html.dark-theme .schedule-cell.shift-OFF,
+body.dark-theme .schedule-cell.shift-OFF,
+html.theme-dark .schedule-cell.shift-OFF,
+body.theme-dark .schedule-cell.shift-OFF,
+body.darkmode .schedule-cell.shift-OFF,
+body[data-color-mode="dark"] .schedule-cell.shift-OFF{
+  background:#253548!important;color:#d7e0ea!important;
+}
+
+html[data-theme="dark"] .schedule-cell.shift-HOL,
+body[data-theme="dark"] .schedule-cell.shift-HOL,
+html.dark .schedule-cell.shift-HOL,
+body.dark .schedule-cell.shift-HOL,
+html.dark-theme .schedule-cell.shift-HOL,
+body.dark-theme .schedule-cell.shift-HOL,
+html.theme-dark .schedule-cell.shift-HOL,
+body.theme-dark .schedule-cell.shift-HOL,
+body.darkmode .schedule-cell.shift-HOL,
+body[data-color-mode="dark"] .schedule-cell.shift-HOL{
+  background:#4a3117!important;color:#ffd8ae!important;
+}
+
+html[data-theme="dark"] .schedule-cell.shift-LV,
+body[data-theme="dark"] .schedule-cell.shift-LV,
+html.dark .schedule-cell.shift-LV,
+body.dark .schedule-cell.shift-LV,
+html.dark-theme .schedule-cell.shift-LV,
+body.dark-theme .schedule-cell.shift-LV,
+html.theme-dark .schedule-cell.shift-LV,
+body.theme-dark .schedule-cell.shift-LV,
+body.darkmode .schedule-cell.shift-LV,
+body[data-color-mode="dark"] .schedule-cell.shift-LV,
+html[data-theme="dark"] .schedule-cell.shift-LEAVE,
+body[data-theme="dark"] .schedule-cell.shift-LEAVE,
+html.dark .schedule-cell.shift-LEAVE,
+body.dark .schedule-cell.shift-LEAVE,
+html.dark-theme .schedule-cell.shift-LEAVE,
+body.dark-theme .schedule-cell.shift-LEAVE,
+html.theme-dark .schedule-cell.shift-LEAVE,
+body.theme-dark .schedule-cell.shift-LEAVE,
+body.darkmode .schedule-cell.shift-LEAVE,
+body[data-color-mode="dark"] .schedule-cell.shift-LEAVE{
+  background:#163f31!important;color:#ccfbe7!important;
+}
+
+html[data-theme="dark"] .shift-command,
+body[data-theme="dark"] .shift-command,
+html.dark .shift-command,
+body.dark .shift-command,
+html.dark-theme .shift-command,
+body.dark-theme .shift-command,
+html.theme-dark .shift-command,
+body.theme-dark .shift-command,
+body.darkmode .shift-command,
+body[data-color-mode="dark"] .shift-command{
+  box-shadow:none!important;
+  border:1px solid var(--sch-line)!important;
+}
+
+html[data-theme="dark"] .shift-command.shift-D,
+body[data-theme="dark"] .shift-command.shift-D,
+html.dark .shift-command.shift-D,
+body.dark .shift-command.shift-D,
+html.dark-theme .shift-command.shift-D,
+body.dark-theme .shift-command.shift-D,
+html.theme-dark .shift-command.shift-D,
+body.theme-dark .shift-command.shift-D,
+body.darkmode .shift-command.shift-D,
+body[data-color-mode="dark"] .shift-command.shift-D{background:#153763!important;color:#dbeaff!important}
+html[data-theme="dark"] .shift-command.shift-N,
+body[data-theme="dark"] .shift-command.shift-N,
+html.dark .shift-command.shift-N,
+body.dark .shift-command.shift-N,
+html.dark-theme .shift-command.shift-N,
+body.dark-theme .shift-command.shift-N,
+html.theme-dark .shift-command.shift-N,
+body.theme-dark .shift-command.shift-N,
+body.darkmode .shift-command.shift-N,
+body[data-color-mode="dark"] .shift-command.shift-N{background:#2d2354!important;color:#eee5ff!important}
+html[data-theme="dark"] .shift-command.shift-OFF,
+body[data-theme="dark"] .shift-command.shift-OFF,
+html.dark .shift-command.shift-OFF,
+body.dark .shift-command.shift-OFF,
+html.dark-theme .shift-command.shift-OFF,
+body.dark-theme .shift-command.shift-OFF,
+html.theme-dark .shift-command.shift-OFF,
+body.theme-dark .shift-command.shift-OFF,
+body.darkmode .shift-command.shift-OFF,
+body[data-color-mode="dark"] .shift-command.shift-OFF{background:#2a3747!important;color:#d8e2ec!important}
+html[data-theme="dark"] .shift-command.shift-HOL,
+body[data-theme="dark"] .shift-command.shift-HOL,
+html.dark .shift-command.shift-HOL,
+body.dark .shift-command.shift-HOL,
+html.dark-theme .shift-command.shift-HOL,
+body.dark-theme .shift-command.shift-HOL,
+html.theme-dark .shift-command.shift-HOL,
+body.theme-dark .shift-command.shift-HOL,
+body.darkmode .shift-command.shift-HOL,
+body[data-color-mode="dark"] .shift-command.shift-HOL{background:#4a3118!important;color:#ffd7a8!important}
+
+html[data-theme="dark"] .schedule-load-status.loading,
+body[data-theme="dark"] .schedule-load-status.loading,
+html.dark .schedule-load-status.loading,
+body.dark .schedule-load-status.loading,
+html.dark-theme .schedule-load-status.loading,
+body.dark-theme .schedule-load-status.loading,
+html.theme-dark .schedule-load-status.loading,
+body.theme-dark .schedule-load-status.loading,
+body.darkmode .schedule-load-status.loading,
+body[data-color-mode="dark"] .schedule-load-status.loading{
+  border-color:#315b8b!important;background:#12263e!important;color:#b7d8ff!important;
+}
+html[data-theme="dark"] .schedule-load-status.success,
+body[data-theme="dark"] .schedule-load-status.success,
+html.dark .schedule-load-status.success,
+body.dark .schedule-load-status.success,
+html.dark-theme .schedule-load-status.success,
+body.dark-theme .schedule-load-status.success,
+html.theme-dark .schedule-load-status.success,
+body.theme-dark .schedule-load-status.success,
+body.darkmode .schedule-load-status.success,
+body[data-color-mode="dark"] .schedule-load-status.success{
+  border-color:#2f6a58!important;background:#102a25!important;color:#aef0d1!important;
+}
+html[data-theme="dark"] .schedule-load-status.warning,
+body[data-theme="dark"] .schedule-load-status.warning,
+html.dark .schedule-load-status.warning,
+body.dark .schedule-load-status.warning,
+html.dark-theme .schedule-load-status.warning,
+body.dark-theme .schedule-load-status.warning,
+html.theme-dark .schedule-load-status.warning,
+body.theme-dark .schedule-load-status.warning,
+body.darkmode .schedule-load-status.warning,
+body[data-color-mode="dark"] .schedule-load-status.warning{
+  border-color:#7f6331!important;background:#2a2212!important;color:#ffdca1!important;
+}
+html[data-theme="dark"] .schedule-load-status.error,
+body[data-theme="dark"] .schedule-load-status.error,
+html.dark .schedule-load-status.error,
+body.dark .schedule-load-status.error,
+html.dark-theme .schedule-load-status.error,
+body.dark-theme .schedule-load-status.error,
+html.theme-dark .schedule-load-status.error,
+body.theme-dark .schedule-load-status.error,
+body.darkmode .schedule-load-status.error,
+body[data-color-mode="dark"] .schedule-load-status.error{
+  border-color:#7c3f49!important;background:#2b171c!important;color:#ffc1c7!important;
+}
