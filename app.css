@@ -17944,3 +17944,15 @@ body.theme-dark .global-print-hint,
   .global-print-modal{width:100%!important;height:96vh!important;max-height:96vh!important}
   .global-print-frame{min-height:420px}
 }
+
+
+/* V6.11.38 — Monthly Personal Overview fast loader */
+.employee-month-loading small{
+  color:#8294a5;
+  font-size:9px;
+  font-weight:700;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-loading small,
+.dark #employeeMonthScheduleModal .employee-month-loading small{
+  color:#91a8ba!important;
+}

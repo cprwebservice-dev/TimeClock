@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.37";
-document.documentElement.dataset.timeClockBuild = "6.11.37";
+window.__TIME_CLOCK_BUILD__ = "V6.11.38";
+document.documentElement.dataset.timeClockBuild = "6.11.38";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.37";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.37',
+  version: '6.11.38',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5573,8 +5573,59 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       month: '',
       scheduleRows: [],
       attendanceRows: [],
-      loading: false
+      loading: false,
+      loadToken: 0
     };
+
+    // V6.11.38: short-lived cache + in-flight dedupe.
+    // Keeps month navigation / reopen fast without keeping stale data for long.
+    const employeeMonthCacheV61138 = new Map();
+    const employeeMonthPendingV61138 = new Map();
+    const EMPLOYEE_MONTH_CACHE_TTL_V61138 = 60000;
+
+    function employeeMonthCacheKeyV61138(empCode, monthValue) {
+      return `${String(empCode || '').trim()}|${employeeMonthBoundsV61121(monthValue).value}`;
+    }
+
+    function employeeMonthCloneRowsV61138(rows) {
+      return (rows || []).map(row => ({ ...row }));
+    }
+
+    function employeeMonthCacheGetV61138(empCode, monthValue) {
+      const key = employeeMonthCacheKeyV61138(empCode, monthValue);
+      const cached = employeeMonthCacheV61138.get(key);
+      if (!cached) return null;
+      if ((Date.now() - Number(cached.savedAt || 0)) > EMPLOYEE_MONTH_CACHE_TTL_V61138) {
+        employeeMonthCacheV61138.delete(key);
+        return null;
+      }
+      return {
+        scheduleRows: employeeMonthCloneRowsV61138(cached.scheduleRows),
+        attendanceRows: employeeMonthCloneRowsV61138(cached.attendanceRows),
+        savedAt: cached.savedAt
+      };
+    }
+
+    function employeeMonthCacheSetV61138(empCode, monthValue, scheduleRows, attendanceRows) {
+      const key = employeeMonthCacheKeyV61138(empCode, monthValue);
+      employeeMonthCacheV61138.set(key, {
+        scheduleRows: employeeMonthCloneRowsV61138(scheduleRows),
+        attendanceRows: employeeMonthCloneRowsV61138(attendanceRows),
+        savedAt: Date.now()
+      });
+    }
+
+    function employeeMonthCacheInvalidateV61138(empCode, monthValue = null) {
+      const emp = String(empCode || '').trim();
+      if (!emp) return;
+      if (monthValue) {
+        employeeMonthCacheV61138.delete(employeeMonthCacheKeyV61138(emp, monthValue));
+        return;
+      }
+      [...employeeMonthCacheV61138.keys()].forEach(key => {
+        if (key.startsWith(`${emp}|`)) employeeMonthCacheV61138.delete(key);
+      });
+    }
 
     function employeeMonthBoundsV61121(monthValue) {
       const match = String(monthValue || '').trim().match(/^(\d{4})-(\d{2})$/);
@@ -5610,35 +5661,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return ['HR_ADMIN','MANAGER','ADMIN','SUPER_ADMIN'].includes(role);
     }
 
-    async function fetchEmployeeMonthScheduleV61121(empCode, monthValue) {
-      const bounds = employeeMonthBoundsV61121(monthValue);
-      const data = await window.TimeClockShiftAPI.getMonthlySchedule(
-        window.TimeClockApp || { state },
-        {
-          p_month: `${bounds.value}-01`,
-          p_start_date: bounds.start,
-          p_end_date: bounds.end,
-          p_zone: null,
-          p_department: null,
-          p_emp_codes: [empCode],
-          p_schedule_statuses: null
-        }
-      );
-      const rows = (data || []).filter(row => {
-        const date = String(row?.work_date || '').slice(0,10);
-        return String(row?.emp_code || '') === String(empCode)
-          && date >= bounds.start
-          && date <= bounds.end;
-      });
-      await enrichScheduleWorkPlanMetaV6118(
-        { startDate: bounds.start, endDate: bounds.end },
-        rows
-      );
-      return rows;
-    }
-
-    async function fetchEmployeeMonthAttendanceV61121(empCode, monthValue) {
-      const bounds = employeeMonthBoundsV61121(monthValue);
+    async function fetchEmployeeMonthAttendanceDetailV61138(empCode, bounds) {
       const common = {
         p_start_date: bounds.start,
         p_end_date: bounds.end,
@@ -5652,6 +5675,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         'ta_get_attendance_detail_v61020',
         { ...common, p_area: null, p_sub_area: null, p_department: null }
       );
+
       if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
         response = await state.client.rpc(
           'ta_get_attendance_detail_v664',
@@ -5671,34 +5695,149 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         );
       }
       if (response.error) throw response.error;
+      return response.data || [];
+    }
 
-      const byDate = new Map();
-      (response.data || []).forEach(row => {
-        const date = String(row?.work_date || '').slice(0,10);
-        if (date) byDate.set(date, { ...row });
-      });
+    async function fetchEmployeeMonthBundleV61138(empCode, monthValue, forceFresh = false) {
+      const bounds = employeeMonthBoundsV61121(monthValue);
+      const cacheKey = employeeMonthCacheKeyV61138(empCode, bounds.value);
 
-      const punchResponse = await state.client.rpc(
-        'ta_get_attendance_shift_punch_meta_v61110',
-        {
-          p_start_date: bounds.start,
-          p_end_date: bounds.end,
-          p_emp_codes: [empCode]
+      if (!forceFresh) {
+        const cached = employeeMonthCacheGetV61138(empCode, bounds.value);
+        if (cached) return { ...cached, source: 'CACHE' };
+        if (employeeMonthPendingV61138.has(cacheKey)) {
+          return employeeMonthPendingV61138.get(cacheKey);
         }
-      );
-      if (!punchResponse.error) {
-        (punchResponse.data || []).forEach(meta => {
-          const date = String(meta?.work_date || '').slice(0,10);
-          if (!date) return;
-          const row = byDate.get(date) || { emp_code: empCode, work_date: date };
-          Object.assign(row, meta);
-          byDate.set(date, row);
-        });
       }
 
-      return [...byDate.values()]
-        .map(row => normalizeAttendanceStatusFromPunchesV61120(row))
-        .sort((a,b) => String(a.work_date).localeCompare(String(b.work_date)));
+      const loadPromise = (async () => {
+        // V6.11.38: all independent monthly reads start together.
+        // First load is limited by the slowest query instead of a chain of RPC waits.
+        const schedulePromise = window.TimeClockShiftAPI.getMonthlySchedule(
+          window.TimeClockApp || { state },
+          {
+            p_month: `${bounds.value}-01`,
+            p_start_date: bounds.start,
+            p_end_date: bounds.end,
+            p_zone: null,
+            p_department: null,
+            p_emp_codes: [empCode],
+            p_schedule_statuses: null
+          }
+        );
+
+        const workPlanPromise = state.client.rpc(
+          'ta_get_schedule_work_plan_meta_v6118',
+          {
+            p_start_date: bounds.start,
+            p_end_date: bounds.end,
+            p_emp_codes: [empCode]
+          }
+        );
+
+        const attendancePromise =
+          fetchEmployeeMonthAttendanceDetailV61138(empCode, bounds);
+
+        const punchPromise = state.client.rpc(
+          'ta_get_attendance_shift_punch_meta_v61110',
+          {
+            p_start_date: bounds.start,
+            p_end_date: bounds.end,
+            p_emp_codes: [empCode]
+          }
+        );
+
+        const [
+          scheduleData,
+          workPlanResponse,
+          attendanceData,
+          punchResponse
+        ] = await Promise.all([
+          schedulePromise,
+          workPlanPromise,
+          attendancePromise,
+          punchPromise
+        ]);
+
+        const scheduleRows = (scheduleData || [])
+          .filter(row => {
+            const date = String(row?.work_date || '').slice(0,10);
+            return String(row?.emp_code || '') === String(empCode)
+              && date >= bounds.start
+              && date <= bounds.end;
+          })
+          .map(row => ({ ...row }));
+
+        if (workPlanResponse.error) {
+          if (
+            String(workPlanResponse.error.message || '')
+              .includes('ta_get_schedule_work_plan_meta_v6118')
+          ) {
+            throw new Error('WORK_PLAN_LINKAGE_RPC_REQUIRED');
+          }
+          throw workPlanResponse.error;
+        }
+
+        const workPlanMap = new Map(
+          (workPlanResponse.data || []).map(meta => [
+            `${String(meta?.emp_code || '')}|${String(meta?.work_date || '').slice(0,10)}`,
+            meta
+          ])
+        );
+        scheduleRows.forEach(row => {
+          const meta = workPlanMap.get(
+            `${String(row?.emp_code || '')}|${String(row?.work_date || '').slice(0,10)}`
+          );
+          if (meta) Object.assign(row, meta);
+        });
+
+        const byDate = new Map();
+        (attendanceData || []).forEach(row => {
+          const date = String(row?.work_date || '').slice(0,10);
+          if (date) byDate.set(date, { ...row });
+        });
+
+        if (!punchResponse.error) {
+          (punchResponse.data || []).forEach(meta => {
+            const date = String(meta?.work_date || '').slice(0,10);
+            if (!date) return;
+            const row = byDate.get(date) || {
+              emp_code: empCode,
+              work_date: date
+            };
+            Object.assign(row, meta);
+            byDate.set(date, row);
+          });
+        }
+
+        const attendanceRows = [...byDate.values()]
+          .map(row => normalizeAttendanceStatusFromPunchesV61120(row))
+          .sort((a,b) => String(a.work_date).localeCompare(String(b.work_date)));
+
+        employeeMonthCacheSetV61138(
+          empCode,
+          bounds.value,
+          scheduleRows,
+          attendanceRows
+        );
+
+        return {
+          scheduleRows,
+          attendanceRows,
+          savedAt: Date.now(),
+          source: 'NETWORK'
+        };
+      })();
+
+      employeeMonthPendingV61138.set(cacheKey, loadPromise);
+
+      try {
+        return await loadPromise;
+      } finally {
+        if (employeeMonthPendingV61138.get(cacheKey) === loadPromise) {
+          employeeMonthPendingV61138.delete(cacheKey);
+        }
+      }
     }
 
     function employeeMonthStatusMetaV61121(row, workDate) {
@@ -5892,38 +6031,70 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }));
     }
 
-    async function openEmployeeMonthCalendarV61121(empCode, monthValue = null) {
+    async function openEmployeeMonthCalendarV61121(
+      empCode,
+      monthValue = null,
+      options = {}
+    ) {
       const code = String(empCode || '').trim();
       if (!code) return;
+
       const month = employeeMonthBoundsV61121(
         monthValue || val('scheduleMonth') || todayISO().slice(0,7)
       ).value;
+      const forceFresh = Boolean(options?.forceFresh);
+
       employeeMonthCalendarStateV61121.empCode = code;
       employeeMonthCalendarStateV61121.month = month;
       employeeMonthCalendarStateV61121.loading = true;
+      const loadToken = ++employeeMonthCalendarStateV61121.loadToken;
+
       $('employeeMonthScheduleModal')?.classList.remove('hidden');
       $('employeeMonthScheduleModal')?.setAttribute('aria-hidden','false');
-      if ($('employeeMonthScheduleGrid')) {
-        $('employeeMonthScheduleGrid').innerHTML = '<div class="employee-month-loading"><span class="spinner"></span><strong>กำลังโหลดปฏิทินรายเดือน...</strong></div>';
+
+      const cached = !forceFresh
+        ? employeeMonthCacheGetV61138(code, month)
+        : null;
+
+      if (cached) {
+        employeeMonthCalendarStateV61121.scheduleRows = cached.scheduleRows;
+        employeeMonthCalendarStateV61121.attendanceRows = cached.attendanceRows;
+        renderEmployeeMonthCalendarV61121();
+      } else if ($('employeeMonthScheduleGrid')) {
+        $('employeeMonthScheduleGrid').innerHTML =
+          '<div class="employee-month-loading"><span class="spinner"></span><strong>กำลังโหลดปฏิทินรายเดือน...</strong><small>โหลดตารางกะและ Attendance พร้อมกัน</small></div>';
       }
+
       try {
-        const [scheduleRows, attendanceRows] = await Promise.all([
-          fetchEmployeeMonthScheduleV61121(code, month),
-          fetchEmployeeMonthAttendanceV61121(code, month)
-        ]);
-        employeeMonthCalendarStateV61121.scheduleRows = scheduleRows;
-        employeeMonthCalendarStateV61121.attendanceRows = attendanceRows;
-        await enrichScheduleManagerMetaV61122(scheduleRows);
-        await enrichScheduleManagerNamesV61121(scheduleRows);
+        const bundle = await fetchEmployeeMonthBundleV61138(
+          code,
+          month,
+          forceFresh
+        );
+
+        // Ignore an older request when user changes month/employee quickly.
+        if (loadToken !== employeeMonthCalendarStateV61121.loadToken) return;
+
+        employeeMonthCalendarStateV61121.scheduleRows =
+          employeeMonthCloneRowsV61138(bundle.scheduleRows);
+        employeeMonthCalendarStateV61121.attendanceRows =
+          employeeMonthCloneRowsV61138(bundle.attendanceRows);
+
+        // Manager enrichment is intentionally skipped here:
+        // Monthly Personal Overview does not render manager data.
         renderEmployeeMonthCalendarV61121();
       } catch (error) {
+        if (loadToken !== employeeMonthCalendarStateV61121.loadToken) return;
         console.error('Employee month calendar:', error);
         toast(humanError(error), 'error');
         if ($('employeeMonthScheduleGrid')) {
-          $('employeeMonthScheduleGrid').innerHTML = `<div class="employee-month-error">โหลดปฏิทินรายเดือนไม่สำเร็จ<br><small>${safe(humanError(error))}</small></div>`;
+          $('employeeMonthScheduleGrid').innerHTML =
+            `<div class="employee-month-error">โหลดปฏิทินรายเดือนไม่สำเร็จ<br><small>${safe(humanError(error))}</small></div>`;
         }
       } finally {
-        employeeMonthCalendarStateV61121.loading = false;
+        if (loadToken === employeeMonthCalendarStateV61121.loadToken) {
+          employeeMonthCalendarStateV61121.loading = false;
+        }
       }
     }
 
@@ -5968,7 +6139,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               : `ประมวลผลเดือนนี้เรียบร้อย${rebuiltRows ? ` • Attendance ${formatNumber(rebuiltRows)} วัน` : ''}${processedEnd ? ` • ถึง ${formatDate(processedEnd)}` : ''}`,
           data?.deferred ? 'warning' : 'success'
         );
-        await openEmployeeMonthCalendarV61121(code, month);
+        employeeMonthCacheInvalidateV61138(code, month);
+        await openEmployeeMonthCalendarV61121(code, month, { forceFresh: true });
       } catch (error) {
         toast(humanError(error), 'error');
       } finally {
@@ -5985,7 +6157,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       close: closeEmployeeMonthCalendarV61121,
       refresh: () => openEmployeeMonthCalendarV61121(
         employeeMonthCalendarStateV61121.empCode,
-        employeeMonthCalendarStateV61121.month
+        employeeMonthCalendarStateV61121.month,
+        { forceFresh: true }
       )
     };
 
@@ -7001,9 +7174,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           window.TimeClockTeamDailyReturnContext = null;
         }
         if (monthReturnContext?.source === 'employee-month-calendar') {
-          await openEmployeeMonthCalendarV61121(
+          employeeMonthCacheInvalidateV61138(
             monthReturnContext.empCode || savedEmp,
             monthReturnContext.month || savedDate.slice(0,7)
+          );
+          await openEmployeeMonthCalendarV61121(
+            monthReturnContext.empCode || savedEmp,
+            monthReturnContext.month || savedDate.slice(0,7),
+            { forceFresh: true }
           );
           window.TimeClockEmployeeMonthReturnContext = null;
         }
@@ -7123,9 +7301,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           window.TimeClockTeamDailyReturnContext = null;
         }
         if (monthReturnContext?.source === 'employee-month-calendar') {
-          await openEmployeeMonthCalendarV61121(
+          employeeMonthCacheInvalidateV61138(
             monthReturnContext.empCode || val('assignEmpCode'),
             monthReturnContext.month || String(val('assignWorkDate') || '').slice(0,7)
+          );
+          await openEmployeeMonthCalendarV61121(
+            monthReturnContext.empCode || val('assignEmpCode'),
+            monthReturnContext.month || String(val('assignWorkDate') || '').slice(0,7),
+            { forceFresh: true }
           );
           window.TimeClockEmployeeMonthReturnContext = null;
         }
@@ -8648,10 +8831,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         }
       });
       $("employeeMonthRecalcBtn")?.addEventListener("click", recalculateEmployeeMonthV61121);
-      $("employeeMonthRefreshBtn")?.addEventListener("click", () => openEmployeeMonthCalendarV61121(
-        employeeMonthCalendarStateV61121.empCode,
-        employeeMonthCalendarStateV61121.month
-      ));
+      $("employeeMonthRefreshBtn")?.addEventListener("click", () => {
+        employeeMonthCacheInvalidateV61138(
+          employeeMonthCalendarStateV61121.empCode,
+          employeeMonthCalendarStateV61121.month
+        );
+        openEmployeeMonthCalendarV61121(
+          employeeMonthCalendarStateV61121.empCode,
+          employeeMonthCalendarStateV61121.month,
+          { forceFresh: true }
+        );
+      });
 
       $("scheduleTeamDrawerClose")?.addEventListener("click", closeScheduleTeamDrawer);
       $("scheduleTeamDrawerBackdrop")?.addEventListener("click", closeScheduleTeamDrawer);
