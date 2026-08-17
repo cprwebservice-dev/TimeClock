@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.46";
-document.documentElement.dataset.timeClockBuild = "6.11.46";
+window.__TIME_CLOCK_BUILD__ = "V6.11.47";
+document.documentElement.dataset.timeClockBuild = "6.11.47";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.46";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.46',
+  version: '6.11.47',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5485,6 +5485,92 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return meta.label || '-';
     }
 
+    function schedulePersonSecondShiftCodeV61147(row) {
+      const explicit = String(
+        row?.shift_2_code
+        || row?.shift_2_shift_code
+        || row?.second_shift_code
+        || row?.customer_shift_code
+        || row?.effective_shift_2_code
+        || ''
+      ).trim().toUpperCase();
+
+      if (explicit) return explicit;
+
+      const segmentStart = formatTime(
+        row?.shift_2_planned_start_at
+        || row?.customer_window_start
+      );
+      const segmentEndRaw =
+        row?.shift_2_planned_end_at
+        || row?.customer_window_end;
+      const segmentEnd = formatTime(segmentEndRaw);
+
+      const pattern = String(
+        row?.pattern_code
+        || ''
+      ).trim().toUpperCase();
+
+      const shifts = Array.isArray(state?.filters?.shifts)
+        ? state.filters.shifts
+        : [];
+
+      const candidates = shifts.filter(shift => {
+        if (!shift || shift.is_active === false || shift.is_workday === false) {
+          return false;
+        }
+
+        const patterns = Array.isArray(shift.applicable_pattern_codes)
+          ? shift.applicable_pattern_codes
+              .map(value => String(value || '').trim().toUpperCase())
+              .filter(Boolean)
+          : [];
+
+        if (pattern && patterns.length && !patterns.includes(pattern)) {
+          return false;
+        }
+
+        return true;
+      });
+
+      // Exact time match is the strongest signal.
+      const exact = candidates.find(shift => {
+        const start = formatTime(shift?.start_time);
+        const end = formatTime(shift?.end_time);
+        if (segmentStart === '-' || start !== segmentStart) return false;
+        if (segmentEndRaw && segmentEnd !== '-' && end !== segmentEnd) return false;
+        return true;
+      });
+
+      if (exact?.shift_code) {
+        return String(exact.shift_code).trim().toUpperCase();
+      }
+
+      // SPLIT_FLEX second segment is the late/customer-work segment.
+      // Use the configured night shift for the same work pattern when the
+      // customer interval does not exactly match Shift Master times.
+      const night = candidates
+        .filter(shift => {
+          const code = String(shift?.shift_code || '').trim().toUpperCase();
+          const name = String(shift?.shift_name || '').trim().toLowerCase();
+          return shift?.is_night_shift === true
+            || code.startsWith('N')
+            || name.includes('กลางคืน')
+            || name.includes('กะดึก');
+        })
+        .sort((a,b) =>
+          Number(a?.display_order || 0) - Number(b?.display_order || 0)
+        )[0];
+
+      if (night?.shift_code) {
+        return String(night.shift_code).trim().toUpperCase();
+      }
+
+      // Last-resort UI code. This is only used when Shift Master has no
+      // identifiable second/night shift for the employee's work pattern.
+      return 'S2';
+    }
+
 
     const timeCertificationStateV61139 = {
       row: null,
@@ -7468,12 +7554,31 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               ? `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | Manager ไม่สามารถจัดกะให้ตนเอง`
               : `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ดับเบิลคลิกเพื่อแก้ไข`;
 
-          const splitIndicatorV61146 =
+          const secondShiftCodeV61147 =
             splitWorkTemplate
-              ? '<small class="person-split-indicator-v61146">2</small>'
+              ? schedulePersonSecondShiftCodeV61147(r)
               : '';
 
-          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls} ${splitWorkTemplate?"has-split-work-v6118":""} ${managerOwnEmployee?"manager-self-readonly":""}" ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV61146)}" aria-label="${safe(cellTitle)}"><b class="schedule-shift-code">${safe(code)}</b>${splitIndicatorV61146}${scheduleTimeHtml}${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
+          const personShiftCodeHtmlV61147 =
+            splitWorkTemplate
+              ? `<span class="person-shift-code-stack-v61147">
+                  <b class="schedule-shift-code person-shift-code-v61147 shift-1" aria-label="กะที่ 1 ${safe(code)}">${safe(code)}</b>
+                  <b class="schedule-shift-code person-shift-code-v61147 shift-2" aria-label="กะที่ 2 ${safe(secondShiftCodeV61147)}">${safe(secondShiftCodeV61147)}</b>
+                </span>`
+              : `<b class="schedule-shift-code">${safe(code)}</b>`;
+
+          const personShiftTooltipWithCodeV61147 = splitWorkTemplate
+            ? [
+                `กะที่ 1 ${normalizedCode || "-"}`,
+                showShiftTime
+                  ? `เวลาเริ่ม–สิ้นสุด ${shiftTimeLabel}`
+                  : "ไม่พบเวลาเริ่ม–สิ้นสุดกะที่ 1",
+                `กะที่ 2 ${secondShiftCodeV61147}`,
+                `เวลาเริ่ม–สิ้นสุด ${customerStart}–${customerEndLabel}`
+              ].filter(Boolean).join("|")
+            : personShiftTooltipV61146;
+
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls} ${splitWorkTemplate?"has-split-work-v6118 person-double-code-v61147":""} ${managerOwnEmployee?"manager-self-readonly":""}" ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipWithCodeV61147)}" aria-label="${safe(cellTitle)}">${personShiftCodeHtmlV61147}${scheduleTimeHtml}${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
         }
 
         html += `</tr>`;
