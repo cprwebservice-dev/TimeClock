@@ -17616,3 +17616,193 @@ body.darkmode #page-work-patterns .work-pattern-load-note-v61111,
 body[data-color-mode="dark"] #page-work-patterns .work-pattern-load-note-v61111{
   background:#2a171c!important;border-color:#6f3d46!important;color:#ffc0c6!important
 }
+
+
+/* ========================================================================== */
+/* V6.11.32 — Monthly Personal Overview holiday/off clarity polish           */
+/* ========================================================================== */
+/* Light mode */
+.employee-month-shift.tone-holiday{
+  border-color:#efc995!important;
+  background:linear-gradient(180deg,#fff7ea 0%,#fff1db 100%)!important;
+}
+.employee-month-shift.tone-holiday b{color:#b86712!important}
+.employee-month-shift.tone-holiday>small{color:#95602a!important}
+.employee-month-shift.tone-holiday .month-template-code-v61127{
+  border-color:#f1d3aa!important;
+  background:#fffaf1!important;
+  color:#b56f1b!important;
+}
+.employee-month-shift.tone-off{
+  border-color:#d7e1e9!important;
+  background:linear-gradient(180deg,#f7fafc 0%,#eef3f7 100%)!important;
+}
+.employee-month-shift.tone-off b{color:#607486!important}
+.employee-month-shift.tone-off>small{color:#758899!important}
+.employee-month-shift.tone-off .month-template-code-v61127{
+  border-color:#dde5ec!important;
+  background:#fbfcfd!important;
+  color:#6f8191!important;
+}
+.employee-month-day.is-holiday .month-day-status-v61127{
+  border-color:#efcca0!important;
+  background:#fff4e6!important;
+  color:#b96a18!important;
+}
+.employee-month-day.is-holiday .month-day-status-v61127 i{background:#e3953f!important}
+.employee-month-day.is-weekly-off .month-day-status-v61127{
+  border-color:#d7e0e8!important;
+  background:#f3f6f8!important;
+  color:#697c8d!important;
+}
+.employee-month-day.is-weekly-off .month-day-status-v61127 i{background:#90a2b3!important}
+.employee-month-day.is-holiday .employee-month-date-v61127>strong{
+  background:#fff0dd!important;
+  color:#b96a18!important;
+}
+.employee-month-day.is-weekly-off .employee-month-date-v61127>strong{
+  background:#edf2f7!important;
+  color:#5f7488!important;
+}
+.employee-month-day.is-holiday .employee-month-shift.tone-holiday,
+.employee-month-day.is-holiday .employee-month-shift.tone-off{
+  box-shadow:inset 0 0 0 1px rgba(233,146,52,.16);
+}
+.employee-month-day.is-weekly-off .employee-month-shift.tone-off{
+  box-shadow:inset 0 0 0 1px rgba(120,138,157,.12);
+}
+.employee-month-day.is-holiday .employee-month-shift.tone-holiday::after,
+.employee-month-day.is-holiday .employee-month-shift.tone-off::after,
+.employee-month-day.is-weekly-off .employee-month-shift.tone-off::after{
+  position:absolute;
+  top:7px;
+  right:8px;
+  min-height:16px;
+  display:inline-flex;
+  align-items:center;
+  padding:1px 5px;
+  border-radius:999px;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.03em;
+}
+.employee-month-shift{position:relative}
+.employee-month-day.is-holiday .employee-month-shift.tone-holiday::after,
+.employee-month-day.is-holiday .employee-month-shift.tone-off::after{
+  content:"นักขัตฤกษ์";
+  border:1px solid #f0d1a8;
+  background:#fff8ef;
+  color:#b76c1c;
+}
+.employee-month-day.is-weekly-off .employee-month-shift.tone-off::after{
+  content:"วันหยุด";
+  border:1px solid #d9e1e8;
+  background:#f8fafc;
+  color:#6e7f8f;
+}
+
+/* Dark mode */
+body.theme-dark #employeeMonthScheduleModal .employee-month-shift.tone-holiday,
+.dark #employeeMonthScheduleModal .employee-month-shift.tone-holiday,
+body.theme-dark .employee-month-shift.tone-holiday,
+.dark .employee-month-shift.tone-holiday{
+  border-color:#775939!important;
+  background:linear-gradient(180deg,#3a2b1d 0%,#312315 100%)!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-shift.tone-holiday b,
+.dark #employeeMonthScheduleModal .employee-month-shift.tone-holiday b,
+body.theme-dark .employee-month-shift.tone-holiday b,
+.dark .employee-month-shift.tone-holiday b{color:#ffd396!important}
+body.theme-dark #employeeMonthScheduleModal .employee-month-shift.tone-holiday>small,
+.dark #employeeMonthScheduleModal .employee-month-shift.tone-holiday>small,
+body.theme-dark .employee-month-shift.tone-holiday>small,
+.dark .employee-month-shift.tone-holiday>small{color:#eab97e!important}
+body.theme-dark #employeeMonthScheduleModal .employee-month-shift.tone-holiday .month-template-code-v61127,
+.dark #employeeMonthScheduleModal .employee-month-shift.tone-holiday .month-template-code-v61127,
+body.theme-dark .employee-month-shift.tone-holiday .month-template-code-v61127,
+.dark .employee-month-shift.tone-holiday .month-template-code-v61127{
+  border-color:#826345!important;
+  background:#2a2016!important;
+  color:#ffd39d!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-shift.tone-off,
+.dark #employeeMonthScheduleModal .employee-month-shift.tone-off,
+body.theme-dark .employee-month-shift.tone-off,
+.dark .employee-month-shift.tone-off{
+  border-color:#445768!important;
+  background:linear-gradient(180deg,#243443 0%,#1f2d3a 100%)!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-shift.tone-off b,
+.dark #employeeMonthScheduleModal .employee-month-shift.tone-off b,
+body.theme-dark .employee-month-shift.tone-off b,
+.dark .employee-month-shift.tone-off b{color:#d6e0e8!important}
+body.theme-dark #employeeMonthScheduleModal .employee-month-shift.tone-off>small,
+.dark #employeeMonthScheduleModal .employee-month-shift.tone-off>small,
+body.theme-dark .employee-month-shift.tone-off>small,
+.dark .employee-month-shift.tone-off>small{color:#aab9c5!important}
+body.theme-dark #employeeMonthScheduleModal .employee-month-shift.tone-off .month-template-code-v61127,
+.dark #employeeMonthScheduleModal .employee-month-shift.tone-off .month-template-code-v61127,
+body.theme-dark .employee-month-shift.tone-off .month-template-code-v61127,
+.dark .employee-month-shift.tone-off .month-template-code-v61127{
+  border-color:#4d6172!important;
+  background:#1a2631!important;
+  color:#c8d3dc!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-holiday .month-day-status-v61127,
+.dark #employeeMonthScheduleModal .employee-month-day.is-holiday .month-day-status-v61127,
+body.theme-dark .employee-month-day.is-holiday .month-day-status-v61127,
+.dark .employee-month-day.is-holiday .month-day-status-v61127{
+  border-color:#7d603f!important;
+  background:#3d2b1d!important;
+  color:#ffd19a!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-holiday .month-day-status-v61127 i,
+.dark #employeeMonthScheduleModal .employee-month-day.is-holiday .month-day-status-v61127 i,
+body.theme-dark .employee-month-day.is-holiday .month-day-status-v61127 i,
+.dark .employee-month-day.is-holiday .month-day-status-v61127 i{background:#f1b25d!important}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-weekly-off .month-day-status-v61127,
+.dark #employeeMonthScheduleModal .employee-month-day.is-weekly-off .month-day-status-v61127,
+body.theme-dark .employee-month-day.is-weekly-off .month-day-status-v61127,
+.dark .employee-month-day.is-weekly-off .month-day-status-v61127{
+  border-color:#4a5e6f!important;
+  background:#23313e!important;
+  color:#d0dae3!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-weekly-off .month-day-status-v61127 i,
+.dark #employeeMonthScheduleModal .employee-month-day.is-weekly-off .month-day-status-v61127 i,
+body.theme-dark .employee-month-day.is-weekly-off .month-day-status-v61127 i,
+.dark .employee-month-day.is-weekly-off .month-day-status-v61127 i{background:#9aaab7!important}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-holiday .employee-month-date-v61127>strong,
+.dark #employeeMonthScheduleModal .employee-month-day.is-holiday .employee-month-date-v61127>strong,
+body.theme-dark .employee-month-day.is-holiday .employee-month-date-v61127>strong,
+.dark .employee-month-day.is-holiday .employee-month-date-v61127>strong{
+  background:#46311f!important;
+  color:#ffd59d!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-weekly-off .employee-month-date-v61127>strong,
+.dark #employeeMonthScheduleModal .employee-month-day.is-weekly-off .employee-month-date-v61127>strong,
+body.theme-dark .employee-month-day.is-weekly-off .employee-month-date-v61127>strong,
+.dark .employee-month-day.is-weekly-off .employee-month-date-v61127>strong{
+  background:#273848!important;
+  color:#d7e1e9!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-holiday .employee-month-shift.tone-holiday::after,
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-holiday .employee-month-shift.tone-off::after,
+.dark #employeeMonthScheduleModal .employee-month-day.is-holiday .employee-month-shift.tone-holiday::after,
+.dark #employeeMonthScheduleModal .employee-month-day.is-holiday .employee-month-shift.tone-off::after,
+body.theme-dark .employee-month-day.is-holiday .employee-month-shift.tone-holiday::after,
+body.theme-dark .employee-month-day.is-holiday .employee-month-shift.tone-off::after,
+.dark .employee-month-day.is-holiday .employee-month-shift.tone-holiday::after,
+.dark .employee-month-day.is-holiday .employee-month-shift.tone-off::after{
+  border-color:#896340!important;
+  background:#2a2017!important;
+  color:#ffd39f!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day.is-weekly-off .employee-month-shift.tone-off::after,
+.dark #employeeMonthScheduleModal .employee-month-day.is-weekly-off .employee-month-shift.tone-off::after,
+body.theme-dark .employee-month-day.is-weekly-off .employee-month-shift.tone-off::after,
+.dark .employee-month-day.is-weekly-off .employee-month-shift.tone-off::after{
+  border-color:#4b5d6d!important;
+  background:#1b2731!important;
+  color:#d0dae3!important;
+}
