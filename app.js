@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.44";
-document.documentElement.dataset.timeClockBuild = "6.11.44";
+window.__TIME_CLOCK_BUILD__ = "V6.11.45";
+document.documentElement.dataset.timeClockBuild = "6.11.45";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.44";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.44',
+  version: '6.11.45',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5347,7 +5347,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       row: null,
       source: '',
       reasons: null,
-      reasonLoadedAt: 0
+      reasonLoadedAt: 0,
+      actualOutLimit: null,
+      shift1Only: false
     };
 
     function timeCertificationRoleV61139() {
@@ -5384,12 +5386,131 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return String(period?.certification_status || '').trim().toUpperCase() === 'DUE_SOON';
     }
 
+    function timeCertificationHasSecondShiftV61145(row) {
+      return Number(row?.paid_segment_count || 0) > 1
+        || Boolean(
+          row?.shift_2_planned_start_at
+          || row?.shift_2_planned_end_at
+          || row?.shift_2_actual_in_at
+          || row?.shift_2_actual_out_at
+        )
+        || scheduleWorkTemplateCodeV6118(row) === 'SPLIT_FLEX';
+    }
+
+    function timeCertificationRangeTextV61145(row) {
+      const start = timeCertificationTimeV61139(row?.certified_start_at);
+      const end = timeCertificationTimeV61139(row?.certified_end_at);
+      if (!start || !end) return '';
+
+      const startDate = timeCertificationIsoDateV61139(
+        row?.certified_start_at,
+        String(row?.work_date || '').slice(0,10)
+      );
+      const endDate = timeCertificationIsoDateV61139(
+        row?.certified_end_at,
+        startDate
+      );
+
+      let suffix = '';
+      if (startDate && endDate && endDate > startDate) {
+        const days = Math.max(
+          1,
+          Math.round(
+            (
+              new Date(`${endDate}T00:00:00`).getTime()
+              - new Date(`${startDate}T00:00:00`).getTime()
+            ) / 86400000
+          )
+        );
+        suffix = ` +${days}`;
+      }
+      return `${start}–${end}${suffix}`;
+    }
+
+    function timeCertificationShift1ActualOutV61145(row, workDate, shiftStartTime) {
+      const hasSecondShift = timeCertificationHasSecondShiftV61145(row);
+      const raw = row?.shift_1_actual_out_at
+        || (!hasSecondShift ? (row?.actual_out_at || row?.last_out) : null);
+
+      const time = timeCertificationTimeV61139(raw);
+      if (!time) return null;
+
+      let date = timeCertificationIsoDateV61139(raw, workDate);
+      const outMin = attendanceClockMinutes(time);
+      const startMin = attendanceClockMinutes(shiftStartTime);
+
+      // For time-only night-shift values, infer next day from the shift start.
+      if (
+        date === workDate
+        && outMin != null
+        && startMin != null
+        && outMin <= startMin
+      ) {
+        const d = new Date(`${workDate}T00:00:00`);
+        d.setDate(d.getDate()+1);
+        date = d.toISOString().slice(0,10);
+      }
+
+      const ms = timeCertificationDateTimeMsV61139(date,time);
+      if (ms == null) return null;
+      return { raw, date, time, ms };
+    }
+
+    function updateTimeCertificationActualOutLimitV61145() {
+      const limit = timeCertificationStateV61139.actualOutLimit;
+      const endDate = $('timeCertificationEndDate');
+      const endTime = $('timeCertificationEndTime');
+      const hint = $('timeCertificationEndLimitHint');
+      if (!endDate || !endTime) return;
+
+      endDate.removeAttribute('max');
+      endTime.removeAttribute('max');
+      endDate.setCustomValidity('');
+      endTime.setCustomValidity('');
+
+      if (!limit) {
+        if (hint) {
+          hint.className = 'time-cert-end-limit-v61145 no-limit';
+          hint.textContent = 'ไม่พบเวลาออกจริง • สามารถระบุเวลาสิ้นสุดรับรองได้';
+        }
+        updateTimeCertificationDurationV61139();
+        return;
+      }
+
+      endDate.max = limit.date;
+      if (endDate.value === limit.date) endTime.max = limit.time;
+
+      const selectedMs = timeCertificationDateTimeMsV61139(
+        endDate.value,
+        endTime.value
+      );
+      const exceeded = selectedMs != null && selectedMs > limit.ms;
+
+      if (exceeded) {
+        endDate.setCustomValidity('เวลาสิ้นสุดรับรองเกินเวลาออกจริง');
+        endTime.setCustomValidity('เวลาสิ้นสุดรับรองเกินเวลาออกจริง');
+      }
+
+      if (hint) {
+        hint.className = `time-cert-end-limit-v61145 ${exceeded ? 'exceeded' : 'limited'}`;
+        hint.textContent = exceeded
+          ? `เกินเวลาออกจริง ${limit.time} • กรุณาปรับเวลาสิ้นสุด`
+          : `สูงสุดตามเวลาออกจริง ${limit.time}${limit.date > String(timeCertificationStateV61139.row?.work_date || '').slice(0,10) ? ' • วันถัดไป' : ''}`;
+      }
+
+      updateTimeCertificationDurationV61139();
+    }
+
     function timeCertificationBadgeV61139(row) {
       const status = String(row?.certification_status || '').trim().toUpperCase();
       if (status === 'CERTIFIED' && row?.certified_start_at && row?.certified_end_at) {
-        return '<span class="time-cert-badge-v61139 certified">✓ รับรองแล้ว</span>';
+        const range = timeCertificationRangeTextV61145(row);
+        return `<span class="time-cert-badge-v61139 certified"><b>✓ รับรองแล้ว</b>${range ? `<em>${safe(range)}</em>` : ''}</span>`;
       }
-      if (status === 'STALE') return '<span class="time-cert-badge-v61139 stale">! ต้องรับรองใหม่</span>';
+      if (status === 'STALE') {
+        const oldRange = timeCertificationRangeTextV61145(row);
+        return `<span class="time-cert-badge-v61139 stale"><b>! ต้องรับรองใหม่</b>${oldRange ? `<em>เดิม ${safe(oldRange)}</em>` : ''}</span>`;
+      }
       if (status === 'REVOKED') return '<span class="time-cert-badge-v61139 revoked">ยกเลิกการรับรอง</span>';
       return '';
     }
@@ -5607,6 +5728,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const late = Number(row.late_minutes || 0) > 0;
       const missingIn = rawIn === '-';
       const missingOut = rawOut === '-';
+      const hasSecondShift = timeCertificationHasSecondShiftV61145(row);
+      const actualOutLimit = timeCertificationShift1ActualOutV61145(
+        row,
+        workDate,
+        shiftStartTime
+      );
+
+      timeCertificationStateV61139.shift1Only = hasSecondShift;
+      timeCertificationStateV61139.actualOutLimit = actualOutLimit;
 
       let defaultStartTime = active ? timeCertificationTimeV61139(row.certified_start_at) : '';
       if (!defaultStartTime) {
@@ -5617,11 +5747,23 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
       let defaultEndDate = active ? timeCertificationIsoDateV61139(row.certified_end_at, shiftEndDate) : shiftEndDate;
       let defaultEndTime = active ? timeCertificationTimeV61139(row.certified_end_at) : '';
+
       if (!defaultEndTime) {
-        defaultEndTime = timeCertificationTimeV61139(row.shift_1_actual_out_at || row.actual_out_at || row.last_out) || shiftEndTime;
-        const actualOutDate = timeCertificationIsoDateV61139(row.shift_1_actual_out_at || row.actual_out_at, '');
-        if (actualOutDate) defaultEndDate = actualOutDate;
-        if (missingOut) { defaultEndDate = shiftEndDate; defaultEndTime = shiftEndTime; }
+        if (actualOutLimit) {
+          defaultEndDate = actualOutLimit.date;
+          defaultEndTime = actualOutLimit.time;
+        } else {
+          defaultEndDate = shiftEndDate;
+          defaultEndTime = shiftEndTime;
+        }
+      }
+
+      // New business rule: if a real Shift-1 OUT exists, certification cannot
+      // end later than that punch. Keep legacy display intact until the user
+      // edits/saves, but new entries default exactly to the real OUT.
+      if (!active && actualOutLimit) {
+        defaultEndDate = actualOutLimit.date;
+        defaultEndTime = actualOutLimit.time;
       }
 
       setVal('timeCertificationStartTime', defaultStartTime);
@@ -5641,8 +5783,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             : 'รับรองเวลาทำงาน'
       );
       setText('timeCertificationSubtitle', `${row.full_name || empCode} • ${formatDate(workDate)}`);
-      $('timeCertificationContext').innerHTML = `<div><span>พนักงาน</span><strong>${safe(row.full_name || empCode)}</strong><small>${safe(empCode)}${row.position_name ? ` • ${safe(row.position_name)}` : ''}</small></div><div><span>วันที่</span><strong>${safe(formatDate(workDate))}</strong><small>${safe(row.department || '')}</small></div><div><span>กะ</span><strong>${safe(row.effective_shift_code || row.assigned_shift_code || row.shift_code || '-')}</strong><small>${safe(shiftStartTime)}–${safe(shiftEndTime)}${shiftEndDate > workDate ? ' • +1 วัน' : ''}</small></div>`;
-      $('timeCertificationFacts').innerHTML = `<div><span>เวลาเข้า (จริง)</span><strong>${safe(rawIn)}</strong></div><div><span>เวลาออก (จริง)</span><strong>${safe(rawOut)}</strong></div><div><span>สถานะ Attendance</span><strong>${safe(employeeMonthStatusMetaV61121(row,workDate).label || attendanceDisplayLabel(row))}</strong></div><div><span>กะมาตรฐาน</span><strong>${safe(shiftStartTime)}–${safe(shiftEndTime)}</strong></div>`;
+      $('timeCertificationContext').innerHTML = `<div><span>พนักงาน</span><strong>${safe(row.full_name || empCode)}</strong><small>${safe(empCode)}${row.position_name ? ` • ${safe(row.position_name)}` : ''}</small></div><div><span>วันที่</span><strong>${safe(formatDate(workDate))}</strong><small>${safe(row.department || '')}</small></div><div><span>${hasSecondShift ? 'กะที่รับรอง' : 'กะ'}</span><strong>${safe(row.effective_shift_code || row.assigned_shift_code || row.shift_code || '-')}</strong><small>${safe(shiftStartTime)}–${safe(shiftEndTime)}${shiftEndDate > workDate ? ' • +1 วัน' : ''}${hasSecondShift ? ' • กะที่ 1 เท่านั้น' : ''}</small></div>`;
+      $('timeCertificationFacts').innerHTML = `<div><span>เวลาเข้า กะ 1 (จริง)</span><strong>${safe(rawIn)}</strong></div><div><span>เวลาออก กะ 1 (จริง)</span><strong>${safe(rawOut)}</strong></div><div><span>สถานะ Attendance</span><strong>${safe(employeeMonthStatusMetaV61121(row,workDate).label || attendanceDisplayLabel(row))}</strong></div><div><span>${hasSecondShift ? 'ขอบเขตการรับรอง' : 'กะมาตรฐาน'}</span><strong>${safe(hasSecondShift ? 'เฉพาะกะที่ 1' : `${shiftStartTime}–${shiftEndTime}`)}</strong>${hasSecondShift ? '<small>กะที่ 2 ใช้ Punch จริง ไม่ถูกแก้ไข</small>' : ''}</div>`;
 
       $('timeCertificationExisting')?.classList.toggle('hidden', !active && String(row.certification_status || '').toUpperCase() !== 'STALE');
       if ($('timeCertificationExisting')) {
@@ -5702,10 +5844,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             ? `รอบรับรองเวลาปิดสำหรับ Manager${deadline ? ` • Deadline ${deadline}` : ''} • HR Admin Override`
             : dueSoon
               ? `รอบรับรองเวลาใกล้ครบกำหนด${deadline ? ` • Deadline ${deadline}` : ''} • เวลาเริ่มต้องไม่ก่อน ${shiftStartTime}`
-              : `เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ (${shiftStartTime}) และเวลาสิ้นสุดรับรองสามารถเกินเวลาสิ้นสุดกะ (${shiftEndTime}) ได้ตามเวลาปฏิบัติงานจริง`;
+              : actualOutLimit
+                ? `${hasSecondShift ? 'รับรองเฉพาะกะที่ 1 • ' : ''}เวลาเริ่มต้องไม่ก่อน ${shiftStartTime} • เวลาสิ้นสุดรับรองสูงสุดตามเวลาออกจริง ${actualOutLimit.time}`
+                : `${hasSecondShift ? 'รับรองเฉพาะกะที่ 1 • ' : ''}เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ (${shiftStartTime}) • ไม่พบเวลาออกจริง จึงสามารถระบุเวลาสิ้นสุดรับรองได้`;
       }
 
-      updateTimeCertificationDurationV61139();
+      updateTimeCertificationActualOutLimitV61145();
 
       // V6.11.40 — explicit modal stack state.
       // Time Certification can be opened from Team Daily Detail or Monthly Personal Overview,
@@ -5727,6 +5871,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       document.body.classList.remove('time-certification-modal-open-v61140');
       timeCertificationStateV61139.row = null;
       timeCertificationStateV61139.source = '';
+      timeCertificationStateV61139.actualOutLimit = null;
+      timeCertificationStateV61139.shift1Only = false;
     }
 
     async function refreshTimeCertificationSourceV61139(empCode, workDate, source) {
@@ -5767,6 +5913,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const shiftStartTime = timeCertificationTimeV61139(row.shift_1_planned_start_at || row.effective_shift_start_time || row.shift_start_time);
       const shiftStartMs = timeCertificationDateTimeMsV61139(workDate,shiftStartTime);
       if (shiftStartMs != null && startMs < shiftStartMs) return toast(`เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ ${shiftStartTime}`,'error');
+
+      const actualOutLimit = timeCertificationStateV61139.actualOutLimit
+        || timeCertificationShift1ActualOutV61145(row,workDate,shiftStartTime);
+      if (actualOutLimit && endMs > actualOutLimit.ms) {
+        return toast(`เวลาสิ้นสุดรับรองต้องไม่เกินเวลาออกจริง ${actualOutLimit.time}`,'error');
+      }
 
       const source = timeCertificationStateV61139.source;
       try {
@@ -9351,7 +9503,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("timeCertificationModal")?.addEventListener("click", event => { if (event.target === $("timeCertificationModal")) closeTimeCertificationModalV61139(); });
       $("timeCertificationReason")?.addEventListener("change", updateTimeCertificationNoteRuleV61139);
       $("timeCertificationReasonSearch")?.addEventListener("input", () => renderTimeCertificationReasonOptionsV61139(timeCertificationStateV61139.reasons || [], val("timeCertificationReason")));
-      ["timeCertificationStartTime","timeCertificationEndDate","timeCertificationEndTime"].forEach(id => $(id)?.addEventListener("input", updateTimeCertificationDurationV61139));
+      $("timeCertificationStartTime")?.addEventListener("input", updateTimeCertificationDurationV61139);
+      ["timeCertificationEndDate","timeCertificationEndTime"].forEach(id => {
+        $(id)?.addEventListener("input", updateTimeCertificationActualOutLimitV61145);
+        $(id)?.addEventListener("change", updateTimeCertificationActualOutLimitV61145);
+      });
       $("timeCertificationSaveBtn")?.addEventListener("click", saveTimeCertificationV61139);
       $("timeCertificationRevokeBtn")?.addEventListener("click", revokeTimeCertificationV61139);
 
@@ -9565,6 +9721,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("TIME_CERTIFICATION_OFF_NOT_ALLOWED")) return "วันหยุด / กะ OFF ไม่สามารถรับรองเวลาได้";
       if (msg.includes("TIME_CERTIFICATION_SHIFT_REQUIRED")) return "ไม่พบเวลาเริ่ม/สิ้นสุดกะ กรุณากำหนดกะหรือประมวลผล Attendance ก่อนรับรองเวลา";
       if (msg.includes("TIME_CERTIFICATION_START_BEFORE_SHIFT")) return "เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ";
+      if (msg.includes("TIME_CERTIFICATION_END_AFTER_ACTUAL_OUT")) return "เวลาสิ้นสุดรับรองต้องไม่เกินเวลาออกจริงของกะที่ 1";
       if (msg.includes("TIME_CERTIFICATION_END_MUST_BE_AFTER_START")) return "เวลาสิ้นสุดรับรองต้องมากกว่าเวลาเริ่มรับรอง";
       if (msg.includes("TIME_CERTIFICATION_REASON_REQUIRED")) return "กรุณาเลือกเหตุผลการรับรองเวลา";
       if (msg.includes("TIME_CERTIFICATION_REASON_NOT_ACTIVE")) return "เหตุผลที่เลือกถูกปิดใช้งาน กรุณาเลือกเหตุผลอื่น";

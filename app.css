@@ -18378,3 +18378,95 @@ body.theme-dark .time-cert-rule-v61139.is-due-v61144{
   background:#342512!important;
   border-color:#8b5e20!important;
 }
+
+
+/* ========================================================================== */
+/* V6.11.45 — Certification time display / Shift-1 scope / Actual OUT cap     */
+/* ========================================================================== */
+
+.time-cert-badge-v61139.certified,
+.time-cert-badge-v61139.stale{
+  gap:5px!important;
+  max-width:100%;
+}
+
+.time-cert-badge-v61139 b{
+  font:inherit;
+  font-weight:900;
+}
+
+.time-cert-badge-v61139 em{
+  font-style:normal;
+  font-weight:900;
+  padding-left:5px;
+  border-left:1px solid currentColor;
+  opacity:.88;
+}
+
+.employee-month-cert-badge-wrap-v61139 .time-cert-badge-v61139{
+  width:100%;
+  justify-content:center;
+  white-space:normal;
+  text-align:center;
+  line-height:1.25;
+}
+
+.time-cert-end-limit-v61145{
+  display:block;
+  margin-top:5px;
+  min-height:15px;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.35;
+  color:#64748b;
+}
+
+.time-cert-end-limit-v61145.limited{
+  color:#0f6b58;
+}
+
+.time-cert-end-limit-v61145.no-limit{
+  color:#8a5a00;
+}
+
+.time-cert-end-limit-v61145.exceeded{
+  color:#b42318;
+}
+
+#timeCertificationEndTime:invalid,
+#timeCertificationEndDate:invalid{
+  border-color:#dc2626!important;
+  box-shadow:0 0 0 3px rgba(220,38,38,.10)!important;
+}
+
+html[data-theme="dark"] .time-cert-end-limit-v61145,
+body[data-theme="dark"] .time-cert-end-limit-v61145,
+html.dark .time-cert-end-limit-v61145,
+body.dark .time-cert-end-limit-v61145,
+body.theme-dark .time-cert-end-limit-v61145{
+  color:#a8bac9;
+}
+
+html[data-theme="dark"] .time-cert-end-limit-v61145.limited,
+body[data-theme="dark"] .time-cert-end-limit-v61145.limited,
+html.dark .time-cert-end-limit-v61145.limited,
+body.dark .time-cert-end-limit-v61145.limited,
+body.theme-dark .time-cert-end-limit-v61145.limited{
+  color:#6ee7b7;
+}
+
+html[data-theme="dark"] .time-cert-end-limit-v61145.no-limit,
+body[data-theme="dark"] .time-cert-end-limit-v61145.no-limit,
+html.dark .time-cert-end-limit-v61145.no-limit,
+body.dark .time-cert-end-limit-v61145.no-limit,
+body.theme-dark .time-cert-end-limit-v61145.no-limit{
+  color:#fbbf24;
+}
+
+html[data-theme="dark"] .time-cert-end-limit-v61145.exceeded,
+body[data-theme="dark"] .time-cert-end-limit-v61145.exceeded,
+html.dark .time-cert-end-limit-v61145.exceeded,
+body.dark .time-cert-end-limit-v61145.exceeded,
+body.theme-dark .time-cert-end-limit-v61145.exceeded{
+  color:#fca5a5;
+}
