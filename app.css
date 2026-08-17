@@ -18044,3 +18044,246 @@ body.time-certification-modal-open-v61140{
     align-items:center!important;
   }
 }
+
+
+/* ========================================================================== */
+/* V6.11.41 — Time Certification viewport fit + always-visible action footer  */
+/* ========================================================================== */
+
+/*
+  Root cause:
+  V6.11.39 set overflow:hidden on the modal, while modal-body was the only
+  scrolling region but the modal itself was not a flex column. On 100% browser
+  zoom with a shorter viewport, the footer could be pushed below max-height
+  and clipped.
+
+  Fix:
+  - modal is a fixed-height flex column inside the viewport
+  - only modal-body scrolls
+  - header/footer never shrink and footer always remains visible
+  - compact vertical density automatically on shorter screens
+*/
+.time-certification-backdrop-v61139{
+  padding:12px!important;
+  overflow:hidden!important;
+}
+
+.time-certification-backdrop-v61139 .time-certification-modal-v61139{
+  display:flex!important;
+  flex-direction:column!important;
+  width:min(920px,calc(100vw - 24px))!important;
+  height:auto!important;
+  max-height:min(94dvh,calc(100dvh - 24px))!important;
+  overflow:hidden!important;
+}
+
+.time-certification-modal-v61139 > .time-certification-modal-head-v61139{
+  flex:0 0 auto!important;
+}
+
+.time-certification-modal-v61139 > .time-certification-body-v61139{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+
+.time-certification-modal-v61139 > .time-certification-footer-v61139{
+  flex:0 0 auto!important;
+  position:relative!important;
+  z-index:5!important;
+  min-height:62px!important;
+  border-top:1px solid #dce5ef!important;
+  box-shadow:0 -10px 24px rgba(15,35,58,.08)!important;
+}
+
+/* Ensure action buttons do not collapse or wrap out of view. */
+.time-certification-footer-v61139 .btn{
+  flex:0 0 auto;
+  min-height:38px;
+}
+
+.time-certification-footer-v61139 #timeCertificationRevokeBtn{
+  margin-right:auto!important;
+}
+
+/* Medium/short desktop screens: reduce vertical density, not browser scale. */
+@media (max-height:900px) and (min-width:761px){
+  .time-certification-backdrop-v61139{
+    padding:8px!important;
+  }
+
+  .time-certification-backdrop-v61139 .time-certification-modal-v61139{
+    max-height:calc(100dvh - 16px)!important;
+    width:min(900px,calc(100vw - 20px))!important;
+  }
+
+  .time-certification-modal-head-v61139{
+    min-height:56px!important;
+    padding:11px 16px!important;
+  }
+
+  .time-certification-modal-head-v61139 h3{
+    font-size:16px!important;
+  }
+
+  .time-certification-modal-head-v61139 p{
+    margin:1px 0 0!important;
+  }
+
+  .time-certification-body-v61139{
+    padding:12px 14px!important;
+  }
+
+  .time-cert-context-v61139{
+    gap:8px!important;
+    margin-bottom:9px!important;
+  }
+
+  .time-cert-context-v61139 > div{
+    padding:8px 10px!important;
+    border-radius:11px!important;
+  }
+
+  .time-cert-columns-v61139{
+    gap:9px!important;
+  }
+
+  .time-cert-card-v61139{
+    padding:10px 11px!important;
+    border-radius:13px!important;
+  }
+
+  .time-cert-card-v61139.reason-card{
+    margin-top:9px!important;
+  }
+
+  .time-cert-section-title-v61139{
+    margin-bottom:8px!important;
+  }
+
+  .time-cert-facts-v61139{
+    gap:6px!important;
+  }
+
+  .time-cert-facts-v61139 > div{
+    padding:7px 8px!important;
+  }
+
+  .time-cert-duration-v61139{
+    margin-top:6px!important;
+    padding:7px 9px!important;
+  }
+
+  .time-cert-rule-v61139{
+    margin-top:8px!important;
+    padding:8px 10px!important;
+  }
+
+  .time-cert-existing-v61139{
+    margin-top:8px!important;
+    padding:8px 10px!important;
+  }
+
+  .time-certification-footer-v61139{
+    min-height:54px!important;
+    padding:8px 14px!important;
+  }
+
+  .time-certification-footer-v61139 .btn{
+    min-height:34px!important;
+    padding-top:7px!important;
+    padding-bottom:7px!important;
+  }
+}
+
+/* Very short laptop viewport (e.g. 1366x768 at browser zoom 100%). */
+@media (max-height:780px) and (min-width:761px){
+  .time-certification-modal-head-v61139 .eyebrow{
+    font-size:9px!important;
+  }
+
+  .time-certification-modal-head-v61139 h3{
+    font-size:15px!important;
+  }
+
+  .time-certification-body-v61139{
+    padding:9px 12px!important;
+  }
+
+  .time-cert-context-v61139{
+    margin-bottom:7px!important;
+  }
+
+  .time-cert-context-v61139 small,
+  .time-cert-section-title-v61139 small,
+  .time-cert-rule-v61139 small{
+    font-size:9px!important;
+  }
+
+  .time-cert-card-v61139{
+    padding:9px 10px!important;
+  }
+
+  .time-cert-section-title-v61139{
+    margin-bottom:6px!important;
+  }
+
+  .time-cert-card-v61139.reason-card{
+    margin-top:7px!important;
+  }
+
+  .time-cert-rule-v61139{
+    margin-top:7px!important;
+  }
+}
+
+/* Mobile / narrow screen: footer remains visible and actions fit cleanly. */
+@media(max-width:760px){
+  .time-certification-backdrop-v61139{
+    padding:6px!important;
+  }
+
+  .time-certification-backdrop-v61139 .time-certification-modal-v61139{
+    width:calc(100vw - 12px)!important;
+    max-height:calc(100dvh - 12px)!important;
+    border-radius:16px!important;
+  }
+
+  .time-certification-modal-head-v61139{
+    padding:11px 12px!important;
+  }
+
+  .time-certification-body-v61139{
+    padding:11px!important;
+  }
+
+  .time-certification-footer-v61139{
+    padding:8px 10px!important;
+    min-height:56px!important;
+    flex-wrap:wrap!important;
+  }
+
+  .time-certification-footer-v61139 #timeCertificationRevokeBtn{
+    order:3;
+    width:100%;
+    margin-right:0!important;
+  }
+
+  .time-certification-footer-v61139 #timeCertificationCancelBtn,
+  .time-certification-footer-v61139 #timeCertificationSaveBtn{
+    flex:1 1 0!important;
+    justify-content:center;
+  }
+}
+
+/* Dark mode divider/shadow polish for the fixed footer. */
+html[data-theme="dark"] .time-certification-footer-v61139,
+body[data-theme="dark"] .time-certification-footer-v61139,
+html.dark .time-certification-footer-v61139,
+body.dark .time-certification-footer-v61139,
+body.theme-dark .time-certification-footer-v61139{
+  border-top-color:#2f465a!important;
+  box-shadow:0 -10px 24px rgba(0,0,0,.22)!important;
+}
