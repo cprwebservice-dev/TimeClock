@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.36";
-document.documentElement.dataset.timeClockBuild = "6.11.36";
+window.__TIME_CLOCK_BUILD__ = "V6.11.37";
+document.documentElement.dataset.timeClockBuild = "6.11.37";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.36";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.36',
+  version: '6.11.37',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -10100,7 +10100,7 @@ ${skippedSummary(compatibility.skipped)}
 (() => {
   "use strict";
 
-  const VERSION = "6.4.0";
+  const VERSION = "6.11.37";
   const $ = id => document.getElementById(id);
   const qs = (s, r=document) => r.querySelector(s);
   const qsa = (s, r=document) => [...r.querySelectorAll(s)];
@@ -14307,6 +14307,9 @@ ${skippedSummary(compatibility.skipped)}
       while(!state.stop){
         const job=await rpc("ta_process_attendance_rebuild_step",{p_job_id:jobId});
         renderProgress(job);
+        if(job.status==="RUNNING"&&job.current_work_date){
+          setText("attRebuildLastError","Pipeline: Rebuild → Calculate → Validate");
+        }
         if(Date.now()-state.lastHistoryAt>2500){await loadHistory(false);state.lastHistoryAt=Date.now();}
         if(Number(job.failed_tasks||0)>0&&Number(job.failed_tasks||0)%5===0)await loadErrors(jobId,false);
         if(terminal.has(job.status)||job.status==="PAUSED")break;

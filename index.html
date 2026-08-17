@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.36 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.37 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.36 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.37 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.36-20260817" rel="stylesheet"/>
+<link href="./app.css?v=6.11.37-20260817" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.36</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.37</span></div>
 </form>
 </div>
 </section>
@@ -278,7 +278,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.36</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.36 Monthly Attendance Rebuild</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.37</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.37 Attendance Pipeline</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -843,7 +843,7 @@
 <div>
 <span class="eyebrow">ATTENDANCE OPERATIONS</span>
 <h2>ประมวลผล Attendance ใหม่</h2>
-<p>สร้างข้อมูลรายละเอียดเวลาทำงานใหม่ตามช่วงวันที่ ระบบแบ่งงานเป็นชุดย่อย แสดงความคืบหน้าแบบต่อเนื่อง และเก็บ Error Log โดยไม่หยุดทั้ง Job</p>
+<p>สร้าง Attendance Workday ใหม่ตามช่วงวันที่ แล้วคำนวณและตรวจผล Attendance ต่อใน Task เดียวกัน พร้อม Progress และ Error Log</p>
 </div>
 <div class="att-rebuild-hero-actions">
 <button class="btn btn-light" id="attRebuildRefreshBtn">รีเฟรชประวัติ</button>
@@ -859,7 +859,7 @@
 <div class="field att-rebuild-note"><label>หมายเหตุ</label><input class="input" id="attRebuildNote" placeholder="เช่น ประมวลผลใหม่หลังนำเข้า MobileTA กรกฎาคม 2569"/></div>
 </div>
 <div class="att-rebuild-action-row"><button class="btn btn-primary" id="attRebuildStartBtn">เริ่มประมวลผล</button></div>
-<div class="att-rebuild-help"><strong>การทำงาน:</strong> ระบบสร้าง Task แยกตามวันที่และกลุ่มพนักงาน หาก Task ใช้เวลานาน ระบบจะแบ่งกลุ่มให้เล็กลงอัตโนมัติ รายการที่ผิดพลาดเฉพาะพนักงานจะถูกข้ามและบันทึกไว้ใน Error Log เพื่อให้งานส่วนอื่นดำเนินต่อได้</div>
+<div class="att-rebuild-help"><strong>การทำงาน:</strong> แต่ละ Task ใช้ Pipeline เดียวกันคือ <b>Rebuild Attendance Workday → Calculate Attendance → Validate Result</b> และจะนับว่า “สำเร็จ” เมื่อครบทั้ง 3 ขั้นตอนเท่านั้น หาก Task ใช้เวลานาน ระบบจะแบ่งกลุ่มให้เล็กลงอัตโนมัติ และ Error Log จะระบุขั้นตอนที่เกิดปัญหา</div>
 </div>
 </div>
 <div class="panel section-gap att-rebuild-progress-panel hidden" id="attRebuildProgressPanel">
@@ -2327,6 +2327,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.11.36-20260817"></script>
+<script src="./app.js?v=6.11.37-20260817"></script>
 </body>
 </html>
