@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.34";
-document.documentElement.dataset.timeClockBuild = "6.11.34";
+window.__TIME_CLOCK_BUILD__ = "V6.11.35";
+document.documentElement.dataset.timeClockBuild = "6.11.35";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.34";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.34',
+  version: '6.11.35',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -22,7 +22,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
 
 
-/* ===== V6.11.34 Unified Modal UX ===== */
+/* ===== V6.11.35 Unified Modal UX ===== */
 (() => {
   "use strict";
 
@@ -5705,7 +5705,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (!row) {
         return {
           status: 'UNPROCESSED',
-          label: workDate > todayISO() ? 'รอทำงาน' : 'รอประมวลผล',
+          label: workDate > todayISO() ? 'รอทำงาน' : 'ยังไม่ประมวลผล',
           tone: 'neutral'
         };
       }
