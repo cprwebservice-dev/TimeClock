@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.41";
-document.documentElement.dataset.timeClockBuild = "6.11.41";
+window.__TIME_CLOCK_BUILD__ = "V6.11.43";
+document.documentElement.dataset.timeClockBuild = "6.11.43";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.41";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.41',
+  version: '6.11.43',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5376,10 +5376,68 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return '';
     }
 
+    function timeCertificationBlockedReasonV61143(row) {
+      if (!row) return 'NO_ROW';
+
+      const workDate = String(row?.work_date || '').slice(0,10);
+      if (!workDate) return 'NO_DATE';
+
+      // Certification is allowed only for today or a past work date.
+      // The certified end datetime may still cross to the next day for a night shift.
+      if (workDate > todayISO()) return 'FUTURE';
+
+      const dayType = String(row?.day_type || '').trim().toUpperCase();
+      const rawStatus = String(
+        row?.display_status
+        || row?.attendance_result
+        || row?.attendance_status
+        || row?.calculation_status
+        || ''
+      ).trim().toUpperCase();
+
+      const shiftCode = String(
+        row?.effective_shift_code
+        || row?.assigned_shift_code
+        || row?.shift_code
+        || row?.auto_shift_code
+        || ''
+      ).trim().toUpperCase();
+
+      // Leave must never show the certification action.
+      if (
+        attendanceDisplayStatus(row) === 'LEAVE'
+        || Boolean(row?.leave_request_id || row?.leave_type_code)
+        || dayType === 'LEAVE'
+        || shiftCode === 'LV'
+        || rawStatus.includes('LEAVE')
+      ) {
+        return 'LEAVE';
+      }
+
+      const shiftMeta = scheduleResolveShiftMeta(row);
+
+      // OFF / weekly off / comp-off / holiday are not certifiable days.
+      if (
+        attendanceDisplayStatus(row) === 'DAY_OFF'
+        || ['OFF','HOL'].includes(shiftCode)
+        || ['off','holiday'].includes(String(shiftMeta?.tone || '').toLowerCase())
+        || Boolean(row?.is_weekly_off || row?.is_public_holiday)
+        || ['WEEKLY_OFF','COMP_OFF','DAY_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
+      ) {
+        return 'OFF';
+      }
+
+      // Missing IN, missing OUT, or both missing are intentionally allowed.
+      return '';
+    }
+
     function timeCertificationButtonV61139(row, source) {
       const empCode = String(row?.emp_code || '').trim();
       const workDate = String(row?.work_date || '').slice(0,10);
       if (!empCode || !workDate || !timeCertificationCanActV61139(empCode)) return '';
+
+      if (timeCertificationBlockedReasonV61143(row)) return '';
+
       const active = timeCertificationActiveV61139(row);
       return `<button type="button" class="time-cert-action-v61139 ${active ? 'is-certified' : ''}" data-time-certify data-cert-source="${safe(source || '')}" data-emp="${safe(empCode)}" data-date="${safe(workDate)}"><span>${active ? '✓' : '◷'}</span>${active ? 'ดูการรับรอง' : 'รับรองเวลา'}</button>`;
     }
@@ -5482,6 +5540,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (!empCode || !workDate) return;
       if (!timeCertificationCanActV61139(empCode)) {
         return toast('บัญชีนี้ไม่มีสิทธิ์รับรองเวลาของพนักงานรายนี้','error');
+      }
+
+      const blockedReasonV61143 = timeCertificationBlockedReasonV61143(row);
+      if (blockedReasonV61143 === 'FUTURE') {
+        return toast('รับรองเวลาได้เฉพาะวันที่ปัจจุบันและย้อนหลังเท่านั้น','error');
+      }
+      if (blockedReasonV61143 === 'LEAVE') {
+        return toast('วันลาไม่สามารถรับรองเวลาได้','error');
+      }
+      if (blockedReasonV61143 === 'OFF') {
+        return toast('วันหยุด / กะ OFF ไม่สามารถรับรองเวลาได้','error');
       }
 
       const shiftStartRaw = row.shift_1_planned_start_at || row.effective_shift_start_time || row.shift_start_time;
@@ -5626,6 +5695,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (!startTime || !endDate || !endTime || !reasonCode) return toast('กรุณาระบุช่วงเวลาและเหตุผลการรับรองให้ครบ','error');
       const reason = (timeCertificationStateV61139.reasons || []).find(x => String(x.reason_code || '').toUpperCase() === reasonCode);
       if (reason?.requires_note && !note) return toast('เหตุผลนี้ต้องระบุหมายเหตุเพิ่มเติม','error');
+
+      const blockedReasonV61143 = timeCertificationBlockedReasonV61143(row);
+      if (blockedReasonV61143 === 'FUTURE') return toast('รับรองเวลาได้เฉพาะวันที่ปัจจุบันและย้อนหลังเท่านั้น','error');
+      if (blockedReasonV61143 === 'LEAVE') return toast('วันลาไม่สามารถรับรองเวลาได้','error');
+      if (blockedReasonV61143 === 'OFF') return toast('วันหยุด / กะ OFF ไม่สามารถรับรองเวลาได้','error');
 
       const startMs = timeCertificationDateTimeMsV61139(startDate,startTime);
       const endMs = timeCertificationDateTimeMsV61139(endDate,endTime);
@@ -9427,6 +9501,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
+      if (msg.includes("TIME_CERTIFICATION_FUTURE_DATE_NOT_ALLOWED")) return "รับรองเวลาได้เฉพาะวันที่ปัจจุบันและย้อนหลังเท่านั้น";
+      if (msg.includes("TIME_CERTIFICATION_LEAVE_NOT_ALLOWED")) return "วันลาไม่สามารถรับรองเวลาได้";
+      if (msg.includes("TIME_CERTIFICATION_OFF_NOT_ALLOWED")) return "วันหยุด / กะ OFF ไม่สามารถรับรองเวลาได้";
       if (msg.includes("TIME_CERTIFICATION_SHIFT_REQUIRED")) return "ไม่พบเวลาเริ่ม/สิ้นสุดกะ กรุณากำหนดกะหรือประมวลผล Attendance ก่อนรับรองเวลา";
       if (msg.includes("TIME_CERTIFICATION_START_BEFORE_SHIFT")) return "เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ";
       if (msg.includes("TIME_CERTIFICATION_END_MUST_BE_AFTER_START")) return "เวลาสิ้นสุดรับรองต้องมากกว่าเวลาเริ่มรับรอง";
