@@ -5618,13 +5618,30 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
 
       let workdays = 0;
+      let offDays = 0;
       let absenceDays = 0;
       let lateDays = 0;
       let earlyDays = 0;
       let splitDays = 0;
       scheduleRows.forEach(scheduleRow => {
         const shift = scheduleResolveShiftMeta(scheduleRow);
+        const dayType = String(scheduleRow?.day_type || '').trim().toUpperCase();
+        const isPublicHoliday = Boolean(
+          scheduleRow?.is_public_holiday
+          || dayType === 'PUBLIC_HOLIDAY'
+          || shift.tone === 'holiday'
+        );
         if (shift.isWorking) workdays += 1;
+        if (
+          !isPublicHoliday
+          && (
+            shift.tone === 'off'
+            || scheduleRow?.is_weekly_off
+            || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(dayType)
+          )
+        ) {
+          offDays += 1;
+        }
         if (scheduleWorkTemplateCodeV6118(scheduleRow) === 'SPLIT_FLEX') splitDays += 1;
       });
       attendanceRows.forEach(row => {
@@ -5641,6 +5658,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       ).size;
       $('employeeMonthScheduleSummary').innerHTML = `
         <div class="month-overview-kpi primary"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></div>
+        <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>วันหยุด</span><small>กะ OFF / วันหยุดประจำสัปดาห์</small></div><strong>${safe(formatNumber(offDays))}</strong></div>
         <div class="month-overview-kpi danger"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>วันที่ไม่มีเวลาเข้า/ออกครบ</small></div><strong>${safe(formatNumber(absenceDays))}</strong></div>
         <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>จำนวนวันที่มาสาย</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
         <div class="month-overview-kpi early"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></div>

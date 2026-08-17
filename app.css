@@ -14936,7 +14936,7 @@ body.theme-dark .system-period-assignment-readonly textarea:disabled,
 }
 
 .employee-month-summary-v61121{
-  grid-template-columns:repeat(5,minmax(122px,1fr)) minmax(190px,1.35fr)!important;
+  grid-template-columns:repeat(6,minmax(116px,1fr)) minmax(190px,1.35fr)!important;
   gap:8px!important;
   margin-bottom:10px!important;
 }
@@ -17805,4 +17805,41 @@ body.theme-dark .employee-month-day.is-weekly-off .employee-month-shift.tone-off
   border-color:#4b5d6d!important;
   background:#1b2731!important;
   color:#d0dae3!important;
+}
+
+
+/* ========================================================================== */
+/* V6.11.33 — Monthly Personal Overview: add OFF summary after Workdays       */
+/* ========================================================================== */
+.month-overview-kpi.off{
+  border-color:#d8e2ea!important;
+  background:#f8fafc!important;
+}
+.month-overview-kpi.off .month-kpi-icon{
+  background:#edf2f6!important;
+  color:#637789!important;
+}
+.month-overview-kpi.off strong{
+  color:#536a7d!important;
+}
+
+body.theme-dark #employeeMonthScheduleModal .month-overview-kpi.off,
+.dark #employeeMonthScheduleModal .month-overview-kpi.off,
+body.theme-dark .month-overview-kpi.off,
+.dark .month-overview-kpi.off{
+  border-color:#405466!important;
+  background:#162634!important;
+}
+body.theme-dark #employeeMonthScheduleModal .month-overview-kpi.off .month-kpi-icon,
+.dark #employeeMonthScheduleModal .month-overview-kpi.off .month-kpi-icon,
+body.theme-dark .month-overview-kpi.off .month-kpi-icon,
+.dark .month-overview-kpi.off .month-kpi-icon{
+  background:#273947!important;
+  color:#d2dce4!important;
+}
+body.theme-dark #employeeMonthScheduleModal .month-overview-kpi.off strong,
+.dark #employeeMonthScheduleModal .month-overview-kpi.off strong,
+body.theme-dark .month-overview-kpi.off strong,
+.dark .month-overview-kpi.off strong{
+  color:#e0e8ee!important;
 }
