@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.27";
-document.documentElement.dataset.timeClockBuild = "6.11.27";
+window.__TIME_CLOCK_BUILD__ = "V6.11.29";
+document.documentElement.dataset.timeClockBuild = "6.11.29";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.27";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.27',
+  version: '6.11.29',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -8790,6 +8790,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     document.body.classList.toggle('dark', dark);
     document.body.classList.toggle('dark-mode', dark);
     document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    const themeMeta = document.querySelector('meta[name=\"theme-color\"]');
+    if (themeMeta) themeMeta.setAttribute('content', dark ? '#091522' : '#0b1f3a');
     localStorage.setItem('tc_theme', theme);
     try {
       const settingsKey = 'ta_enterprise_settings_v4';
@@ -9798,6 +9800,7 @@ ${skippedSummary(compatibility.skipped)}
     document.body.classList.toggle("theme-dark",dark);
     document.body.classList.toggle("dark",dark);
     document.documentElement.style.colorScheme=dark?"dark":"light";
+    const themeMeta=document.querySelector('meta[name="theme-color"]'); if(themeMeta) themeMeta.setAttribute("content",dark?"#091522":"#0b1f3a");
     try { localStorage.setItem("tc_theme",dark?"dark":"light"); } catch (_) {}
     qsa("[data-theme-choice]").forEach(x=>x.classList.toggle("active",x.dataset.themeChoice===settings.theme));
     Object.entries(settings.shiftColors).forEach(([k,v])=>document.documentElement.style.setProperty(`--shift-${k.toLowerCase()}`,v));
