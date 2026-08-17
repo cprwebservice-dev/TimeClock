@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.45";
-document.documentElement.dataset.timeClockBuild = "6.11.45";
+window.__TIME_CLOCK_BUILD__ = "V6.11.46";
+document.documentElement.dataset.timeClockBuild = "6.11.46";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.45";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.45',
+  version: '6.11.46',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1112,7 +1112,47 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const startISO =
         val("schedulePeriodStart")
         || scheduleBlockStartForDate(todayISO());
-      const start = parseLocalISO(startISO);
+      const cursor = parseLocalISO(startISO);
+      const personMode =
+        typeof scheduleCurrentView === "function"
+        && scheduleCurrentView() === "PERSON";
+
+      if (personMode) {
+        const start = new Date(
+          cursor.getFullYear(),
+          cursor.getMonth(),
+          1
+        );
+        const lastDay = monthDays(
+          start.getFullYear(),
+          start.getMonth() + 1
+        );
+        const end = new Date(
+          start.getFullYear(),
+          start.getMonth(),
+          lastDay
+        );
+
+        return {
+          startDate: localISO(start),
+          endDate: localISO(end),
+          month:
+            `${start.getFullYear()}-`
+            + `${String(start.getMonth()+1).padStart(2,"0")}`,
+          weekNumber: null,
+          viewMode: "PERSON",
+          dates: Array.from(
+            { length: lastDay },
+            (_,i) => {
+              const x = new Date(start);
+              x.setDate(i + 1);
+              return localISO(x);
+            }
+          )
+        };
+      }
+
+      const start = cursor;
       const lastDay = monthDays(
         start.getFullYear(),
         start.getMonth() + 1
@@ -1129,6 +1169,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           `${start.getFullYear()}-`
           + `${String(start.getMonth()+1).padStart(2,"0")}`,
         weekNumber: weekNumber > 0 ? weekNumber : 1,
+        viewMode: "TEAM",
         dates: Array.from(
           {
             length:
@@ -1145,18 +1186,55 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       };
     };
+
     const syncSchedulePeriodUI = () => {
       const range = schedulePeriodRange();
+      const personMode = range.viewMode === "PERSON";
+
       setVal("schedulePeriodStart", range.startDate);
       setVal("scheduleMonth", range.month);
+
       const startText = formatDate(range.startDate);
       const endText = formatDate(range.endDate);
+
       setText(
         "schedulePeriodLabel",
-        `สัปดาห์ที่ ${range.weekNumber} • `
-        + `${startText} – ${endText} • `
-        + `${range.dates.length} วัน`
+        personMode
+          ? `เต็มเดือน • ${startText} – ${endText} • ${range.dates.length} วัน`
+          : `สัปดาห์ที่ ${range.weekNumber} • ${startText} – ${endText} • ${range.dates.length} วัน`
       );
+
+      const caption = qs(".schedule-period-caption-v61118");
+      if (caption) {
+        caption.textContent = personMode
+          ? "เดือนที่แสดง"
+          : "สัปดาห์ที่แสดง";
+      }
+
+      const prev = $("schedulePrevMonthBtn");
+      const next = $("scheduleNextMonthBtn");
+      const current = $("scheduleTodayBtn");
+
+      if (prev) {
+        prev.title = personMode ? "เดือนก่อน" : "สัปดาห์ก่อน";
+        prev.innerHTML = personMode
+          ? "‹ <span>เดือนก่อน</span>"
+          : "‹ <span>สัปดาห์ก่อน</span>";
+      }
+
+      if (next) {
+        next.title = personMode ? "เดือนถัดไป" : "สัปดาห์ถัดไป";
+        next.innerHTML = personMode
+          ? "<span>เดือนถัดไป</span> ›"
+          : "<span>สัปดาห์ถัดไป</span> ›";
+      }
+
+      if (current) {
+        current.textContent = personMode
+          ? "เดือนปัจจุบัน"
+          : "สัปดาห์ปัจจุบัน";
+      }
+
       return range;
     };
     window.TimeClockSchedulePeriod = Object.freeze({
@@ -4766,6 +4844,26 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         } catch (_) {
           return "TEAM";
         }
+      })(),
+      teamPeriodStart: (() => {
+        try {
+          return String(
+            localStorage.getItem("timeclock.schedule.teamPeriodStart")
+            || scheduleBlockStartForDate(todayISO())
+          ).slice(0,10);
+        } catch (_) {
+          return scheduleBlockStartForDate(todayISO());
+        }
+      })(),
+      personMonth: (() => {
+        try {
+          return String(
+            localStorage.getItem("timeclock.schedule.personMonth")
+            || monthISO()
+          ).slice(0,7);
+        } catch (_) {
+          return monthISO();
+        }
       })()
     };
 
@@ -4802,7 +4900,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       if (text) {
         text.textContent = mode === "TEAM"
           ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานทำงานอัตโนมัติ • เมื่อหัวหน้างานปรับกะและกดบันทึก ระบบมีผลทันที"
-          : "ใช้จัดกะรายบุคคลแบบละเอียด พร้อมเลือกหลายช่อง คัดลอก วาง และบันทึกกะได้จากหน้าจอเดียว";
+          : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงรหัสกะ • วางเมาส์บนกะเพื่อดูเวลาเริ่ม–สิ้นสุด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
       }
 
       if (mode === "TEAM") {
@@ -4814,14 +4912,59 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     function setScheduleView(mode, persist = true) {
+      const currentMode = scheduleCurrentView();
+      const currentCursor =
+        String(val("schedulePeriodStart") || "").slice(0,10);
+
+      if (currentMode === "TEAM" && currentCursor) {
+        scheduleViewState.teamPeriodStart =
+          scheduleBlockStartForDate(currentCursor);
+      } else if (currentMode === "PERSON" && currentCursor) {
+        scheduleViewState.personMonth =
+          currentCursor.slice(0,7);
+      }
+
       const next = String(mode || "TEAM").trim().toUpperCase();
       scheduleViewState.mode = next === "PERSON" ? "PERSON" : "TEAM";
+
+      if (scheduleViewState.mode === "PERSON") {
+        const sourceMonth =
+          scheduleViewState.personMonth
+          || currentCursor.slice(0,7)
+          || monthISO();
+        setVal(
+          "schedulePeriodStart",
+          `${sourceMonth}-01`
+        );
+      } else {
+        setVal(
+          "schedulePeriodStart",
+          scheduleViewState.teamPeriodStart
+          || scheduleBlockStartForDate(currentCursor || todayISO())
+        );
+      }
+
       if (persist) {
         try {
-          localStorage.setItem("timeclock.schedule.view", scheduleViewState.mode);
+          localStorage.setItem(
+            "timeclock.schedule.view",
+            scheduleViewState.mode
+          );
+          localStorage.setItem(
+            "timeclock.schedule.teamPeriodStart",
+            scheduleViewState.teamPeriodStart
+          );
+          localStorage.setItem(
+            "timeclock.schedule.personMonth",
+            scheduleViewState.personMonth
+          );
         } catch (_) {}
       }
+
       applyScheduleViewMode();
+      syncSchedulePeriodUI();
+
+      return currentMode !== scheduleViewState.mode;
     }
 
     function scheduleUnitLabel(row) {
@@ -7067,7 +7210,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d.getDate()}</span><small>${thaiDays[dow]} ${thaiMonths[d.getMonth()]}${meta.holiday?" • หยุด":""}</small></th>`;
       }).join("");
 
-      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table"><thead><tr><th class="sticky-col-1 schedule-code-head">รหัส</th><th class="sticky-col-2 schedule-name-head">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-start-head">วันเริ่มงาน</th><th class="sticky-col-4 schedule-position-head">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
+      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table monthly-person-schedule-table-v61146"><thead><tr><th class="sticky-col-1 schedule-code-head">รหัส</th><th class="sticky-col-2 schedule-name-head">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-start-head">วันเริ่มงาน</th><th class="sticky-col-4 schedule-position-head">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
 
       if (!map.size) html += emptyRow(period.dates.length + 4);
 
@@ -7237,17 +7380,25 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             && customerStart !== "-"
             && customerEndLabel !== "-";
 
-          const scheduleTimeHtml =
-            splitWorkTemplate
-              ? `<div class="schedule-shift-segments-v6118">
-                  <small><b>กะที่ 1</b><span>${safe(shiftTimeLabel)}</span></small>
-                  <small><b>กะที่ 2</b><span>${safe(`${customerStart}–${customerEndLabel}`)}</span></small>
-                </div>`
+          const personShiftTooltipV61146 = [
+            `กะ ${normalizedCode || "-"}`,
+            showShiftTime
+              ? `เวลาเริ่ม–สิ้นสุด ${shiftTimeLabel}`
               : (
-                  shiftTimeLabel
-                    ? `<small class="schedule-shift-time">${safe(shiftTimeLabel)}</small>`
-                    : ""
-                );
+                  normalizedCode === "OFF"
+                    ? "วันหยุด / OFF"
+                    : normalizedCode === "HOL"
+                      ? "วันหยุดนักขัตฤกษ์ / HOL"
+                      : normalizedCode === "LV"
+                        ? "วันลา / LV"
+                        : "ไม่พบเวลาเริ่ม–สิ้นสุดกะ"
+                ),
+            splitWorkTemplate
+              ? `กะที่ 2 ${customerStart}–${customerEndLabel}`
+              : null
+          ].filter(Boolean).join("|");
+
+          const scheduleTimeHtml = "";
 
           const shiftVisualClass =
             normalizedCode === "HOL"
@@ -7317,7 +7468,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               ? `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | Manager ไม่สามารถจัดกะให้ตนเอง`
               : `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ดับเบิลคลิกเพื่อแก้ไข`;
 
-          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls} ${splitWorkTemplate?"has-split-work-v6118":""} ${managerOwnEmployee?"manager-self-readonly":""}" ${editAttrs} title="${safe(cellTitle)}"><b class="schedule-shift-code">${safe(code)}</b>${scheduleTimeHtml}${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
+          const splitIndicatorV61146 =
+            splitWorkTemplate
+              ? '<small class="person-split-indicator-v61146">2</small>'
+              : '';
+
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls} ${splitWorkTemplate?"has-split-work-v6118":""} ${managerOwnEmployee?"manager-self-readonly":""}" ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV61146)}" aria-label="${safe(cellTitle)}"><b class="schedule-shift-code">${safe(code)}</b>${splitIndicatorV61146}${scheduleTimeHtml}${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
         }
 
         html += `</tr>`;
@@ -9424,15 +9580,29 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("scheduleSearch").addEventListener("input", renderSchedule);
       $("schedulePatternFilter")?.addEventListener("change", renderSchedule);
       $("scheduleTeamFocus")?.addEventListener("change", renderSchedule);
-      $("scheduleViewSwitch")?.addEventListener("click", event => {
+      $("scheduleViewSwitch")?.addEventListener("click", async event => {
         const button = event.target.closest('[data-schedule-view]');
         if (!button) return;
-        setScheduleView(button.dataset.scheduleView || 'TEAM');
+
+        const changed =
+          setScheduleView(
+            button.dataset.scheduleView || 'TEAM'
+          );
+
         if (scheduleCurrentView() === 'TEAM') {
-          setText('scheduleSelectedKpi', $('scheduleTeamVisibleCount')?.dataset?.value || $('scheduleTeamVisibleCount')?.textContent || '0');
+          setText(
+            'scheduleSelectedKpi',
+            $('scheduleTeamVisibleCount')?.dataset?.value
+            || $('scheduleTeamVisibleCount')?.textContent
+            || '0'
+          );
+        }
+
+        if (changed) {
+          await loadSchedule();
         }
       });
-      $("scheduleTeamWrap")?.addEventListener("click", event => {
+      $("scheduleTeamWrap")?.addEventListener("click", async event => {
         const dayTrigger = event.target.closest('[data-team-day-unit][data-team-day-date]');
         if (dayTrigger) {
           openScheduleTeamDrawer(
@@ -9448,8 +9618,98 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         setVal('scheduleDepartment', team);
         setVal('scheduleTeamFocus', team);
         setScheduleView('PERSON');
-        renderSchedule();
+        await loadSchedule();
       });
+      function ensurePersonShiftTooltipV61146() {
+        let tooltip = $("schedulePersonShiftTooltipV61146");
+        if (tooltip) return tooltip;
+
+        document.body.insertAdjacentHTML(
+          "beforeend",
+          '<div id="schedulePersonShiftTooltipV61146" class="schedule-person-shift-tooltip-v61146" role="tooltip" aria-hidden="true"></div>'
+        );
+        return $("schedulePersonShiftTooltipV61146");
+      }
+
+      function showPersonShiftTooltipV61146(target) {
+        if (!target?.dataset?.shiftTooltip) return;
+        const tooltip = ensurePersonShiftTooltipV61146();
+        if (!tooltip) return;
+
+        const lines = String(target.dataset.shiftTooltip || "")
+          .split("|")
+          .map(item => item.trim())
+          .filter(Boolean);
+
+        tooltip.innerHTML = lines
+          .map((line,index) =>
+            index === 0
+              ? `<strong>${safe(line)}</strong>`
+              : `<span>${safe(line)}</span>`
+          )
+          .join("");
+
+        tooltip.classList.add("show");
+        tooltip.setAttribute("aria-hidden","false");
+
+        const rect = target.getBoundingClientRect();
+        const tipRect = tooltip.getBoundingClientRect();
+
+        let left =
+          rect.left
+          + rect.width / 2
+          - tipRect.width / 2;
+        left = Math.max(
+          8,
+          Math.min(
+            left,
+            window.innerWidth - tipRect.width - 8
+          )
+        );
+
+        let top = rect.top - tipRect.height - 9;
+        if (top < 8) {
+          top = rect.bottom + 9;
+          tooltip.classList.add("below");
+        } else {
+          tooltip.classList.remove("below");
+        }
+
+        tooltip.style.left = `${Math.round(left)}px`;
+        tooltip.style.top = `${Math.round(top)}px`;
+      }
+
+      function hidePersonShiftTooltipV61146() {
+        const tooltip = $("schedulePersonShiftTooltipV61146");
+        if (!tooltip) return;
+        tooltip.classList.remove("show","below");
+        tooltip.setAttribute("aria-hidden","true");
+      }
+
+      $("scheduleTableWrap")?.addEventListener("mouseover", event => {
+        const target = event.target.closest("[data-shift-tooltip]");
+        if (target) showPersonShiftTooltipV61146(target);
+      });
+
+      $("scheduleTableWrap")?.addEventListener("mouseout", event => {
+        if (event.target.closest("[data-shift-tooltip]")) {
+          hidePersonShiftTooltipV61146();
+        }
+      });
+
+      $("scheduleTableWrap")?.addEventListener("focusin", event => {
+        const target = event.target.closest("[data-shift-tooltip]");
+        if (target) showPersonShiftTooltipV61146(target);
+      });
+
+      $("scheduleTableWrap")?.addEventListener("focusout", event => {
+        if (event.target.closest("[data-shift-tooltip]")) {
+          hidePersonShiftTooltipV61146();
+        }
+      });
+
+      $("scheduleTableWrap")?.addEventListener("scroll", hidePersonShiftTooltipV61146, { passive:true });
+
       $("scheduleTableWrap")?.addEventListener("click", event => {
         const calendarButton = event.target.closest('[data-person-month-calendar]');
         if (!calendarButton) return;
@@ -10615,6 +10875,37 @@ ${skippedSummary(compatibility.skipped)}
   function shiftMonth(delta){
     const current =
       new Date(`${periodStartDate()}T00:00:00`);
+
+    if (
+      window.TimeClockSchedulePeriod?.range?.().viewMode === "PERSON"
+    ) {
+      const nextMonth = new Date(
+        current.getFullYear(),
+        current.getMonth() + delta,
+        1
+      );
+      const next = scheduleBlockStart(
+        nextMonth.getFullYear(),
+        nextMonth.getMonth() + 1,
+        1
+      );
+
+      if($("schedulePeriodStart")){
+        $("schedulePeriodStart").value = next;
+      }
+
+      try {
+        localStorage.setItem(
+          "timeclock.schedule.personMonth",
+          next.slice(0,7)
+        );
+      } catch (_) {}
+
+      window.TimeClockSchedulePeriod?.sync?.();
+      app()?.loadSchedule();
+      return;
+    }
+
     const year = current.getFullYear();
     const month = current.getMonth() + 1;
     const day = current.getDate();
@@ -10668,6 +10959,12 @@ ${skippedSummary(compatibility.skipped)}
     if($("schedulePeriodStart")){
       $("schedulePeriodStart").value = next;
     }
+    try {
+      localStorage.setItem(
+        "timeclock.schedule.teamPeriodStart",
+        next
+      );
+    } catch (_) {}
     window.TimeClockSchedulePeriod?.sync?.();
     app()?.loadSchedule();
   }
@@ -10697,8 +10994,28 @@ ${skippedSummary(compatibility.skipped)}
     document.addEventListener("timeclock:schedule-rendered",updateSmartShiftButtons);
     $("scheduleTodayBtn")?.addEventListener("click",()=>{
       const today=new Date().toISOString().slice(0,10);
-      const start=window.TimeClockSchedulePeriod?.blockStartForDate?.(today)||today;
-      if($("schedulePeriodStart"))$("schedulePeriodStart").value=start;
+      const personMode =
+        window.TimeClockSchedulePeriod?.range?.().viewMode === "PERSON";
+      const start = personMode
+        ? `${today.slice(0,7)}-01`
+        : (
+            window.TimeClockSchedulePeriod?.blockStartForDate?.(today)
+            || today
+          );
+
+      if($("schedulePeriodStart")){
+        $("schedulePeriodStart").value=start;
+      }
+
+      try {
+        localStorage.setItem(
+          personMode
+            ? "timeclock.schedule.personMonth"
+            : "timeclock.schedule.teamPeriodStart",
+          personMode ? start.slice(0,7) : start
+        );
+      } catch (_) {}
+
       window.TimeClockSchedulePeriod?.sync?.();
       app()?.loadSchedule();
     });

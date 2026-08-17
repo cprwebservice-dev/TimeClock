@@ -18470,3 +18470,195 @@ body.dark .time-cert-end-limit-v61145.exceeded,
 body.theme-dark .time-cert-end-limit-v61145.exceeded{
   color:#fca5a5;
 }
+
+
+/* ========================================================================== */
+/* V6.11.46 — Schedule > Person Full-Month View                               */
+/* Team view remains weekly and unchanged.                                    */
+/* ========================================================================== */
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146{
+  --schedule-code-col:78px;
+  --schedule-name-col:clamp(144px,12vw,180px);
+  --schedule-start-col:96px;
+  --schedule-position-col:clamp(104px,9vw,138px);
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 th.day-col,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 td.day-col{
+  width:52px!important;
+  min-width:52px!important;
+  max-width:52px!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 thead th.day-col{
+  height:48px!important;
+  padding:4px 2px!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 thead th.day-col > span{
+  font-size:11px!important;
+  font-weight:950!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 thead th.day-col > small{
+  font-size:7.5px!important;
+  white-space:nowrap;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-data-cell{
+  height:48px!important;
+  padding:4px!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell{
+  width:43px!important;
+  min-width:43px!important;
+  max-width:43px!important;
+  height:36px!important;
+  min-height:36px!important;
+  padding:0 3px!important;
+  flex-direction:row!important;
+  gap:0!important;
+  border-radius:9px!important;
+  overflow:visible!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-shift-code{
+  display:block!important;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:10.5px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  letter-spacing:.1px;
+}
+
+/* Full-month grid intentionally hides shift times from the label.
+   The time is shown in the hover tooltip instead. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-shift-time,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-shift-segments-v6118{
+  display:none!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell:hover{
+  transform:translateY(-1px)!important;
+  z-index:12;
+}
+
+.person-split-indicator-v61146{
+  position:absolute;
+  left:2px;
+  bottom:2px;
+  display:grid;
+  place-items:center;
+  width:11px;
+  height:11px;
+  border-radius:50%;
+  background:rgba(15,23,42,.12);
+  color:currentColor;
+  font-size:6.5px;
+  font-weight:950;
+  line-height:1;
+}
+
+/* Native table remains horizontally scrollable, but the row now represents
+   every day in the selected month. */
+#schedulePersonWorkspace .schedule-grid-wrap{
+  overflow:auto!important;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+
+/* Custom fixed tooltip is not clipped by the horizontal table scroller. */
+.schedule-person-shift-tooltip-v61146{
+  position:fixed;
+  left:-9999px;
+  top:-9999px;
+  z-index:13000;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:150px;
+  max-width:min(280px,calc(100vw - 16px));
+  padding:9px 11px;
+  border:1px solid #d9e2ec;
+  border-radius:11px;
+  background:#0f2741;
+  color:#fff;
+  box-shadow:0 14px 34px rgba(15,23,42,.24);
+  opacity:0;
+  pointer-events:none;
+  transform:translateY(3px);
+  transition:opacity .12s ease,transform .12s ease;
+}
+
+.schedule-person-shift-tooltip-v61146.show{
+  opacity:1;
+  transform:translateY(0);
+}
+
+.schedule-person-shift-tooltip-v61146 strong{
+  font-size:11px;
+  font-weight:950;
+  color:#fff;
+}
+
+.schedule-person-shift-tooltip-v61146 span{
+  font-size:10px;
+  font-weight:700;
+  line-height:1.35;
+  color:#dbeafe;
+}
+
+.schedule-person-shift-tooltip-v61146:after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:-5px;
+  width:9px;
+  height:9px;
+  background:#0f2741;
+  transform:translateX(-50%) rotate(45deg);
+}
+
+.schedule-person-shift-tooltip-v61146.below:after{
+  top:-5px;
+  bottom:auto;
+}
+
+body.theme-dark .schedule-person-shift-tooltip-v61146,
+.dark .schedule-person-shift-tooltip-v61146{
+  background:#071525;
+  border-color:#38516a;
+  box-shadow:0 16px 38px rgba(0,0,0,.42);
+}
+
+body.theme-dark .schedule-person-shift-tooltip-v61146:after,
+.dark .schedule-person-shift-tooltip-v61146:after{
+  background:#071525;
+}
+
+@media(max-width:900px){
+  #schedulePersonWorkspace .monthly-person-schedule-table-v61146{
+    --schedule-code-col:72px;
+    --schedule-name-col:140px;
+    --schedule-start-col:92px;
+    --schedule-position-col:108px;
+  }
+
+  #schedulePersonWorkspace .monthly-person-schedule-table-v61146 th.day-col,
+  #schedulePersonWorkspace .monthly-person-schedule-table-v61146 td.day-col{
+    width:48px!important;
+    min-width:48px!important;
+    max-width:48px!important;
+  }
+
+  #schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell{
+    width:39px!important;
+    min-width:39px!important;
+    max-width:39px!important;
+  }
+}
