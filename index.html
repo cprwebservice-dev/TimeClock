@@ -1,17 +1,753 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.27 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.28 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.27 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.28 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.27-20260814" rel="stylesheet"/>
+<link href="./app.css?v=6.11.28-20260817" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style id="darkmode-ux-overrides-v61128">
+/* ------------------------------------------------------------------
+   Time-Clock Enterprise V6.11.28
+   Darkmode UX/UI polish overrides
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: light;
+}
+html[data-theme="dark"],
+body[data-theme="dark"],
+html.dark,
+body.dark,
+html.dark-theme,
+body.dark-theme,
+html.theme-dark,
+body.theme-dark,
+body.darkmode,
+body[data-color-mode="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="dark"] body,
+body[data-theme="dark"],
+html.dark body,
+body.dark,
+html.dark-theme body,
+body.dark-theme,
+html.theme-dark body,
+body.theme-dark,
+body.darkmode,
+body[data-color-mode="dark"] {
+  --dm-bg: #07111f;
+  --dm-bg-soft: #0b1728;
+  --dm-surface: #0f1d31;
+  --dm-surface-2: #14243a;
+  --dm-surface-3: #1a2d46;
+  --dm-surface-hover: #213754;
+  --dm-line: rgba(150, 180, 210, 0.18);
+  --dm-line-strong: rgba(161, 196, 236, 0.30);
+  --dm-text: #e8eef8;
+  --dm-text-soft: #b8c6d9;
+  --dm-text-faint: #8ea0ba;
+  --dm-primary: #56a3ff;
+  --dm-primary-soft: rgba(86, 163, 255, 0.16);
+  --dm-success: #3ecf8e;
+  --dm-success-soft: rgba(62, 207, 142, 0.16);
+  --dm-warning: #f7b955;
+  --dm-warning-soft: rgba(247, 185, 85, 0.16);
+  --dm-danger: #ff7a7a;
+  --dm-danger-soft: rgba(255, 122, 122, 0.14);
+  --dm-info: #6fd3ff;
+  --dm-shadow: 0 16px 38px rgba(2, 8, 20, 0.42);
+  background: radial-gradient(circle at top left, rgba(34,96,170,.18), transparent 34%), var(--dm-bg) !important;
+  color: var(--dm-text) !important;
+}
+html[data-theme="dark"] body *,
+body[data-theme="dark"] *,
+html.dark body *,
+body.dark *,
+html.dark-theme body *,
+body.dark-theme *,
+html.theme-dark body *,
+body.theme-dark *,
+body.darkmode *,
+body[data-color-mode="dark"] * {
+  scrollbar-color: rgba(117,149,191,.55) rgba(12, 22, 37, .6);
+}
+html[data-theme="dark"] body,
+body[data-theme="dark"],
+html.dark body,
+body.dark,
+html.dark-theme body,
+body.dark-theme,
+html.theme-dark body,
+body.theme-dark,
+body.darkmode,
+body[data-color-mode="dark"] {
+  background-color: var(--dm-bg) !important;
+  color: var(--dm-text) !important;
+}
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .modal,
+html[data-theme="dark"] .login-card,
+html[data-theme="dark"] .field .input,
+html[data-theme="dark"] .field .select,
+body[data-theme="dark"] .topbar,
+body[data-theme="dark"] .sidebar,
+body[data-theme="dark"] .panel,
+body[data-theme="dark"] .modal,
+body[data-theme="dark"] .login-card,
+body[data-theme="dark"] .field .input,
+body[data-theme="dark"] .field .select,
+html.dark .topbar,
+html.dark .sidebar,
+html.dark .panel,
+html.dark .modal,
+html.dark .login-card,
+html.dark .field .input,
+html.dark .field .select,
+body.dark .topbar,
+body.dark .sidebar,
+body.dark .panel,
+body.dark .modal,
+body.dark .login-card,
+body.dark .field .input,
+body.dark .field .select,
+html.dark-theme .topbar,
+html.dark-theme .sidebar,
+html.dark-theme .panel,
+html.dark-theme .modal,
+html.dark-theme .login-card,
+html.dark-theme .field .input,
+html.dark-theme .field .select,
+body.dark-theme .topbar,
+body.dark-theme .sidebar,
+body.dark-theme .panel,
+body.dark-theme .modal,
+body.dark-theme .login-card,
+body.dark-theme .field .input,
+body.dark-theme .field .select,
+html.theme-dark .topbar,
+html.theme-dark .sidebar,
+html.theme-dark .panel,
+html.theme-dark .modal,
+html.theme-dark .login-card,
+html.theme-dark .field .input,
+html.theme-dark .field .select,
+body.theme-dark .topbar,
+body.theme-dark .sidebar,
+body.theme-dark .panel,
+body.theme-dark .modal,
+body.theme-dark .login-card,
+body.theme-dark .field .input,
+body.theme-dark .field .select,
+body.darkmode .topbar,
+body.darkmode .sidebar,
+body.darkmode .panel,
+body.darkmode .modal,
+body.darkmode .login-card,
+body.darkmode .field .input,
+body.darkmode .field .select,
+body[data-color-mode="dark"] .topbar,
+body[data-color-mode="dark"] .sidebar,
+body[data-color-mode="dark"] .panel,
+body[data-color-mode="dark"] .modal,
+body[data-color-mode="dark"] .login-card,
+body[data-color-mode="dark"] .field .input,
+body[data-color-mode="dark"] .field .select {
+  background: var(--dm-surface) !important;
+  color: var(--dm-text) !important;
+  border-color: var(--dm-line) !important;
+  box-shadow: var(--dm-shadow) !important;
+}
+html[data-theme="dark"] .content,
+body[data-theme="dark"] .content,
+html.dark .content,
+body.dark .content,
+html.dark-theme .content,
+body.dark-theme .content,
+html.theme-dark .content,
+body.theme-dark .content,
+body.darkmode .content,
+body[data-color-mode="dark"] .content {
+  background: linear-gradient(180deg, rgba(9,18,31,0.42) 0%, rgba(9,18,31,0) 220px) !important;
+}
+html[data-theme="dark"] .sidebar,
+body[data-theme="dark"] .sidebar,
+html.dark .sidebar,
+body.dark .sidebar,
+html.dark-theme .sidebar,
+body.dark-theme .sidebar,
+html.theme-dark .sidebar,
+body.theme-dark .sidebar,
+body.darkmode .sidebar,
+body[data-color-mode="dark"] .sidebar {
+  background: linear-gradient(180deg, #081424 0%, #0d1b2d 100%) !important;
+  border-right: 1px solid var(--dm-line) !important;
+}
+html[data-theme="dark"] .topbar,
+body[data-theme="dark"] .topbar,
+html.dark .topbar,
+body.dark .topbar,
+html.dark-theme .topbar,
+body.dark-theme .topbar,
+html.theme-dark .topbar,
+body.theme-dark .topbar,
+body.darkmode .topbar,
+body[data-color-mode="dark"] .topbar {
+  background: rgba(9, 18, 31, 0.82) !important;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--dm-line) !important;
+}
+html[data-theme="dark"] .nav-item,
+body[data-theme="dark"] .nav-item,
+html.dark .nav-item,
+body.dark .nav-item,
+html.dark-theme .nav-item,
+body.dark-theme .nav-item,
+html.theme-dark .nav-item,
+body.theme-dark .nav-item,
+body.darkmode .nav-item,
+body[data-color-mode="dark"] .nav-item {
+  color: var(--dm-text-soft) !important;
+  border: 1px solid transparent;
+}
+html[data-theme="dark"] .nav-item:hover,
+html[data-theme="dark"] .nav-item.active,
+body[data-theme="dark"] .nav-item:hover,
+body[data-theme="dark"] .nav-item.active,
+html.dark .nav-item:hover,
+html.dark .nav-item.active,
+body.dark .nav-item:hover,
+body.dark .nav-item.active,
+html.dark-theme .nav-item:hover,
+html.dark-theme .nav-item.active,
+body.dark-theme .nav-item:hover,
+body.dark-theme .nav-item.active,
+html.theme-dark .nav-item:hover,
+html.theme-dark .nav-item.active,
+body.theme-dark .nav-item:hover,
+body.theme-dark .nav-item.active,
+body.darkmode .nav-item:hover,
+body.darkmode .nav-item.active,
+body[data-color-mode="dark"] .nav-item:hover,
+body[data-color-mode="dark"] .nav-item.active {
+  color: var(--dm-text) !important;
+  background: linear-gradient(180deg, rgba(27, 74, 142, 0.34), rgba(19, 43, 74, 0.92)) !important;
+  border-color: rgba(90, 152, 238, 0.28) !important;
+  box-shadow: inset 0 0 0 1px rgba(123, 182, 255, 0.08);
+}
+html[data-theme="dark"] .nav-label,
+body[data-theme="dark"] .nav-label,
+html.dark .nav-label,
+body.dark .nav-label,
+html.dark-theme .nav-label,
+body.dark-theme .nav-label,
+html.theme-dark .nav-label,
+body.theme-dark .nav-label,
+body.darkmode .nav-label,
+body[data-color-mode="dark"] .nav-label,
+html[data-theme="dark"] .page-heading span,
+body[data-theme="dark"] .page-heading span,
+html[data-theme="dark"] p,
+body[data-theme="dark"] p,
+html.dark p,
+body.dark p,
+html.dark-theme p,
+body.dark-theme p,
+html.theme-dark p,
+body.theme-dark p,
+body.darkmode p,
+body[data-color-mode="dark"] p,
+html[data-theme="dark"] .field label,
+body[data-theme="dark"] .field label,
+html.dark .field label,
+body.dark .field label,
+html.dark-theme .field label,
+body.dark-theme .field label,
+html.theme-dark .field label,
+body.theme-dark .field label,
+body.darkmode .field label,
+body[data-color-mode="dark"] .field label {
+  color: var(--dm-text-soft) !important;
+}
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] strong,
+body[data-theme="dark"] h1,
+body[data-theme="dark"] h2,
+body[data-theme="dark"] h3,
+body[data-theme="dark"] h4,
+body[data-theme="dark"] strong,
+html.dark h1, html.dark h2, html.dark h3, html.dark h4, html.dark strong,
+body.dark h1, body.dark h2, body.dark h3, body.dark h4, body.dark strong,
+html.dark-theme h1, html.dark-theme h2, html.dark-theme h3, html.dark-theme h4, html.dark-theme strong,
+body.dark-theme h1, body.dark-theme h2, body.dark-theme h3, body.dark-theme h4, body.dark-theme strong,
+html.theme-dark h1, html.theme-dark h2, html.theme-dark h3, html.theme-dark h4, html.theme-dark strong,
+body.theme-dark h1, body.theme-dark h2, body.theme-dark h3, body.theme-dark h4, body.theme-dark strong,
+body.darkmode h1, body.darkmode h2, body.darkmode h3, body.darkmode h4, body.darkmode strong,
+body[data-color-mode="dark"] h1, body[data-color-mode="dark"] h2, body[data-color-mode="dark"] h3, body[data-color-mode="dark"] h4, body[data-color-mode="dark"] strong {
+  color: var(--dm-text) !important;
+}
+html[data-theme="dark"] .btn.btn-light,
+html[data-theme="dark"] .btn.btn-soft,
+body[data-theme="dark"] .btn.btn-light,
+body[data-theme="dark"] .btn.btn-soft,
+html.dark .btn.btn-light,
+html.dark .btn.btn-soft,
+body.dark .btn.btn-light,
+body.dark .btn.btn-soft,
+html.dark-theme .btn.btn-light,
+html.dark-theme .btn.btn-soft,
+body.dark-theme .btn.btn-light,
+body.dark-theme .btn.btn-soft,
+html.theme-dark .btn.btn-light,
+html.theme-dark .btn.btn-soft,
+body.theme-dark .btn.btn-light,
+body.theme-dark .btn.btn-soft,
+body.darkmode .btn.btn-light,
+body.darkmode .btn.btn-soft,
+body[data-color-mode="dark"] .btn.btn-light,
+body[data-color-mode="dark"] .btn.btn-soft {
+  background: var(--dm-surface-2) !important;
+  color: var(--dm-text) !important;
+  border: 1px solid var(--dm-line) !important;
+}
+html[data-theme="dark"] .btn.btn-light:hover,
+html[data-theme="dark"] .btn.btn-soft:hover,
+body[data-theme="dark"] .btn.btn-light:hover,
+body[data-theme="dark"] .btn.btn-soft:hover,
+html.dark .btn.btn-light:hover,
+html.dark .btn.btn-soft:hover,
+body.dark .btn.btn-light:hover,
+body.dark .btn.btn-soft:hover,
+html.dark-theme .btn.btn-light:hover,
+html.dark-theme .btn.btn-soft:hover,
+body.dark-theme .btn.btn-light:hover,
+body.dark-theme .btn.btn-soft:hover,
+html.theme-dark .btn.btn-light:hover,
+html.theme-dark .btn.btn-soft:hover,
+body.theme-dark .btn.btn-light:hover,
+body.theme-dark .btn.btn-soft:hover,
+body.darkmode .btn.btn-light:hover,
+body.darkmode .btn.btn-soft:hover,
+body[data-color-mode="dark"] .btn.btn-light:hover,
+body[data-color-mode="dark"] .btn.btn-soft:hover {
+  background: var(--dm-surface-hover) !important;
+}
+html[data-theme="dark"] .btn.btn-primary,
+body[data-theme="dark"] .btn.btn-primary,
+html.dark .btn.btn-primary,
+body.dark .btn.btn-primary,
+html.dark-theme .btn.btn-primary,
+body.dark-theme .btn.btn-primary,
+html.theme-dark .btn.btn-primary,
+body.theme-dark .btn.btn-primary,
+body.darkmode .btn.btn-primary,
+body[data-color-mode="dark"] .btn.btn-primary {
+  background: linear-gradient(180deg, #2d7fe8 0%, #2369cf 100%) !important;
+  color: #fff !important;
+  border-color: rgba(113, 168, 255, .42) !important;
+}
+html[data-theme="dark"] .btn.btn-danger,
+body[data-theme="dark"] .btn.btn-danger,
+html.dark .btn.btn-danger,
+body.dark .btn.btn-danger,
+html.dark-theme .btn.btn-danger,
+body.dark-theme .btn.btn-danger,
+html.theme-dark .btn.btn-danger,
+body.theme-dark .btn.btn-danger,
+body.darkmode .btn.btn-danger,
+body[data-color-mode="dark"] .btn.btn-danger {
+  background: linear-gradient(180deg, #d95555 0%, #b84646 100%) !important;
+  color: #fff !important;
+  border-color: rgba(255, 138, 138, .35) !important;
+}
+html[data-theme="dark"] .input,
+html[data-theme="dark"] .select,
+body[data-theme="dark"] .input,
+body[data-theme="dark"] .select,
+html.dark .input,
+html.dark .select,
+body.dark .input,
+body.dark .select,
+html.dark-theme .input,
+html.dark-theme .select,
+body.dark-theme .input,
+body.dark-theme .select,
+html.theme-dark .input,
+html.theme-dark .select,
+body.theme-dark .input,
+body.theme-dark .select,
+body.darkmode .input,
+body.darkmode .select,
+body[data-color-mode="dark"] .input,
+body[data-color-mode="dark"] .select {
+  background: #112338 !important;
+  color: var(--dm-text) !important;
+  border-color: var(--dm-line) !important;
+}
+html[data-theme="dark"] .input::placeholder,
+body[data-theme="dark"] .input::placeholder,
+html.dark .input::placeholder,
+body.dark .input::placeholder,
+html.dark-theme .input::placeholder,
+body.dark-theme .input::placeholder,
+html.theme-dark .input::placeholder,
+body.theme-dark .input::placeholder,
+body.darkmode .input::placeholder,
+body[data-color-mode="dark"] .input::placeholder {
+  color: var(--dm-text-faint) !important;
+}
+html[data-theme="dark"] .input:focus,
+html[data-theme="dark"] .select:focus,
+body[data-theme="dark"] .input:focus,
+body[data-theme="dark"] .select:focus,
+html.dark .input:focus,
+html.dark .select:focus,
+body.dark .input:focus,
+body.dark .select:focus,
+html.dark-theme .input:focus,
+html.dark-theme .select:focus,
+body.dark-theme .input:focus,
+body.dark-theme .select:focus,
+html.theme-dark .input:focus,
+html.theme-dark .select:focus,
+body.theme-dark .input:focus,
+body.theme-dark .select:focus,
+body.darkmode .input:focus,
+body.darkmode .select:focus,
+body[data-color-mode="dark"] .input:focus,
+body[data-color-mode="dark"] .select:focus {
+  border-color: rgba(99,166,255,.7) !important;
+  box-shadow: 0 0 0 3px rgba(86, 163, 255, 0.18) !important;
+  outline: none;
+}
+html[data-theme="dark"] .kpi-grid > *,
+html[data-theme="dark"] .executive-score-card,
+html[data-theme="dark"] .executive-attention-card,
+html[data-theme="dark"] .executive-confirm-card,
+html[data-theme="dark"] .overview-card,
+html[data-theme="dark"] .action-center,
+body[data-theme="dark"] .kpi-grid > *,
+body[data-theme="dark"] .executive-score-card,
+body[data-theme="dark"] .executive-attention-card,
+body[data-theme="dark"] .executive-confirm-card,
+body[data-theme="dark"] .overview-card,
+body[data-theme="dark"] .action-center,
+html.dark .kpi-grid > *,
+html.dark .executive-score-card,
+html.dark .executive-attention-card,
+html.dark .executive-confirm-card,
+html.dark .overview-card,
+html.dark .action-center,
+body.dark .kpi-grid > *,
+body.dark .executive-score-card,
+body.dark .executive-attention-card,
+body.dark .executive-confirm-card,
+body.dark .overview-card,
+body.dark .action-center,
+html.dark-theme .kpi-grid > *,
+body.dark-theme .kpi-grid > *,
+html.theme-dark .kpi-grid > *,
+body.theme-dark .kpi-grid > * {
+  background: linear-gradient(180deg, rgba(21,36,58,1) 0%, rgba(14,26,43,1) 100%) !important;
+  border: 1px solid var(--dm-line) !important;
+}
+html[data-theme="dark"] table,
+html[data-theme="dark"] .table-wrap,
+body[data-theme="dark"] table,
+body[data-theme="dark"] .table-wrap,
+html.dark table,
+html.dark .table-wrap,
+body.dark table,
+body.dark .table-wrap,
+html.dark-theme table,
+html.dark-theme .table-wrap,
+body.dark-theme table,
+body.dark-theme .table-wrap,
+html.theme-dark table,
+html.theme-dark .table-wrap,
+body.theme-dark table,
+body.theme-dark .table-wrap,
+body.darkmode table,
+body.darkmode .table-wrap,
+body[data-color-mode="dark"] table,
+body[data-color-mode="dark"] .table-wrap {
+  background: var(--dm-surface) !important;
+  color: var(--dm-text) !important;
+}
+html[data-theme="dark"] thead th,
+body[data-theme="dark"] thead th,
+html.dark thead th,
+body.dark thead th,
+html.dark-theme thead th,
+body.dark-theme thead th,
+html.theme-dark thead th,
+body.theme-dark thead th,
+body.darkmode thead th,
+body[data-color-mode="dark"] thead th {
+  background: #162840 !important;
+  color: var(--dm-text-soft) !important;
+  border-color: var(--dm-line) !important;
+}
+html[data-theme="dark"] tbody td,
+body[data-theme="dark"] tbody td,
+html.dark tbody td,
+body.dark tbody td,
+html.dark-theme tbody td,
+body.dark-theme tbody td,
+html.theme-dark tbody td,
+body.theme-dark tbody td,
+body.darkmode tbody td,
+body[data-color-mode="dark"] tbody td {
+  border-color: var(--dm-line) !important;
+  color: var(--dm-text) !important;
+}
+html[data-theme="dark"] tbody tr:nth-child(even),
+body[data-theme="dark"] tbody tr:nth-child(even),
+html.dark tbody tr:nth-child(even),
+body.dark tbody tr:nth-child(even),
+html.dark-theme tbody tr:nth-child(even),
+body.dark-theme tbody tr:nth-child(even),
+html.theme-dark tbody tr:nth-child(even),
+body.theme-dark tbody tr:nth-child(even),
+body.darkmode tbody tr:nth-child(even),
+body[data-color-mode="dark"] tbody tr:nth-child(even) {
+  background: rgba(255,255,255,0.015) !important;
+}
+html[data-theme="dark"] .modal-backdrop,
+body[data-theme="dark"] .modal-backdrop,
+html.dark .modal-backdrop,
+body.dark .modal-backdrop,
+html.dark-theme .modal-backdrop,
+body.dark-theme .modal-backdrop,
+html.theme-dark .modal-backdrop,
+body.theme-dark .modal-backdrop,
+body.darkmode .modal-backdrop,
+body[data-color-mode="dark"] .modal-backdrop {
+  background: rgba(2, 7, 15, 0.72) !important;
+}
+html[data-theme="dark"] .modal-header,
+html[data-theme="dark"] .modal-footer,
+body[data-theme="dark"] .modal-header,
+body[data-theme="dark"] .modal-footer,
+html.dark .modal-header,
+html.dark .modal-footer,
+body.dark .modal-header,
+body.dark .modal-footer,
+html.dark-theme .modal-header,
+html.dark-theme .modal-footer,
+body.dark-theme .modal-header,
+body.dark-theme .modal-footer,
+html.theme-dark .modal-header,
+html.theme-dark .modal-footer,
+body.theme-dark .modal-header,
+body.theme-dark .modal-footer,
+body.darkmode .modal-header,
+body.darkmode .modal-footer,
+body[data-color-mode="dark"] .modal-header,
+body[data-color-mode="dark"] .modal-footer {
+  border-color: var(--dm-line) !important;
+}
+html[data-theme="dark"] .toast-stack .toast,
+body[data-theme="dark"] .toast-stack .toast,
+html.dark .toast-stack .toast,
+body.dark .toast-stack .toast,
+html.dark-theme .toast-stack .toast,
+body.dark-theme .toast-stack .toast,
+html.theme-dark .toast-stack .toast,
+body.theme-dark .toast-stack .toast,
+body.darkmode .toast-stack .toast,
+body[data-color-mode="dark"] .toast-stack .toast {
+  background: rgba(12, 25, 40, 0.96) !important;
+  color: var(--dm-text) !important;
+  border: 1px solid var(--dm-line) !important;
+}
+html[data-theme="dark"] .calendar-day,
+html[data-theme="dark"] .schedule-cell,
+html[data-theme="dark"] .team-card,
+html[data-theme="dark"] .employee-card,
+html[data-theme="dark"] .unit-card,
+body[data-theme="dark"] .calendar-day,
+body[data-theme="dark"] .schedule-cell,
+body[data-theme="dark"] .team-card,
+body[data-theme="dark"] .employee-card,
+body[data-theme="dark"] .unit-card,
+html.dark .calendar-day,
+html.dark .schedule-cell,
+html.dark .team-card,
+html.dark .employee-card,
+html.dark .unit-card,
+body.dark .calendar-day,
+body.dark .schedule-cell,
+body.dark .team-card,
+body.dark .employee-card,
+body.dark .unit-card,
+html.dark-theme .calendar-day,
+html.dark-theme .schedule-cell,
+html.dark-theme .team-card,
+html.dark-theme .employee-card,
+html.dark-theme .unit-card,
+body.dark-theme .calendar-day,
+body.dark-theme .schedule-cell,
+body.dark-theme .team-card,
+body.dark-theme .employee-card,
+body.dark-theme .unit-card,
+html.theme-dark .calendar-day,
+html.theme-dark .schedule-cell,
+html.theme-dark .team-card,
+html.theme-dark .employee-card,
+html.theme-dark .unit-card,
+body.theme-dark .calendar-day,
+body.theme-dark .schedule-cell,
+body.theme-dark .team-card,
+body.theme-dark .employee-card,
+body.theme-dark .unit-card,
+body.darkmode .calendar-day,
+body.darkmode .schedule-cell,
+body.darkmode .team-card,
+body.darkmode .employee-card,
+body.darkmode .unit-card,
+body[data-color-mode="dark"] .calendar-day,
+body[data-color-mode="dark"] .schedule-cell,
+body[data-color-mode="dark"] .team-card,
+body[data-color-mode="dark"] .employee-card,
+body[data-color-mode="dark"] .unit-card {
+  background: var(--dm-surface) !important;
+  border-color: var(--dm-line) !important;
+}
+html[data-theme="dark"] .calendar-day:hover,
+html[data-theme="dark"] .schedule-cell:hover,
+html[data-theme="dark"] .team-card:hover,
+body[data-theme="dark"] .calendar-day:hover,
+body[data-theme="dark"] .schedule-cell:hover,
+body[data-theme="dark"] .team-card:hover,
+html.dark .calendar-day:hover,
+html.dark .schedule-cell:hover,
+html.dark .team-card:hover,
+body.dark .calendar-day:hover,
+body.dark .schedule-cell:hover,
+body.dark .team-card:hover,
+html.dark-theme .calendar-day:hover,
+html.dark-theme .schedule-cell:hover,
+html.dark-theme .team-card:hover,
+body.dark-theme .calendar-day:hover,
+body.dark-theme .schedule-cell:hover,
+body.dark-theme .team-card:hover,
+html.theme-dark .calendar-day:hover,
+html.theme-dark .schedule-cell:hover,
+html.theme-dark .team-card:hover,
+body.theme-dark .calendar-day:hover,
+body.theme-dark .schedule-cell:hover,
+body.theme-dark .team-card:hover,
+body.darkmode .calendar-day:hover,
+body.darkmode .schedule-cell:hover,
+body.darkmode .team-card:hover,
+body[data-color-mode="dark"] .calendar-day:hover,
+body[data-color-mode="dark"] .schedule-cell:hover,
+body[data-color-mode="dark"] .team-card:hover {
+  background: var(--dm-surface-2) !important;
+}
+html[data-theme="dark"] .role-badge,
+html[data-theme="dark"] .panel-chip,
+html[data-theme="dark"] .updated-chip,
+body[data-theme="dark"] .role-badge,
+body[data-theme="dark"] .panel-chip,
+body[data-theme="dark"] .updated-chip,
+html.dark .role-badge,
+html.dark .panel-chip,
+html.dark .updated-chip,
+body.dark .role-badge,
+body.dark .panel-chip,
+body.dark .updated-chip,
+html.dark-theme .role-badge,
+html.dark-theme .panel-chip,
+html.dark-theme .updated-chip,
+body.dark-theme .role-badge,
+body.dark-theme .panel-chip,
+body.dark-theme .updated-chip,
+html.theme-dark .role-badge,
+html.theme-dark .panel-chip,
+html.theme-dark .updated-chip,
+body.theme-dark .role-badge,
+body.theme-dark .panel-chip,
+body.theme-dark .updated-chip,
+body.darkmode .role-badge,
+body.darkmode .panel-chip,
+body.darkmode .updated-chip,
+body[data-color-mode="dark"] .role-badge,
+body[data-color-mode="dark"] .panel-chip,
+body[data-color-mode="dark"] .updated-chip {
+  background: rgba(86, 163, 255, 0.12) !important;
+  color: #9ec7ff !important;
+  border: 1px solid rgba(86, 163, 255, 0.18) !important;
+}
+html[data-theme="dark"] .status-success,
+body[data-theme="dark"] .status-success,
+html.dark .status-success,
+body.dark .status-success,
+html.dark-theme .status-success,
+body.dark-theme .status-success,
+html.theme-dark .status-success,
+body.theme-dark .status-success,
+body.darkmode .status-success,
+body[data-color-mode="dark"] .status-success { background: var(--dm-success-soft) !important; color: #95edc0 !important; }
+html[data-theme="dark"] .status-warning,
+body[data-theme="dark"] .status-warning,
+html.dark .status-warning,
+body.dark .status-warning,
+html.dark-theme .status-warning,
+body.dark-theme .status-warning,
+html.theme-dark .status-warning,
+body.theme-dark .status-warning,
+body.darkmode .status-warning,
+body[data-color-mode="dark"] .status-warning { background: var(--dm-warning-soft) !important; color: #ffd591 !important; }
+html[data-theme="dark"] .status-danger,
+body[data-theme="dark"] .status-danger,
+html.dark .status-danger,
+body.dark .status-danger,
+html.dark-theme .status-danger,
+body.dark-theme .status-danger,
+html.theme-dark .status-danger,
+body.theme-dark .status-danger,
+body.darkmode .status-danger,
+body[data-color-mode="dark"] .status-danger { background: var(--dm-danger-soft) !important; color: #ffb0b0 !important; }
+html[data-theme="dark"] .fc-empty,
+body[data-theme="dark"] .fc-empty,
+html.dark .fc-empty,
+body.dark .fc-empty,
+html.dark-theme .fc-empty,
+body.dark-theme .fc-empty,
+html.theme-dark .fc-empty,
+body.theme-dark .fc-empty,
+body.darkmode .fc-empty,
+body[data-color-mode="dark"] .fc-empty { color: var(--dm-text-faint) !important; }
+@media (max-width: 900px) {
+  html[data-theme="dark"] .topbar,
+  body[data-theme="dark"] .topbar,
+  html.dark .topbar,
+  body.dark .topbar,
+  html.dark-theme .topbar,
+  body.dark-theme .topbar,
+  html.theme-dark .topbar,
+  body.theme-dark .topbar,
+  body.darkmode .topbar,
+  body[data-color-mode="dark"] .topbar {
+    background: #0a1525 !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="toast-stack" id="toastStack"></div>
@@ -60,7 +796,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.27</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.28</span></div>
 </form>
 </div>
 </section>
@@ -278,7 +1014,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.27</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.27 Monthly Overview + ST5/ST6</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.26</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.26 Schedule System Period All Views</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -1400,20 +2136,13 @@
 <!-- Employee Monthly Schedule Overview V6.11.21 -->
 <div class="modal-backdrop hidden employee-month-modal-backdrop-v61121" id="employeeMonthScheduleModal" aria-hidden="true">
   <div class="modal employee-month-modal-v61121">
-    <div class="modal-header employee-month-modal-header-v61121 employee-month-modal-header-v61127">
-      <div class="employee-month-person-v61127">
-        <div class="employee-month-avatar-v61127" id="employeeMonthScheduleAvatar">พน</div>
-        <div class="employee-month-person-copy-v61127">
-          <span class="eyebrow">MONTHLY PERSONAL OVERVIEW</span>
-          <div class="employee-month-title-row-v61127">
-            <h3 id="employeeMonthScheduleTitle">ปฏิทินรายบุคคล</h3>
-            <span class="employee-month-header-mode-v61127 readonly" id="employeeMonthHeaderMode">ดูข้อมูลอย่างเดียว</span>
-          </div>
-          <p id="employeeMonthScheduleSubtitle">-</p>
-          <div class="employee-month-pattern-meta-v61127" id="employeeMonthSchedulePatternMeta">รูปแบบการทำงานตามข้อมูลพนักงาน</div>
-        </div>
+    <div class="modal-header employee-month-modal-header-v61121">
+      <div>
+        <span class="eyebrow">MONTHLY PERSONAL OVERVIEW</span>
+        <h3 id="employeeMonthScheduleTitle">ปฏิทินรายบุคคล</h3>
+        <p id="employeeMonthScheduleSubtitle">-</p>
       </div>
-      <button class="btn btn-light btn-icon employee-month-close-v61127" id="employeeMonthScheduleClose" type="button" aria-label="ปิด">×</button>
+      <button class="btn btn-light btn-icon" id="employeeMonthScheduleClose" type="button" aria-label="ปิด">×</button>
     </div>
     <div class="employee-month-toolbar-v61121">
       <div class="employee-month-nav-v61121">
@@ -1430,15 +2159,13 @@
     </div>
     <div class="modal-body employee-month-modal-body-v61121">
       <div class="employee-month-summary-v61121" id="employeeMonthScheduleSummary"></div>
-      <div class="employee-month-legend-v61121 employee-month-legend-v61127">
-        <strong>สถานะเวลา</strong>
+      <div class="employee-month-legend-v61121">
         <span><i class="tone-normal"></i>ปกติ</span>
         <span><i class="tone-late"></i>สาย</span>
         <span><i class="tone-early"></i>กลับก่อน</span>
         <span><i class="tone-danger"></i>ขาดงาน</span>
         <span><i class="tone-leave"></i>ลา</span>
         <span><i class="tone-off"></i>วันหยุด</span>
-        <small>คลิก “จัดกะ” ที่มุมล่างของวันเพื่อปรับกะ</small>
       </div>
       <div class="employee-month-grid-v61121" id="employeeMonthScheduleGrid"></div>
     </div>
@@ -2277,6 +3004,31 @@
 </div>
 </div>
 </div>
-<script src="./app.js?v=6.11.27-20260814"></script>
+<script src="./app.js?v=6.11.28-20260817"></script>
+
+<script id="darkmode-ux-sync-v61128">
+(function(){
+  function syncDarkFlag(){
+    try {
+      var root = document.documentElement;
+      var body = document.body;
+      var theme = (localStorage.getItem('theme') || localStorage.getItem('app-theme') || localStorage.getItem('tc-theme') || '').toLowerCase();
+      var isDark = theme === 'dark' || root.classList.contains('dark') || root.classList.contains('dark-theme') || root.classList.contains('theme-dark') || body.classList.contains('dark') || body.classList.contains('dark-theme') || body.classList.contains('theme-dark') || body.getAttribute('data-theme') === 'dark' || root.getAttribute('data-theme') === 'dark';
+      if (!isDark && (!theme || theme === 'system')) {
+        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches && (theme === 'system');
+      }
+      if (isDark) {
+        if (!root.getAttribute('data-theme')) root.setAttribute('data-theme','dark');
+      }
+    } catch (e) {}
+  }
+  document.addEventListener('DOMContentLoaded', syncDarkFlag);
+  window.addEventListener('storage', syncDarkFlag);
+  var observer = new MutationObserver(syncDarkFlag);
+  observer.observe(document.documentElement, {attributes:true, attributeFilter:['class','data-theme']});
+  document.addEventListener('click', function(){ setTimeout(syncDarkFlag, 20); }, true);
+})();
+</script>
+
 </body>
 </html>
