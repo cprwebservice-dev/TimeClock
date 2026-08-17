@@ -17976,3 +17976,71 @@ body.theme-dark #employeeMonthScheduleModal .employee-month-loading small,
 
 html[data-theme="dark"] .time-certification-body-v61139,body[data-theme="dark"] .time-certification-body-v61139,html.dark .time-certification-body-v61139,body.dark .time-certification-body-v61139,body.theme-dark .time-certification-body-v61139{background:#0c1824!important}
 html[data-theme="dark"] .time-cert-card-v61139,body[data-theme="dark"] .time-cert-card-v61139,html.dark .time-cert-card-v61139,body.dark .time-cert-card-v61139,body.theme-dark .time-cert-card-v61139,html[data-theme="dark"] .time-cert-context-v61139>div,body[data-theme="dark"] .time-cert-context-v61139>div,body.theme-dark .time-cert-context-v61139>div{background:#132434!important;border-color:#2f465a!important;color:#dbe6ef!important}.dark .time-cert-context-v61139 strong,.dark .time-cert-facts-v61139 strong,body.theme-dark .time-cert-context-v61139 strong,body.theme-dark .time-cert-facts-v61139 strong{color:#e8f1f7!important}.dark .time-cert-context-v61139 span,.dark .time-cert-context-v61139 small,.dark .time-cert-facts-v61139 span,body.theme-dark .time-cert-context-v61139 span,body.theme-dark .time-cert-context-v61139 small,body.theme-dark .time-cert-facts-v61139 span{color:#91a7ba!important}.dark .time-cert-facts-v61139>div,body.theme-dark .time-cert-facts-v61139>div{background:#0f1e2b!important}.dark .time-certification-footer-v61139,body.theme-dark .time-certification-footer-v61139{background:#10202d!important;border-color:#2c4051!important}.dark .cert-reason-footnote-v61139,body.theme-dark .cert-reason-footnote-v61139,.dark .cert-reason-editor-options-v61139,body.theme-dark .cert-reason-editor-options-v61139{background:#142534!important;color:#a8bac9!important}
+
+
+/* ========================================================================== */
+/* V6.11.40 — Time Certification Modal Stack Fix                              */
+/* ========================================================================== */
+/*
+  Existing overlay layers:
+  Team Daily Detail       ~ 1400
+  Monthly Personal        = 5450
+  Shift Assignment        = 5650
+  Global confirm/prompt   = 10000
+
+  Time Certification must be above the source popup, while global confirm
+  remains above Time Certification for revoke/confirmation workflows.
+*/
+.time-certification-backdrop-v61139{
+  z-index:8200!important;
+  background:rgba(5,16,31,.70)!important;
+  backdrop-filter:blur(7px)!important;
+  -webkit-backdrop-filter:blur(7px)!important;
+}
+
+.time-certification-backdrop-v61139 .time-certification-modal-v61139{
+  position:relative;
+  z-index:1;
+  isolation:isolate;
+  box-shadow:0 34px 100px rgba(2,10,22,.38)!important;
+}
+
+/* Reason editor is also a modal workflow and must not be covered by settings UI. */
+.cert-reason-editor-backdrop-v61139{
+  z-index:8300!important;
+}
+
+/* While Time Certification is open, the underlying popup/drawer is display-only. */
+body.time-certification-modal-open-v61140 #employeeMonthScheduleModal,
+body.time-certification-modal-open-v61140 .schedule-team-drawer,
+body.time-certification-modal-open-v61140 .schedule-team-drawer-backdrop,
+body.time-certification-modal-open-v61140 #assignModal{
+  pointer-events:none!important;
+}
+
+/* Loading and toast feedback must remain visible above the certification modal. */
+body.time-certification-modal-open-v61140 .loading-overlay{
+  z-index:11000!important;
+}
+
+body.time-certification-modal-open-v61140 .toast-stack{
+  z-index:12000!important;
+}
+
+/* Global V6.11.34 confirm/prompt is intentionally above Time Certification. */
+body.time-certification-modal-open-v61140 .global-action-modal-backdrop,
+body.time-certification-modal-open-v61140 .global-print-modal-backdrop{
+  z-index:10000!important;
+}
+
+/* Prevent scroll-through while the nested workflow is active. */
+body.time-certification-modal-open-v61140{
+  overflow:hidden!important;
+}
+
+@media(max-width:760px){
+  .time-certification-backdrop-v61139{
+    padding:7px!important;
+    align-items:center!important;
+  }
+}

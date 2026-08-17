@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.39";
-document.documentElement.dataset.timeClockBuild = "6.11.39";
+window.__TIME_CLOCK_BUILD__ = "V6.11.40";
+document.documentElement.dataset.timeClockBuild = "6.11.40";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.39";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.39',
+  version: '6.11.40',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5578,13 +5578,25 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
 
       updateTimeCertificationDurationV61139();
+
+      // V6.11.40 — explicit modal stack state.
+      // Time Certification can be opened from Team Daily Detail or Monthly Personal Overview,
+      // both of which already use their own overlay layers.
+      document.body.classList.add('time-certification-modal-open-v61140');
+
       $('timeCertificationModal')?.classList.remove('hidden');
       $('timeCertificationModal')?.setAttribute('aria-hidden','false');
+
+      // Keep focus inside the top-most workflow.
+      requestAnimationFrame(() => {
+        $('timeCertificationStartTime')?.focus({ preventScroll: true });
+      });
     }
 
     function closeTimeCertificationModalV61139() {
       $('timeCertificationModal')?.classList.add('hidden');
       $('timeCertificationModal')?.setAttribute('aria-hidden','true');
+      document.body.classList.remove('time-certification-modal-open-v61140');
       timeCertificationStateV61139.row = null;
       timeCertificationStateV61139.source = '';
     }
