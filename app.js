@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.54";
-document.documentElement.dataset.timeClockBuild = "6.11.54";
+window.__TIME_CLOCK_BUILD__ = "V6.11.55";
+document.documentElement.dataset.timeClockBuild = "6.11.55";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.54";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.54',
+  version: '6.11.55',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1554,6 +1554,44 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       );
     }
 
+    function attendanceHasWorkingShiftOverrideV61155(r) {
+      if (!r) return false;
+
+      const code = String(
+        r?.effective_shift_code
+        || r?.assigned_shift_code
+        || r?.shift_code
+        || ''
+      ).trim().toUpperCase();
+
+      if (!code || ['OFF','HOL','LV'].includes(code)) {
+        return false;
+      }
+
+      const shiftMeta =
+        typeof scheduleResolveShiftMeta === 'function'
+          ? scheduleResolveShiftMeta(r)
+          : null;
+
+      const hasTimes = Boolean(
+        r?.shift_start_time
+        || r?.effective_shift_start_time
+        || r?.shift_1_planned_start_at
+      ) && Boolean(
+        r?.shift_end_time
+        || r?.effective_shift_end_time
+        || r?.shift_1_planned_end_at
+      );
+
+      return Boolean(
+        hasTimes
+        || shiftMeta?.isWorking === true
+        || ['day','night','split'].includes(
+          String(shiftMeta?.tone || '').toLowerCase()
+        )
+      );
+    }
+
     function attendanceDisplayStatus(r) {
       const backend = String(r?.display_status || '')
         .trim()
@@ -1582,8 +1620,12 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         return 'LEAVE';
       }
 
+      const workingShiftOverride =
+        attendanceHasWorkingShiftOverrideV61155(r);
+
       if (
-        ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
+        !workingShiftOverride
+        && ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
       ) {
         return 'DAY_OFF';
       }
@@ -6233,14 +6275,20 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       }
 
       const shiftMeta = scheduleResolveShiftMeta(row);
+      const workingShiftOverride =
+        attendanceHasWorkingShiftOverrideV61155(row);
 
-      // OFF / weekly off / comp-off / holiday are not certifiable days.
+      // Natural weekly off / public holiday is certifiable when a real
+      // working shift was explicitly/effectively assigned for that date.
       if (
-        attendanceDisplayStatus(row) === 'DAY_OFF'
-        || ['OFF','HOL'].includes(shiftCode)
-        || ['off','holiday'].includes(String(shiftMeta?.tone || '').toLowerCase())
-        || Boolean(row?.is_weekly_off || row?.is_public_holiday)
-        || ['WEEKLY_OFF','COMP_OFF','DAY_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
+        !workingShiftOverride
+        && (
+          attendanceDisplayStatus(row) === 'DAY_OFF'
+          || ['OFF','HOL'].includes(shiftCode)
+          || ['off','holiday'].includes(String(shiftMeta?.tone || '').toLowerCase())
+          || Boolean(row?.is_weekly_off || row?.is_public_holiday)
+          || ['WEEKLY_OFF','COMP_OFF','DAY_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
+        )
       ) {
         return 'OFF';
       }
@@ -7411,26 +7459,47 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const certificationButton = merged ? timeCertificationButtonV61139(merged,'employee-month') : '';
         const certificationBadge = merged ? timeCertificationBadgeV61139(merged) : '';
         const isToday = workDate === todayISO();
-        const holiday = Boolean(
+        const workingShiftOverride =
+          attendanceHasWorkingShiftOverrideV61155(scheduleRow || row);
+
+        const calendarHoliday = Boolean(
           scheduleRow?.is_public_holiday
           || scheduleRow?.day_type === 'PUBLIC_HOLIDAY'
-          || shift.tone === 'holiday'
         );
-        const weeklyOff = Boolean(
-          !holiday
+
+        const naturalWeeklyOff = Boolean(
+          scheduleRow?.is_weekly_off
+          || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(
+            String(scheduleRow?.day_type || '').trim().toUpperCase()
+          )
+        );
+
+        // A real assigned work shift takes precedence over the natural
+        // holiday/off calendar classification for attendance purposes.
+        const holiday = Boolean(
+          !workingShiftOverride
           && (
-            scheduleRow?.is_weekly_off
-            || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(
-              String(scheduleRow?.day_type || '').trim().toUpperCase()
-            )
+            calendarHoliday
+            || shift.tone === 'holiday'
+          )
+        );
+
+        const weeklyOff = Boolean(
+          !workingShiftOverride
+          && !holiday
+          && (
+            naturalWeeklyOff
             || shift.tone === 'off'
           )
         );
-        const dayKindClass = holiday
-          ? 'month-day-kind-holiday-v61153'
-          : weeklyOff
-            ? 'month-day-kind-off-v61153'
-            : 'month-day-kind-work-v61153';
+
+        const dayKindClass = workingShiftOverride
+          ? 'month-day-kind-work-v61153 month-day-work-override-v61155'
+          : holiday
+            ? 'month-day-kind-holiday-v61153'
+            : weeklyOff
+              ? 'month-day-kind-off-v61153'
+              : 'month-day-kind-work-v61153';
         const dayName = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][dow];
 
         html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} tone-${safe(statusMeta.tone)}" data-month-date="${safe(workDate)}">

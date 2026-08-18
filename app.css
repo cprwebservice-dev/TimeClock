@@ -19921,3 +19921,33 @@ body.theme-dark #employeeMonthScheduleModal .employee-month-holiday-item-v61153 
     font-size:15px!important;
   }
 }
+
+
+/* ========================================================================== */
+/* V6.11.55 — Assigned Work Shift Overrides Natural OFF / Public Holiday       */
+/* ========================================================================== */
+
+#employeeMonthScheduleModal
+.employee-month-day.month-day-work-override-v61155
+.employee-month-date-v61127>strong{
+  background:#dff1ff!important;
+  border-color:#9cccf1!important;
+  color:#0c568f!important;
+  box-shadow:0 0 0 2px rgba(30,105,167,.08),0 3px 8px rgba(15,42,75,.08)!important;
+}
+
+#employeeMonthScheduleModal
+.employee-month-day.month-day-work-override-v61155{
+  border-color:#b8d9f2!important;
+}
+
+body.theme-dark #employeeMonthScheduleModal
+.employee-month-day.month-day-work-override-v61155
+.employee-month-date-v61127>strong,
+.dark #employeeMonthScheduleModal
+.employee-month-day.month-day-work-override-v61155
+.employee-month-date-v61127>strong{
+  background:#173b57!important;
+  border-color:#3a7099!important;
+  color:#d9efff!important;
+}
