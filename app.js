@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.12.0";
-document.documentElement.dataset.timeClockBuild = "6.12.0";
+window.__TIME_CLOCK_BUILD__ = "V6.12.1";
+document.documentElement.dataset.timeClockBuild = "6.12.1";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.12.0";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.12.0',
+  version: '6.12.1',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -4885,53 +4885,40 @@ window.tcIsDayShiftCode = value =>
       // all employees in one RPC can hit the 1,000-row response limit and make
       // SPLIT_FLEX/customer-window metadata disappear for some employees.
       const metaRows = [];
-      const batchSize = 20;
+      // V6.12.1 performance:
+      // 30 employees x 31 days <= 930 rows/request, still below the 1,000-row
+      // response ceiling. Run a few batches concurrently instead of waiting
+      // for every employee batch serially.
+      const batchSize = 30;
+      const batches = [];
+      for (let offset = 0; offset < empCodes.length; offset += batchSize) {
+        batches.push(empCodes.slice(offset, offset + batchSize));
+      }
 
-      for (
-        let offset = 0;
-        offset < empCodes.length;
-        offset += batchSize
-      ) {
-        const batch =
-          empCodes.slice(
-            offset,
-            offset + batchSize
-          );
-
-        const {
-          data,
-          error
-        } =
-          await state.client.rpc(
+      const concurrency = 4;
+      for (let cursor = 0; cursor < batches.length; cursor += concurrency) {
+        const group = batches.slice(cursor, cursor + concurrency);
+        const responses = await Promise.all(
+          group.map(batch => state.client.rpc(
             "ta_get_schedule_work_plan_meta_v6118",
             {
-              p_start_date:
-                period.startDate,
-              p_end_date:
-                period.endDate,
-              p_emp_codes:
-                batch
+              p_start_date: period.startDate,
+              p_end_date: period.endDate,
+              p_emp_codes: batch
             }
-          );
+          ))
+        );
 
-        if(error) {
-          if(
-            String(
-              error.message
-              || ""
-            ).includes(
-              "ta_get_schedule_work_plan_meta_v6118"
-            )
-          ) {
-            throw new Error(
-              "WORK_PLAN_LINKAGE_RPC_REQUIRED"
-            );
+        for (const response of responses) {
+          const { data, error } = response || {};
+          if (error) {
+            if (String(error.message || "").includes("ta_get_schedule_work_plan_meta_v6118")) {
+              throw new Error("WORK_PLAN_LINKAGE_RPC_REQUIRED");
+            }
+            throw error;
           }
-
-          throw error;
+          metaRows.push(...(data || []));
         }
-
-        metaRows.push(...(data || []));
       }
 
       const metaMap =
@@ -5098,7 +5085,10 @@ window.tcIsDayShiftCode = value =>
           // The RPC is still subject to the server's max-rows behavior.
           // Instead fetch small employee batches:
           // 20 employees x 31 days <= 620 rows/request.
-          const employeeBatchSize = 20;
+          // V6.12.1: 30 employees x 31 days <= 930 rows/request.
+          // Load up to 4 employee batches concurrently. This changes only the
+          // transport strategy; scope/filter/business rules remain unchanged.
+          const employeeBatchSize = 30;
           const chunks = [];
 
           for (
@@ -5106,27 +5096,25 @@ window.tcIsDayShiftCode = value =>
             offset < scopeEmpCodes.length;
             offset += employeeBatchSize
           ) {
-            chunks.push(
-              scopeEmpCodes.slice(
-                offset,
-                offset + employeeBatchSize
-              )
-            );
+            chunks.push(scopeEmpCodes.slice(offset, offset + employeeBatchSize));
           }
 
           if (!chunks.length) {
             data = [];
           } else {
             const collected = [];
+            const concurrency = 4;
+            let completed = 0;
 
-            for (let i = 0; i < chunks.length; i += 1) {
+            for (let cursor = 0; cursor < chunks.length; cursor += concurrency) {
+              const group = chunks.slice(cursor, cursor + concurrency);
               setScheduleLoadStatus(
                 "loading",
-                `กำลังโหลดพนักงานตาม Scope ชุดที่ ${i + 1}/${chunks.length} • ${chunks[i].length} คน`
+                `กำลังโหลดพนักงานตาม Scope • ${completed}/${chunks.length} ชุด`
               );
 
-              const batchRows =
-                await window.TimeClockShiftAPI.getMonthlySchedule(
+              const groupRows = await Promise.all(
+                group.map(chunk => window.TimeClockShiftAPI.getMonthlySchedule(
                   window.TimeClockApp||{state},
                   {
                     p_month:`${period.month}-01`,
@@ -5134,13 +5122,19 @@ window.tcIsDayShiftCode = value =>
                     p_end_date:period.endDate,
                     p_zone:val("scheduleZone")||null,
                     p_department:val("scheduleDepartment")||null,
-                    p_emp_codes:chunks[i],
+                    p_emp_codes:chunk,
                     p_schedule_statuses:null,
                     p_disable_range_paging:true
                   }
-                );
+                ))
+              );
 
-              collected.push(...(batchRows || []));
+              groupRows.forEach(rows => collected.push(...(rows || [])));
+              completed += group.length;
+              setScheduleLoadStatus(
+                "loading",
+                `กำลังโหลดพนักงานตาม Scope • ${completed}/${chunks.length} ชุด`
+              );
             }
 
             const unique = new Map();
@@ -5159,19 +5153,80 @@ window.tcIsDayShiftCode = value =>
           state.scheduleScopeEmployeesV61151 =
             scopeEmployees;
         } else {
-          data =
-            await window.TimeClockShiftAPI.getMonthlySchedule(
-              window.TimeClockApp||{state},
-              {
-                p_month:`${period.month}-01`,
-                p_start_date:period.startDate,
-                p_end_date:period.endDate,
-                p_zone:val("scheduleZone")||null,
-                p_department:val("scheduleDepartment")||null,
-                p_emp_codes:exactEmp?[exactEmp]:null,
-                p_schedule_statuses:null
-              }
-            );
+          // V6.12.1 TEAM performance:
+          // When filter options already provide the accessible employee list,
+          // fetch 7-day rows by employee batches. This avoids re-running the
+          // full cross-product RPC once per HTTP range page.
+          const selectedDepartment = String(val("scheduleDepartment") || "").trim();
+          const availableScopeEmployees = (Array.isArray(filterOptions.employees)
+            ? filterOptions.employees
+            : [])
+            .filter(employee => !selectedDepartment
+              || String(employee?.department || "").trim() === selectedDepartment);
+          const teamEmpCodes = [...new Set(
+            availableScopeEmployees
+              .map(employee => String(employee?.emp_code || "").trim())
+              .filter(Boolean)
+          )];
+
+          if (!exactEmp && teamEmpCodes.length) {
+            const daysInView = Math.max(Number(period?.dates?.length || 0), 1);
+            const teamBatchSize = Math.max(20, Math.min(120, Math.floor(930 / daysInView)));
+            const chunks = [];
+            for (let offset = 0; offset < teamEmpCodes.length; offset += teamBatchSize) {
+              chunks.push(teamEmpCodes.slice(offset, offset + teamBatchSize));
+            }
+
+            const collected = [];
+            const concurrency = 4;
+            let completed = 0;
+            for (let cursor = 0; cursor < chunks.length; cursor += concurrency) {
+              const group = chunks.slice(cursor, cursor + concurrency);
+              setScheduleLoadStatus(
+                "loading",
+                `กำลังโหลดปฏิทินทีม • ${completed}/${chunks.length} ชุด`
+              );
+              const groupRows = await Promise.all(
+                group.map(chunk => window.TimeClockShiftAPI.getMonthlySchedule(
+                  window.TimeClockApp||{state},
+                  {
+                    p_month:`${period.month}-01`,
+                    p_start_date:period.startDate,
+                    p_end_date:period.endDate,
+                    p_zone:val("scheduleZone")||null,
+                    p_department:val("scheduleDepartment")||null,
+                    p_emp_codes:chunk,
+                    p_schedule_statuses:null,
+                    p_disable_range_paging:true
+                  }
+                ))
+              );
+              groupRows.forEach(rows => collected.push(...(rows || [])));
+              completed += group.length;
+            }
+
+            const unique = new Map();
+            collected.forEach((row,index) => {
+              const emp = String(row?.emp_code || "").trim();
+              const date = String(row?.work_date || "").slice(0,10);
+              unique.set(emp && date ? `${emp}|${date}` : `__row_${index}`, row);
+            });
+            data = [...unique.values()];
+          } else {
+            data =
+              await window.TimeClockShiftAPI.getMonthlySchedule(
+                window.TimeClockApp||{state},
+                {
+                  p_month:`${period.month}-01`,
+                  p_start_date:period.startDate,
+                  p_end_date:period.endDate,
+                  p_zone:val("scheduleZone")||null,
+                  p_department:val("scheduleDepartment")||null,
+                  p_emp_codes:exactEmp?[exactEmp]:null,
+                  p_schedule_statuses:null
+                }
+              );
+          }
         }
 
         state.schedule=(data||[]).filter(row=>{
@@ -5200,20 +5255,32 @@ window.tcIsDayShiftCode = value =>
           loadedAt:Date.now()
         };
 
-        await enrichScheduleWorkPlanMetaV6118(
-          period,
-          state.schedule
-        );
-        await window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(state.schedule);
-        await enrichScheduleManagerMetaV61122(state.schedule);
-        await enrichScheduleManagerNamesV61121(state.schedule);
-        await enrichScheduleManagerMapV61124(state.schedule, period);
-        const unresolvedManagerRowsV61124 = state.schedule.filter(row =>
-          !Array.isArray(row?._team_manager_names_v61123)
-          || row._team_manager_names_v61123.length === 0
-        );
-        if (unresolvedManagerRowsV61124.length) {
-          await enrichScheduleOrgManagersV61123(unresolvedManagerRowsV61124, period);
+        // V6.12.1 performance: independent schedule enrichments no longer
+        // wait for one another. PERSON view does not render team-manager labels,
+        // so manager-only metadata is skipped there entirely.
+        const coreEnrichments = [
+          enrichScheduleWorkPlanMetaV6118(period, state.schedule),
+          window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(state.schedule)
+        ];
+
+        if (!personMode) {
+          coreEnrichments.push(
+            enrichScheduleManagerMetaV61122(state.schedule),
+            enrichScheduleManagerMapV61124(state.schedule, period)
+          );
+        }
+
+        await Promise.all(coreEnrichments);
+
+        if (!personMode) {
+          await enrichScheduleManagerNamesV61121(state.schedule);
+          const unresolvedManagerRowsV61124 = state.schedule.filter(row =>
+            !Array.isArray(row?._team_manager_names_v61123)
+            || row._team_manager_names_v61123.length === 0
+          );
+          if (unresolvedManagerRowsV61124.length) {
+            await enrichScheduleOrgManagersV61123(unresolvedManagerRowsV61124, period);
+          }
         }
 
         renderSchedule();
@@ -25232,10 +25299,10 @@ ${skippedSummary(compatibility.skipped)}
   window.TimeClockCertificationReasons={load,render,openPage};
 })();
 
-/* ===== V6.12.0 Work Mode, Scheduling Guard & Day-off Quota ===== */
+/* ===== V6.12.1 Work Mode, Scheduling Guard & Day-off Quota + Schedule Load Performance ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.12.0';
+  const VERSION='6.12.1';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -25574,4 +25641,5 @@ ${skippedSummary(compatibility.skipped)}
   function init(){ensureAssignmentUi();ensureAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();});document.addEventListener('timeclock:effective-role-changed',()=>loadAdminPanel());document.documentElement.dataset.schedulingRulesVersion=VERSION;}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,validateBulk,saveBulkExtensions};
+  window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
 })();
