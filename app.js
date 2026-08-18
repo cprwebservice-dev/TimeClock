@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.56";
-document.documentElement.dataset.timeClockBuild = "6.11.56";
+window.__TIME_CLOCK_BUILD__ = "V6.12.0";
+document.documentElement.dataset.timeClockBuild = "6.12.0";
 
 
 /* ===== js/config.js ===== */
@@ -13,10 +13,55 @@ document.documentElement.dataset.timeClockBuild = "6.11.56";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.56',
+  version: '6.12.0',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
+
+/* ===== V6.11.57 Canonical Shift Codes =====
+   Legacy -> Current
+   D  -> STD
+   N  -> S134
+   D6 -> S043
+   D5 -> S135
+*/
+window.TimeClockShiftCodesV61157 = Object.freeze({
+  map: Object.freeze({
+    D: 'STD',
+    N: 'S134',
+    D6: 'S043',
+    D5: 'S135'
+  }),
+
+  canonical(value) {
+    const code = String(value ?? '').trim().toUpperCase();
+    if (!code) return code;
+    return this.map[code] || code;
+  },
+
+  isNight(value) {
+    const code = this.canonical(value);
+    return code === 'S134';
+  },
+
+  isDay(value) {
+    const code = this.canonical(value);
+    return ['STD','S043','S135'].includes(code);
+  },
+
+  label(value) {
+    return this.canonical(value);
+  }
+});
+
+window.tcShiftCode = value =>
+  window.TimeClockShiftCodesV61157.canonical(value);
+
+window.tcIsNightShiftCode = value =>
+  window.TimeClockShiftCodesV61157.isNight(value);
+
+window.tcIsDayShiftCode = value =>
+  window.TimeClockShiftCodesV61157.isDay(value);
 
 ;
 
@@ -219,7 +264,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   async function directAssign(client, row, app) {
     const empCode = String(row.emp_code || row.p_emp_code || "").trim();
     const workDate = String(row.work_date || row.p_work_date || "").slice(0, 10);
-    const shiftCode = row.shift_code ?? row.p_shift_code;
+    const shiftCodeRaw = row.shift_code ?? row.p_shift_code;
+    const shiftCode = shiftCodeRaw == null ? shiftCodeRaw : window.tcShiftCode(shiftCodeRaw);
     const note = row.note ?? row.p_note ?? null;
     const confirmNow = Boolean(row.confirm_now ?? row.p_confirm_now);
     if (!empCode || !workDate) throw new Error("ข้อมูลรหัสพนักงานหรือวันที่จัดกะไม่ครบ");
@@ -234,7 +280,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     const base = {
       emp_code: empCode,
       work_date: workDate,
-      shift_code: String(shiftCode).trim().toUpperCase(),
+      shift_code: window.tcShiftCode(shiftCode),
       source_type: "manual",
       note,
       is_confirmed: confirmNow,
@@ -258,7 +304,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     const full = {
       p_emp_code: params.emp_code ?? params.p_emp_code,
       p_work_date: params.work_date ?? params.p_work_date,
-      p_shift_code: params.shift_code ?? params.p_shift_code,
+      p_shift_code: (params.shift_code ?? params.p_shift_code) == null ? null : window.tcShiftCode(params.shift_code ?? params.p_shift_code),
       p_note: params.note ?? params.p_note ?? null,
       p_change_reason: params.change_reason ?? params.p_change_reason ?? "บันทึกกะจากหน้าเว็บ",
       p_confirm_now: Boolean(params.confirm_now ?? params.p_confirm_now)
@@ -287,7 +333,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     const cleanRows = (rows || []).map(row => ({
       emp_code: String(row.emp_code || "").trim(),
       work_date: String(row.work_date || "").slice(0, 10),
-      shift_code: row.shift_code == null || row.shift_code === "" ? null : String(row.shift_code).trim().toUpperCase(),
+      shift_code: row.shift_code == null || row.shift_code === "" ? null : window.tcShiftCode(row.shift_code),
       note: row.note ?? null
     })).filter(row => row.emp_code && row.work_date);
     if (!cleanRows.length) return { saved_rows: 0 };
@@ -366,7 +412,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     else if (!row.shift_code && firstIn && lastOut) issue = "NEED_REVIEW";
 
     const firstHour = firstIn ? Number(String(firstIn).slice(0, 2)) : null;
-    const suggested = expected === 0 ? "OFF" : firstHour != null && firstHour >= 18 ? "N" : "D";
+    const suggested = expected === 0 ? "OFF" : firstHour != null && firstHour >= 18 ? "S134" : "STD";
     const assigned = row.shift_calendar?.[0]?.shift_code || row.shift_calendar?.shift_code || null;
     const effective = assigned || row.shift_code || suggested;
     return {
@@ -548,7 +594,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const publicHoliday = holidayMap.has(workDate);
         const weeklyOff = !publicHoliday && isNaturalWeeklyOff(emp.pc, cursor);
         const patternShift = patternShiftFor(patternsByEmp, detailsByPattern, empCode, workDate);
-        const autoCode = existing.auto_shift_code || existing.shift_code || (publicHoliday ? "HOL" : patternShift || (weeklyOff ? "OFF" : "D"));
+        const autoCode = window.tcShiftCode(existing.auto_shift_code || existing.shift_code || (publicHoliday ? "HOL" : patternShift || (weeklyOff ? "OFF" : "STD")));
         const effectiveCode = existing.assigned_shift_code || existing.effective_shift_code || autoCode;
         const shift = shiftMap.get(String(effectiveCode || "").toUpperCase()) || {};
         rowMap.set(key, {
@@ -998,7 +1044,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     const client = app?.state?.client;
     if (!client) throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
     const rpcArgs651 = {
-      p_shift_code: params.shift_code,
+      p_shift_code: window.tcShiftCode(params.shift_code),
       p_shift_name: params.shift_name,
       p_start_time: params.start_time || null,
       p_end_time: params.end_time || null,
@@ -1017,7 +1063,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     const rpcArgs = {
-      p_shift_code: params.shift_code,
+      p_shift_code: window.tcShiftCode(params.shift_code),
       p_shift_name: params.shift_name,
       p_start_time: params.start_time || null,
       p_end_time: params.end_time || null,
@@ -1034,7 +1080,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     if (!missingFunction(response.error)) throw response.error;
 
     const extended = {
-      shift_code: String(params.shift_code || "").trim().toUpperCase(),
+      shift_code: window.tcShiftCode(params.shift_code),
       shift_name: params.shift_name,
       start_time: params.start_time || null,
       end_time: params.end_time || null,
@@ -3687,10 +3733,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     function isNightShiftV61110(shift) {
       return Boolean(
         shift?.is_night_shift === true
-        || String(
+        || window.tcIsNightShiftCode(
           shift?.shift_code
-          || ""
-        ).toUpperCase().startsWith("N")
+        )
         || String(
           shift?.shift_name
           || ""
@@ -3733,6 +3778,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       const active = state.filters.shifts.filter(s => {
         if (s.is_active === false) return false;
+        const generatedV6120 = String(s.note || '').includes('[SYSTEM_GENERATED_V6120]');
+        if (generatedV6120 && window.tcShiftCode(s.shift_code) !== window.tcShiftCode(old)) return false;
 
         if(
           splitCustomer
@@ -3778,7 +3825,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
     function renderShiftMasterTable() {
       const filterPattern = val("shiftPatternFilter");
-      const rows = (state.filters.shifts || []).filter(s => !filterPattern || shiftPatternCodes(s).includes(filterPattern));
+      const rows = (state.filters.shifts || []).filter(s => {
+        if (String(s.note || '').includes('[SYSTEM_GENERATED_V6120]')) return false;
+        return !filterPattern || shiftPatternCodes(s).includes(filterPattern);
+      });
       $("shiftMasterBody").innerHTML = rows.length ? rows.map(s => {
         const patterns = shiftPatternCodes(s);
         const defaults = shiftDefaultPatternCodes(s);
@@ -5154,6 +5204,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           period,
           state.schedule
         );
+        await window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(state.schedule);
         await enrichScheduleManagerMetaV61122(state.schedule);
         await enrichScheduleManagerNamesV61121(state.schedule);
         await enrichScheduleManagerMapV61124(state.schedule, period);
@@ -5812,16 +5863,17 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     function scheduleResolveShiftMeta(row) {
-      const code = String(
+      const schedulingRuleDisplayV6120 = window.TimeClockSchedulingRulesV6120?.rowDisplay?.(row) || null;
+      const code = window.tcShiftCode(
         row?.assigned_shift_code
         || row?.effective_shift_code
         || row?.auto_shift_code
         || row?.shift_code
         || "-"
-      ).trim().toUpperCase();
+      );
 
       const shiftMaster = state.filters.shifts.find(
-        shift => String(shift.shift_code || '').trim().toUpperCase() === code
+        shift => window.tcShiftCode(shift.shift_code) === code
       );
 
       const shiftStart = formatTime(
@@ -5860,12 +5912,22 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           : code === 'OFF' || shiftMaster?.is_workday === false
             ? 'off'
             : shiftMaster?.is_night_shift === true
-              || code.startsWith('N')
+              || window.tcIsNightShiftCode(code)
               || String(shiftMaster?.shift_name || '').toLowerCase().includes('กลางคืน')
               || String(shiftMaster?.shift_name || '').toLowerCase().includes('กะดึก')
               || String(label).includes('22')
               ? 'night'
               : 'day';
+
+      if (schedulingRuleDisplayV6120) {
+        const ruleTone = schedulingRuleDisplayV6120.tone || tone;
+        return {
+          code,
+          label: schedulingRuleDisplayV6120.label || label,
+          tone: ruleTone,
+          isWorking: !['off','holiday','leave'].includes(ruleTone)
+        };
+      }
 
       return {
         code,
@@ -6052,7 +6114,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           const code = String(shift?.shift_code || '').trim().toUpperCase();
           const name = String(shift?.shift_name || '').trim().toLowerCase();
           return shift?.is_night_shift === true
-            || code.startsWith('N')
+            || window.tcIsNightShiftCode(code)
             || name.includes('กลางคืน')
             || name.includes('กะดึก');
         })
@@ -6064,22 +6126,22 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         return String(night.shift_code).trim().toUpperCase();
       }
 
-      const primaryCode = String(
+      const primaryCode = window.tcShiftCode(
         row?.effective_shift_code
         || row?.assigned_shift_code
         || row?.shift_code
         || row?.auto_shift_code
         || ''
-      ).trim().toUpperCase();
+      );
 
-      const dayPatternMatch =
-        primaryCode.match(/^D([56])$/);
-
-      if (dayPatternMatch) {
-        return `N${dayPatternMatch[1]}`;
+      // New master coding has one canonical night code.
+      if (
+        ['STD','S043','S135'].includes(primaryCode)
+      ) {
+        return 'S134';
       }
 
-      return 'S2';
+      return 'S134';
     }
 
 
@@ -7546,14 +7608,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
           <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
             shift.tone === 'night'
-              ? 'N'
+              ? 'NIGHT'
               : shift.tone === 'holiday'
                 ? 'HOL'
                 : shift.tone === 'leave'
                   ? 'LV'
                   : shift.tone === 'off'
                     ? 'OFF'
-                    : 'D'
+                    : 'DAY'
           )}">
             <div class="employee-month-shift-top-v61127"><b>${safe(shift.code || '-')}</b>${templateCode !== '-' ? `<span class="month-template-code-v61127">${safe(templateCode)}</span>` : ''}</div>
             <small>${safe(shift.label || '-')}</small>
@@ -8087,9 +8149,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             r.is_public_holiday
             || r.day_type === "PUBLIC_HOLIDAY";
           const weeklyOff = r.is_weekly_off || r.day_type === "WEEKLY_OFF";
-          const normalizedCode = String(code || "")
-            .trim()
-            .toUpperCase();
+          const normalizedCode =
+            window.tcShiftCode(code);
+          const schedulingRuleDisplayV6120 =
+            window.TimeClockSchedulingRulesV6120?.rowDisplay?.(r) || null;
 
           const codeClass = normalizedCode.replace(
             /[^A-Z0-9_-]/g,
@@ -8098,9 +8161,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
           const shiftMaster = state.filters.shifts.find(
             shift =>
-              String(shift.shift_code || "")
-                .trim()
-                .toUpperCase() === normalizedCode
+              window.tcShiftCode(
+                shift.shift_code
+              ) === normalizedCode
           );
 
           const shiftStart = formatTime(
@@ -8188,7 +8251,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
                   || shiftMaster?.is_workday === false
                   ? "shift-visual-off"
                   : shiftMaster?.is_night_shift === true
-                    || normalizedCode.startsWith("N")
+                    || window.tcIsNightShiftCode(normalizedCode)
                     || String(shiftMaster?.shift_name || "")
                       .toLowerCase()
                       .includes("กลางคืน")
@@ -8219,6 +8282,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             : "ตามกะมาตรฐาน";
 
           const calcBits = [
+            schedulingRuleDisplayV6120?.label || null,
             shiftTimeLabel
               ? `เวลากะ ${shiftTimeLabel}`
               : null,
@@ -8253,7 +8317,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
               : '';
 
           const personShiftCodeHtmlV61147 =
-            splitWorkTemplate
+            schedulingRuleDisplayV6120
+              ? `<span class="person-shift-code-stack-v61147 scheduling-rule-code-v6120"><b class="schedule-shift-code person-shift-code-v61147">${safe(schedulingRuleDisplayV6120.short || schedulingRuleDisplayV6120.label || normalizedCode)}</b></span>`
+              : splitWorkTemplate
               ? `<span class="person-shift-code-stack-v61147">
                   <b class="schedule-shift-code person-shift-code-v61147 shift-1" aria-label="กะที่ 1 ${safe(code)}">${safe(code)}</b>
                   <b class="schedule-shift-code person-shift-code-v61147 shift-2" aria-label="กะที่ 2 ${safe(secondShiftCodeV61147)}">${safe(secondShiftCodeV61147)}</b>
@@ -8539,7 +8605,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           && String(x.work_date || '').slice(0,10) === String(workDate || '').slice(0,10)
       );
       const patternCode = r?.pattern_code || r?.resolved_pattern_code || (String(r?.pc || "").match(/4/) ? "TECH_5D" : "TECH_6D");
-      const selectedShift = r?.assigned_shift_code || r?.suggested_shift_code || r?.effective_shift_code || r?.default_shift_code || (patternCode === "TECH_5D" ? "D5" : "D6");
+      const selectedShift = r?.assigned_shift_code || r?.suggested_shift_code || r?.effective_shift_code || r?.default_shift_code || (patternCode === "TECH_5D" ? "S135" : "S043");
       setVal("assignEmpCode", empCode); setVal("assignWorkDate", workDate);
       setText("assignEmployeeInfo", `${r?.full_name || empCode} | ${formatDate(workDate)} | ${SHIFT_PATTERN_META[patternCode]?.label || patternCode} | กะปัจจุบัน ${r?.assigned_shift_code || r?.effective_shift_code || r?.auto_shift_code || "-"}`);
       fillShiftSelect(patternCode, selectedShift);
@@ -8562,6 +8628,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         )
       );
       $("deleteAssignmentBtn").classList.toggle("hidden", !r?.assigned_shift_code);
+      await window.TimeClockSchedulingRulesV6120?.openAssignment?.({
+        row:r, empCode, workDate, patternCode, selectedShift
+      });
       openModal("assignModal");
       document.dispatchEvent(new CustomEvent("timeclock:schedule-assignment-opened", {
         detail: { empCode, workDate }
@@ -8578,6 +8647,10 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         await window.TimeClockSystemPeriods?.refreshScheduleGuard?.(true);
         return;
       }
+
+      const rulePreparationV6120 =
+        await window.TimeClockSchedulingRulesV6120?.prepareSave?.();
+      if (rulePreparationV6120 && rulePreparationV6120.allowed === false) return;
 
       const selectedTemplate =
         String(
@@ -8704,6 +8777,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
           throw saveError;
         }
+        await window.TimeClockSchedulingRulesV6120?.saveExtension?.({
+          saveResult, preparation:rulePreparationV6120
+        });
         const savedEmp = val("assignEmpCode");
         const savedDate = val("assignWorkDate");
         const savedShift = val("assignShiftCode");
@@ -8856,6 +8932,11 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
           throw deleteError;
         }
+
+        await window.TimeClockSchedulingRulesV6120?.deleteExtension?.(
+          val("assignEmpCode"),
+          val("assignWorkDate")
+        );
 
         closeModal(
           "assignModal"
@@ -10769,8 +10850,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     function badge(text, cls="badge-gray") { return `<span class="badge ${cls}">${safe(text ?? "-")}</span>`; }
     function shiftBadgeClass(code) {
       const value = String(code || "").toUpperCase();
-      if (value === "D" || value === "D5" || value === "D6" || value.startsWith("D-")) return "badge-blue";
-      if (value === "N" || value.startsWith("N")) return "badge-amber";
+      if (window.tcIsDayShiftCode(value)) return "badge-blue";
+      if (window.tcIsNightShiftCode(value)) return "badge-amber";
       if (value === "HOL") return "badge-orange";
       return "badge-gray";
     }
@@ -11307,7 +11388,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   function getCell(key){ const [emp,date]=key.split("|"); return wrap()?.querySelector(`[data-schedule-cell][data-emp="${escapeCss(emp)}"][data-date="${escapeCss(date)}"]`); }
   function rowForKey(key){ const [emp_code,work_date]=key.split("|"); const row=app()?.state?.schedule?.find(r=>String(r.emp_code)===emp_code&&String(r.work_date).slice(0,10)===work_date); return {key,emp_code,work_date,row}; }
   function selectedRows(){ return [...selected].map(rowForKey).filter(x=>x.row); }
-  function currentCode(row){ return row?.assigned_shift_code || row?.effective_shift_code || row?.auto_shift_code || null; }
+  function currentCode(row){ return window.tcShiftCode(row?.assigned_shift_code || row?.effective_shift_code || row?.auto_shift_code || null); }
 
   function rowPattern(row){
     return window.TimeClockSchedulePattern?.rowPattern?.(row)
@@ -11345,7 +11426,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
   function configuredShift(code){
     return shiftMasterRows().find(
-      shift => String(shift.shift_code || "") === String(code || "")
+      shift => window.tcShiftCode(shift.shift_code) === window.tcShiftCode(code)
     );
   }
 
@@ -11367,7 +11448,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           && shift.is_workday !== false
           && (
             shift.is_night_shift === true
-            || String(shift.shift_code || "").toUpperCase().startsWith("N")
+            || window.tcIsNightShiftCode(shift.shift_code)
             || String(shift.shift_name || "").toLowerCase().includes("กลางคืน")
             || String(shift.shift_name || "").toLowerCase().includes("กะดึก")
           )
@@ -11583,23 +11664,24 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
   function updateHistoryButtons(){ $("scheduleUndoBtn") && ($("scheduleUndoBtn").disabled=!undoStack.length); $("scheduleRedoBtn") && ($("scheduleRedoBtn").disabled=!redoStack.length); }
   function updateSummary(){
-    const counts={D:0,N:0,OFF:0,HOL:0,LV:0};
+    const counts={
+      STD:0,
+      S134:0,
+      S043:0,
+      S135:0,
+      OFF:0,
+      HOL:0,
+      LV:0
+    };
 
     cells().forEach(cell => {
       const row = rowForKey(keyOf(cell)).row;
-      const code = currentCode(row);
-      const shift = configuredShift(code);
+      const code = window.tcShiftCode(
+        currentCode(row)
+      );
 
-      if (code === "OFF" || code === "HOL" || code === "LV") {
+      if (Object.prototype.hasOwnProperty.call(counts,code)) {
         counts[code]++;
-      } else if (
-        shift?.is_night_shift === true
-        || String(code || "").toUpperCase().startsWith("N")
-        || String(shift?.shift_name || "").toLowerCase().includes("กะดึก")
-      ) {
-        counts.N++;
-      } else if (code) {
-        counts.D++;
       }
     });
 
@@ -11670,6 +11752,9 @@ ${skippedSummary(compatibility.skipped)}
       return app()?.toast(periodCheck.message || "มีวันที่อยู่ในรอบที่ปิดการจัดกะ", "warning");
     }
 
+    const ruleGuardV6120=await window.TimeClockSchedulingRulesV6120?.validateBulk?.(validPayload);
+    if(ruleGuardV6120&&ruleGuardV6120.allowed===false)return;
+
     const before=validPayload.map(p=>{const x=rowForKey(`${p.emp_code}|${p.work_date}`);return {...p,shift_code:currentCode(x.row)};});
     app().showLoading(`กำลังบันทึก ${validPayload.length.toLocaleString("th-TH")} รายการ...`);
     try{
@@ -11679,6 +11764,7 @@ ${skippedSummary(compatibility.skipped)}
         && String(item.shift_code).trim() !== ""
       );
       await window.TimeClockShiftAPI.assignBulk(app(), validPayload, reason, autoConfirmOnSaveV61117);
+      await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(validPayload);
       undoStack.push({label:historyLabel,before,after:validPayload.map(x=>({...x}))}); if(undoStack.length>30)undoStack.shift(); redoStack.length=0; updateHistoryButtons();
       app().toast(
         `บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,
@@ -11688,7 +11774,7 @@ ${skippedSummary(compatibility.skipped)}
     }catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}
   }
   async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
-  function copySelection(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการคัดลอก","error");clipboard=rows.map(x=>currentCode(x.row)||"D");refreshSelectionUI();app().toast(`คัดลอก ${clipboard.length} กะแล้ว`,"success");}
+  function copySelection(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการคัดลอก","error");clipboard=rows.map(x=>currentCode(x.row)||"STD");refreshSelectionUI();app().toast(`คัดลอก ${clipboard.length} กะแล้ว`,"success");}
   async function pasteSelection(){const targets=selectedRows();if(!clipboard.length)return app()?.toast("ยังไม่มีกะในคลิปบอร์ด","error");if(!targets.length)return app()?.toast("กรุณาเลือกช่องปลายทาง","error");await savePayload(targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"})),"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");}
   async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!await window.tcConfirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
   async function applyHistory(item,mode){
@@ -12141,7 +12227,27 @@ ${skippedSummary(compatibility.skipped)}
   const featurePage={dashboard:"dashboard",attendance:"attendance",schedule:"schedule",adminShifts:"admin-shifts",adminHolidays:"admin-holidays",adminUsers:"admin-users",adminImport:"admin-import"};
   function applyFeatureFlags(){ for(const [k,p] of Object.entries(featurePage)){ const el=qs(`.nav-item[data-page="${p}"]`); if(el) el.classList.toggle("feature-hidden",settings.features[k]===false); } }
   function renderFeatureFlags(){ const root=$("featureFlagList"); if(!root)return; root.innerHTML=featureMeta.map(([k,n,d])=>`<div class="feature-row"><div><strong>${n}</strong><small>${d}</small></div><label class="switch"><input type="checkbox" data-feature-key="${k}" ${settings.features[k]!==false?"checked":""}><span></span></label></div>`).join(""); }
-  function renderShiftColors(){ const root=$("shiftColorGrid"); if(!root)return; root.innerHTML=Object.entries(settings.shiftColors).map(([k,v])=>`<div class="shift-color-card"><label class="shift-color-swatch" style="background:${v}"><input type="color" data-shift-color="${k}" value="${v}"></label><div><strong>${k}</strong><small>${({D:"กะกลางวัน",N:"กะกลางคืน",OFF:"วันหยุด",HOL:"นักขัตฤกษ์",LV:"ลา",OT:"ล่วงเวลา"})[k]}</small></div></div>`).join(""); }
+  function renderShiftColors(){
+    const root=$("shiftColorGrid");
+    if(!root)return;
+    const displayCode={
+      D:"STD / S043 / S135",
+      N:"S134",
+      OFF:"OFF",
+      HOL:"HOL",
+      LV:"LV",
+      OT:"OT"
+    };
+    const displayName={
+      D:"กะกลางวัน",
+      N:"กะกลางคืน",
+      OFF:"วันหยุด",
+      HOL:"นักขัตฤกษ์",
+      LV:"ลา",
+      OT:"ล่วงเวลา"
+    };
+    root.innerHTML=Object.entries(settings.shiftColors).map(([k,v])=>`<div class="shift-color-card"><label class="shift-color-swatch" style="background:${v}"><input type="color" data-shift-color="${k}" value="${v}"></label><div><strong>${displayCode[k]||k}</strong><small>${displayName[k]||k}</small></div></div>`).join("");
+  }
   function fillForm(){
     const map={setSystemName:"systemName",setEnvironment:"environment",setVersion:"version",setCompanyName:"companyName",setFooter:"footer",setAccent:"accent",setFont:"font"};
     for(const [id,k] of Object.entries(map)) if($(id)) $(id).value=settings[k];
@@ -12256,7 +12362,10 @@ ${skippedSummary(compatibility.skipped)}
       || r?.shift_code
       || r?.auto_shift_code
       || null;
-    return app()?.normalizeTemplateCodeV665?.(raw) || raw;
+    return window.tcShiftCode(
+      app()?.normalizeTemplateCodeV665?.(raw)
+      || raw
+    );
   };
   const issueOf = r => String(r?.issue_type || r?.attendance_result || r?.attendance_status || r?.time_pair_status || "NEED_REVIEW").toUpperCase();
   const statusLabel = s => ({NORMAL:"ปกติ",ABSENT:"ไม่มีเวลา",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-";
@@ -14096,14 +14205,22 @@ ${skippedSummary(compatibility.skipped)}
     if(scheduleMonthStatus.status==="LOCKED")return app()?.toast("ตารางกะเดือนนี้ถูกล็อก","error");
     const periodCheck=await window.TimeClockSystemPeriods?.checkScheduleDates?.(payload.map(item=>item.work_date),true);
     if(periodCheck&&!periodCheck.allowed)return app()?.toast(periodCheck.message||"มีวันที่อยู่ในรอบที่ปิดการจัดกะ","warning");
+    const ruleGuardV6120=await window.TimeClockSchedulingRulesV6120?.validateBulk?.(payload);
+    if(ruleGuardV6120&&ruleGuardV6120.allowed===false)return;
     app()?.showLoading?.(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);
-    try{const autoConfirmOnSaveV61117=payload.some(item=>item.shift_code!==null&&item.shift_code!==undefined&&String(item.shift_code).trim()!=="");await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,autoConfirmOnSaveV61117);app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");await app()?.loadSchedule?.();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}
+    try{
+      const autoConfirmOnSaveV61117=payload.some(item=>item.shift_code!==null&&item.shift_code!==undefined&&String(item.shift_code).trim()!=="");
+      await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,autoConfirmOnSaveV61117);
+      await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(payload);
+      app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");
+      await app()?.loadSchedule?.();
+    }catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}
   }
   function selectedCellMeta(){return selectedScheduleCells().map(c=>{const td=c.closest("td"),tr=td.closest("tr");return {cell:c,td,tr,emp:c.dataset.emp,date:c.dataset.date,row:rowAt(c.dataset.emp,c.dataset.date),ri:[...tr.parentElement.children].indexOf(tr),ci:[...tr.children].indexOf(td)};});}
-  async function fillSchedule(direction){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่วงกะก่อน","error");const groups=new Map();items.forEach(x=>{const k=direction==="down"?x.ci:x.ri;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x);});const payload=[];groups.forEach(g=>{g.sort((a,b)=>direction==="down"?a.ri-b.ri:a.ci-b.ci);const source=codeOf(g[0].row)||g[0].cell.dataset.shift||"D";g.forEach(x=>payload.push({emp_code:x.emp,work_date:x.date,shift_code:source,note:`${direction==="down"?"Fill Down":"Fill Right"} จาก Schedule V6`}));});await saveSchedulePayload(payload,direction==="down"?"Fill Down จาก Schedule V6":"Fill Right จาก Schedule V6");}
+  async function fillSchedule(direction){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่วงกะก่อน","error");const groups=new Map();items.forEach(x=>{const k=direction==="down"?x.ci:x.ri;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(x);});const payload=[];groups.forEach(g=>{g.sort((a,b)=>direction==="down"?a.ri-b.ri:a.ci-b.ci);const source=window.tcShiftCode(codeOf(g[0].row)||g[0].cell.dataset.shift||"STD");g.forEach(x=>payload.push({emp_code:x.emp,work_date:x.date,shift_code:source,note:`${direction==="down"?"Fill Down":"Fill Right"} จาก Schedule V6`}));});await saveSchedulePayload(payload,direction==="down"?"Fill Down จาก Schedule V6":"Fill Right จาก Schedule V6");}
   function openPatternModal(){if(!selectedScheduleCells().length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");$("schedulePatternModal")?.classList.remove("hidden");}
-  async function applyPattern(){const patterns={};qsa("[data-pattern-dow]").forEach(s=>patterns[Number(s.dataset.patternDow)]=s.value);const payload=selectedCellMeta().map(x=>({emp_code:x.emp,work_date:x.date,shift_code:patterns[new Date(`${x.date}T00:00:00`).getDay()]||"D",note:"รูปแบบกะ 7 วัน"}));$("schedulePatternModal")?.classList.add("hidden");await saveSchedulePayload(payload,"กำหนดรูปแบบกะ 7 วัน");}
-  async function copyPreviousWeek(){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่องปลายทางก่อน","error");const payload=items.map(x=>{const d=new Date(`${x.date}T00:00:00`);d.setDate(d.getDate()-7);const sourceDate=d.toISOString().slice(0,10);const source=rowAt(x.emp,sourceDate);return {emp_code:x.emp,work_date:x.date,shift_code:codeOf(source)||"D",note:`คัดลอกจาก ${sourceDate}`};});await saveSchedulePayload(payload,"คัดลอกกะจากสัปดาห์ก่อน");}
+  async function applyPattern(){const patterns={};qsa("[data-pattern-dow]").forEach(s=>patterns[Number(s.dataset.patternDow)]=s.value);const payload=selectedCellMeta().map(x=>({emp_code:x.emp,work_date:x.date,shift_code:window.tcShiftCode(patterns[new Date(`${x.date}T00:00:00`).getDay()]||"STD"),note:"รูปแบบกะ 7 วัน"}));$("schedulePatternModal")?.classList.add("hidden");await saveSchedulePayload(payload,"กำหนดรูปแบบกะ 7 วัน");}
+  async function copyPreviousWeek(){const items=selectedCellMeta();if(!items.length)return app()?.toast("กรุณาเลือกช่องปลายทางก่อน","error");const payload=items.map(x=>{const d=new Date(`${x.date}T00:00:00`);d.setDate(d.getDate()-7);const sourceDate=d.toISOString().slice(0,10);const source=rowAt(x.emp,sourceDate);return {emp_code:x.emp,work_date:x.date,shift_code:window.tcShiftCode(codeOf(source)||"STD"),note:`คัดลอกจาก ${sourceDate}`};});await saveSchedulePayload(payload,"คัดลอกกะจากสัปดาห์ก่อน");}
   function scheduleExportRows(){const rows=app()?.state?.schedule||[];return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","วันเริ่มงาน","ตำแหน่ง","หน่วยงาน","พื้นที่","ประเภทวัน","กะอัตโนมัติ","กะที่กำหนด","กะใช้งาน","รูปแบบช่วงงาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","ประเภทการจัดกะ","สถานะการบันทึก","เวลาเริ่มกะ","เวลาสิ้นสุดกะ"],...rows.map(r=>{const template=String(r.daily_work_template_code||r.effective_work_template_code||r.template_code||r.employee_default_template_code||'').toUpperCase();const changed=window.TimeClockScheduleConfirmation?.requiresConfirmation?.(r);return [fmtDate(r.work_date),r.emp_code,r.full_name,fmtDate(r.start_date),r.position_name||"",r.department,r.zone||r.area,r.day_type||"WORKDAY",r.auto_shift_code||"",r.assigned_shift_code||"",codeOf(r)||"",template==='SPLIT_FLEX'?"กะปกติ + งานลูกค้าช่วงดึก":"กะปกติ",fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(template==='SPLIT_FLEX'?"ตามเวลาออก":""),changed?"หัวหน้างานกำหนด":"กะมาตรฐาน",changed?"บันทึกแล้ว":"อัตโนมัติ",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time)];})];}
   function exportSchedule(format){const rows=scheduleExportRows();if(rows.length<=1)return app()?.toast("ไม่มีข้อมูลตารางกะ","error");const period=window.TimeClockSchedulePeriod?.range?.()||{};const name=`${period.startDate||$("scheduleMonth")?.value}_${period.endDate||""}`;format==="excel"?exportExcel(`Schedule_${name}.xls`,rows,`ตารางจัดกะ ${name}`):printRows(rows,`ตารางจัดกะ ${name}`,`สถานะเดือน ${scheduleMonthStatus.status}`);}
   async function loadScheduleStatus(){if(!$("scheduleMonth")?.value)return;try{scheduleMonthStatus=await rpc("ta_get_schedule_month_status",{p_month:`${$("scheduleMonth").value}-01`,p_zone:$("scheduleZone")?.value||null,p_department:$("scheduleDepartment")?.value||null})||{status:"DRAFT"};}catch(e){scheduleMonthStatus={status:"DRAFT"};}renderScheduleStatus();}
@@ -25113,4 +25230,348 @@ ${skippedSummary(compatibility.skipped)}
   });
 
   window.TimeClockCertificationReasons={load,render,openPage};
+})();
+
+/* ===== V6.12.0 Work Mode, Scheduling Guard & Day-off Quota ===== */
+(function TimeClockSchedulingRulesV6120Module(){
+  'use strict';
+  const VERSION='6.12.0';
+  const app=()=>window.TimeClockApp;
+  const $=id=>document.getElementById(id);
+  const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const modeDefs={
+    NORMAL:{label:'กะปกติ',short:'กะปกติ',icon:'☀',desc:'ใช้กะมาตรฐานตาม Shift Master'},
+    NORMAL_LATE_CUSTOMER:{label:'กะปกติ + งานลูกค้าช่วงดึก',short:'ปกติ+ดึก',icon:'◐',desc:'กะปกติและกลับเข้าทำงานลูกค้าช่วงดึก'},
+    SPLIT_WAIT_NIGHT:{label:'กะเช้า + รอเข้ากะดึก',short:'เช้า+รอดึก',icon:'⇄',desc:'ออกจากกะเช้าก่อน แล้วกลับเข้าทำงานอีกครั้ง โดยไม่นับช่วงรอ'},
+    HOUR_BASED:{label:'กะนับชั่วโมง',short:'นับชั่วโมง',icon:'◷',desc:'ระบุเวลาเริ่ม ระบบคำนวณเวลาสิ้นสุดจากชั่วโมงรวมพัก'},
+    DYNAMIC_OFF:{label:'วันหยุดตามกะล่าสุด',short:'หยุด',icon:'⌂',desc:'ช่วงวันหยุดอ้างอิงเวลาเดียวกับกะทำงานก่อนหน้า'}
+  };
+  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null};
+  async function rpc(name,args={}){
+    const client=app()?.state?.client;
+    if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+    const {data,error}=await client.rpc(name,args);if(error)throw error;return data;
+  }
+  const fmtTime=v=>app()?.formatTime?.(v)||String(v||'-').slice(0,5)||'-';
+  const fmtDate=v=>app()?.formatDate?.(v)||v||'-';
+  function isoAddDays(date,days){const d=new Date(`${String(date).slice(0,10)}T00:00:00`);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10);}
+  function minsOf(t){if(!t)return null;const m=String(t).match(/(\d{1,2}):(\d{2})/);return m?Number(m[1])*60+Number(m[2]):null;}
+  function addMinutes(start,total){const m=minsOf(start);if(m==null)return null;const x=(m+Number(total||0))%(24*60);return `${String(Math.floor(x/60)).padStart(2,'0')}:${String(x%60).padStart(2,'0')}`;}
+  function spanMinutes(start,end){const a=minsOf(start),b=minsOf(end);if(a==null||b==null)return 0;return b>=a?b-a:(1440-a)+b;}
+  function dateTimeFor(date,time,afterTime=null){if(!date||!time)return null;let d=String(date).slice(0,10);if(afterTime!=null&&minsOf(time)<=minsOf(afterTime))d=isoAddDays(d,1);return new Date(`${d}T${String(time).slice(0,5)}:00`);}
+  function patternTotal(pattern){const configured=Number(st.current?.patternRule?.scheduled_minutes_including_break||st.current?.row?.scheduled_minutes_including_break||0);return configured>0?configured:(pattern==='TECH_5D'?570:540);}
+  function patternBreak(){const configured=Number(st.current?.patternRule?.break_minutes||st.current?.row?.break_minutes||0);return configured>=0&&configured!==0?configured:60;}
+  function defaultTemplate(pattern){return pattern==='TECH_5D'?'ST5':'ST6';}
+  function shiftMaster(code){return (app()?.state?.filters?.shifts||[]).find(s=>String(s.shift_code||'').toUpperCase()===String(code||'').toUpperCase());}
+  function rowCode(r){return String(r?.assigned_shift_code||r?.effective_shift_code||r?.auto_shift_code||r?.shift_code||'').toUpperCase();}
+  function isOffRow(r){const code=rowCode(r);const day=String(r?.day_type||'').toUpperCase();return ['OFF','HOL','LV'].includes(code)||['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day)||r?.schedule_rule_mode==='DYNAMIC_OFF';}
+  function rowWindow(r){
+    if(!r)return null;
+    const extMode=String(r.schedule_rule_mode||r.work_mode_code||'').toUpperCase();
+    if(extMode==='DYNAMIC_OFF')return {start:r.off_window_start,end:r.off_window_end,off:true};
+    if(extMode==='HOUR_BASED')return {start:r.custom_start_time,end:r.custom_end_time};
+    if(extMode==='SPLIT_WAIT_NIGHT'){
+      const secondStart=r.second_segment_start||r.customer_window_start;
+      const secondEnd=r.second_segment_planned_end||r.customer_window_end;
+      return {start:r.base_shift_start||r.shift_start_time||shiftMaster(r.base_shift_code||rowCode(r))?.start_time,end:secondEnd,secondStart,split:true};
+    }
+    const template=String(r.daily_work_template_code||r.effective_work_template_code||'').toUpperCase();
+    if(extMode==='NORMAL_LATE_CUSTOMER'||template==='SPLIT_FLEX'){
+      const sm0=shiftMaster(r.base_shift_code||rowCode(r));
+      const customerStart=r.second_segment_start||r.customer_window_start;
+      const customerEnd=r.second_segment_planned_end||r.customer_window_end;
+      if(customerStart&&customerEnd)return {start:r.shift_start_time||r.effective_shift_start_time||sm0?.start_time,end:customerEnd,secondStart:customerStart,split:true};
+    }
+    const sm=shiftMaster(rowCode(r));
+    return {start:r.shift_start_time||r.effective_shift_start_time||sm?.start_time,end:r.shift_end_time||r.effective_shift_end_time||sm?.end_time};
+  }
+  function rowPlannedMinutes(r){
+    if(!r||isOffRow(r))return 0;
+    const mode=String(r.schedule_rule_mode||r.work_mode_code||'').toUpperCase();
+    if(mode==='SPLIT_WAIT_NIGHT'){
+      const w1=spanMinutes(r.base_shift_start||r.shift_start_time||shiftMaster(r.base_shift_code||rowCode(r))?.start_time,r.first_segment_end);
+      const w2=spanMinutes(r.second_segment_start||r.customer_window_start,r.second_segment_planned_end||r.customer_window_end);
+      return w1+w2;
+    }
+    if(mode==='HOUR_BASED')return Number(r.planned_minutes_including_break||0)||spanMinutes(r.custom_start_time,r.custom_end_time);
+    const sm=shiftMaster(rowCode(r));
+    return Number(sm?.scheduled_minutes_including_break||0)||spanMinutes(r.shift_start_time||sm?.start_time,r.shift_end_time||sm?.end_time);
+  }
+  function previousRow(emp,date){return (app()?.state?.schedule||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date||'').slice(0,10)===isoAddDays(date,-1));}
+  function previousWorkingRow(emp,date){
+    for(let i=1;i<=14;i++){
+      const r=(app()?.state?.schedule||[]).find(x=>String(x.emp_code)===String(emp)&&String(x.work_date||'').slice(0,10)===isoAddDays(date,-i));
+      if(!r)continue;if(isOffRow(r))continue;return r;
+    }
+    return null;
+  }
+  function continuousBefore(emp,date){
+    let total=0;
+    for(let i=1;i<=31;i++){
+      const r=(app()?.state?.schedule||[]).find(x=>String(x.emp_code)===String(emp)&&String(x.work_date||'').slice(0,10)===isoAddDays(date,-i));
+      if(!r||isOffRow(r))break;total+=rowPlannedMinutes(r);
+    }
+    return total;
+  }
+  function ensureAssignmentUi(){
+    if($('assignWorkModeV6120'))return;
+    const info=$('assignEmployeeInfo');if(!info)return;
+    info.insertAdjacentHTML('afterend',`<section class="assign-rule-shell-v6120">
+      <div class="assign-rule-head-v6120"><div><span>รูปแบบการทำงานของวันนี้</span><strong id="assignModeTitleV6120">เลือกประเภทการจัดกะ</strong></div><small>ระบบจะแสดงเฉพาะรูปแบบที่หน่วยงานใช้งานได้</small></div>
+      <input type="hidden" id="assignWorkModeV6120" value="NORMAL">
+      <div class="assign-mode-grid-v6120" id="assignModeGridV6120"></div>
+      <div class="assign-mode-fields-v6120 hidden" id="assignSplitWaitFieldsV6120"><div class="form-row-3"><div class="field"><label>ออกจากกะช่วงแรก *</label><input class="input" type="time" id="assignFirstEndV6120" value="15:00"><small class="field-help">เช่น 15:00 น.</small></div><div class="field"><label>กลับเข้าทำงาน *</label><input class="input" type="time" id="assignSecondStartV6120" value="21:00"><small class="field-help">ช่วงรอจะไม่นับเป็นเวลาทำงาน</small></div><div class="field"><label>คาดว่างานเสร็จ *</label><input class="input" type="time" id="assignSecondEndV6120" value="01:00"><small class="field-help">ใช้ตรวจพักขั้นต่ำ 6 ชม. กะถัดไป</small></div></div><div class="split-wait-preview-v6120" id="assignSplitPreviewV6120"></div></div>
+      <div class="assign-mode-fields-v6120 hidden" id="assignHourFieldsV6120"><div class="form-row"><div class="field"><label>เวลาเริ่มกะ *</label><input class="input" type="time" id="assignHourStartV6120" value="04:00"></div><div class="field"><label>เวลาสิ้นสุดกะ</label><div class="hour-end-preview-v6120" id="assignHourEndV6120">-</div><small class="field-help">คำนวณอัตโนมัติจากชั่วโมงรวมพักของรูปแบบ 5/6 วัน</small></div></div></div>
+      <div class="assign-mode-fields-v6120 hidden" id="assignOffFieldsV6120"><div class="dynamic-off-preview-v6120" id="assignOffPreviewV6120">ระบบจะอ้างอิงช่วงเวลาจากกะทำงานก่อนหน้า</div></div>
+      <div class="schedule-rule-status-v6120" id="assignRuleStatusV6120"></div>
+    </section>`);
+    const templateField=$('assignWorkTemplate')?.closest('.field');if(templateField)templateField.classList.add('assignment-system-template-v6120');
+    ['assignFirstEndV6120','assignSecondStartV6120','assignSecondEndV6120','assignHourStartV6120'].forEach(id=>$(id)?.addEventListener('input',refreshAssignmentPreview));
+    $('assignShiftCode')?.addEventListener('change',()=>{if(st.current&&!['HOUR_BASED','DYNAMIC_OFF'].includes(st.current.mode)){st.current.baseShiftCode=$('assignShiftCode').value;refreshAssignmentPreview();}});
+    document.addEventListener('click',e=>{const b=e.target.closest('[data-work-mode-v6120]');if(b&&!b.disabled){chooseMode(b.dataset.workModeV6120);}});
+  }
+  async function modeOptions(emp){
+    try{return await rpc('ta_get_work_modes_for_employee_v6120',{p_emp_code:String(emp),p_work_date:$('assignWorkDate')?.value||new Date().toISOString().slice(0,10)})||[];}
+    catch(e){return Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:true,is_allowed:true,display_order:i+1,scope_label:'Fallback • กรุณารัน SQL V6.12.0'}));}
+  }
+  function renderModeGrid(){
+    const box=$('assignModeGridV6120');if(!box)return;
+    box.innerHTML=(st.modes||[]).filter(x=>x.is_active!==false).sort((a,b)=>Number(a.display_order||0)-Number(b.display_order||0)).map(x=>{const code=String(x.mode_code||'').toUpperCase(),d=modeDefs[code]||{label:x.mode_name||code,icon:'•',desc:x.description||''};const allowed=x.is_allowed!==false;return `<button type="button" class="assign-mode-card-v6120 ${st.current?.mode===code?'active':''}" data-work-mode-v6120="${esc(code)}" ${allowed?'':'disabled'} title="${esc(allowed?d.desc:(x.scope_label||'หน่วยงานนี้ยังไม่เปิดใช้'))}"><span>${esc(d.icon)}</span><div><strong>${esc(d.label)}</strong><small>${esc(allowed?d.desc:(x.scope_label||'ยังไม่เปิดใช้กับหน่วยงานนี้'))}</small></div>${allowed?'<i>เลือก</i>':'<i>ปิดใช้</i>'}</button>`;}).join('');
+  }
+  function populateWorkingShiftOptions(splitOnly=false){
+    if(!st.current)return;const select=$('assignShiftCode');if(!select)return;
+    const pattern=st.current.patternCode;const current=st.current.baseShiftCode||select.value;
+    const rows=(app()?.state?.filters?.shifts||[]).filter(sh=>{
+      if(sh.is_active===false||sh.is_workday===false)return false;
+      if(String(sh.note||'').includes('[SYSTEM_GENERATED_V6120]'))return false;
+      const code=String(sh.shift_code||'').toUpperCase();if(['OFF','HOL','LV'].includes(code))return false;
+      const patterns=Array.isArray(sh.applicable_pattern_codes)?sh.applicable_pattern_codes.map(x=>String(x).toUpperCase()):['TECH_5D','TECH_6D'];
+      if(pattern&&!patterns.includes(pattern))return false;
+      const night=sh.is_night_shift===true||window.tcIsNightShiftCode?.(code)||String(sh.shift_name||'').toLowerCase().includes('กะดึก')||String(sh.shift_name||'').toLowerCase().includes('กลางคืน');
+      return splitOnly?!night:true;
+    });
+    select.innerHTML=rows.map(sh=>{const start=fmtTime(sh.start_time),end=fmtTime(sh.end_time),name=sh.shift_name||sh.shift_code;return `<option value="${esc(sh.shift_code)}">${esc(name)} • ${esc(start)}–${esc(end)} (${esc(sh.shift_code)})</option>`;}).join('');
+    let target=rows.find(sh=>String(sh.shift_code)===String(current));
+    if(!target&&splitOnly)target=rows.find(sh=>!sh.is_night_shift);
+    if(!target)target=rows[0];if(target){select.value=target.shift_code;st.current.baseShiftCode=target.shift_code;}
+  }
+  function setShiftFieldMode(mode){
+    const field=$('assignShiftCode')?.closest('.field');if(!field)return;
+    const hide=['HOUR_BASED','DYNAMIC_OFF'].includes(mode);field.classList.toggle('hidden',hide);
+    const label=field.querySelector('label');if(label)label.textContent=mode==='SPLIT_WAIT_NIGHT'?'กะช่วงแรก (เวลาเริ่มกะ)':mode==='NORMAL_LATE_CUSTOMER'?'กะหลัก':'กะทำงาน';
+  }
+  function chooseMode(code){
+    if(!st.current)return;st.current.mode=String(code||'NORMAL').toUpperCase();$('assignWorkModeV6120').value=st.current.mode;
+    renderModeGrid();
+    ['assignSplitWaitFieldsV6120','assignHourFieldsV6120','assignOffFieldsV6120'].forEach(id=>$(id)?.classList.add('hidden'));
+    $('assignCustomerWindowRow')?.classList.add('hidden');
+    const mode=st.current.mode;
+    setShiftFieldMode(mode);
+    if(!['HOUR_BASED','DYNAMIC_OFF'].includes(mode))populateWorkingShiftOptions(mode==='SPLIT_WAIT_NIGHT');
+    $('assignModeTitleV6120').textContent=(modeDefs[mode]||{}).label||mode;
+    if(mode==='SPLIT_WAIT_NIGHT')$('assignSplitWaitFieldsV6120')?.classList.remove('hidden');
+    if(mode==='HOUR_BASED')$('assignHourFieldsV6120')?.classList.remove('hidden');
+    if(mode==='DYNAMIC_OFF')$('assignOffFieldsV6120')?.classList.remove('hidden');
+    if(mode==='NORMAL_LATE_CUSTOMER'){
+      $('assignWorkTemplate').value='SPLIT_FLEX';$('assignWorkTemplate').dispatchEvent(new Event('change',{bubbles:true}));populateWorkingShiftOptions(false);$('assignCustomerWindowRow')?.classList.remove('hidden');
+    }else if(mode==='SPLIT_WAIT_NIGHT'){
+      if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value==='SPLIT_FLEX'))$('assignWorkTemplate').value='SPLIT_FLEX';
+      $('assignCustomerWindowRow')?.classList.add('hidden');
+    }else{
+      const t=defaultTemplate(st.current.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
+    }
+    if(mode==='DYNAMIC_OFF'){ensureShiftOption('OFF','OFF — วันหยุด');$('assignShiftCode').value='OFF';}
+    else if(st.current.baseShiftCode&&mode!=='HOUR_BASED'&&[...($('assignShiftCode')?.options||[])].some(o=>o.value===st.current.baseShiftCode)){$('assignShiftCode').value=st.current.baseShiftCode;}
+    refreshAssignmentPreview();
+  }
+  function ensureShiftOption(code,label){const s=$('assignShiftCode');if(!s||!code)return;if(![...s.options].some(o=>o.value===code)){const o=document.createElement('option');o.value=code;o.textContent=label||code;s.appendChild(o);}}
+  function offBasisWindow(){
+    const r=previousWorkingRow(st.current.empCode,st.current.workDate);
+    if(!r)return st.current?.offBasisFromDb||null;
+    if(r.base_shift_code){const sm=shiftMaster(r.base_shift_code);if(sm)return {start:fmtTime(sm.start_time),end:fmtTime(sm.end_time),basisCode:r.base_shift_code};}
+    const sm=shiftMaster(rowCode(r));const w=rowWindow(r);return {start:fmtTime(w?.start||sm?.start_time),end:fmtTime(w?.end||sm?.end_time),basisCode:rowCode(r)};
+  }
+  function refreshAssignmentPreview(){
+    if(!st.current)return;const mode=st.current.mode;
+    if(mode==='HOUR_BASED'){const start=$('assignHourStartV6120')?.value,end=addMinutes(start,patternTotal(st.current.patternCode));$('assignHourEndV6120').textContent=start&&end?`${start} → ${end}${minsOf(end)<=minsOf(start)?' (+1)':''} • รวมพัก ${(patternTotal(st.current.patternCode)/60).toLocaleString('th-TH')} ชม.`:'-';}
+    if(mode==='SPLIT_WAIT_NIGHT'){const sm=shiftMaster(st.current.baseShiftCode||$('assignShiftCode')?.value);const start=fmtTime(sm?.start_time)||'-',first=$('assignFirstEndV6120')?.value||'-',second=$('assignSecondStartV6120')?.value||'-',end=$('assignSecondEndV6120')?.value||'-';const work=spanMinutes(start,first)+spanMinutes(second,end),wait=spanMinutes(first,second);$('assignSplitPreviewV6120').innerHTML=`<span>ช่วงที่ 1 <b>${esc(start)}–${esc(first)}</b></span><span class="wait">รอ <b>${esc((wait/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</b> • ไม่นับ</span><span>ช่วงที่ 2 <b>${esc(second)}–${esc(end)}${minsOf(end)<=minsOf(second)?' (+1)':''}</b></span><strong>เวลาทำงานตามแผน ${esc((work/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</strong>`;}
+    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();$('assignOffPreviewV6120').innerHTML=w?`<span>วันหยุดจะใช้ช่วงเวลา</span><strong>${esc(w.start)}–${esc(w.end)}${minsOf(w.end)<=minsOf(w.start)?' (+1)':''}</strong><small>อ้างอิงกะก่อนหน้า ${esc(w.basisCode||'')}</small>`:`<strong>ยังไม่พบกะทำงานก่อนหน้า</strong><small>กรุณาจัดกะวันก่อนหน้าให้เรียบร้อยก่อนกำหนดวันหยุด</small>`;}
+    renderGuardPreview();
+  }
+  function proposedPlan(){
+    const c=st.current,mode=c.mode,date=c.workDate;
+    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();return {mode,start:w?.start,end:w?.end,planned:0,off:true,basis:w};}
+    if(mode==='HOUR_BASED'){const start=$('assignHourStartV6120')?.value,end=addMinutes(start,patternTotal(c.patternCode));return {mode,start,end,planned:patternTotal(c.patternCode)};}
+    if(mode==='SPLIT_WAIT_NIGHT'){const sm=shiftMaster(c.baseShiftCode||$('assignShiftCode')?.value);const start=fmtTime(sm?.start_time),first=$('assignFirstEndV6120')?.value,second=$('assignSecondStartV6120')?.value,end=$('assignSecondEndV6120')?.value;return {mode,start,end,planned:spanMinutes(start,first)+spanMinutes(second,end),firstEnd:first,secondStart:second,baseShiftCode:c.baseShiftCode||$('assignShiftCode')?.value};}
+    const sm=shiftMaster($('assignShiftCode')?.value);let planned=Number(sm?.scheduled_minutes_including_break||0)||spanMinutes(sm?.start_time,sm?.end_time);let plannedEnd=fmtTime(sm?.end_time);if(mode==='NORMAL_LATE_CUSTOMER'){const s=$('assignCustomerStart')?.value,e=$('assignCustomerEndMode')?.value==='FIXED'?$('assignCustomerEnd')?.value:null;if(s&&e){planned+=spanMinutes(s,e);plannedEnd=e;}}
+    return {mode,start:fmtTime(sm?.start_time),end:plannedEnd,planned};
+  }
+  function localGuard(){
+    const c=st.current,p=proposedPlan(),prev=previousRow(c.empCode,c.workDate);let rest=null,hard=false;
+    if(prev&&!isOffRow(prev)&&!p.off){const pw=rowWindow(prev);const prevEnd=pw?.end?dateTimeFor(isoAddDays(c.workDate,-1),pw.end,pw.secondStart||pw.start):null;const nextStart=p.start?dateTimeFor(c.workDate,p.start):null;if(prevEnd&&nextStart){rest=Math.round((nextStart-prevEnd)/60000);hard=rest<360;}}
+    const before=continuousBefore(c.empCode,c.workDate),after=p.off?0:before+Number(p.planned||0);return {restMinutes:rest,hardBlock:hard,continuousBefore:before,continuousAfter:after,warning48:!p.off&&after>2880};
+  }
+  function renderGuardPreview(server=null){
+    const box=$('assignRuleStatusV6120');if(!box||!st.current)return;const g=localGuard();const quota=st.quota||{};const rest=g.restMinutes==null?'ตรวจเมื่อมีข้อมูลกะก่อนหน้า':`${(g.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.`;box.innerHTML=`<div class="rule-kpi-v6120 ${g.hardBlock?'danger':'ok'}"><span>พักก่อนกะถัดไป</span><strong>${esc(rest)}</strong><small>${g.hardBlock?'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้':'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${g.warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((g.continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${g.warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>วันหยุดคงเหลือ</span><strong>${quota.balance_days==null?'-':esc(Number(quota.balance_days).toLocaleString('th-TH'))} วัน</strong><small>${quota.month_quota_days==null?'เริ่มแสดงหลังรัน SQL V6.12.0':`โควต้าเดือนนี้ ${Number(quota.month_quota_days).toLocaleString('th-TH')} • ใช้ ${Number(quota.used_days||0).toLocaleString('th-TH')}`}</small></div>`;return g;
+  }
+  async function loadQuota(){st.quota=null;if(!st.current)return;try{const q=await rpc('ta_get_dayoff_balance_v6120',{p_emp_code:st.current.empCode,p_month:`${String(st.current.workDate).slice(0,7)}-01`});st.quota=Array.isArray(q)?q[0]:q;}catch(e){}renderGuardPreview();}
+  async function openAssignment({row,empCode,workDate,patternCode,selectedShift}){
+    ensureAssignmentUi();st.current={row,empCode:String(empCode),workDate:String(workDate).slice(0,10),patternCode,baseShiftCode:selectedShift,mode:'NORMAL',extension:null,patternRule:null};
+    st.modes=await modeOptions(empCode);
+    try{const patterns=await rpc('ta_get_work_patterns',{});st.current.patternRule=(patterns||[]).find(x=>String(x.pattern_code||'').toUpperCase()===String(patternCode||'').toUpperCase())||null;}catch(e){}
+    try{const ext=await rpc('ta_get_schedule_rule_assignment_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});st.current.extension=Array.isArray(ext)?ext[0]:ext;}catch(e){}
+    const ext=st.current.extension||{};st.current.baseShiftCode=ext.base_shift_code||selectedShift;
+    try{const b=await rpc('ta_get_dynamic_off_basis_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});if(b?.start_time&&b?.end_time)st.current.offBasisFromDb={start:fmtTime(b.start_time),end:fmtTime(b.end_time),basisCode:b.basis_shift_code||b.shift_code||null};}catch(e){}
+    if(ext.first_segment_end)$('assignFirstEndV6120').value=String(ext.first_segment_end).slice(0,5);
+    if(ext.second_segment_start)$('assignSecondStartV6120').value=String(ext.second_segment_start).slice(0,5);
+    if(ext.second_segment_planned_end)$('assignSecondEndV6120').value=String(ext.second_segment_planned_end).slice(0,5);
+    if(ext.custom_start_time)$('assignHourStartV6120').value=String(ext.custom_start_time).slice(0,5);
+    const initial=String(ext.work_mode_code||'').toUpperCase()||((rowCode(row)==='OFF')?'DYNAMIC_OFF':(String(row?.daily_work_template_code||row?.effective_work_template_code||'').toUpperCase()==='SPLIT_FLEX'?'NORMAL_LATE_CUSTOMER':'NORMAL'));
+    const allowed=st.modes.find(x=>String(x.mode_code).toUpperCase()===initial)?.is_allowed!==false;chooseMode(allowed?initial:'NORMAL');await loadQuota();
+  }
+  async function prepareSave(){
+    if(!st.current)return {allowed:true};const c=st.current,mode=c.mode,p=proposedPlan();
+    if(mode==='SPLIT_WAIT_NIGHT'){
+      if(!p.baseShiftCode||!p.firstEnd||!p.secondStart||!p.end){app()?.toast?.('กรุณาระบุเวลาออกช่วงแรก เวลาเข้าช่วงดึก และเวลาคาดว่างานเสร็จให้ครบ','error');return {allowed:false};}
+      if(spanMinutes(p.start,p.firstEnd)<=0){app()?.toast?.('เวลาออกช่วงแรกไม่ถูกต้อง','error');return {allowed:false};}
+      const resolved=await rpc('ta_resolve_split_wait_shift_v6120',{p_pattern_code:c.patternCode,p_base_shift_code:p.baseShiftCode,p_first_segment_end:p.firstEnd});
+      ensureShiftOption(resolved.shift_code,`${modeDefs[mode].label} • ${resolved.start_time}-${resolved.end_time}`);$('assignShiftCode').value=resolved.shift_code;
+      if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value==='SPLIT_FLEX'))$('assignWorkTemplate').value='SPLIT_FLEX';
+      $('assignCustomerStart').value=p.secondStart;$('assignCustomerEndMode').value='FIXED';$('assignCustomerEnd').value=p.end;
+      c.generatedShiftCode=resolved.shift_code;c.baseShiftCode=p.baseShiftCode;
+    }else if(mode==='HOUR_BASED'){
+      if(!p.start){app()?.toast?.('กรุณาระบุเวลาเริ่มกะนับชั่วโมง','error');return {allowed:false};}
+      const resolved=await rpc('ta_resolve_hour_based_shift_v6120',{p_pattern_code:c.patternCode,p_start_time:p.start,p_scheduled_minutes:patternTotal(c.patternCode),p_break_minutes:patternBreak()});
+      ensureShiftOption(resolved.shift_code,`${modeDefs[mode].label} • ${resolved.start_time}-${resolved.end_time}`);$('assignShiftCode').value=resolved.shift_code;c.generatedShiftCode=resolved.shift_code;c.customEnd=resolved.end_time;
+      const t=defaultTemplate(c.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
+    }else if(mode==='DYNAMIC_OFF'){
+      if(!p.basis){app()?.toast?.('ไม่พบกะทำงานก่อนหน้า จึงยังสร้างช่วงวันหยุดอัตโนมัติไม่ได้','error');return {allowed:false};}
+      ensureShiftOption('OFF','OFF — วันหยุด');$('assignShiftCode').value='OFF';const t=defaultTemplate(c.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
+    }else if(mode==='NORMAL_LATE_CUSTOMER'){
+      if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value==='SPLIT_FLEX'))$('assignWorkTemplate').value='SPLIT_FLEX';
+    }else{
+      const t=defaultTemplate(c.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
+    }
+    const guard=renderGuardPreview();
+    if(guard?.hardBlock){app()?.toast?.(`กำหนดกะไม่ได้: เวลาพักจากกะก่อนหน้า ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม.`,'error');return {allowed:false};}
+    let server=null;try{server=await rpc('ta_validate_schedule_guard_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_proposed_shift_code:$('assignShiftCode').value,p_proposed_start_time:p.start||null,p_proposed_end_time:p.end||null,p_proposed_planned_minutes:Number(p.planned||0),p_is_off:Boolean(p.off)});}catch(e){}
+    if(server?.hard_block===true){app()?.toast?.(server.message||'กำหนดกะไม่ได้ เนื่องจากเวลาพักต่ำกว่า 6 ชั่วโมง','error');return {allowed:false};}
+    const warn48=guard?.warning48||server?.warning_48h===true;
+    if(warn48){const ok=await window.tcConfirm(`พนักงานจะมีชั่วโมงทำงานต่อเนื่องประมาณ ${((server?.continuous_minutes_after??guard.continuousAfter)/60).toLocaleString('th-TH',{maximumFractionDigits:1})} ชั่วโมง\n\nระบบแนะนำให้กำหนดวันหยุด แต่ยังสามารถจัดกะต่อได้\n\nต้องการจัดกะต่อหรือไม่?`);if(!ok)return {allowed:false};}
+    c.prepared={...p,guard,server};return {allowed:true,...c.prepared};
+  }
+  async function saveExtension({preparation}={}){
+    if(!st.current)return;const c=st.current,p=c.prepared||preparation||proposedPlan(),basis=p.basis||offBasisWindow();
+    try{await rpc('ta_upsert_schedule_rule_assignment_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_work_mode_code:c.mode,p_base_shift_code:c.baseShiftCode||null,p_generated_shift_code:c.generatedShiftCode||null,p_first_segment_end:c.mode==='SPLIT_WAIT_NIGHT'?p.firstEnd:null,p_second_segment_start:c.mode==='SPLIT_WAIT_NIGHT'?p.secondStart:null,p_second_segment_planned_end:c.mode==='SPLIT_WAIT_NIGHT'?p.end:null,p_custom_start_time:c.mode==='HOUR_BASED'?p.start:null,p_custom_end_time:c.mode==='HOUR_BASED'?(c.customEnd||p.end):null,p_off_window_start:c.mode==='DYNAMIC_OFF'?basis?.start:null,p_off_window_end:c.mode==='DYNAMIC_OFF'?basis?.end:null,p_off_basis_shift_code:c.mode==='DYNAMIC_OFF'?basis?.basisCode:null,p_planned_minutes:Number(p.planned||0),p_validation_snapshot:{rest_minutes:p.guard?.restMinutes??null,continuous_minutes_before:p.guard?.continuousBefore??null,continuous_minutes_after:p.guard?.continuousAfter??null,warning_48h:p.guard?.warning48??false},p_note:$('assignNote')?.value||null});}catch(e){app()?.toast?.(`บันทึกกะสำเร็จ แต่บันทึก Scheduling Rule V6.12.0 ไม่สำเร็จ: ${e.message||e}`,'warning');}
+  }
+  async function deleteExtension(empCode,workDate){
+    try{await rpc('ta_delete_schedule_rule_assignment_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});}catch(e){}
+  }
+  function bulkVirtualMap(){
+    const map=new Map();
+    (app()?.state?.schedule||[]).forEach(r=>map.set(`${String(r.emp_code)}|${String(r.work_date||'').slice(0,10)}`,{...r}));
+    return map;
+  }
+  function bulkFindPreviousWorking(map,emp,date){
+    for(let i=1;i<=14;i++){
+      const r=map.get(`${String(emp)}|${isoAddDays(date,-i)}`);
+      if(!r||isOffRow(r))continue;
+      return r;
+    }
+    return null;
+  }
+  function bulkContinuousBefore(map,emp,date){
+    let total=0;
+    for(let i=1;i<=31;i++){
+      const r=map.get(`${String(emp)}|${isoAddDays(date,-i)}`);
+      if(!r||isOffRow(r))break;
+      total+=rowPlannedMinutes(r);
+    }
+    return total;
+  }
+  async function validateBulk(payload=[]){
+    if(!payload.length)return {allowed:true};
+    const virtual=bulkVirtualMap();
+    const items=[...payload].sort((a,b)=>String(a.emp_code).localeCompare(String(b.emp_code))||String(a.work_date).localeCompare(String(b.work_date)));
+    const blocks=[],warnings=[];
+    for(const item of items){
+      const emp=String(item.emp_code||''),date=String(item.work_date||'').slice(0,10),code=String(item.shift_code||'').toUpperCase();
+      if(!emp||!date)continue;
+      const key=`${emp}|${date}`;
+      if(!code){virtual.set(key,{emp_code:emp,work_date:date,shift_code:null});continue;}
+      if(['OFF','HOL','LV'].includes(code)){
+        const basis=bulkFindPreviousWorking(virtual,emp,date);const w=basis?rowWindow(basis):null;
+        virtual.set(key,{emp_code:emp,work_date:date,shift_code:code,schedule_rule_mode:code==='OFF'?'DYNAMIC_OFF':null,off_window_start:w?.start||null,off_window_end:w?.end||null});
+        continue;
+      }
+      const sm=shiftMaster(code);
+      if(!sm)continue;
+      if(String(sm.note||'').includes('[SYSTEM_GENERATED_V6120]')){
+        blocks.push({emp,date,code,rest:null,special:true});
+        continue;
+      }
+      const start=fmtTime(sm.start_time),end=fmtTime(sm.end_time);const planned=Number(sm.scheduled_minutes_including_break||0)||spanMinutes(start,end);
+      const prev=virtual.get(`${emp}|${isoAddDays(date,-1)}`);
+      let rest=null;
+      if(prev&&!isOffRow(prev)){
+        const pw=rowWindow(prev);const prevEnd=pw?.end?dateTimeFor(isoAddDays(date,-1),pw.end,pw.secondStart||pw.start):null;const nextStart=start?dateTimeFor(date,start):null;
+        if(prevEnd&&nextStart)rest=Math.round((nextStart-prevEnd)/60000);
+      }
+      if(rest!=null&&rest<360)blocks.push({emp,date,code,rest});
+      const before=bulkContinuousBefore(virtual,emp,date),after=before+planned;
+      if(after>2880)warnings.push({emp,date,code,after});
+      virtual.set(key,{emp_code:emp,work_date:date,shift_code:code,assigned_shift_code:code,shift_start_time:start,shift_end_time:end});
+    }
+    if(blocks.length){
+      const special=blocks.find(x=>x.special),first=blocks[0];
+      if(special)app()?.toast?.(`กะพิเศษ ${special.code} ไม่รองรับการคัดลอก/Fill ด้วยรหัสกะอย่างเดียว กรุณาเปิดวันนั้นแล้วเลือก “กะนับชั่วโมง” หรือ “กะเช้า + รอเข้ากะดึก” เพื่อให้ระบบเก็บช่วงเวลาครบถ้วน`,'error');
+      else app()?.toast?.(`บันทึกไม่ได้ ${blocks.length.toLocaleString('th-TH')} รายการ: ${first.emp} วันที่ ${fmtDate(first.date)} พักเพียง ${(first.rest/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. (ขั้นต่ำ 6 ชม.)`,'error');
+      return {allowed:false,blocks,warnings};
+    }
+    if(warnings.length){
+      const max=Math.max(...warnings.map(x=>x.after));
+      const ok=await window.tcConfirm(`พบ ${warnings.length.toLocaleString('th-TH')} รายการที่จะทำให้ชั่วโมงทำงานต่อเนื่องเกิน 48 ชั่วโมง\n\nสูงสุดประมาณ ${(max/60).toLocaleString('th-TH',{maximumFractionDigits:1})} ชั่วโมง\nระบบแนะนำให้กำหนดวันหยุด แต่ยังสามารถจัดกะต่อได้\n\nต้องการจัดกะต่อหรือไม่?`);
+      if(!ok)return {allowed:false,blocks,warnings};
+    }
+    return {allowed:true,blocks,warnings};
+  }
+  async function saveBulkExtensions(payload=[]){
+    if(!payload.length)return;
+    try{
+      await rpc('ta_sync_bulk_schedule_rules_v6120',{p_items:payload.map(x=>({emp_code:String(x.emp_code||''),work_date:String(x.work_date||'').slice(0,10),shift_code:x.shift_code==null?null:String(x.shift_code).toUpperCase(),note:x.note||null}))});
+    }catch(e){
+      app()?.toast?.(`บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule บางรายการไม่สำเร็จ: ${e.message||e}`,'warning');
+    }
+  }
+  async function enrichScheduleRows(rows=[]){
+    if(!rows.length)return;const codes=[...new Set(rows.map(r=>String(r.emp_code||'')).filter(Boolean))],dates=rows.map(r=>String(r.work_date||'').slice(0,10)).filter(Boolean);if(!codes.length||!dates.length)return;
+    try{const ext=await rpc('ta_get_schedule_rule_assignments_v6120',{p_emp_codes:codes,p_start_date:dates.sort()[0],p_end_date:dates.sort().slice(-1)[0]})||[];const map=new Map(ext.map(x=>[`${x.emp_code}|${String(x.work_date).slice(0,10)}`,x]));rows.forEach(r=>Object.assign(r,map.get(`${r.emp_code}|${String(r.work_date).slice(0,10)}`)||{}));}catch(e){}
+  }
+  function rowDisplay(r){const mode=String(r?.schedule_rule_mode||r?.work_mode_code||'').toUpperCase();if(!mode)return null;const d=modeDefs[mode];if(mode==='DYNAMIC_OFF')return {label:`หยุด ${fmtTime(r.off_window_start)}–${fmtTime(r.off_window_end)}`,short:'หยุด',tone:'off'};if(mode==='HOUR_BASED')return {label:`นับชม. ${fmtTime(r.custom_start_time)}–${fmtTime(r.custom_end_time)}`,short:'นับชม.',tone:'day'};if(mode==='SPLIT_WAIT_NIGHT')return {label:`เช้า+ดึก ${fmtTime(r.base_shift_start||shiftMaster(r.base_shift_code)?.start_time)} / ${fmtTime(r.second_segment_start)}`,short:'เช้า+ดึก',tone:'split'};return d?{label:d.label,short:d.short,tone:null}:null;}
+
+  /* Admin configuration */
+  function ensureAdminUi(){
+    if($('workModeAdminV6120'))return;const page=$('page-work-patterns');if(!page)return;const panels=page.querySelectorAll('.panel');const anchor=panels[panels.length-1];
+    anchor?.insertAdjacentHTML('afterend',`<div class="panel section-gap work-mode-admin-v6120" id="workModeAdminV6120"><div class="panel-header"><div><span class="work-pattern-section-kicker-v61111">SCHEDULING RULES V6.12</span><h3>รูปแบบการจัดกะและกฎการทำงาน</h3><p>เปิด/ปิดรูปแบบรายวัน กำหนดหน่วยงานที่ใช้งาน และตั้งค่าโควต้าวันหยุด</p></div><button type="button" class="btn btn-light" id="workModeRefreshV6120">↻ รีเฟรช</button></div><div class="panel-body"><div class="work-mode-admin-grid-v6120" id="workModeAdminCardsV6120"></div><div class="dayoff-settings-v6120"><div><strong>โควต้าวันหยุด</strong><small>ผู้จัดการแผนก: เสาร์ + อาทิตย์ + นักขัตฤกษ์ • ตำแหน่งอื่น: อาทิตย์ + นักขัตฤกษ์</small></div><label>เริ่มนับตั้งแต่ <input class="input" type="month" id="dayoffStartMonthV6120"></label><button class="btn btn-primary" type="button" id="saveDayoffSettingsV6120">บันทึก</button></div><div class="work-mode-admin-note-v6120" id="workModeAdminNoteV6120"></div></div></div>`);
+    document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop hidden" id="workModeScopeModalV6120"><div class="modal"><div class="modal-header"><div><h3 id="workModeScopeTitleV6120">กำหนดการเปิดใช้รูปแบบ</h3><p>เลือกทุกหน่วยงาน หรือจำกัดเฉพาะหน่วยงานที่ต้องการ</p></div><button type="button" class="btn btn-light btn-icon" id="workModeScopeCloseV6120">×</button></div><div class="modal-body"><input type="hidden" id="workModeScopeCodeV6120"><label class="mobileta-option-card"><input type="checkbox" id="workModeActiveV6120"><span><strong>เปิดใช้งาน</strong><small>ปิดแล้ว User จะไม่เห็นรูปแบบนี้ในหน้าจัดกะ</small></span></label><div class="field section-gap"><label>ขอบเขตหน่วยงาน</label><select class="select" id="workModeScopeTypeV6120"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select></div><div class="work-mode-dept-list-v6120 hidden" id="workModeDeptListV6120"></div></div><div class="modal-footer"><button class="btn btn-light" id="workModeScopeCancelV6120">ยกเลิก</button><button class="btn btn-primary" id="workModeScopeSaveV6120">บันทึกการตั้งค่า</button></div></div></div>`);
+    $('workModeRefreshV6120')?.addEventListener('click',loadAdminPanel);$('saveDayoffSettingsV6120')?.addEventListener('click',saveDayoffSettings);$('workModeScopeCloseV6120')?.addEventListener('click',closeScopeModal);$('workModeScopeCancelV6120')?.addEventListener('click',closeScopeModal);$('workModeScopeTypeV6120')?.addEventListener('change',renderDeptScope);$('workModeScopeSaveV6120')?.addEventListener('click',saveScopeModal);
+    document.addEventListener('click',e=>{const b=e.target.closest('[data-edit-work-mode-v6120]');if(b)openScopeModal(b.dataset.editWorkModeV6120);});
+  }
+  async function loadAdminPanel(){
+    ensureAdminUi();
+    const isHr=String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'').toUpperCase()==='HR_ADMIN';
+    $('workModeAdminV6120')?.classList.toggle('hidden',!isHr);
+    if(!isHr)return;
+    const note=$('workModeAdminNoteV6120');try{st.adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];st.dayoffSettings=await rpc('ta_get_dayoff_settings_v6120',{})||{};renderAdminRows();if($('dayoffStartMonthV6120'))$('dayoffStartMonthV6120').value=String(st.dayoffSettings.effective_start_month||'2026-07-01').slice(0,7);if(note)note.textContent='กฎพักขั้นต่ำ 6 ชม. = Block • ชั่วโมงต่อเนื่องเกิน 48 ชม. = Warning และยังจัดกะต่อได้';}catch(e){if(note)note.innerHTML=`<span class="error">ยังไม่พบ Backend V6.12.0 • กรุณารัน SQL_ที่ต้องรัน_V6.12.0_SCHEDULING_RULES.sql</span>`;renderAdminRows(true);}
+  }
+  function renderAdminRows(fallback=false){const box=$('workModeAdminCardsV6120');if(!box)return;const rows=fallback?Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:code!=='SPLIT_WAIT_NIGHT'?true:false,scope_mode:'ALL',scope_values:[],display_order:i+1})):st.adminRows;box.innerHTML=rows.map(r=>{const code=String(r.mode_code||'').toUpperCase(),d=modeDefs[code]||{};const scope=String(r.scope_mode||'ALL').toUpperCase()==='ALL'?'ทุกหน่วยงาน':((r.scope_values||[]).length?`${(r.scope_values||[]).slice(0,2).join(', ')}${(r.scope_values||[]).length>2?` +${(r.scope_values||[]).length-2}`:''}`:'ยังไม่ได้เลือกหน่วยงาน');return `<article class="work-mode-admin-card-v6120 ${r.is_active!==false?'active':'inactive'}"><div class="work-mode-admin-card-head-v6120"><span>${esc(d.icon||'•')}</span><em>${r.is_active!==false?'เปิดใช้':'ปิดใช้'}</em></div><h4>${esc(r.mode_name||d.label||code)}</h4><p>${esc(r.description||d.desc||'')}</p><div class="scope-chip-v6120"><small>หน่วยงาน</small><strong>${esc(scope)}</strong></div><button type="button" class="btn btn-light btn-sm" data-edit-work-mode-v6120="${esc(code)}" ${fallback?'disabled':''}>ตั้งค่า</button></article>`;}).join('');}
+  function openScopeModal(code){const r=st.adminRows.find(x=>String(x.mode_code).toUpperCase()===String(code).toUpperCase());if(!r)return;$('workModeScopeCodeV6120').value=code;$('workModeScopeTitleV6120').textContent=`ตั้งค่า • ${(modeDefs[code]||{}).label||r.mode_name||code}`;$('workModeActiveV6120').checked=r.is_active!==false;$('workModeScopeTypeV6120').value=String(r.scope_mode||'ALL').toUpperCase();renderDeptScope(r.scope_values||[]);$('workModeScopeModalV6120').classList.remove('hidden');}
+  function renderDeptScope(selected=null){const box=$('workModeDeptListV6120');if(!box)return;const show=$('workModeScopeTypeV6120').value==='SELECTED';box.classList.toggle('hidden',!show);if(!show)return;const code=$('workModeScopeCodeV6120').value,r=st.adminRows.find(x=>String(x.mode_code).toUpperCase()===String(code).toUpperCase());const chosen=new Set(selected||r?.scope_values||[]);const depts=(app()?.state?.filters?.departments||[]).filter(Boolean);box.innerHTML=depts.length?depts.map(d=>`<label><input type="checkbox" data-work-mode-dept-v6120="${esc(d)}" ${chosen.has(d)?'checked':''}> <span>${esc(d)}</span></label>`).join(''):'<small>ยังไม่พบรายการหน่วยงาน กรุณาเปิดหน้าปฏิทินจัดกะเพื่อโหลดตัวเลือกหน่วยงานก่อน</small>';}
+  function closeScopeModal(){$('workModeScopeModalV6120')?.classList.add('hidden');}
+  async function saveScopeModal(){const code=$('workModeScopeCodeV6120').value,scope=$('workModeScopeTypeV6120').value,values=scope==='SELECTED'?qsa('[data-work-mode-dept-v6120]:checked').map(x=>x.dataset.workModeDeptV6120):[];if(scope==='SELECTED'&&!values.length){app()?.toast?.('กรุณาเลือกอย่างน้อย 1 หน่วยงาน','error');return;}try{await rpc('ta_save_work_mode_config_v6120',{p_mode_code:code,p_is_active:$('workModeActiveV6120').checked,p_scope_mode:scope,p_scope_values:values});closeScopeModal();app()?.toast?.('บันทึกการเปิดใช้รูปแบบการทำงานแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
+  async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
+  function init(){ensureAssignmentUi();ensureAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();});document.addEventListener('timeclock:effective-role-changed',()=>loadAdminPanel());document.documentElement.dataset.schedulingRulesVersion=VERSION;}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,validateBulk,saveBulkExtensions};
 })();

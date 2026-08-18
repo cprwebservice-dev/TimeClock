@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.56 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.12.0 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.56 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.12.0 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.56-20260818" rel="stylesheet"/>
+<link href="./app.css?v=6.12.0-20260818" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.56</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.12.0</span></div>
 </form>
 </div>
 </section>
@@ -342,7 +342,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.56</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.56 OFF Certification Guard</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.12.0</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.12.0 Scheduling Rules</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -605,8 +605,8 @@
 <div class="schedule-commandbar">
 <div class="schedule-selection-info"><span id="scheduleSelectionCount">ยังไม่ได้เลือกช่อง</span><small id="scheduleClipboardInfo">เลือกช่องแล้วกดกะด่วน</small></div>
 <div class="schedule-quick-shifts">
-<button class="shift-command shift-D smart-shift-command" data-smart-shift="NORMAL" id="scheduleQuickNormalBtn"><span>กะปกติ</span><small id="scheduleQuickNormalCode">ตามรูปแบบ</small></button>
-<button class="shift-command shift-N smart-shift-command" data-smart-shift="NIGHT" id="scheduleQuickNightBtn"><span>กะกลางคืน</span><small id="scheduleQuickNightCode">ตามรูปแบบ</small></button>
+<button class="shift-command shift-STD smart-shift-command" data-smart-shift="NORMAL" id="scheduleQuickNormalBtn"><span>กะปกติ</span><small id="scheduleQuickNormalCode">ตามรูปแบบ</small></button>
+<button class="shift-command shift-S134 smart-shift-command" data-smart-shift="NIGHT" id="scheduleQuickNightBtn"><span>กะกลางคืน</span><small id="scheduleQuickNightCode">ตามรูปแบบ</small></button>
 <button class="shift-command shift-OFF" data-quick-shift="OFF">OFF</button>
 <button class="shift-command shift-HOL" data-quick-shift="HOL">HOL</button>
 <button class="shift-command shift-LV" data-quick-shift="LV">LV</button>
@@ -622,7 +622,7 @@
 </div>
 </div>
 <div class="schedule-summary-strip" id="scheduleSummaryStrip">
-<span><b>D</b><em id="sumShiftD">0</em></span><span><b>N</b><em id="sumShiftN">0</em></span><span><b>OFF</b><em id="sumShiftOFF">0</em></span><span><b>HOL</b><em id="sumShiftHOL">0</em></span><span><b>LV</b><em id="sumShiftLV">0</em></span>
+<span><b>STD</b><em id="sumShiftSTD">0</em></span><span><b>S134</b><em id="sumShiftS134">0</em></span><span><b>S043</b><em id="sumShiftS043">0</em></span><span><b>S135</b><em id="sumShiftS135">0</em></span><span><b>OFF</b><em id="sumShiftOFF">0</em></span><span><b>HOL</b><em id="sumShiftHOL">0</em></span><span><b>LV</b><em id="sumShiftLV">0</em></span>
 <small>ลากเมาส์เพื่อเลือกช่วง • Shift+คลิกเลือกต่อเนื่อง • ปุ่มลูกศรเลื่อนเซลล์ • Delete ล้างกะ</small>
 </div>
 <div class="panel-body schedule-grid-body"><div class="table-wrap schedule-grid-wrap" id="scheduleTableWrap" style="max-height:70vh" tabindex="0"></div></div>
@@ -1625,7 +1625,7 @@
 <div class="modal large shift-master-modal-v651">
 <div class="modal-header"><div><h3>ข้อมูลกะทำงาน</h3><p>กำหนดรูปแบบการทำงานและตรวจชั่วโมงก่อนบันทึก</p></div><button class="btn btn-light btn-icon" data-close-modal="shiftMasterModal">×</button></div>
 <div class="modal-body">
-<div class="form-row"><div class="field"><label>รหัสกะ</label><input class="input" id="smCode" maxlength="20" placeholder="เช่น D6"/></div><div class="field"><label>ชื่อกะ</label><input class="input" id="smName" placeholder="ชื่อกะที่ผู้ใช้งานเข้าใจง่าย"/></div></div>
+<div class="form-row"><div class="field"><label>รหัสกะ</label><input class="input" id="smCode" maxlength="20" placeholder="เช่น S043"/></div><div class="field"><label>ชื่อกะ</label><input class="input" id="smName" placeholder="ชื่อกะที่ผู้ใช้งานเข้าใจง่าย"/></div></div>
 <div class="shift-pattern-selector">
 <div class="shift-pattern-selector-head"><strong>ใช้กับรูปแบบการทำงาน</strong><small>เลือกอย่างน้อย 1 รูปแบบ</small></div>
 <div class="shift-pattern-choice-grid">
@@ -2481,6 +2481,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.11.56-20260818"></script>
+<script src="./app.js?v=6.12.0-20260818"></script>
 </body>
 </html>

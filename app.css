@@ -19960,3 +19960,101 @@ body.theme-dark #employeeMonthScheduleModal
 .time-cert-action-v61139{
   /* Rendering logic removes the button; this is only a defensive fallback. */
 }
+
+
+/* ========================================================================== */
+/* V6.11.57 — Canonical Shift Codes                                           */
+/* D -> STD | N -> S134 | D6 -> S043 | D5 -> S135                            */
+/* ========================================================================== */
+
+/* Direct class fallbacks. Primary coloring still uses shift-visual-day/night. */
+.schedule-cell.shift-STD,
+.schedule-cell.shift-S043,
+.schedule-cell.shift-S135{
+  background:var(--shift-d-soft,#e8f1ff)!important;
+  border-color:var(--shift-d-border,#c3d8f7)!important;
+  color:var(--shift-d-text,#2563eb)!important;
+}
+
+.schedule-cell.shift-S134{
+  background:var(--shift-n-soft,#eee9ff)!important;
+  border-color:var(--shift-n-border,#d4c8ff)!important;
+  color:var(--shift-n-text,#7c3aed)!important;
+}
+
+.shift-command.shift-STD{
+  background:var(--shift-d-soft,#dbeafe)!important;
+  color:var(--shift-d-text,#1d4ed8)!important;
+}
+
+.shift-command.shift-S134{
+  background:var(--shift-n-soft,#ede9fe)!important;
+  color:var(--shift-n-text,#6d28d9)!important;
+}
+
+body.theme-dark .schedule-cell.shift-STD,
+body.theme-dark .schedule-cell.shift-S043,
+body.theme-dark .schedule-cell.shift-S135,
+.dark .schedule-cell.shift-STD,
+.dark .schedule-cell.shift-S043,
+.dark .schedule-cell.shift-S135{
+  background:var(--shift-d-soft-strong)!important;
+  border-color:var(--shift-d-border)!important;
+  color:#eaf4ff!important;
+}
+
+body.theme-dark .schedule-cell.shift-S134,
+.dark .schedule-cell.shift-S134{
+  background:var(--shift-n-soft-strong)!important;
+  border-color:var(--shift-n-border)!important;
+  color:#f2ebff!important;
+}
+
+body.theme-dark .shift-command.shift-STD,
+.dark .shift-command.shift-STD{
+  background:var(--shift-d-soft-strong)!important;
+  color:#eaf4ff!important;
+}
+
+body.theme-dark .shift-command.shift-S134,
+.dark .shift-command.shift-S134{
+  background:var(--shift-n-soft-strong)!important;
+  color:#f2ebff!important;
+}
+
+/* ==========================================================================
+   V6.12.0 — Work Modes / Scheduling Guard / Dynamic OFF
+   ========================================================================== */
+.assign-rule-shell-v6120{margin:0 0 16px;padding:14px;border:1px solid var(--slate-200);border-radius:16px;background:linear-gradient(180deg,var(--surface,#fff),var(--slate-50,#f8fafc))}
+.assign-rule-head-v6120{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}.assign-rule-head-v6120 span{display:block;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--blue-600)}.assign-rule-head-v6120 strong{display:block;margin-top:3px;font-size:16px}.assign-rule-head-v6120 small{max-width:240px;text-align:right;color:var(--slate-500)}
+.assign-mode-grid-v6120{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.assign-mode-card-v6120{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px;text-align:left;border:1px solid var(--slate-200);background:var(--surface,#fff);border-radius:13px;padding:10px;cursor:pointer;color:inherit}.assign-mode-card-v6120>span{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--blue-100);color:var(--blue-700);font-weight:900}.assign-mode-card-v6120 strong,.assign-mode-card-v6120 small{display:block}.assign-mode-card-v6120 small{margin-top:2px;color:var(--slate-500);line-height:1.3}.assign-mode-card-v6120 i{font-style:normal;font-size:10px;font-weight:800;color:var(--slate-400)}.assign-mode-card-v6120.active{border-color:var(--blue-500);box-shadow:0 0 0 2px color-mix(in srgb,var(--blue-500) 16%,transparent);background:color-mix(in srgb,var(--blue-50,#eff6ff) 75%,var(--surface,#fff))}.assign-mode-card-v6120.active i{color:var(--blue-700)}.assign-mode-card-v6120:disabled{opacity:.48;cursor:not-allowed}
+.assign-mode-fields-v6120{margin-top:11px;padding:12px;border-radius:13px;background:var(--surface,#fff);border:1px dashed var(--slate-300)}.assignment-system-template-v6120{display:none!important}.split-wait-preview-v6120{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:9px 10px;border-radius:11px;background:var(--slate-50);font-size:12px}.split-wait-preview-v6120 span{padding:5px 8px;border-radius:999px;background:var(--blue-50);color:var(--blue-800)}.split-wait-preview-v6120 span.wait{background:var(--orange-50,#fff7ed);color:var(--orange-700,#c2410c)}.split-wait-preview-v6120>strong{margin-left:auto}.hour-end-preview-v6120{min-height:42px;display:flex;align-items:center;padding:0 12px;border:1px solid var(--slate-200);border-radius:10px;background:var(--slate-50);font-weight:800;color:var(--blue-700)}
+.dynamic-off-preview-v6120{display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 12px;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--slate-100) 75%,var(--surface,#fff))}.dynamic-off-preview-v6120 span,.dynamic-off-preview-v6120 small{color:var(--slate-500)}.dynamic-off-preview-v6120 strong{font-size:18px;color:var(--slate-800)}.dynamic-off-preview-v6120 small{grid-column:1/-1}
+.schedule-rule-status-v6120{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:11px}.rule-kpi-v6120{padding:10px;border:1px solid var(--slate-200);border-radius:12px;background:var(--surface,#fff)}.rule-kpi-v6120 span,.rule-kpi-v6120 small{display:block}.rule-kpi-v6120 span{font-size:10px;font-weight:800;color:var(--slate-500)}.rule-kpi-v6120 strong{display:block;margin:4px 0;font-size:15px}.rule-kpi-v6120 small{font-size:10px;color:var(--slate-500);line-height:1.3}.rule-kpi-v6120.danger{border-color:#fecaca;background:#fff7f7}.rule-kpi-v6120.danger strong{color:#b91c1c}.rule-kpi-v6120.warn{border-color:#fed7aa;background:#fffaf3}.rule-kpi-v6120.warn strong{color:#c2410c}.rule-kpi-v6120.ok strong{color:#047857}.rule-kpi-v6120.quota strong{color:var(--blue-700)}
+.work-mode-admin-grid-v6120{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.work-mode-admin-card-v6120{position:relative;padding:13px;border:1px solid var(--slate-200);border-radius:15px;background:var(--surface,#fff)}.work-mode-admin-card-v6120.inactive{opacity:.68}.work-mode-admin-card-head-v6120{display:flex;align-items:center;justify-content:space-between}.work-mode-admin-card-head-v6120>span{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:var(--blue-100);color:var(--blue-700);font-weight:900}.work-mode-admin-card-head-v6120 em{font-style:normal;font-size:10px;font-weight:800;padding:4px 7px;border-radius:999px;background:#ecfdf5;color:#047857}.work-mode-admin-card-v6120.inactive em{background:#f1f5f9;color:#64748b}.work-mode-admin-card-v6120 h4{margin:10px 0 5px;font-size:14px}.work-mode-admin-card-v6120 p{min-height:44px;margin:0;color:var(--slate-500);font-size:11px;line-height:1.4}.scope-chip-v6120{margin:10px 0;padding:8px;border-radius:10px;background:var(--slate-50)}.scope-chip-v6120 small,.scope-chip-v6120 strong{display:block}.scope-chip-v6120 small{font-size:9px;color:var(--slate-500)}.scope-chip-v6120 strong{margin-top:2px;font-size:11px}.dayoff-settings-v6120{display:flex;align-items:center;gap:12px;margin-top:16px;padding:13px;border-radius:14px;background:linear-gradient(90deg,var(--blue-50,#eff6ff),var(--surface,#fff));border:1px solid var(--blue-100)}.dayoff-settings-v6120>div{flex:1}.dayoff-settings-v6120 strong,.dayoff-settings-v6120 small{display:block}.dayoff-settings-v6120 small{margin-top:3px;color:var(--slate-500)}.dayoff-settings-v6120 label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700}.dayoff-settings-v6120 .input{width:150px}.work-mode-admin-note-v6120{margin-top:9px;font-size:11px;color:var(--slate-500)}.work-mode-admin-note-v6120 .error{color:#b91c1c;font-weight:700}
+.work-mode-dept-list-v6120{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:300px;overflow:auto;margin-top:10px;padding:10px;border:1px solid var(--slate-200);border-radius:12px;background:var(--slate-50)}.work-mode-dept-list-v6120 label{display:flex;align-items:flex-start;gap:7px;padding:7px;border-radius:9px;background:var(--surface,#fff);font-size:12px}.scheduling-rule-code-v6120 .schedule-shift-code{max-width:78px;font-size:9px;line-height:1.05;white-space:normal;text-align:center}
+@media(max-width:1100px){.work-mode-admin-grid-v6120{grid-template-columns:repeat(2,minmax(0,1fr))}.schedule-rule-status-v6120{grid-template-columns:1fr}.assign-mode-grid-v6120{grid-template-columns:1fr}}
+@media(max-width:700px){.work-mode-admin-grid-v6120{grid-template-columns:1fr}.dayoff-settings-v6120{align-items:stretch;flex-direction:column}.work-mode-dept-list-v6120{grid-template-columns:1fr}}
+
+/* V6.12.0 dark-mode polish */
+body.theme-dark .assign-rule-shell-v6120,.dark .assign-rule-shell-v6120,
+body.theme-dark .assign-mode-card-v6120,.dark .assign-mode-card-v6120,
+body.theme-dark .assign-mode-fields-v6120,.dark .assign-mode-fields-v6120,
+body.theme-dark .rule-kpi-v6120,.dark .rule-kpi-v6120,
+body.theme-dark .work-mode-admin-card-v6120,.dark .work-mode-admin-card-v6120{
+  background:var(--surface,#17202b);border-color:var(--slate-700,#334155);color:inherit
+}
+body.theme-dark .assign-mode-card-v6120.active,.dark .assign-mode-card-v6120.active{background:#172b40;border-color:#4f8fc5;box-shadow:0 0 0 2px rgba(79,143,197,.18)}
+body.theme-dark .split-wait-preview-v6120,.dark .split-wait-preview-v6120,
+body.theme-dark .hour-end-preview-v6120,.dark .hour-end-preview-v6120,
+body.theme-dark .dynamic-off-preview-v6120,.dark .dynamic-off-preview-v6120,
+body.theme-dark .scope-chip-v6120,.dark .scope-chip-v6120,
+body.theme-dark .work-mode-dept-list-v6120,.dark .work-mode-dept-list-v6120{background:#121b26;border-color:#334155}
+body.theme-dark .rule-kpi-v6120.danger,.dark .rule-kpi-v6120.danger{background:#321b20;border-color:#7f3540}
+body.theme-dark .rule-kpi-v6120.danger strong,.dark .rule-kpi-v6120.danger strong{color:#fecaca}
+body.theme-dark .rule-kpi-v6120.warn,.dark .rule-kpi-v6120.warn{background:#332315;border-color:#8a5726}
+body.theme-dark .rule-kpi-v6120.warn strong,.dark .rule-kpi-v6120.warn strong{color:#fed7aa}
+body.theme-dark .rule-kpi-v6120.ok strong,.dark .rule-kpi-v6120.ok strong{color:#6ee7b7}
+body.theme-dark .rule-kpi-v6120.quota strong,.dark .rule-kpi-v6120.quota strong{color:#93c5fd}
+body.theme-dark .dayoff-settings-v6120,.dark .dayoff-settings-v6120{background:#162638;border-color:#284968}
+body.theme-dark .work-mode-dept-list-v6120 label,.dark .work-mode-dept-list-v6120 label{background:#17202b}
