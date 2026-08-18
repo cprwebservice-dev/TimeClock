@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.49";
-document.documentElement.dataset.timeClockBuild = "6.11.49";
+window.__TIME_CLOCK_BUILD__ = "V6.11.50";
+document.documentElement.dataset.timeClockBuild = "6.11.50";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.49";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.49',
+  version: '6.11.50',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -822,62 +822,119 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return [];
     }
 
-    const response =
-      await withTimeout(
-        client.rpc(
-          "ta_get_schedule_range_v61024",
-          {
-            p_start_date:
-              rangeStartDate,
+    const rpcArgs = {
+      p_start_date:
+        rangeStartDate,
 
-            p_end_date:
-              rangeEndDate,
+      p_end_date:
+        rangeEndDate,
 
-            p_zone:
-              params.p_zone
-              ?? null,
+      p_zone:
+        params.p_zone
+        ?? null,
 
-            p_department:
-              params.p_department
-              ?? null,
+      p_department:
+        params.p_department
+        ?? null,
 
-            p_emp_codes:
-              params.p_emp_codes
-              ?? null,
+      p_emp_codes:
+        params.p_emp_codes
+        ?? null,
 
-            p_schedule_statuses:
-              params.p_schedule_statuses
-              ?? null
-          }
-        ),
-        30000,
-        "โหลดตารางกะตาม User Scope"
+      p_schedule_statuses:
+        params.p_schedule_statuses
+        ?? null
+    };
+
+    // V6.11.50:
+    // Supabase/PostgREST commonly caps a set-returning RPC at 1,000 rows.
+    // A 31-day month with only 33 employees already requires 1,023 rows.
+    // Load the RPC in deterministic pages so Person Full-Month really contains
+    // every accessible employee/day inside User Scope.
+    const pageSize = 1000;
+    const maxRows = 50000;
+    const pagedRows = [];
+
+    for (
+      let from = 0;
+      from < maxRows;
+      from += pageSize
+    ) {
+      let request = client.rpc(
+        "ta_get_schedule_range_v61024",
+        rpcArgs
       );
 
-    if(response.error) {
-      if(
-        missingFunction(
-          response.error
-        )
-      ) {
-        throw new Error(
-          "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.15"
+      // Range works on set-returning RPCs. Ordering makes paging stable.
+      if (typeof request?.order === "function") {
+        request = request
+          .order("emp_code", { ascending:true })
+          .order("work_date", { ascending:true });
+      }
+
+      if (typeof request?.range === "function") {
+        request = request.range(
+          from,
+          from + pageSize - 1
         );
       }
 
-      throw response.error;
+      const response =
+        await withTimeout(
+          request,
+          30000,
+          `โหลดตารางกะตาม User Scope หน้า ${
+            Math.floor(from / pageSize) + 1
+          }`
+        );
+
+      if(response.error) {
+        if(
+          missingFunction(
+            response.error
+          )
+        ) {
+          throw new Error(
+            "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.15"
+          );
+        }
+
+        throw response.error;
+      }
+
+      const pageRows =
+        Array.isArray(response.data)
+          ? response.data
+          : [];
+
+      pagedRows.push(...pageRows);
+
+      if (
+        !pageRows.length
+        || pageRows.length < pageSize
+        || typeof request?.range !== "function"
+      ) {
+        break;
+      }
     }
 
+    // Defensive de-duplication in case database ordering changes between pages.
+    const uniqueRows = new Map();
+    pagedRows.forEach((row,index) => {
+      const emp = scheduleText(row?.emp_code);
+      const date = String(row?.work_date || "").slice(0,10);
+      const key = emp && date
+        ? `${emp}|${date}`
+        : `__row_${index}`;
+      uniqueRows.set(key, row);
+    });
+
     const rows =
-      Array.isArray(
-        response.data
-      )
-        ? response.data.map(
-            row => ({
-              ...row
-            })
-          )
-        : [];
+      [...uniqueRows.values()].map(
+        row => ({
+          ...row
+        })
+      );
 
     rows.forEach(row => {
       const empCode =
@@ -3116,9 +3173,16 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const filter = val("schedulePatternFilter");
       const term = val("scheduleSearch").trim().toLowerCase();
       const departmentFilter = String(
-        val("scheduleDepartment")
-        || val("scheduleTeamFocus")
-        || ""
+        scheduleCurrentView() === "PERSON"
+          ? (
+              val("scheduleDepartment")
+              || ""
+            )
+          : (
+              val("scheduleDepartment")
+              || val("scheduleTeamFocus")
+              || ""
+            )
       ).trim();
 
       return (rows || []).filter(row => {
@@ -4836,10 +4900,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         syncSchedulePeriodUI();
         const employeeCount=new Set(state.schedule.map(r=>String(r.emp_code||"")).filter(Boolean)).size;
         if(state.schedule.length){
+          if (period.viewMode === "PERSON") {
+            schedulePersonSearchRepairKeyV61150 = "";
+          }
+
           setScheduleLoadStatus(
             "success",
             period.viewMode==="PERSON"
-              ? `โหลดเต็มเดือนสำเร็จ • พนักงานตาม Scope/ตัวกรองทั้งหมด ${employeeCount.toLocaleString("th-TH")} คน • ${state.schedule.length.toLocaleString("th-TH")} วัน-พนักงาน`
+              ? `โหลดเต็มเดือนครบแล้ว • พนักงานตาม Scope/ตัวกรอง ${employeeCount.toLocaleString("th-TH")} คน • ${state.schedule.length.toLocaleString("th-TH")} วัน-พนักงาน • โหลดแบบหลายหน้าอัตโนมัติ`
               : `โหลดสำเร็จ • พนักงาน ${employeeCount.toLocaleString("th-TH")} คน • ${state.schedule.length.toLocaleString("th-TH")} วัน-พนักงาน`
           );
           return;
@@ -4966,6 +5034,18 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     }
 
     let schedulePersonSearchReloadTimerV61149 = null;
+    let schedulePersonSearchRepairKeyV61150 = "";
+
+    function schedulePersonSearchHasMatchV61150(term) {
+      const q = String(term || "").trim().toLowerCase();
+      if (!q) return true;
+
+      return (state.schedule || []).some(row =>
+        `${row?.emp_code || ""} ${row?.full_name || ""}`
+          .toLowerCase()
+          .includes(q)
+      );
+    }
 
     function applyScheduleViewMode() {
       const mode = scheduleCurrentView();
@@ -7415,7 +7495,28 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
       const today = todayISO();
 
-      for (const [emp, obj] of map) {
+      // V6.11.50:
+      // For a logged-in Manager, keep the Manager's own employee row at the
+      // top so it is immediately visible. Other employees preserve the
+      // original order returned by the schedule dataset.
+      const personEntriesV61150 = [...map.entries()]
+        .map((entry,index) => ({
+          entry,
+          index,
+          managerOwn:
+            scheduleManagerOwnEmployee(
+              entry[0]
+            )
+        }))
+        .sort((a,b) => {
+          if (a.managerOwn !== b.managerOwn) {
+            return a.managerOwn ? -1 : 1;
+          }
+          return a.index - b.index;
+        })
+        .map(item => item.entry);
+
+      for (const [emp, obj] of personEntriesV61150) {
         const rowPattern = scheduleRowPattern(obj.meta);
         const patternClass = rowPattern === "TECH_5D"
           ? "pattern-5d"
@@ -9818,16 +9919,49 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       $("scheduleSearch").addEventListener("input", () => {
         renderSchedule();
 
-        // If PERSON view was reached with stale/narrow data, repair it once
-        // automatically. Normal searching remains instant/client-side.
-        if (
-          scheduleCurrentView() === "PERSON"
-          && !schedulePersonLoadMatchesV61149()
-        ) {
+        if (scheduleCurrentView() !== "PERSON") return;
+
+        const term = val("scheduleSearch").trim();
+        const exactEmp = /^\d{4,20}$/.test(term);
+        const missingFromLoadedScope =
+          exactEmp
+          && !schedulePersonSearchHasMatchV61150(term);
+
+        const staleOrNarrow =
+          !schedulePersonLoadMatchesV61149();
+
+        // Auto repair:
+        // - old/narrow cached data, or
+        // - an exact employee code is not present in the loaded full-scope rows.
+        // This removes the need to press "โหลดตารางกะ" after searching.
+        if (staleOrNarrow || missingFromLoadedScope) {
+          const period = schedulePeriodRange();
+          const repairKey = [
+            term,
+            period.startDate,
+            period.endDate,
+            val("scheduleZone"),
+            val("scheduleDepartment")
+          ].join("|");
+
           clearTimeout(schedulePersonSearchReloadTimerV61149);
+
           schedulePersonSearchReloadTimerV61149 = setTimeout(
-            () => loadSchedule(),
-            350
+            async () => {
+              if (
+                missingFromLoadedScope
+                && schedulePersonSearchRepairKeyV61150 === repairKey
+              ) {
+                return;
+              }
+
+              if (missingFromLoadedScope) {
+                schedulePersonSearchRepairKeyV61150 = repairKey;
+              }
+
+              await loadSchedule();
+            },
+            300
           );
         }
       });

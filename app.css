@@ -19309,3 +19309,52 @@ body.theme-dark .schedule-person-month-coverage-v61149>strong,
     display:none;
   }
 }
+
+
+/* ========================================================================== */
+/* V6.11.50 — Full Scope Paging + Manager Own Row First                       */
+/* ========================================================================== */
+
+#schedulePersonWorkspace
+.monthly-person-schedule-table-v61146
+tr.manager-self-schedule-row{
+  position:relative;
+}
+
+#schedulePersonWorkspace
+.monthly-person-schedule-table-v61146
+tr.manager-self-schedule-row > td{
+  box-shadow:
+    inset 0 2px 0 rgba(37,99,235,.28),
+    inset 0 -1px 0 rgba(37,99,235,.12);
+}
+
+#schedulePersonWorkspace
+.monthly-person-schedule-table-v61146
+tr.manager-self-schedule-row
+.schedule-emp-code,
+#schedulePersonWorkspace
+.monthly-person-schedule-table-v61146
+tr.manager-self-schedule-row
+.schedule-emp-name{
+  background:#f0f7ff!important;
+}
+
+body.theme-dark #schedulePersonWorkspace
+.monthly-person-schedule-table-v61146
+tr.manager-self-schedule-row
+.schedule-emp-code,
+body.theme-dark #schedulePersonWorkspace
+.monthly-person-schedule-table-v61146
+tr.manager-self-schedule-row
+.schedule-emp-name,
+.dark #schedulePersonWorkspace
+.monthly-person-schedule-table-v61146
+tr.manager-self-schedule-row
+.schedule-emp-code,
+.dark #schedulePersonWorkspace
+.monthly-person-schedule-table-v61146
+tr.manager-self-schedule-row
+.schedule-emp-name{
+  background:#122b42!important;
+}
