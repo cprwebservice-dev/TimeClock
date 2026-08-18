@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.55";
-document.documentElement.dataset.timeClockBuild = "6.11.55";
+window.__TIME_CLOCK_BUILD__ = "V6.11.56";
+document.documentElement.dataset.timeClockBuild = "6.11.56";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.55";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.55',
+  version: '6.11.56',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1557,14 +1557,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
     function attendanceHasWorkingShiftOverrideV61155(r) {
       if (!r) return false;
 
-      const code = String(
-        r?.effective_shift_code
-        || r?.assigned_shift_code
-        || r?.shift_code
+      // V6.11.56:
+      // Explicitly assigned shift is authoritative for the UI.
+      // If Manager assigned OFF/HOL/LV, inherited effective/auto times from an
+      // older/default schedule must never make the day look like a workday.
+      const assignedCode = String(
+        r?.assigned_shift_code
         || ''
       ).trim().toUpperCase();
 
-      if (!code || ['OFF','HOL','LV'].includes(code)) {
+      if (
+        assignedCode
+        && ['OFF','HOL','LV'].includes(assignedCode)
+      ) {
         return false;
       }
 
@@ -1573,13 +1578,27 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           ? scheduleResolveShiftMeta(r)
           : null;
 
+      const code = String(
+        shiftMeta?.code
+        || assignedCode
+        || r?.effective_shift_code
+        || r?.shift_code
+        || ''
+      ).trim().toUpperCase();
+
+      if (!code || ['OFF','HOL','LV'].includes(code)) {
+        return false;
+      }
+
       const hasTimes = Boolean(
         r?.shift_start_time
         || r?.effective_shift_start_time
+        || r?.assigned_shift_start_time
         || r?.shift_1_planned_start_at
       ) && Boolean(
         r?.shift_end_time
         || r?.effective_shift_end_time
+        || r?.assigned_shift_end_time
         || r?.shift_1_planned_end_at
       );
 
@@ -6255,26 +6274,45 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         || ''
       ).trim().toUpperCase();
 
+      const shiftMeta = scheduleResolveShiftMeta(row);
+
+      const assignedShiftCode = String(
+        row?.assigned_shift_code
+        || ''
+      ).trim().toUpperCase();
+
       const shiftCode = String(
-        row?.effective_shift_code
-        || row?.assigned_shift_code
+        shiftMeta?.code
+        || assignedShiftCode
+        || row?.effective_shift_code
         || row?.shift_code
         || row?.auto_shift_code
         || ''
       ).trim().toUpperCase();
 
-      // Leave must never show the certification action.
+      // Explicit OFF/HOL/LV always wins. This check intentionally runs before
+      // natural-holiday workday override logic.
       if (
-        attendanceDisplayStatus(row) === 'LEAVE'
+        assignedShiftCode === 'LV'
+        || shiftCode === 'LV'
+        || attendanceDisplayStatus(row) === 'LEAVE'
         || Boolean(row?.leave_request_id || row?.leave_type_code)
         || dayType === 'LEAVE'
-        || shiftCode === 'LV'
         || rawStatus.includes('LEAVE')
       ) {
         return 'LEAVE';
       }
 
-      const shiftMeta = scheduleResolveShiftMeta(row);
+      if (
+        ['OFF','HOL'].includes(assignedShiftCode)
+        || ['OFF','HOL'].includes(shiftCode)
+        || ['off','holiday'].includes(
+          String(shiftMeta?.tone || '').toLowerCase()
+        )
+      ) {
+        return 'OFF';
+      }
+
       const workingShiftOverride =
         attendanceHasWorkingShiftOverrideV61155(row);
 
@@ -6284,8 +6322,6 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         !workingShiftOverride
         && (
           attendanceDisplayStatus(row) === 'DAY_OFF'
-          || ['OFF','HOL'].includes(shiftCode)
-          || ['off','holiday'].includes(String(shiftMeta?.tone || '').toLowerCase())
           || Boolean(row?.is_weekly_off || row?.is_public_holiday)
           || ['WEEKLY_OFF','COMP_OFF','DAY_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
         )

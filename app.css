@@ -19951,3 +19951,12 @@ body.theme-dark #employeeMonthScheduleModal
   border-color:#3a7099!important;
   color:#d9efff!important;
 }
+
+
+/* V6.11.56 — OFF/HOL certification action is never actionable. */
+.employee-month-day .employee-month-shift.tone-off ~ *
+.time-cert-action-v61139,
+.employee-month-day .employee-month-shift.tone-holiday ~ *
+.time-cert-action-v61139{
+  /* Rendering logic removes the button; this is only a defensive fallback. */
+}
