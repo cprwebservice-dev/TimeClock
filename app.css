@@ -19358,3 +19358,138 @@ tr.manager-self-schedule-row
 .schedule-emp-name{
   background:#122b42!important;
 }
+
+
+/* ========================================================================== */
+/* V6.11.51 — Reliable Full Scope + Team Week Selector                        */
+/* ========================================================================== */
+
+#scheduleTeamWorkspace .schedule-team-week-banner-v61151{
+  margin:0 14px 12px;
+  min-height:82px;
+  padding:12px 14px;
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) minmax(300px,.72fr);
+  align-items:center;
+  gap:13px;
+  border:1px solid #cfe0ef;
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 95% 15%,rgba(245,158,11,.11),transparent 28%),
+    linear-gradient(120deg,#f7fbff 0%,#eef6ff 67%,#fff8ef 100%);
+  box-shadow:0 6px 18px rgba(30,64,100,.06);
+}
+
+.schedule-team-week-icon-v61151{
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  background:#173f69;
+  color:#fff;
+  font-size:20px;
+  box-shadow:0 7px 16px rgba(23,63,105,.16);
+}
+
+.schedule-team-week-copy-v61151>span,
+.schedule-team-week-select-wrap-v61151>span{
+  display:block;
+  margin-bottom:2px;
+  color:#73879a;
+  font-size:9px;
+  font-weight:900;
+}
+
+.schedule-team-week-copy-v61151>strong{
+  display:block;
+  color:#153f68;
+  font-size:25px;
+  line-height:1.1;
+  font-weight:950;
+}
+
+.schedule-team-week-copy-v61151>small{
+  display:block;
+  margin-top:4px;
+  color:#71869a;
+  font-size:10px;
+  font-weight:800;
+}
+
+.schedule-team-week-select-wrap-v61151{
+  min-width:0;
+  padding-left:14px;
+  border-left:1px solid #d4e3ef;
+}
+
+.schedule-team-week-select-wrap-v61151 .select{
+  width:100%;
+  min-height:40px;
+  font-size:10px;
+  font-weight:800;
+}
+
+body.theme-dark #scheduleTeamWorkspace .schedule-team-week-banner-v61151,
+.dark #scheduleTeamWorkspace .schedule-team-week-banner-v61151{
+  border-color:#34516a;
+  background:
+    radial-gradient(circle at 95% 15%,rgba(245,158,11,.10),transparent 28%),
+    linear-gradient(120deg,#102334 0%,#142b40 67%,#2a2118 100%);
+  box-shadow:none;
+}
+
+body.theme-dark .schedule-team-week-icon-v61151,
+.dark .schedule-team-week-icon-v61151{
+  background:#244d73;
+  color:#e8f4ff;
+  box-shadow:none;
+}
+
+body.theme-dark .schedule-team-week-copy-v61151>strong,
+.dark .schedule-team-week-copy-v61151>strong{
+  color:#e2f1fd;
+}
+
+body.theme-dark .schedule-team-week-copy-v61151>span,
+body.theme-dark .schedule-team-week-copy-v61151>small,
+body.theme-dark .schedule-team-week-select-wrap-v61151>span,
+.dark .schedule-team-week-copy-v61151>span,
+.dark .schedule-team-week-copy-v61151>small,
+.dark .schedule-team-week-select-wrap-v61151>span{
+  color:#95aabd;
+}
+
+body.theme-dark .schedule-team-week-select-wrap-v61151,
+.dark .schedule-team-week-select-wrap-v61151{
+  border-left-color:#38536b;
+}
+
+@media(max-width:900px){
+  #scheduleTeamWorkspace .schedule-team-week-banner-v61151{
+    grid-template-columns:40px minmax(0,1fr);
+    margin:0 10px 10px;
+  }
+
+  .schedule-team-week-icon-v61151{
+    width:38px;
+    height:38px;
+    font-size:17px;
+  }
+
+  .schedule-team-week-copy-v61151>strong{
+    font-size:21px;
+  }
+
+  .schedule-team-week-select-wrap-v61151{
+    grid-column:1 / -1;
+    padding:8px 0 0;
+    border-left:0;
+    border-top:1px solid #d4e3ef;
+  }
+
+  body.theme-dark .schedule-team-week-select-wrap-v61151,
+  .dark .schedule-team-week-select-wrap-v61151{
+    border-top-color:#38536b;
+  }
+}

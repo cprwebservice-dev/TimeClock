@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.50";
-document.documentElement.dataset.timeClockBuild = "6.11.50";
+window.__TIME_CLOCK_BUILD__ = "V6.11.51";
+document.documentElement.dataset.timeClockBuild = "6.11.51";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.50";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.50',
+  version: '6.11.51',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -846,13 +846,14 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         ?? null
     };
 
-    // V6.11.50:
-    // Supabase/PostgREST commonly caps a set-returning RPC at 1,000 rows.
-    // A 31-day month with only 33 employees already requires 1,023 rows.
-    // Load the RPC in deterministic pages so Person Full-Month really contains
-    // every accessible employee/day inside User Scope.
+    const disableRangePaging =
+      params.p_disable_range_paging === true;
+
+    // V6.11.51:
+    // Full-month PERSON view is batched by employee code before reaching this
+    // function. Each request stays safely below 1,000 rows.
     const pageSize = 1000;
-    const maxRows = 50000;
+    const maxRows = disableRangePaging ? pageSize : 50000;
     const pagedRows = [];
 
     for (
@@ -865,18 +866,19 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         rpcArgs
       );
 
-      // Range works on set-returning RPCs. Ordering makes paging stable.
-      if (typeof request?.order === "function") {
-        request = request
-          .order("emp_code", { ascending:true })
-          .order("work_date", { ascending:true });
-      }
+      if (!disableRangePaging) {
+        if (typeof request?.order === "function") {
+          request = request
+            .order("emp_code", { ascending:true })
+            .order("work_date", { ascending:true });
+        }
 
-      if (typeof request?.range === "function") {
-        request = request.range(
-          from,
-          from + pageSize - 1
-        );
+        if (typeof request?.range === "function") {
+          request = request.range(
+            from,
+            from + pageSize - 1
+          );
+        }
       }
 
       const response =
@@ -910,7 +912,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       pagedRows.push(...pageRows);
 
       if (
-        !pageRows.length
+        disableRangePaging
+        || !pageRows.length
         || pageRows.length < pageSize
         || typeof request?.range !== "function"
       ) {
@@ -1244,6 +1247,36 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       };
     };
 
+    function scheduleTeamWeekOptionsV61151(monthValue) {
+      const monthText = String(monthValue || "").slice(0,7);
+      if (!/^\d{4}-\d{2}$/.test(monthText)) return [];
+
+      const [year,month] = monthText.split("-").map(Number);
+      const lastDay = monthDays(year,month);
+
+      return scheduleWeekStarts
+        .filter(startDay => startDay <= lastDay)
+        .map((startDay,index) => {
+          const start = new Date(year,month-1,startDay);
+          const end = new Date(year,month-1,Math.min(startDay+6,lastDay));
+          const startDate = localISO(start);
+          const endDate = localISO(end);
+          const dayCount =
+            Math.round((end-start)/86400000)+1;
+
+          return {
+            weekNumber:index+1,
+            startDate,
+            endDate,
+            dayCount,
+            label:
+              `สัปดาห์ที่ ${index+1} • `
+              + `${formatDate(startDate)} – ${formatDate(endDate)}`
+              + ` • ${dayCount} วัน`
+          };
+        });
+    }
+
     const syncSchedulePeriodUI = () => {
       const range = schedulePeriodRange();
       const personMode = range.viewMode === "PERSON";
@@ -1300,6 +1333,53 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             ? `${loadedCount.toLocaleString("th-TH")} คน ตาม User Scope`
             : "ตาม User Scope"
         );
+      } else {
+        const weekOptions =
+          scheduleTeamWeekOptionsV61151(range.month);
+
+        const currentWeek =
+          weekOptions.find(
+            option => option.startDate === range.startDate
+          ) || weekOptions[0] || null;
+
+        setText(
+          "scheduleTeamWeekLabelV61151",
+          currentWeek
+            ? `สัปดาห์ที่ ${currentWeek.weekNumber}`
+            : `สัปดาห์ที่ ${range.weekNumber || 1}`
+        );
+
+        setText(
+          "scheduleTeamWeekRangeV61151",
+          currentWeek
+            ? `${formatDate(currentWeek.startDate)} – ${formatDate(currentWeek.endDate)} • ${currentWeek.dayCount} วัน`
+            : `${startText} – ${endText} • ${range.dates.length} วัน`
+        );
+
+        const weekSelect =
+          $("scheduleTeamWeekSelectV61151");
+
+        if (weekSelect) {
+          const signature =
+            `${range.month}|${weekOptions.length}`;
+
+          if (
+            weekSelect.dataset.signature !== signature
+          ) {
+            weekSelect.innerHTML =
+              weekOptions
+                .map(option =>
+                  `<option value="${safe(option.startDate)}">${safe(option.label)}</option>`
+                )
+                .join("");
+
+            weekSelect.dataset.signature = signature;
+          }
+
+          weekSelect.value =
+            currentWeek?.startDate
+            || range.startDate;
+        }
       }
 
       const prev = $("schedulePrevMonthBtn");
@@ -4832,43 +4912,157 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       };
     }
 
+    let scheduleLoadInFlightV61151 = false;
+    let scheduleLoadQueuedV61151 = false;
+
     async function loadSchedule() {
+      if (scheduleLoadInFlightV61151) {
+        scheduleLoadQueuedV61151 = true;
+        return;
+      }
+
+      scheduleLoadInFlightV61151 = true;
+
       const period=syncSchedulePeriodUI();
       const button=$("loadScheduleBtn");
-      const originalText=button?.textContent||"โหลดตารางกะ";
-      if(button){button.disabled=true;button.setAttribute("aria-busy","true");button.textContent="กำลังโหลด...";}
+      const idleButtonHtml='<span>↻</span> โหลดตารางกะ';
+
+      if(button){
+        button.disabled=true;
+        button.setAttribute("aria-busy","true");
+        button.innerHTML='<span>↻</span> กำลังโหลด...';
+      }
       setScheduleLoadStatus("loading",`กำลังตรวจ User Scope และโหลดตารางกะ ${formatDate(period.startDate)}–${formatDate(period.endDate)}`);
       showLoading(`กำลังโหลดปฏิทินกะ ${formatDate(period.startDate)}–${formatDate(period.endDate)}...`);
       try{
-        await loadScheduleFilterOptions(
-          period
-        );
+        const filterOptions =
+          await loadScheduleFilterOptions(
+            period
+          ) || {};
 
         const term=val("scheduleSearch").trim();
         const personMode=period.viewMode==="PERSON";
         const exactEmp=!personMode && /^\d{4,20}$/.test(term)?term:null;
 
-        const data=await window.TimeClockShiftAPI.getMonthlySchedule(
-          window.TimeClockApp||{state},
-          {
-            p_month:`${period.month}-01`,
-            p_start_date:period.startDate,
-            p_end_date:period.endDate,
-            p_zone:val("scheduleZone")||null,
-            p_department:val("scheduleDepartment")||null,
-            // V6.11.49:
-            // Person Full-Month always loads every accessible employee in Scope.
-            // Search only filters the loaded rows, so changing employee search
-            // never leaves the table stuck on a previously loaded employee.
-            p_emp_codes:exactEmp?[exactEmp]:null,
-            p_schedule_statuses:null
+        let data = [];
+
+        if (personMode) {
+          const selectedDepartment =
+            String(val("scheduleDepartment") || "").trim();
+
+          const scopeEmployees =
+            (Array.isArray(filterOptions.employees)
+              ? filterOptions.employees
+              : [])
+              .filter(employee => {
+                if (!selectedDepartment) return true;
+                return String(employee?.department || "").trim()
+                  === selectedDepartment;
+              });
+
+          const scopeEmpCodes =
+            [...new Set(
+              scopeEmployees
+                .map(employee =>
+                  String(employee?.emp_code || "").trim()
+                )
+                .filter(Boolean)
+            )];
+
+          // V6.11.51:
+          // Do NOT page the 31-day cross-product RPC by HTTP Range.
+          // The RPC is still subject to the server's max-rows behavior.
+          // Instead fetch small employee batches:
+          // 20 employees x 31 days <= 620 rows/request.
+          const employeeBatchSize = 20;
+          const chunks = [];
+
+          for (
+            let offset = 0;
+            offset < scopeEmpCodes.length;
+            offset += employeeBatchSize
+          ) {
+            chunks.push(
+              scopeEmpCodes.slice(
+                offset,
+                offset + employeeBatchSize
+              )
+            );
           }
-        );
+
+          if (!chunks.length) {
+            data = [];
+          } else {
+            const collected = [];
+
+            for (let i = 0; i < chunks.length; i += 1) {
+              setScheduleLoadStatus(
+                "loading",
+                `กำลังโหลดพนักงานตาม Scope ชุดที่ ${i + 1}/${chunks.length} • ${chunks[i].length} คน`
+              );
+
+              const batchRows =
+                await window.TimeClockShiftAPI.getMonthlySchedule(
+                  window.TimeClockApp||{state},
+                  {
+                    p_month:`${period.month}-01`,
+                    p_start_date:period.startDate,
+                    p_end_date:period.endDate,
+                    p_zone:val("scheduleZone")||null,
+                    p_department:val("scheduleDepartment")||null,
+                    p_emp_codes:chunks[i],
+                    p_schedule_statuses:null,
+                    p_disable_range_paging:true
+                  }
+                );
+
+              collected.push(...(batchRows || []));
+            }
+
+            const unique = new Map();
+            collected.forEach((row,index) => {
+              const emp = String(row?.emp_code || "").trim();
+              const date = String(row?.work_date || "").slice(0,10);
+              const key = emp && date
+                ? `${emp}|${date}`
+                : `__row_${index}`;
+              unique.set(key,row);
+            });
+
+            data = [...unique.values()];
+          }
+
+          state.scheduleScopeEmployeesV61151 =
+            scopeEmployees;
+        } else {
+          data =
+            await window.TimeClockShiftAPI.getMonthlySchedule(
+              window.TimeClockApp||{state},
+              {
+                p_month:`${period.month}-01`,
+                p_start_date:period.startDate,
+                p_end_date:period.endDate,
+                p_zone:val("scheduleZone")||null,
+                p_department:val("scheduleDepartment")||null,
+                p_emp_codes:exactEmp?[exactEmp]:null,
+                p_schedule_statuses:null
+              }
+            );
+        }
 
         state.schedule=(data||[]).filter(row=>{
           const date=String(row.work_date||"").slice(0,10);
           return date>=period.startDate&&date<=period.endDate;
         });
+
+        const expectedPersonEmployees =
+          personMode
+            ? (
+                Array.isArray(state.scheduleScopeEmployeesV61151)
+                  ? state.scheduleScopeEmployeesV61151.length
+                  : 0
+              )
+            : 0;
 
         state.scheduleLoadMetaV61149={
           viewMode:period.viewMode,
@@ -4878,6 +5072,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           department:String(val("scheduleDepartment")||""),
           fullScope:personMode ? true : !exactEmp,
           exactEmp:exactEmp||null,
+          expectedEmployeeCount:expectedPersonEmployees,
           loadedAt:Date.now()
         };
 
@@ -4904,18 +5099,51 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             schedulePersonSearchRepairKeyV61150 = "";
           }
 
+          const expectedEmployeeCount =
+            Number(
+              state.scheduleLoadMetaV61149?.expectedEmployeeCount
+              || 0
+            );
+
+          const personComplete =
+            period.viewMode !== "PERSON"
+            || !expectedEmployeeCount
+            || employeeCount === expectedEmployeeCount;
+
           setScheduleLoadStatus(
-            "success",
+            personComplete ? "success" : "warning",
             period.viewMode==="PERSON"
-              ? `โหลดเต็มเดือนครบแล้ว • พนักงานตาม Scope/ตัวกรอง ${employeeCount.toLocaleString("th-TH")} คน • ${state.schedule.length.toLocaleString("th-TH")} วัน-พนักงาน • โหลดแบบหลายหน้าอัตโนมัติ`
+              ? (
+                  personComplete
+                    ? `โหลดเต็มเดือนครบแล้ว • พนักงาน ${employeeCount.toLocaleString("th-TH")}/${expectedEmployeeCount.toLocaleString("th-TH")} คน ตาม Scope • ${state.schedule.length.toLocaleString("th-TH")} วัน-พนักงาน`
+                    : `ข้อมูลยังไม่ครบ • โหลดได้ ${employeeCount.toLocaleString("th-TH")}/${expectedEmployeeCount.toLocaleString("th-TH")} คน ตาม Scope • กรุณาตรวจ Scope/วันที่เริ่มงาน`
+                )
               : `โหลดสำเร็จ • พนักงาน ${employeeCount.toLocaleString("th-TH")} คน • ${state.schedule.length.toLocaleString("th-TH")} วัน-พนักงาน`
           );
           return;
         }
         const debug=await window.TimeClockShiftAPI?.getScheduleScopeDebug?.(window.TimeClockApp||{state},period.startDate,period.endDate);
         const message=scheduleScopeMessage(debug,period);setScheduleLoadStatus("warning",message);toast(message,"warning");
-      }catch(error){const message=humanError(error);setScheduleLoadStatus("error",`โหลดตารางกะไม่สำเร็จ: ${message}`);toast(message,"error");}
-      finally{hideLoading();if(button){button.disabled=false;button.removeAttribute("aria-busy");button.textContent=originalText;}}
+      }catch(error){
+        const message=humanError(error);
+        setScheduleLoadStatus("error",`โหลดตารางกะไม่สำเร็จ: ${message}`);
+        toast(message,"error");
+      } finally {
+        hideLoading();
+
+        if(button){
+          button.disabled=false;
+          button.removeAttribute("aria-busy");
+          button.innerHTML=idleButtonHtml;
+        }
+
+        scheduleLoadInFlightV61151 = false;
+
+        if (scheduleLoadQueuedV61151) {
+          scheduleLoadQueuedV61151 = false;
+          setTimeout(() => loadSchedule(), 0);
+        }
+      }
     }
 
     function scheduleMergeEmployeeMeta(target, source) {
@@ -9923,45 +10151,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
         const term = val("scheduleSearch").trim();
         const exactEmp = /^\d{4,20}$/.test(term);
-        const missingFromLoadedScope =
+
+        if (
           exactEmp
-          && !schedulePersonSearchHasMatchV61150(term);
-
-        const staleOrNarrow =
-          !schedulePersonLoadMatchesV61149();
-
-        // Auto repair:
-        // - old/narrow cached data, or
-        // - an exact employee code is not present in the loaded full-scope rows.
-        // This removes the need to press "โหลดตารางกะ" after searching.
-        if (staleOrNarrow || missingFromLoadedScope) {
-          const period = schedulePeriodRange();
-          const repairKey = [
-            term,
-            period.startDate,
-            period.endDate,
-            val("scheduleZone"),
-            val("scheduleDepartment")
-          ].join("|");
-
-          clearTimeout(schedulePersonSearchReloadTimerV61149);
-
-          schedulePersonSearchReloadTimerV61149 = setTimeout(
-            async () => {
-              if (
-                missingFromLoadedScope
-                && schedulePersonSearchRepairKeyV61150 === repairKey
-              ) {
-                return;
-              }
-
-              if (missingFromLoadedScope) {
-                schedulePersonSearchRepairKeyV61150 = repairKey;
-              }
-
-              await loadSchedule();
-            },
-            300
+          && schedulePersonLoadMatchesV61149()
+          && !schedulePersonSearchHasMatchV61150(term)
+        ) {
+          setScheduleLoadStatus(
+            "warning",
+            `ไม่พบรหัสพนักงาน ${term} ใน User Scope / พื้นที่ / หน่วยงานของเดือนที่แสดง`
           );
         }
       });
@@ -11379,6 +11577,33 @@ ${skippedSummary(compatibility.skipped)}
     $("scheduleNextMonthBtn")?.addEventListener("click",()=>shiftMonth(1));
     $("schedulePatternFilter")?.addEventListener("change",updateSmartShiftButtons);
     document.addEventListener("timeclock:schedule-rendered",updateSmartShiftButtons);
+    $("scheduleTeamWeekSelectV61151")?.addEventListener(
+      "change",
+      () => {
+        const value =
+          String(
+            $("scheduleTeamWeekSelectV61151")?.value
+            || ""
+          ).slice(0,10);
+
+        if (!value) return;
+
+        if($("schedulePeriodStart")){
+          $("schedulePeriodStart").value=value;
+        }
+
+        try {
+          localStorage.setItem(
+            "timeclock.schedule.teamPeriodStart",
+            value
+          );
+        } catch (_) {}
+
+        window.TimeClockSchedulePeriod?.sync?.();
+        app()?.loadSchedule();
+      }
+    );
+
     $("scheduleTodayBtn")?.addEventListener("click",()=>{
       const today=new Date().toISOString().slice(0,10);
       const personMode =
