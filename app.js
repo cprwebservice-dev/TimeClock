@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.12.1";
-document.documentElement.dataset.timeClockBuild = "6.12.1";
+window.__TIME_CLOCK_BUILD__ = "V6.12.2";
+document.documentElement.dataset.timeClockBuild = "6.12.2";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.12.1";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.12.1',
+  version: '6.12.2',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -25299,10 +25299,10 @@ ${skippedSummary(compatibility.skipped)}
   window.TimeClockCertificationReasons={load,render,openPage};
 })();
 
-/* ===== V6.12.1 Work Mode, Scheduling Guard & Day-off Quota + Schedule Load Performance ===== */
+/* ===== V6.12.2 Work Mode Scope Selection Fix + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.12.1';
+  const VERSION='6.12.2';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -25314,7 +25314,7 @@ ${skippedSummary(compatibility.skipped)}
     HOUR_BASED:{label:'กะนับชั่วโมง',short:'นับชั่วโมง',icon:'◷',desc:'ระบุเวลาเริ่ม ระบบคำนวณเวลาสิ้นสุดจากชั่วโมงรวมพัก'},
     DYNAMIC_OFF:{label:'วันหยุดตามกะล่าสุด',short:'หยุด',icon:'⌂',desc:'ช่วงวันหยุดอ้างอิงเวลาเดียวกับกะทำงานก่อนหน้า'}
   };
-  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null};
+  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[]};
   async function rpc(name,args={}){
     const client=app()?.state?.client;
     if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
@@ -25622,7 +25622,7 @@ ${skippedSummary(compatibility.skipped)}
     if($('workModeAdminV6120'))return;const page=$('page-work-patterns');if(!page)return;const panels=page.querySelectorAll('.panel');const anchor=panels[panels.length-1];
     anchor?.insertAdjacentHTML('afterend',`<div class="panel section-gap work-mode-admin-v6120" id="workModeAdminV6120"><div class="panel-header"><div><span class="work-pattern-section-kicker-v61111">SCHEDULING RULES V6.12</span><h3>รูปแบบการจัดกะและกฎการทำงาน</h3><p>เปิด/ปิดรูปแบบรายวัน กำหนดหน่วยงานที่ใช้งาน และตั้งค่าโควต้าวันหยุด</p></div><button type="button" class="btn btn-light" id="workModeRefreshV6120">↻ รีเฟรช</button></div><div class="panel-body"><div class="work-mode-admin-grid-v6120" id="workModeAdminCardsV6120"></div><div class="dayoff-settings-v6120"><div><strong>โควต้าวันหยุด</strong><small>ผู้จัดการแผนก: เสาร์ + อาทิตย์ + นักขัตฤกษ์ • ตำแหน่งอื่น: อาทิตย์ + นักขัตฤกษ์</small></div><label>เริ่มนับตั้งแต่ <input class="input" type="month" id="dayoffStartMonthV6120"></label><button class="btn btn-primary" type="button" id="saveDayoffSettingsV6120">บันทึก</button></div><div class="work-mode-admin-note-v6120" id="workModeAdminNoteV6120"></div></div></div>`);
     document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop hidden" id="workModeScopeModalV6120"><div class="modal"><div class="modal-header"><div><h3 id="workModeScopeTitleV6120">กำหนดการเปิดใช้รูปแบบ</h3><p>เลือกทุกหน่วยงาน หรือจำกัดเฉพาะหน่วยงานที่ต้องการ</p></div><button type="button" class="btn btn-light btn-icon" id="workModeScopeCloseV6120">×</button></div><div class="modal-body"><input type="hidden" id="workModeScopeCodeV6120"><label class="mobileta-option-card"><input type="checkbox" id="workModeActiveV6120"><span><strong>เปิดใช้งาน</strong><small>ปิดแล้ว User จะไม่เห็นรูปแบบนี้ในหน้าจัดกะ</small></span></label><div class="field section-gap"><label>ขอบเขตหน่วยงาน</label><select class="select" id="workModeScopeTypeV6120"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select></div><div class="work-mode-dept-list-v6120 hidden" id="workModeDeptListV6120"></div></div><div class="modal-footer"><button class="btn btn-light" id="workModeScopeCancelV6120">ยกเลิก</button><button class="btn btn-primary" id="workModeScopeSaveV6120">บันทึกการตั้งค่า</button></div></div></div>`);
-    $('workModeRefreshV6120')?.addEventListener('click',loadAdminPanel);$('saveDayoffSettingsV6120')?.addEventListener('click',saveDayoffSettings);$('workModeScopeCloseV6120')?.addEventListener('click',closeScopeModal);$('workModeScopeCancelV6120')?.addEventListener('click',closeScopeModal);$('workModeScopeTypeV6120')?.addEventListener('change',renderDeptScope);$('workModeScopeSaveV6120')?.addEventListener('click',saveScopeModal);
+    $('workModeRefreshV6120')?.addEventListener('click',loadAdminPanel);$('saveDayoffSettingsV6120')?.addEventListener('click',saveDayoffSettings);$('workModeScopeCloseV6120')?.addEventListener('click',closeScopeModal);$('workModeScopeCancelV6120')?.addEventListener('click',closeScopeModal);$('workModeScopeTypeV6120')?.addEventListener('change',async()=>{if($('workModeScopeTypeV6120')?.value==='SELECTED'){const box=$('workModeDeptListV6120');if(box)box.innerHTML='<small>กำลังโหลดรายการหน่วยงาน...</small>';await loadDepartmentOptions();}renderDeptScope();});$('workModeScopeSaveV6120')?.addEventListener('click',saveScopeModal);
     document.addEventListener('click',e=>{const b=e.target.closest('[data-edit-work-mode-v6120]');if(b)openScopeModal(b.dataset.editWorkModeV6120);});
   }
   async function loadAdminPanel(){
@@ -25633,8 +25633,64 @@ ${skippedSummary(compatibility.skipped)}
     const note=$('workModeAdminNoteV6120');try{st.adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];st.dayoffSettings=await rpc('ta_get_dayoff_settings_v6120',{})||{};renderAdminRows();if($('dayoffStartMonthV6120'))$('dayoffStartMonthV6120').value=String(st.dayoffSettings.effective_start_month||'2026-07-01').slice(0,7);if(note)note.textContent='กฎพักขั้นต่ำ 6 ชม. = Block • ชั่วโมงต่อเนื่องเกิน 48 ชม. = Warning และยังจัดกะต่อได้';}catch(e){if(note)note.innerHTML=`<span class="error">ยังไม่พบ Backend V6.12.0 • กรุณารัน SQL_ที่ต้องรัน_V6.12.0_SCHEDULING_RULES.sql</span>`;renderAdminRows(true);}
   }
   function renderAdminRows(fallback=false){const box=$('workModeAdminCardsV6120');if(!box)return;const rows=fallback?Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:code!=='SPLIT_WAIT_NIGHT'?true:false,scope_mode:'ALL',scope_values:[],display_order:i+1})):st.adminRows;box.innerHTML=rows.map(r=>{const code=String(r.mode_code||'').toUpperCase(),d=modeDefs[code]||{};const scope=String(r.scope_mode||'ALL').toUpperCase()==='ALL'?'ทุกหน่วยงาน':((r.scope_values||[]).length?`${(r.scope_values||[]).slice(0,2).join(', ')}${(r.scope_values||[]).length>2?` +${(r.scope_values||[]).length-2}`:''}`:'ยังไม่ได้เลือกหน่วยงาน');return `<article class="work-mode-admin-card-v6120 ${r.is_active!==false?'active':'inactive'}"><div class="work-mode-admin-card-head-v6120"><span>${esc(d.icon||'•')}</span><em>${r.is_active!==false?'เปิดใช้':'ปิดใช้'}</em></div><h4>${esc(r.mode_name||d.label||code)}</h4><p>${esc(r.description||d.desc||'')}</p><div class="scope-chip-v6120"><small>หน่วยงาน</small><strong>${esc(scope)}</strong></div><button type="button" class="btn btn-light btn-sm" data-edit-work-mode-v6120="${esc(code)}" ${fallback?'disabled':''}>ตั้งค่า</button></article>`;}).join('');}
-  function openScopeModal(code){const r=st.adminRows.find(x=>String(x.mode_code).toUpperCase()===String(code).toUpperCase());if(!r)return;$('workModeScopeCodeV6120').value=code;$('workModeScopeTitleV6120').textContent=`ตั้งค่า • ${(modeDefs[code]||{}).label||r.mode_name||code}`;$('workModeActiveV6120').checked=r.is_active!==false;$('workModeScopeTypeV6120').value=String(r.scope_mode||'ALL').toUpperCase();renderDeptScope(r.scope_values||[]);$('workModeScopeModalV6120').classList.remove('hidden');}
-  function renderDeptScope(selected=null){const box=$('workModeDeptListV6120');if(!box)return;const show=$('workModeScopeTypeV6120').value==='SELECTED';box.classList.toggle('hidden',!show);if(!show)return;const code=$('workModeScopeCodeV6120').value,r=st.adminRows.find(x=>String(x.mode_code).toUpperCase()===String(code).toUpperCase());const chosen=new Set(selected||r?.scope_values||[]);const depts=(app()?.state?.filters?.departments||[]).filter(Boolean);box.innerHTML=depts.length?depts.map(d=>`<label><input type="checkbox" data-work-mode-dept-v6120="${esc(d)}" ${chosen.has(d)?'checked':''}> <span>${esc(d)}</span></label>`).join(''):'<small>ยังไม่พบรายการหน่วยงาน กรุณาเปิดหน้าปฏิทินจัดกะเพื่อโหลดตัวเลือกหน่วยงานก่อน</small>';}
+  function normalizeDepartmentOption(value){
+    if(value==null)return '';
+    if(typeof value==='string'||typeof value==='number')return String(value).trim();
+    return String(value.department??value.value??value.label??value.name??'').trim();
+  }
+  function currentScopeDateRange(){
+    const now=new Date();
+    const local=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    const monthStart=`${local.slice(0,7)}-01`;
+    return {start:document.getElementById('dashStart')?.value||monthStart,end:document.getElementById('dashEnd')?.value||local};
+  }
+  async function loadDepartmentOptions(force=false){
+    if(st.departmentOptions.length&&!force)return st.departmentOptions;
+    const collect=values=>[...new Set((Array.isArray(values)?values:[]).map(normalizeDepartmentOption).filter(Boolean))];
+    let depts=collect(app()?.state?.filters?.departments||[]);
+    const range=currentScopeDateRange();
+    if(!depts.length){
+      try{
+        const data=await rpc('ta_get_filter_options_v61022',{p_start_date:range.start,p_end_date:range.end});
+        depts=collect(data?.departments||[]);
+      }catch(e){}
+    }
+    if(!depts.length){
+      try{
+        const data=await rpc('ta_get_schedule_filter_options_v61026',{p_start_date:range.start,p_end_date:range.end,p_zone:null,p_department:null});
+        depts=collect(data?.departments||[]);
+      }catch(e){}
+    }
+    st.departmentOptions=depts.sort((a,b)=>a.localeCompare(b,'th',{numeric:true,sensitivity:'base'}));
+    return st.departmentOptions;
+  }
+  async function openScopeModal(code){
+    const r=st.adminRows.find(x=>String(x.mode_code).toUpperCase()===String(code).toUpperCase());if(!r)return;
+    $('workModeScopeCodeV6120').value=code;
+    $('workModeScopeTitleV6120').textContent=`ตั้งค่า • ${(modeDefs[code]||{}).label||r.mode_name||code}`;
+    $('workModeActiveV6120').checked=r.is_active!==false;
+    $('workModeScopeTypeV6120').value=String(r.scope_mode||'ALL').toUpperCase();
+    $('workModeScopeModalV6120').classList.remove('hidden');
+    if($('workModeScopeTypeV6120').value==='SELECTED'){
+      const box=$('workModeDeptListV6120');
+      if(box){box.classList.remove('hidden');box.innerHTML='<small>กำลังโหลดรายการหน่วยงาน...</small>';}
+      await loadDepartmentOptions();
+    }
+    renderDeptScope(r.scope_values||[]);
+  }
+  function renderDeptScope(selected=null){
+    const box=$('workModeDeptListV6120');if(!box)return;
+    const show=$('workModeScopeTypeV6120')?.value==='SELECTED';
+    box.classList.toggle('hidden',!show);if(!show)return;
+    const code=$('workModeScopeCodeV6120')?.value||'',r=st.adminRows.find(x=>String(x.mode_code).toUpperCase()===String(code).toUpperCase());
+    // A DOM change event used to be passed here as the first argument. Treat only arrays as selected values.
+    const selectedValues=Array.isArray(selected)?selected:(Array.isArray(r?.scope_values)?r.scope_values:[]);
+    const chosen=new Set(selectedValues.map(normalizeDepartmentOption).filter(Boolean));
+    const depts=(st.departmentOptions.length?st.departmentOptions:(app()?.state?.filters?.departments||[]).map(normalizeDepartmentOption)).filter(Boolean);
+    box.innerHTML=depts.length
+      ? `<div class="work-mode-dept-summary-v6122"><strong>เลือกหน่วยงานที่สามารถใช้รูปแบบนี้ได้</strong><small>${depts.length.toLocaleString('th-TH')} หน่วยงาน</small></div>${depts.map(d=>`<label><input type="checkbox" data-work-mode-dept-v6120="${esc(d)}" ${chosen.has(d)?'checked':''}> <span>${esc(d)}</span></label>`).join('')}`
+      : '<div class="work-mode-dept-empty-v6122"><strong>ไม่พบรายการหน่วยงาน</strong><small>กดรีเฟรชแล้วลองใหม่อีกครั้ง หากยังไม่พบ กรุณาตรวจข้อมูลหน่วยงานของพนักงาน</small></div>';
+  }
   function closeScopeModal(){$('workModeScopeModalV6120')?.classList.add('hidden');}
   async function saveScopeModal(){const code=$('workModeScopeCodeV6120').value,scope=$('workModeScopeTypeV6120').value,values=scope==='SELECTED'?qsa('[data-work-mode-dept-v6120]:checked').map(x=>x.dataset.workModeDeptV6120):[];if(scope==='SELECTED'&&!values.length){app()?.toast?.('กรุณาเลือกอย่างน้อย 1 หน่วยงาน','error');return;}try{await rpc('ta_save_work_mode_config_v6120',{p_mode_code:code,p_is_active:$('workModeActiveV6120').checked,p_scope_mode:scope,p_scope_values:values});closeScopeModal();app()?.toast?.('บันทึกการเปิดใช้รูปแบบการทำงานแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
@@ -25642,4 +25698,5 @@ ${skippedSummary(compatibility.skipped)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,validateBulk,saveBulkExtensions};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
+  window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
 })();

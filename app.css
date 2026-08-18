@@ -20058,3 +20058,10 @@ body.theme-dark .rule-kpi-v6120.ok strong,.dark .rule-kpi-v6120.ok strong{color:
 body.theme-dark .rule-kpi-v6120.quota strong,.dark .rule-kpi-v6120.quota strong{color:#93c5fd}
 body.theme-dark .dayoff-settings-v6120,.dark .dayoff-settings-v6120{background:#162638;border-color:#284968}
 body.theme-dark .work-mode-dept-list-v6120 label,.dark .work-mode-dept-list-v6120 label{background:#17202b}
+
+/* V6.12.2 work-mode department scope selector */
+.work-mode-dept-summary-v6122{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 2px 8px;color:var(--slate-700)}
+.work-mode-dept-summary-v6122 strong{font-size:12px}.work-mode-dept-summary-v6122 small{font-size:11px;color:var(--slate-500)}
+.work-mode-dept-empty-v6122{grid-column:1/-1;display:flex;flex-direction:column;gap:4px;padding:12px;text-align:center;color:var(--slate-600)}
+body.theme-dark .work-mode-dept-summary-v6122,.dark .work-mode-dept-summary-v6122{color:#e2e8f0}
+body.theme-dark .work-mode-dept-summary-v6122 small,.dark .work-mode-dept-summary-v6122 small,body.theme-dark .work-mode-dept-empty-v6122,.dark .work-mode-dept-empty-v6122{color:#94a3b8}
