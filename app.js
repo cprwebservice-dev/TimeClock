@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.51";
-document.documentElement.dataset.timeClockBuild = "6.11.51";
+window.__TIME_CLOCK_BUILD__ = "V6.11.52";
+document.documentElement.dataset.timeClockBuild = "6.11.52";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.51";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.51',
+  version: '6.11.52',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1308,52 +1308,45 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           { month:"long", year:"numeric" }
         ).format(monthDate);
 
-        setText(
-          "schedulePersonMonthLabelV61149",
-          thaiMonthYear
-        );
-        setText(
-          "schedulePersonMonthRangeV61149",
-          `${startText} – ${endText} • ${range.dates.length} วัน`
-        );
+        const monthInline =
+          $("schedulePersonMonthInlineV61152");
 
-        const loadedCount = new Set(
-          (state.schedule || [])
-            .filter(row => {
-              const date = String(row?.work_date || "").slice(0,10);
-              return date >= range.startDate && date <= range.endDate;
-            })
-            .map(row => String(row?.emp_code || "").trim())
-            .filter(Boolean)
-        ).size;
-
-        setText(
-          "schedulePersonCoverageLabelV61149",
-          loadedCount
-            ? `${loadedCount.toLocaleString("th-TH")} คน ตาม User Scope`
-            : "ตาม User Scope"
-        );
+        if (monthInline) {
+          monthInline.textContent =
+            thaiMonthYear;
+          monthInline.classList.remove("hidden");
+        }
       } else {
+        $("schedulePersonMonthInlineV61152")
+          ?.classList.add("hidden");
+
+        const selectedMonth =
+          scheduleViewState.personMonth
+          || String(range.month || "").slice(0,7)
+          || monthISO();
+
         const weekOptions =
-          scheduleTeamWeekOptionsV61151(range.month);
+          scheduleTeamWeekOptionsV61151(
+            selectedMonth
+          );
 
         const currentWeek =
           weekOptions.find(
-            option => option.startDate === range.startDate
-          ) || weekOptions[0] || null;
+            option =>
+              option.startDate === range.startDate
+          )
+          || weekOptions[0]
+          || null;
+
+        const monthDate =
+          new Date(`${selectedMonth}-01T00:00:00`);
 
         setText(
-          "scheduleTeamWeekLabelV61151",
-          currentWeek
-            ? `สัปดาห์ที่ ${currentWeek.weekNumber}`
-            : `สัปดาห์ที่ ${range.weekNumber || 1}`
-        );
-
-        setText(
-          "scheduleTeamWeekRangeV61151",
-          currentWeek
-            ? `${formatDate(currentWeek.startDate)} – ${formatDate(currentWeek.endDate)} • ${currentWeek.dayCount} วัน`
-            : `${startText} – ${endText} • ${range.dates.length} วัน`
+          "scheduleTeamWeekMonthV61152",
+          new Intl.DateTimeFormat(
+            "th-TH",
+            { month:"long", year:"numeric" }
+          ).format(monthDate)
         );
 
         const weekSelect =
@@ -1361,7 +1354,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
         if (weekSelect) {
           const signature =
-            `${range.month}|${weekOptions.length}`;
+            `${selectedMonth}|${weekOptions.length}`;
 
           if (
             weekSelect.dataset.signature !== signature
@@ -1378,6 +1371,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 
           weekSelect.value =
             currentWeek?.startDate
+            || weekOptions[0]?.startDate
             || range.startDate;
         }
       }
@@ -4775,44 +4769,63 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
             .filter(Boolean)
         )];
 
-      const {
-        data,
-        error
-      } =
-        await state.client.rpc(
-          "ta_get_schedule_work_plan_meta_v6118",
-          {
-            p_start_date:
-              period.startDate,
-            p_end_date:
-              period.endDate,
-            p_emp_codes:
-              empCodes.length
-                ? empCodes
-                : null
-          }
-        );
+      // V6.11.52:
+      // Work-plan metadata is also Employee x Day. Loading a whole month for
+      // all employees in one RPC can hit the 1,000-row response limit and make
+      // SPLIT_FLEX/customer-window metadata disappear for some employees.
+      const metaRows = [];
+      const batchSize = 20;
 
-      if(error) {
-        if(
-          String(
-            error.message
-            || ""
-          ).includes(
-            "ta_get_schedule_work_plan_meta_v6118"
-          )
-        ) {
-          throw new Error(
-            "WORK_PLAN_LINKAGE_RPC_REQUIRED"
+      for (
+        let offset = 0;
+        offset < empCodes.length;
+        offset += batchSize
+      ) {
+        const batch =
+          empCodes.slice(
+            offset,
+            offset + batchSize
           );
+
+        const {
+          data,
+          error
+        } =
+          await state.client.rpc(
+            "ta_get_schedule_work_plan_meta_v6118",
+            {
+              p_start_date:
+                period.startDate,
+              p_end_date:
+                period.endDate,
+              p_emp_codes:
+                batch
+            }
+          );
+
+        if(error) {
+          if(
+            String(
+              error.message
+              || ""
+            ).includes(
+              "ta_get_schedule_work_plan_meta_v6118"
+            )
+          ) {
+            throw new Error(
+              "WORK_PLAN_LINKAGE_RPC_REQUIRED"
+            );
+          }
+
+          throw error;
         }
 
-        throw error;
+        metaRows.push(...(data || []));
       }
 
       const metaMap =
         new Map(
-          (data || []).map(
+          metaRows.map(
             meta => [
               `${String(meta.emp_code)}|${String(meta.work_date).slice(0,10)}`,
               meta
@@ -5339,10 +5352,32 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
           `${sourceMonth}-01`
         );
       } else {
+        const selectedMonth =
+          scheduleViewState.personMonth
+          || currentCursor.slice(0,7)
+          || monthISO();
+
+        const rememberedTeamStart =
+          String(
+            scheduleViewState.teamPeriodStart
+            || ""
+          ).slice(0,10);
+
+        const teamStart =
+          rememberedTeamStart.startsWith(
+            `${selectedMonth}-`
+          )
+            ? rememberedTeamStart
+            : `${selectedMonth}-01`;
+
+        scheduleViewState.teamPeriodStart =
+          scheduleBlockStartForDate(
+            teamStart
+          );
+
         setVal(
           "schedulePeriodStart",
           scheduleViewState.teamPeriodStart
-          || scheduleBlockStartForDate(currentCursor || todayISO())
         );
       }
 
@@ -5968,8 +6003,21 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         return String(night.shift_code).trim().toUpperCase();
       }
 
-      // Last-resort UI code. This is only used when Shift Master has no
-      // identifiable second/night shift for the employee's work pattern.
+      const primaryCode = String(
+        row?.effective_shift_code
+        || row?.assigned_shift_code
+        || row?.shift_code
+        || row?.auto_shift_code
+        || ''
+      ).trim().toUpperCase();
+
+      const dayPatternMatch =
+        primaryCode.match(/^D([56])$/);
+
+      if (dayPatternMatch) {
+        return `N${dayPatternMatch[1]}`;
+      }
+
       return 'S2';
     }
 
@@ -7902,11 +7950,15 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
                 );
 
           const splitWorkTemplate =
-            effectiveWorkTemplate ===
-              "SPLIT_FLEX"
-            && showShiftTime
-            && customerStart !== "-"
-            && customerEndLabel !== "-";
+            effectiveWorkTemplate === "SPLIT_FLEX"
+            || Boolean(
+              r?.shift_2_planned_start_at
+              || r?.shift_2_planned_end_at
+              || r?.shift_2_code
+              || r?.shift_2_shift_code
+              || r?.second_shift_code
+            )
+            || customerStart !== "-";
 
           const personShiftTooltipV61146 = [
             `กะ ${normalizedCode || "-"}`,
@@ -8016,7 +8068,9 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
                   ? `เวลาเริ่ม–สิ้นสุด ${shiftTimeLabel}`
                   : "ไม่พบเวลาเริ่ม–สิ้นสุดกะที่ 1",
                 `กะที่ 2 ${secondShiftCodeV61147}`,
-                `เวลาเริ่ม–สิ้นสุด ${customerStart}–${customerEndLabel}`
+                customerStart !== "-"
+                  ? `เวลาเริ่ม–สิ้นสุด ${customerStart}–${customerEndLabel}`
+                  : "เวลาเริ่ม–สิ้นสุด ตามแผนงานกะที่ 2" 
               ].filter(Boolean).join("|")
             : personShiftTooltipV61146;
 
@@ -11479,10 +11533,13 @@ ${skippedSummary(compatibility.skipped)}
         $("schedulePeriodStart").value = next;
       }
 
+      scheduleViewState.personMonth =
+        next.slice(0,7);
+
       try {
         localStorage.setItem(
           "timeclock.schedule.personMonth",
-          next.slice(0,7)
+          scheduleViewState.personMonth
         );
       } catch (_) {}
 
@@ -11588,6 +11645,21 @@ ${skippedSummary(compatibility.skipped)}
 
         if (!value) return;
 
+        const selectedMonth =
+          scheduleViewState.personMonth
+          || value.slice(0,7);
+
+        if (
+          !value.startsWith(
+            `${selectedMonth}-`
+          )
+        ) {
+          return;
+        }
+
+        scheduleViewState.teamPeriodStart =
+          value;
+
         if($("schedulePeriodStart")){
           $("schedulePeriodStart").value=value;
         }
@@ -11595,7 +11667,7 @@ ${skippedSummary(compatibility.skipped)}
         try {
           localStorage.setItem(
             "timeclock.schedule.teamPeriodStart",
-            value
+            scheduleViewState.teamPeriodStart
           );
         } catch (_) {}
 
@@ -11619,12 +11691,22 @@ ${skippedSummary(compatibility.skipped)}
         $("schedulePeriodStart").value=start;
       }
 
+      if (personMode) {
+        scheduleViewState.personMonth =
+          start.slice(0,7);
+      } else {
+        scheduleViewState.teamPeriodStart =
+          start;
+      }
+
       try {
         localStorage.setItem(
           personMode
             ? "timeclock.schedule.personMonth"
             : "timeclock.schedule.teamPeriodStart",
-          personMode ? start.slice(0,7) : start
+          personMode
+            ? scheduleViewState.personMonth
+            : scheduleViewState.teamPeriodStart
         );
       } catch (_) {}
 

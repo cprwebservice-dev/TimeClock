@@ -19493,3 +19493,125 @@ body.theme-dark .schedule-team-week-select-wrap-v61151,
     border-top-color:#38536b;
   }
 }
+
+
+/* ========================================================================== */
+/* V6.11.52 — Shift 2 label + compact month/week controls                    */
+/* ========================================================================== */
+
+.schedule-period-heading-v61152{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  min-width:0;
+}
+
+.schedule-person-month-inline-v61152{
+  color:#123f6d;
+  font-size:17px;
+  line-height:1;
+  font-weight:950;
+  white-space:nowrap;
+}
+
+.schedule-period-field-v61118:has(
+  .schedule-person-month-inline-v61152:not(.hidden)
+){
+  min-width:275px!important;
+}
+
+.schedule-period-field-v61118:has(
+  .schedule-person-month-inline-v61152:not(.hidden)
+) .schedule-period-label{
+  margin-top:3px;
+  font-size:9px!important;
+  color:#70869a;
+}
+
+/* Old separate banners are no longer used in HTML. */
+#schedulePersonWorkspace .schedule-person-month-banner-v61149,
+#scheduleTeamWorkspace .schedule-team-week-banner-v61151{
+  display:none!important;
+}
+
+/* Team keeps only week selector, with the month inherited from Person view. */
+#scheduleTeamWorkspace .schedule-team-week-selector-v61152{
+  margin:0 14px 12px;
+  padding:10px 12px;
+  display:grid;
+  grid-template-columns:minmax(150px,.32fr) minmax(380px,1fr);
+  align-items:end;
+  gap:12px;
+  border:1px solid #d3e1ed;
+  border-radius:14px;
+  background:#f8fbfe;
+}
+
+.schedule-team-week-selector-copy-v61152 span{
+  display:block;
+  color:#73879a;
+  font-size:9px;
+  font-weight:900;
+}
+
+.schedule-team-week-selector-copy-v61152 strong{
+  display:block;
+  margin-top:2px;
+  color:#174a77;
+  font-size:16px;
+  font-weight:950;
+}
+
+#scheduleTeamWeekSelectV61151{
+  min-height:40px;
+  font-size:10px;
+  font-weight:850;
+}
+
+/* Second shift remains clearly visible in the same daily label. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146
+.schedule-cell.person-double-code-v61147{
+  height:40px!important;
+  min-height:40px!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146
+.person-shift-code-v61147.shift-2{
+  display:flex!important;
+  opacity:1!important;
+  visibility:visible!important;
+  font-size:9px!important;
+  font-weight:950!important;
+}
+
+body.theme-dark .schedule-person-month-inline-v61152,
+.dark .schedule-person-month-inline-v61152{
+  color:#d9efff;
+}
+
+body.theme-dark #scheduleTeamWorkspace .schedule-team-week-selector-v61152,
+.dark #scheduleTeamWorkspace .schedule-team-week-selector-v61152{
+  border-color:#304b62;
+  background:#102333;
+}
+
+body.theme-dark .schedule-team-week-selector-copy-v61152 span,
+.dark .schedule-team-week-selector-copy-v61152 span{
+  color:#91a7ba;
+}
+
+body.theme-dark .schedule-team-week-selector-copy-v61152 strong,
+.dark .schedule-team-week-selector-copy-v61152 strong{
+  color:#d9efff;
+}
+
+@media(max-width:900px){
+  #scheduleTeamWorkspace .schedule-team-week-selector-v61152{
+    grid-template-columns:1fr;
+    margin:0 10px 10px;
+  }
+
+  .schedule-person-month-inline-v61152{
+    font-size:15px;
+  }
+}

@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.51 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.11.52 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.11.51 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.11.52 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.11.51-20260818" rel="stylesheet"/>
+<link href="./app.css?v=6.11.52-20260818" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -60,7 +60,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.51</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.11.52</span></div>
 </form>
 </div>
 </section>
@@ -342,7 +342,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.51</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.51 Scope Batch Load + Team Week Selector</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.11.52</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.11.52 Shift-2 Label + Compact Period Controls</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -528,7 +528,10 @@
 <div class="schedule-week-nav-v61118">
 <button class="btn btn-light schedule-week-btn-v61118" id="schedulePrevMonthBtn" title="สัปดาห์ก่อน">‹ <span>สัปดาห์ก่อน</span></button>
 <div class="schedule-period-field schedule-period-field-v61118">
+<div class="schedule-period-heading-v61152">
 <span class="schedule-period-caption-v61118">สัปดาห์ที่แสดง</span>
+<strong class="schedule-person-month-inline-v61152 hidden" id="schedulePersonMonthInlineV61152">-</strong>
+</div>
 <div class="schedule-period-label" id="schedulePeriodLabel">-</div>
 </div>
 <button class="btn btn-light schedule-week-current-v61118" id="scheduleTodayBtn">สัปดาห์ปัจจุบัน</button>
@@ -575,17 +578,12 @@
 <div class="schedule-legend"><span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span></div>
 </div>
 
-<div class="schedule-team-week-banner-v61151" aria-live="polite">
-  <div class="schedule-team-week-icon-v61151">▣</div>
-  <div class="schedule-team-week-copy-v61151">
-    <span>สัปดาห์ที่แสดง</span>
-    <strong id="scheduleTeamWeekLabelV61151">-</strong>
-    <small id="scheduleTeamWeekRangeV61151">-</small>
-  </div>
-  <label class="schedule-team-week-select-wrap-v61151">
+<div class="schedule-team-week-selector-v61152" aria-live="polite">
+  <div class="schedule-team-week-selector-copy-v61152">
     <span>เลือกสัปดาห์</span>
-    <select class="select" id="scheduleTeamWeekSelectV61151"></select>
-  </label>
+    <strong id="scheduleTeamWeekMonthV61152">-</strong>
+  </div>
+  <select class="select" id="scheduleTeamWeekSelectV61151" aria-label="เลือกสัปดาห์"></select>
 </div>
 
 <div class="schedule-team-toolbar">
@@ -602,20 +600,6 @@
 <div class="panel-header schedule-panel-header">
 <div><h3>ตารางกะรายบุคคล • เต็มเดือน</h3><p>แสดงทุกวันของเดือนในตารางเดียว • Label แสดงรหัสกะ • วางเมาส์บน Label เพื่อดูเวลาเริ่ม–สิ้นสุดกะ • การเลือกหลายช่องและคำสั่งจัดกะคงเดิม</p></div>
 <div class="schedule-legend"><span class="badge badge-blue">กะปกติ = ตามรูปแบบ 5D/6D</span><span class="badge shift-legend-night">กะกลางคืน = ตามกะที่รองรับกลุ่ม</span><span class="badge badge-orange">HOL นักขัตฤกษ์</span><span class="badge badge-gray">OFF วันหยุด</span><span class="badge schedule-holiday-legend">กรอบส้ม = วันหยุดนักขัตฤกษ์</span><span class="badge schedule-weeklyoff-legend">พื้นเทา = วันหยุดประจำสัปดาห์</span></div>
-</div>
-
-<div class="schedule-person-month-banner-v61149" aria-live="polite">
-  <div class="schedule-person-month-icon-v61149">◷</div>
-  <div class="schedule-person-month-copy-v61149">
-    <span>เดือนที่แสดง</span>
-    <strong id="schedulePersonMonthLabelV61149">-</strong>
-    <small id="schedulePersonMonthRangeV61149">-</small>
-  </div>
-  <div class="schedule-person-month-coverage-v61149">
-    <span>ข้อมูลพนักงาน</span>
-    <strong id="schedulePersonCoverageLabelV61149">ตาม User Scope</strong>
-    <small>ค้นหาจากพนักงานทั้งหมดที่โหลดในเดือนนี้</small>
-  </div>
 </div>
 
 <div class="schedule-commandbar">
@@ -2486,6 +2470,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.11.51-20260818"></script>
+<script src="./app.js?v=6.11.52-20260818"></script>
 </body>
 </html>
