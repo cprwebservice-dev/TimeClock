@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.47";
-document.documentElement.dataset.timeClockBuild = "6.11.47";
+window.__TIME_CLOCK_BUILD__ = "V6.11.48";
+document.documentElement.dataset.timeClockBuild = "6.11.48";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.47";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.47',
+  version: '6.11.48',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5811,6 +5811,16 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       const stateClass = active ? 'is-certified' : stale ? 'is-stale' : '';
       const icon = active ? '✓' : stale ? '↻' : '◷';
       const label = active ? 'ดูการรับรอง' : stale ? 'รับรองใหม่' : 'รับรองเวลา';
+      const compactMonth = String(source || '').trim().toLowerCase() === 'employee-month';
+
+      if (compactMonth) {
+        const aria = active
+          ? 'ดูหรือแก้ไขการรับรองเวลา'
+          : stale
+            ? 'รับรองเวลาใหม่'
+            : 'รับรองเวลา';
+        return `<button type="button" class="time-cert-action-v61139 time-cert-icon-v61148 ${stateClass}" data-time-certify data-cert-source="${safe(source || '')}" data-emp="${safe(empCode)}" data-date="${safe(workDate)}" data-cert-state="${active ? 'CERTIFIED' : stale ? 'STALE' : 'NONE'}" title="${safe(aria)}" aria-label="${safe(aria)}"><span aria-hidden="true">${icon}</span></button>`;
+      }
 
       return `<button type="button" class="time-cert-action-v61139 ${stateClass}" data-time-certify data-cert-source="${safe(source || '')}" data-emp="${safe(empCode)}" data-date="${safe(workDate)}" data-cert-state="${active ? 'CERTIFIED' : stale ? 'STALE' : 'NONE'}"><span>${icon}</span>${label}</button>`;
     }
@@ -9379,7 +9389,7 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
         dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอแก้ไขกะ","พนักงานส่งคำขอ และ Manager พิจารณาตามสายบังคับบัญชา"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","กำหนดกลุ่ม 5/6 วัน วันหยุดตั้งต้น และรูปแบบช่วงงานรายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
-        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
+        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page);
       setText("pageSubtitle", titles[page]?.[1] || "");
@@ -24212,6 +24222,11 @@ ${skippedSummary(compatibility.skipped)}
   function render(){
     const body=$("certReasonTableBody"); if(!body)return;
     const data=visibleRows();
+
+    if($("certReasonTotalCount")) $("certReasonTotalCount").textContent=Number(rows.length||0).toLocaleString('th-TH');
+    if($("certReasonActiveCount")) $("certReasonActiveCount").textContent=Number(rows.filter(r=>r.is_active).length||0).toLocaleString('th-TH');
+    if($("certReasonInactiveCount")) $("certReasonInactiveCount").textContent=Number(rows.filter(r=>!r.is_active).length||0).toLocaleString('th-TH');
+
     body.innerHTML=data.length?data.map(r=>`<tr><td><b class="cert-reason-code-v61139">${esc(r.reason_code)}</b></td><td>${esc(r.reason_name)}</td><td>${r.requires_note?'<span class="badge badge-orange">บังคับ</span>':'<span class="muted">ไม่บังคับ</span>'}</td><td><span class="cert-reason-status-v61139 ${r.is_active?'active':'inactive'}">${r.is_active?'ใช้งาน':'ปิดใช้งาน'}</span></td><td>${Number(r.sort_order||0).toLocaleString('th-TH')}</td><td><button class="btn btn-light btn-sm" data-cert-reason-edit="${esc(r.reason_code)}">✎ แก้ไข</button></td></tr>`).join(''):'<tr><td colspan="6" class="empty-cell">ไม่พบเหตุผลตามคำค้นหา</td></tr>';
   }
   async function load(){
@@ -24241,24 +24256,46 @@ ${skippedSummary(compatibility.skipped)}
     }catch(e){ app()?.toast?.(app()?.humanError?.(e)||e.message||String(e),'error'); }
     finally{ const btn=$("certReasonModalSave"); if(btn)btn.disabled=false; }
   }
-  function activateTab(){
-    const tab=$("certificationReasonsSettingsTab"); if(!tab)return;
-    [...document.querySelectorAll('[data-settings-tab]')].forEach(x=>x.classList.toggle('active',x===tab));
-    [...document.querySelectorAll('[data-settings-panel]')].forEach(x=>x.classList.toggle('active',x.dataset.settingsPanel==='certification-reasons'));
-    load();
+  function openPage(){
+    if(realRole()!=='HR_ADMIN'){
+      app()?.toast?.('เมนูเหตุผลรับรองเวลาสำหรับ HR Admin เท่านั้น','error');
+      return;
+    }
+    app()?.switchPage?.('admin-certification-reasons');
+    setTimeout(load,0);
   }
-  function syncVisibility(){ $("certificationReasonsSettingsTab")?.classList.toggle('hidden',realRole()!=='HR_ADMIN'); }
+
+  function syncVisibility(){
+    $("certificationReasonsNav")?.classList.toggle('hidden',realRole()!=='HR_ADMIN');
+  }
+
   document.addEventListener('click',e=>{
-    const tab=e.target.closest('[data-settings-tab="certification-reasons"]'); if(tab){ load(); return; }
-    const shortcut=e.target.closest('[data-certification-settings-shortcut]'); if(shortcut){ setTimeout(activateTab,80); return; }
-    const edit=e.target.closest('[data-cert-reason-edit]'); if(edit){ const row=rows.find(x=>String(x.reason_code)===String(edit.dataset.certReasonEdit)); if(row)openEditor(row); }
+    const pageNav=e.target.closest('[data-page="admin-certification-reasons"]');
+    if(pageNav){ setTimeout(load,0); return; }
+
+    const shortcut=e.target.closest('[data-certification-settings-shortcut]');
+    if(shortcut){ openPage(); return; }
+
+    const edit=e.target.closest('[data-cert-reason-edit]');
+    if(edit){
+      const row=rows.find(x=>String(x.reason_code)===String(edit.dataset.certReasonEdit));
+      if(row)openEditor(row);
+    }
   });
+
   document.addEventListener('timeclock:profile-ready',syncVisibility);
+  document.addEventListener('timeclock:effective-role-changed',syncVisibility);
+
   document.addEventListener('DOMContentLoaded',()=>{
     syncVisibility();
-    $("certReasonRefreshBtn")?.addEventListener('click',load); $("certReasonAddBtn")?.addEventListener('click',()=>openEditor()); $("certReasonSearch")?.addEventListener('input',render);
-    $("certReasonModalClose")?.addEventListener('click',closeEditor); $("certReasonModalCancel")?.addEventListener('click',closeEditor); $("certReasonModalSave")?.addEventListener('click',save);
+    $("certReasonRefreshBtn")?.addEventListener('click',load);
+    $("certReasonAddBtn")?.addEventListener('click',()=>openEditor());
+    $("certReasonSearch")?.addEventListener('input',render);
+    $("certReasonModalClose")?.addEventListener('click',closeEditor);
+    $("certReasonModalCancel")?.addEventListener('click',closeEditor);
+    $("certReasonModalSave")?.addEventListener('click',save);
     $("certReasonModal")?.addEventListener('click',e=>{if(e.target===$("certReasonModal"))closeEditor();});
   });
-  window.TimeClockCertificationReasons={load,render,activateTab};
+
+  window.TimeClockCertificationReasons={load,render,openPage};
 })();

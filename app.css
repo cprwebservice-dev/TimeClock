@@ -18759,3 +18759,206 @@ body.theme-dark #schedulePersonWorkspace
 .person-shift-code-v61147.shift-2{
   background:rgba(226,232,240,.08);
 }
+
+
+/* ========================================================================== */
+/* V6.11.48 — Monthly Certification icon + Dedicated Reason Master page       */
+/* ========================================================================== */
+
+/* MONTHLY PERSONAL OVERVIEW: certification action becomes compact icon-only. */
+.employee-month-day-actions-v61139{
+  grid-template-columns:30px minmax(0,1fr)!important;
+  align-items:center;
+}
+
+.employee-month-day-actions-v61139 .time-cert-icon-v61148{
+  width:28px!important;
+  min-width:28px!important;
+  max-width:28px!important;
+  height:28px!important;
+  min-height:28px!important;
+  padding:0!important;
+  border-radius:9px!important;
+  justify-content:center!important;
+  grid-column:auto!important;
+}
+
+.employee-month-day-actions-v61139 .time-cert-icon-v61148 span{
+  display:grid;
+  place-items:center;
+  width:100%;
+  height:100%;
+  font-size:13px;
+  line-height:1;
+}
+
+.employee-month-day-actions-v61139 .time-cert-icon-v61148:only-child{
+  width:28px!important;
+  grid-column:1!important;
+}
+
+.employee-month-day-actions-v61139 .employee-month-edit-btn{
+  min-width:0;
+}
+
+@media(max-width:760px){
+  .employee-month-day-actions-v61139{
+    grid-template-columns:28px minmax(0,1fr)!important;
+  }
+  .employee-month-day-actions-v61139 .time-cert-icon-v61148{
+    width:26px!important;
+    min-width:26px!important;
+    height:26px!important;
+    min-height:26px!important;
+  }
+}
+
+/* Dedicated HR Admin reason master */
+.certification-reasons-admin-page-v61148{
+  --cert-admin-border:#d9e3ee;
+}
+
+.cert-reason-admin-hero-v61148{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:22px 24px;
+  border:1px solid #dce7f2;
+  border-radius:20px;
+  background:
+    radial-gradient(circle at 92% 12%, rgba(245,158,11,.13), transparent 31%),
+    linear-gradient(135deg,#f8fbff 0%,#eef6ff 58%,#fff8ee 100%);
+  box-shadow:0 12px 30px rgba(15,35,58,.06);
+}
+
+.cert-reason-admin-hero-v61148 h2{
+  margin:4px 0 5px;
+  font-size:24px;
+}
+
+.cert-reason-admin-hero-v61148 p{
+  margin:0;
+  color:#64748b;
+}
+
+.cert-reason-admin-hero-actions-v61148{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.cert-reason-admin-role-v61148{
+  display:inline-flex;
+  align-items:center;
+  height:30px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid #bfd7f4;
+  background:#eef6ff;
+  color:#0f5aa7;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.35px;
+}
+
+.cert-reason-admin-summary-v61148{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin:14px 0;
+}
+
+.cert-reason-admin-summary-v61148 article{
+  padding:14px 16px;
+  border:1px solid var(--cert-admin-border);
+  border-radius:15px;
+  background:#fff;
+  box-shadow:0 5px 18px rgba(15,35,58,.04);
+}
+
+.cert-reason-admin-summary-v61148 span,
+.cert-reason-admin-summary-v61148 small{
+  display:block;
+  color:#718196;
+  font-size:10px;
+}
+
+.cert-reason-admin-summary-v61148 strong{
+  display:block;
+  margin:4px 0 2px;
+  font-size:24px;
+  color:#143c68;
+}
+
+.certification-reasons-admin-panel-v61148{
+  overflow:hidden;
+}
+
+.cert-reason-admin-panel-head-v61148{
+  align-items:center;
+}
+
+.cert-reason-toolbar-v61148{
+  margin-bottom:12px;
+}
+
+.cert-reason-table-wrap-v61139{
+  max-height:calc(100vh - 420px);
+  min-height:240px;
+}
+
+#certificationReasonsNav .nav-icon{
+  color:#f59e0b;
+}
+
+/* Dark mode */
+body.theme-dark .cert-reason-admin-hero-v61148,
+.dark .cert-reason-admin-hero-v61148{
+  border-color:#294258;
+  background:
+    radial-gradient(circle at 92% 12%,rgba(245,158,11,.12),transparent 31%),
+    linear-gradient(135deg,#0d1b29 0%,#10253a 60%,#251c12 100%);
+}
+
+body.theme-dark .cert-reason-admin-hero-v61148 p,
+.dark .cert-reason-admin-hero-v61148 p{
+  color:#9db0c2;
+}
+
+body.theme-dark .cert-reason-admin-summary-v61148 article,
+.dark .cert-reason-admin-summary-v61148 article{
+  background:#10202d;
+  border-color:#2d4558;
+}
+
+body.theme-dark .cert-reason-admin-summary-v61148 strong,
+.dark .cert-reason-admin-summary-v61148 strong{
+  color:#dceeff;
+}
+
+body.theme-dark .cert-reason-admin-summary-v61148 span,
+body.theme-dark .cert-reason-admin-summary-v61148 small,
+.dark .cert-reason-admin-summary-v61148 span,
+.dark .cert-reason-admin-summary-v61148 small{
+  color:#91a7ba;
+}
+
+@media(max-width:900px){
+  .cert-reason-admin-hero-v61148{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .cert-reason-admin-hero-actions-v61148{
+    width:100%;
+    justify-content:flex-start;
+  }
+  .cert-reason-admin-summary-v61148{
+    grid-template-columns:1fr;
+  }
+  .cert-reason-table-wrap-v61139{
+    max-height:56vh;
+  }
+}
