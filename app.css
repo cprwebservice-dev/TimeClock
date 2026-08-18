@@ -19615,3 +19615,309 @@ body.theme-dark .schedule-team-week-selector-copy-v61152 strong,
     font-size:15px;
   }
 }
+
+
+/* ========================================================================== */
+/* V6.11.53 — Monthly Holiday UX + Date Emphasis + Live Shift Colors          */
+/* ========================================================================== */
+
+/* -------------------------------------------------------------------------- */
+/* 1) MONTHLY PERSONAL OVERVIEW — holiday list below calendar, left aligned   */
+/* -------------------------------------------------------------------------- */
+.employee-month-after-grid-v61153{
+  display:flex;
+  justify-content:flex-start;
+  margin-top:10px;
+}
+
+.employee-month-holiday-list-v61153{
+  width:min(560px,100%);
+  padding:11px 13px;
+  border:1px solid rgba(234,88,12,.24);
+  border-radius:13px;
+  background:linear-gradient(135deg,#fffaf5 0%,#fff5e9 100%);
+}
+
+.employee-month-holiday-head-v61153{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-bottom:8px;
+}
+
+.employee-month-holiday-icon-v61153{
+  flex:0 0 auto;
+  display:grid;
+  place-items:center;
+  min-width:35px;
+  height:27px;
+  padding:0 7px;
+  border-radius:8px;
+  background:var(--shift-hol,#ea580c);
+  color:var(--shift-hol-contrast,#fff);
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:.35px;
+  box-shadow:0 4px 10px rgba(180,65,0,.14);
+}
+
+.employee-month-holiday-head-v61153 strong{
+  display:block;
+  color:#b3430b;
+  font-size:11px;
+  font-weight:950;
+}
+
+.employee-month-holiday-head-v61153 small{
+  display:block;
+  margin-top:1px;
+  color:#9b6b50;
+  font-size:8px;
+}
+
+.employee-month-holiday-items-v61153{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+
+.employee-month-holiday-item-v61153{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:6px;
+  min-width:230px;
+  padding:6px 8px;
+  border:1px solid rgba(234,88,12,.18);
+  border-radius:9px;
+  background:#fff;
+}
+
+.employee-month-holiday-date-v61153{
+  color:var(--shift-hol,#ea580c);
+  font-size:9px;
+  font-weight:950;
+  white-space:nowrap;
+}
+
+.employee-month-holiday-item-v61153 strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#b23f08;
+  font-size:9px;
+  font-weight:900;
+}
+
+.employee-month-holiday-item-v61153 small{
+  color:#a97a61;
+  font-size:7.5px;
+  font-weight:800;
+}
+
+.employee-month-holiday-empty-v61153{
+  display:inline-flex;
+  padding:5px 7px;
+  color:#9b7d6e;
+  font-size:8px;
+  font-weight:700;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 2) Monthly date number — larger + clear work / off / holiday background    */
+/* -------------------------------------------------------------------------- */
+#employeeMonthScheduleModal .employee-month-date-v61127>strong{
+  width:34px!important;
+  height:34px!important;
+  border-radius:10px!important;
+  font-size:16px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  border:1px solid transparent!important;
+  box-shadow:0 3px 8px rgba(15,42,75,.08);
+}
+
+#employeeMonthScheduleModal
+.employee-month-day.month-day-kind-work-v61153
+.employee-month-date-v61127>strong{
+  background:#eaf4ff!important;
+  border-color:#c8dff5!important;
+  color:#155891!important;
+}
+
+#employeeMonthScheduleModal
+.employee-month-day.month-day-kind-off-v61153
+.employee-month-date-v61127>strong{
+  background:var(--shift-off-soft,#eef1f5)!important;
+  border-color:var(--shift-off-border,#d4dbe3)!important;
+  color:var(--shift-off-text,#64748b)!important;
+}
+
+#employeeMonthScheduleModal
+.employee-month-day.month-day-kind-holiday-v61153
+.employee-month-date-v61127>strong{
+  background:var(--shift-hol,#ea580c)!important;
+  border-color:var(--shift-hol,#ea580c)!important;
+  color:var(--shift-hol-contrast,#fff)!important;
+  box-shadow:0 5px 12px rgba(180,65,0,.18)!important;
+}
+
+#employeeMonthScheduleModal
+.employee-month-day.is-today
+.employee-month-date-v61127>strong{
+  outline:2px solid #1e69a7!important;
+  outline-offset:2px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* 3) Shift Colors from System Settings drive actual schedule table colors    */
+/* -------------------------------------------------------------------------- */
+
+/* Personal monthly/weekly schedule table */
+#page-schedule .weekly-schedule-table .schedule-cell.shift-visual-day{
+  background:var(--shift-d-soft,#e8f1ff)!important;
+  border-color:var(--shift-d-border,#c3d8f7)!important;
+  color:var(--shift-d-text,#2563eb)!important;
+}
+#page-schedule .weekly-schedule-table .schedule-cell.shift-visual-night{
+  background:var(--shift-n-soft,#eee9ff)!important;
+  border-color:var(--shift-n-border,#d4c8ff)!important;
+  color:var(--shift-n-text,#7c3aed)!important;
+}
+#page-schedule .weekly-schedule-table .schedule-cell.shift-visual-off{
+  background:var(--shift-off-soft,#eef1f5)!important;
+  border-color:var(--shift-off-border,#dde2e9)!important;
+  color:var(--shift-off-text,#64748b)!important;
+}
+#page-schedule .weekly-schedule-table .schedule-cell.shift-visual-holiday{
+  background:var(--shift-hol-soft,#fff0dc)!important;
+  border-color:var(--shift-hol-border,#ffc982)!important;
+  color:var(--shift-hol-text,#ea580c)!important;
+}
+#page-schedule .weekly-schedule-table .schedule-cell.shift-visual-leave{
+  background:var(--shift-lv-soft,#e5f8ec)!important;
+  border-color:var(--shift-lv-border,#b8e7c8)!important;
+  color:var(--shift-lv-text,#0f766e)!important;
+}
+
+/* Monthly Personal Overview shift block follows the same settings. */
+#employeeMonthScheduleModal .employee-month-shift.tone-day{
+  background:var(--shift-d-soft,#f4f9fd)!important;
+  border:1px solid var(--shift-d-border,#cce0f1)!important;
+}
+#employeeMonthScheduleModal .employee-month-shift.tone-day b{
+  color:var(--shift-d-text,#2563eb)!important;
+}
+
+#employeeMonthScheduleModal .employee-month-shift.tone-night{
+  background:var(--shift-n-soft,#f2edff)!important;
+  border:1px solid var(--shift-n-border,#d8cefa)!important;
+}
+#employeeMonthScheduleModal .employee-month-shift.tone-night b{
+  color:var(--shift-n-text,#7c3aed)!important;
+}
+
+#employeeMonthScheduleModal .employee-month-shift.tone-off{
+  background:var(--shift-off-soft,#f3f6f8)!important;
+  border:1px solid var(--shift-off-border,#dde4ea)!important;
+}
+#employeeMonthScheduleModal .employee-month-shift.tone-off b{
+  color:var(--shift-off-text,#64748b)!important;
+}
+
+#employeeMonthScheduleModal .employee-month-shift.tone-holiday{
+  background:var(--shift-hol-soft,#fff4e8)!important;
+  border:1px solid var(--shift-hol-border,#ffd0a0)!important;
+}
+#employeeMonthScheduleModal .employee-month-shift.tone-holiday b{
+  color:var(--shift-hol-text,#ea580c)!important;
+}
+
+#employeeMonthScheduleModal .employee-month-shift.tone-leave{
+  background:var(--shift-lv-soft,#eaf7f4)!important;
+  border:1px solid var(--shift-lv-border,#bfe3da)!important;
+}
+#employeeMonthScheduleModal .employee-month-shift.tone-leave b{
+  color:var(--shift-lv-text,#0f766e)!important;
+}
+
+/* Team summary chips also reflect the configured day/night/off colors. */
+#page-schedule .team-day-count-v61115.tone-day{
+  background:var(--shift-d-soft,#e8f1ff)!important;
+  border-color:var(--shift-d-border,#c3d8f7)!important;
+  color:var(--shift-d-text,#2563eb)!important;
+}
+#page-schedule .team-day-count-v61115.tone-night{
+  background:var(--shift-n-soft,#eee9ff)!important;
+  border-color:var(--shift-n-border,#d4c8ff)!important;
+  color:var(--shift-n-text,#7c3aed)!important;
+}
+#page-schedule .team-day-count-v61115.tone-off{
+  background:var(--shift-off-soft,#eef1f5)!important;
+  border-color:var(--shift-off-border,#dde2e9)!important;
+  color:var(--shift-off-text,#64748b)!important;
+}
+
+/* Dark mode still uses selected settings, just with a slightly stronger fill. */
+body.theme-dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-day,
+.dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-day{
+  background:var(--shift-d-soft-strong)!important;
+  border-color:var(--shift-d-border)!important;
+  color:#eaf4ff!important;
+}
+body.theme-dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-night,
+.dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-night{
+  background:var(--shift-n-soft-strong)!important;
+  border-color:var(--shift-n-border)!important;
+  color:#f2ebff!important;
+}
+body.theme-dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-off,
+.dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-off{
+  background:var(--shift-off-soft-strong)!important;
+  border-color:var(--shift-off-border)!important;
+  color:#e4ebf0!important;
+}
+body.theme-dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-holiday,
+.dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-holiday{
+  background:var(--shift-hol-soft-strong)!important;
+  border-color:var(--shift-hol-border)!important;
+  color:#ffe8d3!important;
+}
+body.theme-dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-leave,
+.dark #page-schedule .weekly-schedule-table .schedule-cell.shift-visual-leave{
+  background:var(--shift-lv-soft-strong)!important;
+  border-color:var(--shift-lv-border)!important;
+  color:#d9fff4!important;
+}
+
+body.theme-dark #employeeMonthScheduleModal .employee-month-holiday-list-v61153,
+.dark #employeeMonthScheduleModal .employee-month-holiday-list-v61153{
+  background:#251b14!important;
+  border-color:var(--shift-hol-border)!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-holiday-item-v61153,
+.dark #employeeMonthScheduleModal .employee-month-holiday-item-v61153{
+  background:#172532!important;
+  border-color:var(--shift-hol-border)!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-holiday-head-v61153 strong,
+.dark #employeeMonthScheduleModal .employee-month-holiday-head-v61153 strong,
+body.theme-dark #employeeMonthScheduleModal .employee-month-holiday-item-v61153 strong,
+.dark #employeeMonthScheduleModal .employee-month-holiday-item-v61153 strong{
+  color:#ffd4b2!important;
+}
+
+@media(max-width:760px){
+  .employee-month-holiday-list-v61153{
+    width:100%;
+  }
+  .employee-month-holiday-item-v61153{
+    min-width:100%;
+  }
+  #employeeMonthScheduleModal .employee-month-date-v61127>strong{
+    width:32px!important;
+    height:32px!important;
+    font-size:15px!important;
+  }
+}

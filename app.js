@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.11.52";
-document.documentElement.dataset.timeClockBuild = "6.11.52";
+window.__TIME_CLOCK_BUILD__ = "V6.11.53";
+document.documentElement.dataset.timeClockBuild = "6.11.53";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.11.52";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.11.52',
+  version: '6.11.53',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -7221,6 +7221,70 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
       return normalizeTemplateCodeV665(raw) || '-';
     }
 
+    function renderEmployeeMonthHolidayListV61153(scheduleRows = []) {
+      const root = $('employeeMonthHolidayItemsV61153');
+      if (!root) return;
+
+      const holidayMap = new Map();
+
+      (scheduleRows || []).forEach(row => {
+        const workDate = String(row?.work_date || '').slice(0,10);
+        if (!workDate) return;
+
+        const dayType = String(row?.day_type || '').trim().toUpperCase();
+        const shift = scheduleResolveShiftMeta(row);
+        const isHoliday = Boolean(
+          row?.is_public_holiday
+          || dayType === 'PUBLIC_HOLIDAY'
+          || shift.tone === 'holiday'
+          || String(
+            row?.assigned_shift_code
+            || row?.effective_shift_code
+            || row?.shift_code
+            || ''
+          ).trim().toUpperCase() === 'HOL'
+        );
+
+        if (!isHoliday) return;
+
+        const name = String(
+          row?.holiday_name
+          || row?.public_holiday_name
+          || row?.holiday_label
+          || 'วันหยุดนักขัตฤกษ์'
+        ).trim();
+
+        holidayMap.set(
+          workDate,
+          {
+            workDate,
+            name: name || 'วันหยุดนักขัตฤกษ์'
+          }
+        );
+      });
+
+      const holidays = [...holidayMap.values()]
+        .sort((a,b) => a.workDate.localeCompare(b.workDate));
+
+      if (!holidays.length) {
+        root.innerHTML =
+          '<span class="employee-month-holiday-empty-v61153">ไม่มีวันหยุดนักขัตฤกษ์ในเดือนนี้</span>';
+        return;
+      }
+
+      root.innerHTML = holidays
+        .map(item => {
+          const date = new Date(`${item.workDate}T00:00:00`);
+          const dayName = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][date.getDay()];
+          return `<div class="employee-month-holiday-item-v61153">
+            <span class="employee-month-holiday-date-v61153">${safe(formatDate(item.workDate))}</span>
+            <strong>${safe(item.name)}</strong>
+            <small>${safe(dayName)}</small>
+          </div>`;
+        })
+        .join('');
+    }
+
     function renderEmployeeMonthCalendarV61121() {
       const modal = $('employeeMonthScheduleModal');
       const grid = $('employeeMonthScheduleGrid');
@@ -7316,6 +7380,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         <div class="month-overview-kpi split"><div class="month-kpi-icon">ดึก</div><div><span>งานลูกค้าช่วงดึก</span><small>วันที่มีช่วงงานกะที่ 2</small></div><strong>${safe(formatNumber(splitDays))}</strong></div>
         <div class="month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>รับรองแล้ว ${safe(formatNumber(certifiedDays))} วัน • ตรวจรายละเอียดจาก Badge ในแต่ละวัน</small></div>`;
 
+      renderEmployeeMonthHolidayListV61153(scheduleRows);
+
       const dowNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
       const firstDow = new Date(bounds.year, bounds.month - 1, 1).getDay();
       let html = dowNames.map((name,index) => `<div class="employee-month-dow ${index===0||index===6?'weekend':''}">${name}</div>`).join('');
@@ -7345,17 +7411,45 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
         const certificationButton = merged ? timeCertificationButtonV61139(merged,'employee-month') : '';
         const certificationBadge = merged ? timeCertificationBadgeV61139(merged) : '';
         const isToday = workDate === todayISO();
-        const holiday = Boolean(scheduleRow?.is_public_holiday || scheduleRow?.day_type === 'PUBLIC_HOLIDAY');
-        const weeklyOff = Boolean(scheduleRow?.is_weekly_off || scheduleRow?.day_type === 'WEEKLY_OFF');
+        const holiday = Boolean(
+          scheduleRow?.is_public_holiday
+          || scheduleRow?.day_type === 'PUBLIC_HOLIDAY'
+          || shift.tone === 'holiday'
+        );
+        const weeklyOff = Boolean(
+          !holiday
+          && (
+            scheduleRow?.is_weekly_off
+            || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(
+              String(scheduleRow?.day_type || '').trim().toUpperCase()
+            )
+            || shift.tone === 'off'
+          )
+        );
+        const dayKindClass = holiday
+          ? 'month-day-kind-holiday-v61153'
+          : weeklyOff
+            ? 'month-day-kind-off-v61153'
+            : 'month-day-kind-work-v61153';
         const dayName = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][dow];
 
-        html += `<div class="employee-month-day employee-month-day-v61149 ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} tone-${safe(statusMeta.tone)}" data-month-date="${safe(workDate)}">
+        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} tone-${safe(statusMeta.tone)}" data-month-date="${safe(workDate)}">
           <div class="employee-month-day-head">
             <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
             <span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span>
           </div>
 
-          <div class="employee-month-shift tone-${safe(shift.tone)}">
+          <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
+            shift.tone === 'night'
+              ? 'N'
+              : shift.tone === 'holiday'
+                ? 'HOL'
+                : shift.tone === 'leave'
+                  ? 'LV'
+                  : shift.tone === 'off'
+                    ? 'OFF'
+                    : 'D'
+          )}">
             <div class="employee-month-shift-top-v61127"><b>${safe(shift.code || '-')}</b>${templateCode !== '-' ? `<span class="month-template-code-v61127">${safe(templateCode)}</span>` : ''}</div>
             <small>${safe(shift.label || '-')}</small>
             ${split?'<em>+ งานลูกค้าช่วงดึก</em>':''}
@@ -11884,6 +11978,43 @@ ${skippedSummary(compatibility.skipped)}
   function load(){ try{return deepMerge(defaults,JSON.parse(localStorage.getItem(KEY)||"{}"));}catch{return structuredClone(defaults);} }
   function save(){ localStorage.setItem(KEY,JSON.stringify(settings)); applyVisuals(); applyFeatureFlags(); }
   function getRuntimeSettings(){ return settings; }
+  function normalizeHexColorV61153(value,fallback="#64748b"){
+    const raw=String(value||"").trim();
+    if(/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase();
+    if(/^#[0-9a-f]{3}$/i.test(raw)){
+      return `#${raw.slice(1).split("").map(x=>x+x).join("")}`.toLowerCase();
+    }
+    return fallback;
+  }
+  function hexRgbV61153(hex){
+    const value=normalizeHexColorV61153(hex).slice(1);
+    return {
+      r:parseInt(value.slice(0,2),16),
+      g:parseInt(value.slice(2,4),16),
+      b:parseInt(value.slice(4,6),16)
+    };
+  }
+  function rgbaV61153(hex,alpha){
+    const {r,g,b}=hexRgbV61153(hex);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  function contrastTextV61153(hex){
+    const {r,g,b}=hexRgbV61153(hex);
+    const luminance=(0.299*r+0.587*g+0.114*b)/255;
+    return luminance > .62 ? "#172033" : "#ffffff";
+  }
+  function applyShiftColorVariablesV61153(){
+    Object.entries(settings.shiftColors||{}).forEach(([key,value])=>{
+      const k=String(key||"").trim().toLowerCase();
+      const hex=normalizeHexColorV61153(value);
+      document.documentElement.style.setProperty(`--shift-${k}`,hex);
+      document.documentElement.style.setProperty(`--shift-${k}-soft`,rgbaV61153(hex,.13));
+      document.documentElement.style.setProperty(`--shift-${k}-soft-strong`,rgbaV61153(hex,.20));
+      document.documentElement.style.setProperty(`--shift-${k}-border`,rgbaV61153(hex,.36));
+      document.documentElement.style.setProperty(`--shift-${k}-text`,hex);
+      document.documentElement.style.setProperty(`--shift-${k}-contrast`,contrastTextV61153(hex));
+    });
+  }
   function applyVisuals(){
     document.documentElement.style.fontFamily = settings.font === "system" ? "system-ui,sans-serif" : "'Noto Sans Thai',sans-serif";
     document.body.classList.toggle("accent-orange",settings.accent==="orange"); document.body.classList.toggle("accent-teal",settings.accent==="teal");
@@ -11895,7 +12026,7 @@ ${skippedSummary(compatibility.skipped)}
     const themeMeta=document.querySelector('meta[name="theme-color"]'); if(themeMeta) themeMeta.setAttribute("content",dark?"#091522":"#0b1f3a");
     try { localStorage.setItem("tc_theme",dark?"dark":"light"); } catch (_) {}
     qsa("[data-theme-choice]").forEach(x=>x.classList.toggle("active",x.dataset.themeChoice===settings.theme));
-    Object.entries(settings.shiftColors).forEach(([k,v])=>document.documentElement.style.setProperty(`--shift-${k.toLowerCase()}`,v));
+    applyShiftColorVariablesV61153();
     document.title=`${settings.systemName} | ${settings.companyName}`;
   }
   const featureMeta=[
