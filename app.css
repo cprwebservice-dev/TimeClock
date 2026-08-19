@@ -20797,3 +20797,8 @@ body.theme-dark .assign-mode-card-v6120.quota-exhausted-v6142,
   border-color:#704348!important;
   background:#342328!important;
 }
+
+
+/* V6.14.3 — Leave quick action label */
+#schedulePersonWorkspace .shift-command.shift-LV{display:inline-flex;align-items:center;gap:4px}
+#schedulePersonWorkspace .shift-command.shift-LV small{font-size:7px;opacity:.72;font-weight:800}

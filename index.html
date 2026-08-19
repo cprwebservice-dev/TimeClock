@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.2 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.3 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.2 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.3 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.2-20260819" rel="stylesheet"/>
+<link href="./app.css?v=6.14.3-20260819" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.2</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.3</span></div>
 </form>
 </div>
 </section>
@@ -359,7 +359,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.2</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.2 Day-off Quota Hard Guard</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.3</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.3 Day-off Quota + Leave Scheduling Fix</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -634,7 +634,7 @@
 <button class="shift-command shift-S134 smart-shift-command" data-smart-shift="NIGHT" id="scheduleQuickNightBtn"><span>กะกลางคืน</span><small id="scheduleQuickNightCode">ตามรูปแบบ</small></button>
 <button class="shift-command shift-OFF" data-quick-shift="OFF">OFF</button>
 <button class="shift-command shift-HOL" data-quick-shift="HOL">HOL</button>
-<button class="shift-command shift-LV" data-quick-shift="LV">LV</button>
+<button class="shift-command shift-LV" data-quick-shift="LV" title="กำหนดวันลา"><span>ลา</span><small>LV</small></button>
 </div>
 <div class="schedule-command-actions">
 <button class="btn btn-light" disabled="" id="scheduleUndoBtn">↶ Undo</button>
@@ -653,7 +653,7 @@
 <div class="panel-body schedule-grid-body"><div class="table-wrap schedule-grid-wrap" id="scheduleTableWrap" style="max-height:70vh" tabindex="0"></div></div>
 <div class="schedule-context-menu" hidden="" id="scheduleContextMenu">
 <button data-context-action="copy">คัดลอก</button><button data-context-action="paste">วาง</button>
-<hr/><button data-context-smart-shift="NORMAL">กำหนดกะปกติตามรูปแบบ</button><button data-context-smart-shift="NIGHT">กำหนดกะกลางคืนตามรูปแบบ</button><button data-context-shift="OFF">กำหนด OFF</button><button data-context-shift="HOL">กำหนด HOL</button><button data-context-shift="LV">กำหนด LV</button>
+<hr/><button data-context-smart-shift="NORMAL">กำหนดกะปกติตามรูปแบบ</button><button data-context-smart-shift="NIGHT">กำหนดกะกลางคืนตามรูปแบบ</button><button data-context-shift="OFF">กำหนด OFF</button><button data-context-shift="HOL">กำหนด HOL</button><button data-context-shift="LV">กำหนดลา (LV)</button>
 <hr/><button class="danger" data-context-action="clear">ล้างกะ</button>
 </div>
 </div>
@@ -2507,6 +2507,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.2-20260819"></script>
+<script src="./app.js?v=6.14.3-20260819"></script>
 </body>
 </html>
