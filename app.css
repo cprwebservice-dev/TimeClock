@@ -20506,7 +20506,7 @@ body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146.m
 
 
 /* ========================================================================== */
-/* V6.14.0 — Shift Color Control Center                                       */
+/* V6.14.1 — Shift Color Control Center                                       */
 /* UI-only color configuration aligned 1:1 with person-schedule icons.        */
 /* ========================================================================== */
 .shift-color-section-v6140{
@@ -20740,4 +20740,43 @@ body.theme-dark #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-spl
   .shift-color-grid.shift-color-grid-v6140,
   .status-color-grid-v6140,
   .attendance-color-grid-v6140{grid-template-columns:1fr!important}
+}
+
+
+/* ========================================================================== */
+/* V6.14.1 — Full-month icon true-center + stable interaction                 */
+/* ========================================================================== */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-data-cell{
+  position:relative!important;
+  vertical-align:middle!important;
+  text-align:center!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-data-cell > .schedule-cell.schedule-icon-only-v6136{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  margin:0!important;
+  transform:translate(-50%,-50%)!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-data-cell:hover > .schedule-cell.schedule-icon-only-v6136,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-cell.schedule-icon-only-v6136:hover,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-data-cell.cell-selected > .schedule-cell.schedule-icon-only-v6136,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-data-cell.cell-active > .schedule-cell.schedule-icon-only-v6136{
+  transform:translate(-50%,-50%)!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-cell.schedule-icon-only-v6136 .schedule-shift-icon-v6136{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  margin:auto!important;
+  transform:none!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  line-height:0!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-cell.schedule-icon-only-v6136 .schedule-shift-icon-v6136 svg{
+  display:block!important;
+  margin:0!important;
 }

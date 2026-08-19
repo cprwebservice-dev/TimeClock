@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.0";
+window.__TIME_CLOCK_BUILD__ = "V6.14.1";
 document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.0',
+  version: '6.14.1',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -6241,6 +6241,19 @@ window.tcIsDayShiftCode = value =>
       const ruleMode = String(row?.schedule_rule_mode || row?.work_mode_code || '').trim().toUpperCase();
       const template = String(scheduleWorkTemplateCodeV6118(row) || '').trim().toUpperCase();
       const shiftMaster = state.filters.shifts.find(s => window.tcShiftCode(s.shift_code) === code);
+      const assignedCodeV6141 = window.tcShiftCode(row?.assigned_shift_code || '');
+      const assignedMasterV6141 = assignedCodeV6141
+        ? state.filters.shifts.find(s => window.tcShiftCode(s.shift_code) === assignedCodeV6141)
+        : null;
+      // V6.14.1: a manually assigned WORKING shift must win over the natural
+      // Saturday/Sunday/public-holiday classification. The day header can still
+      // show the calendar holiday, but the label itself represents the shift
+      // that will actually be worked.
+      const assignedWorkingV6141 = Boolean(
+        assignedCodeV6141
+        && !['OFF','HOL','LV'].includes(assignedCodeV6141)
+        && assignedMasterV6141?.is_workday !== false
+      );
       const isLeave = Boolean(
         row?.leave_request_id
         || row?.leave_type_code
@@ -6250,16 +6263,22 @@ window.tcIsDayShiftCode = value =>
         || dayType === 'LEAVE'
       );
       const isHoliday = Boolean(
-        row?.is_public_holiday
-        || code === 'HOL'
-        || shift?.tone === 'holiday'
-        || ['PUBLIC_HOLIDAY','HOLIDAY'].includes(dayType)
+        !assignedWorkingV6141
+        && (
+          row?.is_public_holiday
+          || code === 'HOL'
+          || shift?.tone === 'holiday'
+          || ['PUBLIC_HOLIDAY','HOLIDAY'].includes(dayType)
+        )
       );
       const isOff = Boolean(
-        ruleMode === 'DYNAMIC_OFF'
-        || shiftMaster?.is_workday === false
-        || shift?.tone === 'off'
-        || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(dayType)
+        !assignedWorkingV6141
+        && (
+          ruleMode === 'DYNAMIC_OFF'
+          || shiftMaster?.is_workday === false
+          || shift?.tone === 'off'
+          || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(dayType)
+        )
       );
       const isHour = ruleMode === 'HOUR_BASED';
       const isSplit = Boolean(
@@ -9392,6 +9411,15 @@ window.tcIsDayShiftCode = value =>
         if (currentRow) {
           currentRow.assigned_shift_code = savedShift;
           currentRow.effective_shift_code = savedShift;
+          const savedShiftMasterV6141 = state.filters.shifts.find(s => window.tcShiftCode(s.shift_code) === window.tcShiftCode(savedShift));
+          if(savedShiftMasterV6141){
+            currentRow.shift_start_time = savedShiftMasterV6141.start_time || currentRow.shift_start_time || null;
+            currentRow.shift_end_time = savedShiftMasterV6141.end_time || currentRow.shift_end_time || null;
+          }
+          if(rulePreparationV6120?.mode){
+            currentRow.schedule_rule_mode = rulePreparationV6120.mode;
+            currentRow.work_mode_code = rulePreparationV6120.mode;
+          }
           currentRow.is_confirmed = savedConfirm;
           currentRow.schedule_status = savedConfirm ? "CONFIRMED" : "ASSIGNED";
           currentRow.daily_work_template_code =
@@ -26112,7 +26140,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.0';
+  const VERSION='6.14.1';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -26420,8 +26448,66 @@ ${skippedSummary(compatibility.skipped)}
     if(prev&&!isOffRow(prev)&&!p.off){const pw=rowWindow(prev);const prevEnd=pw?.end?dateTimeFor(isoAddDays(c.workDate,-1),pw.end,pw.secondStart||pw.start):null;const nextStart=p.start?dateTimeFor(c.workDate,p.start):null;if(prevEnd&&nextStart){rest=Math.round((nextStart-prevEnd)/60000);hard=rest<360;}}
     const before=continuousBefore(c.empCode,c.workDate),after=p.off?0:before+Number(p.planned||0);return {restMinutes:rest,hardBlock:hard,continuousBefore:before,continuousAfter:after,warning48:!p.off&&after>2880};
   }
+  let guardPreviewTimerV6141=null;
+  let guardPreviewSeqV6141=0;
+  function isAuthoritativeGuardV6141(server){
+    return String(server?.guard_version||'').toUpperCase()==='V6.14.1';
+  }
+  async function fetchScheduleGuardV6141(){
+    if(!st.current)return null;
+    const c=st.current,p=proposedPlan();
+    if(!p.off&&!p.start)return null;
+    const args={
+      p_emp_code:c.empCode,
+      p_work_date:c.workDate,
+      p_proposed_shift_code:$('assignShiftCode')?.value||c.baseShiftCode||null,
+      p_proposed_start_time:p.start||null,
+      p_proposed_end_time:p.end||null,
+      p_proposed_planned_minutes:Number(p.planned||0),
+      p_is_off:Boolean(p.off)
+    };
+    try{
+      return await rpc('ta_validate_schedule_guard_v6141',args);
+    }catch(e){
+      return null;
+    }
+  }
+  function scheduleServerGuardPreviewV6141(){
+    if(!st.current)return;
+    st.serverGuardV6141=null;
+    if(guardPreviewTimerV6141)clearTimeout(guardPreviewTimerV6141);
+    const seq=++guardPreviewSeqV6141;
+    guardPreviewTimerV6141=setTimeout(async()=>{
+      const server=await fetchScheduleGuardV6141();
+      if(seq!==guardPreviewSeqV6141||!st.current)return;
+      if(isAuthoritativeGuardV6141(server)){
+        st.serverGuardV6141=server;
+        renderGuardPreview(server);
+      }
+    },220);
+  }
+
   function renderGuardPreview(server=null){
-    const box=$('assignRuleStatusV6120');if(!box||!st.current)return;const g=localGuard();const quota=st.quota||{};const rest=g.restMinutes==null?'ตรวจเมื่อมีข้อมูลกะก่อนหน้า':`${(g.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.`;const quotaMeta=quota.month_quota_days==null?'เริ่มแสดงหลังติดตั้ง Day-off Quota':`ยกมา ${Number(quota.carried_in_days||0).toLocaleString('th-TH')} • โควต้า ${Number(quota.month_quota_days||0).toLocaleString('th-TH')} • ใช้ ${Number(quota.used_days||0).toLocaleString('th-TH')}`;box.innerHTML=`<div class="rule-kpi-v6120 ${g.hardBlock?'danger':'ok'}"><span>พักก่อนกะถัดไป</span><strong>${esc(rest)}</strong><small>${g.hardBlock?'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้':'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${g.warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((g.continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${g.warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>วันหยุดคงเหลือ</span><strong>${quota.balance_days==null?'-':esc(Number(quota.balance_days).toLocaleString('th-TH'))} วัน</strong><small>${esc(quotaMeta)}</small></div>`;return g;
+    const box=$('assignRuleStatusV6120');
+    if(!box||!st.current)return;
+    const g=localGuard();
+    const authoritative=isAuthoritativeGuardV6141(server)?server:(isAuthoritativeGuardV6141(st.serverGuardV6141)?st.serverGuardV6141:null);
+    const restMinutes=authoritative?.rest_minutes??g.restMinutes;
+    const hardBlock=authoritative?.hard_block===true||(authoritative?false:g.hardBlock);
+    const continuousAfter=authoritative?.continuous_minutes_after??g.continuousAfter;
+    const warning48=authoritative?.warning_48h===true||(authoritative?false:g.warning48);
+    const quota=st.quota||{};
+    const rest=restMinutes==null?'ตรวจเมื่อมีข้อมูลกะก่อนหน้า':`${(restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.`;
+    const quotaMeta=quota.month_quota_days==null?'เริ่มแสดงหลังติดตั้ง Day-off Quota':`ยกมา ${Number(quota.carried_in_days||0).toLocaleString('th-TH')} • โควต้า ${Number(quota.month_quota_days||0).toLocaleString('th-TH')} • ใช้ ${Number(quota.used_days||0).toLocaleString('th-TH')}`;
+    box.innerHTML=`<div class="rule-kpi-v6120 ${hardBlock?'danger':'ok'}"><span>พักก่อนกะถัดไป</span><strong>${esc(rest)}</strong><small>${hardBlock?'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้':'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>วันหยุดคงเหลือ</span><strong>${quota.balance_days==null?'-':esc(Number(quota.balance_days).toLocaleString('th-TH'))} วัน</strong><small>${esc(quotaMeta)}</small></div>`;
+    return {
+      ...g,
+      restMinutes,
+      hardBlock,
+      continuousAfter,
+      warning48,
+      source:authoritative?'SERVER_V6141':'LOCAL'
+    };
   }
   async function loadQuota(){
     st.quota=null;if(!st.current)return;
@@ -26438,9 +26524,10 @@ ${skippedSummary(compatibility.skipped)}
       console.warn('Day-off quota load V6.13.5:',e?.message||e);
     }
     renderGuardPreview();
+    scheduleServerGuardPreviewV6141();
   }
   async function openAssignment({row,empCode,workDate,patternCode,selectedShift}){
-    ensureAssignmentUi();st.current={row,empCode:String(empCode),workDate:String(workDate).slice(0,10),patternCode,baseShiftCode:selectedShift,mode:'NORMAL',extension:null,patternRule:null};
+    ensureAssignmentUi();st.serverGuardV6141=null;st.current={row,empCode:String(empCode),workDate:String(workDate).slice(0,10),patternCode,baseShiftCode:selectedShift,mode:'NORMAL',extension:null,patternRule:null};
     st.modes=await modeOptions(empCode);
     try{const patterns=await rpc('ta_get_work_patterns',{});st.current.patternRule=(patterns||[]).find(x=>String(x.pattern_code||'').toUpperCase()===String(patternCode||'').toUpperCase())||null;}catch(e){}
     try{const ext=await rpc('ta_get_schedule_rule_assignment_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});st.current.extension=Array.isArray(ext)?ext[0]:ext;}catch(e){}
@@ -26491,10 +26578,20 @@ ${skippedSummary(compatibility.skipped)}
     if(!p.off&&selectedMaster.is_workday!==false&&!shiftAllowedForDepartment(selectedCode,rowDepartment(c.row))){app()?.toast?.(`กะ ${selectedCode} ไม่ได้เปิดใช้สำหรับหน่วยงาน ${rowDepartment(c.row)||'-'}`,'error');return {allowed:false};}
     const guard=renderGuardPreview();
     if(guard?.hardBlock){app()?.toast?.(`กำหนดกะไม่ได้: เวลาพักจากกะก่อนหน้า ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม.`,'error');return {allowed:false};}
-    let server=null;try{server=await rpc('ta_validate_schedule_guard_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_proposed_shift_code:$('assignShiftCode').value,p_proposed_start_time:p.start||null,p_proposed_end_time:p.end||null,p_proposed_planned_minutes:Number(p.planned||0),p_is_off:Boolean(p.off)});}catch(e){}
+    let server=await fetchScheduleGuardV6141();
+    if(!isAuthoritativeGuardV6141(server)){
+      // Keep the old endpoint only as a minimum-rest safety fallback. Its 48-hour
+      // calculation reads assigned rows only and is not authoritative anymore.
+      try{
+        const legacy=await rpc('ta_validate_schedule_guard_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_proposed_shift_code:$('assignShiftCode').value,p_proposed_start_time:p.start||null,p_proposed_end_time:p.end||null,p_proposed_planned_minutes:Number(p.planned||0),p_is_off:Boolean(p.off)});
+        if(legacy?.hard_block===true)server=legacy;
+      }catch(e){}
+    }
     if(server?.hard_block===true){app()?.toast?.(server.message||'กำหนดกะไม่ได้ เนื่องจากเวลาพักต่ำกว่า 6 ชั่วโมง','error');return {allowed:false};}
-    const warn48=guard?.warning48||server?.warning_48h===true;
-    if(warn48){const ok=await window.tcConfirm(`พนักงานจะมีชั่วโมงทำงานต่อเนื่องประมาณ ${((server?.continuous_minutes_after??guard.continuousAfter)/60).toLocaleString('th-TH',{maximumFractionDigits:1})} ชั่วโมง\n\nระบบแนะนำให้กำหนดวันหยุด แต่ยังสามารถจัดกะต่อได้\n\nต้องการจัดกะต่อหรือไม่?`);if(!ok)return {allowed:false};}
+    const authoritative=isAuthoritativeGuardV6141(server);
+    const warn48=authoritative?server?.warning_48h===true:Boolean(guard?.warning48);
+    const continuousForWarning=authoritative?Number(server?.continuous_minutes_after||0):Number(guard?.continuousAfter||0);
+    if(warn48){const ok=await window.tcConfirm(`พนักงานจะมีชั่วโมงทำงานต่อเนื่องประมาณ ${(continuousForWarning/60).toLocaleString('th-TH',{maximumFractionDigits:1})} ชั่วโมง\n\nระบบแนะนำให้กำหนดวันหยุด แต่ยังสามารถจัดกะต่อได้\n\nต้องการจัดกะต่อหรือไม่?`);if(!ok)return {allowed:false};}
     c.prepared={...p,guard,server};return {allowed:true,...c.prepared};
   }
   async function saveExtension({preparation}={}){
