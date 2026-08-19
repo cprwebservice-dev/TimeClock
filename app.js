@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.13.3";
-document.documentElement.dataset.timeClockBuild = "6.13.3";
+window.__TIME_CLOCK_BUILD__ = "V6.13.4";
+document.documentElement.dataset.timeClockBuild = "6.13.4";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.3";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.13.3',
+  version: '6.13.4',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -554,15 +554,32 @@ window.tcIsDayShiftCode = value =>
     }
     if (!employees.length) return rows;
 
-    const [holidays, shiftMaster, patterns, patternDetails] = await Promise.all([
+    const [holidays, shiftMaster, patterns, patternDetails, shiftRules] = await Promise.all([
       fetchOptional(client, "holidays", "holiday_date,holiday_name", q => q.gte("holiday_date", monthStart).lte("holiday_date", endDate)),
       fetchOptional(client, "shift_master", "shift_code,shift_name,start_time,end_time,is_workday,is_active", q => q.eq("is_active", true)),
       fetchOptional(client, "employee_shift_patterns", "emp_code,pattern_code,effective_start,effective_end,start_day_no", q => q.lte("effective_start", endDate).or(`effective_end.is.null,effective_end.gte.${monthStart}`)),
-      fetchOptional(client, "shift_pattern_details", "pattern_code,day_no,shift_code")
+      fetchOptional(client, "shift_pattern_details", "pattern_code,day_no,shift_code"),
+      fetchOptional(client, "ta_shift_schedule_rules_v6123", "shift_code,paired_off_shift_code")
     ]);
 
     const holidayMap = new Map(holidays.map(h => [String(h.holiday_date).slice(0, 10), h.holiday_name || "วันหยุดนักขัตฤกษ์"]));
     const shiftMap = new Map(shiftMaster.map(s => [String(s.shift_code || "").toUpperCase(), s]));
+    const pairedDayoffMap = new Map(
+      (shiftRules || [])
+        .map(r => [window.tcShiftCode(r.shift_code), window.tcShiftCode(r.paired_off_shift_code)])
+        .filter(([workCode, offCode]) => workCode && offCode)
+    );
+    const canonicalDayoffFallback = new Map([
+      ['STD','OSTD'],['S043','OS043'],['S134','OS134'],['S135','OS135']
+    ]);
+    const resolvePairedDefaultDayoffV6134 = workCode => {
+      const normalized = window.tcShiftCode(workCode);
+      const configured = window.tcShiftCode(pairedDayoffMap.get(normalized) || '');
+      const fallback = window.tcShiftCode(canonicalDayoffFallback.get(normalized) || '');
+      const candidate = configured || fallback;
+      const meta = shiftMap.get(candidate);
+      return candidate && meta && meta.is_active !== false && meta.is_workday === false ? candidate : '';
+    };
     const patternsByEmp = new Map();
     patterns.forEach(p => {
       const key = String(p.emp_code || "").trim();
@@ -596,7 +613,14 @@ window.tcIsDayShiftCode = value =>
         const publicHoliday = holidayMap.has(workDate);
         const weeklyOff = !publicHoliday && isNaturalWeeklyOff(emp.pc, cursor);
         const patternShift = patternShiftFor(patternsByEmp, detailsByPattern, empCode, workDate);
-        const autoCode = window.tcShiftCode(existing.auto_shift_code || existing.shift_code || (publicHoliday ? "HOL" : patternShift || (weeklyOff ? "OFF" : "STD")));
+        const defaultWorkCode = window.tcShiftCode(
+          patternShift || (parsePcGroup(emp.pc) === "4" ? "STD" : "S043")
+        );
+        const defaultDayoffCode = resolvePairedDefaultDayoffV6134(defaultWorkCode);
+        const fallbackAutoCode = publicHoliday
+          ? "HOL"
+          : patternShift || (weeklyOff ? defaultDayoffCode : defaultWorkCode);
+        const autoCode = window.tcShiftCode(existing.auto_shift_code || existing.shift_code || fallbackAutoCode || "");
         const effectiveCode = existing.assigned_shift_code || existing.effective_shift_code || autoCode;
         const shift = shiftMap.get(String(effectiveCode || "").toUpperCase()) || {};
         rowMap.set(key, {
@@ -616,6 +640,7 @@ window.tcIsDayShiftCode = value =>
           is_weekly_off: weeklyOff,
           holiday_name: publicHoliday ? holidayMap.get(workDate) : null,
           expected_day: existing.expected_day ?? (publicHoliday || weeklyOff ? 0 : 1),
+          default_shift_code: existing.default_shift_code || defaultWorkCode,
           auto_shift_code: autoCode,
           suggested_shift_code: existing.suggested_shift_code || autoCode,
           suggestion_confidence: existing.suggestion_confidence ?? (patternShift ? 95 : publicHoliday || weeklyOff ? 100 : 70),
@@ -910,7 +935,7 @@ window.tcIsDayShiftCode = value =>
       from += pageSize
     ) {
       let request = client.rpc(
-        "ta_get_schedule_range_light_v6130",
+        "ta_get_schedule_range_light_v6134",
         rpcArgs
       );
 
@@ -933,7 +958,7 @@ window.tcIsDayShiftCode = value =>
         await withTimeout(
           request,
           30000,
-          `โหลดตารางกะ Lightweight V6.13.3 ชุด ${
+          `โหลดตารางกะ Lightweight V6.13.4 ชุด ${
             Math.floor(from / pageSize) + 1
           }`
         );
@@ -945,7 +970,7 @@ window.tcIsDayShiftCode = value =>
           )
         ) {
           throw new Error(
-            "SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED: กรุณารัน SQL V6.13.3"
+            "SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED: กรุณารัน SQL V6.13.4"
           );
         }
 
@@ -3497,7 +3522,7 @@ window.tcIsDayShiftCode = value =>
     function shiftPatternCodes(shift) {
       const code = String(shift?.shift_code || "").trim().toUpperCase();
 
-      // V6.13.3: Core operational shift pairs are stable business mappings.
+      // V6.13.4: Core operational shift pairs are stable business mappings.
       // Do not let a stale applicable_pattern_codes value hide the paired night
       // shift from the assignment popup. Times may be edited later in Shift Master
       // without changing which weekly work pattern the shift belongs to.
@@ -5375,7 +5400,7 @@ window.tcIsDayShiftCode = value =>
           return date>=period.startDate&&date<=period.endDate;
         });
 
-        // V6.13.3: start/resign dates now come from the lightweight Grid RPC directly; Scope metadata remains a fallback.
+        // V6.13.4: start/resign dates now come from the lightweight Grid RPC directly; Scope metadata remains a fallback.
         // Reuse it instead of making the base schedule RPC join extra historical tables.
         const scheduleEmployeeMetaMapV6129 = new Map(
           (Array.isArray(filterOptions.employees) ? filterOptions.employees : [])
@@ -7518,7 +7543,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function fetchEmployeeMonthScheduleV6130(empCode, bounds) {
-      // V6.13.3: dedicated Monthly Personal RPC first. It is independent from
+      // V6.13.4: dedicated Monthly Personal RPC first. It is independent from
       // the old V6.12.6 Work Plan metadata chain and returns only one employee.
       const args = {
         p_emp_code: empCode,
@@ -7530,9 +7555,9 @@ window.tcIsDayShiftCode = value =>
       let dedicatedError = null;
       try {
         const response = await withTimeout(
-          state.client.rpc('ta_get_employee_month_schedule_v6130', args),
+          state.client.rpc('ta_get_employee_month_schedule_v6134', args),
           15000,
-          'โหลด Monthly Personal Overview V6.13.3'
+          'โหลด Monthly Personal Overview V6.13.4'
         );
         if (response.error) dedicatedError = response.error;
         else rows = Array.isArray(response.data) ? response.data : [];
@@ -7546,7 +7571,7 @@ window.tcIsDayShiftCode = value =>
         // so a thrown timeout could still blank the entire modal.
         scheduleLogRpcOnceV6126(
           'employee-month-v6130-fallback',
-          'Monthly Personal V6.13.3 dedicated RPC unavailable; using lightweight schedule fallback:',
+          'Monthly Personal V6.13.4 dedicated RPC unavailable; using lightweight schedule fallback:',
           dedicatedError
         );
         try {
@@ -7566,7 +7591,7 @@ window.tcIsDayShiftCode = value =>
         } catch (fallbackError) {
           if (window.TimeClockShiftAPI?.missingFunction?.(dedicatedError)
               || String(fallbackError?.message || '').includes('SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED')) {
-            throw new Error('MONTHLY_PERSONAL_RPC_V6130_REQUIRED: กรุณารัน SQL V6.13.3');
+            throw new Error('MONTHLY_PERSONAL_RPC_V6134_REQUIRED: กรุณารัน SQL V6.13.4');
           }
           throw fallbackError || dedicatedError;
         }
@@ -7604,7 +7629,7 @@ window.tcIsDayShiftCode = value =>
           bounds
         );
 
-        // V6.13.3 monthly schedule already includes Work Plan / Template
+        // V6.13.4 monthly schedule already includes Work Plan / Template
         // metadata, so do not issue a second month-wide Work Plan RPC.
         const workPlanPromise = Promise.resolve({ data: [], error: null });
 
@@ -11357,8 +11382,8 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED")) return "กรุณารัน SQL V6.13.3 เพื่อเปิดใช้ Schedule Grid แบบ Lightweight";
-      if (msg.includes("MONTHLY_PERSONAL_RPC_V6130_REQUIRED")) return "กรุณารัน SQL V6.13.3 เพื่อเปิดใช้ Monthly Personal Overview รุ่นใหม่";
+      if (msg.includes("SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED")) return "กรุณารัน SQL V6.13.4 เพื่อเปิดใช้ Schedule Grid แบบ Lightweight";
+      if (msg.includes("MONTHLY_PERSONAL_RPC_V6134_REQUIRED")) return "กรุณารัน SQL V6.13.4 เพื่อเปิดใช้ Monthly Personal Overview รุ่นใหม่";
       if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตารางกะตาม User Scope";
       if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
       if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 ก่อนบันทึกหรือแก้ไขกะ";
@@ -16962,7 +16987,7 @@ ${skippedSummary(compatibility.skipped)}
       || null;
 
     if(pattern){
-      // V6.13.3: once the Scheduling Rules assignment controller is active,
+      // V6.13.4: once the Scheduling Rules assignment controller is active,
       // it owns the shift dropdown. The legacy template handler must not
       // overwrite Work Pattern + Department Scope options after the modal opens.
       const handledBySchedulingRules =
@@ -25835,7 +25860,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.13.3';
+  const VERSION='6.13.4';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -25910,7 +25935,7 @@ ${skippedSummary(compatibility.skipped)}
       if(app()?.state?.filters)app().state.filters.shifts=[...byCode.values()].sort((a,b)=>Number(a.display_order||0)-Number(b.display_order||0)||String(a.shift_code||'').localeCompare(String(b.shift_code||'')));
       return st.assignmentShiftOptions;
     }catch(e){
-      console.warn('Assignment Shift Options V6.13.3 fallback to client Shift Master:',{
+      console.warn('Assignment Shift Options V6.13.4 fallback to client Shift Master:',{
         code:e?.code||'',message:e?.message||String(e),pattern:normalizedPattern,department:normalizedDepartment
       });
       st.assignmentShiftOptions=[];
@@ -25947,7 +25972,7 @@ ${skippedSummary(compatibility.skipped)}
     const code=rowCode(r),day=String(r?.day_type||'').toUpperCase(),sm=shiftMaster(code);
     const assigned=String(r?.assigned_shift_code||r?.shift_code||'').trim().toUpperCase();
     const assignedMaster=assigned?shiftMaster(assigned):null;
-    // V6.13.3: A manually assigned working shift wins over the natural
+    // V6.13.4: A manually assigned working shift wins over the natural
     // Sunday/holiday classification. This is essential for OFF-basis lookup.
     if(assigned&&assignedMaster?.is_workday!==false&&!['OFF','HOL','LV'].includes(assigned))return false;
     return ['OFF','HOL','LV'].includes(code)||sm?.is_workday===false||['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day)||r?.schedule_rule_mode==='DYNAMIC_OFF';
@@ -26093,13 +26118,13 @@ ${skippedSummary(compatibility.skipped)}
     const basisCode=String(r.base_shift_code||rowCode(r)||'').toUpperCase();
     if(!special){const mapped=pairedOffForBasis(basisCode);if(mapped)return mapped;}
     const sm=shiftMaster(basisCode||rowCode(r));const w=rowWindow(r);
-    return {start:fmtTime(w?.start||sm?.start_time),end:fmtTime(w?.end||sm?.end_time),basisCode:basisCode||rowCode(r),offShiftCode:special?'OFF':null,offShiftName:special?'วันหยุดตามกะพิเศษ':null,resolutionType:special?'DYNAMIC_SPECIAL':'MAPPING_MISSING',mappingMissing:!special};
+    return {start:fmtTime(w?.start||sm?.start_time),end:fmtTime(w?.end||sm?.end_time),basisCode:basisCode||rowCode(r),offShiftCode:null,offShiftName:null,resolutionType:special?'BACKEND_SPECIAL_DAYOFF_REQUIRED':'MAPPING_MISSING',mappingMissing:true};
   }
   function refreshAssignmentPreview(){
     if(!st.current)return;const mode=st.current.mode;
     if(mode==='HOUR_BASED'){const start=$('assignHourStartV6120')?.value,end=addMinutes(start,patternTotal(st.current.patternCode));$('assignHourEndV6120').textContent=start&&end?`${start} → ${end}${minsOf(end)<=minsOf(start)?' (+1)':''} • รวมพัก ${(patternTotal(st.current.patternCode)/60).toLocaleString('th-TH')} ชม.`:'-';}
     if(mode==='SPLIT_WAIT_NIGHT'){const sm=shiftMaster(st.current.baseShiftCode||$('assignShiftCode')?.value);const start=fmtTime(sm?.start_time)||'-',first=$('assignFirstEndV6120')?.value||'-',second=$('assignSecondStartV6120')?.value||'-',end=$('assignSecondEndV6120')?.value||'-';const work=spanMinutes(start,first)+spanMinutes(second,end),wait=spanMinutes(first,second);$('assignSplitPreviewV6120').innerHTML=`<span>ช่วงที่ 1 <b>${esc(start)}–${esc(first)}</b></span><span class="wait">รอ <b>${esc((wait/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</b> • ไม่นับ</span><span>ช่วงที่ 2 <b>${esc(second)}–${esc(end)}${minsOf(end)<=minsOf(second)?' (+1)':''}</b></span><strong>เวลาทำงานตามแผน ${esc((work/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</strong>`;}
-    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();$('assignOffPreviewV6120').innerHTML=w?(w.mappingMissing?`<strong class="text-danger">ยังไม่ได้จับคู่กะวันหยุดของ ${esc(w.basisCode||'')}</strong><small>ไปที่ ตั้งค่ากะทำงาน → กฎการเลือกกะและกะวันหยุดคู่กัน</small>`:`<span>ระบบเลือกกะวันหยุดให้อัตโนมัติ</span><strong>${esc(w.offShiftCode||'OFF')} • ${esc(w.start)}–${esc(w.end)}${minsOf(w.end)<=minsOf(w.start)?' (+1)':''}</strong><small>อ้างอิงกะทำงานก่อนหน้า ${esc(w.basisCode||'')} ${w.resolutionType==='MAPPED'?'→ จับคู่ตาม Set Up':'→ กะพิเศษแบบ Dynamic'}</small>`):`<strong>ยังไม่พบกะทำงานก่อนหน้า</strong><small>กรุณาจัดกะวันก่อนหน้าให้เรียบร้อยก่อนกำหนดวันหยุด</small>`;}
+    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();$('assignOffPreviewV6120').innerHTML=w?(w.mappingMissing?`<strong class="text-danger">ยังไม่ได้จับคู่กะวันหยุดของ ${esc(w.basisCode||'')}</strong><small>ไปที่ ตั้งค่ากะทำงาน → กฎการเลือกกะและกะวันหยุดคู่กัน</small>`:`<span>ระบบเลือกกะวันหยุดให้อัตโนมัติ</span><strong>${esc(w.offShiftCode||'วันหยุด')} • ${esc(w.start)}–${esc(w.end)}${minsOf(w.end)<=minsOf(w.start)?' (+1)':''}</strong><small>อ้างอิงกะทำงานก่อนหน้า ${esc(w.basisCode||'')} ${w.resolutionType==='MAPPED'?'→ จับคู่ตาม Set Up':'→ กะพิเศษแบบ Dynamic'}</small>`):`<strong>ยังไม่พบกะทำงานก่อนหน้า</strong><small>กรุณาจัดกะวันก่อนหน้าให้เรียบร้อยก่อนกำหนดวันหยุด</small>`;}
     renderGuardPreview();
   }
   function proposedPlan(){
@@ -26123,11 +26148,14 @@ ${skippedSummary(compatibility.skipped)}
     const args={p_emp_code:st.current.empCode,p_month:`${String(st.current.workDate).slice(0,7)}-01`};
     try{
       let q;
-      try{q=await rpc('ta_get_dayoff_balance_v6133',args);}
-      catch(e){q=await rpc('ta_get_dayoff_balance_v6120',args);}
+      try{q=await rpc('ta_get_dayoff_balance_v6134',args);}
+      catch(e){
+        try{q=await rpc('ta_get_dayoff_balance_v6133',args);}
+        catch(e2){q=await rpc('ta_get_dayoff_balance_v6120',args);}
+      }
       st.quota=Array.isArray(q)?q[0]:q;
     }catch(e){
-      console.warn('Day-off quota load V6.13.3:',e?.message||e);
+      console.warn('Day-off quota load V6.13.4:',e?.message||e);
     }
     renderGuardPreview();
   }
@@ -26141,10 +26169,17 @@ ${skippedSummary(compatibility.skipped)}
     await loadAssignmentShiftOptionsV6132(patternCode,rowDepartment(row),true);
     try{
       let b=null;
-      try{b=await rpc('ta_get_off_shift_basis_v6130',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});}
-      catch(primaryError){b=await rpc('ta_get_off_shift_basis_v6123',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});}
-      if(b?.basis_shift_code)st.current.offBasisFromDb={start:fmtTime(b.off_start_time||b.start_time),end:fmtTime(b.off_end_time||b.end_time),basisCode:b.basis_shift_code||b.shift_code||null,offShiftCode:b.off_shift_code||null,offShiftName:b.off_shift_name||null,resolutionType:b.resolution_type||null,mappingMissing:b.mapping_missing===true};
-    }catch(e){try{const b=await rpc('ta_get_dynamic_off_basis_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});if(b?.start_time&&b?.end_time)st.current.offBasisFromDb={start:fmtTime(b.start_time),end:fmtTime(b.end_time),basisCode:b.basis_shift_code||b.shift_code||null,offShiftCode:'OFF',offShiftName:'วันหยุด',resolutionType:'LEGACY_DYNAMIC',mappingMissing:false};}catch(_){}}
+      try{b=await rpc('ta_get_off_shift_basis_v6134',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});}
+      catch(primaryError){
+        try{b=await rpc('ta_get_off_shift_basis_v6130',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});}
+        catch(legacyError){b=await rpc('ta_get_off_shift_basis_v6123',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});}
+      }
+      if(b?.basis_shift_code){
+        const returnedOffCode=String(b.off_shift_code||'').trim().toUpperCase();
+        const legacyOffDisabled=returnedOffCode==='OFF';
+        st.current.offBasisFromDb={start:fmtTime(b.off_start_time||b.start_time),end:fmtTime(b.off_end_time||b.end_time),basisCode:b.basis_shift_code||b.shift_code||null,offShiftCode:legacyOffDisabled?null:(b.off_shift_code||null),offShiftName:legacyOffDisabled?null:(b.off_shift_name||null),resolutionType:legacyOffDisabled?'LEGACY_OFF_DISABLED':(b.resolution_type||null),mappingMissing:legacyOffDisabled||b.mapping_missing===true};
+      }
+    }catch(e){try{const b=await rpc('ta_get_dynamic_off_basis_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});if(b?.start_time&&b?.end_time)st.current.offBasisFromDb={start:fmtTime(b.start_time),end:fmtTime(b.end_time),basisCode:b.basis_shift_code||b.shift_code||null,offShiftCode:null,offShiftName:null,resolutionType:'LEGACY_DYNAMIC_DISABLED_OFF',mappingMissing:true};}catch(_){}}
     if(ext.first_segment_end)$('assignFirstEndV6120').value=String(ext.first_segment_end).slice(0,5);
     if(ext.second_segment_start)$('assignSecondStartV6120').value=String(ext.second_segment_start).slice(0,5);
     if(ext.second_segment_planned_end)$('assignSecondEndV6120').value=String(ext.second_segment_planned_end).slice(0,5);
@@ -26235,8 +26270,16 @@ ${skippedSummary(compatibility.skipped)}
       if(code==='OFF'){
         const basis=bulkFindPreviousWorking(virtual,emp,date);if(!basis){blocks.push({emp,date,code,offMissingBasis:true});continue;}
         const basisMode=String(basis.schedule_rule_mode||basis.work_mode_code||'').toUpperCase();const basisCode=String(basis.base_shift_code||rowCode(basis)||'').toUpperCase();const w=rowWindow(basis);
-        let resolved='OFF',offWindow=w;
-        if(!['HOUR_BASED','SPLIT_WAIT_NIGHT'].includes(basisMode)){const mapped=pairedOffForBasis(basisCode);if(!mapped){blocks.push({emp,date,code,offMappingMissing:true,basisCode});continue;}resolved=mapped.offShiftCode;offWindow=mapped;}
+        let resolved=null,offWindow=w;
+        if(['HOUR_BASED','SPLIT_WAIT_NIGHT'].includes(basisMode)){
+          try{
+            const b=await rpc('ta_get_off_shift_basis_v6134',{p_emp_code:emp,p_work_date:date});
+            if(b?.off_shift_code&&b?.mapping_missing!==true){resolved=String(b.off_shift_code).toUpperCase();offWindow={start:fmtTime(b.off_start_time),end:fmtTime(b.off_end_time)};}
+          }catch(e){}
+          if(!resolved){blocks.push({emp,date,code,offMappingMissing:true,basisCode});continue;}
+        }else{
+          const mapped=pairedOffForBasis(basisCode);if(!mapped){blocks.push({emp,date,code,offMappingMissing:true,basisCode});continue;}resolved=mapped.offShiftCode;offWindow=mapped;
+        }
         item.shift_code=resolved;
         virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:resolved,assigned_shift_code:resolved,schedule_rule_mode:'DYNAMIC_OFF',off_window_start:offWindow?.start||null,off_window_end:offWindow?.end||null,off_basis_shift_code:basisCode});
         continue;
@@ -26288,7 +26331,7 @@ ${skippedSummary(compatibility.skipped)}
   }
   async function saveBulkExtensions(payload=[]){
     if(!payload.length)return;const items=payload.map(x=>({emp_code:String(x.emp_code||''),work_date:String(x.work_date||'').slice(0,10),shift_code:x.shift_code==null?null:String(x.shift_code).toUpperCase(),note:x.note||null}));
-    try{await rpc('ta_sync_bulk_schedule_rules_v6130',{p_items:items});}
+    try{await rpc('ta_sync_bulk_schedule_rules_v6134',{p_items:items});}
     catch(e){try{await rpc('ta_sync_bulk_schedule_rules_v6123',{p_items:items});}
     catch(e2){try{await rpc('ta_sync_bulk_schedule_rules_v6120',{p_items:items});}catch(e3){app()?.toast?.(`บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule บางรายการไม่สำเร็จ: ${e3.message||e3}`,'warning');}}}
   }
@@ -26438,7 +26481,7 @@ ${skippedSummary(compatibility.skipped)}
   async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   function init(){ensureAssignmentUi();ensureAdminUi();ensureShiftRuleAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));document.querySelector('[data-page="admin-shifts"]')?.addEventListener('click',()=>setTimeout(()=>loadShiftRuleAdmin(),0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();loadRuntimeShiftRules();});document.addEventListener('timeclock:effective-role-changed',()=>{loadAdminPanel();loadShiftRuleAdmin();});document.documentElement.dataset.schedulingRulesVersion=VERSION;}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,ensureRuntimeRules:loadRuntimeShiftRules};
+  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,ensureRuntimeRules:loadRuntimeShiftRules};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;

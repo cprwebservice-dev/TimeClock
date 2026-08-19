@@ -20086,7 +20086,7 @@ body.theme-dark .work-mode-dept-summary-v6122 small,.dark .work-mode-dept-summar
 
 
 /* ========================================================================== */
-/* V6.13.3 — Assignment warning/loading stack                                */
+/* V6.13.4 — Assignment warning/loading stack                                */
 /* Keep feedback above Shift Assignment, but below the global confirm modal. */
 /* ========================================================================== */
 body.team-assignment-modal-open .loading-overlay{z-index:7000!important}
