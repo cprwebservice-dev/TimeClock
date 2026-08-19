@@ -20093,3 +20093,159 @@ body.team-assignment-modal-open .loading-overlay{z-index:7000!important}
 body.team-assignment-modal-open .toast-stack{z-index:14000!important}
 body.team-assignment-modal-open .global-action-modal-backdrop{z-index:15000!important}
 body.team-assignment-modal-open .global-print-modal-backdrop{z-index:15000!important}
+
+
+/* ========================================================================== */
+/* V6.13.6 — Person Full-Month Icon-only Labels                               */
+/* UI-only change. Shift codes, rules and backend calculations are unchanged. */
+/* ========================================================================== */
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell.schedule-icon-only-v6136{
+  width:40px!important;
+  min-width:40px!important;
+  max-width:40px!important;
+  height:36px!important;
+  min-height:36px!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  overflow:visible!important;
+  border-width:1px!important;
+  border-style:solid!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell.schedule-icon-only-v6136.confirmed:after{
+  width:10px!important;
+  height:10px!important;
+  right:-2px!important;
+  top:-3px!important;
+  font-size:0!important;
+  line-height:0!important;
+  background:#16a34a!important;
+  border:2px solid var(--surface,#fff)!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell.schedule-icon-only-v6136.review{
+  outline:2px solid #f97316!important;
+  outline-offset:1px!important;
+}
+
+.schedule-shift-icon-v6136{
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  color:inherit;
+  line-height:1;
+  pointer-events:none;
+}
+.schedule-shift-icon-v6136 svg,
+.schedule-icon-legend-v6136 svg{
+  width:22px;
+  height:22px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.schedule-shift-icon-v6136.icon-holiday svg{
+  width:23px;
+  height:23px;
+}
+.schedule-shift-icon-v6136.icon-split svg{
+  width:24px;
+  height:24px;
+}
+
+/* Distinct presentation for new scheduling-rule icon classes while preserving
+   System Settings shift colors for normal day/night/off/holiday/leave. */
+#schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split{
+  background:linear-gradient(135deg,var(--shift-d-soft,#e8f1ff),var(--shift-n-soft,#eee9ff))!important;
+  border-color:#c9c8ec!important;
+  color:#5b4fbb!important;
+}
+#schedulePersonWorkspace .schedule-icon-only-v6136 .icon-hour{
+  color:inherit;
+}
+
+.schedule-icon-legend-v6136{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:6px;
+  max-width:620px;
+}
+.schedule-icon-legend-item-v6136{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  min-height:30px;
+  padding:4px 8px 4px 5px;
+  border:1px solid var(--slate-200,#d9e2ec);
+  border-radius:10px;
+  background:var(--surface,#fff);
+  font-size:9px;
+  font-weight:850;
+  white-space:nowrap;
+}
+.legend-svg-v6136{
+  width:22px;
+  height:22px;
+  display:grid;
+  place-items:center;
+  border-radius:7px;
+}
+.legend-svg-v6136 svg{width:16px;height:16px;stroke-width:2.15}
+.schedule-icon-legend-item-v6136.tone-day{color:var(--shift-d-text,#2563eb)}
+.schedule-icon-legend-item-v6136.tone-day .legend-svg-v6136{background:var(--shift-d-soft,#e8f1ff)}
+.schedule-icon-legend-item-v6136.tone-night{color:var(--shift-n-text,#7c3aed)}
+.schedule-icon-legend-item-v6136.tone-night .legend-svg-v6136{background:var(--shift-n-soft,#eee9ff)}
+.schedule-icon-legend-item-v6136.tone-off{color:var(--shift-off-text,#64748b)}
+.schedule-icon-legend-item-v6136.tone-off .legend-svg-v6136{background:var(--shift-off-soft,#eef1f5)}
+.schedule-icon-legend-item-v6136.tone-leave{color:var(--shift-lv-text,#0f766e)}
+.schedule-icon-legend-item-v6136.tone-leave .legend-svg-v6136{background:var(--shift-lv-soft,#e5f8ec)}
+.schedule-icon-legend-item-v6136.tone-holiday{color:var(--shift-hol-text,#ea580c)}
+.schedule-icon-legend-item-v6136.tone-holiday .legend-svg-v6136{background:var(--shift-hol-soft,#fff0dc)}
+.schedule-icon-legend-item-v6136.tone-hour{color:#0f766e}
+.schedule-icon-legend-item-v6136.tone-hour .legend-svg-v6136{background:#e6f7f2}
+.schedule-icon-legend-item-v6136.tone-split{color:#5b4fbb}
+.schedule-icon-legend-item-v6136.tone-split .legend-svg-v6136{background:linear-gradient(135deg,var(--shift-d-soft,#e8f1ff),var(--shift-n-soft,#eee9ff))}
+
+/* Tooltip is now the single source of shift details in the compact grid. */
+.schedule-person-shift-tooltip-v61146{
+  min-width:190px!important;
+  max-width:min(320px,calc(100vw - 16px))!important;
+  padding:10px 12px!important;
+}
+.schedule-person-shift-tooltip-v61146 strong{
+  font-size:11.5px!important;
+  letter-spacing:.05px;
+}
+.schedule-person-shift-tooltip-v61146 span{
+  font-size:10.5px!important;
+}
+
+body.theme-dark .schedule-icon-legend-item-v6136,
+.dark .schedule-icon-legend-item-v6136{
+  background:#102333;
+  border-color:#304b62;
+}
+body.theme-dark #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split,
+.dark #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split{
+  background:linear-gradient(135deg,var(--shift-d-soft-strong,#173b57),var(--shift-n-soft-strong,#312451))!important;
+  border-color:#5a5680!important;
+  color:#f0ebff!important;
+}
+
+@media(max-width:900px){
+  #schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell.schedule-icon-only-v6136{
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+  }
+  .schedule-shift-icon-v6136{width:26px;height:26px}
+  .schedule-shift-icon-v6136 svg{width:21px;height:21px}
+  .schedule-icon-legend-v6136{justify-content:flex-start;max-width:none}
+}

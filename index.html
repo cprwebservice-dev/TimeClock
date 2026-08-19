@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.13.5 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.13.6 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.13.5 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.13.6 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.13.5-20260819" rel="stylesheet"/>
+<link href="./app.css?v=6.13.6-20260819" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.13.5</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.13.6</span></div>
 </form>
 </div>
 </section>
@@ -343,7 +343,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.13.5</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.13.5 Cross-Month Day-off Resolver</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.13.6</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.13.6 Icon-only Person Schedule</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -599,8 +599,16 @@
 </div>
 <div class="panel section-gap schedule-workspace hidden" id="schedulePersonWorkspace" data-schedule-view-panel="PERSON">
 <div class="panel-header schedule-panel-header">
-<div><h3>ตารางกะรายบุคคล • เต็มเดือน</h3><p>แสดงทุกวันของเดือนในตารางเดียว • Label แสดงรหัสกะ • วางเมาส์บน Label เพื่อดูเวลาเริ่ม–สิ้นสุดกะ • การเลือกหลายช่องและคำสั่งจัดกะคงเดิม</p></div>
-<div class="schedule-legend"><span class="badge badge-blue">กะปกติ = ตามรูปแบบ 5D/6D</span><span class="badge shift-legend-night">กะกลางคืน = ตามกะที่รองรับกลุ่ม</span><span class="badge badge-orange">HOL นักขัตฤกษ์</span><span class="badge badge-gray">OFF วันหยุด</span><span class="badge schedule-holiday-legend">กรอบส้ม = วันหยุดนักขัตฤกษ์</span><span class="badge schedule-weeklyoff-legend">พื้นเทา = วันหยุดประจำสัปดาห์</span></div>
+<div><h3>ตารางกะรายบุคคล • เต็มเดือน</h3><p>แสดงทุกวันของเดือนในตารางเดียว • Label แสดงเฉพาะ Icon ขนาดชัดเจน • วางเมาส์บน Icon เพื่อดูรหัสกะ เวลา และรายละเอียด • Logic การจัดกะคงเดิม</p></div>
+<div class="schedule-icon-legend-v6136" aria-label="สัญลักษณ์ประเภทกะ">
+  <span class="schedule-icon-legend-item-v6136 tone-day"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg></span>เช้า</span>
+  <span class="schedule-icon-legend-item-v6136 tone-night"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.3 8.3 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg></span>ดึก</span>
+  <span class="schedule-icon-legend-item-v6136 tone-off"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19v-7h18v7M5 12V7h5a3 3 0 0 1 3 3v2M13 12V9h4a4 4 0 0 1 4 4M3 16h18M5 19v2M19 19v2"></path></svg></span>หยุด</span>
+  <span class="schedule-icon-legend-item-v6136 tone-leave"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v5h5M10 12h5M10 16h4"></path></svg></span>ลา</span>
+  <span class="schedule-icon-legend-item-v6136 tone-holiday"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.55 4.45L18 9l-4.45 1.55L12 15l-1.55-4.45L6 9l4.45-1.55L12 3ZM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"></path></svg></span>นักขัต</span>
+  <span class="schedule-icon-legend-item-v6136 tone-hour"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>นับชม.</span>
+  <span class="schedule-icon-legend-item-v6136 tone-split"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10l-2.5-2.5M17 17H7l2.5 2.5M17 7l-2.5 2.5M7 17l2.5-2.5"></path></svg></span>เช้า+ดึก</span>
+</div>
 </div>
 
 <div class="schedule-commandbar">
@@ -2483,6 +2491,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.13.5-20260819"></script>
+<script src="./app.js?v=6.13.6-20260819"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.13.5";
-document.documentElement.dataset.timeClockBuild = "6.13.5";
+window.__TIME_CLOCK_BUILD__ = "V6.13.6";
+document.documentElement.dataset.timeClockBuild = "6.13.6";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.5";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.13.5',
+  version: '6.13.6',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5695,7 +5695,7 @@ window.tcIsDayShiftCode = value =>
       if (text) {
         text.textContent = mode === "TEAM"
           ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานทำงานอัตโนมัติ • เมื่อหัวหน้างานปรับกะและกดบันทึก ระบบมีผลทันที"
-          : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงรหัสกะ • วางเมาส์บนกะเพื่อดูเวลาเริ่ม–สิ้นสุด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
+          : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงเฉพาะไอคอน • วางเมาส์บนไอคอนเพื่อดูรหัสกะ เวลา และรายละเอียด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
       }
 
       if (mode === "TEAM") {
@@ -6206,6 +6206,121 @@ window.tcIsDayShiftCode = value =>
         tone,
         isWorking: ['day','night'].includes(tone)
       };
+    }
+
+
+
+    /* V6.13.6 — Person Full-Month icon-only shift labels.
+       Presentation only: backend Shift Codes / rules / calculations stay unchanged. */
+    function schedulePersonIconSvgV6136(kind) {
+      const common = 'viewBox="0 0 24 24" aria-hidden="true" focusable="false"';
+      const icons = {
+        day: `<svg ${common}><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg>`,
+        night: `<svg ${common}><path d="M20.5 14.2A8.3 8.3 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>`,
+        off: `<svg ${common}><path d="M3 19v-7h18v7M5 12V7h5a3 3 0 0 1 3 3v2M13 12V9h4a4 4 0 0 1 4 4"></path><path d="M3 16h18M5 19v2M19 19v2"></path></svg>`,
+        leave: `<svg ${common}><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v5h5M10 12h5M10 16h4"></path></svg>`,
+        holiday: `<svg ${common}><path d="m12 3 1.55 4.45L18 9l-4.45 1.55L12 15l-1.55-4.45L6 9l4.45-1.55L12 3Z"></path><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15ZM5 14l.7 1.8L7.5 16.5l-1.8.7L5 19l-.7-1.8-1.8-.7 1.8-.7L5 14Z"></path></svg>`,
+        hour: `<svg ${common}><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>`,
+        split: `<svg ${common}><path d="M7 7h10l-2.5-2.5M17 17H7l2.5 2.5"></path><path d="M17 7l-2.5 2.5M7 17l2.5-2.5"></path></svg>`,
+        unknown: `<svg ${common}><circle cx="12" cy="12" r="8"></circle><path d="M9.8 9a2.4 2.4 0 0 1 4.65.8c0 1.8-2.45 2-2.45 3.7M12 17h.01"></path></svg>`
+      };
+      return icons[kind] || icons.unknown;
+    }
+
+    function schedulePersonIconMetaV6136(row) {
+      const shift = scheduleResolveShiftMeta(row || {});
+      const code = window.tcShiftCode(
+        row?.assigned_shift_code
+        || row?.effective_shift_code
+        || row?.auto_shift_code
+        || row?.shift_code
+        || shift?.code
+        || ''
+      );
+      const dayType = String(row?.day_type || row?.calculation_day_type || '').trim().toUpperCase();
+      const ruleMode = String(row?.schedule_rule_mode || row?.work_mode_code || '').trim().toUpperCase();
+      const template = String(scheduleWorkTemplateCodeV6118(row) || '').trim().toUpperCase();
+      const shiftMaster = state.filters.shifts.find(s => window.tcShiftCode(s.shift_code) === code);
+      const isLeave = Boolean(
+        row?.leave_request_id
+        || row?.leave_type_code
+        || row?.leave_type_name
+        || code === 'LV'
+        || shift?.tone === 'leave'
+        || dayType === 'LEAVE'
+      );
+      const isHoliday = Boolean(
+        row?.is_public_holiday
+        || code === 'HOL'
+        || shift?.tone === 'holiday'
+        || ['PUBLIC_HOLIDAY','HOLIDAY'].includes(dayType)
+      );
+      const isOff = Boolean(
+        ruleMode === 'DYNAMIC_OFF'
+        || shiftMaster?.is_workday === false
+        || shift?.tone === 'off'
+        || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(dayType)
+      );
+      const isHour = ruleMode === 'HOUR_BASED';
+      const isSplit = Boolean(
+        ['SPLIT_WAIT_NIGHT','NORMAL_LATE_CUSTOMER'].includes(ruleMode)
+        || template === 'SPLIT_FLEX'
+        || row?.shift_2_planned_start_at
+        || row?.shift_2_planned_end_at
+        || row?.second_shift_code
+      );
+
+      if (isLeave) return { kind:'leave', label:'ลา', tone:'leave' };
+      if (isHoliday) return { kind:'holiday', label:'วันหยุดนักขัตฤกษ์', tone:'holiday' };
+      if (isOff) return { kind:'off', label:'วันหยุด', tone:'off' };
+      if (isHour) return { kind:'hour', label:'กะนับชั่วโมง', tone:shift?.tone || 'day' };
+      if (isSplit) return { kind:'split', label:'กะเช้า + งานช่วงดึก', tone:'split' };
+      if (shift?.tone === 'night' || window.tcIsNightShiftCode(code)) {
+        return { kind:'night', label:'กะดึก', tone:'night' };
+      }
+      if (shift?.tone === 'day' || window.tcIsDayShiftCode(code)) {
+        return { kind:'day', label:'กะเช้า', tone:'day' };
+      }
+      return { kind:'unknown', label:'กะทำงาน', tone:shift?.tone || 'day' };
+    }
+
+    function schedulePersonIconHtmlV6136(row) {
+      const meta = schedulePersonIconMetaV6136(row);
+      return `<span class="schedule-shift-icon-v6136 icon-${safe(meta.kind)}" aria-hidden="true">${schedulePersonIconSvgV6136(meta.kind)}</span>`;
+    }
+
+    function schedulePersonTooltipV6136(row, context = {}) {
+      const meta = schedulePersonIconMetaV6136(row);
+      const code = window.tcShiftCode(
+        row?.assigned_shift_code
+        || row?.effective_shift_code
+        || row?.auto_shift_code
+        || row?.shift_code
+        || '-'
+      );
+      const windowMeta = scheduleEffectiveShiftWindowV6133(row);
+      const start = formatTime(windowMeta.start);
+      const end = formatTime(windowMeta.end);
+      const hasTime = start !== '-' && end !== '-';
+      const ruleMode = String(row?.schedule_rule_mode || row?.work_mode_code || '').trim().toUpperCase();
+      const split = meta.kind === 'split';
+      const customerStart = formatTime(row?.second_segment_start || row?.customer_window_start || row?.shift_2_planned_start_at);
+      const customerEnd = formatTime(row?.second_segment_planned_end || row?.customer_window_end || row?.shift_2_planned_end_at);
+      const leaveName = String(row?.leave_type_name || row?.leave_name || row?.leave_type_code || '').trim();
+      const holidayName = String(row?.holiday_name || row?.public_holiday_name || '').trim();
+      const lines = [
+        `${meta.label}${code && code !== '-' ? ` • ${code}` : ''}`,
+        holidayName && meta.kind === 'holiday' ? `ชื่อวันหยุด ${holidayName}` : null,
+        leaveName && meta.kind === 'leave' ? `ประเภทการลา ${leaveName}` : null,
+        hasTime ? `เวลาเริ่ม–สิ้นสุด ${start}–${end}` : null,
+        ruleMode === 'HOUR_BASED' ? 'รูปแบบ กะนับชั่วโมง' : null,
+        split && customerStart !== '-' ? `ช่วงที่ 2 ${customerStart}–${customerEnd !== '-' ? customerEnd : 'ตามเวลาออก'}` : null,
+        context.statusLabel || null,
+        context.patternLabel || null,
+        Number(row?.waiting_minutes || 0) > 0 ? `ช่วงรอ ${(Number(row.waiting_minutes)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. (ไม่นับเวลาทำงาน)` : null,
+        row?.comp_off_earned ? 'ได้รับวันหยุดชดเชย' : null
+      ].filter(Boolean);
+      return lines.join('|');
     }
 
     function fillScheduleTeamFocusOptions(rows = []) {
@@ -8769,30 +8884,15 @@ window.tcIsDayShiftCode = value =>
               ? schedulePersonSecondShiftCodeV61147(r)
               : '';
 
-          const personShiftCodeHtmlV61147 =
-            schedulingRuleDisplayV6120
-              ? `<span class="person-shift-code-stack-v61147 scheduling-rule-code-v6120"><b class="schedule-shift-code person-shift-code-v61147">${safe(schedulingRuleDisplayV6120.short || schedulingRuleDisplayV6120.label || normalizedCode)}</b></span>`
-              : splitWorkTemplate
-              ? `<span class="person-shift-code-stack-v61147">
-                  <b class="schedule-shift-code person-shift-code-v61147 shift-1" aria-label="กะที่ 1 ${safe(code)}">${safe(code)}</b>
-                  <b class="schedule-shift-code person-shift-code-v61147 shift-2" aria-label="กะที่ 2 ${safe(secondShiftCodeV61147)}">${safe(secondShiftCodeV61147)}</b>
-                </span>`
-              : `<b class="schedule-shift-code">${safe(code)}</b>`;
+          const personShiftIconMetaV6136 = schedulePersonIconMetaV6136(r);
+          const personShiftIconHtmlV6136 = schedulePersonIconHtmlV6136(r);
+          const personShiftTooltipV6136 = schedulePersonTooltipV6136(r, {
+            statusLabel,
+            patternLabel: rowPattern ? `รูปแบบ ${schedulePatternLabel(rowPattern)}` : null
+          });
+          const iconAriaV6136 = `${personShiftIconMetaV6136.label}${normalizedCode && normalizedCode !== '-' ? ` ${normalizedCode}` : ''}${shiftTimeLabel ? ` ${shiftTimeLabel}` : ''}`;
 
-          const personShiftTooltipWithCodeV61147 = splitWorkTemplate
-            ? [
-                `กะที่ 1 ${normalizedCode || "-"}`,
-                showShiftTime
-                  ? `เวลาเริ่ม–สิ้นสุด ${shiftTimeLabel}`
-                  : "ไม่พบเวลาเริ่ม–สิ้นสุดกะที่ 1",
-                `กะที่ 2 ${secondShiftCodeV61147}`,
-                customerStart !== "-"
-                  ? `เวลาเริ่ม–สิ้นสุด ${customerStart}–${customerEndLabel}`
-                  : "เวลาเริ่ม–สิ้นสุด ตามแผนงานกะที่ 2" 
-              ].filter(Boolean).join("|")
-            : personShiftTooltipV61146;
-
-          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell ${cls} ${splitWorkTemplate?"has-split-work-v6118 person-double-code-v61147":""} ${managerOwnEmployee?"manager-self-readonly":""}" ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipWithCodeV61147)}" aria-label="${safe(cellTitle)}">${personShiftCodeHtmlV61147}${scheduleTimeHtml}${r.schedule_status==='NEED_REVIEW'?'<i>!</i>':''}${calcFlags}</span></td>`;
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${managerOwnEmployee?"manager-self-readonly":""}" ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
         }
 
         html += `</tr>`;
@@ -25860,7 +25960,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.13.5';
+  const VERSION='6.13.6';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
