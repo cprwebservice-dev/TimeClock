@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.13.0";
-document.documentElement.dataset.timeClockBuild = "6.13.0";
+window.__TIME_CLOCK_BUILD__ = "V6.13.1";
+document.documentElement.dataset.timeClockBuild = "6.13.1";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.0";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.13.0',
+  version: '6.13.1',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -931,7 +931,7 @@ window.tcIsDayShiftCode = value =>
         await withTimeout(
           request,
           30000,
-          `โหลดตารางกะ Lightweight V6.13.0 ชุด ${
+          `โหลดตารางกะ Lightweight V6.13.1 ชุด ${
             Math.floor(from / pageSize) + 1
           }`
         );
@@ -943,7 +943,7 @@ window.tcIsDayShiftCode = value =>
           )
         ) {
           throw new Error(
-            "SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED: กรุณารัน SQL V6.13.0"
+            "SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED: กรุณารัน SQL V6.13.1"
           );
         }
 
@@ -3441,15 +3441,23 @@ window.tcIsDayShiftCode = value =>
     };
 
     function shiftPatternCodes(shift) {
+      const code = String(shift?.shift_code || "").trim().toUpperCase();
+
+      // V6.13.1: Core operational shift pairs are stable business mappings.
+      // Do not let a stale applicable_pattern_codes value hide the paired night
+      // shift from the assignment popup. Times may be edited later in Shift Master
+      // without changing which weekly work pattern the shift belongs to.
+      if (["STD","S134"].includes(code)) return ["TECH_5D"];
+      if (["S043","S135"].includes(code)) return ["TECH_6D"];
+
       const raw = Array.isArray(shift?.applicable_pattern_codes)
         ? shift.applicable_pattern_codes
         : [];
       const values = raw.map(x => String(x || "").trim().toUpperCase()).filter(Boolean);
-      // V6.13.0: Legacy/custom shifts can have an empty array. Treat empty as
-      // compatible with both work patterns instead of hiding the shift from the
-      // assignment popup. HR can still disable the shift or restrict it by unit.
       return values.length ? values : ["TECH_5D","TECH_6D"];
     }
+
+    window.tcShiftPatternCodesV6131 = shiftPatternCodes;
 
     function shiftDefaultPatternCodes(shift) {
       return (Array.isArray(shift?.default_pattern_codes) ? shift.default_pattern_codes : [])
@@ -5313,7 +5321,7 @@ window.tcIsDayShiftCode = value =>
           return date>=period.startDate&&date<=period.endDate;
         });
 
-        // V6.13.0: start/resign dates now come from the lightweight Grid RPC directly; Scope metadata remains a fallback.
+        // V6.13.1: start/resign dates now come from the lightweight Grid RPC directly; Scope metadata remains a fallback.
         // Reuse it instead of making the base schedule RPC join extra historical tables.
         const scheduleEmployeeMetaMapV6129 = new Map(
           (Array.isArray(filterOptions.employees) ? filterOptions.employees : [])
@@ -7470,7 +7478,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function fetchEmployeeMonthScheduleV6130(empCode, bounds) {
-      // V6.13.0: dedicated Monthly Personal RPC first. It is independent from
+      // V6.13.1: dedicated Monthly Personal RPC first. It is independent from
       // the old V6.12.6 Work Plan metadata chain and returns only one employee.
       const args = {
         p_emp_code: empCode,
@@ -7484,7 +7492,7 @@ window.tcIsDayShiftCode = value =>
         const response = await withTimeout(
           state.client.rpc('ta_get_employee_month_schedule_v6130', args),
           15000,
-          'โหลด Monthly Personal Overview V6.13.0'
+          'โหลด Monthly Personal Overview V6.13.1'
         );
         if (response.error) dedicatedError = response.error;
         else rows = Array.isArray(response.data) ? response.data : [];
@@ -7498,7 +7506,7 @@ window.tcIsDayShiftCode = value =>
         // so a thrown timeout could still blank the entire modal.
         scheduleLogRpcOnceV6126(
           'employee-month-v6130-fallback',
-          'Monthly Personal V6.13.0 dedicated RPC unavailable; using lightweight schedule fallback:',
+          'Monthly Personal V6.13.1 dedicated RPC unavailable; using lightweight schedule fallback:',
           dedicatedError
         );
         try {
@@ -7518,7 +7526,7 @@ window.tcIsDayShiftCode = value =>
         } catch (fallbackError) {
           if (window.TimeClockShiftAPI?.missingFunction?.(dedicatedError)
               || String(fallbackError?.message || '').includes('SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED')) {
-            throw new Error('MONTHLY_PERSONAL_RPC_V6130_REQUIRED: กรุณารัน SQL V6.13.0');
+            throw new Error('MONTHLY_PERSONAL_RPC_V6130_REQUIRED: กรุณารัน SQL V6.13.1');
           }
           throw fallbackError || dedicatedError;
         }
@@ -7556,7 +7564,7 @@ window.tcIsDayShiftCode = value =>
           bounds
         );
 
-        // V6.13.0 monthly schedule already includes Work Plan / Template
+        // V6.13.1 monthly schedule already includes Work Plan / Template
         // metadata, so do not issue a second month-wide Work Plan RPC.
         const workPlanPromise = Promise.resolve({ data: [], error: null });
 
@@ -11314,8 +11322,8 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED")) return "กรุณารัน SQL V6.13.0 เพื่อเปิดใช้ Schedule Grid แบบ Lightweight";
-      if (msg.includes("MONTHLY_PERSONAL_RPC_V6130_REQUIRED")) return "กรุณารัน SQL V6.13.0 เพื่อเปิดใช้ Monthly Personal Overview รุ่นใหม่";
+      if (msg.includes("SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED")) return "กรุณารัน SQL V6.13.1 เพื่อเปิดใช้ Schedule Grid แบบ Lightweight";
+      if (msg.includes("MONTHLY_PERSONAL_RPC_V6130_REQUIRED")) return "กรุณารัน SQL V6.13.1 เพื่อเปิดใช้ Monthly Personal Overview รุ่นใหม่";
       if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตารางกะตาม User Scope";
       if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
       if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 ก่อนบันทึกหรือแก้ไขกะ";
@@ -25775,7 +25783,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.13.0';
+  const VERSION='6.13.1';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -25832,8 +25840,9 @@ ${skippedSummary(compatibility.skipped)}
       if(String(sh.note||'').includes('[SYSTEM_GENERATED_V6120]'))return false;
       const code=String(sh.shift_code||'').toUpperCase();
       if(['OFF','HOL','LV'].includes(code))return false;
-      const patterns=(Array.isArray(sh.applicable_pattern_codes)?sh.applicable_pattern_codes:[]).map(x=>String(x||'').trim().toUpperCase()).filter(Boolean);
-      const effectivePatterns=patterns.length?patterns:['TECH_5D','TECH_6D'];
+      const effectivePatterns=window.tcShiftPatternCodesV6131?.(sh)
+        || (Array.isArray(sh.applicable_pattern_codes)?sh.applicable_pattern_codes:[]).map(x=>String(x||'').trim().toUpperCase()).filter(Boolean)
+        || ['TECH_5D','TECH_6D'];
       if(normalizedPattern&&!effectivePatterns.includes(normalizedPattern))return false;
       if(!shiftAllowedForDepartment(code,department))return false;
       return true;
@@ -25852,7 +25861,7 @@ ${skippedSummary(compatibility.skipped)}
     const code=rowCode(r),day=String(r?.day_type||'').toUpperCase(),sm=shiftMaster(code);
     const assigned=String(r?.assigned_shift_code||r?.shift_code||'').trim().toUpperCase();
     const assignedMaster=assigned?shiftMaster(assigned):null;
-    // V6.13.0: A manually assigned working shift wins over the natural
+    // V6.13.1: A manually assigned working shift wins over the natural
     // Sunday/holiday classification. This is essential for OFF-basis lookup.
     if(assigned&&assignedMaster?.is_workday!==false&&!['OFF','HOL','LV'].includes(assigned))return false;
     return ['OFF','HOL','LV'].includes(code)||sm?.is_workday===false||['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day)||r?.schedule_rule_mode==='DYNAMIC_OFF';
@@ -25937,9 +25946,8 @@ ${skippedSummary(compatibility.skipped)}
       if(sh.is_active===false||sh.is_workday===false)return false;
       if(String(sh.note||'').includes('[SYSTEM_GENERATED_V6120]'))return false;
       const code=String(sh.shift_code||'').toUpperCase();if(['OFF','HOL','LV'].includes(code))return false;
-      const rawPatterns=Array.isArray(sh.applicable_pattern_codes)?sh.applicable_pattern_codes:[];
-      const patterns=rawPatterns.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean);
-      const effectivePatterns=patterns.length?patterns:['TECH_5D','TECH_6D'];
+      const effectivePatterns=window.tcShiftPatternCodesV6131?.(sh)
+        || (()=>{const raw=Array.isArray(sh.applicable_pattern_codes)?sh.applicable_pattern_codes:[];const values=raw.map(x=>String(x||'').trim().toUpperCase()).filter(Boolean);return values.length?values:['TECH_5D','TECH_6D'];})();
       if(pattern&&!effectivePatterns.includes(String(pattern).trim().toUpperCase()))return false;
       if(!shiftAllowedForDepartment(code,department))return false;
       const night=sh.is_night_shift===true||window.tcIsNightShiftCode?.(code)||String(sh.shift_name||'').toLowerCase().includes('กะดึก')||String(sh.shift_name||'').toLowerCase().includes('กลางคืน');
