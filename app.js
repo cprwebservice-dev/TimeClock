@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.13.1";
-document.documentElement.dataset.timeClockBuild = "6.13.1";
+window.__TIME_CLOCK_BUILD__ = "V6.13.2";
+document.documentElement.dataset.timeClockBuild = "6.13.2";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.1";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.13.1',
+  version: '6.13.2',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -41,12 +41,12 @@ window.TimeClockShiftCodesV61157 = Object.freeze({
 
   isNight(value) {
     const code = this.canonical(value);
-    return code === 'S134';
+    return ['S134','S135'].includes(code);
   },
 
   isDay(value) {
     const code = this.canonical(value);
-    return ['STD','S043','S135'].includes(code);
+    return ['STD','S043'].includes(code);
   },
 
   label(value) {
@@ -931,7 +931,7 @@ window.tcIsDayShiftCode = value =>
         await withTimeout(
           request,
           30000,
-          `โหลดตารางกะ Lightweight V6.13.1 ชุด ${
+          `โหลดตารางกะ Lightweight V6.13.2 ชุด ${
             Math.floor(from / pageSize) + 1
           }`
         );
@@ -943,7 +943,7 @@ window.tcIsDayShiftCode = value =>
           )
         ) {
           throw new Error(
-            "SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED: กรุณารัน SQL V6.13.1"
+            "SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED: กรุณารัน SQL V6.13.2"
           );
         }
 
@@ -3443,7 +3443,7 @@ window.tcIsDayShiftCode = value =>
     function shiftPatternCodes(shift) {
       const code = String(shift?.shift_code || "").trim().toUpperCase();
 
-      // V6.13.1: Core operational shift pairs are stable business mappings.
+      // V6.13.2: Core operational shift pairs are stable business mappings.
       // Do not let a stale applicable_pattern_codes value hide the paired night
       // shift from the assignment popup. Times may be edited later in Shift Master
       // without changing which weekly work pattern the shift belongs to.
@@ -5321,7 +5321,7 @@ window.tcIsDayShiftCode = value =>
           return date>=period.startDate&&date<=period.endDate;
         });
 
-        // V6.13.1: start/resign dates now come from the lightweight Grid RPC directly; Scope metadata remains a fallback.
+        // V6.13.2: start/resign dates now come from the lightweight Grid RPC directly; Scope metadata remains a fallback.
         // Reuse it instead of making the base schedule RPC join extra historical tables.
         const scheduleEmployeeMetaMapV6129 = new Map(
           (Array.isArray(filterOptions.employees) ? filterOptions.employees : [])
@@ -7478,7 +7478,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function fetchEmployeeMonthScheduleV6130(empCode, bounds) {
-      // V6.13.1: dedicated Monthly Personal RPC first. It is independent from
+      // V6.13.2: dedicated Monthly Personal RPC first. It is independent from
       // the old V6.12.6 Work Plan metadata chain and returns only one employee.
       const args = {
         p_emp_code: empCode,
@@ -7492,7 +7492,7 @@ window.tcIsDayShiftCode = value =>
         const response = await withTimeout(
           state.client.rpc('ta_get_employee_month_schedule_v6130', args),
           15000,
-          'โหลด Monthly Personal Overview V6.13.1'
+          'โหลด Monthly Personal Overview V6.13.2'
         );
         if (response.error) dedicatedError = response.error;
         else rows = Array.isArray(response.data) ? response.data : [];
@@ -7506,7 +7506,7 @@ window.tcIsDayShiftCode = value =>
         // so a thrown timeout could still blank the entire modal.
         scheduleLogRpcOnceV6126(
           'employee-month-v6130-fallback',
-          'Monthly Personal V6.13.1 dedicated RPC unavailable; using lightweight schedule fallback:',
+          'Monthly Personal V6.13.2 dedicated RPC unavailable; using lightweight schedule fallback:',
           dedicatedError
         );
         try {
@@ -7526,7 +7526,7 @@ window.tcIsDayShiftCode = value =>
         } catch (fallbackError) {
           if (window.TimeClockShiftAPI?.missingFunction?.(dedicatedError)
               || String(fallbackError?.message || '').includes('SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED')) {
-            throw new Error('MONTHLY_PERSONAL_RPC_V6130_REQUIRED: กรุณารัน SQL V6.13.1');
+            throw new Error('MONTHLY_PERSONAL_RPC_V6130_REQUIRED: กรุณารัน SQL V6.13.2');
           }
           throw fallbackError || dedicatedError;
         }
@@ -7564,7 +7564,7 @@ window.tcIsDayShiftCode = value =>
           bounds
         );
 
-        // V6.13.1 monthly schedule already includes Work Plan / Template
+        // V6.13.2 monthly schedule already includes Work Plan / Template
         // metadata, so do not issue a second month-wide Work Plan RPC.
         const workPlanPromise = Promise.resolve({ data: [], error: null });
 
@@ -11322,8 +11322,8 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
-      if (msg.includes("SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED")) return "กรุณารัน SQL V6.13.1 เพื่อเปิดใช้ Schedule Grid แบบ Lightweight";
-      if (msg.includes("MONTHLY_PERSONAL_RPC_V6130_REQUIRED")) return "กรุณารัน SQL V6.13.1 เพื่อเปิดใช้ Monthly Personal Overview รุ่นใหม่";
+      if (msg.includes("SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED")) return "กรุณารัน SQL V6.13.2 เพื่อเปิดใช้ Schedule Grid แบบ Lightweight";
+      if (msg.includes("MONTHLY_PERSONAL_RPC_V6130_REQUIRED")) return "กรุณารัน SQL V6.13.2 เพื่อเปิดใช้ Monthly Personal Overview รุ่นใหม่";
       if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตารางกะตาม User Scope";
       if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
       if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 ก่อนบันทึกหรือแก้ไขกะ";
@@ -11837,6 +11837,13 @@ window.tcIsDayShiftCode = value =>
   }
 
   function shiftPatterns(shift){
+    const canonicalPatterns =
+      window.tcShiftPatternCodesV6131?.(shift);
+
+    if(Array.isArray(canonicalPatterns) && canonicalPatterns.length){
+      return canonicalPatterns;
+    }
+
     const patterns = Array.isArray(shift?.applicable_pattern_codes)
       ? shift.applicable_pattern_codes
       : ["TECH_5D","TECH_6D"];
@@ -16920,11 +16927,21 @@ ${skippedSummary(compatibility.skipped)}
       || null;
 
     if(pattern){
-      fillShiftSelect(
-        pattern,
-        $('assignShiftCode')?.value || null,
-        code
-      );
+      // V6.13.2: once the Scheduling Rules assignment controller is active,
+      // it owns the shift dropdown. The legacy template handler must not
+      // overwrite Work Pattern + Department Scope options after the modal opens.
+      const handledBySchedulingRules =
+        window.TimeClockSchedulingRulesV6120
+          ?.refreshWorkingShiftOptions
+          ?.() === true;
+
+      if(!handledBySchedulingRules){
+        fillShiftSelect(
+          pattern,
+          $('assignShiftCode')?.value || null,
+          code
+        );
+      }
     }
 
     toggleCustomerEndModeV61110();
@@ -25783,7 +25800,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.13.1';
+  const VERSION='6.13.2';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -25795,7 +25812,7 @@ ${skippedSummary(compatibility.skipped)}
     HOUR_BASED:{label:'กะนับชั่วโมง',short:'นับชั่วโมง',icon:'◷',desc:'ระบุเวลาเริ่ม ระบบคำนวณเวลาสิ้นสุดจากชั่วโมงรวมพัก'},
     DYNAMIC_OFF:{label:'วันหยุดตามกะล่าสุด',short:'หยุด',icon:'⌂',desc:'ช่วงวันหยุดอ้างอิงเวลาเดียวกับกะทำงานก่อนหน้า'}
   };
-  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[]};
+  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:''};
   async function rpc(name,args={}){
     const client=app()?.state?.client;
     if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
@@ -25832,6 +25849,40 @@ ${skippedSummary(compatibility.skipped)}
     if(sm.is_workday===false)return true;
     return shiftAllowedForDepartment(code,rowDepartment(row));
   }
+  async function loadAssignmentShiftOptionsV6132(pattern,department,force=false){
+    const normalizedPattern=String(pattern||'').trim().toUpperCase();
+    const normalizedDepartment=String(department||'').trim();
+    const key=`${normalizedPattern}|${normalizedDepartment}`;
+    if(!force&&st.assignmentShiftOptionsKey===key)return st.assignmentShiftOptions;
+
+    try{
+      const rows=await rpc('ta_get_assignment_shift_options_v6132',{
+        p_pattern_code:normalizedPattern||null,
+        p_department:normalizedDepartment||null
+      })||[];
+      st.assignmentShiftOptions=Array.isArray(rows)?rows:[];
+      st.assignmentShiftOptionsKey=key;
+
+      // Merge the authoritative popup catalog back into Shift Master cache so
+      // save validation / time previews use the same current metadata.
+      const current=Array.isArray(app()?.state?.filters?.shifts)?app().state.filters.shifts:[];
+      const byCode=new Map(current.map(x=>[String(x.shift_code||'').trim().toUpperCase(),x]));
+      for(const row of st.assignmentShiftOptions){
+        const code=String(row.shift_code||'').trim().toUpperCase();
+        if(!code)continue;
+        byCode.set(code,{...(byCode.get(code)||{}),...row,shift_code:code,is_active:true,is_workday:true});
+      }
+      if(app()?.state?.filters)app().state.filters.shifts=[...byCode.values()].sort((a,b)=>Number(a.display_order||0)-Number(b.display_order||0)||String(a.shift_code||'').localeCompare(String(b.shift_code||'')));
+      return st.assignmentShiftOptions;
+    }catch(e){
+      console.warn('Assignment Shift Options V6.13.2 fallback to client Shift Master:',{
+        code:e?.code||'',message:e?.message||String(e),pattern:normalizedPattern,department:normalizedDepartment
+      });
+      st.assignmentShiftOptions=[];
+      st.assignmentShiftOptionsKey='';
+      return [];
+    }
+  }
   function resolveWorkingShift(action,pattern,row=null){
     const normalizedPattern=String(pattern||row?.pattern_code||row?.resolved_pattern_code||'').trim().toUpperCase();
     const department=rowDepartment(row);
@@ -25861,7 +25912,7 @@ ${skippedSummary(compatibility.skipped)}
     const code=rowCode(r),day=String(r?.day_type||'').toUpperCase(),sm=shiftMaster(code);
     const assigned=String(r?.assigned_shift_code||r?.shift_code||'').trim().toUpperCase();
     const assignedMaster=assigned?shiftMaster(assigned):null;
-    // V6.13.1: A manually assigned working shift wins over the natural
+    // V6.13.2: A manually assigned working shift wins over the natural
     // Sunday/holiday classification. This is essential for OFF-basis lookup.
     if(assigned&&assignedMaster?.is_workday!==false&&!['OFF','HOL','LV'].includes(assigned))return false;
     return ['OFF','HOL','LV'].includes(code)||sm?.is_workday===false||['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day)||r?.schedule_rule_mode==='DYNAMIC_OFF';
@@ -25942,7 +25993,11 @@ ${skippedSummary(compatibility.skipped)}
   function populateWorkingShiftOptions(splitOnly=false){
     if(!st.current)return;const select=$('assignShiftCode');if(!select)return;
     const pattern=st.current.patternCode;const current=st.current.baseShiftCode||select.value;const department=rowDepartment(st.current.row);
-    const rows=(app()?.state?.filters?.shifts||[]).filter(sh=>{
+    const optionKey=`${String(pattern||'').trim().toUpperCase()}|${String(department||'').trim()}`;
+    const optionSource=(st.assignmentShiftOptionsKey===optionKey)
+      ? st.assignmentShiftOptions
+      : (app()?.state?.filters?.shifts||[]);
+    const rows=(optionSource||[]).filter(sh=>{
       if(sh.is_active===false||sh.is_workday===false)return false;
       if(String(sh.note||'').includes('[SYSTEM_GENERATED_V6120]'))return false;
       const code=String(sh.shift_code||'').toUpperCase();if(['OFF','HOL','LV'].includes(code))return false;
@@ -25957,6 +26012,13 @@ ${skippedSummary(compatibility.skipped)}
     let target=rows.find(sh=>String(sh.shift_code)===String(current));
     if(!target&&splitOnly)target=rows.find(sh=>!sh.is_night_shift);
     if(!target)target=rows[0];if(target){select.value=target.shift_code;st.current.baseShiftCode=target.shift_code;}else{st.current.baseShiftCode=null;}
+  }
+  function refreshWorkingShiftOptions(){
+    if(!st.current)return false;
+    const mode=String(st.current.mode||'NORMAL').toUpperCase();
+    if(['HOUR_BASED','DYNAMIC_OFF'].includes(mode))return true;
+    populateWorkingShiftOptions(mode==='SPLIT_WAIT_NIGHT');
+    return true;
   }
   function setShiftFieldMode(mode){
     const field=$('assignShiftCode')?.closest('.field');if(!field)return;
@@ -26028,7 +26090,8 @@ ${skippedSummary(compatibility.skipped)}
     try{const patterns=await rpc('ta_get_work_patterns',{});st.current.patternRule=(patterns||[]).find(x=>String(x.pattern_code||'').toUpperCase()===String(patternCode||'').toUpperCase())||null;}catch(e){}
     try{const ext=await rpc('ta_get_schedule_rule_assignment_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});st.current.extension=Array.isArray(ext)?ext[0]:ext;}catch(e){}
     const ext=st.current.extension||{};st.current.baseShiftCode=ext.base_shift_code||selectedShift;
-    await loadRuntimeShiftRules();
+    await loadRuntimeShiftRules(true);
+    await loadAssignmentShiftOptionsV6132(patternCode,rowDepartment(row),true);
     try{
       let b=null;
       try{b=await rpc('ta_get_off_shift_basis_v6130',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});}
@@ -26328,7 +26391,7 @@ ${skippedSummary(compatibility.skipped)}
   async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   function init(){ensureAssignmentUi();ensureAdminUi();ensureShiftRuleAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));document.querySelector('[data-page="admin-shifts"]')?.addEventListener('click',()=>setTimeout(()=>loadShiftRuleAdmin(),0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();loadRuntimeShiftRules();});document.addEventListener('timeclock:effective-role-changed',()=>{loadAdminPanel();loadShiftRuleAdmin();});document.documentElement.dataset.schedulingRulesVersion=VERSION;}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,validateBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,ensureRuntimeRules:loadRuntimeShiftRules};
+  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,ensureRuntimeRules:loadRuntimeShiftRules};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
