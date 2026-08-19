@@ -25299,10 +25299,10 @@ ${skippedSummary(compatibility.skipped)}
   window.TimeClockCertificationReasons={load,render,openPage};
 })();
 
-/* ===== V6.12.2 Work Mode Scope Selection Fix + Scheduling Rules ===== */
+/* ===== V6.12.3 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.12.2';
+  const VERSION='6.12.3';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -25314,7 +25314,7 @@ ${skippedSummary(compatibility.skipped)}
     HOUR_BASED:{label:'กะนับชั่วโมง',short:'นับชั่วโมง',icon:'◷',desc:'ระบุเวลาเริ่ม ระบบคำนวณเวลาสิ้นสุดจากชั่วโมงรวมพัก'},
     DYNAMIC_OFF:{label:'วันหยุดตามกะล่าสุด',short:'หยุด',icon:'⌂',desc:'ช่วงวันหยุดอ้างอิงเวลาเดียวกับกะทำงานก่อนหน้า'}
   };
-  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[]};
+  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[]};
   async function rpc(name,args={}){
     const client=app()?.state?.client;
     if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
@@ -25332,7 +25332,25 @@ ${skippedSummary(compatibility.skipped)}
   function defaultTemplate(pattern){return pattern==='TECH_5D'?'ST5':'ST6';}
   function shiftMaster(code){return (app()?.state?.filters?.shifts||[]).find(s=>String(s.shift_code||'').toUpperCase()===String(code||'').toUpperCase());}
   function rowCode(r){return String(r?.assigned_shift_code||r?.effective_shift_code||r?.auto_shift_code||r?.shift_code||'').toUpperCase();}
-  function isOffRow(r){const code=rowCode(r);const day=String(r?.day_type||'').toUpperCase();return ['OFF','HOL','LV'].includes(code)||['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day)||r?.schedule_rule_mode==='DYNAMIC_OFF';}
+  function rowDepartment(r){return String(r?.department||r?.unit_name||r?.org_unit||'').trim();}
+  function runtimeShiftRule(code){return (st.runtimeShiftRules||[]).find(r=>String(r.shift_code||'').toUpperCase()===String(code||'').toUpperCase())||null;}
+  async function loadRuntimeShiftRules(force=false){
+    if(st.runtimeShiftRulesLoaded&&!force)return st.runtimeShiftRules;
+    try{st.runtimeShiftRules=await rpc('ta_get_shift_schedule_rules_runtime_v6123',{})||[];st.runtimeShiftRulesLoaded=true;}
+    catch(e){st.runtimeShiftRules=[];st.runtimeShiftRulesLoaded=true;}
+    return st.runtimeShiftRules;
+  }
+  function shiftAllowedForDepartment(code,department){
+    const r=runtimeShiftRule(code);if(!r)return true;if(r.is_enabled===false)return false;
+    const scope=String(r.scope_mode||'ALL').toUpperCase();if(scope==='ALL')return true;
+    const values=Array.isArray(r.scope_values)?r.scope_values:[];return values.some(x=>String(x).trim()===String(department||'').trim());
+  }
+  function pairedOffForBasis(code){
+    const r=runtimeShiftRule(code),offCode=String(r?.paired_off_shift_code||'').trim().toUpperCase();
+    if(!offCode)return null;const sm=shiftMaster(offCode);if(!sm||sm.is_active===false||sm.is_workday!==false)return null;
+    return {offShiftCode:offCode,offShiftName:sm.shift_name||offCode,start:fmtTime(sm.start_time),end:fmtTime(sm.end_time),basisCode:String(code||'').toUpperCase(),resolutionType:'MAPPED'};
+  }
+  function isOffRow(r){const code=rowCode(r);const day=String(r?.day_type||'').toUpperCase();const sm=shiftMaster(code);return ['OFF','HOL','LV'].includes(code)||sm?.is_workday===false||['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day)||r?.schedule_rule_mode==='DYNAMIC_OFF';}
   function rowWindow(r){
     if(!r)return null;
     const extMode=String(r.schedule_rule_mode||r.work_mode_code||'').toUpperCase();
@@ -25408,20 +25426,21 @@ ${skippedSummary(compatibility.skipped)}
   }
   function populateWorkingShiftOptions(splitOnly=false){
     if(!st.current)return;const select=$('assignShiftCode');if(!select)return;
-    const pattern=st.current.patternCode;const current=st.current.baseShiftCode||select.value;
+    const pattern=st.current.patternCode;const current=st.current.baseShiftCode||select.value;const department=rowDepartment(st.current.row);
     const rows=(app()?.state?.filters?.shifts||[]).filter(sh=>{
       if(sh.is_active===false||sh.is_workday===false)return false;
       if(String(sh.note||'').includes('[SYSTEM_GENERATED_V6120]'))return false;
       const code=String(sh.shift_code||'').toUpperCase();if(['OFF','HOL','LV'].includes(code))return false;
       const patterns=Array.isArray(sh.applicable_pattern_codes)?sh.applicable_pattern_codes.map(x=>String(x).toUpperCase()):['TECH_5D','TECH_6D'];
       if(pattern&&!patterns.includes(pattern))return false;
+      if(!shiftAllowedForDepartment(code,department))return false;
       const night=sh.is_night_shift===true||window.tcIsNightShiftCode?.(code)||String(sh.shift_name||'').toLowerCase().includes('กะดึก')||String(sh.shift_name||'').toLowerCase().includes('กลางคืน');
       return splitOnly?!night:true;
     });
-    select.innerHTML=rows.map(sh=>{const start=fmtTime(sh.start_time),end=fmtTime(sh.end_time),name=sh.shift_name||sh.shift_code;return `<option value="${esc(sh.shift_code)}">${esc(name)} • ${esc(start)}–${esc(end)} (${esc(sh.shift_code)})</option>`;}).join('');
+    select.innerHTML=rows.length?rows.map(sh=>{const start=fmtTime(sh.start_time),end=fmtTime(sh.end_time),name=sh.shift_name||sh.shift_code;return `<option value="${esc(sh.shift_code)}">${esc(name)} • ${esc(start)}–${esc(end)} (${esc(sh.shift_code)})</option>`;}).join(''):`<option value="" disabled selected>ไม่มีกะที่เปิดใช้สำหรับ ${esc(department||'หน่วยงานนี้')}</option>`;
     let target=rows.find(sh=>String(sh.shift_code)===String(current));
     if(!target&&splitOnly)target=rows.find(sh=>!sh.is_night_shift);
-    if(!target)target=rows[0];if(target){select.value=target.shift_code;st.current.baseShiftCode=target.shift_code;}
+    if(!target)target=rows[0];if(target){select.value=target.shift_code;st.current.baseShiftCode=target.shift_code;}else{st.current.baseShiftCode=null;}
   }
   function setShiftFieldMode(mode){
     const field=$('assignShiftCode')?.closest('.field');if(!field)return;
@@ -25448,27 +25467,31 @@ ${skippedSummary(compatibility.skipped)}
     }else{
       const t=defaultTemplate(st.current.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
     }
-    if(mode==='DYNAMIC_OFF'){ensureShiftOption('OFF','OFF — วันหยุด');$('assignShiftCode').value='OFF';}
+    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();const offCode=w?.offShiftCode||'';if(offCode){ensureShiftOption(offCode,`${offCode} — ${w?.offShiftName||'วันหยุด'}`);$('assignShiftCode').value=offCode;}}
     else if(st.current.baseShiftCode&&mode!=='HOUR_BASED'&&[...($('assignShiftCode')?.options||[])].some(o=>o.value===st.current.baseShiftCode)){$('assignShiftCode').value=st.current.baseShiftCode;}
     refreshAssignmentPreview();
   }
   function ensureShiftOption(code,label){const s=$('assignShiftCode');if(!s||!code)return;if(![...s.options].some(o=>o.value===code)){const o=document.createElement('option');o.value=code;o.textContent=label||code;s.appendChild(o);}}
   function offBasisWindow(){
-    const r=previousWorkingRow(st.current.empCode,st.current.workDate);
-    if(!r)return st.current?.offBasisFromDb||null;
-    if(r.base_shift_code){const sm=shiftMaster(r.base_shift_code);if(sm)return {start:fmtTime(sm.start_time),end:fmtTime(sm.end_time),basisCode:r.base_shift_code};}
-    const sm=shiftMaster(rowCode(r));const w=rowWindow(r);return {start:fmtTime(w?.start||sm?.start_time),end:fmtTime(w?.end||sm?.end_time),basisCode:rowCode(r)};
+    if(st.current?.offBasisFromDb)return st.current.offBasisFromDb;
+    const r=previousWorkingRow(st.current.empCode,st.current.workDate);if(!r)return null;
+    const mode=String(r.schedule_rule_mode||r.work_mode_code||'').toUpperCase();
+    const special=['HOUR_BASED','SPLIT_WAIT_NIGHT'].includes(mode);
+    const basisCode=String(r.base_shift_code||rowCode(r)||'').toUpperCase();
+    if(!special){const mapped=pairedOffForBasis(basisCode);if(mapped)return mapped;}
+    const sm=shiftMaster(basisCode||rowCode(r));const w=rowWindow(r);
+    return {start:fmtTime(w?.start||sm?.start_time),end:fmtTime(w?.end||sm?.end_time),basisCode:basisCode||rowCode(r),offShiftCode:special?'OFF':null,offShiftName:special?'วันหยุดตามกะพิเศษ':null,resolutionType:special?'DYNAMIC_SPECIAL':'MAPPING_MISSING',mappingMissing:!special};
   }
   function refreshAssignmentPreview(){
     if(!st.current)return;const mode=st.current.mode;
     if(mode==='HOUR_BASED'){const start=$('assignHourStartV6120')?.value,end=addMinutes(start,patternTotal(st.current.patternCode));$('assignHourEndV6120').textContent=start&&end?`${start} → ${end}${minsOf(end)<=minsOf(start)?' (+1)':''} • รวมพัก ${(patternTotal(st.current.patternCode)/60).toLocaleString('th-TH')} ชม.`:'-';}
     if(mode==='SPLIT_WAIT_NIGHT'){const sm=shiftMaster(st.current.baseShiftCode||$('assignShiftCode')?.value);const start=fmtTime(sm?.start_time)||'-',first=$('assignFirstEndV6120')?.value||'-',second=$('assignSecondStartV6120')?.value||'-',end=$('assignSecondEndV6120')?.value||'-';const work=spanMinutes(start,first)+spanMinutes(second,end),wait=spanMinutes(first,second);$('assignSplitPreviewV6120').innerHTML=`<span>ช่วงที่ 1 <b>${esc(start)}–${esc(first)}</b></span><span class="wait">รอ <b>${esc((wait/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</b> • ไม่นับ</span><span>ช่วงที่ 2 <b>${esc(second)}–${esc(end)}${minsOf(end)<=minsOf(second)?' (+1)':''}</b></span><strong>เวลาทำงานตามแผน ${esc((work/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</strong>`;}
-    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();$('assignOffPreviewV6120').innerHTML=w?`<span>วันหยุดจะใช้ช่วงเวลา</span><strong>${esc(w.start)}–${esc(w.end)}${minsOf(w.end)<=minsOf(w.start)?' (+1)':''}</strong><small>อ้างอิงกะก่อนหน้า ${esc(w.basisCode||'')}</small>`:`<strong>ยังไม่พบกะทำงานก่อนหน้า</strong><small>กรุณาจัดกะวันก่อนหน้าให้เรียบร้อยก่อนกำหนดวันหยุด</small>`;}
+    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();$('assignOffPreviewV6120').innerHTML=w?(w.mappingMissing?`<strong class="text-danger">ยังไม่ได้จับคู่กะวันหยุดของ ${esc(w.basisCode||'')}</strong><small>ไปที่ ตั้งค่ากะทำงาน → กฎการเลือกกะและกะวันหยุดคู่กัน</small>`:`<span>ระบบเลือกกะวันหยุดให้อัตโนมัติ</span><strong>${esc(w.offShiftCode||'OFF')} • ${esc(w.start)}–${esc(w.end)}${minsOf(w.end)<=minsOf(w.start)?' (+1)':''}</strong><small>อ้างอิงกะทำงานก่อนหน้า ${esc(w.basisCode||'')} ${w.resolutionType==='MAPPED'?'→ จับคู่ตาม Set Up':'→ กะพิเศษแบบ Dynamic'}</small>`):`<strong>ยังไม่พบกะทำงานก่อนหน้า</strong><small>กรุณาจัดกะวันก่อนหน้าให้เรียบร้อยก่อนกำหนดวันหยุด</small>`;}
     renderGuardPreview();
   }
   function proposedPlan(){
     const c=st.current,mode=c.mode,date=c.workDate;
-    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();return {mode,start:w?.start,end:w?.end,planned:0,off:true,basis:w};}
+    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();return {mode,start:w?.start,end:w?.end,planned:0,off:true,basis:w,offShiftCode:w?.offShiftCode||null};}
     if(mode==='HOUR_BASED'){const start=$('assignHourStartV6120')?.value,end=addMinutes(start,patternTotal(c.patternCode));return {mode,start,end,planned:patternTotal(c.patternCode)};}
     if(mode==='SPLIT_WAIT_NIGHT'){const sm=shiftMaster(c.baseShiftCode||$('assignShiftCode')?.value);const start=fmtTime(sm?.start_time),first=$('assignFirstEndV6120')?.value,second=$('assignSecondStartV6120')?.value,end=$('assignSecondEndV6120')?.value;return {mode,start,end,planned:spanMinutes(start,first)+spanMinutes(second,end),firstEnd:first,secondStart:second,baseShiftCode:c.baseShiftCode||$('assignShiftCode')?.value};}
     const sm=shiftMaster($('assignShiftCode')?.value);let planned=Number(sm?.scheduled_minutes_including_break||0)||spanMinutes(sm?.start_time,sm?.end_time);let plannedEnd=fmtTime(sm?.end_time);if(mode==='NORMAL_LATE_CUSTOMER'){const s=$('assignCustomerStart')?.value,e=$('assignCustomerEndMode')?.value==='FIXED'?$('assignCustomerEnd')?.value:null;if(s&&e){planned+=spanMinutes(s,e);plannedEnd=e;}}
@@ -25489,7 +25512,9 @@ ${skippedSummary(compatibility.skipped)}
     try{const patterns=await rpc('ta_get_work_patterns',{});st.current.patternRule=(patterns||[]).find(x=>String(x.pattern_code||'').toUpperCase()===String(patternCode||'').toUpperCase())||null;}catch(e){}
     try{const ext=await rpc('ta_get_schedule_rule_assignment_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});st.current.extension=Array.isArray(ext)?ext[0]:ext;}catch(e){}
     const ext=st.current.extension||{};st.current.baseShiftCode=ext.base_shift_code||selectedShift;
-    try{const b=await rpc('ta_get_dynamic_off_basis_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});if(b?.start_time&&b?.end_time)st.current.offBasisFromDb={start:fmtTime(b.start_time),end:fmtTime(b.end_time),basisCode:b.basis_shift_code||b.shift_code||null};}catch(e){}
+    await loadRuntimeShiftRules();
+    try{const b=await rpc('ta_get_off_shift_basis_v6123',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});if(b?.basis_shift_code)st.current.offBasisFromDb={start:fmtTime(b.off_start_time||b.start_time),end:fmtTime(b.off_end_time||b.end_time),basisCode:b.basis_shift_code||b.shift_code||null,offShiftCode:b.off_shift_code||null,offShiftName:b.off_shift_name||null,resolutionType:b.resolution_type||null,mappingMissing:b.mapping_missing===true};}
+    catch(e){try{const b=await rpc('ta_get_dynamic_off_basis_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});if(b?.start_time&&b?.end_time)st.current.offBasisFromDb={start:fmtTime(b.start_time),end:fmtTime(b.end_time),basisCode:b.basis_shift_code||b.shift_code||null,offShiftCode:'OFF',offShiftName:'วันหยุด',resolutionType:'LEGACY_DYNAMIC',mappingMissing:false};}catch(_){}}
     if(ext.first_segment_end)$('assignFirstEndV6120').value=String(ext.first_segment_end).slice(0,5);
     if(ext.second_segment_start)$('assignSecondStartV6120').value=String(ext.second_segment_start).slice(0,5);
     if(ext.second_segment_planned_end)$('assignSecondEndV6120').value=String(ext.second_segment_planned_end).slice(0,5);
@@ -25513,13 +25538,18 @@ ${skippedSummary(compatibility.skipped)}
       ensureShiftOption(resolved.shift_code,`${modeDefs[mode].label} • ${resolved.start_time}-${resolved.end_time}`);$('assignShiftCode').value=resolved.shift_code;c.generatedShiftCode=resolved.shift_code;c.customEnd=resolved.end_time;
       const t=defaultTemplate(c.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
     }else if(mode==='DYNAMIC_OFF'){
-      if(!p.basis){app()?.toast?.('ไม่พบกะทำงานก่อนหน้า จึงยังสร้างช่วงวันหยุดอัตโนมัติไม่ได้','error');return {allowed:false};}
-      ensureShiftOption('OFF','OFF — วันหยุด');$('assignShiftCode').value='OFF';const t=defaultTemplate(c.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
+      if(!p.basis){app()?.toast?.('ไม่พบกะทำงานก่อนหน้า จึงยังเลือกกะวันหยุดอัตโนมัติไม่ได้','error');return {allowed:false};}
+      if(p.basis.mappingMissing||!p.offShiftCode){app()?.toast?.(`กะทำงาน ${p.basis.basisCode||'-'} ยังไม่ได้จับคู่กะวันหยุด กรุณาตั้งค่าที่เมนู ตั้งค่ากะทำงาน`,'error');return {allowed:false};}
+      ensureShiftOption(p.offShiftCode,`${p.offShiftCode} — ${p.basis.offShiftName||'วันหยุด'}`);$('assignShiftCode').value=p.offShiftCode;const t=defaultTemplate(c.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
     }else if(mode==='NORMAL_LATE_CUSTOMER'){
       if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value==='SPLIT_FLEX'))$('assignWorkTemplate').value='SPLIT_FLEX';
     }else{
       const t=defaultTemplate(c.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
     }
+    const selectedCode=String($('assignShiftCode')?.value||'').toUpperCase();
+    if(!selectedCode){app()?.toast?.(`ไม่มีกะทำงานที่เปิดใช้สำหรับหน่วยงาน ${rowDepartment(c.row)||'-'}`,'error');return {allowed:false};}
+    const selectedMaster=shiftMaster(selectedCode);
+    if(!p.off&&selectedMaster?.is_workday!==false&&!shiftAllowedForDepartment(selectedCode,rowDepartment(c.row))){app()?.toast?.(`กะ ${selectedCode} ไม่ได้เปิดใช้สำหรับหน่วยงาน ${rowDepartment(c.row)||'-'}`,'error');return {allowed:false};}
     const guard=renderGuardPreview();
     if(guard?.hardBlock){app()?.toast?.(`กำหนดกะไม่ได้: เวลาพักจากกะก่อนหน้า ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม.`,'error');return {allowed:false};}
     let server=null;try{server=await rpc('ta_validate_schedule_guard_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_proposed_shift_code:$('assignShiftCode').value,p_proposed_start_time:p.start||null,p_proposed_end_time:p.end||null,p_proposed_planned_minutes:Number(p.planned||0),p_is_off:Boolean(p.off)});}catch(e){}
@@ -25559,21 +25589,33 @@ ${skippedSummary(compatibility.skipped)}
   }
   async function validateBulk(payload=[]){
     if(!payload.length)return {allowed:true};
+    await loadRuntimeShiftRules();
     const virtual=bulkVirtualMap();
     const items=[...payload].sort((a,b)=>String(a.emp_code).localeCompare(String(b.emp_code))||String(a.work_date).localeCompare(String(b.work_date)));
     const blocks=[],warnings=[];
     for(const item of items){
       const emp=String(item.emp_code||''),date=String(item.work_date||'').slice(0,10),code=String(item.shift_code||'').toUpperCase();
       if(!emp||!date)continue;
-      const key=`${emp}|${date}`;
-      if(!code){virtual.set(key,{emp_code:emp,work_date:date,shift_code:null});continue;}
-      if(['OFF','HOL','LV'].includes(code)){
-        const basis=bulkFindPreviousWorking(virtual,emp,date);const w=basis?rowWindow(basis):null;
-        virtual.set(key,{emp_code:emp,work_date:date,shift_code:code,schedule_rule_mode:code==='OFF'?'DYNAMIC_OFF':null,off_window_start:w?.start||null,off_window_end:w?.end||null});
+      const key=`${emp}|${date}`,targetRow=virtual.get(key)||{},department=rowDepartment(targetRow);
+      if(!code){virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:null});continue;}
+      if(['HOL','LV'].includes(code)){virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:code,schedule_rule_mode:'DYNAMIC_OFF'});continue;}
+      if(code==='OFF'){
+        const basis=bulkFindPreviousWorking(virtual,emp,date);if(!basis){blocks.push({emp,date,code,offMissingBasis:true});continue;}
+        const basisMode=String(basis.schedule_rule_mode||basis.work_mode_code||'').toUpperCase();const basisCode=String(basis.base_shift_code||rowCode(basis)||'').toUpperCase();const w=rowWindow(basis);
+        let resolved='OFF',offWindow=w;
+        if(!['HOUR_BASED','SPLIT_WAIT_NIGHT'].includes(basisMode)){const mapped=pairedOffForBasis(basisCode);if(!mapped){blocks.push({emp,date,code,offMappingMissing:true,basisCode});continue;}resolved=mapped.offShiftCode;offWindow=mapped;}
+        item.shift_code=resolved;
+        virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:resolved,assigned_shift_code:resolved,schedule_rule_mode:'DYNAMIC_OFF',off_window_start:offWindow?.start||null,off_window_end:offWindow?.end||null,off_basis_shift_code:basisCode});
         continue;
       }
       const sm=shiftMaster(code);
       if(!sm)continue;
+      if(sm.is_workday===false){
+        const basis=bulkFindPreviousWorking(virtual,emp,date);const basisCode=String(basis?.base_shift_code||rowCode(basis)||'').toUpperCase();const expected=basisCode?pairedOffForBasis(basisCode):null;
+        if(expected&&expected.offShiftCode!==code){blocks.push({emp,date,code,wrongOff:true,basisCode,expected:expected.offShiftCode});continue;}
+        virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:code,assigned_shift_code:code,schedule_rule_mode:'DYNAMIC_OFF',off_window_start:fmtTime(sm.start_time),off_window_end:fmtTime(sm.end_time),off_basis_shift_code:basisCode});continue;
+      }
+      if(!shiftAllowedForDepartment(code,department)){blocks.push({emp,date,code,scopeDenied:true,department});continue;}
       if(String(sm.note||'').includes('[SYSTEM_GENERATED_V6120]')){
         blocks.push({emp,date,code,rest:null,special:true});
         continue;
@@ -25592,7 +25634,11 @@ ${skippedSummary(compatibility.skipped)}
     }
     if(blocks.length){
       const special=blocks.find(x=>x.special),first=blocks[0];
-      if(special)app()?.toast?.(`กะพิเศษ ${special.code} ไม่รองรับการคัดลอก/Fill ด้วยรหัสกะอย่างเดียว กรุณาเปิดวันนั้นแล้วเลือก “กะนับชั่วโมง” หรือ “กะเช้า + รอเข้ากะดึก” เพื่อให้ระบบเก็บช่วงเวลาครบถ้วน`,'error');
+      if(first.scopeDenied)app()?.toast?.(`บันทึกไม่ได้: กะ ${first.code} ไม่ได้เปิดใช้สำหรับหน่วยงาน ${first.department||'-'} (${first.emp})`,'error');
+      else if(first.offMappingMissing)app()?.toast?.(`บันทึกไม่ได้: กะทำงาน ${first.basisCode||'-'} ยังไม่ได้จับคู่กะวันหยุด กรุณาตั้งค่าที่เมนู ตั้งค่ากะทำงาน`,'error');
+      else if(first.offMissingBasis)app()?.toast?.(`บันทึกไม่ได้: ${first.emp} วันที่ ${fmtDate(first.date)} ไม่พบกะทำงานก่อนหน้าสำหรับอ้างอิงวันหยุด`,'error');
+      else if(first.wrongOff)app()?.toast?.(`บันทึกไม่ได้: หลัง ${first.basisCode} ต้องใช้กะวันหยุด ${first.expected} ไม่ใช่ ${first.code}`,'error');
+      else if(special)app()?.toast?.(`กะพิเศษ ${special.code} ไม่รองรับการคัดลอก/Fill ด้วยรหัสกะอย่างเดียว กรุณาเปิดวันนั้นแล้วเลือก “กะนับชั่วโมง” หรือ “กะเช้า + รอเข้ากะดึก” เพื่อให้ระบบเก็บช่วงเวลาครบถ้วน`,'error');
       else app()?.toast?.(`บันทึกไม่ได้ ${blocks.length.toLocaleString('th-TH')} รายการ: ${first.emp} วันที่ ${fmtDate(first.date)} พักเพียง ${(first.rest/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. (ขั้นต่ำ 6 ชม.)`,'error');
       return {allowed:false,blocks,warnings};
     }
@@ -25604,18 +25650,36 @@ ${skippedSummary(compatibility.skipped)}
     return {allowed:true,blocks,warnings};
   }
   async function saveBulkExtensions(payload=[]){
-    if(!payload.length)return;
-    try{
-      await rpc('ta_sync_bulk_schedule_rules_v6120',{p_items:payload.map(x=>({emp_code:String(x.emp_code||''),work_date:String(x.work_date||'').slice(0,10),shift_code:x.shift_code==null?null:String(x.shift_code).toUpperCase(),note:x.note||null}))});
-    }catch(e){
-      app()?.toast?.(`บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule บางรายการไม่สำเร็จ: ${e.message||e}`,'warning');
-    }
+    if(!payload.length)return;const items=payload.map(x=>({emp_code:String(x.emp_code||''),work_date:String(x.work_date||'').slice(0,10),shift_code:x.shift_code==null?null:String(x.shift_code).toUpperCase(),note:x.note||null}));
+    try{await rpc('ta_sync_bulk_schedule_rules_v6123',{p_items:items});}
+    catch(e){try{await rpc('ta_sync_bulk_schedule_rules_v6120',{p_items:items});}catch(e2){app()?.toast?.(`บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule บางรายการไม่สำเร็จ: ${e2.message||e2}`,'warning');}}
   }
   async function enrichScheduleRows(rows=[]){
     if(!rows.length)return;const codes=[...new Set(rows.map(r=>String(r.emp_code||'')).filter(Boolean))],dates=rows.map(r=>String(r.work_date||'').slice(0,10)).filter(Boolean);if(!codes.length||!dates.length)return;
     try{const ext=await rpc('ta_get_schedule_rule_assignments_v6120',{p_emp_codes:codes,p_start_date:dates.sort()[0],p_end_date:dates.sort().slice(-1)[0]})||[];const map=new Map(ext.map(x=>[`${x.emp_code}|${String(x.work_date).slice(0,10)}`,x]));rows.forEach(r=>Object.assign(r,map.get(`${r.emp_code}|${String(r.work_date).slice(0,10)}`)||{}));}catch(e){}
   }
-  function rowDisplay(r){const mode=String(r?.schedule_rule_mode||r?.work_mode_code||'').toUpperCase();if(!mode)return null;const d=modeDefs[mode];if(mode==='DYNAMIC_OFF')return {label:`หยุด ${fmtTime(r.off_window_start)}–${fmtTime(r.off_window_end)}`,short:'หยุด',tone:'off'};if(mode==='HOUR_BASED')return {label:`นับชม. ${fmtTime(r.custom_start_time)}–${fmtTime(r.custom_end_time)}`,short:'นับชม.',tone:'day'};if(mode==='SPLIT_WAIT_NIGHT')return {label:`เช้า+ดึก ${fmtTime(r.base_shift_start||shiftMaster(r.base_shift_code)?.start_time)} / ${fmtTime(r.second_segment_start)}`,short:'เช้า+ดึก',tone:'split'};return d?{label:d.label,short:d.short,tone:null}:null;}
+  function rowDisplay(r){const mode=String(r?.schedule_rule_mode||r?.work_mode_code||'').toUpperCase();if(!mode)return null;const d=modeDefs[mode];if(mode==='DYNAMIC_OFF')return {label:`หยุด ${fmtTime(r.off_window_start)}–${fmtTime(r.off_window_end)}${rowCode(r)?` • ${rowCode(r)}`:''}`,short:'หยุด',tone:'off'};if(mode==='HOUR_BASED')return {label:`นับชม. ${fmtTime(r.custom_start_time)}–${fmtTime(r.custom_end_time)}`,short:'นับชม.',tone:'day'};if(mode==='SPLIT_WAIT_NIGHT')return {label:`เช้า+ดึก ${fmtTime(r.base_shift_start||shiftMaster(r.base_shift_code)?.start_time)} / ${fmtTime(r.second_segment_start)}`,short:'เช้า+ดึก',tone:'split'};return d?{label:d.label,short:d.short,tone:null}:null;}
+
+  /* V6.12.3 Shift scope + paired day-off setup */
+  function ensureShiftRuleAdminUi(){
+    if($('shiftRuleAdminV6123'))return;const page=$('page-admin-shifts');if(!page)return;const panels=page.querySelectorAll('.panel');const first=panels[0];if(!first)return;
+    first.insertAdjacentHTML('afterend',`<div class="panel section-gap shift-rule-admin-v6123" id="shiftRuleAdminV6123"><div class="panel-header"><div><span class="work-pattern-section-kicker-v61111">SHIFT SET UP</span><h3>กฎการเลือกกะตามหน่วยงานและกะวันหยุดคู่กัน</h3><p>กำหนดว่ากะแต่ละรหัสเปิดใช้กับหน่วยงานใด และจับคู่กะทำงาน → กะวันหยุด เพื่อให้ระบบเลือกวันหยุดให้อัตโนมัติ</p></div><button type="button" class="btn btn-light" id="shiftRuleRefreshV6123">↻ รีเฟรช</button></div><div class="panel-body"><div class="shift-rule-hint-v6123"><span>ตัวอย่าง</span><b>STD → OSTD</b><b>S043 → OS043</b><b>S134 → OS134</b><b>S135 → OS135</b><small>กะดึกที่ไม่เปิดในบางหน่วยงานจะไม่แสดงในช่อง “กะทำงาน” ของพนักงานหน่วยงานนั้น</small></div><div class="table-wrap"><table><thead><tr><th>กะทำงาน</th><th>เวลา</th><th>ประเภท</th><th>ขอบเขตหน่วยงาน</th><th>กะวันหยุดคู่กัน</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="shiftRuleAdminBodyV6123"><tr><td colspan="7" class="empty-cell">กำลังโหลด...</td></tr></tbody></table></div></div></div>`);
+    document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop hidden" id="shiftRuleModalV6123"><div class="modal large"><div class="modal-header"><div><h3 id="shiftRuleTitleV6123">ตั้งค่ากะ</h3><p>กำหนดหน่วยงานที่เห็นกะนี้ และกะวันหยุดที่ต้องใช้หลังจากกะทำงานนี้</p></div><button type="button" class="btn btn-light btn-icon" id="shiftRuleCloseV6123">×</button></div><div class="modal-body"><input type="hidden" id="shiftRuleCodeV6123"><label class="mobileta-option-card"><input type="checkbox" id="shiftRuleEnabledV6123" checked><span><strong>เปิดให้ใช้ในการจัดกะ</strong><small>ปิดแล้วกะนี้จะไม่แสดงในช่องเลือกกะปกติ</small></span></label><div class="form-row section-gap"><div class="field"><label>ขอบเขตหน่วยงาน</label><select class="select" id="shiftRuleScopeModeV6123"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select></div><div class="field"><label>กะวันหยุดคู่กัน</label><select class="select" id="shiftRuleOffCodeV6123"></select><small class="field-help">ระบบจะตรวจเวลาให้ตรงกับกะทำงานก่อนบันทึก</small></div></div><div class="work-mode-dept-list-v6120 hidden" id="shiftRuleDeptListV6123"></div><div class="shift-rule-pair-preview-v6123" id="shiftRulePairPreviewV6123"></div></div><div class="modal-footer"><button class="btn btn-light" id="shiftRuleCancelV6123">ยกเลิก</button><button class="btn btn-primary" id="shiftRuleSaveV6123">บันทึก Set Up</button></div></div></div>`);
+    $('shiftRuleRefreshV6123')?.addEventListener('click',()=>loadShiftRuleAdmin(true));$('shiftRuleCloseV6123')?.addEventListener('click',closeShiftRuleModal);$('shiftRuleCancelV6123')?.addEventListener('click',closeShiftRuleModal);$('shiftRuleScopeModeV6123')?.addEventListener('change',renderShiftRuleDepartments);$('shiftRuleOffCodeV6123')?.addEventListener('change',renderShiftRulePairPreview);$('shiftRuleSaveV6123')?.addEventListener('click',saveShiftRuleAdmin);
+    document.addEventListener('click',e=>{const b=e.target.closest('[data-edit-shift-rule-v6123]');if(b)openShiftRuleModal(b.dataset.editShiftRuleV6123);});
+  }
+  async function loadShiftRuleAdmin(forceRuntime=false){
+    ensureShiftRuleAdminUi();if(String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'').toUpperCase()!=='HR_ADMIN')return;
+    const body=$('shiftRuleAdminBodyV6123');if(body)body.innerHTML='<tr><td colspan="7" class="empty-cell">กำลังโหลด Set Up...</td></tr>';
+    try{st.adminShiftRules=await rpc('ta_get_shift_schedule_rule_admin_v6123',{})||[];if(forceRuntime){st.runtimeShiftRulesLoaded=false;await loadRuntimeShiftRules(true);}renderShiftRuleAdmin();}
+    catch(e){if(body)body.innerHTML=`<tr><td colspan="7" class="empty-cell">ยังไม่พบ Backend V6.12.3 • กรุณารัน SQL ที่ต้องรัน</td></tr>`;}
+  }
+  function renderShiftRuleAdmin(){const body=$('shiftRuleAdminBodyV6123');if(!body)return;const rows=(st.adminShiftRules||[]).filter(r=>r.is_workday!==false&&!String(r.note||'').includes('[SYSTEM_GENERATED_V6120]'));body.innerHTML=rows.length?rows.map(r=>{const scope=String(r.scope_mode||'ALL').toUpperCase()==='ALL'?'ทุกหน่วยงาน':`${(r.scope_values||[]).length.toLocaleString('th-TH')} หน่วยงาน`;const off=r.paired_off_shift_code?`${r.paired_off_shift_code} • ${fmtTime(r.paired_off_start_time)}–${fmtTime(r.paired_off_end_time)}`:'ยังไม่ได้จับคู่';return `<tr><td><strong>${esc(r.shift_code)}</strong><small class="table-subtext">${esc(r.shift_name||'')}</small></td><td>${esc(fmtTime(r.start_time))}–${esc(fmtTime(r.end_time))}${r.is_night_shift?' (+1)':''}</td><td>${r.is_night_shift?'<span class="badge badge-blue">กะดึก</span>':'<span class="badge badge-gray">กะกลางวัน</span>'}</td><td>${esc(scope)}</td><td class="${r.pair_valid===false?'text-danger':''}">${esc(off)}${r.pair_valid===false?'<small class="table-subtext">เวลาไม่ตรง / ไม่ใช่กะวันหยุด</small>':''}</td><td>${r.is_enabled===false?'<span class="badge badge-gray">ปิดใช้</span>':'<span class="badge badge-green">เปิดใช้</span>'}</td><td><button class="btn btn-light btn-sm" data-edit-shift-rule-v6123="${esc(r.shift_code)}">ตั้งค่า</button></td></tr>`;}).join(''):'<tr><td colspan="7" class="empty-cell">ไม่พบกะทำงาน</td></tr>';}
+  async function openShiftRuleModal(code){const r=(st.adminShiftRules||[]).find(x=>String(x.shift_code).toUpperCase()===String(code).toUpperCase());if(!r)return;await loadDepartmentOptions();$('shiftRuleCodeV6123').value=r.shift_code;$('shiftRuleTitleV6123').textContent=`ตั้งค่า • ${r.shift_code} ${r.shift_name||''}`;$('shiftRuleEnabledV6123').checked=r.is_enabled!==false;$('shiftRuleScopeModeV6123').value=String(r.scope_mode||'ALL').toUpperCase();const offRows=(app()?.state?.filters?.shifts||[]).filter(x=>x.is_active!==false&&x.is_workday===false);$('shiftRuleOffCodeV6123').innerHTML=`<option value="">-- ยังไม่จับคู่ --</option>${offRows.map(x=>`<option value="${esc(x.shift_code)}">${esc(x.shift_code)} • ${esc(x.shift_name||'วันหยุด')} • ${esc(fmtTime(x.start_time))}–${esc(fmtTime(x.end_time))}</option>`).join('')}`;$('shiftRuleOffCodeV6123').value=r.paired_off_shift_code||'';$('shiftRuleModalV6123').classList.remove('hidden');renderShiftRuleDepartments(r.scope_values||[]);renderShiftRulePairPreview();}
+  function renderShiftRuleDepartments(selected=null){const box=$('shiftRuleDeptListV6123');if(!box)return;const show=$('shiftRuleScopeModeV6123')?.value==='SELECTED';box.classList.toggle('hidden',!show);if(!show)return;const code=$('shiftRuleCodeV6123')?.value||'',r=(st.adminShiftRules||[]).find(x=>String(x.shift_code).toUpperCase()===String(code).toUpperCase());const chosen=new Set((Array.isArray(selected)?selected:(r?.scope_values||[])).map(normalizeDepartmentOption).filter(Boolean));const depts=st.departmentOptions||[];box.innerHTML=`<div class="work-mode-dept-summary-v6122"><strong>หน่วยงานที่สามารถเลือกกะ ${esc(code)}</strong><small>${depts.length.toLocaleString('th-TH')} หน่วยงาน</small></div>${depts.map(d=>`<label><input type="checkbox" data-shift-rule-dept-v6123="${esc(d)}" ${chosen.has(d)?'checked':''}> <span>${esc(d)}</span></label>`).join('')}`;}
+  function renderShiftRulePairPreview(){const code=$('shiftRuleCodeV6123')?.value,offCode=$('shiftRuleOffCodeV6123')?.value,box=$('shiftRulePairPreviewV6123');if(!box)return;const w=shiftMaster(code),o=shiftMaster(offCode);if(!offCode){box.innerHTML='<small>ยังไม่ได้กำหนดกะวันหยุดคู่กัน • User จะไม่สามารถเลือกวันหยุดอัตโนมัติหลังจากกะนี้ได้</small>';return;}const ok=w&&o&&o.is_workday===false&&String(fmtTime(w.start_time))===String(fmtTime(o.start_time))&&String(fmtTime(w.end_time))===String(fmtTime(o.end_time));box.className=`shift-rule-pair-preview-v6123 ${ok?'ok':'danger'}`;box.innerHTML=`<strong>${esc(code)} ${esc(fmtTime(w?.start_time))}–${esc(fmtTime(w?.end_time))} → ${esc(offCode)} ${esc(fmtTime(o?.start_time))}–${esc(fmtTime(o?.end_time))}</strong><small>${ok?'ช่วงเวลาตรงกัน • พร้อมใช้งาน':'ช่วงเวลาไม่ตรงกัน หรือกะปลายทางยังไม่ได้ตั้งเป็น “วันหยุด”'}</small>`;}
+  function closeShiftRuleModal(){$('shiftRuleModalV6123')?.classList.add('hidden');}
+  async function saveShiftRuleAdmin(){const code=$('shiftRuleCodeV6123')?.value,scope=$('shiftRuleScopeModeV6123')?.value,values=scope==='SELECTED'?qsa('[data-shift-rule-dept-v6123]:checked').map(x=>x.dataset.shiftRuleDeptV6123):[],off=$('shiftRuleOffCodeV6123')?.value||null;if(scope==='SELECTED'&&!values.length){app()?.toast?.('กรุณาเลือกอย่างน้อย 1 หน่วยงาน','error');return;}try{await rpc('ta_save_shift_schedule_rule_v6123',{p_shift_code:code,p_is_enabled:$('shiftRuleEnabledV6123').checked,p_scope_mode:scope,p_scope_values:values,p_paired_off_shift_code:off});closeShiftRuleModal();st.runtimeShiftRulesLoaded=false;await loadRuntimeShiftRules(true);await loadShiftRuleAdmin();app()?.toast?.('บันทึก Set Up กะเรียบร้อย','success');}catch(e){const msg=String(e.message||e);app()?.toast?.(msg.includes('OFF_SHIFT_TIME_MISMATCH')?'กะวันหยุดต้องมีเวลาเริ่ม–สิ้นสุดตรงกับกะทำงาน':msg,'error');}}
 
   /* Admin configuration */
   function ensureAdminUi(){
@@ -25694,9 +25758,10 @@ ${skippedSummary(compatibility.skipped)}
   function closeScopeModal(){$('workModeScopeModalV6120')?.classList.add('hidden');}
   async function saveScopeModal(){const code=$('workModeScopeCodeV6120').value,scope=$('workModeScopeTypeV6120').value,values=scope==='SELECTED'?qsa('[data-work-mode-dept-v6120]:checked').map(x=>x.dataset.workModeDeptV6120):[];if(scope==='SELECTED'&&!values.length){app()?.toast?.('กรุณาเลือกอย่างน้อย 1 หน่วยงาน','error');return;}try{await rpc('ta_save_work_mode_config_v6120',{p_mode_code:code,p_is_active:$('workModeActiveV6120').checked,p_scope_mode:scope,p_scope_values:values});closeScopeModal();app()?.toast?.('บันทึกการเปิดใช้รูปแบบการทำงานแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
-  function init(){ensureAssignmentUi();ensureAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();});document.addEventListener('timeclock:effective-role-changed',()=>loadAdminPanel());document.documentElement.dataset.schedulingRulesVersion=VERSION;}
+  function init(){ensureAssignmentUi();ensureAdminUi();ensureShiftRuleAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));document.querySelector('[data-page="admin-shifts"]')?.addEventListener('click',()=>setTimeout(()=>loadShiftRuleAdmin(),0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();loadRuntimeShiftRules();});document.addEventListener('timeclock:effective-role-changed',()=>{loadAdminPanel();loadShiftRuleAdmin();});document.documentElement.dataset.schedulingRulesVersion=VERSION;}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,validateBulk,saveBulkExtensions};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
+  window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();

@@ -20065,3 +20065,18 @@ body.theme-dark .work-mode-dept-list-v6120 label,.dark .work-mode-dept-list-v612
 .work-mode-dept-empty-v6122{grid-column:1/-1;display:flex;flex-direction:column;gap:4px;padding:12px;text-align:center;color:var(--slate-600)}
 body.theme-dark .work-mode-dept-summary-v6122,.dark .work-mode-dept-summary-v6122{color:#e2e8f0}
 body.theme-dark .work-mode-dept-summary-v6122 small,.dark .work-mode-dept-summary-v6122 small,body.theme-dark .work-mode-dept-empty-v6122,.dark .work-mode-dept-empty-v6122{color:#94a3b8}
+
+/* ===== V6.12.3 Shift Department Scope + Paired Day-off Setup ===== */
+.shift-rule-admin-v6123 .panel-header{align-items:flex-start}
+.shift-rule-hint-v6123{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border,#dbe3ee);border-radius:14px;background:var(--surface-soft,#f8fafc)}
+.shift-rule-hint-v6123>span{font-size:12px;font-weight:800;color:var(--muted,#64748b);text-transform:uppercase;letter-spacing:.04em}
+.shift-rule-hint-v6123>b{padding:5px 9px;border-radius:999px;background:rgba(37,99,235,.08);font-size:12px;color:var(--text,#0f172a)}
+.shift-rule-hint-v6123>small{flex-basis:100%;color:var(--muted,#64748b);line-height:1.5}
+.shift-rule-pair-preview-v6123{margin-top:14px;padding:12px 14px;border:1px solid var(--border,#dbe3ee);border-radius:12px;display:flex;flex-direction:column;gap:4px;background:var(--surface-soft,#f8fafc)}
+.shift-rule-pair-preview-v6123.ok{border-color:rgba(22,163,74,.35)}
+.shift-rule-pair-preview-v6123.danger{border-color:rgba(220,38,38,.35)}
+.shift-rule-pair-preview-v6123 small,.table-subtext{display:block;margin-top:3px;color:var(--muted,#64748b);font-size:11px;line-height:1.35}
+.text-danger{color:#b91c1c!important}
+[data-theme="dark"] .shift-rule-hint-v6123,[data-theme="dark"] .shift-rule-pair-preview-v6123{background:rgba(15,23,42,.45)}
+[data-theme="dark"] .shift-rule-hint-v6123>b{background:rgba(59,130,246,.14)}
+@media(max-width:820px){.shift-rule-admin-v6123 .table-wrap{overflow:auto}.shift-rule-hint-v6123>b{font-size:11px}}
