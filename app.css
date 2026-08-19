@@ -20478,3 +20478,28 @@ body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146.m
     0 0 0 4px #67b5ff,
     0 6px 14px rgba(0,0,0,.28)!important;
 }
+
+
+/* ========================================================================== */
+/* V6.13.9 — Person Full-Month icon centering fix                             */
+/* Presentation only. Ensures icon-only labels are perfectly centered.        */
+/* ========================================================================== */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-cell.schedule-icon-only-v6136{
+  position:relative!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-cell.schedule-icon-only-v6136 .schedule-shift-icon-v6136{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  transform:translate(-50%,-50%)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+  line-height:1!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-cell.schedule-icon-only-v6136 .schedule-shift-icon-v6136 svg{
+  display:block!important;
+  margin:0 auto!important;
+  flex:0 0 auto!important;
+}

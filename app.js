@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.13.8";
-document.documentElement.dataset.timeClockBuild = "6.13.8";
+window.__TIME_CLOCK_BUILD__ = "V6.13.9";
+document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.8";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.13.8',
+  version: '6.13.9',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -26017,7 +26017,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.13.8';
+  const VERSION='6.13.9';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
