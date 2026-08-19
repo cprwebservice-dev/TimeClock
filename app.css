@@ -20083,3 +20083,13 @@ body.theme-dark .work-mode-dept-summary-v6122 small,.dark .work-mode-dept-summar
 
 .shift-rule-pair-preview-v6123.warn{border-color:rgba(217,119,6,.4)}
 .shift-off-time-help-v6124{margin-top:-4px;margin-bottom:8px;color:var(--muted,#64748b);font-size:12px;line-height:1.5}
+
+
+/* ========================================================================== */
+/* V6.13.3 — Assignment warning/loading stack                                */
+/* Keep feedback above Shift Assignment, but below the global confirm modal. */
+/* ========================================================================== */
+body.team-assignment-modal-open .loading-overlay{z-index:7000!important}
+body.team-assignment-modal-open .toast-stack{z-index:14000!important}
+body.team-assignment-modal-open .global-action-modal-backdrop{z-index:15000!important}
+body.team-assignment-modal-open .global-print-modal-backdrop{z-index:15000!important}
