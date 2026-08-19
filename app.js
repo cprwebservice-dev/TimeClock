@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.1";
+window.__TIME_CLOCK_BUILD__ = "V6.14.2";
 document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.1',
+  version: '6.14.2',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -320,12 +320,12 @@ window.tcIsDayShiftCode = value =>
       throw new Error(periodCheck.message || "SYSTEM_PERIOD_SCHEDULE_CLOSED");
     }
 
-    let response = await client.rpc("ta_assign_shift_single_v651", full);
+    let response = await client.rpc("ta_assign_shift_single_v6142", full);
     if (!response.error) return response.data;
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.15 ก่อนจัดกะ"
+      "DAYOFF_QUOTA_GUARD_V6142_REQUIRED: กรุณารัน SQL V6.14.2 ก่อนจัดกะ"
     );
   }
 
@@ -348,7 +348,7 @@ window.tcIsDayShiftCode = value =>
       throw new Error(periodCheck.message || "SYSTEM_PERIOD_SCHEDULE_CLOSED");
     }
 
-    let response = await client.rpc("ta_assign_shifts_bulk_v651", {
+    let response = await client.rpc("ta_assign_shifts_bulk_v6142", {
       p_rows: cleanRows,
       p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
       p_confirm_now: Boolean(confirmNow)
@@ -357,7 +357,7 @@ window.tcIsDayShiftCode = value =>
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "SECURE_SCHEDULE_RPC_REQUIRED: กรุณาติดตั้ง SQL V6.11.15 ก่อนบันทึกกะแบบหลายรายการ"
+      "DAYOFF_QUOTA_GUARD_V6142_REQUIRED: กรุณารัน SQL V6.14.2 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -6245,7 +6245,7 @@ window.tcIsDayShiftCode = value =>
       const assignedMasterV6141 = assignedCodeV6141
         ? state.filters.shifts.find(s => window.tcShiftCode(s.shift_code) === assignedCodeV6141)
         : null;
-      // V6.14.1: a manually assigned WORKING shift must win over the natural
+      // V6.14.2: a manually assigned WORKING shift must win over the natural
       // Saturday/Sunday/public-holiday classification. The day header can still
       // show the calendar holiday, but the label itself represents the shift
       // that will actually be worked.
@@ -9361,7 +9361,7 @@ window.tcIsDayShiftCode = value =>
             saveError
         } =
           await state.client.rpc(
-            "ta_assign_shift_with_work_plan_v6126",
+            "ta_assign_shift_with_work_plan_v6142",
             {
               p_emp_code:
                 val("assignEmpCode"),
@@ -9396,7 +9396,7 @@ window.tcIsDayShiftCode = value =>
             scheduleRpcErrorSummaryV6126(saveError)
           );
           if (window.TimeClockShiftAPI?.missingFunction?.(saveError)) {
-            throw new Error('กรุณารัน SQL V6.12.6 ก่อนใช้งานการบันทึกกะ');
+            throw new Error('DAYOFF_QUOTA_GUARD_V6142_REQUIRED: กรุณารัน SQL V6.14.2 ก่อนใช้งานการบันทึกกะ');
           }
           throw saveError;
         }
@@ -11564,6 +11564,8 @@ window.tcIsDayShiftCode = value =>
         const count = msg.match(/SCHEDULE_HAS_UNCONFIRMED_SHIFTS:\s*(\d+)/)?.[1];
         return `พบรายการจัดกะเดิมที่สถานะยังไม่สมบูรณ์${count ? ` ${Number(count).toLocaleString("th-TH")} รายการ` : ""} กรุณาเปิดรายการและกดบันทึกใหม่ก่อนประกาศหรือล็อกเดือน`;
       }
+      if (msg.includes("DAYOFF_QUOTA_EXHAUSTED")) return "วันหยุดคงเหลือไม่เพียงพอ ไม่สามารถกำหนดกะวันหยุดเพิ่มได้ กรุณาตรวจวันหยุดที่ใช้ไปหรือเปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน";
+      if (msg.includes("DAYOFF_QUOTA_GUARD_V6142_REQUIRED")) return "กรุณารัน SQL V6.14.2 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
@@ -26140,7 +26142,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.1';
+  const VERSION='6.14.2';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -26326,9 +26328,41 @@ ${skippedSummary(compatibility.skipped)}
     try{return await rpc('ta_get_work_modes_for_employee_v6120',{p_emp_code:String(emp),p_work_date:$('assignWorkDate')?.value||new Date().toISOString().slice(0,10)})||[];}
     catch(e){return Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:true,is_allowed:true,display_order:i+1,scope_label:'Fallback • กรุณารัน SQL V6.12.0'}));}
   }
+  function currentTargetConsumesDayoffQuotaV6142(){
+    const r=st.current?.row;
+    if(!r)return false;
+    const assigned=String(r?.assigned_shift_code||r?.shift_code||'').trim().toUpperCase();
+    const effective=rowCode(r);
+    const code=assigned||effective;
+    if(['LV','LEAVE'].includes(code))return false;
+    if(code==='HOL')return true;
+    const assignedMaster=assigned?shiftMaster(assigned):null;
+    if(assigned&&assignedMaster?.is_workday!==false)return false;
+    if(assigned&&assignedMaster?.is_workday===false)return true;
+    const effectiveMaster=effective?shiftMaster(effective):null;
+    if(effectiveMaster?.is_workday===false)return true;
+    return Boolean(r?.is_weekly_off||r?.is_public_holiday||['WEEKLY_OFF','PUBLIC_HOLIDAY','HOLIDAY','DAY_OFF','COMP_OFF'].includes(String(r?.day_type||'').toUpperCase()));
+  }
+  function dayoffQuotaAvailabilityV6142(){
+    const q=st.quota||{};
+    if(q.balance_days==null)return {loaded:false,allowed:true,balance:null,alreadyConsumes:false};
+    const balance=Number(q.balance_days||0);
+    const alreadyConsumes=currentTargetConsumesDayoffQuotaV6142();
+    return {loaded:true,allowed:balance>0||(balance===0&&alreadyConsumes),balance,alreadyConsumes};
+  }
   function renderModeGrid(){
     const box=$('assignModeGridV6120');if(!box)return;
-    box.innerHTML=(st.modes||[]).filter(x=>x.is_active!==false).sort((a,b)=>Number(a.display_order||0)-Number(b.display_order||0)).map(x=>{const code=String(x.mode_code||'').toUpperCase(),d=modeDefs[code]||{label:x.mode_name||code,icon:'•',desc:x.description||''};const allowed=x.is_allowed!==false;return `<button type="button" class="assign-mode-card-v6120 ${st.current?.mode===code?'active':''}" data-work-mode-v6120="${esc(code)}" ${allowed?'':'disabled'} title="${esc(allowed?d.desc:(x.scope_label||'หน่วยงานนี้ยังไม่เปิดใช้'))}"><span>${esc(d.icon)}</span><div><strong>${esc(d.label)}</strong><small>${esc(allowed?d.desc:(x.scope_label||'ยังไม่เปิดใช้กับหน่วยงานนี้'))}</small></div>${allowed?'<i>เลือก</i>':'<i>ปิดใช้</i>'}</button>`;}).join('');
+    const quotaState=dayoffQuotaAvailabilityV6142();
+    box.innerHTML=(st.modes||[]).filter(x=>x.is_active!==false).sort((a,b)=>Number(a.display_order||0)-Number(b.display_order||0)).map(x=>{
+      const code=String(x.mode_code||'').toUpperCase(),d=modeDefs[code]||{label:x.mode_name||code,icon:'•',desc:x.description||''};
+      const scopeAllowed=x.is_allowed!==false;
+      const quotaBlocked=code==='DYNAMIC_OFF'&&quotaState.loaded&&!quotaState.allowed;
+      const allowed=scopeAllowed&&!quotaBlocked;
+      const blockedText=quotaBlocked
+        ? `วันหยุดคงเหลือ ${Number(quotaState.balance||0).toLocaleString('th-TH')} วัน • ไม่สามารถกำหนดวันหยุดเพิ่มได้`
+        : (x.scope_label||'หน่วยงานนี้ยังไม่เปิดใช้');
+      return `<button type="button" class="assign-mode-card-v6120 ${st.current?.mode===code?'active':''} ${quotaBlocked?'quota-exhausted-v6142':''}" data-work-mode-v6120="${esc(code)}" ${allowed?'':'disabled'} title="${esc(allowed?d.desc:blockedText)}"><span>${esc(d.icon)}</span><div><strong>${esc(d.label)}</strong><small>${esc(allowed?d.desc:blockedText)}</small></div>${allowed?'<i>เลือก</i>':quotaBlocked?'<i>สิทธิ์หมด</i>':'<i>ปิดใช้</i>'}</button>`;
+    }).join('');
   }
   function populateWorkingShiftOptions(splitOnly=false){
     if(!st.current)return;const select=$('assignShiftCode');if(!select)return;
@@ -26432,7 +26466,7 @@ ${skippedSummary(compatibility.skipped)}
     if(!st.current)return;const mode=st.current.mode;
     if(mode==='HOUR_BASED'){const start=$('assignHourStartV6120')?.value,end=addMinutes(start,patternTotal(st.current.patternCode));$('assignHourEndV6120').textContent=start&&end?`${start} → ${end}${minsOf(end)<=minsOf(start)?' (+1)':''} • รวมพัก ${(patternTotal(st.current.patternCode)/60).toLocaleString('th-TH')} ชม.`:'-';}
     if(mode==='SPLIT_WAIT_NIGHT'){const sm=shiftMaster(st.current.baseShiftCode||$('assignShiftCode')?.value);const start=fmtTime(sm?.start_time)||'-',first=$('assignFirstEndV6120')?.value||'-',second=$('assignSecondStartV6120')?.value||'-',end=$('assignSecondEndV6120')?.value||'-';const work=spanMinutes(start,first)+spanMinutes(second,end),wait=spanMinutes(first,second);$('assignSplitPreviewV6120').innerHTML=`<span>ช่วงที่ 1 <b>${esc(start)}–${esc(first)}</b></span><span class="wait">รอ <b>${esc((wait/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</b> • ไม่นับ</span><span>ช่วงที่ 2 <b>${esc(second)}–${esc(end)}${minsOf(end)<=minsOf(second)?' (+1)':''}</b></span><strong>เวลาทำงานตามแผน ${esc((work/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</strong>`;}
-    if(mode==='DYNAMIC_OFF'){const w=offBasisWindow();$('assignOffPreviewV6120').innerHTML=w?(w.mappingMissing?`<strong class="text-danger">ยังไม่ได้จับคู่กะวันหยุดของ ${esc(w.basisCode||'')}</strong><small>ไปที่ ตั้งค่ากะทำงาน → กฎการเลือกกะและกะวันหยุดคู่กัน</small>`:`<span>ระบบเลือกกะวันหยุดให้อัตโนมัติ</span><strong>${esc(w.offShiftCode||'วันหยุด')} • ${esc(w.start)}–${esc(w.end)}${minsOf(w.end)<=minsOf(w.start)?' (+1)':''}</strong><small>${w.usedDefaultFallback?`ไม่พบกะทำงานย้อนหลัง • ใช้กะตั้งต้น ${esc(w.basisCode||'')}`:`อ้างอิงกะทำงานล่าสุด ${w.basisDate?`${esc(fmtDate(String(w.basisDate).slice(0,10)))} • `:''}${esc(w.basisCode||'')}`} → ${String(w.resolutionType||'').includes('SPECIAL')?'กะพิเศษแบบ Dynamic':'จับคู่ตาม Set Up'}</small>`):`<strong>ยังไม่พบข้อมูลกะสำหรับกำหนดวันหยุด</strong><small>ระบบตรวจย้อนหลังข้ามเดือนไม่เกิน 60 วันแล้ว และไม่พบทั้งกะทำงานล่าสุดหรือกะตั้งต้นที่จับคู่วันหยุดได้</small>`;}
+    if(mode==='DYNAMIC_OFF'){const quotaStateV6142=dayoffQuotaAvailabilityV6142();const w=offBasisWindow();$('assignOffPreviewV6120').innerHTML=(quotaStateV6142.loaded&&!quotaStateV6142.allowed)?`<strong class="text-danger">วันหยุดคงเหลือ 0 วัน</strong><small>ใช้โควต้าวันหยุดครบแล้ว จึงไม่สามารถกำหนดวันหยุดเพิ่มได้ • หากต้องการย้ายวันหยุด ให้เปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน หรือทำรายการย้ายแบบ Bulk ในชุดเดียว</small>`:w?(w.mappingMissing?`<strong class="text-danger">ยังไม่ได้จับคู่กะวันหยุดของ ${esc(w.basisCode||'')}</strong><small>ไปที่ ตั้งค่ากะทำงาน → กฎการเลือกกะและกะวันหยุดคู่กัน</small>`:`<span>ระบบเลือกกะวันหยุดให้อัตโนมัติ</span><strong>${esc(w.offShiftCode||'วันหยุด')} • ${esc(w.start)}–${esc(w.end)}${minsOf(w.end)<=minsOf(w.start)?' (+1)':''}</strong><small>${w.usedDefaultFallback?`ไม่พบกะทำงานย้อนหลัง • ใช้กะตั้งต้น ${esc(w.basisCode||'')}`:`อ้างอิงกะทำงานล่าสุด ${w.basisDate?`${esc(fmtDate(String(w.basisDate).slice(0,10)))} • `:''}${esc(w.basisCode||'')}`} → ${String(w.resolutionType||'').includes('SPECIAL')?'กะพิเศษแบบ Dynamic':'จับคู่ตาม Set Up'}</small>`):`<strong>ยังไม่พบข้อมูลกะสำหรับกำหนดวันหยุด</strong><small>ระบบตรวจย้อนหลังข้ามเดือนไม่เกิน 60 วันแล้ว และไม่พบทั้งกะทำงานล่าสุดหรือกะตั้งต้นที่จับคู่วันหยุดได้</small>`;}
     renderGuardPreview();
   }
   function proposedPlan(){
@@ -26520,6 +26554,8 @@ ${skippedSummary(compatibility.skipped)}
         catch(e2){q=await rpc('ta_get_dayoff_balance_v6120',args);}
       }
       st.quota=Array.isArray(q)?q[0]:q;
+      renderModeGrid();
+      refreshAssignmentPreview();
     }catch(e){
       console.warn('Day-off quota load V6.13.5:',e?.message||e);
     }
@@ -26576,6 +26612,22 @@ ${skippedSummary(compatibility.skipped)}
     if(!selectedMaster){app()?.toast?.(`ไม่พบรหัสกะ ${selectedCode} ใน Shift Master กรุณารีเฟรชตั้งค่ากะทำงาน`,'error');return {allowed:false};}
     if(!p.off&&selectedMaster.is_workday===false){app()?.toast?.(`รหัส ${selectedCode} เป็นกะวันหยุด จึงไม่สามารถเลือกในช่อง “กะทำงาน” ได้ กรุณาเลือกประเภท “วันหยุดตามกะล่าสุด”`,'error');return {allowed:false};}
     if(!p.off&&selectedMaster.is_workday!==false&&!shiftAllowedForDepartment(selectedCode,rowDepartment(c.row))){app()?.toast?.(`กะ ${selectedCode} ไม่ได้เปิดใช้สำหรับหน่วยงาน ${rowDepartment(c.row)||'-'}`,'error');return {allowed:false};}
+    let dayoffQuotaGuardV6142=null;
+    try{
+      dayoffQuotaGuardV6142=await rpc('ta_validate_dayoff_quota_v6142',{
+        p_emp_code:c.empCode,
+        p_work_date:c.workDate,
+        p_proposed_shift_code:selectedCode||null
+      });
+    }catch(e){
+      app()?.toast?.('ตรวจโควต้าวันหยุดไม่สำเร็จ กรุณารัน SQL V6.14.2 ก่อนบันทึกกะ','error');
+      return {allowed:false};
+    }
+    if(dayoffQuotaGuardV6142?.allowed===false){
+      const bal=Number(dayoffQuotaGuardV6142.balance_before||0).toLocaleString('th-TH');
+      app()?.toast?.(`กำหนดวันหยุดไม่ได้: วันหยุดคงเหลือ ${bal} วัน และรายการนี้จะใช้สิทธิ์เพิ่ม`,'error');
+      return {allowed:false};
+    }
     const guard=renderGuardPreview();
     if(guard?.hardBlock){app()?.toast?.(`กำหนดกะไม่ได้: เวลาพักจากกะก่อนหน้า ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม.`,'error');return {allowed:false};}
     let server=await fetchScheduleGuardV6141();
@@ -26592,7 +26644,7 @@ ${skippedSummary(compatibility.skipped)}
     const warn48=authoritative?server?.warning_48h===true:Boolean(guard?.warning48);
     const continuousForWarning=authoritative?Number(server?.continuous_minutes_after||0):Number(guard?.continuousAfter||0);
     if(warn48){const ok=await window.tcConfirm(`พนักงานจะมีชั่วโมงทำงานต่อเนื่องประมาณ ${(continuousForWarning/60).toLocaleString('th-TH',{maximumFractionDigits:1})} ชั่วโมง\n\nระบบแนะนำให้กำหนดวันหยุด แต่ยังสามารถจัดกะต่อได้\n\nต้องการจัดกะต่อหรือไม่?`);if(!ok)return {allowed:false};}
-    c.prepared={...p,guard,server};return {allowed:true,...c.prepared};
+    c.prepared={...p,guard,server,dayoffQuotaGuardV6142};return {allowed:true,...c.prepared};
   }
   async function saveExtension({preparation}={}){
     if(!st.current)return;const c=st.current,p=c.prepared||preparation||proposedPlan(),basis=p.basis||offBasisWindow();
@@ -26707,6 +26759,18 @@ ${skippedSummary(compatibility.skipped)}
       else if(special)app()?.toast?.(`กะพิเศษ ${special.code} ไม่รองรับการคัดลอก/Fill ด้วยรหัสกะอย่างเดียว กรุณาเปิดวันนั้นแล้วเลือก “กะนับชั่วโมง” หรือ “กะเช้า + รอเข้ากะดึก” เพื่อให้ระบบเก็บช่วงเวลาครบถ้วน`,'error');
       else app()?.toast?.(`บันทึกไม่ได้ ${blocks.length.toLocaleString('th-TH')} รายการ: ${first.emp} วันที่ ${fmtDate(first.date)} พักเพียง ${(first.rest/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. (ขั้นต่ำ 6 ชม.)`,'error');
       return {allowed:false,blocks,warnings};
+    }
+    let quotaGuardBulkV6142=null;
+    try{
+      quotaGuardBulkV6142=await rpc('ta_validate_dayoff_quota_bulk_v6142',{p_rows:payload});
+    }catch(e){
+      app()?.toast?.('ตรวจโควต้าวันหยุดแบบหลายรายการไม่สำเร็จ กรุณารัน SQL V6.14.2 ก่อนบันทึก','error');
+      return {allowed:false,blocks,warnings,quotaError:e};
+    }
+    if(quotaGuardBulkV6142?.allowed===false){
+      const firstQuota=(quotaGuardBulkV6142.violations||[])[0]||{};
+      app()?.toast?.(`บันทึกไม่ได้: ${firstQuota.emp_code||'พนักงาน'} เดือน ${String(firstQuota.month||'').slice(0,7)} มีวันหยุดคงเหลือไม่พอ (หลังรายการนี้ ${Number(firstQuota.projected_balance||0).toLocaleString('th-TH')} วัน)`,'error');
+      return {allowed:false,blocks,warnings,quotaGuard:quotaGuardBulkV6142};
     }
     if(warnings.length){
       const max=Math.max(...warnings.map(x=>x.after));
