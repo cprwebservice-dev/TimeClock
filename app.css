@@ -20249,3 +20249,113 @@ body.theme-dark #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-spl
   .schedule-shift-icon-v6136 svg{width:21px;height:21px}
   .schedule-icon-legend-v6136{justify-content:flex-start;max-width:none}
 }
+
+
+/* ========================================================================== */
+/* V6.13.7 — Person Full-Month: fit 28–31 dates in one desktop viewport       */
+/* Presentation only. Backend scheduling rules and calculations are unchanged. */
+/* ========================================================================== */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137{
+  --schedule-code-col:var(--schedule-code-col-v6137,52px);
+  --schedule-name-col:var(--schedule-name-col-v6137,116px);
+  --schedule-start-col:var(--schedule-start-col-v6137,76px);
+  --schedule-position-col:var(--schedule-position-col-v6137,88px);
+  min-width:max-content!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 th.day-col,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 td.day-col{
+  width:var(--schedule-day-col-v6137,28px)!important;
+  min-width:var(--schedule-day-col-v6137,28px)!important;
+  max-width:var(--schedule-day-col-v6137,28px)!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 thead th.day-col{
+  height:42px!important;
+  padding:3px 1px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 thead th.day-col>span{
+  font-size:10px!important;
+  line-height:1!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 thead th.day-col>small{
+  margin-top:3px!important;
+  font-size:7px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-data-cell{
+  height:42px!important;
+  padding:2px 1px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-cell.schedule-icon-only-v6136{
+  width:var(--schedule-icon-box-v6137,26px)!important;
+  min-width:var(--schedule-icon-box-v6137,26px)!important;
+  max-width:var(--schedule-icon-box-v6137,26px)!important;
+  height:32px!important;
+  min-height:32px!important;
+  border-radius:8px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-shift-icon-v6136{
+  width:var(--schedule-icon-box-v6137,26px)!important;
+  height:28px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-shift-icon-v6136 svg{
+  width:var(--schedule-icon-size-v6137,21px)!important;
+  height:var(--schedule-icon-size-v6137,21px)!important;
+}
+
+/* Compact employee columns leave room for the complete month while remaining sticky. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-emp-code{
+  font-size:9px!important;
+  padding-left:2px!important;
+  padding-right:2px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-emp-name{
+  padding:5px 5px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-emp-name strong{
+  font-size:9px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-emp-name small{
+  font-size:7px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-pattern-badge{
+  padding:2px 4px!important;
+  font-size:7px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-month-calendar-btn-v61121{
+  width:24px!important;
+  height:24px!important;
+  flex:0 0 24px!important;
+  border-radius:7px!important;
+  font-size:11px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-emp-start-date,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-emp-position{
+  padding-left:4px!important;
+  padding-right:4px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:8px!important;
+}
+
+/* No forced scrollbar when the full month fits. If the viewport is genuinely
+   too narrow, the existing horizontal scroll remains the safe fallback. */
+#schedulePersonWorkspace .schedule-grid-wrap[data-month-fit="fit"]{
+  scrollbar-gutter:auto!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137[data-month-fit="fit"]{
+  margin-right:0!important;
+}
+
+@media(max-width:1100px){
+  #schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137{
+    --schedule-code-col:50px;
+    --schedule-name-col:108px;
+    --schedule-start-col:72px;
+    --schedule-position-col:84px;
+  }
+}

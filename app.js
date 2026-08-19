@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.13.6";
-document.documentElement.dataset.timeClockBuild = "6.13.6";
+window.__TIME_CLOCK_BUILD__ = "V6.13.7";
+document.documentElement.dataset.timeClockBuild = "6.13.7";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.6";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.13.6',
+  version: '6.13.7',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -6210,7 +6210,7 @@ window.tcIsDayShiftCode = value =>
 
 
 
-    /* V6.13.6 — Person Full-Month icon-only shift labels.
+    /* V6.13.7 — Person Full-Month icon-only shift labels.
        Presentation only: backend Shift Codes / rules / calculations stay unchanged. */
     function schedulePersonIconSvgV6136(kind) {
       const common = 'viewBox="0 0 24 24" aria-hidden="true" focusable="false"';
@@ -6321,6 +6321,62 @@ window.tcIsDayShiftCode = value =>
         row?.comp_off_earned ? 'ได้รับวันหยุดชดเชย' : null
       ].filter(Boolean);
       return lines.join('|');
+    }
+
+
+
+    /* V6.13.7 — Compact Full-Month Fit
+       Keeps all 28–31 dates visible on normal desktop widths without shrinking
+       the shift icon to an unreadable size. Narrow screens keep horizontal scroll. */
+    function scheduleFitPersonFullMonthV6137(period = null) {
+      const workspace = $("schedulePersonWorkspace");
+      const wrap = $("scheduleTableWrap");
+      const table = wrap?.querySelector?.(".monthly-person-schedule-table-v61146");
+      if (!workspace || !wrap || !table) return;
+
+      const dayCount = Math.max(
+        28,
+        Number(period?.dates?.length || table.dataset.monthDays || table.querySelectorAll("thead th.day-col").length || 31)
+      );
+      const viewport = Math.floor(wrap.clientWidth || workspace.clientWidth || 0);
+      if (!viewport) return;
+
+      // Employee identity columns are intentionally compact only in full-month view.
+      // Values are still available in title/tooltip and remain sticky.
+      const fixed = viewport >= 1500
+        ? { code:58, name:132, start:80, position:96 }
+        : viewport >= 1250
+          ? { code:52, name:116, start:76, position:88 }
+          : { code:50, name:108, start:72, position:84 };
+
+      const fixedWidth = fixed.code + fixed.name + fixed.start + fixed.position;
+      const availableForDays = Math.max(0, viewport - fixedWidth - 4);
+      const naturalDayWidth = Math.floor(availableForDays / dayCount);
+      const canFitWholeMonth = naturalDayWidth >= 27;
+      const dayWidth = canFitWholeMonth
+        ? Math.min(36, naturalDayWidth)
+        : 28;
+      const iconBox = Math.max(24, Math.min(30, dayWidth - 2));
+      const iconSize = Math.max(19, Math.min(24, iconBox - 5));
+
+      table.style.setProperty('--schedule-code-col-v6137', `${fixed.code}px`);
+      table.style.setProperty('--schedule-name-col-v6137', `${fixed.name}px`);
+      table.style.setProperty('--schedule-start-col-v6137', `${fixed.start}px`);
+      table.style.setProperty('--schedule-position-col-v6137', `${fixed.position}px`);
+      table.style.setProperty('--schedule-day-col-v6137', `${dayWidth}px`);
+      table.style.setProperty('--schedule-icon-box-v6137', `${iconBox}px`);
+      table.style.setProperty('--schedule-icon-size-v6137', `${iconSize}px`);
+      table.dataset.monthFit = canFitWholeMonth ? 'fit' : 'scroll';
+      wrap.dataset.monthFit = canFitWholeMonth ? 'fit' : 'scroll';
+    }
+
+    if (!window.__schedulePersonFitResizeBoundV6137) {
+      window.__schedulePersonFitResizeBoundV6137 = true;
+      let resizeTimerV6137 = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimerV6137);
+        resizeTimerV6137 = setTimeout(() => scheduleFitPersonFullMonthV6137(), 100);
+      }, { passive:true });
     }
 
     function fillScheduleTeamFocusOptions(rows = []) {
@@ -8601,10 +8657,10 @@ window.tcIsDayShiftCode = value =>
         const title = meta.holiday
           ? `${meta.holidayName} • คลิกเพื่อเลือกทั้งวันที่`
           : "คลิกเพื่อเลือกทั้งวันที่";
-        return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d.getDate()}</span><small>${thaiDays[dow]} ${thaiMonths[d.getMonth()]}${meta.holiday?" • หยุด":""}</small></th>`;
+        return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d.getDate()}</span><small>${thaiDays[dow]}${meta.holiday?" •":""}</small></th>`;
       }).join("");
 
-      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table monthly-person-schedule-table-v61146"><thead><tr><th class="sticky-col-1 schedule-code-head">รหัส</th><th class="sticky-col-2 schedule-name-head">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-start-head">วันเริ่มงาน</th><th class="sticky-col-4 schedule-position-head">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
+      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table monthly-person-schedule-table-v61146 month-fit-table-v6137" data-month-days="${period.dates.length}"><thead><tr><th class="sticky-col-1 schedule-code-head">รหัส</th><th class="sticky-col-2 schedule-name-head">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-start-head">วันเริ่มงาน</th><th class="sticky-col-4 schedule-position-head">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
 
       if (!map.size) html += emptyRow(period.dates.length + 4);
 
@@ -8900,6 +8956,7 @@ window.tcIsDayShiftCode = value =>
 
       html += `</tbody></table>`;
       $("scheduleTableWrap").innerHTML = html;
+      requestAnimationFrame(() => scheduleFitPersonFullMonthV6137(period));
       setText("scheduleEmployeeCount", formatNumber(map.size));
       const changedRowsV61117 = rows.filter(scheduleRequiresManagerConfirmationV61116);
       const splitRowsV61117 = rows.filter(r => scheduleWorkTemplateCodeV6118(r) === "SPLIT_FLEX");
@@ -25960,7 +26017,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.13.6';
+  const VERSION='6.13.7';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
