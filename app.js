@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.12.5";
-document.documentElement.dataset.timeClockBuild = "6.12.5";
+window.__TIME_CLOCK_BUILD__ = "V6.12.6";
+document.documentElement.dataset.timeClockBuild = "6.12.6";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.12.5";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.12.5',
+  version: '6.12.6',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -3791,7 +3791,7 @@ window.tcIsDayShiftCode = value =>
       const active = state.filters.shifts.filter(s => {
         if (s.is_active === false) return false;
 
-        // V6.12.5: the field is explicitly a WORK-SHIFT selector. Day-off
+        // V6.12.6: the field is explicitly a WORK-SHIFT selector. Day-off
         // shifts (OSTD/OS043/OS134/OS135/other is_workday=false rows) are
         // resolved only by the Day-off mode and must never appear here.
         const codeV6125 = window.tcShiftCode(s.shift_code);
@@ -4753,7 +4753,7 @@ window.tcIsDayShiftCode = value =>
       return "ไม่พบพนักงานตาม User Scope สำหรับช่วงวันที่ที่เลือก กรุณาตรวจ Role, Scope, Can View และ Effective Date";
     }
 
-    // V6.12.5: filter options (scope employee list / zone / department)
+    // V6.12.6: filter options (scope employee list / zone / department)
     // do not change when a shift cell is saved. A short cache avoids repeating
     // the same expensive RPC during save -> reload and zone-change -> reload.
     const scheduleFilterOptionsCacheV6125 = new Map();
@@ -4883,6 +4883,28 @@ window.tcIsDayShiftCode = value =>
       return result;
     }
 
+    const scheduleRpcHealthV6126 = window.TimeClockScheduleRpcHealthV6126 ||= {
+      workPlanMetaFailed: false,
+      dailyPlanFailed: false,
+      orgDetailDisabled: false,
+      logged: new Set()
+    };
+
+    function scheduleRpcErrorSummaryV6126(error) {
+      return {
+        code: error?.code || '',
+        message: error?.message || String(error || ''),
+        details: error?.details || '',
+        hint: error?.hint || ''
+      };
+    }
+
+    function scheduleLogRpcOnceV6126(key, label, error) {
+      if (scheduleRpcHealthV6126.logged.has(key)) return;
+      scheduleRpcHealthV6126.logged.add(key);
+      console.warn(label, scheduleRpcErrorSummaryV6126(error));
+    }
+
     async function enrichScheduleWorkPlanMetaV6118(
       period,
       rows
@@ -4923,27 +4945,47 @@ window.tcIsDayShiftCode = value =>
         batches.push(empCodes.slice(offset, offset + batchSize));
       }
 
-      const concurrency = 5;
-      for (let cursor = 0; cursor < batches.length; cursor += concurrency) {
-        const group = batches.slice(cursor, cursor + concurrency);
-        const responses = await Promise.all(
-          group.map(batch => state.client.rpc(
-            "ta_get_schedule_work_plan_meta_v6118",
-            {
-              p_start_date: period.startDate,
-              p_end_date: period.endDate,
-              p_emp_codes: batch
-            }
-          ))
-        );
+      if (scheduleRpcHealthV6126.workPlanMetaFailed || !batches.length) {
+        return rows;
+      }
 
+      const callMetaBatchV6126 = batch => state.client.rpc(
+        "ta_get_schedule_work_plan_meta_v6126",
+        {
+          p_start_date: period.startDate,
+          p_end_date: period.endDate,
+          p_emp_codes: batch
+        }
+      );
+
+      // Probe one batch first to prevent a burst of identical 400 responses.
+      const firstResponse = await callMetaBatchV6126(batches[0]);
+      if (firstResponse?.error) {
+        scheduleRpcHealthV6126.workPlanMetaFailed = true;
+        scheduleLogRpcOnceV6126(
+          'work-plan-meta',
+          'Schedule work-plan metadata V6.12.6 disabled for this session:',
+          firstResponse.error
+        );
+        return rows;
+      }
+      metaRows.push(...(firstResponse?.data || []));
+
+      const remaining = batches.slice(1);
+      const concurrency = 4;
+      for (let cursor = 0; cursor < remaining.length; cursor += concurrency) {
+        const group = remaining.slice(cursor, cursor + concurrency);
+        const responses = await Promise.all(group.map(callMetaBatchV6126));
         for (const response of responses) {
           const { data, error } = response || {};
           if (error) {
-            if (String(error.message || "").includes("ta_get_schedule_work_plan_meta_v6118")) {
-              throw new Error("WORK_PLAN_LINKAGE_RPC_REQUIRED");
-            }
-            throw error;
+            scheduleRpcHealthV6126.workPlanMetaFailed = true;
+            scheduleLogRpcOnceV6126(
+              'work-plan-meta',
+              'Schedule work-plan metadata V6.12.6 disabled for this session:',
+              error
+            );
+            return rows;
           }
           metaRows.push(...(data || []));
         }
@@ -5116,7 +5158,7 @@ window.tcIsDayShiftCode = value =>
           // The RPC is still subject to the server's max-rows behavior.
           // Instead fetch small employee batches:
           // 20 employees x 31 days <= 620 rows/request.
-          // V6.12.5: 32 employees x 31 days <= 992 rows/request.
+          // V6.12.6: 32 employees x 31 days <= 992 rows/request.
           // Load up to 5 employee batches concurrently. This changes only the
           // transport strategy; scope/filter/business rules remain unchanged.
           const employeeBatchSize = 32;
@@ -5286,7 +5328,7 @@ window.tcIsDayShiftCode = value =>
           loadedAt:Date.now()
         };
 
-        // V6.12.5 performance:
+        // V6.12.6 performance:
         // Render the base schedule immediately. Daily Work Plan / Scheduling Rule
         // metadata and team-manager names are enrichment layers, not prerequisites
         // for showing the calendar grid. Keeping them off the critical path removes
@@ -5305,7 +5347,7 @@ window.tcIsDayShiftCode = value =>
               renderSchedule();
             }
           } catch (metadataErrorV6125) {
-            console.warn('Deferred schedule metadata enrichment V6.12.5:', metadataErrorV6125);
+            console.warn('Deferred schedule metadata enrichment V6.12.6:', metadataErrorV6125);
           }
         });
 
@@ -5331,7 +5373,7 @@ window.tcIsDayShiftCode = value =>
                 renderSchedule();
               }
             } catch (managerErrorV6125) {
-              console.warn('Deferred schedule manager enrichment V6.12.5:', managerErrorV6125);
+              console.warn('Deferred schedule manager enrichment V6.12.6:', managerErrorV6125);
             }
           });
         }
@@ -5794,6 +5836,15 @@ window.tcIsDayShiftCode = value =>
     async function scheduleGetOrgDetailV61123(orgId) {
       const id = String(orgId || '').trim();
       if (!id || !state.client) return null;
+
+      // Administration RPC: do not call from Manager/Viewer calendar.
+      const currentRole = String(
+        state.profile?._realRole || state.profile?.role || ''
+      ).trim().toUpperCase();
+      if (currentRole !== 'HR_ADMIN' || scheduleRpcHealthV6126.orgDetailDisabled) {
+        return null;
+      }
+
       const cache = scheduleOrgManagerStateV61123;
       if (cache.detailById.has(id)) return cache.detailById.get(id);
       try {
@@ -5804,7 +5855,12 @@ window.tcIsDayShiftCode = value =>
         cache.detailById.set(id, data || null);
         return data || null;
       } catch (error) {
-        console.warn('Schedule org manager detail V6.11.24:', id, error);
+        scheduleRpcHealthV6126.orgDetailDisabled = true;
+        scheduleLogRpcOnceV6126(
+          'org-unit-detail',
+          'Optional schedule org-manager enrichment V6.12.6 disabled:',
+          error
+        );
         cache.detailById.set(id, null);
         return null;
       }
@@ -7313,14 +7369,16 @@ window.tcIsDayShiftCode = value =>
           }
         );
 
-        const workPlanPromise = state.client.rpc(
-          'ta_get_schedule_work_plan_meta_v6118',
-          {
-            p_start_date: bounds.start,
-            p_end_date: bounds.end,
-            p_emp_codes: [empCode]
-          }
-        );
+        const workPlanPromise = scheduleRpcHealthV6126.workPlanMetaFailed
+          ? Promise.resolve({ data: [], error: null })
+          : state.client.rpc(
+              'ta_get_schedule_work_plan_meta_v6126',
+              {
+                p_start_date: bounds.start,
+                p_end_date: bounds.end,
+                p_emp_codes: [empCode]
+              }
+            );
 
         const attendancePromise =
           fetchEmployeeMonthAttendanceDetailV61138(empCode, bounds);
@@ -7367,17 +7425,16 @@ window.tcIsDayShiftCode = value =>
           .map(row => ({ ...row }));
 
         if (workPlanResponse.error) {
-          if (
-            String(workPlanResponse.error.message || '')
-              .includes('ta_get_schedule_work_plan_meta_v6118')
-          ) {
-            throw new Error('WORK_PLAN_LINKAGE_RPC_REQUIRED');
-          }
-          throw workPlanResponse.error;
+          scheduleRpcHealthV6126.workPlanMetaFailed = true;
+          scheduleLogRpcOnceV6126(
+            'employee-month-work-plan',
+            'Employee month work-plan metadata V6.12.6 unavailable; rendering base schedule:',
+            workPlanResponse.error
+          );
         }
 
         const workPlanMap = new Map(
-          (workPlanResponse.data || []).map(meta => [
+          (workPlanResponse.error ? [] : (workPlanResponse.data || [])).map(meta => [
             `${String(meta?.emp_code || '')}|${String(meta?.work_date || '').slice(0,10)}`,
             meta
           ])
@@ -7676,7 +7733,7 @@ window.tcIsDayShiftCode = value =>
         const certificationBadge = merged ? timeCertificationBadgeV61139(merged) : '';
         const isToday = workDate === todayISO();
         const workingShiftOverride =
-          attendanceHasWorkingShiftOverrideV61155(scheduleRow || row);
+          attendanceHasWorkingShiftOverrideV61155(scheduleRow || merged);
 
         const calendarHoliday = Boolean(
           scheduleRow?.is_public_holiday
@@ -8850,7 +8907,7 @@ window.tcIsDayShiftCode = value =>
             saveError
         } =
           await state.client.rpc(
-            "ta_assign_shift_with_work_plan_v61110",
+            "ta_assign_shift_with_work_plan_v6126",
             {
               p_emp_code:
                 val("assignEmpCode"),
@@ -8880,19 +8937,13 @@ window.tcIsDayShiftCode = value =>
           );
 
         if(saveError) {
-          if(
-            String(
-              saveError.message
-              || ""
-            ).includes(
-              "ta_assign_shift_with_work_plan_v61110"
-            )
-          ) {
-            throw new Error(
-              "WORK_PLAN_LINKAGE_RPC_REQUIRED"
-            );
+          console.error(
+            'Schedule save RPC V6.12.6:',
+            scheduleRpcErrorSummaryV6126(saveError)
+          );
+          if (window.TimeClockShiftAPI?.missingFunction?.(saveError)) {
+            throw new Error('กรุณารัน SQL V6.12.6 ก่อนใช้งานการบันทึกกะ');
           }
-
           throw saveError;
         }
         await window.TimeClockSchedulingRulesV6120?.saveExtension?.({
@@ -8974,7 +9025,7 @@ window.tcIsDayShiftCode = value =>
         const teamReturnContext = window.TimeClockTeamDailyReturnContext;
         const monthReturnContext = window.TimeClockEmployeeMonthReturnContext;
 
-        // V6.12.5 performance: a normal calendar save already updates the row in
+        // V6.12.6 performance: a normal calendar save already updates the row in
         // memory. Do not reload the entire scope/month after every single cell save.
         // Refresh only the new scheduling-rule extension for that row. Full reload is
         // still used for drawers/month-calendar return flows that depend on fresh
@@ -9220,10 +9271,10 @@ window.tcIsDayShiftCode = value =>
           is_active: val("smActive") === "true",
           applicable_pattern_codes: savePatterns,
           default_pattern_codes: isWorkday ? defaults : [],
-          change_reason: "บันทึกจากหน้า HR Admin V6.12.5"
+          change_reason: "บันทึกจากหน้า HR Admin V6.12.6"
         });
 
-        // V6.12.5: ยังคงยืนยันช่วงเวลากะวันหยุดหลังบันทึก เพื่อรองรับ Backend รุ่นเดิม
+        // V6.12.6: ยังคงยืนยันช่วงเวลากะวันหยุดหลังบันทึก เพื่อรองรับ Backend รุ่นเดิม
         // จึงยืนยันช่วงเวลาของ OFF หลังบันทึก Shift Master อีกครั้ง
         if (!isWorkday) {
           const offPatch = await state.client.rpc("ta_force_dayoff_shift_time_v6124", {
@@ -14233,7 +14284,7 @@ ${skippedSummary(compatibility.skipped)}
                 .slice(0,10)
             )
           || rpc(
-            "ta_get_system_period_for_date_v6110",
+            "ta_get_system_period_for_date_v6126",
             {
               p_work_date:
                 String(row.work_date)
@@ -16459,9 +16510,12 @@ ${skippedSummary(compatibility.skipped)}
         : 'ST6';
 
     try{
+      if (window.TimeClockScheduleRpcHealthV6126?.dailyPlanFailed) {
+        throw new Error('DAILY_PLAN_RPC_DISABLED_FOR_SESSION');
+      }
       const plan=
         await rpc(
-          'ta_get_effective_daily_work_plan_v6118',
+          'ta_get_effective_daily_work_plan_v6126',
           {
             p_emp_code:emp,
             p_work_date:date
@@ -16525,6 +16579,19 @@ ${skippedSummary(compatibility.skipped)}
       toggleCustomerEndModeV61110();
 
     }catch(e){
+      if (e?.message !== 'DAILY_PLAN_RPC_DISABLED_FOR_SESSION') {
+        const health = window.TimeClockScheduleRpcHealthV6126 ||= {
+          workPlanMetaFailed:false,dailyPlanFailed:false,orgDetailDisabled:false,logged:new Set()
+        };
+        health.dailyPlanFailed = true;
+        if (!health.logged.has('effective-daily-work-plan')) {
+          health.logged.add('effective-daily-work-plan');
+          console.warn(
+            'Effective daily work-plan V6.12.6 unavailable; using employee-pattern fallback:',
+            {code:e?.code||'',message:e?.message||String(e),details:e?.details||'',hint:e?.hint||''}
+          );
+        }
+      }
       const current=
         $('assignWorkTemplate')
           ?.value;
@@ -22488,6 +22555,8 @@ ${skippedSummary(compatibility.skipped)}
     rows: [],
     filtered: [],
     periodCache: new Map(),
+    periodPending: new Map(),
+    periodErrorCache: new Map(),
     currentEdit: null,
     realtimeChannel: null,
     realtimeConnected: false,
@@ -24044,35 +24113,46 @@ ${skippedSummary(compatibility.skipped)}
     date,
     force=false
   ){
-    const key=
-      monthKey(date);
+    const key=monthKey(date);
+    const workDate=String(date).slice(0,10);
 
-    if(
-      !force
-      && state.periodCache.has(key)
-    ){
-      return state.periodCache.get(
-        key
-      );
+    if(!force && state.periodCache.has(key)){
+      return state.periodCache.get(key);
+    }
+    if(!force && state.periodPending.has(key)){
+      return state.periodPending.get(key);
     }
 
-    const data=
-      await rpc(
-        "ta_get_system_period_for_date_v6110",
-        {
-          p_work_date:
-            String(
-              date
-            ).slice(0,10)
-        }
-      );
+    const lastError=state.periodErrorCache.get(key);
+    if(!force && lastError && (Date.now()-lastError.at)<5000){
+      throw lastError.error;
+    }
 
-    state.periodCache.set(
-      key,
-      data || null
-    );
+    const request=(async()=>{
+      try{
+        const data=await rpc(
+          "ta_get_system_period_for_date_v6126",
+          {p_work_date:workDate}
+        );
+        state.periodCache.set(key,data||null);
+        state.periodErrorCache.delete(key);
+        return data||null;
+      }catch(error){
+        state.periodErrorCache.set(key,{error,at:Date.now()});
+        console.warn('System Period date status V6.12.6:', {
+          code:error?.code||'',
+          message:error?.message||String(error),
+          details:error?.details||'',
+          hint:error?.hint||''
+        });
+        throw error;
+      }finally{
+        state.periodPending.delete(key);
+      }
+    })();
 
-    return data || null;
+    state.periodPending.set(key,request);
+    return request;
   }
 
   function ensureSchedulePeriodMeta(){
@@ -25480,10 +25560,10 @@ ${skippedSummary(compatibility.skipped)}
   window.TimeClockCertificationReasons={load,render,openPage};
 })();
 
-/* ===== V6.12.5 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
+/* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.12.5';
+  const VERSION='6.12.6';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -25872,7 +25952,7 @@ ${skippedSummary(compatibility.skipped)}
     const dates=rows.map(r=>String(r.work_date||'').slice(0,10)).filter(Boolean).sort();
     if(!codes.length||!dates.length)return;
     try{
-      // V6.12.5: scheduling-rule rows are sparse, but a large employee array can
+      // V6.12.6: scheduling-rule rows are sparse, but a large employee array can
       // still produce a slow plan / hit the API row ceiling. Keep requests bounded
       // and run a few groups in parallel.
       const batches=[];
@@ -25886,7 +25966,7 @@ ${skippedSummary(compatibility.skipped)}
       }
       const map=new Map(ext.map(x=>[`${x.emp_code}|${String(x.work_date).slice(0,10)}`,x]));
       rows.forEach(r=>Object.assign(r,map.get(`${r.emp_code}|${String(r.work_date).slice(0,10)}`)||{}));
-    }catch(e){console.warn('Schedule rule enrichment V6.12.5:',e);}
+    }catch(e){console.warn('Schedule rule enrichment V6.12.6:',e);}
   }
   function rowDisplay(r){const mode=String(r?.schedule_rule_mode||r?.work_mode_code||'').toUpperCase();if(!mode)return null;const d=modeDefs[mode];if(mode==='DYNAMIC_OFF')return {label:`หยุด ${fmtTime(r.off_window_start)}–${fmtTime(r.off_window_end)}${rowCode(r)?` • ${rowCode(r)}`:''}`,short:'หยุด',tone:'off'};if(mode==='HOUR_BASED')return {label:`นับชม. ${fmtTime(r.custom_start_time)}–${fmtTime(r.custom_end_time)}`,short:'นับชม.',tone:'day'};if(mode==='SPLIT_WAIT_NIGHT')return {label:`เช้า+ดึก ${fmtTime(r.base_shift_start||shiftMaster(r.base_shift_code)?.start_time)} / ${fmtTime(r.second_segment_start)}`,short:'เช้า+ดึก',tone:'split'};return d?{label:d.label,short:d.short,tone:null}:null;}
 
