@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.12.3-20260819" rel="stylesheet"/>
+<link href="./app.css?v=6.12.4-20260819" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1634,6 +1634,7 @@
 </div>
 </div>
 <div class="form-row"><div class="field"><label>เวลาเริ่ม</label><input class="input" id="smStart" type="time" value="08:30"/></div><div class="field"><label>เวลาสิ้นสุด</label><input class="input" id="smEnd" type="time" value="17:30"/></div></div>
+<div class="field-help shift-off-time-help-v6124">กรณีเป็นกะวันหยุด ให้ระบุเวลาเริ่ม–สิ้นสุดให้ตรงกับกะทำงานที่จับคู่ เช่น S135 19:30–04:30 → OS135 19:30–04:30</div>
 <div class="form-row-3"><div class="field"><label>เวลาพัก (นาที)</label><input class="input" id="smBreak" min="0" type="number" value="60"/></div><div class="field"><label>ลำดับ</label><input class="input" id="smOrder" type="number" value="0"/></div><div class="field"><label>สถานะ</label><select class="select" id="smActive"><option value="true">ใช้งาน</option><option value="false">ปิดใช้งาน</option></select></div></div>
 <div class="shift-duration-summary" id="smDurationSummary"></div>
 <div class="shift-default-selector">
@@ -2481,6 +2482,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.12.3-20260819"></script>
+<script src="./app.js?v=6.12.4-20260819"></script>
 </body>
 </html>

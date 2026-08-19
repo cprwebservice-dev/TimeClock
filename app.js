@@ -3480,8 +3480,20 @@ window.tcIsDayShiftCode = value =>
       const target = $("smDurationSummary");
       if (!target) return;
       const workday = $("smWorkday")?.checked !== false;
-      const total = workday ? shiftDurationMinutes(val("smStart"), val("smEnd")) : 0;
-      const breakMinutes = workday ? Math.max(0, Number(val("smBreak") || 0)) : 0;
+      const windowMinutes = shiftDurationMinutes(val("smStart"), val("smEnd"));
+      if (!workday) {
+        const start = val("smStart") || "--:--";
+        const end = val("smEnd") || "--:--";
+        target.innerHTML = `
+          <article class="neutral"><span>ช่วงกะวันหยุด</span><strong>${safe(start)}–${safe(end)}</strong><small>ต้องตรงกับกะทำงานที่จับคู่</small></article>
+          <article class="neutral"><span>ระยะช่วงวันหยุด</span><strong>${windowMinutes ? minutesToHours(windowMinutes) : "-"}</strong><small>ไม่นำไปคิดชั่วโมงทำงาน</small></article>
+          <article class="neutral"><span>ผลตรวจรูปแบบ</span><strong>${start !== "--:--" && end !== "--:--" ? "พร้อมบันทึกเวลา OFF" : "กรุณาระบุเวลา"}</strong><small>เช่น OS135 ต้องเป็น 19:30–04:30</small></article>`;
+        if ($("smDefault6")) { $("smDefault6").disabled = true; $("smDefault6").checked = false; }
+        if ($("smDefault5")) { $("smDefault5").disabled = true; $("smDefault5").checked = false; }
+        return;
+      }
+      const total = windowMinutes;
+      const breakMinutes = Math.max(0, Number(val("smBreak") || 0));
       const net = Math.max(0, total - breakMinutes);
       const patterns = selectedShiftPatternCodes();
       const matches = patterns.filter(code => {
@@ -9119,37 +9131,69 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function saveShiftMaster() {
+      const isWorkday = $("smWorkday").checked;
+      const startTime = val("smStart") || null;
+      const endTime = val("smEnd") || null;
       const patterns = selectedShiftPatternCodes();
       const defaults = selectedShiftDefaultCodes();
-      if (!patterns.length) {
+      if (!val("smCode")) {
+        toast("กรุณาระบุรหัสกะ", "error");
+        return;
+      }
+      if (!startTime || !endTime) {
+        toast(isWorkday ? "กรุณาระบุเวลาเริ่มและเวลาสิ้นสุดกะ" : "กะวันหยุดต้องระบุเวลาเริ่มและเวลาสิ้นสุด เพื่อใช้จับคู่กับกะทำงาน", "error");
+        return;
+      }
+      if (isWorkday && !patterns.length) {
         toast("กรุณาเลือกรูปแบบการทำงานอย่างน้อย 1 รูปแบบ", "error");
         return;
       }
-      if (!$("smWorkday").checked && defaults.length) {
+      if (!isWorkday && defaults.length) {
         toast("กะวันหยุดไม่สามารถกำหนดเป็นกะตั้งต้นได้", "error");
         return;
       }
+      const savePatterns = patterns.length ? patterns : ["TECH_5D","TECH_6D"];
+      const autoNight = String(endTime) <= String(startTime);
       showLoading("กำลังบันทึกข้อมูลกะ...");
       try {
         const result = await window.TimeClockShiftAPI.upsertShiftMaster(window.TimeClockApp || { state }, {
           shift_code: val("smCode"),
           shift_name: val("smName"),
-          start_time: val("smStart") || null,
-          end_time: val("smEnd") || null,
-          is_night_shift: $("smNight").checked,
-          is_workday: $("smWorkday").checked,
-          break_minutes: Number(val("smBreak")||0),
+          start_time: startTime,
+          end_time: endTime,
+          is_night_shift: $("smNight").checked || autoNight,
+          is_workday: isWorkday,
+          break_minutes: isWorkday ? Number(val("smBreak")||0) : 0,
           display_order: Number(val("smOrder")||0),
           note: val("smNote") || null,
           is_active: val("smActive") === "true",
-          applicable_pattern_codes: patterns,
-          default_pattern_codes: defaults,
-          change_reason: "บันทึกจากหน้า HR Admin V6.10.2"
+          applicable_pattern_codes: savePatterns,
+          default_pattern_codes: isWorkday ? defaults : [],
+          change_reason: "บันทึกจากหน้า HR Admin V6.12.4"
         });
+
+        // V6.12.4: RPC เดิมบางเวอร์ชันทำให้กะวันหยุดไม่มีเวลาเริ่ม/สิ้นสุด
+        // จึงยืนยันช่วงเวลาของ OFF หลังบันทึก Shift Master อีกครั้ง
+        if (!isWorkday) {
+          const offPatch = await state.client.rpc("ta_force_dayoff_shift_time_v6124", {
+            p_shift_code: window.tcShiftCode(val("smCode")),
+            p_start_time: startTime,
+            p_end_time: endTime,
+            p_is_night_shift: $("smNight").checked || autoNight
+          });
+          if (offPatch.error) throw offPatch.error;
+        } else {
+          // ถ้ากะทำงานนี้มี OFF คู่กันอยู่ ให้ตามเวลาใหม่อัตโนมัติ
+          const pairSync = await state.client.rpc("ta_sync_paired_off_for_work_shift_v6124", {
+            p_shift_code: window.tcShiftCode(val("smCode"))
+          });
+          if (pairSync.error && !window.TimeClockShiftAPI?.missingFunction?.(pairSync.error)) throw pairSync.error;
+        }
+
         closeModal("shiftMasterModal");
-        toast(defaults.length ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
+        toast(defaults.length && isWorkday ? "บันทึกกะและปรับกะตั้งต้นเรียบร้อย" : "บันทึกข้อมูลกะเรียบร้อย", "success");
         await loadShiftMaster();
-        if (result?.requires_recalculation && defaults.length) {
+        if (result?.requires_recalculation && defaults.length && isWorkday) {
           toast("กะตั้งต้นมีการเปลี่ยนแปลง กรุณาคำนวณผลย้อนหลังตามช่วงวันที่ที่ต้องการ", "info");
         }
       } catch (err) { toast(humanError(err), "error"); }
@@ -25302,7 +25346,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.3 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.12.3';
+  const VERSION='6.12.4';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -25664,7 +25708,7 @@ ${skippedSummary(compatibility.skipped)}
   function ensureShiftRuleAdminUi(){
     if($('shiftRuleAdminV6123'))return;const page=$('page-admin-shifts');if(!page)return;const panels=page.querySelectorAll('.panel');const first=panels[0];if(!first)return;
     first.insertAdjacentHTML('afterend',`<div class="panel section-gap shift-rule-admin-v6123" id="shiftRuleAdminV6123"><div class="panel-header"><div><span class="work-pattern-section-kicker-v61111">SHIFT SET UP</span><h3>กฎการเลือกกะตามหน่วยงานและกะวันหยุดคู่กัน</h3><p>กำหนดว่ากะแต่ละรหัสเปิดใช้กับหน่วยงานใด และจับคู่กะทำงาน → กะวันหยุด เพื่อให้ระบบเลือกวันหยุดให้อัตโนมัติ</p></div><button type="button" class="btn btn-light" id="shiftRuleRefreshV6123">↻ รีเฟรช</button></div><div class="panel-body"><div class="shift-rule-hint-v6123"><span>ตัวอย่าง</span><b>STD → OSTD</b><b>S043 → OS043</b><b>S134 → OS134</b><b>S135 → OS135</b><small>กะดึกที่ไม่เปิดในบางหน่วยงานจะไม่แสดงในช่อง “กะทำงาน” ของพนักงานหน่วยงานนั้น</small></div><div class="table-wrap"><table><thead><tr><th>กะทำงาน</th><th>เวลา</th><th>ประเภท</th><th>ขอบเขตหน่วยงาน</th><th>กะวันหยุดคู่กัน</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="shiftRuleAdminBodyV6123"><tr><td colspan="7" class="empty-cell">กำลังโหลด...</td></tr></tbody></table></div></div></div>`);
-    document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop hidden" id="shiftRuleModalV6123"><div class="modal large"><div class="modal-header"><div><h3 id="shiftRuleTitleV6123">ตั้งค่ากะ</h3><p>กำหนดหน่วยงานที่เห็นกะนี้ และกะวันหยุดที่ต้องใช้หลังจากกะทำงานนี้</p></div><button type="button" class="btn btn-light btn-icon" id="shiftRuleCloseV6123">×</button></div><div class="modal-body"><input type="hidden" id="shiftRuleCodeV6123"><label class="mobileta-option-card"><input type="checkbox" id="shiftRuleEnabledV6123" checked><span><strong>เปิดให้ใช้ในการจัดกะ</strong><small>ปิดแล้วกะนี้จะไม่แสดงในช่องเลือกกะปกติ</small></span></label><div class="form-row section-gap"><div class="field"><label>ขอบเขตหน่วยงาน</label><select class="select" id="shiftRuleScopeModeV6123"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select></div><div class="field"><label>กะวันหยุดคู่กัน</label><select class="select" id="shiftRuleOffCodeV6123"></select><small class="field-help">ระบบจะตรวจเวลาให้ตรงกับกะทำงานก่อนบันทึก</small></div></div><div class="work-mode-dept-list-v6120 hidden" id="shiftRuleDeptListV6123"></div><div class="shift-rule-pair-preview-v6123" id="shiftRulePairPreviewV6123"></div></div><div class="modal-footer"><button class="btn btn-light" id="shiftRuleCancelV6123">ยกเลิก</button><button class="btn btn-primary" id="shiftRuleSaveV6123">บันทึก Set Up</button></div></div></div>`);
+    document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop hidden" id="shiftRuleModalV6123"><div class="modal large"><div class="modal-header"><div><h3 id="shiftRuleTitleV6123">ตั้งค่ากะ</h3><p>กำหนดหน่วยงานที่เห็นกะนี้ และกะวันหยุดที่ต้องใช้หลังจากกะทำงานนี้</p></div><button type="button" class="btn btn-light btn-icon" id="shiftRuleCloseV6123">×</button></div><div class="modal-body"><input type="hidden" id="shiftRuleCodeV6123"><label class="mobileta-option-card"><input type="checkbox" id="shiftRuleEnabledV6123" checked><span><strong>เปิดให้ใช้ในการจัดกะ</strong><small>ปิดแล้วกะนี้จะไม่แสดงในช่องเลือกกะปกติ</small></span></label><div class="form-row section-gap"><div class="field"><label>ขอบเขตหน่วยงาน</label><select class="select" id="shiftRuleScopeModeV6123"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select></div><div class="field"><label>กะวันหยุดคู่กัน</label><select class="select" id="shiftRuleOffCodeV6123"></select><small class="field-help">หากเป็นกะวันหยุดแต่เวลายังไม่ตรง ระบบจะปรับเวลาให้ตรงกับกะทำงานเมื่อบันทึก</small></div></div><div class="work-mode-dept-list-v6120 hidden" id="shiftRuleDeptListV6123"></div><div class="shift-rule-pair-preview-v6123" id="shiftRulePairPreviewV6123"></div></div><div class="modal-footer"><button class="btn btn-light" id="shiftRuleCancelV6123">ยกเลิก</button><button class="btn btn-primary" id="shiftRuleSaveV6123">บันทึก Set Up</button></div></div></div>`);
     $('shiftRuleRefreshV6123')?.addEventListener('click',()=>loadShiftRuleAdmin(true));$('shiftRuleCloseV6123')?.addEventListener('click',closeShiftRuleModal);$('shiftRuleCancelV6123')?.addEventListener('click',closeShiftRuleModal);$('shiftRuleScopeModeV6123')?.addEventListener('change',renderShiftRuleDepartments);$('shiftRuleOffCodeV6123')?.addEventListener('change',renderShiftRulePairPreview);$('shiftRuleSaveV6123')?.addEventListener('click',saveShiftRuleAdmin);
     document.addEventListener('click',e=>{const b=e.target.closest('[data-edit-shift-rule-v6123]');if(b)openShiftRuleModal(b.dataset.editShiftRuleV6123);});
   }
@@ -25677,9 +25721,31 @@ ${skippedSummary(compatibility.skipped)}
   function renderShiftRuleAdmin(){const body=$('shiftRuleAdminBodyV6123');if(!body)return;const rows=(st.adminShiftRules||[]).filter(r=>r.is_workday!==false&&!String(r.note||'').includes('[SYSTEM_GENERATED_V6120]'));body.innerHTML=rows.length?rows.map(r=>{const scope=String(r.scope_mode||'ALL').toUpperCase()==='ALL'?'ทุกหน่วยงาน':`${(r.scope_values||[]).length.toLocaleString('th-TH')} หน่วยงาน`;const off=r.paired_off_shift_code?`${r.paired_off_shift_code} • ${fmtTime(r.paired_off_start_time)}–${fmtTime(r.paired_off_end_time)}`:'ยังไม่ได้จับคู่';return `<tr><td><strong>${esc(r.shift_code)}</strong><small class="table-subtext">${esc(r.shift_name||'')}</small></td><td>${esc(fmtTime(r.start_time))}–${esc(fmtTime(r.end_time))}${r.is_night_shift?' (+1)':''}</td><td>${r.is_night_shift?'<span class="badge badge-blue">กะดึก</span>':'<span class="badge badge-gray">กะกลางวัน</span>'}</td><td>${esc(scope)}</td><td class="${r.pair_valid===false?'text-danger':''}">${esc(off)}${r.pair_valid===false?'<small class="table-subtext">เวลาไม่ตรง / ไม่ใช่กะวันหยุด</small>':''}</td><td>${r.is_enabled===false?'<span class="badge badge-gray">ปิดใช้</span>':'<span class="badge badge-green">เปิดใช้</span>'}</td><td><button class="btn btn-light btn-sm" data-edit-shift-rule-v6123="${esc(r.shift_code)}">ตั้งค่า</button></td></tr>`;}).join(''):'<tr><td colspan="7" class="empty-cell">ไม่พบกะทำงาน</td></tr>';}
   async function openShiftRuleModal(code){const r=(st.adminShiftRules||[]).find(x=>String(x.shift_code).toUpperCase()===String(code).toUpperCase());if(!r)return;await loadDepartmentOptions();$('shiftRuleCodeV6123').value=r.shift_code;$('shiftRuleTitleV6123').textContent=`ตั้งค่า • ${r.shift_code} ${r.shift_name||''}`;$('shiftRuleEnabledV6123').checked=r.is_enabled!==false;$('shiftRuleScopeModeV6123').value=String(r.scope_mode||'ALL').toUpperCase();const offRows=(app()?.state?.filters?.shifts||[]).filter(x=>x.is_active!==false&&x.is_workday===false);$('shiftRuleOffCodeV6123').innerHTML=`<option value="">-- ยังไม่จับคู่ --</option>${offRows.map(x=>`<option value="${esc(x.shift_code)}">${esc(x.shift_code)} • ${esc(x.shift_name||'วันหยุด')} • ${esc(fmtTime(x.start_time))}–${esc(fmtTime(x.end_time))}</option>`).join('')}`;$('shiftRuleOffCodeV6123').value=r.paired_off_shift_code||'';$('shiftRuleModalV6123').classList.remove('hidden');renderShiftRuleDepartments(r.scope_values||[]);renderShiftRulePairPreview();}
   function renderShiftRuleDepartments(selected=null){const box=$('shiftRuleDeptListV6123');if(!box)return;const show=$('shiftRuleScopeModeV6123')?.value==='SELECTED';box.classList.toggle('hidden',!show);if(!show)return;const code=$('shiftRuleCodeV6123')?.value||'',r=(st.adminShiftRules||[]).find(x=>String(x.shift_code).toUpperCase()===String(code).toUpperCase());const chosen=new Set((Array.isArray(selected)?selected:(r?.scope_values||[])).map(normalizeDepartmentOption).filter(Boolean));const depts=st.departmentOptions||[];box.innerHTML=`<div class="work-mode-dept-summary-v6122"><strong>หน่วยงานที่สามารถเลือกกะ ${esc(code)}</strong><small>${depts.length.toLocaleString('th-TH')} หน่วยงาน</small></div>${depts.map(d=>`<label><input type="checkbox" data-shift-rule-dept-v6123="${esc(d)}" ${chosen.has(d)?'checked':''}> <span>${esc(d)}</span></label>`).join('')}`;}
-  function renderShiftRulePairPreview(){const code=$('shiftRuleCodeV6123')?.value,offCode=$('shiftRuleOffCodeV6123')?.value,box=$('shiftRulePairPreviewV6123');if(!box)return;const w=shiftMaster(code),o=shiftMaster(offCode);if(!offCode){box.innerHTML='<small>ยังไม่ได้กำหนดกะวันหยุดคู่กัน • User จะไม่สามารถเลือกวันหยุดอัตโนมัติหลังจากกะนี้ได้</small>';return;}const ok=w&&o&&o.is_workday===false&&String(fmtTime(w.start_time))===String(fmtTime(o.start_time))&&String(fmtTime(w.end_time))===String(fmtTime(o.end_time));box.className=`shift-rule-pair-preview-v6123 ${ok?'ok':'danger'}`;box.innerHTML=`<strong>${esc(code)} ${esc(fmtTime(w?.start_time))}–${esc(fmtTime(w?.end_time))} → ${esc(offCode)} ${esc(fmtTime(o?.start_time))}–${esc(fmtTime(o?.end_time))}</strong><small>${ok?'ช่วงเวลาตรงกัน • พร้อมใช้งาน':'ช่วงเวลาไม่ตรงกัน หรือกะปลายทางยังไม่ได้ตั้งเป็น “วันหยุด”'}</small>`;}
+  function renderShiftRulePairPreview(){const code=$('shiftRuleCodeV6123')?.value,offCode=$('shiftRuleOffCodeV6123')?.value,box=$('shiftRulePairPreviewV6123');if(!box)return;const w=shiftMaster(code),o=shiftMaster(offCode);if(!offCode){box.className='shift-rule-pair-preview-v6123';box.innerHTML='<small>ยังไม่ได้กำหนดกะวันหยุดคู่กัน • User จะไม่สามารถเลือกวันหยุดอัตโนมัติหลังจากกะนี้ได้</small>';return;}const isDayOff=o&&o.is_workday===false;const sameTime=w&&o&&String(fmtTime(w.start_time))===String(fmtTime(o.start_time))&&String(fmtTime(w.end_time))===String(fmtTime(o.end_time));const ok=isDayOff&&sameTime;box.className=`shift-rule-pair-preview-v6123 ${ok?'ok':isDayOff?'warn':'danger'}`;box.innerHTML=`<strong>${esc(code)} ${esc(fmtTime(w?.start_time))}–${esc(fmtTime(w?.end_time))} → ${esc(offCode)} ${esc(fmtTime(o?.start_time))}–${esc(fmtTime(o?.end_time))}</strong><small>${ok?'ช่วงเวลาตรงกัน • พร้อมใช้งาน':isDayOff?'ช่วงเวลายังไม่ตรง • เมื่อบันทึก Set Up ระบบจะปรับเวลากะวันหยุดให้ตรงกับกะทำงานอัตโนมัติ':'กะปลายทางยังไม่ได้ตั้งเป็น “วันหยุด”'}</small>`;}
   function closeShiftRuleModal(){$('shiftRuleModalV6123')?.classList.add('hidden');}
-  async function saveShiftRuleAdmin(){const code=$('shiftRuleCodeV6123')?.value,scope=$('shiftRuleScopeModeV6123')?.value,values=scope==='SELECTED'?qsa('[data-shift-rule-dept-v6123]:checked').map(x=>x.dataset.shiftRuleDeptV6123):[],off=$('shiftRuleOffCodeV6123')?.value||null;if(scope==='SELECTED'&&!values.length){app()?.toast?.('กรุณาเลือกอย่างน้อย 1 หน่วยงาน','error');return;}try{await rpc('ta_save_shift_schedule_rule_v6123',{p_shift_code:code,p_is_enabled:$('shiftRuleEnabledV6123').checked,p_scope_mode:scope,p_scope_values:values,p_paired_off_shift_code:off});closeShiftRuleModal();st.runtimeShiftRulesLoaded=false;await loadRuntimeShiftRules(true);await loadShiftRuleAdmin();app()?.toast?.('บันทึก Set Up กะเรียบร้อย','success');}catch(e){const msg=String(e.message||e);app()?.toast?.(msg.includes('OFF_SHIFT_TIME_MISMATCH')?'กะวันหยุดต้องมีเวลาเริ่ม–สิ้นสุดตรงกับกะทำงาน':msg,'error');}}
+  async function saveShiftRuleAdmin(){
+    const code=$('shiftRuleCodeV6123')?.value,scope=$('shiftRuleScopeModeV6123')?.value;
+    const values=scope==='SELECTED'?qsa('[data-shift-rule-dept-v6123]:checked').map(x=>x.dataset.shiftRuleDeptV6123):[];
+    const off=$('shiftRuleOffCodeV6123')?.value||null;
+    if(scope==='SELECTED'&&!values.length){app()?.toast?.('กรุณาเลือกอย่างน้อย 1 หน่วยงาน','error');return;}
+    try{
+      const saved=await rpc('ta_save_shift_schedule_rule_v6123',{p_shift_code:code,p_is_enabled:$('shiftRuleEnabledV6123').checked,p_scope_mode:scope,p_scope_values:values,p_paired_off_shift_code:off});
+      if(saved?.off_time_synced&&off){
+        const work=shiftMaster(code);
+        const offRow=(app()?.state?.filters?.shifts||[]).find(x=>String(x.shift_code||'').toUpperCase()===String(off).toUpperCase());
+        if(work&&offRow){offRow.start_time=work.start_time;offRow.end_time=work.end_time;offRow.is_workday=false;offRow.is_night_shift=!!work.is_night_shift;offRow.break_minutes=0;}
+      }
+      closeShiftRuleModal();
+      st.runtimeShiftRulesLoaded=false;
+      await loadRuntimeShiftRules(true);
+      await loadShiftRuleAdmin();
+      app()?.toast?.(saved?.off_time_synced?'บันทึก Set Up และปรับเวลากะวันหยุดให้ตรงกับกะทำงานแล้ว':'บันทึก Set Up กะเรียบร้อย','success');
+    }catch(e){
+      const msg=String(e.message||e);
+      const friendly=msg.includes('PAIRED_SHIFT_MUST_BE_DAY_OFF')?'กะที่เลือกเป็นกะวันทำงาน กรุณาตั้งค่า “เป็นวันทำงาน” = ปิด ที่ Shift Master ก่อน':msg.includes('WORK_SHIFT_TIME_REQUIRED')?'กะทำงานยังไม่มีเวลาเริ่ม–สิ้นสุด กรุณาบันทึกเวลาใน Shift Master ก่อน':msg.includes('DAYOFF_SHIFT_TIME_REQUIRED')?'กะวันหยุดต้องระบุเวลาเริ่ม–สิ้นสุด':msg;
+      app()?.toast?.(friendly,'error');
+    }
+  }
 
   /* Admin configuration */
   function ensureAdminUi(){
