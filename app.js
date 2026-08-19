@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.12.7";
-document.documentElement.dataset.timeClockBuild = "6.12.7";
+window.__TIME_CLOCK_BUILD__ = "V6.12.8";
+document.documentElement.dataset.timeClockBuild = "6.12.8";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.12.7";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.12.7',
+  version: '6.12.8',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -7304,7 +7304,7 @@ window.tcIsDayShiftCode = value =>
       return ['HR_ADMIN','MANAGER','ADMIN','SUPER_ADMIN'].includes(role);
     }
 
-    // V6.12.7: Monthly Personal Overview uses the same adaptive date-splitting
+    // V6.12.8: Attendance enrichment still uses adaptive date-splitting
     // strategy as Attendance Detail. The previous full-month attendance RPC could
     // hit PostgreSQL statement_timeout even for one employee when calculation / punch
     // metadata was large. Keep each request small and split again only when needed.
@@ -7429,8 +7429,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function fetchEmployeeMonthScheduleV6127(empCode, bounds) {
-      // Full-month schedule is also split proactively so Monthly Personal Overview
-      // never depends on one long-running 31-day request.
+      // Legacy fallback retained only when V6.12.8 lightweight RPC has not been installed.
       const ranges = attendanceChunkRanges(bounds.start, bounds.end, 14).reverse();
       const collected = [];
 
@@ -7449,6 +7448,51 @@ window.tcIsDayShiftCode = value =>
       return [...unique.values()];
     }
 
+    async function fetchEmployeeMonthScheduleV6128(empCode, bounds) {
+      // V6.12.8: Monthly Personal Overview must not use ta_get_schedule_range_v61024.
+      // That RPC is intentionally rich (scope matrix + attendance calculation + comp-off)
+      // and is suitable for the main Schedule table, but is unnecessarily expensive for
+      // one employee / one month. The dedicated RPC returns only calendar-rendering data.
+      const request = state.client.rpc(
+        'ta_get_employee_month_schedule_v6128',
+        {
+          p_emp_code: empCode,
+          p_start_date: bounds.start,
+          p_end_date: bounds.end
+        }
+      );
+
+      const response = await withTimeout(
+        request,
+        15000,
+        'โหลด Monthly Personal Overview V6.12.8'
+      );
+
+      if (response.error) {
+        if (window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          scheduleLogRpcOnceV6126(
+            'employee-month-v6128-missing',
+            'Monthly Personal lightweight RPC V6.12.8 not installed; using legacy segmented schedule fallback.',
+            response.error
+          );
+          return fetchEmployeeMonthScheduleV6127(empCode, bounds);
+        }
+        throw response.error;
+      }
+
+      const rows = Array.isArray(response.data) ? response.data : [];
+      const unique = new Map();
+      rows.forEach((row, index) => {
+        const emp = String(row?.emp_code || '').trim();
+        const date = String(row?.work_date || '').slice(0,10);
+        const key = emp && date ? `${emp}|${date}` : `__row_${index}`;
+        unique.set(key, row);
+      });
+      return [...unique.values()].sort((a,b) =>
+        String(a?.work_date || '').localeCompare(String(b?.work_date || ''))
+      );
+    }
+
     async function fetchEmployeeMonthBundleV61138(empCode, monthValue, forceFresh = false) {
       const bounds = employeeMonthBoundsV61121(monthValue);
       const cacheKey = employeeMonthCacheKeyV61138(empCode, bounds.value);
@@ -7464,21 +7508,14 @@ window.tcIsDayShiftCode = value =>
       const loadPromise = (async () => {
         // V6.11.38: all independent monthly reads start together.
         // First load is limited by the slowest query instead of a chain of RPC waits.
-        const schedulePromise = fetchEmployeeMonthScheduleV6127(
+        const schedulePromise = fetchEmployeeMonthScheduleV6128(
           empCode,
           bounds
         );
 
-        const workPlanPromise = scheduleRpcHealthV6126.workPlanMetaFailed
-          ? Promise.resolve({ data: [], error: null })
-          : state.client.rpc(
-              'ta_get_schedule_work_plan_meta_v6126',
-              {
-                p_start_date: bounds.start,
-                p_end_date: bounds.end,
-                p_emp_codes: [empCode]
-              }
-            );
+        // V6.12.8 lightweight monthly schedule already includes Work Plan / Template
+        // metadata, so do not issue a second month-wide Work Plan RPC.
+        const workPlanPromise = Promise.resolve({ data: [], error: null });
 
         const attendancePromise =
           fetchEmployeeMonthAttendanceDetailV61138(empCode, bounds);
@@ -7540,7 +7577,7 @@ window.tcIsDayShiftCode = value =>
         if (attendanceResult.status === 'rejected') {
           scheduleLogRpcOnceV6126(
             'employee-month-attendance-v6127',
-            'Employee month attendance detail V6.12.7 unavailable; rendering schedule without attendance:',
+            'Employee month attendance detail V6.12.8 unavailable; rendering schedule without attendance:',
             attendanceResult.reason
           );
         }
@@ -25693,7 +25730,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.12.7';
+  const VERSION='6.12.8';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
