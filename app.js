@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.12.6";
-document.documentElement.dataset.timeClockBuild = "6.12.6";
+window.__TIME_CLOCK_BUILD__ = "V6.12.7";
+document.documentElement.dataset.timeClockBuild = "6.12.7";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.12.6";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.12.6',
+  version: '6.12.7',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -7304,10 +7304,35 @@ window.tcIsDayShiftCode = value =>
       return ['HR_ADMIN','MANAGER','ADMIN','SUPER_ADMIN'].includes(role);
     }
 
-    async function fetchEmployeeMonthAttendanceDetailV61138(empCode, bounds) {
+    // V6.12.7: Monthly Personal Overview uses the same adaptive date-splitting
+    // strategy as Attendance Detail. The previous full-month attendance RPC could
+    // hit PostgreSQL statement_timeout even for one employee when calculation / punch
+    // metadata was large. Keep each request small and split again only when needed.
+    function employeeMonthRangeSplitV6127(range) {
+      const start = attendanceParseDate(range?.start);
+      const end = attendanceParseDate(range?.end);
+      if (!start || !end || start >= end) return null;
+
+      const totalDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+      if (totalDays <= 1) return null;
+
+      const leftDays = Math.ceil(totalDays / 2);
+      const leftEnd = new Date(start.getTime());
+      leftEnd.setUTCDate(leftEnd.getUTCDate() + leftDays - 1);
+
+      const rightStart = new Date(leftEnd.getTime());
+      rightStart.setUTCDate(rightStart.getUTCDate() + 1);
+
+      return [
+        { start: attendanceFormatDate(start), end: attendanceFormatDate(leftEnd) },
+        { start: attendanceFormatDate(rightStart), end: attendanceFormatDate(end) }
+      ];
+    }
+
+    async function fetchEmployeeMonthAttendanceChunkV6127(empCode, range, depth = 0) {
       const common = {
-        p_start_date: bounds.start,
-        p_end_date: bounds.end,
+        p_start_date: range.start,
+        p_end_date: range.end,
         p_emp_codes: [empCode],
         p_attendance_statuses: null,
         p_schedule_statuses: null,
@@ -7337,8 +7362,91 @@ window.tcIsDayShiftCode = value =>
           { ...common, p_area: null, p_sub_area: null, p_department: null }
         );
       }
+
+      if (response.error && attendanceIsTimeout(response.error) && depth < 6) {
+        const split = employeeMonthRangeSplitV6127(range);
+        if (split) {
+          const left = await fetchEmployeeMonthAttendanceChunkV6127(empCode, split[0], depth + 1);
+          const right = await fetchEmployeeMonthAttendanceChunkV6127(empCode, split[1], depth + 1);
+          return [...left, ...right];
+        }
+      }
+
       if (response.error) throw response.error;
       return response.data || [];
+    }
+
+    async function fetchEmployeeMonthAttendanceDetailV61138(empCode, bounds) {
+      // Start with 14-day chunks (same proven size as Attendance Detail), then
+      // recursively split 14 -> 7 -> 4 -> 2 -> 1 day only when the DB reports timeout.
+      const ranges = attendanceChunkRanges(bounds.start, bounds.end, 14).reverse();
+      const collected = [];
+
+      for (const range of ranges) {
+        const rows = await fetchEmployeeMonthAttendanceChunkV6127(empCode, range, 0);
+        collected.push(...rows);
+      }
+
+      const unique = new Map();
+      collected.forEach((row, index) => {
+        const date = String(row?.work_date || '').slice(0,10);
+        const key = date || `__row_${index}`;
+        unique.set(key, row);
+      });
+
+      return [...unique.values()].sort((a,b) =>
+        String(a?.work_date || '').localeCompare(String(b?.work_date || ''))
+      );
+    }
+
+    async function fetchEmployeeMonthScheduleChunkV6127(empCode, bounds, range, depth = 0) {
+      try {
+        return await window.TimeClockShiftAPI.getMonthlySchedule(
+          window.TimeClockApp || { state },
+          {
+            p_month: `${bounds.value}-01`,
+            p_start_date: range.start,
+            p_end_date: range.end,
+            p_zone: null,
+            p_department: null,
+            p_emp_codes: [empCode],
+            p_schedule_statuses: null,
+            // one employee x <=14 days is always below the RPC page size
+            p_disable_range_paging: true
+          }
+        );
+      } catch (error) {
+        if (attendanceIsTimeout(error) && depth < 6) {
+          const split = employeeMonthRangeSplitV6127(range);
+          if (split) {
+            const left = await fetchEmployeeMonthScheduleChunkV6127(empCode, bounds, split[0], depth + 1);
+            const right = await fetchEmployeeMonthScheduleChunkV6127(empCode, bounds, split[1], depth + 1);
+            return [...left, ...right];
+          }
+        }
+        throw error;
+      }
+    }
+
+    async function fetchEmployeeMonthScheduleV6127(empCode, bounds) {
+      // Full-month schedule is also split proactively so Monthly Personal Overview
+      // never depends on one long-running 31-day request.
+      const ranges = attendanceChunkRanges(bounds.start, bounds.end, 14).reverse();
+      const collected = [];
+
+      for (const range of ranges) {
+        const rows = await fetchEmployeeMonthScheduleChunkV6127(empCode, bounds, range, 0);
+        collected.push(...rows);
+      }
+
+      const unique = new Map();
+      collected.forEach((row, index) => {
+        const emp = String(row?.emp_code || '').trim();
+        const date = String(row?.work_date || '').slice(0,10);
+        const key = emp && date ? `${emp}|${date}` : `__row_${index}`;
+        unique.set(key, row);
+      });
+      return [...unique.values()];
     }
 
     async function fetchEmployeeMonthBundleV61138(empCode, monthValue, forceFresh = false) {
@@ -7356,17 +7464,9 @@ window.tcIsDayShiftCode = value =>
       const loadPromise = (async () => {
         // V6.11.38: all independent monthly reads start together.
         // First load is limited by the slowest query instead of a chain of RPC waits.
-        const schedulePromise = window.TimeClockShiftAPI.getMonthlySchedule(
-          window.TimeClockApp || { state },
-          {
-            p_month: `${bounds.value}-01`,
-            p_start_date: bounds.start,
-            p_end_date: bounds.end,
-            p_zone: null,
-            p_department: null,
-            p_emp_codes: [empCode],
-            p_schedule_statuses: null
-          }
+        const schedulePromise = fetchEmployeeMonthScheduleV6127(
+          empCode,
+          bounds
         );
 
         const workPlanPromise = scheduleRpcHealthV6126.workPlanMetaFailed
@@ -7401,19 +7501,49 @@ window.tcIsDayShiftCode = value =>
           }
         );
 
-        const [
-          scheduleData,
-          workPlanResponse,
-          attendanceData,
-          punchResponse,
-          certificationResponse
-        ] = await Promise.all([
+        const settled = await Promise.allSettled([
           schedulePromise,
           workPlanPromise,
           attendancePromise,
           punchPromise,
           certificationPromise
         ]);
+
+        const [
+          scheduleResult,
+          workPlanResult,
+          attendanceResult,
+          punchResult,
+          certificationResult
+        ] = settled;
+
+        // Schedule is the structural source of the monthly calendar. After adaptive
+        // splitting it should normally succeed; if it still fails, keep the real error.
+        if (scheduleResult.status === 'rejected') throw scheduleResult.reason;
+
+        const scheduleData = scheduleResult.value || [];
+        const workPlanResponse = workPlanResult.status === 'fulfilled'
+          ? workPlanResult.value
+          : { data: [], error: workPlanResult.reason };
+        const attendanceData = attendanceResult.status === 'fulfilled'
+          ? (attendanceResult.value || [])
+          : [];
+        const punchResponse = punchResult.status === 'fulfilled'
+          ? punchResult.value
+          : { data: [], error: punchResult.reason };
+        const certificationResponse = certificationResult.status === 'fulfilled'
+          ? certificationResult.value
+          : { data: [], error: certificationResult.reason };
+
+        // Attendance is enrichment for the personal overview. Do not blank the whole
+        // calendar if only attendance detail is temporarily unavailable.
+        if (attendanceResult.status === 'rejected') {
+          scheduleLogRpcOnceV6126(
+            'employee-month-attendance-v6127',
+            'Employee month attendance detail V6.12.7 unavailable; rendering schedule without attendance:',
+            attendanceResult.reason
+          );
+        }
 
         const scheduleRows = (scheduleData || [])
           .filter(row => {
@@ -25563,7 +25693,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.12.6';
+  const VERSION='6.12.7';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
