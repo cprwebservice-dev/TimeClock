@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.12.8";
-document.documentElement.dataset.timeClockBuild = "6.12.8";
+window.__TIME_CLOCK_BUILD__ = "V6.12.9";
+document.documentElement.dataset.timeClockBuild = "6.12.9";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.12.8";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.12.8',
+  version: '6.12.9',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -908,7 +908,7 @@ window.tcIsDayShiftCode = value =>
       from += pageSize
     ) {
       let request = client.rpc(
-        "ta_get_schedule_range_v61024",
+        "ta_get_schedule_range_light_v6129",
         rpcArgs
       );
 
@@ -931,7 +931,7 @@ window.tcIsDayShiftCode = value =>
         await withTimeout(
           request,
           30000,
-          `โหลดตารางกะตาม User Scope หน้า ${
+          `โหลดตารางกะ Lightweight V6.12.9 ชุด ${
             Math.floor(from / pageSize) + 1
           }`
         );
@@ -943,7 +943,7 @@ window.tcIsDayShiftCode = value =>
           )
         ) {
           throw new Error(
-            "SECURE_SCHEDULE_RANGE_RPC_REQUIRED: กรุณารัน SQL V6.11.15"
+            "SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED: กรุณารัน SQL V6.12.9"
           );
         }
 
@@ -4939,7 +4939,7 @@ window.tcIsDayShiftCode = value =>
       // 30 employees x 31 days <= 930 rows/request, still below the 1,000-row
       // response ceiling. Run a few batches concurrently instead of waiting
       // for every employee batch serially.
-      const batchSize = 32;
+      const batchSize = 28;
       const batches = [];
       for (let offset = 0; offset < empCodes.length; offset += batchSize) {
         batches.push(empCodes.slice(offset, offset + batchSize));
@@ -4972,7 +4972,7 @@ window.tcIsDayShiftCode = value =>
       metaRows.push(...(firstResponse?.data || []));
 
       const remaining = batches.slice(1);
-      const concurrency = 4;
+      const concurrency = 3;
       for (let cursor = 0; cursor < remaining.length; cursor += concurrency) {
         const group = remaining.slice(cursor, cursor + concurrency);
         const responses = await Promise.all(group.map(callMetaBatchV6126));
@@ -5161,7 +5161,9 @@ window.tcIsDayShiftCode = value =>
           // V6.12.6: 32 employees x 31 days <= 992 rows/request.
           // Load up to 5 employee batches concurrently. This changes only the
           // transport strategy; scope/filter/business rules remain unchanged.
-          const employeeBatchSize = 32;
+          // V6.12.9: the grid RPC is lightweight, but keep each request small
+          // and avoid a burst of concurrent PostgreSQL statements.
+          const employeeBatchSize = 28;
           const chunks = [];
 
           for (
@@ -5176,7 +5178,7 @@ window.tcIsDayShiftCode = value =>
             data = [];
           } else {
             const collected = [];
-            const concurrency = 5;
+            const concurrency = 3;
             let completed = 0;
 
             for (let cursor = 0; cursor < chunks.length; cursor += concurrency) {
@@ -5244,14 +5246,14 @@ window.tcIsDayShiftCode = value =>
 
           if (!exactEmp && teamEmpCodes.length) {
             const daysInView = Math.max(Number(period?.dates?.length || 0), 1);
-            const teamBatchSize = Math.max(20, Math.min(120, Math.floor(930 / daysInView)));
+            const teamBatchSize = Math.max(20, Math.min(100, Math.floor(840 / daysInView)));
             const chunks = [];
             for (let offset = 0; offset < teamEmpCodes.length; offset += teamBatchSize) {
               chunks.push(teamEmpCodes.slice(offset, offset + teamBatchSize));
             }
 
             const collected = [];
-            const concurrency = 5;
+            const concurrency = 3;
             let completed = 0;
             for (let cursor = 0; cursor < chunks.length; cursor += concurrency) {
               const group = chunks.slice(cursor, cursor + concurrency);
@@ -5305,6 +5307,21 @@ window.tcIsDayShiftCode = value =>
         state.schedule=(data||[]).filter(row=>{
           const date=String(row.work_date||"").slice(0,10);
           return date>=period.startDate&&date<=period.endDate;
+        });
+
+        // V6.12.9: employee metadata is already available from the Scope/filter RPC.
+        // Reuse it instead of making the base schedule RPC join extra historical tables.
+        const scheduleEmployeeMetaMapV6129 = new Map(
+          (Array.isArray(filterOptions.employees) ? filterOptions.employees : [])
+            .map(employee => [
+              String(employee?.emp_code || employee?.EmployeeId || '').trim(),
+              employee
+            ])
+            .filter(([empCode]) => Boolean(empCode))
+        );
+        state.schedule.forEach(row => {
+          const empCode = String(row?.emp_code || '').trim();
+          scheduleMergeEmployeeMeta(row, scheduleEmployeeMetaMapV6129.get(empCode));
         });
 
         const expectedPersonEmployees =
@@ -11271,6 +11288,7 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
+      if (msg.includes("SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED")) return "กรุณารัน SQL V6.12.9 เพื่อเปิดใช้ Schedule Grid แบบ Lightweight";
       if (msg.includes("SECURE_SCHEDULE_RANGE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตารางกะตาม User Scope";
       if (msg.includes("SECURE_SCHEDULE_SCOPE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อเปิดใช้งาน Schedule แบบกรอง User Scope";
       if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 ก่อนบันทึกหรือแก้ไขกะ";
@@ -25730,7 +25748,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.12.8';
+  const VERSION='6.12.9';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
