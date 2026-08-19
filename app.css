@@ -20503,3 +20503,241 @@ body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146.m
   margin:0 auto!important;
   flex:0 0 auto!important;
 }
+
+
+/* ========================================================================== */
+/* V6.14.0 — Shift Color Control Center                                       */
+/* UI-only color configuration aligned 1:1 with person-schedule icons.        */
+/* ========================================================================== */
+.shift-color-section-v6140{
+  padding:20px 23px 0;
+}
+.shift-color-section-v6140 + .shift-color-section-v6140{
+  border-top:1px solid var(--slate-200,#e2e8f0);
+  margin-top:20px;
+}
+.shift-color-section-head-v6140{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.shift-color-section-head-v6140 strong{
+  display:block;
+  color:var(--navy-800,#173f68);
+  font-size:13px;
+}
+.shift-color-section-head-v6140 small{
+  display:block;
+  margin-top:2px;
+  color:var(--slate-500,#64748b);
+  font-size:10px;
+}
+.shift-color-grid.shift-color-grid-v6140{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  padding:0;
+}
+.shift-color-grid-v6140 .shift-color-card-v6140{
+  position:relative;
+  min-height:76px;
+  display:grid;
+  grid-template-columns:42px 34px minmax(0,1fr);
+  align-items:center;
+  gap:10px;
+  padding:12px;
+  background:linear-gradient(180deg,var(--surface,#fff),var(--slate-50,#f8fafc));
+  transition:border-color .15s ease,box-shadow .15s ease,transform .15s ease;
+}
+.shift-color-grid-v6140 .shift-color-card-v6140:hover{
+  transform:translateY(-1px);
+  border-color:var(--blue-300,#93c5fd);
+  box-shadow:0 8px 18px rgba(15,23,42,.07);
+}
+.shift-color-swatch-v6140{
+  position:relative;
+  width:42px!important;
+  height:42px!important;
+  box-shadow:inset 0 0 0 1px rgba(15,23,42,.08);
+}
+.settings-color-icon-v6140{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  border-radius:9px;
+  background:color-mix(in srgb,var(--card-color) 12%,white);
+  border:1px solid color-mix(in srgb,var(--card-color) 34%,transparent);
+  color:var(--card-color);
+}
+.settings-color-icon-v6140 svg,
+.settings-shift-preview-item-v6140 svg,
+.settings-status-preview-item-v6140 svg{
+  width:19px;
+  height:19px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.shift-color-card-copy-v6140{min-width:0}
+.shift-color-card-copy-v6140 strong{font-size:11px}
+.shift-color-card-copy-v6140 small{
+  margin-top:2px;
+  font-size:8.5px;
+  line-height:1.3;
+}
+.shift-color-card-copy-v6140 code{
+  display:inline-block;
+  margin-top:5px;
+  padding:2px 5px;
+  border-radius:5px;
+  background:var(--slate-100,#f1f5f9);
+  color:var(--slate-500,#64748b);
+  font-size:7.5px;
+}
+.status-color-grid-v6140{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.attendance-color-grid-v6140{grid-template-columns:minmax(260px,1fr) repeat(2,minmax(0,1fr))!important}
+.attendance-color-grid-v6140 .shift-color-card-v6140{grid-column:span 1}
+.shift-color-preview-wrap-v6140{
+  margin:20px 23px 0;
+  padding:16px;
+  border:1px solid var(--slate-200,#e2e8f0);
+  border-radius:14px;
+  background:var(--slate-50,#f8fafc);
+}
+.shift-color-preview-v6140,
+.schedule-status-preview-v6140{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.schedule-status-preview-v6140{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px dashed var(--slate-300,#cbd5e1);
+}
+.settings-shift-preview-item-v6140{
+  min-width:78px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 8px;
+  border:1px solid var(--preview-border);
+  border-radius:10px;
+  background:var(--preview-soft);
+  color:var(--preview-color);
+}
+.settings-shift-preview-item-v6140 span{
+  width:26px;height:26px;display:grid;place-items:center;
+}
+.settings-shift-preview-item-v6140 b,
+.settings-status-preview-item-v6140 b{
+  font-size:8.5px;
+  white-space:nowrap;
+}
+.settings-status-preview-item-v6140{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 9px;border-radius:10px;
+  background:var(--surface,#fff);
+  border:1px solid var(--slate-200,#e2e8f0);
+}
+.status-preview-tile-v6140{
+  position:relative;
+  width:30px;height:30px;
+  display:grid;place-items:center;
+  border:1px solid color-mix(in srgb,var(--base-color) 34%,transparent);
+  border-radius:8px;
+  background:var(--base-soft);
+  color:var(--base-color);
+}
+.settings-status-preview-item-v6140.status-confirmed .status-preview-tile-v6140:after{
+  content:"";position:absolute;right:-3px;top:-4px;width:9px;height:9px;border-radius:50%;
+  background:var(--preview-color);border:2px solid var(--surface,#fff);
+}
+.settings-status-preview-item-v6140.status-review .status-preview-tile-v6140{
+  outline:2px solid var(--preview-color);outline-offset:1px;
+}
+.settings-status-preview-item-v6140.status-selected .status-preview-tile-v6140{
+  box-shadow:0 0 0 2px var(--surface,#fff),0 0 0 4px var(--preview-color);
+}
+.settings-status-preview-item-v6140.status-hover .status-preview-tile-v6140{
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--preview-color) 35%,transparent),0 4px 10px color-mix(in srgb,var(--preview-color) 18%,transparent);
+  transform:translateY(-1px);
+}
+
+/* Hour and Split now have independent Settings colors instead of hard-coded CSS. */
+#schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-hour{
+  background:var(--shift-hour-soft,#e6f7f2)!important;
+  border-color:var(--shift-hour-border,#a8ddd4)!important;
+  color:var(--shift-hour-text,#0f9488)!important;
+}
+#schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split{
+  background:var(--shift-split-soft,#eef0ff)!important;
+  border-color:var(--shift-split-border,#bdc0f7)!important;
+  color:var(--shift-split-text,#6366f1)!important;
+}
+.schedule-icon-legend-item-v6136.tone-hour{color:var(--shift-hour-text,#0f9488)!important}
+.schedule-icon-legend-item-v6136.tone-hour .legend-svg-v6136{background:var(--shift-hour-soft,#e6f7f2)!important}
+.schedule-icon-legend-item-v6136.tone-split{color:var(--shift-split-text,#6366f1)!important}
+.schedule-icon-legend-item-v6136.tone-split .legend-svg-v6136{background:var(--shift-split-soft,#eef0ff)!important}
+
+/* Schedule Status colors from Settings. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell.schedule-icon-only-v6136.confirmed:after{
+  background:var(--schedule-status-confirmed,#16a34a)!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-cell.schedule-icon-only-v6136.review{
+  outline-color:var(--schedule-status-review,#f97316)!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-data-cell.cell-selected .schedule-cell.schedule-icon-only-v6136{
+  box-shadow:
+    0 0 0 2px var(--surface,#fff),
+    0 0 0 4px var(--schedule-status-selected,#2f80ed),
+    0 5px 12px color-mix(in srgb,var(--schedule-status-selected,#2f80ed) 22%,transparent)!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-data-cell:hover .schedule-cell.schedule-icon-only-v6136,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 .schedule-cell.schedule-icon-only-v6136:hover{
+  box-shadow:
+    0 0 0 1px color-mix(in srgb,var(--schedule-status-hover,#3b82f6) 32%,transparent),
+    0 4px 10px color-mix(in srgb,var(--schedule-status-hover,#3b82f6) 17%,transparent)!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 tbody tr:hover > td{
+  background-image:linear-gradient(var(--schedule-status-hover-soft,rgba(59,130,246,.045)),var(--schedule-status-hover-soft,rgba(59,130,246,.045)))!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146.month-fit-table-v6137 tbody tr:hover .schedule-emp-name{
+  box-shadow:inset 3px 0 0 color-mix(in srgb,var(--schedule-status-hover,#3b82f6) 58%,transparent)!important;
+}
+
+body.theme-dark .settings-color-icon-v6140,
+.dark .settings-color-icon-v6140{
+  background:color-mix(in srgb,var(--card-color) 20%,#102333);
+}
+body.theme-dark .shift-color-preview-wrap-v6140,
+.dark .shift-color-preview-wrap-v6140{background:#132738;border-color:#30495e}
+body.theme-dark .settings-status-preview-item-v6140,
+.dark .settings-status-preview-item-v6140{background:#102333;border-color:#30495e}
+body.theme-dark .shift-color-card-copy-v6140 code,
+.dark .shift-color-card-copy-v6140 code{background:#182c3c;color:#9db2c4}
+body.theme-dark #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-hour,
+.dark #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-hour{
+  background:var(--shift-hour-soft-strong)!important;
+  border-color:var(--shift-hour-border)!important;
+}
+body.theme-dark #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split,
+.dark #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split{
+  background:var(--shift-split-soft-strong)!important;
+  border-color:var(--shift-split-border)!important;
+}
+
+@media(max-width:1150px){
+  .shift-color-grid.shift-color-grid-v6140{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .status-color-grid-v6140{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:680px){
+  .shift-color-section-v6140{padding-left:16px;padding-right:16px}
+  .shift-color-preview-wrap-v6140{margin-left:16px;margin-right:16px}
+  .shift-color-grid.shift-color-grid-v6140,
+  .status-color-grid-v6140,
+  .attendance-color-grid-v6140{grid-template-columns:1fr!important}
+}

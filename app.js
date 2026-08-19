@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.13.9";
+window.__TIME_CLOCK_BUILD__ = "V6.14.0";
 document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.13.9',
+  version: '6.14.0',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -6273,7 +6273,7 @@ window.tcIsDayShiftCode = value =>
       if (isLeave) return { kind:'leave', label:'ลา', tone:'leave' };
       if (isHoliday) return { kind:'holiday', label:'วันหยุดนักขัตฤกษ์', tone:'holiday' };
       if (isOff) return { kind:'off', label:'วันหยุด', tone:'off' };
-      if (isHour) return { kind:'hour', label:'กะนับชั่วโมง', tone:shift?.tone || 'day' };
+      if (isHour) return { kind:'hour', label:'กะนับชั่วโมง', tone:'hour' };
       if (isSplit) return { kind:'split', label:'กะเช้า + งานช่วงดึก', tone:'split' };
       if (shift?.tone === 'night' || window.tcIsNightShiftCode(code)) {
         return { kind:'night', label:'กะดึก', tone:'night' };
@@ -12835,14 +12835,27 @@ ${skippedSummary(compatibility.skipped)}
     footer: "Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์", theme: "light", accent: "blue", font: "Noto Sans Thai",
     developerMode: false, viewAsRole: "HR_ADMIN",
     features: { dashboard:true, attendance:true, schedule:true, adminShifts:true, adminHolidays:true, adminUsers:true, adminImport:true },
-    shiftColors: { D:"#2563eb", N:"#7c3aed", OFF:"#64748b", HOL:"#ea580c", LV:"#0f766e", OT:"#ca8a04" }
+    shiftColors: { D:"#0ea5e9", N:"#5b5b66", OFF:"#e67e00", HOL:"#8b2be2", LV:"#ff0aa8", HOUR:"#0f9488", SPLIT:"#6366f1" },
+    scheduleStatusColors: { CONFIRMED:"#16a34a", REVIEW:"#f97316", SELECTED:"#2f80ed", HOVER:"#3b82f6" },
+    attendanceColors: { OT:"#ca8a04" }
   };
   const $ = id => document.getElementById(id);
   const qs = (s,r=document)=>r.querySelector(s);
   const qsa = (s,r=document)=>[...r.querySelectorAll(s)];
   let settings = load();
   let profile = null;
-  function deepMerge(a,b){ return {...a,...b,features:{...a.features,...(b?.features||{})},shiftColors:{...a.shiftColors,...(b?.shiftColors||{})}}; }
+  function deepMerge(a,b){
+    const legacyShift={...(b?.shiftColors||{})};
+    const legacyOt=legacyShift.OT;
+    delete legacyShift.OT;
+    return {
+      ...a,...b,
+      features:{...a.features,...(b?.features||{})},
+      shiftColors:{...a.shiftColors,...legacyShift},
+      scheduleStatusColors:{...a.scheduleStatusColors,...(b?.scheduleStatusColors||{})},
+      attendanceColors:{...a.attendanceColors,...(b?.attendanceColors||{}),...(legacyOt?{OT:legacyOt}:{})}
+    };
+  }
   function load(){ try{return deepMerge(defaults,JSON.parse(localStorage.getItem(KEY)||"{}"));}catch{return structuredClone(defaults);} }
   function save(){ localStorage.setItem(KEY,JSON.stringify(settings)); applyVisuals(); applyFeatureFlags(); }
   function getRuntimeSettings(){ return settings; }
@@ -12871,17 +12884,22 @@ ${skippedSummary(compatibility.skipped)}
     const luminance=(0.299*r+0.587*g+0.114*b)/255;
     return luminance > .62 ? "#172033" : "#ffffff";
   }
+  function applyColorFamilyV6140(prefix,key,value){
+    const k=String(key||"").trim().toLowerCase();
+    const hex=normalizeHexColorV61153(value);
+    document.documentElement.style.setProperty(`--${prefix}-${k}`,hex);
+    document.documentElement.style.setProperty(`--${prefix}-${k}-soft`,rgbaV61153(hex,.13));
+    document.documentElement.style.setProperty(`--${prefix}-${k}-soft-strong`,rgbaV61153(hex,.20));
+    document.documentElement.style.setProperty(`--${prefix}-${k}-border`,rgbaV61153(hex,.36));
+    document.documentElement.style.setProperty(`--${prefix}-${k}-text`,hex);
+    document.documentElement.style.setProperty(`--${prefix}-${k}-contrast`,contrastTextV61153(hex));
+  }
   function applyShiftColorVariablesV61153(){
-    Object.entries(settings.shiftColors||{}).forEach(([key,value])=>{
-      const k=String(key||"").trim().toLowerCase();
-      const hex=normalizeHexColorV61153(value);
-      document.documentElement.style.setProperty(`--shift-${k}`,hex);
-      document.documentElement.style.setProperty(`--shift-${k}-soft`,rgbaV61153(hex,.13));
-      document.documentElement.style.setProperty(`--shift-${k}-soft-strong`,rgbaV61153(hex,.20));
-      document.documentElement.style.setProperty(`--shift-${k}-border`,rgbaV61153(hex,.36));
-      document.documentElement.style.setProperty(`--shift-${k}-text`,hex);
-      document.documentElement.style.setProperty(`--shift-${k}-contrast`,contrastTextV61153(hex));
-    });
+    Object.entries(settings.shiftColors||{}).forEach(([key,value])=>applyColorFamilyV6140("shift",key,value));
+    Object.entries(settings.scheduleStatusColors||{}).forEach(([key,value])=>applyColorFamilyV6140("schedule-status",key,value));
+    Object.entries(settings.attendanceColors||{}).forEach(([key,value])=>applyColorFamilyV6140("attendance",key,value));
+    /* Backward-compatible OT variable for older Attendance components. */
+    if(settings.attendanceColors?.OT) applyColorFamilyV6140("shift","OT",settings.attendanceColors.OT);
   }
   function applyVisuals(){
     document.documentElement.style.fontFamily = settings.font === "system" ? "system-ui,sans-serif" : "'Noto Sans Thai',sans-serif";
@@ -12904,26 +12922,76 @@ ${skippedSummary(compatibility.skipped)}
   const featurePage={dashboard:"dashboard",attendance:"attendance",schedule:"schedule",adminShifts:"admin-shifts",adminHolidays:"admin-holidays",adminUsers:"admin-users",adminImport:"admin-import"};
   function applyFeatureFlags(){ for(const [k,p] of Object.entries(featurePage)){ const el=qs(`.nav-item[data-page="${p}"]`); if(el) el.classList.toggle("feature-hidden",settings.features[k]===false); } }
   function renderFeatureFlags(){ const root=$("featureFlagList"); if(!root)return; root.innerHTML=featureMeta.map(([k,n,d])=>`<div class="feature-row"><div><strong>${n}</strong><small>${d}</small></div><label class="switch"><input type="checkbox" data-feature-key="${k}" ${settings.features[k]!==false?"checked":""}><span></span></label></div>`).join(""); }
+  function settingsShiftIconSvgV6140(kind){
+    const common='viewBox="0 0 24 24" aria-hidden="true"';
+    switch(String(kind||'').toLowerCase()){
+      case 'day': return `<svg ${common}><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>`;
+      case 'night': return `<svg ${common}><path d="M20.5 14.2A8 8 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>`;
+      case 'off': return `<svg ${common}><path d="M4 12h16v7H4z"></path><path d="M6 12V9.5A2.5 2.5 0 0 1 8.5 7h1A2.5 2.5 0 0 1 12 9.5V12M4 16h16M6 19v2M18 19v2"></path></svg>`;
+      case 'leave': return `<svg ${common}><rect x="6" y="3" width="12" height="18" rx="2"></rect><path d="M9 8h6M9 12h6M9 16h4"></path></svg>`;
+      case 'holiday': return `<svg ${common}><path d="m12 2 1.4 4.6L18 8l-4.6 1.4L12 14l-1.4-4.6L6 8l4.6-1.4L12 2Z"></path><path d="m19 14 .8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14Z"></path></svg>`;
+      case 'hour': return `<svg ${common}><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg>`;
+      case 'split': return `<svg ${common}><path d="M5 7h12l-3-3M19 17H7l3 3"></path><path d="M17 7l-3 3M7 17l3-3"></path></svg>`;
+      case 'confirmed': return `<svg ${common}><path d="m5 12 4 4L19 6"></path></svg>`;
+      case 'review': return `<svg ${common}><path d="M12 3 2.7 19h18.6L12 3Z"></path><path d="M12 9v4M12 16h.01"></path></svg>`;
+      case 'selected': return `<svg ${common}><rect x="4" y="4" width="16" height="16" rx="4"></rect><path d="m8 12 2.5 2.5L16 9"></path></svg>`;
+      case 'hover': return `<svg ${common}><path d="m4 4 7 16 2.2-6.8L20 11 4 4Z"></path></svg>`;
+      case 'ot': return `<svg ${common}><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5h4M8 3l1 2M16 3l-1 2"></path></svg>`;
+      default: return `<svg ${common}><circle cx="12" cy="12" r="7"></circle></svg>`;
+    }
+  }
+  const shiftColorMetaV6140=[
+    {key:'D',label:'กะเช้า',detail:'STD / S043 และกะทำงานกลางวัน',kind:'day'},
+    {key:'N',label:'กะดึก',detail:'S134 / S135 และ Night Shift',kind:'night'},
+    {key:'OFF',label:'วันหยุด',detail:'OSTD / OS043 / OS134 / OS135',kind:'off'},
+    {key:'LV',label:'ลา',detail:'Leave ทุกประเภท',kind:'leave'},
+    {key:'HOL',label:'นักขัตฤกษ์',detail:'HOL / Public Holiday',kind:'holiday'},
+    {key:'HOUR',label:'กะนับชั่วโมง',detail:'Hour Based Shift',kind:'hour'},
+    {key:'SPLIT',label:'เช้า + ดึก',detail:'Split Shift / รอเข้ากะดึก',kind:'split'}
+  ];
+  const statusColorMetaV6140=[
+    {key:'CONFIRMED',label:'ยืนยันแล้ว',detail:'จุดสถานะยืนยันที่มุม Label',kind:'confirmed'},
+    {key:'REVIEW',label:'ต้องตรวจสอบ',detail:'กรอบ Warning / Need Review',kind:'review'},
+    {key:'SELECTED',label:'Selected',detail:'กรอบช่องที่ User คลิกเลือก',kind:'selected'},
+    {key:'HOVER',label:'Hover',detail:'แถว/ช่องที่เมาส์กำลังชี้',kind:'hover'}
+  ];
+  const attendanceColorMetaV6140=[
+    {key:'OT',label:'OT',detail:'สีสถานะล่วงเวลาใน Attendance',kind:'ot'}
+  ];
+  function colorCardV6140(meta,value,group){
+    const hex=normalizeHexColorV61153(value);
+    return `<div class="shift-color-card shift-color-card-v6140" data-color-card="${group}:${meta.key}">
+      <label class="shift-color-swatch shift-color-swatch-v6140" style="--card-color:${hex};background:${hex}"><input type="color" data-color-group="${group}" data-color-key="${meta.key}" ${group==='shift'?`data-shift-color="${meta.key}"`:''} value="${hex}"></label>
+      <span class="settings-color-icon-v6140" style="--card-color:${hex}">${settingsShiftIconSvgV6140(meta.kind)}</span>
+      <div class="shift-color-card-copy-v6140"><strong>${meta.label}</strong><small>${meta.detail}</small><code>${hex.toUpperCase()}</code></div>
+    </div>`;
+  }
+  function renderShiftColorPreviewV6140(){
+    const root=$('shiftColorPreview');
+    if(root){
+      root.innerHTML=shiftColorMetaV6140.map(meta=>{
+        const color=normalizeHexColorV61153(settings.shiftColors?.[meta.key]);
+        return `<div class="settings-shift-preview-item-v6140 tone-${meta.key.toLowerCase()}" style="--preview-color:${color};--preview-soft:${rgbaV61153(color,.13)};--preview-border:${rgbaV61153(color,.36)}"><span>${settingsShiftIconSvgV6140(meta.kind)}</span><b>${meta.label}</b></div>`;
+      }).join('');
+    }
+    const statusRoot=$('scheduleStatusPreview');
+    if(statusRoot){
+      const base=normalizeHexColorV61153(settings.shiftColors?.D,'#0ea5e9');
+      statusRoot.innerHTML=statusColorMetaV6140.map(meta=>{
+        const color=normalizeHexColorV61153(settings.scheduleStatusColors?.[meta.key]);
+        const cls=meta.key.toLowerCase();
+        return `<div class="settings-status-preview-item-v6140 status-${cls}" style="--preview-color:${color};--preview-soft:${rgbaV61153(color,.10)};--base-color:${base};--base-soft:${rgbaV61153(base,.13)}"><span class="status-preview-tile-v6140">${settingsShiftIconSvgV6140('day')}</span><b>${meta.label}</b></div>`;
+      }).join('');
+    }
+  }
   function renderShiftColors(){
-    const root=$("shiftColorGrid");
-    if(!root)return;
-    const displayCode={
-      D:"กะกลางวัน",
-      N:"กะดึก",
-      OFF:"วันหยุด",
-      HOL:"HOL",
-      LV:"LV",
-      OT:"OT"
-    };
-    const displayName={
-      D:"สีสำหรับกะทำงานกลางวัน • รหัสจริงตาม Shift Set Up",
-      N:"สีสำหรับกะทำงานกลางคืน • รหัสจริงตาม Shift Set Up",
-      OFF:"สีสำหรับกะวันหยุด • รหัสจริงเลือกจาก Mapping",
-      HOL:"นักขัตฤกษ์",
-      LV:"ลา",
-      OT:"ล่วงเวลา"
-    };
-    root.innerHTML=Object.entries(settings.shiftColors).map(([k,v])=>`<div class="shift-color-card"><label class="shift-color-swatch" style="background:${v}"><input type="color" data-shift-color="${k}" value="${v}"></label><div><strong>${displayCode[k]||k}</strong><small>${displayName[k]||k}</small></div></div>`).join("");
+    const root=$('shiftColorGrid');
+    if(root) root.innerHTML=shiftColorMetaV6140.map(meta=>colorCardV6140(meta,settings.shiftColors?.[meta.key],'shift')).join('');
+    const statusRoot=$('scheduleStatusColorGrid');
+    if(statusRoot) statusRoot.innerHTML=statusColorMetaV6140.map(meta=>colorCardV6140(meta,settings.scheduleStatusColors?.[meta.key],'status')).join('');
+    const attendanceRoot=$('attendanceColorGrid');
+    if(attendanceRoot) attendanceRoot.innerHTML=attendanceColorMetaV6140.map(meta=>colorCardV6140(meta,settings.attendanceColors?.[meta.key],'attendance')).join('');
+    renderShiftColorPreviewV6140();
   }
   function fillForm(){
     const map={setSystemName:"systemName",setEnvironment:"environment",setVersion:"version",setCompanyName:"companyName",setFooter:"footer",setAccent:"accent",setFont:"font"};
@@ -12945,7 +13013,12 @@ ${skippedSummary(compatibility.skipped)}
     for(const [id,k] of Object.entries(map)) if($(id)) settings[k]=$(id).value;
     settings.developerMode=$("setDeveloperMode")?.checked||false; settings.viewAsRole=$("setViewAsRole")?.value||"HR_ADMIN";
     qsa("[data-feature-key]").forEach(x=>settings.features[x.dataset.featureKey]=x.checked);
-    qsa("[data-shift-color]").forEach(x=>settings.shiftColors[x.dataset.shiftColor]=x.value);
+    qsa("[data-color-group][data-color-key]").forEach(x=>{
+      const group=x.dataset.colorGroup, key=x.dataset.colorKey;
+      if(group==='shift') settings.shiftColors[key]=x.value;
+      else if(group==='status') settings.scheduleStatusColors[key]=x.value;
+      else if(group==='attendance') settings.attendanceColors[key]=x.value;
+    });
   }
   function syncProfile(p){ profile=p; if($("realRoleValue")) $("realRoleValue").textContent=p._realRole||p.role; $("developerConsole")?.classList.toggle("hidden",!(p._realRole==="HR_ADMIN"&&settings.developerMode)); fillForm(); }
   async function testConnection(){
@@ -12966,7 +13039,29 @@ ${skippedSummary(compatibility.skipped)}
     $("devReloadBtn")?.addEventListener("click",()=>{collect();save();window.TimeClockApp?.applyProfile?.();window.TimeClockApp?.toast?.(`กำลังทดสอบหน้าจอด้วย Role ${settings.viewAsRole}`,"success");});
     $("devClearCacheBtn")?.addEventListener("click",()=>{sessionStorage.clear();window.TimeClockApp?.toast?.("ล้าง UI cache แล้ว","success");});
     $("devRefreshMetadataBtn")?.addEventListener("click",async()=>{await window.TimeClockApp?.state?.client?.auth?.refreshSession();window.TimeClockApp?.toast?.("Refresh session metadata แล้ว","success");});
-    $("resetShiftColorsBtn")?.addEventListener("click",()=>{settings.shiftColors={...defaults.shiftColors};renderShiftColors();applyVisuals();});
+    $("resetShiftColorsBtn")?.addEventListener("click",()=>{
+      settings.shiftColors={...defaults.shiftColors};
+      settings.scheduleStatusColors={...defaults.scheduleStatusColors};
+      settings.attendanceColors={...defaults.attendanceColors};
+      renderShiftColors();applyVisuals();
+    });
+    const colorPanel=qs('[data-settings-panel="shifts"]');
+    colorPanel?.addEventListener('input',e=>{
+      const input=e.target.closest('[data-color-group][data-color-key]');
+      if(!input)return;
+      const group=input.dataset.colorGroup,key=input.dataset.colorKey;
+      if(group==='shift') settings.shiftColors[key]=input.value;
+      else if(group==='status') settings.scheduleStatusColors[key]=input.value;
+      else if(group==='attendance') settings.attendanceColors[key]=input.value;
+      const card=input.closest('.shift-color-card-v6140');
+      if(card){
+        card.querySelector('code').textContent=input.value.toUpperCase();
+        card.querySelector('.shift-color-swatch-v6140')?.style.setProperty('--card-color',input.value);
+        card.querySelector('.settings-color-icon-v6140')?.style.setProperty('--card-color',input.value);
+      }
+      applyShiftColorVariablesV61153();
+      renderShiftColorPreviewV6140();
+    });
     $("testConnectionBtn")?.addEventListener("click",testConnection); $("openLegacyConfigBtn")?.addEventListener("click",()=>document.getElementById("configModal")?.classList.remove("hidden"));
     $("developerConsoleToggle")?.addEventListener("click",()=>$("developerConsoleBody").classList.toggle("hidden"));
     $("devConsoleClearBtn")?.addEventListener("click",()=>setDebug("-",null,null,"Ready","ล้าง Log แล้ว"));
@@ -26017,7 +26112,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.13.9';
+  const VERSION='6.14.0';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
