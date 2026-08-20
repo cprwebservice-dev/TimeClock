@@ -21317,3 +21317,36 @@ body.theme-dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-off,
   border-color:var(--shift-off-border,#465969)!important;
   color:var(--shift-off-text,#c1ced8)!important;
 }
+
+
+/* ========================================================================== */
+/* V6.14.12 — Person display controls + month-copy UX                         */
+/* ========================================================================== */
+.person-commandbar-v61412{gap:10px!important}
+.person-days-control-v61412{display:flex;align-items:center;gap:8px;padding:4px 6px;border:1px solid var(--slate-200,#d9e2ec);border-radius:11px;background:var(--surface,#fff);white-space:nowrap}
+.person-days-control-v61412>span{padding-left:4px;font-size:9px;font-weight:850;color:var(--slate-600,#475569)}
+.person-days-segment-v61412{display:flex;gap:3px;padding:3px;border-radius:8px;background:var(--surface-soft,#f3f7fb)}
+.person-days-btn-v61412{height:28px;padding:0 10px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--slate-600,#475569);font:inherit;font-size:9px;font-weight:850;cursor:pointer}
+.person-days-btn-v61412:hover{background:var(--surface,#fff);border-color:#bfd8ee}
+.person-days-btn-v61412.active{background:#eaf5ff;border-color:#7bb7eb;color:#155fa2;box-shadow:0 2px 6px rgba(37,99,235,.08)}
+.person-month-copy-btn-v61412{border-color:#b9d6ef!important;background:#f4f9ff!important;color:#1b659f!important}
+.person-month-copy-btn-v61412:hover{background:#e9f5ff!important}
+
+/* Person view V6.14.12 intentionally hides Start Date and uses 3 sticky metadata columns. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-position-head,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-emp-position{width:var(--schedule-position-col)!important;min-width:var(--schedule-position-col)!important;max-width:var(--schedule-position-col)!important}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .sticky-col-3{left:calc(var(--schedule-code-col) + var(--schedule-name-col))!important;box-shadow:7px 0 10px -10px rgba(15,23,42,.38)}
+
+.schedule-month-copy-backdrop-v61412{z-index:14500!important}
+.schedule-month-copy-modal-v61412{width:min(760px,calc(100vw - 28px))!important;max-width:760px!important}
+.schedule-month-copy-modal-v61412 .modal-header p{margin:4px 0 0;color:var(--slate-500,#64748b);font-size:10px}
+.month-copy-note-v61412{display:flex;flex-direction:column;gap:4px;padding:11px 12px;margin-bottom:12px;border:1px solid #cfe2f2;border-radius:12px;background:#f6fbff}
+.month-copy-note-v61412 strong{font-size:11px;color:#174f7b}.month-copy-note-v61412 span{font-size:9px;color:#64788a;line-height:1.45}
+.month-copy-grid-v61412{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.month-copy-grid-v61412 label{display:flex;flex-direction:column;gap:5px}.month-copy-grid-v61412 label>span{font-size:9px;font-weight:850;color:#52687b}
+.month-copy-preview-v61412{margin-top:12px;padding:12px;border:1px dashed #cbd9e6;border-radius:12px;background:#fbfdff;color:#52687b;font-size:9px}
+.month-copy-preview-grid-v61412{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
+.month-copy-preview-grid-v61412>span{padding:8px;border:1px solid #e0e8ef;border-radius:10px;background:#fff;text-align:center}.month-copy-preview-grid-v61412 b{display:block;font-size:18px;color:#123f69}.month-copy-preview-grid-v61412 small{display:block;margin-top:2px;color:#7c8e9e;font-size:8px}
+body.theme-dark .person-days-control-v61412,.dark .person-days-control-v61412{background:#162838;border-color:#355169}body.theme-dark .person-days-segment-v61412,.dark .person-days-segment-v61412{background:#102130}body.theme-dark .person-days-btn-v61412.active,.dark .person-days-btn-v61412.active{background:#1d4565;border-color:#4e8bbb;color:#d4ecff}
+body.theme-dark .month-copy-note-v61412,.dark .month-copy-note-v61412{background:#152b3d;border-color:#355a75}body.theme-dark .month-copy-preview-v61412,.dark .month-copy-preview-v61412{background:#142432;border-color:#3d5367}body.theme-dark .month-copy-preview-grid-v61412>span,.dark .month-copy-preview-grid-v61412>span{background:#1c3040;border-color:#3b5368}body.theme-dark .month-copy-preview-grid-v61412 b,.dark .month-copy-preview-grid-v61412 b{color:#cbe8ff}
+@media(max-width:900px){.person-days-control-v61412{width:100%;justify-content:space-between}.month-copy-grid-v61412{grid-template-columns:1fr}.month-copy-preview-grid-v61412{grid-template-columns:repeat(2,1fr)}}

@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.11 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.12 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.11 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.12 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.11-20260820" rel="stylesheet"/>
+<link href="./app.css?v=6.14.12-20260820" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.11</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.12</span></div>
 </form>
 </div>
 </section>
@@ -359,7 +359,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.11</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.11 Time View Accuracy + OFF Label</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.12</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.12 Person Schedule Display + Month Copy</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -615,8 +615,8 @@
 <div class="panel-body schedule-grid-body"><div class="table-wrap schedule-team-grid-wrap" id="scheduleTeamWrap"></div></div>
 </div>
 <div class="panel section-gap schedule-workspace hidden" id="schedulePersonWorkspace" data-schedule-view-panel="PERSON">
-<div class="panel-header schedule-panel-header">
-<div><h3>ตารางกะรายบุคคล • เต็มเดือน</h3><p>แสดงทุกวันของเดือนในตารางเดียว • Label แสดงเฉพาะ Icon ขนาดชัดเจน • วางเมาส์บน Icon เพื่อดูรหัสกะ เวลา และรายละเอียด • Logic การจัดกะคงเดิม</p></div>
+<div class="panel-header schedule-panel-header person-schedule-header-v61412">
+<div><h3 id="schedulePersonTitleV61412">ตารางกะรายบุคคล • เต็มเดือน</h3><p id="schedulePersonSubtitleV61412">แสดงทุกวันของเดือนในตารางเดียว • Label แสดงเฉพาะ Icon • วางเมาส์เพื่อดูรายละเอียดกะ</p></div>
 <div class="schedule-icon-legend-v6136" aria-label="สัญลักษณ์ประเภทกะ">
   <span class="schedule-icon-legend-item-v6136 tone-day"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg></span>เช้า</span>
   <span class="schedule-icon-legend-item-v6136 tone-night"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.3 8.3 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg></span>ดึก</span>
@@ -628,19 +628,26 @@
 </div>
 </div>
 
-<div class="schedule-commandbar">
+<div class="schedule-commandbar person-commandbar-v61412">
+<div class="person-days-control-v61412" aria-label="จำนวนวันที่แสดงในตารางรายบุคคล">
+  <span>ช่วงที่แสดง</span>
+  <div class="person-days-segment-v61412">
+    <button type="button" class="person-days-btn-v61412" data-person-days-mode="15D">15 วัน</button>
+    <button type="button" class="person-days-btn-v61412" data-person-days-mode="MONTH">เต็มเดือน</button>
+  </div>
+</div>
 <div class="schedule-selection-info"><span id="scheduleSelectionCount">ยังไม่ได้เลือกช่อง</span><small id="scheduleClipboardInfo">เลือกช่องแล้วกดกะด่วน</small></div>
 <div class="schedule-quick-shifts">
 <button class="shift-command shift-STD smart-shift-command" data-smart-shift="NORMAL" id="scheduleQuickNormalBtn"><span>กะปกติ</span><small id="scheduleQuickNormalCode">ตามรูปแบบ</small></button>
 <button class="shift-command shift-S134 smart-shift-command" data-smart-shift="NIGHT" id="scheduleQuickNightBtn"><span>กะกลางคืน</span><small id="scheduleQuickNightCode">ตามรูปแบบ</small></button>
 <button class="shift-command shift-OFF" data-quick-shift="OFF">OFF</button>
-<button class="shift-command shift-HOL" data-quick-shift="HOL">HOL</button>
 <button class="shift-command shift-LV" data-quick-shift="LV" title="กำหนดวันลา"><span>ลา</span><small>LV</small></button>
 </div>
 <div class="schedule-command-actions">
 <button class="btn btn-light" disabled="" id="scheduleUndoBtn">↶ Undo</button>
 <button class="btn btn-light" disabled="" id="scheduleRedoBtn">↷ Redo</button>
 <button class="btn btn-light" id="scheduleCopyBtn">คัดลอก</button>
+<button class="btn btn-light person-month-copy-btn-v61412" id="scheduleCopyMonthBtnV61412">คัดลอกทั้งเดือน</button>
 <button class="btn btn-light" id="schedulePasteBtn">วาง</button>
 <button class="btn btn-danger-soft" id="scheduleClearCellsBtn">ล้างกะ</button>
 <button class="btn btn-light" id="scheduleClearSelectionBtn">ยกเลิกเลือก</button>
@@ -657,6 +664,31 @@
 <hr/><button data-context-smart-shift="NORMAL">กำหนดกะปกติตามรูปแบบ</button><button data-context-smart-shift="NIGHT">กำหนดกะกลางคืนตามรูปแบบ</button><button data-context-shift="OFF">กำหนด OFF</button><button data-context-shift="HOL">กำหนด HOL</button><button data-context-shift="LV">กำหนดลา (LV)</button>
 <hr/><button class="danger" data-context-action="clear">ล้างกะ</button>
 </div>
+</div>
+<div class="modal-backdrop hidden schedule-month-copy-backdrop-v61412" id="scheduleMonthCopyModalV61412" aria-hidden="true">
+  <div class="modal schedule-month-copy-modal-v61412">
+    <div class="modal-header">
+      <div><span class="eyebrow">PERSON MONTH COPY</span><h3>คัดลอกรูปแบบกะทั้งเดือน</h3><p>คัดลอกตารางกะจากพนักงานต้นทางไปยังพนักงานปลายทางในเดือนเดียวกัน</p></div>
+      <button type="button" class="btn btn-light btn-icon" id="scheduleMonthCopyCloseV61412" aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="month-copy-note-v61412">
+        <strong>คัดลอกเฉพาะรูปแบบกะ</strong>
+        <span>ไม่คัดลอกวันลา (LV) และ HOL เพราะเป็นข้อมูลเฉพาะบุคคล/ปฏิทินกลาง • กะวันหยุดจะถูกปรับให้สัมพันธ์กับ Work Pattern ของพนักงานปลายทางก่อนบันทึก</span>
+      </div>
+      <div class="month-copy-grid-v61412">
+        <label><span>พนักงานต้นทาง</span><select class="select" id="scheduleMonthCopySourceV61412"></select></label>
+        <label><span>พนักงานปลายทาง</span><select class="select" id="scheduleMonthCopyTargetV61412"></select></label>
+        <label><span>เดือน</span><input class="input" type="month" id="scheduleMonthCopyMonthV61412" readonly></label>
+        <label><span>วิธีวาง</span><select class="select" id="scheduleMonthCopyModeV61412"><option value="OVERWRITE">วางทับรูปแบบกะทั้งเดือน</option><option value="EMPTY_ONLY">เฉพาะวันที่ปลายทางยังไม่ได้จัดกะเอง</option></select></label>
+      </div>
+      <div class="month-copy-preview-v61412" id="scheduleMonthCopyPreviewV61412">เลือกพนักงานต้นทางและปลายทางเพื่อดูตัวอย่าง</div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-light" id="scheduleMonthCopyCancelV61412">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" id="scheduleMonthCopyApplyV61412">คัดลอกและวางทั้งเดือน</button>
+    </div>
+  </div>
 </div>
 <div class="schedule-team-drawer-backdrop hidden" id="scheduleTeamDrawerBackdrop"></div>
 <aside class="schedule-team-drawer hidden" id="scheduleTeamDrawer" aria-hidden="true">
@@ -2508,6 +2540,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.11-20260820"></script>
+<script src="./app.js?v=6.14.12-20260820"></script>
 </body>
 </html>
