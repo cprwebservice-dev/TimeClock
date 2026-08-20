@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.14";
-document.documentElement.dataset.timeClockBuild = "6.14.14";
+window.__TIME_CLOCK_BUILD__ = "V6.14.15";
+document.documentElement.dataset.timeClockBuild = "6.14.15";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.14";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.14',
+  version: '6.14.15',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -261,44 +261,8 @@ window.tcIsDayShiftCode = value =>
     }
   };
 
-  const currentEmail = app => app?.state?.user?.email || app?.state?.profile?.email || null;
-
-  async function directAssign(client, row, app) {
-    const empCode = String(row.emp_code || row.p_emp_code || "").trim();
-    const workDate = String(row.work_date || row.p_work_date || "").slice(0, 10);
-    const shiftCodeRaw = row.shift_code ?? row.p_shift_code;
-    const shiftCode = shiftCodeRaw == null ? shiftCodeRaw : window.tcShiftCode(shiftCodeRaw);
-    const note = row.note ?? row.p_note ?? null;
-    const confirmNow = Boolean(row.confirm_now ?? row.p_confirm_now);
-    if (!empCode || !workDate) throw new Error("ข้อมูลรหัสพนักงานหรือวันที่จัดกะไม่ครบ");
-
-    if (!shiftCode) {
-      const { error } = await client.from("shift_calendar").delete().eq("emp_code", empCode).eq("work_date", workDate);
-      if (error) throw error;
-      return { deleted: 1, fallback: true };
-    }
-
-    const actor = currentEmail(app);
-    const base = {
-      emp_code: empCode,
-      work_date: workDate,
-      shift_code: window.tcShiftCode(shiftCode),
-      source_type: "manual",
-      note,
-      is_confirmed: confirmNow,
-      confirmed_at: confirmNow ? new Date().toISOString() : null,
-      confirmed_by: confirmNow ? actor : null,
-      updated_by: actor,
-      updated_at: new Date().toISOString()
-    };
-    let result = await client.from("shift_calendar").upsert(base, { onConflict: "work_date,emp_code" });
-    if (result.error && missingColumn(result.error)) {
-      const minimum = { emp_code: base.emp_code, work_date: base.work_date, shift_code: base.shift_code, source_type: base.source_type, note: base.note };
-      result = await client.from("shift_calendar").upsert(minimum, { onConflict: "work_date,emp_code" });
-    }
-    if (result.error) throw result.error;
-    return { saved: 1, fallback: true };
-  }
+  // V6.14.15: direct shift_calendar client-write fallback removed.
+  // All live schedule writes must pass the guarded RPC pipeline.
 
   async function assignSingle(app, params) {
     const client = app?.state?.client;
@@ -325,7 +289,7 @@ window.tcIsDayShiftCode = value =>
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.8 ก่อนจัดกะ"
+      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณาติดตั้ง Day-off Quota Guard V6.14.3 ก่อนจัดกะ"
     );
   }
 
@@ -357,7 +321,7 @@ window.tcIsDayShiftCode = value =>
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.8 ก่อนบันทึกกะแบบหลายรายการ"
+      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณาติดตั้ง Day-off Quota Guard V6.14.3 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -7183,14 +7147,9 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function refreshTimeCertificationSourceV61139(empCode, workDate, source) {
-      if (source === 'employee-month') {
-        employeeMonthCacheInvalidateV61138(empCode, workDate.slice(0,7));
-        await openEmployeeMonthCalendarV61121(empCode, workDate.slice(0,7), { forceFresh: true });
-        return;
-      }
-      if (source === 'team-daily') {
-        await openScheduleTeamDrawer(scheduleTeamDrawerState.unit, scheduleTeamDrawerState.date || workDate);
-      }
+      // V6.14.15: one refresh path for Attendance Detail, Monthly Personal,
+      // TEAM DAILY DETAIL and TIME VIEW.
+      return refreshCertificationViewsV61415(empCode, workDate, source);
     }
 
     async function saveTimeCertificationV61139() {
@@ -7265,6 +7224,160 @@ window.tcIsDayShiftCode = value =>
       } catch (error) { toast(humanError(error),'error'); }
       finally { hideLoading(); }
     }
+
+    // V6.14.15 — Single consistency pipeline for all schedule/certification mutations.
+    // Every write path must invalidate the same derived caches. Schedule writers also
+    // finish with one certification-aware Attendance refresh AFTER Work Plan / Rule
+    // extensions have been committed.
+    function normalizeMutationItemsV61415(items = []) {
+      const unique = new Map();
+      (items || []).forEach(item => {
+        const emp_code = String(item?.emp_code || item?.empCode || '').trim();
+        const work_date = String(item?.work_date || item?.workDate || '').slice(0,10);
+        if (!emp_code || !work_date) return;
+        unique.set(`${emp_code}|${work_date}`, { emp_code, work_date });
+      });
+      return [...unique.values()];
+    }
+
+    function invalidateMutationCachesV61415(items = []) {
+      const rows = normalizeMutationItemsV61415(items);
+      try {
+        scheduleTimeAttendanceStateV6146.key = '';
+        scheduleTimeAttendanceStateV6146.rows = [];
+        scheduleTimeAttendanceStateV6146.error = null;
+        scheduleTimeAttendanceStateV6146.loading = false;
+        scheduleTimeAttendanceStateV6146.loadedAt = 0;
+      } catch (_) {}
+      const seen = new Set();
+      rows.forEach(item => {
+        const month = item.work_date.slice(0,7);
+        const key = `${item.emp_code}|${month}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        try { employeeMonthCacheInvalidateV61138(item.emp_code, month); } catch (_) {}
+      });
+      return rows;
+    }
+
+    function invalidateAllDerivedAttendanceCachesV61415() {
+      try {
+        scheduleTimeAttendanceStateV6146.key = '';
+        scheduleTimeAttendanceStateV6146.rows = [];
+        scheduleTimeAttendanceStateV6146.error = null;
+        scheduleTimeAttendanceStateV6146.loading = false;
+        scheduleTimeAttendanceStateV6146.loadedAt = 0;
+      } catch (_) {}
+      try { employeeMonthCacheV61138.clear(); } catch (_) {}
+
+      // If a derived-data screen is visible while a CSV/Attendance rebuild finishes,
+      // refresh it immediately instead of waiting for the user to leave and return.
+      try { if (scheduleCurrentView() === 'TIME') renderSchedule(); } catch (_) {}
+      try { if (state.currentPage === 'attendance') Promise.resolve(loadAttendance()).catch(()=>{}); } catch (_) {}
+      try {
+        if (!$('employeeMonthScheduleModal')?.classList.contains('hidden')
+            && employeeMonthCalendarStateV61121.empCode
+            && employeeMonthCalendarStateV61121.month) {
+          Promise.resolve(openEmployeeMonthCalendarV61121(
+            employeeMonthCalendarStateV61121.empCode,
+            employeeMonthCalendarStateV61121.month,
+            { forceFresh:true }
+          )).catch(()=>{});
+        }
+      } catch (_) {}
+      try {
+        if (!$('scheduleTeamDrawer')?.classList.contains('hidden')
+            && scheduleTeamDrawerState.unit
+            && scheduleTeamDrawerState.date) {
+          Promise.resolve(openScheduleTeamDrawer(
+            scheduleTeamDrawerState.unit,
+            scheduleTeamDrawerState.date
+          )).catch(()=>{});
+        }
+      } catch (_) {}
+
+      document.dispatchEvent(new CustomEvent('timeclock:mutation-consistency-v61415', {
+        detail: { type:'CACHE_INVALIDATE_ALL', source:'attendance-rebuild' }
+      }));
+    }
+
+    async function refreshAttendanceConsistencyRangeV61415(startDate, endDate, empCodes = []) {
+      const cleanCodes = [...new Set((empCodes || []).map(x => String(x || '').trim()).filter(Boolean))];
+      const response = await state.client.rpc('ta_refresh_attendance_consistency_v61415', {
+        p_start_date: String(startDate || '').slice(0,10),
+        p_end_date: String(endDate || startDate || '').slice(0,10),
+        p_emp_codes: cleanCodes.length ? cleanCodes : null
+      });
+      if (response.error) throw response.error;
+      return response.data || null;
+    }
+
+    async function finalizeScheduleMutationV61415(items = [], options = {}) {
+      const rows = invalidateMutationCachesV61415(items);
+      if (!rows.length) return { recalculated:false, reason:'NO_ROWS' };
+      let result = null;
+      try {
+        const response = await state.client.rpc('ta_finalize_schedule_mutation_v61415', {
+          p_rows: rows
+        });
+        if (response.error) throw response.error;
+        result = response.data || null;
+      } catch (error) {
+        if (!window.TimeClockShiftAPI?.missingFunction?.(error)) throw error;
+        // Compatibility fallback. It keeps the UI functional before the new SQL is
+        // installed, but V6.14.15 SQL is required for the canonical certified-time path.
+        const dates = rows.map(x => x.work_date).sort();
+        const empCodes = [...new Set(rows.map(x => x.emp_code))];
+        const fallback = await state.client.rpc('ta_recalculate_attendance_v640', {
+          p_start_date: dates[0],
+          p_end_date: dates[dates.length - 1],
+          p_emp_codes: empCodes
+        });
+        if (fallback.error) throw fallback.error;
+        result = { ...(fallback.data || {}), fallback:true, version:'V6.14.15-FALLBACK' };
+        console.warn('V6.14.15 consistency finalizer SQL is not installed; used legacy recalc fallback.');
+      }
+      document.dispatchEvent(new CustomEvent('timeclock:mutation-consistency-v61415', {
+        detail: { type:'SCHEDULE', rows, result, source:options.source || '' }
+      }));
+      return result;
+    }
+
+    async function refreshCertificationViewsV61415(empCode, workDate, source = '') {
+      const rows = invalidateMutationCachesV61415([{ emp_code:empCode, work_date:workDate }]);
+      // TIME VIEW reads derived Attendance and certification metadata. Re-render now;
+      // the async loader will refill its invalidated cache from the canonical sources.
+      try {
+        if (scheduleCurrentView() === 'TIME') renderSchedule();
+      } catch (_) {}
+
+      if (source === 'employee-month') {
+        await openEmployeeMonthCalendarV61121(empCode, workDate.slice(0,7), { forceFresh:true });
+      } else if (source === 'team-daily') {
+        await openScheduleTeamDrawer(scheduleTeamDrawerState.unit, scheduleTeamDrawerState.date || workDate);
+      } else if (source === 'attendance-detail') {
+        try { await loadAttendance(); } catch (_) {}
+        try { await window.TimeClockAttendanceWorkspace?.openAttendanceDetail?.(`${empCode}|${workDate}`); } catch (_) {}
+      } else if (state.currentPage === 'attendance') {
+        try { await loadAttendance(); } catch (_) {}
+      }
+
+      document.dispatchEvent(new CustomEvent('timeclock:mutation-consistency-v61415', {
+        detail: { type:'CERTIFICATION', rows, source }
+      }));
+    }
+
+    window.TimeClockConsistencyV61415 = Object.freeze({
+      finalizeSchedule: finalizeScheduleMutationV61415,
+      refreshAttendanceRange: refreshAttendanceConsistencyRangeV61415,
+      invalidate: invalidateMutationCachesV61415,
+      invalidateAll: invalidateAllDerivedAttendanceCachesV61415,
+      refreshCertification: refreshCertificationViewsV61415
+    });
+    window.TimeClockTimeCertificationV61415 = Object.freeze({
+      open: openTimeCertificationModalV61139,
+      close: closeTimeCertificationModalV61139
+    });
 
     // V6.14.13: TEAM DAILY DETAIL and TIME VIEW must classify the exact same
     // merged attendance object. Keep schedule fields authoritative while enriching
@@ -8454,6 +8567,16 @@ window.tcIsDayShiftCode = value =>
         }
         const rebuiltRows = Number(data?.rebuild_inserted_rows || 0);
         const processedEnd = data?.processed_end_date || data?.end_date || '';
+        // V6.14.15: the monthly rebuild historically used the pre-certification
+        // calculation core. Finish through the canonical certification-aware
+        // refresher so Monthly, Attendance Detail, Team Daily and Time View agree.
+        if (data?.reason !== 'FUTURE_MONTH' && !data?.deferred && processedEnd) {
+          await refreshAttendanceConsistencyRangeV61415(
+            data?.start_date || `${month}-01`,
+            processedEnd,
+            [code]
+          );
+        }
         toast(
           data?.reason === 'FUTURE_MONTH'
             ? 'เดือนที่เลือกยังเป็นอนาคต จึงยังไม่สร้าง Attendance'
@@ -9731,7 +9854,7 @@ window.tcIsDayShiftCode = value =>
             scheduleRpcErrorSummaryV6126(saveError)
           );
           if (window.TimeClockShiftAPI?.missingFunction?.(saveError)) {
-            throw new Error('SCHEDULE_SAVE_V6144_REQUIRED: กรุณารัน SQL V6.14.8 ก่อนใช้งานการบันทึกกะ');
+            throw new Error('SCHEDULE_SAVE_V6144_REQUIRED: กรุณาติดตั้ง Schedule Save V6.14.4 ก่อนใช้งานการบันทึกกะ');
           }
           throw saveError;
         }
@@ -9747,6 +9870,12 @@ window.tcIsDayShiftCode = value =>
         });
         const savedEmp = val("assignEmpCode");
         const savedDate = val("assignWorkDate");
+        // V6.14.15: V6.14.4 recalculates after Shift + Work Plan, but special
+        // Scheduling Rule extensions are saved by the frontend immediately after it.
+        // Finalize once more AFTER the extension so every screen reads the final rule.
+        const consistencyRecalcV61415 = await finalizeScheduleMutationV61415([
+          { emp_code:savedEmp, work_date:savedDate }
+        ], { source:'assignment-modal' });
         const savedShift = val("assignShiftCode");
         const savedConfirm = assignmentSaveIsAutoConfirmedV61117();
         const currentRow = state.schedule.find(x => x.emp_code === savedEmp && String(x.work_date).slice(0,10) === savedDate);
@@ -9946,6 +10075,9 @@ window.tcIsDayShiftCode = value =>
           val("assignEmpCode"),
           val("assignWorkDate")
         );
+        await finalizeScheduleMutationV61415([
+          { emp_code:val("assignEmpCode"), work_date:val("assignWorkDate") }
+        ], { source:'assignment-delete' });
 
         closeModal(
           "assignModal"
@@ -11930,7 +12062,7 @@ window.tcIsDayShiftCode = value =>
         return `พบรายการจัดกะเดิมที่สถานะยังไม่สมบูรณ์${count ? ` ${Number(count).toLocaleString("th-TH")} รายการ` : ""} กรุณาเปิดรายการและกดบันทึกใหม่ก่อนประกาศหรือล็อกเดือน`;
       }
       if (msg.includes("DAYOFF_QUOTA_EXHAUSTED")) return "วันหยุดคงเหลือไม่เพียงพอ ไม่สามารถกำหนดกะวันหยุดเพิ่มได้ กรุณาตรวจวันหยุดที่ใช้ไปหรือเปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน";
-      if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณารัน SQL V6.14.8 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
+      if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณาติดตั้ง Day-off Quota Guard V6.14.3 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
@@ -12855,6 +12987,7 @@ ${skippedSummary(compatibility.skipped)}
       );
       await window.TimeClockShiftAPI.assignBulk(app(), validPayload, reason, autoConfirmOnSaveV61117);
       await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(validPayload);
+      await window.TimeClockConsistencyV61415?.finalizeSchedule?.(validPayload, { source:'schedule-pro-bulk' });
       undoStack.push({label:historyLabel,before,after:validPayload.map(x=>({...x}))}); if(undoStack.length>30)undoStack.shift(); redoStack.length=0; updateHistoryButtons();
       app().toast(
         `บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,
@@ -13213,6 +13346,7 @@ ${skippedSummary(compatibility.skipped)}
       const autoConfirmOnSaveV61117=payload.some(x=>x.shift_code!==null&&x.shift_code!==undefined&&String(x.shift_code).trim()!=="");
       await window.TimeClockShiftAPI.assignBulk(app(),payload,`${mode} ${item.label}`,autoConfirmOnSaveV61117);
       await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(payload);
+      await window.TimeClockConsistencyV61415?.finalizeSchedule?.(payload, { source:`schedule-${mode}` });
       (mode==="undo"?redoStack:undoStack).push(item);updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับและประมวลผลเวลาใหม่แล้ว":"ทำซ้ำและประมวลผลเวลาใหม่แล้ว","success");
     }catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}
   }
@@ -15485,27 +15619,26 @@ ${skippedSummary(compatibility.skipped)}
     }
 
     try {
-      const certification = await rpc(
-        "ta_get_attendance_certification_v680",
+      const workDate = String(row.work_date).slice(0,10);
+      const certifications = await rpc(
+        "ta_get_time_certification_range_v61139",
         {
-          p_emp_code: row.emp_code,
-          p_work_date: String(row.work_date)
-            .slice(0,10)
+          p_start_date: workDate,
+          p_end_date: workDate,
+          p_emp_codes: [row.emp_code]
         }
       );
+      const certification = Array.isArray(certifications)
+        ? certifications.find(item => String(item.emp_code || '') === String(row.emp_code || '') && String(item.work_date || '').slice(0,10) === workDate)
+        : null;
       detail = {
         ...(detail || {}),
-        certification:
-          certification || {
-            status:"NOT_CERTIFIED"
-          }
+        certification: certification || { status:"NOT_CERTIFIED" }
       };
     } catch (_) {
       detail = {
         ...(detail || {}),
-        certification: {
-          status:"NOT_CERTIFIED"
-        }
+        certification: { status:"NOT_CERTIFIED" }
       };
     }
 
@@ -15607,14 +15740,14 @@ ${skippedSummary(compatibility.skipped)}
               "กำลังคำนวณผลรายวันใหม่..."
             );
 
-            await rpc(
-              "ta_recalculate_attendance_v640",
-              {
-                p_start_date:date,
-                p_end_date:date,
-                p_emp_codes:[emp]
-              }
+            await window.TimeClockConsistencyV61415.refreshAttendanceRange(
+              date,
+              date,
+              [emp]
             );
+            window.TimeClockConsistencyV61415.invalidate([
+              { emp_code:emp, work_date:date }
+            ]);
 
             app()?.toast?.(
               "คำนวณผลรายวันใหม่แล้ว",
@@ -15679,6 +15812,7 @@ ${skippedSummary(compatibility.skipped)}
       const autoConfirmOnSaveV61117=payload.some(item=>item.shift_code!==null&&item.shift_code!==undefined&&String(item.shift_code).trim()!=="");
       await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,autoConfirmOnSaveV61117);
       await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(payload);
+      await window.TimeClockConsistencyV61415?.finalizeSchedule?.(payload, { source:'schedule-completion-bulk' });
       app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");
       await app()?.loadSchedule?.();
     }catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}
@@ -17092,6 +17226,9 @@ ${skippedSummary(compatibility.skipped)}
       }
       const finished=await rpc('ta_finish_time_csv_import',{p_batch_id:batchId});let job=null;
       if($('timeCsvRebuildAttendance')?.checked)job=await runAttendanceJob(s.minDate,s.maxDate,batchId);else csvProgress(100,'นำเข้า CSV สำเร็จ');
+      if (job && ['COMPLETED','COMPLETED_WITH_ERRORS'].includes(String(job.status||''))) {
+        window.TimeClockConsistencyV61415?.invalidateAll?.();
+      }
       const warn=job?.status==='COMPLETED_WITH_ERRORS'?`<div class="mobileta-import-warning"><strong>Attendance สำเร็จบางส่วน</strong><div>ตรวจ Error Log ที่เมนูประมวลผล Attendance</div></div>`:'';
       $('timeCsvResultPanel').innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลา CSV เรียบร้อย</h3><p>ใช้ค่าเข้า/ออกจากไฟล์โดยตรง ไม่ต้องจำแนก ALL</p>${warn}<div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(finished.inserted_rows)}</strong></div><div><span>ซ้ำฐานข้อมูล</span><strong>${fmt(finished.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${fmt(finished.unmatched_employee_rows)}</strong></div><div><span>GPS Conflict</span><strong>${fmt(finished.gps_conflict_rows)}</strong></div><div><span>Attendance Job</span><strong>${esc(job?.status||'ไม่ได้ประมวลผล')}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(finished.min_date)}–${fmtDate(finished.max_date)}</strong></div></div></div>`;
       csvProgress(100,'เสร็จสมบูรณ์');csvStatus('นำเข้าสำเร็จ','ready');app()?.toast?.('นำเข้า CSV และประมวลผลเรียบร้อย','success');await loadCsvHistory();
@@ -18137,7 +18274,13 @@ ${skippedSummary(compatibility.skipped)}
       state.worker=false;
       await loadHistory(false);
       if(state.selectedJobId)await loadErrors(state.selectedJobId,false);
-      const latest=state.history.find(x=>x.id===jobId);if(latest)renderProgress(latest);
+      const latest=state.history.find(x=>x.id===jobId);
+      if(latest){
+        renderProgress(latest);
+        if(['COMPLETED','COMPLETED_WITH_ERRORS'].includes(String(latest.status||''))) {
+          window.TimeClockConsistencyV61415?.invalidateAll?.();
+        }
+      }
     }
   }
 
@@ -18670,32 +18813,59 @@ ${skippedSummary(compatibility.skipped)}
         ? "หมายเหตุการอนุมัติ"
         : "ระบุเหตุผลที่ไม่อนุมัติ"
     );
-
     if (note === null) return;
 
-    app()?.showLoading?.(
-      "กำลังบันทึกผลการพิจารณา..."
-    );
+    app()?.showLoading?.("กำลังบันทึกผลการพิจารณา...");
     try {
-      await rpc(
-        "ta_decide_shift_change_request_v680",
+      const callDecision = async acknowledge48h => rpc(
+        "ta_decide_shift_change_request_v61415",
         {
           p_request_id: id,
           p_decision: decision,
-          p_note: note || null
+          p_note: note || null,
+          p_acknowledge_48h: Boolean(acknowledge48h)
         }
       );
+
+      let result = await callDecision(false);
+      if (decision === 'APPROVED' && result?.requires_48h_confirmation === true) {
+        app()?.hideLoading?.();
+        const hours = Number(result?.continuous_minutes_after || 0) / 60;
+        const ok = await window.tcConfirm(
+          `กะที่ขอจะทำให้ชั่วโมงทำงานต่อเนื่องประมาณ ${hours.toLocaleString('th-TH',{maximumFractionDigits:1})} ชั่วโมง\n\nระบบแนะนำให้กำหนดวันหยุด แต่ยังสามารถอนุมัติได้\n\nต้องการอนุมัติต่อหรือไม่?`
+        );
+        if (!ok) return;
+        app()?.showLoading?.("กำลังอนุมัติและประมวลผลเวลาทำงาน...");
+        result = await callDecision(true);
+      }
+
+      if (decision === 'APPROVED' && result?.applied === false) {
+        throw new Error(result?.message || 'SHIFT_REQUEST_NOT_APPLIED');
+      }
+
       app()?.toast?.(
         decision === "APPROVED"
-          ? "อนุมัติและปรับกะเรียบร้อย"
+          ? "อนุมัติ ปรับกะ และประมวลผลเวลาใหม่เรียบร้อย"
           : "บันทึกผลไม่อนุมัติแล้ว",
         "success"
       );
+
+      if (decision === 'APPROVED' && result?.emp_code && result?.work_date) {
+        window.TimeClockConsistencyV61415?.invalidate?.([
+          { emp_code:result.emp_code, work_date:result.work_date }
+        ]);
+        try { await app()?.loadSchedule?.(); } catch (_) {}
+        if (app()?.state?.currentPage === 'attendance') {
+          try { await app()?.loadAttendance?.(); } catch (_) {}
+        }
+      }
       await loadShiftRequests();
     } catch (error) {
+      const missing = window.TimeClockShiftAPI?.missingFunction?.(error);
       app()?.toast?.(
-        app()?.humanError?.(error)
-        || error.message,
+        missing
+          ? "กรุณารัน SQL V6.14.15 เพื่อให้การอนุมัติคำขอใช้กฎเดียวกับหน้าจัดกะ"
+          : (app()?.humanError?.(error) || error.message),
         "error"
       );
     } finally {
@@ -18734,75 +18904,35 @@ ${skippedSummary(compatibility.skipped)}
 
   async function certifyAttendance(key,action) {
     const [emp,date] = String(key).split("|");
+    const base = attendanceDetailRow(key);
+    if (!base) {
+      return app()?.toast?.("ไม่พบข้อมูล Attendance รายการนี้","error");
+    }
 
     try {
-      const period =
-        await window.TimeClockSystemPeriods
-          ?.getForDate?.(
-            date,
-            true
-          );
+      app()?.showLoading?.("กำลังเปิดข้อมูลรับรองเวลา...");
+      let certification = null;
+      try {
+        const rows = await rpc('ta_get_time_certification_range_v61139', {
+          p_start_date: date,
+          p_end_date: date,
+          p_emp_codes: [emp]
+        });
+        certification = Array.isArray(rows)
+          ? rows.find(item => String(item.emp_code || '') === String(emp) && String(item.work_date || '').slice(0,10) === String(date))
+          : null;
+      } catch (_) {}
 
-      const role =
-        String(
-          app()?.state?.profile?.role
-          || ""
-        ).toUpperCase();
-
-      if(
-        role === "MANAGER"
-        && period?.configured
-        && period
-          ?.can_certify_attendance === false
-      ) {
-        app()?.toast?.(
-          `ปิดรอบรับรองเวลาทำงานแล้ว • Deadline ${fmtDate(
-            period.attendance_certify_deadline
-          )}`,
-          "warning"
-        );
-        return;
+      // Attendance rows already contain the canonical planned shift and Punch metadata.
+      // Merge the timed certification snapshot so every entry point opens the exact same
+      // V6.11.39+ workflow instead of the legacy status-only V6.8 certification RPC.
+      const merged = { ...base, ...(certification || {}), emp_code:emp, work_date:date };
+      if (!window.TimeClockTimeCertificationV61415?.open) {
+        throw new Error('TIME_CERTIFICATION_UI_REQUIRED');
       }
-    } catch (_) {}
-
-    const note = await window.tcPrompt(
-      action === "REVOKE"
-        ? "เหตุผลการยกเลิกการรับรอง"
-        : "หมายเหตุการรับรองเวลาทำงาน"
-    );
-    if (note === null) return;
-
-    app()?.showLoading?.(
-      action === "REVOKE"
-        ? "กำลังยกเลิกการรับรอง..."
-        : "กำลังรับรองเวลาทำงาน..."
-    );
-    try {
-      await rpc(
-        action === "REVOKE"
-          ? "ta_revoke_attendance_certification_v680"
-          : "ta_certify_attendance_v680",
-        {
-          p_emp_code: emp,
-          p_work_date: date,
-          p_note: note || null
-        }
-      );
-      app()?.toast?.(
-        action === "REVOKE"
-          ? "ยกเลิกการรับรองแล้ว"
-          : "รับรองเวลาทำงานเรียบร้อย",
-        "success"
-      );
-
-      await window.TimeClockAttendanceWorkspace
-        ?.openAttendanceDetail?.(key);
+      await window.TimeClockTimeCertificationV61415.open(merged,'attendance-detail');
     } catch (error) {
-      app()?.toast?.(
-        app()?.humanError?.(error)
-        || error.message,
-        "error"
-      );
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally {
       app()?.hideLoading?.();
     }
@@ -26807,7 +26937,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.14';
+  const VERSION='6.14.15';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27305,7 +27435,7 @@ ${skippedSummary(compatibility.skipped)}
           p_proposed_shift_code:selectedCode||null
         });
       }catch(e){
-        app()?.toast?.('ตรวจโควต้าวันหยุดไม่สำเร็จ กรุณารัน SQL V6.14.8 ก่อนบันทึกกะ','error');
+        app()?.toast?.('ตรวจโควต้าวันหยุดไม่สำเร็จ กรุณาติดตั้ง Day-off Quota Guard V6.14.3 ก่อนบันทึกกะ','error');
         return {allowed:false};
       }
       if(dayoffQuotaGuardV6142?.allowed===false){
@@ -27460,7 +27590,7 @@ ${skippedSummary(compatibility.skipped)}
     try{
       quotaGuardBulkV6142=await rpc('ta_validate_dayoff_quota_bulk_v6143',{p_rows:payload});
     }catch(e){
-      app()?.toast?.('ตรวจโควต้าวันหยุดแบบหลายรายการไม่สำเร็จ กรุณารัน SQL V6.14.8 ก่อนบันทึก','error');
+      app()?.toast?.('ตรวจโควต้าวันหยุดแบบหลายรายการไม่สำเร็จ กรุณาติดตั้ง Day-off Quota Guard V6.14.3 ก่อนบันทึก','error');
       return {allowed:false,blocks,warnings,quotaError:e};
     }
     if(quotaGuardBulkV6142?.allowed===false){

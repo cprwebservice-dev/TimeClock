@@ -1,0 +1,77 @@
+Time-Clock Enterprise V6.14.15
+End-to-End Audit: Schedule + Time Certification
+================================================
+
+A. Schedule write paths
+[PASS/ปรับแล้ว] Assignment Modal — Normal / Night / Leave / Hour-based / Split / Late Customer
+  - Pre-save: System Period + Work Pattern/Scope + Day-off Quota + 6h/48h
+  - Save: Shift + Work Plan
+  - Extension: Scheduling Rule
+  - Final: certification-aware Attendance refresh AFTER extension
+
+[PASS/ปรับแล้ว] Schedule Pro / Person View bulk
+  - Quick Shift / Fill / Paste / Copy Week / Pattern / Copy Month / Clear
+  - Bulk validation + Day-off resolver/quota
+  - Save shift -> Sync Smart OFF/Scheduling Rule -> Final consistency refresh
+
+[PASS/ปรับแล้ว] Undo / Redo
+  - ใช้ Bulk validation/write/sync/finalizer ชุดเดียวกัน
+
+[PASS/ปรับแล้ว] Team Daily / Attendance Quick Shift
+  - เปิด Assignment Modal กลาง จึงใช้ pipeline เดียวกับ Calendar
+
+[PASS/ปรับแล้ว] Shift Change Request Approval
+  - เปลี่ยนจาก Legacy V651 + refresh ซ้ำ เป็น V6.14.15 RPC
+  - ใช้ System Period / Scope / 6h hard block / 48h confirmation / Day-off quota
+  - Sync Smart OFF และ final certification-aware Attendance refresh
+
+[REMOVED] Direct browser write to shift_calendar
+  - โค้ด fallback ที่ไม่ได้ใช้งานถูกถอดออก เพื่อไม่ให้มีทางเขียนกะข้าม Guard ในอนาคต
+
+B. Time Certification paths
+[PASS/ปรับแล้ว] TEAM DAILY DETAIL
+[PASS/ปรับแล้ว] Monthly Personal Overview
+[PASS/ปรับแล้ว] Attendance Detail
+  - ทั้ง 3 จุดใช้ ta_get_time_certification_range_v61139
+  - Save ใช้ ta_save_time_certification_v61139
+  - Revoke ใช้ ta_revoke_time_certification_v61139
+  - ไม่มี frontend write ผ่าน ta_certify_attendance_v680 / ta_revoke_attendance_certification_v680 แล้ว
+
+C. Recalculation / Refresh
+[PASS/ปรับแล้ว] Schedule mutation
+  - Finalizer = ta_finalize_schedule_mutation_v61415
+  - Refresh = ta_refresh_attendance_consistency_v61415
+  - ใช้ _ta_refresh_attendance_with_certification_v61139
+
+[PASS/ปรับแล้ว] Attendance Detail > ประมวลผลใหม่
+  - เปลี่ยนจาก legacy ta_recalculate_attendance_v640 เป็น canonical certification-aware refresh
+
+[PASS/ปรับแล้ว] Monthly Personal > ประมวลผลทั้งเดือน
+  - Rebuild เดิมยังสร้าง Attendance rows
+  - จบด้วย V6.14.15 certification-aware refresh ก่อนโหลดข้อมูลใหม่
+
+[PASS/ปรับแล้ว] CSV Import + Attendance Rebuild / Attendance Rebuild page
+  - เมื่อ Job COMPLETED/COMPLETED_WITH_ERRORS จะล้าง Time View + Monthly cache
+  - หาก Time View / Attendance / Monthly Personal / Team Daily กำลังเปิดอยู่ จะโหลดข้อมูลใหม่
+
+D. Derived views expected to agree after mutation
+- Attendance Detail
+- TEAM DAILY DETAIL
+- Time View labels
+- Monthly Personal Overview
+- Main schedule grid / Team View / Person View
+
+E. Backend prerequisites
+- V6.14.1 canonical 6h/48h guard
+- V6.14.3 day-off quota guarded writer
+- V6.13.5 Smart OFF sync / 60-day resolver
+- V6.11.39+ timed certification and certification-aware calculation
+- V6.11.44/54 STALE certification behavior
+
+F. Important behavior retained
+- 6h minimum rest = BLOCK
+- >48h continuous planned work = WARNING, may continue after confirmation
+- Day-off quota hard guard remains
+- LV does not consume day-off quota / continuous work hours
+- OFF remains disabled; paired OSTD/OS043/OS134/OS135 is used
+- Certification tied to shift snapshot; meaningful shift change can make certification STALE
