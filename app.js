@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.12";
-document.documentElement.dataset.timeClockBuild = "6.14.12";
+window.__TIME_CLOCK_BUILD__ = "V6.14.13";
+document.documentElement.dataset.timeClockBuild = "6.14.13";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.12";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.12',
+  version: '6.14.13',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1401,7 +1401,7 @@ window.tcIsDayShiftCode = value =>
         $("schedulePersonMonthInlineV61152")
           ?.classList.add("hidden");
 
-        // V6.14.12: TEAM/TIME period context must follow the exact range used
+        // V6.14.13: TEAM/TIME period context must follow the exact range used
         // by the grid. Never derive it from PERSON's remembered month.
         const selectedMonth =
           String(range.month || "").slice(0,7)
@@ -5752,7 +5752,7 @@ window.tcIsDayShiftCode = value =>
         scheduleViewState.personPeriodStart = scheduleBlockStartForDate(sourceStart);
         setVal("schedulePeriodStart", sourceStart);
       } else {
-        // V6.14.12: TEAM and TIME share their own remembered 15-day cursor.
+        // V6.14.13: TEAM and TIME share their own remembered 15-day cursor.
         // PERSON month is intentionally independent and must not lock this view.
         const rememberedTeamStart =
           String(scheduleViewState.teamPeriodStart || "").slice(0,10);
@@ -6373,13 +6373,15 @@ window.tcIsDayShiftCode = value =>
 
       // Employee identity columns are intentionally compact only in full-month view.
       // Values are still available in title/tooltip and remain sticky.
+      // V6.14.13: Start Date is hidden in Person View, so do not reserve its old
+      // width. Reuse part of that space for the row checkbox without shrinking days.
       const fixed = viewport >= 1500
-        ? { code:58, name:132, start:80, position:96 }
+        ? { code:64, name:126, start:0, position:96 }
         : viewport >= 1250
-          ? { code:52, name:116, start:76, position:88 }
-          : { code:50, name:108, start:72, position:84 };
+          ? { code:60, name:110, start:0, position:88 }
+          : { code:58, name:102, start:0, position:84 };
 
-      const fixedWidth = fixed.code + fixed.name + fixed.start + fixed.position;
+      const fixedWidth = fixed.code + fixed.name + fixed.position;
       const availableForDays = Math.max(0, viewport - fixedWidth - 4);
       const naturalDayWidth = Math.floor(availableForDays / dayCount);
       const canFitWholeMonth = naturalDayWidth >= 27;
@@ -7264,7 +7266,7 @@ window.tcIsDayShiftCode = value =>
       finally { hideLoading(); }
     }
 
-    // V6.14.12: TEAM DAILY DETAIL and TIME VIEW must classify the exact same
+    // V6.14.13: TEAM DAILY DETAIL and TIME VIEW must classify the exact same
     // merged attendance object. Keep schedule fields authoritative while enriching
     // with Attendance Detail, punch metadata and Time Certification.
     function scheduleMergeTeamAttendanceRowV61411(scheduleRow, attendanceRow = {}, punchRow = {}, certificationRow = {}) {
@@ -8737,7 +8739,7 @@ window.tcIsDayShiftCode = value =>
         const response = await state.client.rpc(fn,args);
         if (!response.error) return Array.isArray(response.data) ? response.data : [];
         if (!window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
-          console.warn('Schedule Time punch meta V6.14.12:', response.error);
+          console.warn('Schedule Time punch meta V6.14.13:', response.error);
           return [];
         }
       }
@@ -8751,7 +8753,7 @@ window.tcIsDayShiftCode = value =>
       });
       if (!response.error) return Array.isArray(response.data) ? response.data : [];
       if (!window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
-        console.warn('Schedule Time certification V6.14.12:', response.error);
+        console.warn('Schedule Time certification V6.14.13:', response.error);
       }
       return [];
     }
@@ -8778,7 +8780,7 @@ window.tcIsDayShiftCode = value =>
       const punchRows = [];
       const certificationRows = [];
       try {
-        // V6.14.12: load the same enrichment layers used by TEAM DAILY DETAIL.
+        // V6.14.13: load the same enrichment layers used by TEAM DAILY DETAIL.
         // Keep requests batched to preserve the TIME VIEW performance profile.
         for (let cursor=0; cursor<chunks.length; cursor+=3) {
           const group = chunks.slice(cursor,cursor+3);
@@ -8830,7 +8832,7 @@ window.tcIsDayShiftCode = value =>
         scheduleTimeAttendanceStateV6146.loadedAt = Date.now();
       } catch (error) {
         scheduleTimeAttendanceStateV6146.error = error;
-        console.warn('Schedule Time View V6.14.12:', error);
+        console.warn('Schedule Time View V6.14.13:', error);
       } finally {
         scheduleTimeAttendanceStateV6146.loading = false;
         if (scheduleCurrentView() === 'TIME' && scheduleTimeAttendanceStateV6146.key === key) renderSchedule();
@@ -8838,7 +8840,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function scheduleTimeMetricsV6146(baseRow, attendanceRow) {
-      // V6.14.12: use the exact TEAM DAILY DETAIL classifier. This keeps the
+      // V6.14.13: use the exact TEAM DAILY DETAIL classifier. This keeps the
       // summary label and the drawer KPI counts identical for the same team/day.
       const merged = scheduleMergeTeamAttendanceRowV61411(baseRow || {}, attendanceRow || {}, {}, {});
       const flags = scheduleTeamAttendanceFlagsV61411(merged);
@@ -9011,7 +9013,7 @@ window.tcIsDayShiftCode = value =>
         return `<th class="day-col ${classes}" data-select-date="${date}" title="${safe(title)}"><span>${d.getDate()}</span><small>${thaiDays[dow]}${meta.holiday?" •":""}</small></th>`;
       }).join("");
 
-      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table monthly-person-schedule-table-v61146 month-fit-table-v6137" data-month-days="${period.dates.length}"><thead><tr><th class="sticky-col-1 schedule-code-head">รหัส</th><th class="sticky-col-2 schedule-name-head">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-position-head">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
+      let html = `<table class="schedule-table enterprise-schedule-table weekly-schedule-table monthly-person-schedule-table-v61146 month-fit-table-v6137 month-copy-table-v61413" data-month-days="${period.dates.length}"><thead><tr><th class="sticky-col-1 schedule-code-head"><label class="person-copy-head-v61413" title="เลือกพนักงานสำหรับคัดลอก/วางกะทั้งเดือน"><input type="checkbox" id="scheduleMonthCopySelectAllV61413" aria-label="เลือกพนักงานปลายทางทั้งหมด"><span>รหัส</span></label></th><th class="sticky-col-2 schedule-name-head">ชื่อ-นามสกุล</th><th class="sticky-col-3 schedule-position-head">ตำแหน่ง</th>${headDays}</tr></thead><tbody>`;
 
       if (!map.size) html += emptyRow(period.dates.length + 3);
 
@@ -9092,7 +9094,7 @@ window.tcIsDayShiftCode = value =>
             ? `<span class="schedule-self-readonly-badge" title="Manager ดูกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง">ตนเอง • ดูอย่างเดียว</span>`
             : "";
 
-        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}">${safe(emp)}</td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
@@ -12424,6 +12426,14 @@ window.tcIsDayShiftCode = value =>
   let dragMode = "add";
   const undoStack = [];
   const redoStack = [];
+  // V6.14.13 — Month-copy workflow is intentionally separate from cell clipboard.
+  // SOURCE: choose exactly one employee. TARGET: choose one or more employees.
+  let monthCopyPhaseV61413 = "SOURCE";
+  let monthCopySourceCandidateV61413 = "";
+  let monthCopySourceV61413 = "";
+  let monthCopyMonthV61413 = "";
+  let monthCopySourceRowsV61413 = [];
+  const monthCopyTargetsV61413 = new Set();
   const app = () => window.TimeClockApp;
   const wrap = () => document.getElementById("scheduleTableWrap");
   const $ = id => document.getElementById(id);
@@ -12617,6 +12627,14 @@ window.tcIsDayShiftCode = value =>
         return;
       }
 
+      // V6.14.13: Paired day-off codes are normalized for the TARGET employee
+      // inside validateBulk(). Do not reject OSTD/OS043/OS134/OS135 here just
+      // because the source employee belongs to another 5D/6D pattern.
+      if (shift.is_workday === false) {
+        valid.push(item);
+        return;
+      }
+
       if (!supportsPattern(shift, pattern)) {
         skipped.push({
           ...item,
@@ -12789,17 +12807,18 @@ window.tcIsDayShiftCode = value =>
   function selectByDate(date){ selected.clear(); wrap()?.querySelectorAll(`[data-schedule-cell][data-date="${escapeCss(date)}"]`).forEach(c=>selected.add(keyOf(c))); activeKey=[...selected][0]||null; anchorKey=activeKey; refreshSelectionUI(); }
 
   async function savePayload(payload, reason, confirmNow=false, historyLabel="แก้ไขกะ"){
-    if(!payload.length) return;
+    if(!payload.length) return false;
 
     const compatibility = payloadCompatibility(payload);
     const validPayload = compatibility.valid;
 
     if (!validPayload.length) {
-      return app()?.toast(
+      app()?.toast(
         skippedSummary(compatibility.skipped)
           || "ไม่มีรายการที่สามารถบันทึกได้",
         "error"
       );
+      return false;
     }
 
     if (compatibility.skipped.length) {
@@ -12810,7 +12829,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ระบบจะข้ามรายการเหล่านี้และบันทึกเฉพาะรายการที่รองรับ ${validPayload.length.toLocaleString("th-TH")} ช่อง`
       );
-      if (!proceed) return;
+      if (!proceed) return false;
     }
 
     const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
@@ -12818,11 +12837,12 @@ ${skippedSummary(compatibility.skipped)}
       true
     );
     if (periodCheck && !periodCheck.allowed) {
-      return app()?.toast(periodCheck.message || "มีวันที่อยู่ในรอบที่ปิดการจัดกะ", "warning");
+      app()?.toast(periodCheck.message || "มีวันที่อยู่ในรอบที่ปิดการจัดกะ", "warning");
+      return false;
     }
 
     const ruleGuardV6120=await window.TimeClockSchedulingRulesV6120?.validateBulk?.(validPayload);
-    if(ruleGuardV6120&&ruleGuardV6120.allowed===false)return;
+    if(ruleGuardV6120&&ruleGuardV6120.allowed===false)return false;
 
     const before=validPayload.map(p=>{const x=rowForKey(`${p.emp_code}|${p.work_date}`);return {...p,shift_code:currentCode(x.row)};});
     app().showLoading(`กำลังบันทึก ${validPayload.length.toLocaleString("th-TH")} รายการ...`);
@@ -12840,7 +12860,8 @@ ${skippedSummary(compatibility.skipped)}
         "success"
       );
       await app().loadSchedule();
-    }catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}
+      return true;
+    }catch(err){app().toast(app().humanError(err),"error");return false;}finally{app().hideLoading();}
   }
   async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
   function copySelection(){
@@ -12861,99 +12882,284 @@ ${skippedSummary(compatibility.skipped)}
     await savePayload(targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"})),"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");
   }
 
-  const monthCopyEscV61412 = value => String(value??'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':'&quot;',"'":"&#39;"}[c]));
-  function monthCopyEmployeeListV61412(){
+  const monthCopyEscV61413 = value => String(value??'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':'&quot;',"'":"&#39;"}[c]));
+
+  function monthCopyEmployeeListV61413(){
     const fromScope = Array.isArray(app()?.state?.scheduleScopeEmployeesV61151) ? app().state.scheduleScopeEmployeesV61151 : [];
     const fromRows = [...new Map((app()?.state?.schedule||[]).map(r=>[String(r.emp_code||''),r])).values()];
     const rows = fromScope.length ? fromScope : fromRows;
-    return rows.map(r=>({emp_code:String(r.emp_code||'').trim(),full_name:String(r.full_name||r.employee_name||r.name||'').trim(),department:String(r.department||'').trim(),start_date:String(r.start_date||'').slice(0,10),resign_date:String(r.resign_date||'').slice(0,10)})).filter(r=>r.emp_code).sort((a,b)=>(a.full_name||a.emp_code).localeCompare(b.full_name||b.emp_code,'th'));
+    return rows.map(r=>({
+      emp_code:String(r.emp_code||'').trim(),
+      full_name:String(r.full_name||r.employee_name||r.name||'').trim(),
+      department:String(r.department||'').trim(),
+      start_date:String(r.start_date||'').slice(0,10),
+      resign_date:String(r.resign_date||'').slice(0,10)
+    })).filter(r=>r.emp_code).sort((a,b)=>(a.full_name||a.emp_code).localeCompare(b.full_name||b.emp_code,'th'));
   }
-  function fillMonthCopyEmployeesV61412(){
-    const source=$('scheduleMonthCopySourceV61412'),target=$('scheduleMonthCopyTargetV61412');
-    if(!source||!target)return;
-    const employees=monthCopyEmployeeListV61412();
-    const activeEmp=activeKey?String(activeKey).split('|')[0]:'';
-    const options=employees.map(e=>`<option value="${monthCopyEscV61412(e.emp_code)}">${monthCopyEscV61412(e.emp_code)} • ${monthCopyEscV61412(e.full_name||'-')}${e.department?` • ${monthCopyEscV61412(e.department)}`:''}</option>`).join('');
-    source.innerHTML=`<option value="">-- เลือกต้นทาง --</option>${options}`;
-    target.innerHTML=`<option value="">-- เลือกปลายทาง --</option>${options}`;
-    if(activeEmp&&employees.some(e=>e.emp_code===activeEmp))source.value=activeEmp;
-    const firstTarget=employees.find(e=>e.emp_code!==source.value);
-    if(firstTarget)target.value=firstTarget.emp_code;
+
+  function monthCopyEmployeeMetaV61413(emp){
+    return monthCopyEmployeeListV61413().find(e=>e.emp_code===String(emp||''))||{emp_code:String(emp||''),full_name:''};
   }
-  async function fetchMonthRowsForCopyV61412(emp,month){
+
+  function monthCopyCurrentMonthV61413(){
+    const range=window.TimeClockSchedulePeriod?.range?.()||{};
+    return String(range.month||scheduleViewState.personMonth||$('schedulePeriodStart')?.value||new Date().toISOString().slice(0,7)).slice(0,7);
+  }
+
+  function resetMonthCopyWorkflowV61413({silent=false}={}){
+    monthCopyPhaseV61413='SOURCE';
+    monthCopySourceCandidateV61413='';
+    monthCopySourceV61413='';
+    monthCopyMonthV61413='';
+    monthCopySourceRowsV61413=[];
+    monthCopyTargetsV61413.clear();
+    updateMonthCopyWorkflowUIV61413();
+    if(!silent)app()?.toast('ยกเลิกโหมดคัดลอกกะทั้งเดือนแล้ว','info');
+  }
+
+  function visibleMonthCopyCheckboxesV61413(){
+    return [...(wrap()?.querySelectorAll('[data-month-copy-emp]')||[])];
+  }
+
+  function updateMonthCopyWorkflowUIV61413(){
+    const currentMonth=monthCopyCurrentMonthV61413();
+    if(monthCopySourceV61413 && monthCopyMonthV61413 && currentMonth!==monthCopyMonthV61413){
+      // Never paste a copied month into a different visible month by accident.
+      monthCopyPhaseV61413='SOURCE';
+      monthCopySourceCandidateV61413='';
+      monthCopySourceV61413='';
+      monthCopyMonthV61413='';
+      monthCopySourceRowsV61413=[];
+      monthCopyTargetsV61413.clear();
+    }
+
+    const sourceMeta=monthCopyEmployeeMetaV61413(monthCopySourceV61413||monthCopySourceCandidateV61413);
+    const status=$('scheduleMonthCopyWorkflowV61413');
+    const copyBtn=$('scheduleCopyMonthBtnV61412');
+    const pasteBtn=$('schedulePasteMonthBtnV61413');
+    const cancelBtn=$('scheduleCancelMonthCopyBtnV61413');
+
+    if(copyBtn){
+      copyBtn.disabled=monthCopyPhaseV61413!=='SOURCE'||!monthCopySourceCandidateV61413;
+      copyBtn.textContent=monthCopyPhaseV61413==='TARGET'?'คัดลอกแล้ว':'คัดลอกทั้งเดือน';
+    }
+    if(pasteBtn)pasteBtn.disabled=monthCopyPhaseV61413!=='TARGET'||monthCopyTargetsV61413.size===0;
+    if(cancelBtn)cancelBtn.classList.toggle('hidden',!monthCopySourceCandidateV61413&&!monthCopySourceV61413&&!monthCopyTargetsV61413.size);
+
+    if(status){
+      if(monthCopyPhaseV61413==='TARGET'&&monthCopySourceV61413){
+        status.classList.remove('hidden');
+        status.innerHTML=`<div class="month-copy-status-source-v61413"><span>ต้นทางที่คัดลอก</span><strong>${monthCopyEscV61413(sourceMeta.emp_code)} • ${monthCopyEscV61413(sourceMeta.full_name||'-')}</strong><small>${monthCopyEscV61413(monthCopyMonthV61413)} • เลือก Checkbox ปลายทางได้หลายคน</small></div><div class="month-copy-status-target-v61413"><span>ปลายทาง</span><strong>${monthCopyTargetsV61413.size.toLocaleString('th-TH')} คน</strong><small>${monthCopyTargetsV61413.size?'พร้อมกด วางกะทั้งเดือน':'กรุณาเลือกพนักงานปลายทาง'}</small></div>`;
+      }else if(monthCopySourceCandidateV61413){
+        status.classList.remove('hidden');
+        status.innerHTML=`<div class="month-copy-status-source-v61413 candidate"><span>ต้นทางที่เลือก</span><strong>${monthCopyEscV61413(sourceMeta.emp_code)} • ${monthCopyEscV61413(sourceMeta.full_name||'-')}</strong><small>กด “คัดลอกทั้งเดือน” เพื่อเข้าสู่ขั้นเลือกปลายทาง</small></div>`;
+      }else{
+        status.classList.add('hidden');
+        status.innerHTML='';
+      }
+    }
+
+    visibleMonthCopyCheckboxesV61413().forEach(box=>{
+      const emp=String(box.dataset.monthCopyEmp||'');
+      const row=box.closest('tr');
+      const managerOwn=String(box.dataset.managerOwn||'')==='true';
+      const isSource=monthCopyPhaseV61413==='TARGET'&&emp===monthCopySourceV61413;
+      const isCandidate=monthCopyPhaseV61413==='SOURCE'&&emp===monthCopySourceCandidateV61413;
+      const isTarget=monthCopyTargetsV61413.has(emp);
+      box.checked=isSource||isCandidate||isTarget;
+      box.disabled=monthCopyPhaseV61413==='TARGET'&&(isSource||managerOwn);
+      box.title=isSource?'ต้นทางที่คัดลอกแล้ว':managerOwn&&monthCopyPhaseV61413==='TARGET'?'บัญชีตนเองเป็นดูอย่างเดียว ไม่สามารถเป็นปลายทางได้':monthCopyPhaseV61413==='TARGET'?'เลือกเป็นพนักงานปลายทาง':'เลือกเป็นพนักงานต้นทาง';
+      row?.classList.toggle('month-copy-source-candidate-v61413',isCandidate);
+      row?.classList.toggle('month-copy-source-v61413',isSource);
+      row?.classList.toggle('month-copy-target-v61413',isTarget);
+    });
+
+    const all=$('scheduleMonthCopySelectAllV61413');
+    if(all){
+      const eligible=visibleMonthCopyCheckboxesV61413().filter(b=>!b.disabled&&String(b.dataset.monthCopyEmp||'')!==monthCopySourceV61413);
+      const selectedCount=eligible.filter(b=>monthCopyTargetsV61413.has(String(b.dataset.monthCopyEmp||''))).length;
+      all.disabled=monthCopyPhaseV61413!=='TARGET'||eligible.length===0;
+      all.checked=monthCopyPhaseV61413==='TARGET'&&eligible.length>0&&selectedCount===eligible.length;
+      all.indeterminate=monthCopyPhaseV61413==='TARGET'&&selectedCount>0&&selectedCount<eligible.length;
+      all.title=monthCopyPhaseV61413==='TARGET'?'เลือก/ยกเลิกพนักงานปลายทางทั้งหมดที่แสดง':'เลือกต้นทางได้ทีละ 1 คน';
+    }
+  }
+
+  function handleMonthCopyCheckboxV61413(box){
+    const emp=String(box?.dataset?.monthCopyEmp||'').trim();
+    if(!emp)return;
+    if(monthCopyPhaseV61413==='SOURCE'){
+      monthCopySourceCandidateV61413=box.checked?emp:'';
+      // source is always single-select
+      visibleMonthCopyCheckboxesV61413().forEach(other=>{if(other!==box)other.checked=false;});
+    }else{
+      if(emp===monthCopySourceV61413)return;
+      if(box.checked)monthCopyTargetsV61413.add(emp);else monthCopyTargetsV61413.delete(emp);
+    }
+    updateMonthCopyWorkflowUIV61413();
+  }
+
+  function handleMonthCopySelectAllV61413(box){
+    if(monthCopyPhaseV61413!=='TARGET')return;
+    visibleMonthCopyCheckboxesV61413().forEach(item=>{
+      if(item.disabled)return;
+      const emp=String(item.dataset.monthCopyEmp||'');
+      if(!emp||emp===monthCopySourceV61413)return;
+      if(box.checked)monthCopyTargetsV61413.add(emp);else monthCopyTargetsV61413.delete(emp);
+    });
+    updateMonthCopyWorkflowUIV61413();
+  }
+
+  async function fetchMonthRowsForCopyV61413(empCodes,month){
+    const codes=[...new Set((Array.isArray(empCodes)?empCodes:[empCodes]).map(x=>String(x||'').trim()).filter(Boolean))];
+    if(!codes.length)return [];
     const [y,m]=String(month).split('-').map(Number);
     const last=new Date(y,m,0).getDate();
     const start=`${month}-01`,end=`${month}-${String(last).padStart(2,'0')}`;
-    return await window.TimeClockShiftAPI.getMonthlySchedule(app(),{p_month:start,p_start_date:start,p_end_date:end,p_zone:document.getElementById('scheduleZone')?.value||null,p_department:document.getElementById('scheduleDepartment')?.value||null,p_emp_codes:[emp],p_schedule_statuses:null,p_disable_range_paging:true})||[];
+    const out=[];
+    // Keep requests moderate for large teams; source usually uses one batch.
+    for(let i=0;i<codes.length;i+=12){
+      const batch=codes.slice(i,i+12);
+      const rows=await window.TimeClockShiftAPI.getMonthlySchedule(app(),{
+        p_month:start,p_start_date:start,p_end_date:end,
+        p_zone:document.getElementById('scheduleZone')?.value||null,
+        p_department:document.getElementById('scheduleDepartment')?.value||null,
+        p_emp_codes:batch,p_schedule_statuses:null,p_disable_range_paging:true
+      })||[];
+      out.push(...rows);
+    }
+    return out;
   }
-  function mergeMonthRowsIntoStateV61412(rows=[]){
+
+  function mergeMonthRowsIntoStateV61413(rows=[]){
     const current=app()?.state?.schedule||[];
-    const map=new Map(current.map((r,i)=>[`${String(r.emp_code||'')}|${String(r.work_date||'').slice(0,10)}`,r]));
+    const map=new Map(current.map(r=>[`${String(r.emp_code||'')}|${String(r.work_date||'').slice(0,10)}`,r]));
     rows.forEach(r=>map.set(`${String(r.emp_code||'')}|${String(r.work_date||'').slice(0,10)}`,r));
     if(app()?.state)app().state.schedule=[...map.values()];
   }
-  async function buildMonthCopyPlanV61412(showLoading=false){
-    const source=String($('scheduleMonthCopySourceV61412')?.value||'').trim();
-    const target=String($('scheduleMonthCopyTargetV61412')?.value||'').trim();
-    const month=String($('scheduleMonthCopyMonthV61412')?.value||'').slice(0,7);
-    const mode=String($('scheduleMonthCopyModeV61412')?.value||'OVERWRITE');
-    if(!source||!target||!month||source===target)return {payload:[],reason:'กรุณาเลือกพนักงานต้นทางและปลายทางคนละคน'};
-    if(showLoading)app()?.showLoading('กำลังตรวจรูปแบบกะทั้งเดือน...');
+
+  async function copyMonthSourceV61413(){
+    const source=String(monthCopySourceCandidateV61413||'').trim();
+    if(!source)return app()?.toast('กรุณาเลือก Checkbox พนักงานต้นทาง 1 คนก่อน','warning');
+    const month=monthCopyCurrentMonthV61413();
+    app()?.showLoading('กำลังคัดลอกรูปแบบกะทั้งเดือน...');
     try{
-      const [sourceRows,targetRows]=await Promise.all([fetchMonthRowsForCopyV61412(source,month),fetchMonthRowsForCopyV61412(target,month)]);
-      mergeMonthRowsIntoStateV61412([...sourceRows,...targetRows]);
-      const targetByDate=new Map(targetRows.map(r=>[String(r.work_date||'').slice(0,10),r]));
-      const targetMeta=monthCopyEmployeeListV61412().find(e=>e.emp_code===target)||{};
-      const payload=[];let skipLeave=0,skipHol=0,skipLegacyOff=0,skipEmployment=0,skipExisting=0,skipSpecial=0,offCount=0,workCount=0;
-      sourceRows.sort((a,b)=>String(a.work_date).localeCompare(String(b.work_date))).forEach(row=>{
-        const date=String(row.work_date||'').slice(0,10);
-        let code=currentCode(row);
-        if(!date||!code)return;
-        code=String(code).toUpperCase();
-        if(code==='LV'){skipLeave++;return;}
-        if(code==='HOL'||row.is_public_holiday===true&&code==='HOL'){skipHol++;return;}
-        if(code==='OFF'){skipLegacyOff++;return;}
-        const ruleMode=String(row.schedule_rule_mode||row.work_mode_code||'').toUpperCase();
-        if(['HOUR_BASED','SPLIT_WAIT_NIGHT','NORMAL_LATE_CUSTOMER'].includes(ruleMode)||row.shift_2_planned_start_at||row.customer_window_start){skipSpecial++;return;}
-        if(targetMeta.start_date&&date<targetMeta.start_date){skipEmployment++;return;}
-        if(targetMeta.resign_date&&date>targetMeta.resign_date){skipEmployment++;return;}
-        const targetRow=targetByDate.get(date);
-        if(mode==='EMPTY_ONLY'&&String(targetRow?.assigned_shift_code||'').trim()){skipExisting++;return;}
-        const sm=configuredShift(code);
-        if(sm?.is_workday===false)offCount++;else workCount++;
-        payload.push({emp_code:target,work_date:date,shift_code:code,note:`คัดลอกรูปแบบกะทั้งเดือนจาก ${source}`});
+      const rows=await fetchMonthRowsForCopyV61413([source],month);
+      if(!rows.length)return app()?.toast('ไม่พบข้อมูลกะของพนักงานต้นทางในเดือนที่เลือก','warning');
+      monthCopySourceV61413=source;
+      monthCopyMonthV61413=month;
+      monthCopySourceRowsV61413=rows.slice().sort((a,b)=>String(a.work_date||'').localeCompare(String(b.work_date||'')));
+      monthCopyTargetsV61413.clear();
+      monthCopyPhaseV61413='TARGET';
+      mergeMonthRowsIntoStateV61413(rows);
+      updateMonthCopyWorkflowUIV61413();
+      const meta=monthCopyEmployeeMetaV61413(source);
+      app()?.toast(`คัดลอกกะทั้งเดือนของ ${meta.full_name||source} แล้ว • เลือก Checkbox ปลายทางแล้วกด วางกะทั้งเดือน`,'success');
+    }catch(e){app()?.toast(app()?.humanError?.(e)||e.message||String(e),'error');}
+    finally{app()?.hideLoading();}
+  }
+
+  function monthCopyPasteModeV61413(){return String($('scheduleMonthCopyModeV61413')?.value||'EMPTY_ONLY');}
+
+  async function buildMonthCopyPlanV61413(showLoading=false){
+    const source=String(monthCopySourceV61413||'').trim();
+    const targets=[...monthCopyTargetsV61413].filter(emp=>emp&&emp!==source);
+    const month=String(monthCopyMonthV61413||monthCopyCurrentMonthV61413()).slice(0,7);
+    const mode=monthCopyPasteModeV61413();
+    if(!source||!targets.length||!month)return {payload:[],reason:'กรุณาคัดลอกต้นทางและเลือกพนักงานปลายทางอย่างน้อย 1 คน'};
+    if(showLoading)app()?.showLoading('กำลังตรวจรูปแบบกะของพนักงานปลายทาง...');
+    try{
+      const sourceRows=(monthCopySourceRowsV61413.length&&monthCopyMonthV61413===month)
+        ? monthCopySourceRowsV61413
+        : await fetchMonthRowsForCopyV61413([source],month);
+      const targetRows=await fetchMonthRowsForCopyV61413(targets,month);
+      mergeMonthRowsIntoStateV61413([...sourceRows,...targetRows]);
+      const rowsByTarget=new Map(targets.map(emp=>[emp,new Map()]));
+      targetRows.forEach(r=>{
+        const emp=String(r.emp_code||'');const date=String(r.work_date||'').slice(0,10);
+        if(rowsByTarget.has(emp)&&date)rowsByTarget.get(emp).set(date,r);
       });
-      return {payload,source,target,month,summary:{workCount,offCount,skipLeave,skipHol,skipLegacyOff,skipEmployment,skipExisting,skipSpecial,sourceRows:sourceRows.length}};
+      const employees=monthCopyEmployeeListV61413();
+      const payload=[];
+      const targetSummary=[];
+      const total={workCount:0,offCount:0,skipLeave:0,skipHol:0,skipLegacyOff:0,skipEmployment:0,skipExisting:0,skipSpecial:0};
+      for(const target of targets){
+        const targetMeta=employees.find(e=>e.emp_code===target)||{};
+        const targetByDate=rowsByTarget.get(target)||new Map();
+        const q={emp_code:target,full_name:targetMeta.full_name||'',ready:0,workCount:0,offCount:0,skipLeave:0,skipHol:0,skipLegacyOff:0,skipEmployment:0,skipExisting:0,skipSpecial:0};
+        for(const row of sourceRows){
+          const date=String(row.work_date||'').slice(0,10);
+          let code=currentCode(row);
+          if(!date||!code)continue;
+          code=String(code).toUpperCase();
+          if(code==='LV'){q.skipLeave++;continue;}
+          if(code==='HOL'||(row.is_public_holiday===true&&code==='HOL')){q.skipHol++;continue;}
+          if(code==='OFF'){q.skipLegacyOff++;continue;}
+          const ruleMode=String(row.schedule_rule_mode||row.work_mode_code||'').toUpperCase();
+          if(['HOUR_BASED','SPLIT_WAIT_NIGHT','NORMAL_LATE_CUSTOMER'].includes(ruleMode)||row.shift_2_planned_start_at||row.customer_window_start){q.skipSpecial++;continue;}
+          if(targetMeta.start_date&&date<targetMeta.start_date){q.skipEmployment++;continue;}
+          if(targetMeta.resign_date&&date>targetMeta.resign_date){q.skipEmployment++;continue;}
+          const targetRow=targetByDate.get(date);
+          if(mode==='EMPTY_ONLY'&&String(targetRow?.assigned_shift_code||'').trim()){q.skipExisting++;continue;}
+          const sm=configuredShift(code);
+          if(sm?.is_workday===false)q.offCount++;else q.workCount++;
+          q.ready++;
+          payload.push({emp_code:target,work_date:date,shift_code:code,note:`คัดลอกรูปแบบกะทั้งเดือนจาก ${source}`});
+        }
+        ['workCount','offCount','skipLeave','skipHol','skipLegacyOff','skipEmployment','skipExisting','skipSpecial'].forEach(k=>total[k]+=q[k]);
+        targetSummary.push(q);
+      }
+      return {payload,source,targets,month,mode,summary:{...total,targetCount:targets.length,ready:payload.length},targetSummary};
     }finally{if(showLoading)app()?.hideLoading();}
   }
-  async function refreshMonthCopyPreviewV61412(){
-    const box=$('scheduleMonthCopyPreviewV61412');if(!box)return;
+
+  function renderMonthCopyTargetListV61413(plan){
+    const host=$('scheduleMonthCopyTargetListV61413');if(!host)return;
+    host.innerHTML=(plan?.targetSummary||[]).map(q=>{
+      const skipped=q.skipLeave+q.skipHol+q.skipLegacyOff+q.skipEmployment+q.skipExisting+q.skipSpecial;
+      return `<div class="month-copy-target-item-v61413"><div><strong>${monthCopyEscV61413(q.emp_code)} • ${monthCopyEscV61413(q.full_name||'-')}</strong><small>พร้อมวาง ${q.ready.toLocaleString('th-TH')} วัน${skipped?` • ข้าม ${skipped.toLocaleString('th-TH')} วัน`:''}</small></div><span class="${skipped?'has-skip':''}">${q.ready.toLocaleString('th-TH')}</span></div>`;
+    }).join('')||'<div class="muted">ยังไม่ได้เลือกพนักงานปลายทาง</div>';
+  }
+
+  async function refreshMonthCopyPreviewV61413(){
+    const box=$('scheduleMonthCopyPreviewV61413');if(!box)return;
     box.innerHTML='<span class="muted">กำลังสรุปรายการ...</span>';
     try{
-      const plan=await buildMonthCopyPlanV61412(false);
-      if(plan.reason){box.textContent=plan.reason;return;}
+      const plan=await buildMonthCopyPlanV61413(false);
+      if(plan.reason){box.textContent=plan.reason;renderMonthCopyTargetListV61413(plan);return;}
       const q=plan.summary;
-      box.innerHTML=`<div class="month-copy-preview-grid-v61412"><span><b>${plan.payload.length.toLocaleString('th-TH')}</b><small>วันที่จะวาง</small></span><span><b>${q.workCount.toLocaleString('th-TH')}</b><small>กะทำงาน</small></span><span><b>${q.offCount.toLocaleString('th-TH')}</b><small>วันหยุด</small></span><span><b>${(q.skipLeave+q.skipHol+q.skipSpecial+q.skipEmployment+q.skipExisting+q.skipLegacyOff).toLocaleString('th-TH')}</b><small>ข้าม</small></span></div><small>ข้าม: ลา ${q.skipLeave} • HOL ${q.skipHol} • กะพิเศษ ${q.skipSpecial} • ก่อนเริ่ม/หลังลาออก ${q.skipEmployment} • มีการจัดกะเดิม ${q.skipExisting}</small>`;
+      const skipped=q.skipLeave+q.skipHol+q.skipLegacyOff+q.skipEmployment+q.skipExisting+q.skipSpecial;
+      box.innerHTML=`<div class="month-copy-preview-grid-v61413"><span><b>${q.targetCount.toLocaleString('th-TH')}</b><small>พนักงานปลายทาง</small></span><span><b>${q.ready.toLocaleString('th-TH')}</b><small>รายการที่จะวาง</small></span><span><b>${q.workCount.toLocaleString('th-TH')}</b><small>กะทำงาน</small></span><span><b>${q.offCount.toLocaleString('th-TH')}</b><small>วันหยุด</small></span><span><b>${skipped.toLocaleString('th-TH')}</b><small>รายการข้าม</small></span></div><small>ข้ามรวม: ลา ${q.skipLeave} • HOL ${q.skipHol} • กะพิเศษ ${q.skipSpecial} • ก่อนเริ่ม/หลังลาออก ${q.skipEmployment} • มีการจัดกะเดิม ${q.skipExisting}</small>`;
+      renderMonthCopyTargetListV61413(plan);
     }catch(e){box.textContent=app()?.humanError?.(e)||e.message||String(e);}
   }
-  function openMonthCopyV61412(){
-    const modal=$('scheduleMonthCopyModalV61412');if(!modal)return;
-    fillMonthCopyEmployeesV61412();
-    const month=window.TimeClockSchedulePeriod?.range?.().month||scheduleViewState.personMonth||new Date().toISOString().slice(0,7);
-    if($('scheduleMonthCopyMonthV61412'))$('scheduleMonthCopyMonthV61412').value=month;
+
+  function openMonthCopyPasteV61413(){
+    if(monthCopyPhaseV61413!=='TARGET'||!monthCopySourceV61413)return app()?.toast('กรุณาคัดลอกพนักงานต้นทางก่อน','warning');
+    if(!monthCopyTargetsV61413.size)return app()?.toast('กรุณาเลือก Checkbox พนักงานปลายทางอย่างน้อย 1 คน','warning');
+    const modal=$('scheduleMonthCopyModalV61413');if(!modal)return;
+    const source=monthCopyEmployeeMetaV61413(monthCopySourceV61413);
+    if($('scheduleMonthCopySourceSummaryV61413'))$('scheduleMonthCopySourceSummaryV61413').innerHTML=`<span>ต้นทาง</span><strong>${monthCopyEscV61413(source.emp_code)} • ${monthCopyEscV61413(source.full_name||'-')}</strong><small>${monthCopyEscV61413(monthCopyMonthV61413)}</small>`;
+    if($('scheduleMonthCopyTargetSummaryV61413'))$('scheduleMonthCopyTargetSummaryV61413').innerHTML=`<span>ปลายทาง</span><strong>${monthCopyTargetsV61413.size.toLocaleString('th-TH')} คน</strong><small>ตรวจ Preview ก่อนยืนยัน</small>`;
     modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');
-    refreshMonthCopyPreviewV61412();
+    refreshMonthCopyPreviewV61413();
   }
-  function closeMonthCopyV61412(){const modal=$('scheduleMonthCopyModalV61412');modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');}
-  async function applyMonthCopyV61412(){
-    const plan=await buildMonthCopyPlanV61412(true);
+
+  function closeMonthCopyPasteV61413(){const modal=$('scheduleMonthCopyModalV61413');modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');}
+
+  async function applyMonthCopyV61413(){
+    const plan=await buildMonthCopyPlanV61413(true);
     if(plan.reason)return app()?.toast(plan.reason,'error');
-    if(!plan.payload.length)return app()?.toast('ไม่มีรายการกะที่สามารถคัดลอกได้','warning');
+    if(!plan.payload.length)return app()?.toast('ไม่มีรายการกะที่สามารถวางได้','warning');
     const q=plan.summary;
-    const ok=await window.tcConfirm(`คัดลอกรูปแบบกะ ${plan.month}\n\nต้นทาง ${plan.source} → ปลายทาง ${plan.target}\nรายการที่จะบันทึก ${plan.payload.length.toLocaleString('th-TH')} วัน\n• กะทำงาน ${q.workCount.toLocaleString('th-TH')}\n• วันหยุด ${q.offCount.toLocaleString('th-TH')}\n• ลา/HOL/กะพิเศษและรายการที่ไม่เกี่ยวข้องจะไม่ถูกคัดลอก\n\nระบบจะตรวจ Work Pattern, กะวันหยุดคู่กัน, พักขั้นต่ำ 6 ชม., 48 ชม. และโควต้าวันหยุดก่อนบันทึก ต้องการดำเนินการต่อหรือไม่?`);
+    const source=monthCopyEmployeeMetaV61413(plan.source);
+    const overwrite=plan.mode==='OVERWRITE';
+    const warning=overwrite?'\n\n⚠ โหมดวางทับ: กะที่ Manager จัดไว้แล้วของปลายทางอาจถูกแทนที่':'';
+    const ok=await window.tcConfirm(`ยืนยันการวางกะทั้งเดือน\n\nต้นทาง ${source.emp_code} • ${source.full_name||'-'}\nปลายทาง ${q.targetCount.toLocaleString('th-TH')} คน\nเดือน ${plan.month}\nรายการที่จะบันทึก ${q.ready.toLocaleString('th-TH')} รายการ\n• กะทำงาน ${q.workCount.toLocaleString('th-TH')}\n• วันหยุด ${q.offCount.toLocaleString('th-TH')}\n• ลา / HOL / กะพิเศษจะไม่คัดลอก${warning}\n\nระบบจะตรวจ Work Pattern, Scope, Start Date, พักขั้นต่ำ 6 ชม., 48 ชม. และโควต้าวันหยุดก่อนบันทึก ต้องการดำเนินการต่อหรือไม่?`);
     if(!ok)return;
-    closeMonthCopyV61412();
-    await savePayload(plan.payload,`คัดลอกรูปแบบกะทั้งเดือนจาก ${plan.source} ไป ${plan.target}`,false,'คัดลอกทั้งเดือน');
+    closeMonthCopyPasteV61413();
+    const saved=await savePayload(plan.payload,`คัดลอกรูปแบบกะทั้งเดือนจาก ${plan.source} ไป ${q.targetCount} คน`,false,'คัดลอกทั้งเดือน');
+    if(saved)resetMonthCopyWorkflowV61413({silent:true});
   }
   async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!await window.tcConfirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
   async function applyHistory(item,mode){
@@ -13020,11 +13226,11 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   function bind(){
-    document.addEventListener("timeclock:schedule-rendered",()=>{selected.clear();activeKey=null;anchorKey=null;refreshSelectionUI();updateSummary();updateHistoryButtons();});
+    document.addEventListener("timeclock:schedule-rendered",()=>{selected.clear();activeKey=null;anchorKey=null;refreshSelectionUI();updateSummary();updateHistoryButtons();updateMonthCopyWorkflowUIV61413();});
     wrap()?.addEventListener("mousedown",e=>{const cell=e.target.closest("[data-schedule-cell]");if(!cell||e.button!==0)return;e.preventDefault();dragging=true;dragMode=(e.ctrlKey||e.metaKey)&&selected.has(keyOf(cell))?"remove":"add";if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey)selected.clear();selectCell(cell,e.ctrlKey||e.metaKey,e.shiftKey);wrap()?.focus();});
     wrap()?.addEventListener("mouseover",e=>{if(!dragging)return;const cell=e.target.closest("[data-schedule-cell]");if(!cell)return;const k=keyOf(cell);dragMode==="remove"?selected.delete(k):selected.add(k);activeKey=k;refreshSelectionUI();});
     document.addEventListener("mouseup",()=>dragging=false);
-    wrap()?.addEventListener("click",e=>{const emp=e.target.closest("[data-select-emp]");if(emp){selectByEmp(emp.dataset.selectEmp);return;}const date=e.target.closest("[data-select-date]");if(date){selectByDate(date.dataset.selectDate);return;}});
+    wrap()?.addEventListener("click",e=>{const monthBox=e.target.closest("[data-month-copy-emp]");if(monthBox){e.stopPropagation();handleMonthCopyCheckboxV61413(monthBox);return;}const selectAll=e.target.closest("#scheduleMonthCopySelectAllV61413");if(selectAll){e.stopPropagation();handleMonthCopySelectAllV61413(selectAll);return;}const emp=e.target.closest("[data-select-emp]");if(emp){selectByEmp(emp.dataset.selectEmp);return;}const date=e.target.closest("[data-select-date]");if(date){selectByDate(date.dataset.selectDate);return;}});
     wrap()?.addEventListener("dblclick",e=>{const c=e.target.closest("[data-schedule-cell]");if(c)app()?.openAssignment(c.dataset.emp,c.dataset.date);});
     wrap()?.addEventListener("contextmenu",e=>{const c=e.target.closest("[data-schedule-cell]");if(c)openContext(e,c);});
     document.querySelectorAll("[data-smart-shift]").forEach(button =>
@@ -13034,17 +13240,17 @@ ${skippedSummary(compatibility.skipped)}
       )
     );
     document.querySelectorAll("[data-quick-shift]").forEach(b=>b.addEventListener("click",()=>bulkAssign(b.dataset.quickShift)));
-    $("scheduleCopyBtn")?.addEventListener("click",copySelection); $("schedulePasteBtn")?.addEventListener("click",pasteSelection); $("scheduleCopyMonthBtnV61412")?.addEventListener("click",openMonthCopyV61412); $("scheduleClearCellsBtn")?.addEventListener("click",clearCells); $("scheduleClearSelectionBtn")?.addEventListener("click",clearSelection); $("scheduleUndoBtn")?.addEventListener("click",undo); $("scheduleRedoBtn")?.addEventListener("click",redo);
+    $("scheduleCopyBtn")?.addEventListener("click",copySelection); $("schedulePasteBtn")?.addEventListener("click",pasteSelection); $("scheduleCopyMonthBtnV61412")?.addEventListener("click",copyMonthSourceV61413); $("schedulePasteMonthBtnV61413")?.addEventListener("click",openMonthCopyPasteV61413); $("scheduleCancelMonthCopyBtnV61413")?.addEventListener("click",()=>resetMonthCopyWorkflowV61413()); $("scheduleClearCellsBtn")?.addEventListener("click",clearCells); $("scheduleClearSelectionBtn")?.addEventListener("click",clearSelection); $("scheduleUndoBtn")?.addEventListener("click",undo); $("scheduleRedoBtn")?.addEventListener("click",redo);
     $("schedulePrevMonthBtn")?.addEventListener("click",()=>shiftMonth(-1));
     $("scheduleNextMonthBtn")?.addEventListener("click",()=>shiftMonth(1));
     $("schedulePatternFilter")?.addEventListener("change",updateSmartShiftButtons);
     document.addEventListener("timeclock:schedule-rendered",updateSmartShiftButtons);
     document.querySelectorAll('[data-person-days-mode]').forEach(btn=>btn.addEventListener('click',()=>setPersonDaysModeV61412(btn.dataset.personDaysMode)));
-    $('scheduleMonthCopyCloseV61412')?.addEventListener('click',closeMonthCopyV61412);
-    $('scheduleMonthCopyCancelV61412')?.addEventListener('click',closeMonthCopyV61412);
-    $('scheduleMonthCopyApplyV61412')?.addEventListener('click',applyMonthCopyV61412);
-    ['scheduleMonthCopySourceV61412','scheduleMonthCopyTargetV61412','scheduleMonthCopyModeV61412'].forEach(id=>$(id)?.addEventListener('change',refreshMonthCopyPreviewV61412));
-    $('scheduleMonthCopyModalV61412')?.addEventListener('click',e=>{if(e.target?.id==='scheduleMonthCopyModalV61412')closeMonthCopyV61412();});
+    $('scheduleMonthCopyCloseV61413')?.addEventListener('click',closeMonthCopyPasteV61413);
+    $('scheduleMonthCopyCancelV61413')?.addEventListener('click',closeMonthCopyPasteV61413);
+    $('scheduleMonthCopyApplyV61413')?.addEventListener('click',applyMonthCopyV61413);
+    $('scheduleMonthCopyModeV61413')?.addEventListener('change',refreshMonthCopyPreviewV61413);
+    $('scheduleMonthCopyModalV61413')?.addEventListener('click',e=>{if(e.target?.id==='scheduleMonthCopyModalV61413')closeMonthCopyPasteV61413();});
     $("scheduleTeamWeekSelectV61151")?.addEventListener(
       "change",
       () => {
@@ -26557,7 +26763,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.12';
+  const VERSION='6.14.13';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

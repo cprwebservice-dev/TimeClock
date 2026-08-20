@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.12 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.13 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.12 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.13 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.12-20260820" rel="stylesheet"/>
+<link href="./app.css?v=6.14.13-20260820" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.12</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.13</span></div>
 </form>
 </div>
 </section>
@@ -359,7 +359,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.12</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.12 Person Schedule Display + Month Copy</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.13</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.13 Person Month Copy Workflow</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -647,13 +647,16 @@
 <button class="btn btn-light" disabled="" id="scheduleUndoBtn">↶ Undo</button>
 <button class="btn btn-light" disabled="" id="scheduleRedoBtn">↷ Redo</button>
 <button class="btn btn-light" id="scheduleCopyBtn">คัดลอก</button>
-<button class="btn btn-light person-month-copy-btn-v61412" id="scheduleCopyMonthBtnV61412">คัดลอกทั้งเดือน</button>
+<button class="btn btn-light person-month-copy-btn-v61412 person-month-copy-source-btn-v61413" id="scheduleCopyMonthBtnV61412" disabled>คัดลอกทั้งเดือน</button>
+<button class="btn btn-primary person-month-paste-btn-v61413" id="schedulePasteMonthBtnV61413" disabled>วางกะทั้งเดือน</button>
+<button class="btn btn-light hidden" id="scheduleCancelMonthCopyBtnV61413">ยกเลิกคัดลอก</button>
 <button class="btn btn-light" id="schedulePasteBtn">วาง</button>
 <button class="btn btn-danger-soft" id="scheduleClearCellsBtn">ล้างกะ</button>
 <button class="btn btn-light" id="scheduleClearSelectionBtn">ยกเลิกเลือก</button>
 
 </div>
 </div>
+<div class="person-month-copy-workflow-v61413 hidden" id="scheduleMonthCopyWorkflowV61413" aria-live="polite"></div>
 <div class="schedule-summary-strip" id="scheduleSummaryStrip">
 <span><b>STD</b><em id="sumShiftSTD">0</em></span><span><b>S134</b><em id="sumShiftS134">0</em></span><span><b>S043</b><em id="sumShiftS043">0</em></span><span><b>S135</b><em id="sumShiftS135">0</em></span><span><b>OFF</b><em id="sumShiftOFF">0</em></span><span><b>HOL</b><em id="sumShiftHOL">0</em></span><span><b>LV</b><em id="sumShiftLV">0</em></span>
 <small>ลากเมาส์เพื่อเลือกช่วง • Shift+คลิกเลือกต่อเนื่อง • ปุ่มลูกศรเลื่อนเซลล์ • Delete ล้างกะ</small>
@@ -665,28 +668,29 @@
 <hr/><button class="danger" data-context-action="clear">ล้างกะ</button>
 </div>
 </div>
-<div class="modal-backdrop hidden schedule-month-copy-backdrop-v61412" id="scheduleMonthCopyModalV61412" aria-hidden="true">
-  <div class="modal schedule-month-copy-modal-v61412">
+<div class="modal-backdrop hidden schedule-month-copy-backdrop-v61412 schedule-month-copy-backdrop-v61413" id="scheduleMonthCopyModalV61413" aria-hidden="true">
+  <div class="modal schedule-month-copy-modal-v61412 schedule-month-copy-modal-v61413">
     <div class="modal-header">
-      <div><span class="eyebrow">PERSON MONTH COPY</span><h3>คัดลอกรูปแบบกะทั้งเดือน</h3><p>คัดลอกตารางกะจากพนักงานต้นทางไปยังพนักงานปลายทางในเดือนเดียวกัน</p></div>
-      <button type="button" class="btn btn-light btn-icon" id="scheduleMonthCopyCloseV61412" aria-label="ปิด">×</button>
+      <div><span class="eyebrow">PERSON MONTH COPY</span><h3>ยืนยันการวางกะทั้งเดือน</h3><p>ตรวจสอบต้นทาง ปลายทาง และรายการที่จะวางก่อนบันทึกจริง</p></div>
+      <button type="button" class="btn btn-light btn-icon" id="scheduleMonthCopyCloseV61413" aria-label="ปิด">×</button>
     </div>
     <div class="modal-body">
-      <div class="month-copy-note-v61412">
-        <strong>คัดลอกเฉพาะรูปแบบกะ</strong>
-        <span>ไม่คัดลอกวันลา (LV) และ HOL เพราะเป็นข้อมูลเฉพาะบุคคล/ปฏิทินกลาง • กะวันหยุดจะถูกปรับให้สัมพันธ์กับ Work Pattern ของพนักงานปลายทางก่อนบันทึก</span>
+      <div class="month-copy-route-v61413">
+        <div class="month-copy-route-card-v61413 source" id="scheduleMonthCopySourceSummaryV61413"><span>ต้นทาง</span><strong>-</strong></div>
+        <div class="month-copy-route-arrow-v61413">→</div>
+        <div class="month-copy-route-card-v61413 target" id="scheduleMonthCopyTargetSummaryV61413"><span>ปลายทาง</span><strong>-</strong></div>
       </div>
-      <div class="month-copy-grid-v61412">
-        <label><span>พนักงานต้นทาง</span><select class="select" id="scheduleMonthCopySourceV61412"></select></label>
-        <label><span>พนักงานปลายทาง</span><select class="select" id="scheduleMonthCopyTargetV61412"></select></label>
-        <label><span>เดือน</span><input class="input" type="month" id="scheduleMonthCopyMonthV61412" readonly></label>
-        <label><span>วิธีวาง</span><select class="select" id="scheduleMonthCopyModeV61412"><option value="OVERWRITE">วางทับรูปแบบกะทั้งเดือน</option><option value="EMPTY_ONLY">เฉพาะวันที่ปลายทางยังไม่ได้จัดกะเอง</option></select></label>
+      <div class="month-copy-warning-v61413">
+        <strong>ตรวจสอบก่อนวางกะ</strong>
+        <span>ลา (LV) และ HOL จะไม่ถูกคัดลอก • กะพิเศษที่มีช่วงเวลารายบุคคลจะถูกข้าม • ทุกปลายทางยังต้องผ่าน Work Pattern, Scope, Start Date, พักขั้นต่ำ 6 ชม., 48 ชม. และโควต้าวันหยุด</span>
       </div>
-      <div class="month-copy-preview-v61412" id="scheduleMonthCopyPreviewV61412">เลือกพนักงานต้นทางและปลายทางเพื่อดูตัวอย่าง</div>
+      <label class="month-copy-mode-v61413"><span>วิธีวาง</span><select class="select" id="scheduleMonthCopyModeV61413"><option value="EMPTY_ONLY" selected>เฉพาะวันที่ปลายทางยังไม่ได้จัดกะเอง (แนะนำ)</option><option value="OVERWRITE">วางทับกะที่มีอยู่แล้ว</option></select></label>
+      <div class="month-copy-preview-v61412 month-copy-preview-v61413" id="scheduleMonthCopyPreviewV61413">กำลังเตรียมตัวอย่าง...</div>
+      <div class="month-copy-target-list-v61413" id="scheduleMonthCopyTargetListV61413"></div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-light" id="scheduleMonthCopyCancelV61412">ยกเลิก</button>
-      <button type="button" class="btn btn-primary" id="scheduleMonthCopyApplyV61412">คัดลอกและวางทั้งเดือน</button>
+      <button type="button" class="btn btn-light" id="scheduleMonthCopyCancelV61413">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" id="scheduleMonthCopyApplyV61413">ยืนยันวางกะ</button>
     </div>
   </div>
 </div>
@@ -2540,6 +2544,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.12-20260820"></script>
+<script src="./app.js?v=6.14.13-20260820"></script>
 </body>
 </html>
