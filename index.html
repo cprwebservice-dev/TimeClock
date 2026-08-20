@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.15 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.16 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.15 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.16 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.15-20260820" rel="stylesheet"/>
+<link href="./app.css?v=6.14.16-20260820" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.15</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.16</span></div>
 </form>
 </div>
 </section>
@@ -359,7 +359,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.15</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.15 Schedule + Certification Consistency</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.16</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.16 Bulk Technician Pattern + Default Shift</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -738,7 +738,7 @@
 <button class="admin-module-card" data-admin-open="admin-org"><span class="admin-module-icon">⌘</span><div><strong>ผังโครงสร้างองค์กร</strong><small>จัดลำดับหน่วยงาน กำหนด Manager และ Upload Scope</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-users"><span class="admin-module-icon">♙</span><div><strong>User และ Scope</strong><small>กำหนด Role, สถานะ และขอบเขตข้อมูล</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-shifts"><span class="admin-module-icon">◫</span><div><strong>ตั้งค่ากะทำงาน</strong><small>จัดการรหัสกะ เวลาเริ่ม-สิ้นสุด และเวลาพัก</small></div><em>เปิด ›</em></button>
-<button class="admin-module-card" data-admin-open="work-patterns"><span class="admin-module-icon">⌘</span><div><strong>รูปแบบการทำงานช่าง</strong><small>กำหนด 5/6 วัน วันหยุดตั้งต้น OT และรูปแบบหลายช่วงงาน</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="work-patterns"><span class="admin-module-icon">⌘</span><div><strong>รูปแบบการทำงานช่าง</strong><small>กำหนด 5/6 วัน + กะตั้งต้นเช้า/ดึกแบบหลายคน และรูปแบบช่วงงาน</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-holidays"><span class="admin-module-icon">◈</span><div><strong>วันหยุดนักขัตฤกษ์</strong><small>เพิ่ม แก้ไข และตรวจผลกระทบต่อ Attendance</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-import"><span class="admin-module-icon">⇧</span><div><strong>นำเข้าพนักงาน</strong><small>ตรวจสอบไฟล์ CSV ก่อนนำเข้าฐานข้อมูล</small></div><em>เปิด ›</em></button>
 <button class="admin-module-card" data-admin-open="admin-time-import"><span class="admin-module-icon">⇩</span><div><strong>นำเข้าข้อมูลลงเวลา CSV</strong><small>ไฟล์ EmployeeId, InOutDate, InOutTime, InOutMode และ GPS</small></div><em>เปิด ›</em></button>
@@ -935,12 +935,12 @@
 
 <!-- Technician Work Patterns -->
 <section class="page work-pattern-page" id="page-work-patterns">
-<div class="work-pattern-hero work-pattern-hero-v61111">
+<div class="work-pattern-hero work-pattern-hero-v61111 work-pattern-hero-v61416">
 <div class="work-pattern-hero-copy-v61111">
-<span class="eyebrow">TECHNICIAN WORK MODEL</span>
+<span class="eyebrow">TECHNICIAN WORK MODEL • BULK SETUP</span>
 <h2>รูปแบบการทำงานช่างเทคนิค</h2>
-<p>กำหนดรูปแบบ 5/6 วันเป็นฐาน โดยใช้กะปกติเป็นค่าเริ่มต้น และเลือก “กะปกติ + งานลูกค้าช่วงดึก” เฉพาะวันที่มีงานจริงจากปฏิทินจัดกะ</p>
-<div class="work-pattern-hero-tags-v61111"><span>5 วัน / 6 วัน</span><span>กะปกติเป็นค่าเริ่มต้น</span><span>ช่วงงานเลือกเป็นรายวัน</span></div>
+<p>กำหนดรูปแบบ 5/6 วัน และกะตั้งต้น “เช้า / ดึก” ให้ช่างเทคนิคหลายคนพร้อมกัน ระบบจะใช้ค่านี้เป็น Auto Shift ของวันที่ยังไม่ได้จัดกะเอง โดยยังคงการแก้ไขรายบุคคลสำหรับกรณีพิเศษ</p>
+<div class="work-pattern-hero-tags-v61111"><span>เลือกหลายคนพร้อมกัน</span><span>5 วัน / 6 วัน</span><span>☀ กะเช้า / ☾ กะดึก</span><span>Auto Shift + Paired Day-off</span></div>
 </div>
 <button type="button" class="btn btn-primary work-pattern-refresh-v61111" id="workPatternRefreshBtn">↻ รีเฟรชข้อมูล</button>
 </div>
@@ -948,31 +948,50 @@
 <div class="panel-header"><div><h3>พารามิเตอร์รูปแบบการทำงาน</h3><p>แสดงและแก้ไขได้เฉพาะ HR Admin</p></div><button class="btn btn-orange" id="workPatternNewBtn">+ เพิ่มรูปแบบ</button></div>
 <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>วันทำงาน/สัปดาห์</th><th>เวลา/วันรวมพัก</th><th>OT หลัง</th><th>วันหยุดตั้งต้น</th><th>ยกยอด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="workPatternBody"></tbody></table></div></div>
 </div>
-<div class="panel section-gap">
+<div class="panel section-gap employee-pattern-bulk-panel-v61416">
 <div class="panel-header work-pattern-panel-head-v61111">
-<div><span class="work-pattern-section-kicker-v61111">EMPLOYEE ASSIGNMENT</span><h3>กำหนดรูปแบบรายบุคคล</h3><p>แสดงพนักงานภายใต้ Scope พร้อมรูปแบบ 5/6 วัน และ Template วันทำงานปกติ ส่วนงานลูกค้าช่วงดึกให้เลือกเป็นรายวันในปฏิทินจัดกะ</p></div>
-<div class="work-pattern-panel-badge-v61111">ข้อมูลตาม Scope</div>
+<div><span class="work-pattern-section-kicker-v61111">EMPLOYEE ASSIGNMENT • BULK MODE</span><h3>จัดรูปแบบและกะตั้งต้นหลายคน</h3><p>เลือกพนักงานจากตาราง แล้วกำหนด “5 วัน/6 วัน + กะเช้า/กะดึก” พร้อมกันได้ทันที • กะที่จัดด้วยมือไว้แล้วในปฏิทินจะไม่ถูกเขียนทับ</p></div>
+<div class="work-pattern-panel-badge-v61111 bulk">Bulk Assignment</div>
 </div>
 <div class="panel-body">
-<div class="work-pattern-summary-v61111">
+<div class="work-pattern-summary-v61111 work-pattern-summary-v61416">
 <article><span>พนักงานที่แสดง</span><strong id="wpSummaryTotalV61111">0</strong></article>
-<article><span>กำหนดรูปแบบแล้ว</span><strong id="wpSummaryAssignedV61111">0</strong></article>
-<article><span>Default กะปกติ</span><strong id="wpSummaryNormalV61111">0</strong></article>
-<article class="late"><span>ช่วงงานลูกค้าดึก</span><strong id="wpSummaryLateV61111">รายวัน</strong></article>
+<article class="five"><span>ทำงาน 5 วัน</span><strong id="wpSummary5DV61416">0</strong></article>
+<article class="six"><span>ทำงาน 6 วัน</span><strong id="wpSummary6DV61416">0</strong></article>
+<article class="day"><span>☀ กะตั้งต้นเช้า</span><strong id="wpSummaryDayV61416">0</strong></article>
+<article class="night"><span>☾ กะตั้งต้นดึก</span><strong id="wpSummaryNightV61416">0</strong></article>
 </div>
-<div class="work-pattern-filterbar-v61111">
+<div class="work-pattern-filterbar-v61111 work-pattern-filterbar-v61416">
 <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="employeePatternSearch" placeholder="รหัสพนักงาน หรือ ชื่อ-นามสกุล"/></div>
+<div class="field"><label>หน่วยงาน</label><select class="select" id="employeePatternDepartmentFilterV61416"><option value="ALL">ทุกหน่วยงาน</option></select></div>
 <div class="field"><label>วันที่อ้างอิง</label><input class="input" id="employeePatternDate" type="date"/></div>
+<div class="field"><label>รูปแบบ</label><select class="select" id="employeePatternPatternFilterV61416"><option value="ALL">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option></select></div>
+<div class="field"><label>กะตั้งต้น</label><select class="select" id="employeePatternShiftFilterV61416"><option value="ALL">ทั้งหมด</option><option value="DAY">กะเช้า</option><option value="NIGHT">กะดึก</option></select></div>
 <div class="toolbar-actions"><button type="button" class="btn btn-primary" id="employeePatternLoadBtn">⌕ ค้นหา</button></div>
 </div>
+<div class="wp-bulk-bar-v61416" id="wpBulkBarV61416">
+<div class="wp-bulk-head-v61416">
+<label class="wp-select-all-v61416"><input type="checkbox" id="employeePatternSelectAllV61416"><span>เลือกทั้งหมดที่แสดง</span></label>
+<div class="wp-bulk-selected-v61416"><strong id="wpBulkSelectedCountV61416">0</strong><span>คนที่เลือก</span></div>
+<button type="button" class="btn btn-light btn-sm" id="wpBulkClearV61416">ล้างที่เลือก</button>
+</div>
+<div class="wp-bulk-controls-v61416">
+<div class="wp-bulk-control-v61416"><span class="wp-bulk-label-v61416">1. รูปแบบการทำงาน</span><div class="wp-segment-v61416"><button type="button" data-wp-bulk-pattern="TECH_5D">5 วัน</button><button type="button" class="active" data-wp-bulk-pattern="TECH_6D">6 วัน</button></div></div>
+<div class="wp-bulk-control-v61416"><span class="wp-bulk-label-v61416">2. กะตั้งต้น</span><div class="wp-segment-v61416 shift"><button type="button" class="active day" data-wp-bulk-shift="DAY">☀ กะเช้า</button><button type="button" class="night" data-wp-bulk-shift="NIGHT">☾ กะดึก</button></div></div>
+<div class="wp-bulk-control-v61416 date"><span class="wp-bulk-label-v61416">3. เริ่มใช้</span><input class="input" id="wpBulkEffectiveDateV61416" type="date"></div>
+<div class="wp-bulk-map-v61416"><span>Auto Shift ที่จะใช้</span><strong id="wpBulkMappingV61416">S043 • 08:30–17:30</strong><small id="wpBulkDayoffMappingV61416">วันหยุดคู่: OS043</small></div>
+<button type="button" class="btn btn-orange wp-bulk-apply-v61416" id="wpBulkApplyBtnV61416" disabled>✓ ใช้กับ 0 คน</button>
+</div>
+<div class="wp-bulk-note-v61416"><span>ⓘ</span><p><strong>หลักการ:</strong> ค่านี้เป็นกะตั้งต้นของพนักงานแต่ละคนสำหรับ Auto Schedule เท่านั้น • วันที่จัดกะเองแล้วจะใช้กะที่จัดไว้ • วันหยุดตั้งต้นจะจับคู่ตามกะ เช่น S134 → OS134</p></div>
+</div>
 <div class="work-pattern-load-note-v61111 hidden" id="workPatternMetaWarningV61111"></div>
-<div class="table-wrap section-gap"><table class="employee-pattern-table-v6119"><thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>หน่วยงาน</th><th>ตำแหน่ง</th><th>พื้นที่</th><th>รูปแบบ</th><th>วันหยุดตั้งต้น</th><th>Template วันทำงานปกติ</th><th>เริ่มใช้</th><th>สิ้นสุด</th><th>วันที่บันทึกเวลา</th><th>ผู้บันทึก</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
+<div class="table-wrap section-gap"><table class="employee-pattern-table-v6119 employee-pattern-table-v61416"><thead><tr><th class="select-col"><span class="sr-only">เลือก</span></th><th>พนักงาน</th><th>หน่วยงาน</th><th>ตำแหน่ง</th><th>รูปแบบ</th><th>กะตั้งต้น</th><th>วันหยุดตั้งต้น</th><th>เริ่มใช้</th><th>ผู้บันทึก</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
 </div>
 </div>
 <div class="panel section-gap">
 <div class="panel-header work-pattern-panel-head-v61111">
-<div><span class="work-pattern-section-kicker-v61111">WORK TEMPLATE</span><h3>Template รูปแบบการทำงาน</h3><p>กะปกติใช้เป็นค่าเริ่มต้นของพนักงาน ส่วน “กะปกติ + งานลูกค้าช่วงดึก” เป็น Daily Override ที่เลือกเฉพาะวันที่มีงานจริงในปฏิทินจัดกะ</p></div>
-<div class="work-pattern-panel-badge-v61111 subtle">Default + Daily Override</div>
+<div><span class="work-pattern-section-kicker-v61111">WORK TEMPLATE</span><h3>Template รูปแบบช่วงงาน</h3><p>ส่วนนี้กำหนดโครงสร้างช่วงงาน เช่น กะปกติ / งานลูกค้าช่วงดึกแบบ Daily Override • ส่วนกะตั้งต้นเช้า/ดึกของแต่ละคนให้กำหนดจากตาราง Bulk ด้านบน</p></div>
+<div class="work-pattern-panel-badge-v61111 subtle">Daily Work Template</div>
 </div>
 <div class="work-template-grid panel-body" id="workTemplateCards"></div>
 </div>
@@ -2544,6 +2563,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.15-20260820"></script>
+<script src="./app.js?v=6.14.16-20260820"></script>
 </body>
 </html>
