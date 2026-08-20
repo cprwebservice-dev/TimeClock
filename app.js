@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.4";
+window.__TIME_CLOCK_BUILD__ = "V6.14.5";
 document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.4',
+  version: '6.14.5',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -325,7 +325,7 @@ window.tcIsDayShiftCode = value =>
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.4 ก่อนจัดกะ"
+      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.5 ก่อนจัดกะ"
     );
   }
 
@@ -357,7 +357,7 @@ window.tcIsDayShiftCode = value =>
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.4 ก่อนบันทึกกะแบบหลายรายการ"
+      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.5 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -1231,7 +1231,7 @@ window.tcIsDayShiftCode = value =>
       return new Date(y, (m || 1)-1, d || 1);
     };
     const monthDays = (year, month) => new Date(year, month, 0).getDate();
-    const scheduleWeekStarts = [1, 8, 15, 22, 29];
+    const scheduleWeekStarts = [1, 16]; // V6.14.5 Team View: half-month / ~15-day periods
     const scheduleBlockStartForDate = value => {
       const d = parseLocalISO(value || todayISO());
       const day = d.getDate();
@@ -1290,8 +1290,14 @@ window.tcIsDayShiftCode = value =>
         start.getFullYear(),
         start.getMonth() + 1
       );
+      // V6.14.5: Team View is split into two practical half-month periods.
+      // 1–15 is exactly 15 days; 16–month-end keeps day 31 visible when present.
       const end = new Date(start);
-      end.setDate(Math.min(start.getDate() + 6, lastDay));
+      end.setDate(
+        start.getDate() <= 1
+          ? Math.min(15, lastDay)
+          : lastDay
+      );
       const weekNumber =
         scheduleWeekStarts.indexOf(start.getDate()) + 1;
 
@@ -1331,7 +1337,8 @@ window.tcIsDayShiftCode = value =>
         .filter(startDay => startDay <= lastDay)
         .map((startDay,index) => {
           const start = new Date(year,month-1,startDay);
-          const end = new Date(year,month-1,Math.min(startDay+6,lastDay));
+          const endDay = startDay === 1 ? Math.min(15,lastDay) : lastDay;
+          const end = new Date(year,month-1,endDay);
           const startDate = localISO(start);
           const endDate = localISO(end);
           const dayCount =
@@ -1343,7 +1350,7 @@ window.tcIsDayShiftCode = value =>
             endDate,
             dayCount,
             label:
-              `สัปดาห์ที่ ${index+1} • `
+              `ช่วงที่ ${index+1} • `
               + `${formatDate(startDate)} – ${formatDate(endDate)}`
               + ` • ${dayCount} วัน`
           };
@@ -1364,14 +1371,14 @@ window.tcIsDayShiftCode = value =>
         "schedulePeriodLabel",
         personMode
           ? `เต็มเดือน • ${startText} – ${endText} • ${range.dates.length} วัน`
-          : `สัปดาห์ที่ ${range.weekNumber} • ${startText} – ${endText} • ${range.dates.length} วัน`
+          : `ช่วงที่ ${range.weekNumber} • ${startText} – ${endText} • ${range.dates.length} วัน`
       );
 
       const caption = qs(".schedule-period-caption-v61118");
       if (caption) {
         caption.textContent = personMode
           ? "เดือนที่แสดง"
-          : "สัปดาห์ที่แสดง";
+          : "ช่วง 15 วันที่แสดง";
       }
 
       if (personMode) {
@@ -1454,23 +1461,23 @@ window.tcIsDayShiftCode = value =>
       const current = $("scheduleTodayBtn");
 
       if (prev) {
-        prev.title = personMode ? "เดือนก่อน" : "สัปดาห์ก่อน";
+        prev.title = personMode ? "เดือนก่อน" : "ช่วงก่อน";
         prev.innerHTML = personMode
           ? "‹ <span>เดือนก่อน</span>"
-          : "‹ <span>สัปดาห์ก่อน</span>";
+          : "‹ <span>ช่วงก่อน</span>";
       }
 
       if (next) {
-        next.title = personMode ? "เดือนถัดไป" : "สัปดาห์ถัดไป";
+        next.title = personMode ? "เดือนถัดไป" : "ช่วงถัดไป";
         next.innerHTML = personMode
           ? "<span>เดือนถัดไป</span> ›"
-          : "<span>สัปดาห์ถัดไป</span> ›";
+          : "<span>ช่วงถัดไป</span> ›";
       }
 
       if (current) {
         current.textContent = personMode
           ? "เดือนปัจจุบัน"
-          : "สัปดาห์ปัจจุบัน";
+          : "ช่วงปัจจุบัน";
       }
 
       return range;
@@ -6245,7 +6252,7 @@ window.tcIsDayShiftCode = value =>
       const assignedMasterV6141 = assignedCodeV6141
         ? state.filters.shifts.find(s => window.tcShiftCode(s.shift_code) === assignedCodeV6141)
         : null;
-      // V6.14.4: a manually assigned WORKING shift must win over the natural
+      // V6.14.5: a manually assigned WORKING shift must win over the natural
       // Saturday/Sunday/public-holiday classification. The day header can still
       // show the calendar holiday, but the label itself represents the shift
       // that will actually be worked.
@@ -9393,16 +9400,16 @@ window.tcIsDayShiftCode = value =>
 
         if(saveError) {
           console.error(
-            'Schedule save RPC V6.14.4:',
+            'Schedule save RPC V6.14.5:',
             scheduleRpcErrorSummaryV6126(saveError)
           );
           if (window.TimeClockShiftAPI?.missingFunction?.(saveError)) {
-            throw new Error('SCHEDULE_SAVE_V6144_REQUIRED: กรุณารัน SQL V6.14.4 ก่อนใช้งานการบันทึกกะ');
+            throw new Error('SCHEDULE_SAVE_V6144_REQUIRED: กรุณารัน SQL V6.14.5 ก่อนใช้งานการบันทึกกะ');
           }
           throw saveError;
         }
         const scheduleSaveRpcMsV6144 = performance.now() - scheduleSaveStartedV6144;
-        console.info('[Schedule Save V6.14.4]', {
+        console.info('[Schedule Save V6.14.5]', {
           rpcMs: Math.round(scheduleSaveRpcMsV6144),
           server: saveResult?.performance || null,
           singleRecalculation: saveResult?.single_recalculation === true
@@ -9478,7 +9485,7 @@ window.tcIsDayShiftCode = value =>
           try{
             await loadAttendance();
           }catch(refreshErr){
-            console.warn('Attendance refresh after schedule save V6.14.4:', refreshErr?.message || refreshErr);
+            console.warn('Attendance refresh after schedule save V6.14.5:', refreshErr?.message || refreshErr);
             toast('บันทึกกะแล้ว แต่รีเฟรชหน้ารายละเอียดเวลาไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง','warning');
           }
 
@@ -9509,13 +9516,13 @@ window.tcIsDayShiftCode = value =>
         // still used for drawers/month-calendar return flows that depend on fresh
         // aggregated data.
         if (!teamReturnContext && !monthReturnContext && currentRow) {
-          // V6.14.4: the authoritative save has already committed. Do not keep the
+          // V6.14.5: the authoritative save has already committed. Do not keep the
           // blocking save overlay open while optional row enrichment runs.
           hideLoading();
           Promise.resolve(
             window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.([currentRow])
           ).then(() => renderSchedule()).catch(err =>
-            console.warn('Schedule row enrichment V6.14.4:', err?.message || err)
+            console.warn('Schedule row enrichment V6.14.5:', err?.message || err)
           );
           return;
         }
@@ -9547,7 +9554,7 @@ window.tcIsDayShiftCode = value =>
             window.TimeClockEmployeeMonthReturnContext = null;
           }
         }catch(refreshErr){
-          console.warn('Schedule return refresh V6.14.4:', refreshErr?.message || refreshErr);
+          console.warn('Schedule return refresh V6.14.5:', refreshErr?.message || refreshErr);
           toast('บันทึกกะเรียบร้อยแล้ว แต่รีเฟรชหน้าจอไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง','warning');
         }
       } catch (err) { toast(humanError(err), "error"); }
@@ -11594,7 +11601,7 @@ window.tcIsDayShiftCode = value =>
         return `พบรายการจัดกะเดิมที่สถานะยังไม่สมบูรณ์${count ? ` ${Number(count).toLocaleString("th-TH")} รายการ` : ""} กรุณาเปิดรายการและกดบันทึกใหม่ก่อนประกาศหรือล็อกเดือน`;
       }
       if (msg.includes("DAYOFF_QUOTA_EXHAUSTED")) return "วันหยุดคงเหลือไม่เพียงพอ ไม่สามารถกำหนดกะวันหยุดเพิ่มได้ กรุณาตรวจวันหยุดที่ใช้ไปหรือเปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน";
-      if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณารัน SQL V6.14.4 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
+      if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณารัน SQL V6.14.5 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
@@ -12572,7 +12579,7 @@ ${skippedSummary(compatibility.skipped)}
     const year = current.getFullYear();
     const month = current.getMonth() + 1;
     const day = current.getDate();
-    const starts = [1,8,15,22,29];
+    const starts = [1,16];
     const index = starts.indexOf(day);
     let next;
 
@@ -26171,7 +26178,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.4';
+  const VERSION='6.14.5';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -26658,9 +26665,9 @@ ${skippedSummary(compatibility.skipped)}
       || selectedCode==='OFF'
       || (selectedCode!=='LV' && selectedMaster?.is_workday===false)
     );
-    // V6.14.4 performance: a normal working shift or LV cannot consume a new
+    // V6.14.5 performance: a normal working shift or LV cannot consume a new
     // day-off quota. Skip the extra pre-save quota RPC for those common cases;
-    // the authoritative V6.14.4 save RPC still validates quota server-side.
+    // the authoritative V6.14.5 save RPC still validates quota server-side.
     if(proposedConsumesDayoffV6144){
       try{
         dayoffQuotaGuardV6142=await rpc('ta_validate_dayoff_quota_v6143',{
@@ -26669,7 +26676,7 @@ ${skippedSummary(compatibility.skipped)}
           p_proposed_shift_code:selectedCode||null
         });
       }catch(e){
-        app()?.toast?.('ตรวจโควต้าวันหยุดไม่สำเร็จ กรุณารัน SQL V6.14.4 ก่อนบันทึกกะ','error');
+        app()?.toast?.('ตรวจโควต้าวันหยุดไม่สำเร็จ กรุณารัน SQL V6.14.5 ก่อนบันทึกกะ','error');
         return {allowed:false};
       }
       if(dayoffQuotaGuardV6142?.allowed===false){
@@ -26678,7 +26685,7 @@ ${skippedSummary(compatibility.skipped)}
         return {allowed:false};
       }
     }else{
-      dayoffQuotaGuardV6142={allowed:true,skipped_precheck:true,reason:'NON_DAYOFF_SHIFT',guard_version:'V6.14.4'};
+      dayoffQuotaGuardV6142={allowed:true,skipped_precheck:true,reason:'NON_DAYOFF_SHIFT',guard_version:'V6.14.5'};
     }
     const guard=renderGuardPreview();
     if(guard?.hardBlock){app()?.toast?.(`กำหนดกะไม่ได้: เวลาพักจากกะก่อนหน้า ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม.`,'error');return {allowed:false};}
@@ -26701,7 +26708,7 @@ ${skippedSummary(compatibility.skipped)}
   async function saveExtension({preparation}={}){
     if(!st.current)return;const c=st.current,p=c.prepared||preparation||proposedPlan(),basis=p.basis||offBasisWindow();
     if(c.mode==='LEAVE'){await deleteExtension(c.empCode,c.workDate);return;}
-    // V6.14.4: ordinary fixed shifts do not need a Scheduling Rule row.
+    // V6.14.5: ordinary fixed shifts do not need a Scheduling Rule row.
     // If this date used to have a special rule, remove it once; otherwise skip
     // the extra network round-trip entirely.
     if(c.mode==='NORMAL'){
@@ -26824,7 +26831,7 @@ ${skippedSummary(compatibility.skipped)}
     try{
       quotaGuardBulkV6142=await rpc('ta_validate_dayoff_quota_bulk_v6143',{p_rows:payload});
     }catch(e){
-      app()?.toast?.('ตรวจโควต้าวันหยุดแบบหลายรายการไม่สำเร็จ กรุณารัน SQL V6.14.4 ก่อนบันทึก','error');
+      app()?.toast?.('ตรวจโควต้าวันหยุดแบบหลายรายการไม่สำเร็จ กรุณารัน SQL V6.14.5 ก่อนบันทึก','error');
       return {allowed:false,blocks,warnings,quotaError:e};
     }
     if(quotaGuardBulkV6142?.allowed===false){

@@ -20802,3 +20802,64 @@ body.theme-dark .assign-mode-card-v6120.quota-exhausted-v6142,
 /* V6.14.4 — Leave quick action label */
 #schedulePersonWorkspace .shift-command.shift-LV{display:inline-flex;align-items:center;gap:4px}
 #schedulePersonWorkspace .shift-command.shift-LV small{font-size:7px;opacity:.72;font-weight:800}
+
+
+/* ========================================================================== */
+/* V6.14.5 — Team View: compact 15-day / half-month schedule                  */
+/* UI-only. Keeps all scheduling rules and backend behavior unchanged.        */
+/* ========================================================================== */
+#scheduleTeamWorkspace .schedule-team-table{
+  min-width:1320px!important;
+  table-layout:fixed;
+}
+#scheduleTeamWorkspace .schedule-team-unit-head{
+  width:178px!important;
+  min-width:178px!important;
+}
+#scheduleTeamWorkspace .schedule-team-head{
+  width:72px!important;
+  min-width:72px!important;
+  max-width:72px!important;
+  padding-left:2px!important;
+  padding-right:2px!important;
+}
+#scheduleTeamWorkspace .schedule-team-day{
+  width:72px!important;
+  min-width:72px!important;
+  max-width:72px!important;
+  padding:2px!important;
+}
+#scheduleTeamWorkspace .schedule-team-summary-card.team-day-card-v61115{
+  min-height:92px!important;
+  height:92px!important;
+  padding:6px 4px!important;
+  border-radius:9px!important;
+}
+#scheduleTeamWorkspace .team-day-counts-v61115{
+  gap:3px!important;
+}
+#scheduleTeamWorkspace .team-day-count-v61115{
+  min-width:0!important;
+  padding-left:4px!important;
+  padding-right:4px!important;
+}
+#scheduleTeamWorkspace .team-day-count-v61115 small,
+#scheduleTeamWorkspace .team-day-extra,
+#scheduleTeamWorkspace .team-day-extra-empty{
+  font-size:6.5px!important;
+}
+#scheduleTeamWorkspace .team-day-count-v61115 strong{
+  font-size:10px!important;
+}
+#scheduleTeamWorkspace .schedule-team-week-selector-copy-v61152 span::after{
+  content:" • 1–15 / 16–สิ้นเดือน";
+  color:var(--slate-400,#94a3b8);
+  font-weight:600;
+}
+@media(max-width:1200px){
+  #scheduleTeamWorkspace .schedule-team-table{min-width:1280px!important}
+  #scheduleTeamWorkspace .schedule-team-head,
+  #scheduleTeamWorkspace .schedule-team-day{
+    width:68px!important;min-width:68px!important;max-width:68px!important;
+  }
+}
