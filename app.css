@@ -20863,3 +20863,158 @@ body.theme-dark .assign-mode-card-v6120.quota-exhausted-v6142,
     width:68px!important;min-width:68px!important;max-width:68px!important;
   }
 }
+
+
+/* ========================================================================== */
+/* V6.14.6 — Team 15-day card layout + Time Attendance View                  */
+/* ========================================================================== */
+/* Team schedule cards: stack labels vertically and let the card grow. This
+   prevents manual-change / shift / leave / review badges from overlapping. */
+#scheduleTeamWorkspace .schedule-team-summary-card.team-day-card-v61115{
+  min-height:126px!important;
+  height:auto!important;
+  padding:6px 5px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+  gap:4px!important;
+  overflow:hidden!important;
+}
+#scheduleTeamWorkspace .team-day-counts-v61115.team-day-counts-dynamic-v61115{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:3px!important;
+  width:100%!important;
+  min-height:0!important;
+  align-content:start!important;
+}
+#scheduleTeamWorkspace .team-day-count-v61115,
+#scheduleTeamWorkspace .team-day-counts-dynamic-v61115.is-compact .team-day-count-v61115{
+  width:100%!important;
+  min-width:0!important;
+  height:18px!important;
+  min-height:18px!important;
+  padding:2px 4px!important;
+  grid-template-columns:5px minmax(0,1fr) auto!important;
+}
+#scheduleTeamWorkspace .team-day-count-v61115 small{
+  font-size:6.5px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+#scheduleTeamWorkspace .team-day-bottom-extras-v61116{
+  margin-top:auto!important;
+  min-height:16px!important;
+  height:auto!important;
+  align-items:flex-end!important;
+}
+#scheduleTeamWorkspace .team-day-extras-v61115{
+  width:100%!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-start!important;
+  gap:2px!important;
+}
+#scheduleTeamWorkspace .team-day-extra{
+  max-width:100%!important;
+  font-size:6px!important;
+  padding:2px 4px!important;
+}
+#scheduleTeamWorkspace .team-day-top-manual-v61117{
+  flex:0 0 auto!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
+#scheduleTeamWorkspace .team-day-manual-change-v61117{
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* Time-view switch and legend */
+.time-legend-normal-v6146{background:#ecfdf3!important;color:#15803d!important;border-color:#bbf7d0!important}
+.time-legend-absence-v6146{background:#fff1f2!important;color:#be123c!important;border-color:#fecdd3!important}
+.time-legend-late-v6146{background:#fff7ed!important;color:#c2410c!important;border-color:#fed7aa!important}
+.time-legend-early-v6146{background:#fff8e1!important;color:#a16207!important;border-color:#fde68a!important}
+
+#scheduleTeamWorkspace .schedule-time-summary-card-v6146{
+  min-height:92px!important;
+  height:92px!important;
+  padding:6px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:1px solid #dce6ef!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+#scheduleTeamWorkspace .schedule-time-summary-card-v6146:hover{
+  border-color:#93c5fd!important;
+  background:#f8fbff!important;
+  box-shadow:0 4px 10px rgba(37,99,235,.08)!important;
+}
+#scheduleTeamWorkspace .schedule-time-summary-card-v6146.has-time-alert-v6146{
+  border-color:#f2c2b6!important;
+  box-shadow:inset 2px 0 0 #ef6a4a!important;
+}
+#scheduleTeamWorkspace .time-day-counts-v6146{
+  width:100%;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+}
+#scheduleTeamWorkspace .time-day-chip-v6146{
+  min-width:0;
+  min-height:32px;
+  padding:4px 2px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  border:1px solid transparent;
+  border-radius:7px;
+  line-height:1;
+}
+#scheduleTeamWorkspace .time-day-chip-v6146 small{
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:6px;
+  font-weight:850;
+}
+#scheduleTeamWorkspace .time-day-chip-v6146 strong{font-size:12px!important;font-weight:950!important}
+#scheduleTeamWorkspace .time-day-chip-v6146.tone-normal{background:#ecfdf3;border-color:#bbf7d0;color:#15803d}
+#scheduleTeamWorkspace .time-day-chip-v6146.tone-absence{background:#fff1f2;border-color:#fecdd3;color:#be123c}
+#scheduleTeamWorkspace .time-day-chip-v6146.tone-late{background:#fff7ed;border-color:#fed7aa;color:#c2410c}
+#scheduleTeamWorkspace .time-day-chip-v6146.tone-early{background:#fff8e1;border-color:#fde68a;color:#a16207}
+#scheduleTeamWorkspace .time-view-loading-v6146,
+#scheduleTeamWorkspace .time-view-pending-v6146,
+#scheduleTeamWorkspace .time-view-error-v6146{
+  display:flex;
+  width:100%;height:100%;
+  align-items:center;justify-content:center;
+  text-align:center;
+  font-size:7px;font-weight:800;
+  color:#64748b;
+}
+#scheduleTeamWorkspace .time-view-error-v6146{color:#b42318}
+#scheduleTeamWorkspace .time-view-pending-v6146{color:#2563eb}
+
+body.theme-dark #scheduleTeamWorkspace .schedule-time-summary-card-v6146,
+.dark #scheduleTeamWorkspace .schedule-time-summary-card-v6146{
+  background:#162837!important;
+  border-color:#345167!important;
+}
+body.theme-dark #scheduleTeamWorkspace .time-day-chip-v6146.tone-normal,
+.dark #scheduleTeamWorkspace .time-day-chip-v6146.tone-normal{background:#17352a;border-color:#2d6048;color:#9fe0b7}
+body.theme-dark #scheduleTeamWorkspace .time-day-chip-v6146.tone-absence,
+.dark #scheduleTeamWorkspace .time-day-chip-v6146.tone-absence{background:#3a2229;border-color:#6f3f49;color:#ffb5c2}
+body.theme-dark #scheduleTeamWorkspace .time-day-chip-v6146.tone-late,
+.dark #scheduleTeamWorkspace .time-day-chip-v6146.tone-late{background:#3a2c1c;border-color:#6f5130;color:#f4c27e}
+body.theme-dark #scheduleTeamWorkspace .time-day-chip-v6146.tone-early,
+.dark #scheduleTeamWorkspace .time-day-chip-v6146.tone-early{background:#372f18;border-color:#66582d;color:#eedb83}

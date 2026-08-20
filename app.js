@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.5";
+window.__TIME_CLOCK_BUILD__ = "V6.14.6";
 document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.5',
+  version: '6.14.6',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -325,7 +325,7 @@ window.tcIsDayShiftCode = value =>
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.5 ก่อนจัดกะ"
+      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.6 ก่อนจัดกะ"
     );
   }
 
@@ -357,7 +357,7 @@ window.tcIsDayShiftCode = value =>
     if (!missingFunction(response.error)) throw response.error;
 
     throw new Error(
-      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.5 ก่อนบันทึกกะแบบหลายรายการ"
+      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณารัน SQL V6.14.6 ก่อนบันทึกกะแบบหลายรายการ"
     );
   }
 
@@ -1231,7 +1231,7 @@ window.tcIsDayShiftCode = value =>
       return new Date(y, (m || 1)-1, d || 1);
     };
     const monthDays = (year, month) => new Date(year, month, 0).getDate();
-    const scheduleWeekStarts = [1, 16]; // V6.14.5 Team View: half-month / ~15-day periods
+    const scheduleWeekStarts = [1, 16]; // V6.14.6 Team View: half-month / ~15-day periods
     const scheduleBlockStartForDate = value => {
       const d = parseLocalISO(value || todayISO());
       const day = d.getDate();
@@ -1290,7 +1290,7 @@ window.tcIsDayShiftCode = value =>
         start.getFullYear(),
         start.getMonth() + 1
       );
-      // V6.14.5: Team View is split into two practical half-month periods.
+      // V6.14.6: Team View is split into two practical half-month periods.
       // 1–15 is exactly 15 days; 16–month-end keeps day 31 visible when present.
       const end = new Date(start);
       end.setDate(
@@ -1308,7 +1308,7 @@ window.tcIsDayShiftCode = value =>
           `${start.getFullYear()}-`
           + `${String(start.getMonth()+1).padStart(2,"0")}`,
         weekNumber: weekNumber > 0 ? weekNumber : 1,
-        viewMode: "TEAM",
+        viewMode: (typeof scheduleCurrentView === "function" && scheduleCurrentView() === "TIME") ? "TIME" : "TEAM",
         dates: Array.from(
           {
             length:
@@ -5611,7 +5611,7 @@ window.tcIsDayShiftCode = value =>
       mode: (() => {
         try {
           const saved = String(localStorage.getItem("timeclock.schedule.view") || "TEAM").trim().toUpperCase();
-          return ["TEAM","PERSON"].includes(saved) ? saved : "TEAM";
+          return ["TEAM","TIME","PERSON"].includes(saved) ? saved : "TEAM";
         } catch (_) {
           return "TEAM";
         }
@@ -5639,7 +5639,7 @@ window.tcIsDayShiftCode = value =>
     };
 
     function scheduleCurrentView() {
-      return ["TEAM","PERSON"].includes(scheduleViewState.mode)
+      return ["TEAM","TIME","PERSON"].includes(scheduleViewState.mode)
         ? scheduleViewState.mode
         : "TEAM";
     }
@@ -5684,28 +5684,49 @@ window.tcIsDayShiftCode = value =>
         );
       });
 
-      $("scheduleTeamWorkspace")?.classList.toggle("hidden", mode !== "TEAM");
+      $("scheduleTeamWorkspace")?.classList.toggle("hidden", mode === "PERSON");
       $("schedulePersonWorkspace")?.classList.toggle("hidden", mode !== "PERSON");
 
       const label = $("scheduleSelectedKpiLabel");
       if (label) {
-        label.textContent = mode === "TEAM" ? "ทีมที่แสดง" : "ช่องที่เลือก";
+        label.textContent = mode === "PERSON" ? "ช่องที่เลือก" : "ทีมที่แสดง";
       }
 
       const title = $("scheduleViewHintTitle");
       const text = $("scheduleViewHintText");
       if (title) {
-        title.textContent = mode === "TEAM"
-          ? "สรุปข้อมูลรายหน่วยงาน"
-          : "ปฏิทินจัดกะรายบุคคล";
+        title.textContent = mode === "TIME"
+          ? "สถิติการมาทำงานรายทีม"
+          : mode === "TEAM"
+            ? "สรุปข้อมูลรายหน่วยงาน"
+            : "ปฏิทินจัดกะรายบุคคล";
       }
       if (text) {
-        text.textContent = mode === "TEAM"
-          ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานทำงานอัตโนมัติ • เมื่อหัวหน้างานปรับกะและกดบันทึก ระบบมีผลทันที"
-          : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงเฉพาะไอคอน • วางเมาส์บนไอคอนเพื่อดูรหัสกะ เวลา และรายละเอียด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
+        text.textContent = mode === "TIME"
+          ? "ดูจำนวนพนักงานปกติ ขาดงาน มาสาย และกลับก่อนรายทีม/รายวัน • คลิก Label เพื่อดูรายชื่อและเวลาเข้า–ออก"
+          : mode === "TEAM"
+            ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานทำงานอัตโนมัติ • เมื่อหัวหน้างานปรับกะและกดบันทึก ระบบมีผลทันที"
+            : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงเฉพาะไอคอน • วางเมาส์บนไอคอนเพื่อดูรหัสกะ เวลา และรายละเอียด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
       }
 
-      if (mode === "TEAM") {
+      const teamTitleV6146 = $("scheduleTeamWorkspaceTitleV6146");
+      const teamSubtitleV6146 = $("scheduleTeamWorkspaceSubtitleV6146");
+      const teamLegendV6146 = $("scheduleTeamLegendV6146");
+      const teamTipV6146 = $("scheduleTeamTipV6146");
+      const teamAlertLabelV6146 = $("scheduleTeamAlertLabelV6146");
+      if (teamTitleV6146) teamTitleV6146.textContent = mode === "TIME" ? "สรุปเวลาทำงานรายหน่วยงาน" : "ตารางกะสรุปรายหน่วยงาน";
+      if (teamSubtitleV6146) teamSubtitleV6146.textContent = mode === "TIME"
+        ? "สรุปสถานะการมาทำงานรายทีมในช่วงประมาณ 15 วันที่เลือก • คลิกแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
+        : "สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล";
+      if (teamLegendV6146) teamLegendV6146.innerHTML = mode === "TIME"
+        ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span>'
+        : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
+      if (teamTipV6146) teamTipV6146.textContent = mode === "TIME"
+        ? "มุมมองเวลาเหมาะสำหรับหัวหน้างานติดตามการมาทำงานรายวัน แล้วคลิกดูรายชื่อพนักงานที่ต้องติดตาม"
+        : "มุมมองทีมเหมาะสำหรับดูภาพรวมการครอบคลุมกำลังคน ก่อนเจาะลงไปดูรายบุคคล";
+      if (teamAlertLabelV6146) teamAlertLabelV6146.textContent = mode === "TIME" ? "รายการผิดปกติ" : "จุดที่ต้องตรวจสอบ";
+
+      if (mode !== "PERSON") {
         const valueNode = $("scheduleTeamVisibleCount");
         if ($("scheduleSelectedKpi") && valueNode) {
           $("scheduleSelectedKpi").textContent = String(valueNode.dataset.value || valueNode.textContent || '0');
@@ -5718,7 +5739,7 @@ window.tcIsDayShiftCode = value =>
       const currentCursor =
         String(val("schedulePeriodStart") || "").slice(0,10);
 
-      if (currentMode === "TEAM" && currentCursor) {
+      if (currentMode !== "PERSON" && currentCursor) {
         scheduleViewState.teamPeriodStart =
           scheduleBlockStartForDate(currentCursor);
       } else if (currentMode === "PERSON" && currentCursor) {
@@ -5727,7 +5748,7 @@ window.tcIsDayShiftCode = value =>
       }
 
       const next = String(mode || "TEAM").trim().toUpperCase();
-      scheduleViewState.mode = next === "PERSON" ? "PERSON" : "TEAM";
+      scheduleViewState.mode = ["TEAM","TIME","PERSON"].includes(next) ? next : "TEAM";
 
       if (scheduleViewState.mode === "PERSON") {
         const sourceMonth =
@@ -6252,7 +6273,7 @@ window.tcIsDayShiftCode = value =>
       const assignedMasterV6141 = assignedCodeV6141
         ? state.filters.shifts.find(s => window.tcShiftCode(s.shift_code) === assignedCodeV6141)
         : null;
-      // V6.14.5: a manually assigned WORKING shift must win over the natural
+      // V6.14.6: a manually assigned WORKING shift must win over the natural
       // Saturday/Sunday/public-holiday classification. The day header can still
       // show the calendar holiday, but the label itself represents the shift
       // that will actually be worked.
@@ -8555,7 +8576,7 @@ window.tcIsDayShiftCode = value =>
       if ($('scheduleTeamVisibleCount')) {
         $('scheduleTeamVisibleCount').dataset.value = String(teams.length || 0);
       }
-      if (scheduleCurrentView() === 'TEAM') {
+      if (scheduleCurrentView() !== 'PERSON') {
         setText('scheduleSelectedKpi', formatNumber(teams.length));
       }
 
@@ -8620,6 +8641,207 @@ window.tcIsDayShiftCode = value =>
       wrap.innerHTML = html;
     }
 
+    const scheduleTimeAttendanceStateV6146 = {
+      key:'', rows:[], loading:false, error:null, loadedAt:0
+    };
+
+    function scheduleTimeAttendanceKeyV6146(period, rows = []) {
+      const codes = [...new Set((rows || []).map(row => String(row?.emp_code || '').trim()).filter(Boolean))].sort();
+      return [period?.startDate || '', period?.endDate || '', val('scheduleZone') || '', val('scheduleDepartment') || '', codes.join(',')].join('|');
+    }
+
+    function scheduleTimeIsTimeoutV6146(error) {
+      const message = String(error?.message || error?.details || error?.hint || error || '').toLowerCase();
+      return message.includes('statement timeout') || message.includes('canceling statement');
+    }
+
+    async function fetchScheduleTimeAttendanceChunkV6146(startDate, endDate, empCodes, depth = 0) {
+      if (!empCodes?.length) return [];
+      const attempts = [
+        ['ta_get_attendance_detail_v61020', {
+          p_start_date:startDate,p_end_date:endDate,p_area:null,p_sub_area:null,p_department:null,
+          p_emp_codes:empCodes,p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
+        }],
+        ['ta_get_attendance_detail_v664', {
+          p_start_date:startDate,p_end_date:endDate,p_zone:null,p_department:null,
+          p_emp_codes:empCodes,p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
+        }],
+        ['ta_get_attendance_detail_v640', {
+          p_start_date:startDate,p_end_date:endDate,p_zone:null,p_department:null,
+          p_emp_codes:empCodes,p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
+        }]
+      ];
+
+      let lastError = null;
+      for (const [fn,args] of attempts) {
+        const response = await state.client.rpc(fn,args);
+        if (!response.error) return Array.isArray(response.data) ? response.data : [];
+        lastError = response.error;
+        if (!window.TimeClockShiftAPI?.missingFunction?.(response.error)) break;
+      }
+
+      if (lastError && scheduleTimeIsTimeoutV6146(lastError) && depth < 4) {
+        if (empCodes.length > 1) {
+          const mid = Math.ceil(empCodes.length / 2);
+          const [left,right] = await Promise.all([
+            fetchScheduleTimeAttendanceChunkV6146(startDate,endDate,empCodes.slice(0,mid),depth+1),
+            fetchScheduleTimeAttendanceChunkV6146(startDate,endDate,empCodes.slice(mid),depth+1)
+          ]);
+          return [...left,...right];
+        }
+        const start = parseLocalISO(startDate);
+        const end = parseLocalISO(endDate);
+        const days = Math.round((end-start)/86400000)+1;
+        if (days > 1) {
+          const half = Math.floor(days/2);
+          const leftEnd = new Date(start); leftEnd.setDate(start.getDate()+half-1);
+          const rightStart = new Date(leftEnd); rightStart.setDate(leftEnd.getDate()+1);
+          const [left,right] = await Promise.all([
+            fetchScheduleTimeAttendanceChunkV6146(startDate,localISO(leftEnd),empCodes,depth+1),
+            fetchScheduleTimeAttendanceChunkV6146(localISO(rightStart),endDate,empCodes,depth+1)
+          ]);
+          return [...left,...right];
+        }
+      }
+      throw lastError || new Error('ATTENDANCE_TIME_VIEW_LOAD_FAILED');
+    }
+
+    async function ensureScheduleTimeAttendanceV6146(period, rows = []) {
+      const key = scheduleTimeAttendanceKeyV6146(period, rows);
+      if (scheduleTimeAttendanceStateV6146.key === key && (scheduleTimeAttendanceStateV6146.loading || scheduleTimeAttendanceStateV6146.loadedAt)) return;
+      scheduleTimeAttendanceStateV6146.key = key;
+      scheduleTimeAttendanceStateV6146.rows = [];
+      scheduleTimeAttendanceStateV6146.error = null;
+      scheduleTimeAttendanceStateV6146.loading = true;
+      scheduleTimeAttendanceStateV6146.loadedAt = 0;
+
+      const empCodes = [...new Set((rows || []).map(row => String(row?.emp_code || '').trim()).filter(Boolean))];
+      if (!empCodes.length) {
+        scheduleTimeAttendanceStateV6146.loading = false;
+        scheduleTimeAttendanceStateV6146.loadedAt = Date.now();
+        return;
+      }
+
+      const chunks = [];
+      for (let i=0;i<empCodes.length;i+=45) chunks.push(empCodes.slice(i,i+45));
+      const collected = [];
+      try {
+        for (let cursor=0; cursor<chunks.length; cursor+=3) {
+          const group = chunks.slice(cursor,cursor+3);
+          const results = await Promise.all(group.map(chunk => fetchScheduleTimeAttendanceChunkV6146(period.startDate,period.endDate,chunk,0)));
+          results.forEach(result => collected.push(...result));
+        }
+        const unique = new Map();
+        collected.forEach((row,index) => {
+          const emp = String(row?.emp_code || '').trim();
+          const date = String(row?.work_date || '').slice(0,10);
+          unique.set(emp && date ? `${emp}|${date}` : `__${index}`, row);
+        });
+        scheduleTimeAttendanceStateV6146.rows = [...unique.values()];
+        scheduleTimeAttendanceStateV6146.loadedAt = Date.now();
+      } catch (error) {
+        scheduleTimeAttendanceStateV6146.error = error;
+        console.warn('Schedule Time View V6.14.6:', error);
+      } finally {
+        scheduleTimeAttendanceStateV6146.loading = false;
+        if (scheduleCurrentView() === 'TIME' && scheduleTimeAttendanceStateV6146.key === key) renderSchedule();
+      }
+    }
+
+    function scheduleTimeMetricsV6146(baseRow, attendanceRow) {
+      const merged = { ...(baseRow || {}), ...(attendanceRow || {}) };
+      const shiftMeta = scheduleResolveShiftMeta(baseRow || merged);
+      const date = String(baseRow?.work_date || attendanceRow?.work_date || '').slice(0,10);
+      const dayType = String(merged?.day_type || baseRow?.day_type || '').toUpperCase();
+      const leave = Boolean(merged?.leave_request_id || merged?.leave_type_code) || dayType === 'LEAVE';
+      const off = !shiftMeta.isWorking || ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType);
+      if (leave || off) return {eligible:false,normal:false,absence:false,late:false,early:false,pending:false};
+      if (date > todayISO()) return {eligible:true,normal:false,absence:false,late:false,early:false,pending:true};
+
+      const punch = attendancePunchStateV61120(merged);
+      const late = Number(merged?.late_minutes || 0) > 0;
+      const early = Number(merged?.early_leave_minutes || merged?.early_minutes || 0) > 0;
+      const raw = String(merged?.display_status || merged?.attendance_result || merged?.attendance_status || merged?.calculation_status || '').toUpperCase();
+      let absence = raw === 'ABSENCE' || raw === 'ABSENT' || Number(merged?.absence_minutes || 0) > 0;
+      if (date < todayISO() && (!punch.anyPunch || !punch.complete)) absence = true;
+      if (date === todayISO() && !punch.complete && !absence) return {eligible:true,normal:false,absence:false,late,early,pending:true};
+      const normal = !absence && punch.complete && !late && !early;
+      return {eligible:true,normal,absence,late,early,pending:false};
+    }
+
+    function renderScheduleTimeViewV6146(rows, period, dateMeta) {
+      const wrap = $('scheduleTeamWrap');
+      if (!wrap) return;
+      const key = scheduleTimeAttendanceKeyV6146(period, rows);
+      if (scheduleTimeAttendanceStateV6146.key !== key || (!scheduleTimeAttendanceStateV6146.loadedAt && !scheduleTimeAttendanceStateV6146.loading)) {
+        ensureScheduleTimeAttendanceV6146(period, rows);
+      }
+
+      const attendanceMap = new Map();
+      (scheduleTimeAttendanceStateV6146.rows || []).forEach(row => {
+        const emp = String(row?.emp_code || '').trim();
+        const date = String(row?.work_date || '').slice(0,10);
+        if (emp && date) attendanceMap.set(`${emp}|${date}`,row);
+      });
+
+      const teams = new Map();
+      const teamFilter = String(val('scheduleTeamFocus') || '').trim();
+      const totalEmployees = new Set();
+      for (const row of rows || []) {
+        const unit = scheduleUnitLabel(row);
+        if (teamFilter && unit !== teamFilter) continue;
+        const date = String(row?.work_date || '').slice(0,10);
+        if (!period.dates.includes(date)) continue;
+        const emp = String(row?.emp_code || '').trim();
+        if (!teams.has(unit)) teams.set(unit,{unit,employees:new Set(),days:new Map(),managerNames:new Map()});
+        const team = teams.get(unit); team.employees.add(emp); totalEmployees.add(emp);
+        const names = Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : [];
+        names.forEach(name => { const n=String(name||'').trim(); if(n) team.managerNames.set(n,(team.managerNames.get(n)||0)+1); });
+        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,pending:0,eligible:0});
+        const metrics = scheduleTimeMetricsV6146(row, attendanceMap.get(`${emp}|${date}`));
+        const day = team.days.get(date);
+        if (metrics.eligible) day.eligible += 1;
+        if (metrics.normal) day.normal += 1;
+        if (metrics.absence) day.absence += 1;
+        if (metrics.late) day.late += 1;
+        if (metrics.early) day.early += 1;
+        if (metrics.pending) day.pending += 1;
+      }
+
+      const sorted = [...teams.values()].sort((a,b)=>a.unit.localeCompare(b.unit,'th'));
+      const anomalyTotal = sorted.reduce((sum,team)=>sum+[...team.days.values()].reduce((x,d)=>x+d.absence+d.late+d.early,0),0);
+      setText('scheduleTeamVisibleCount',formatNumber(sorted.length));
+      if ($('scheduleTeamVisibleCount')) $('scheduleTeamVisibleCount').dataset.value=String(sorted.length||0);
+      setText('scheduleTeamEmployeeCount',formatNumber(totalEmployees.size));
+      setText('scheduleTeamAlertCount',formatNumber(anomalyTotal));
+      setText('scheduleSelectedKpi',formatNumber(sorted.length));
+
+      const thaiDaysLong=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสฯ','ศุกร์','เสาร์'];
+      const thaiMonths=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      const headDays=period.dates.map(date=>{const d=parseLocalISO(date);const dow=d.getDay();const meta=dateMeta.get(date)||{};return `<th class="schedule-team-head ${dow===0||dow===6?'weekend':''} ${meta.holiday?'public-holiday-head':''}"><small>${safe(thaiDaysLong[dow])}</small><strong>${safe(String(d.getDate()))}</strong><span>${safe(thaiMonths[d.getMonth()])}</span></th>`}).join('');
+      let html=`<table class="schedule-team-table schedule-time-table-v6146"><thead><tr><th class="schedule-team-unit-head">หน่วยงาน</th>${headDays}</tr></thead><tbody>`;
+      if (!sorted.length) html += `<tr><td colspan="${period.dates.length+1}" class="table-empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
+      for (const team of sorted) {
+        const managerLabel = scheduleTeamManagerLabelV61121(team);
+        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
+        for (const date of period.dates) {
+          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,pending:0,eligible:0};
+          const loading=scheduleTimeAttendanceStateV6146.loading && scheduleTimeAttendanceStateV6146.key===key;
+          const error=scheduleTimeAttendanceStateV6146.error && scheduleTimeAttendanceStateV6146.key===key;
+          const future=date>todayISO();
+          let body='';
+          if (loading) body='<span class="time-view-loading-v6146">กำลังโหลด...</span>';
+          else if (error) body='<span class="time-view-error-v6146">โหลดเวลาไม่สำเร็จ</span>';
+          else if (future && day.eligible>0) body=`<span class="time-view-pending-v6146">รอทำงาน ${safe(formatNumber(day.eligible))}</span>`;
+          else body=`<div class="time-day-counts-v6146"><span class="time-day-chip-v6146 tone-normal"><small>ปกติ</small><strong>${safe(formatNumber(day.normal))}</strong></span><span class="time-day-chip-v6146 tone-absence"><small>ขาดงาน</small><strong>${safe(formatNumber(day.absence))}</strong></span><span class="time-day-chip-v6146 tone-late"><small>สาย</small><strong>${safe(formatNumber(day.late))}</strong></span><span class="time-day-chip-v6146 tone-early"><small>กลับก่อน</small><strong>${safe(formatNumber(day.early))}</strong></span></div>`;
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}</button></td>`;
+        }
+        html+='</tr>';
+      }
+      html+='</tbody></table>';
+      wrap.innerHTML=html;
+    }
+
     function renderSchedule() {
       const period = syncSchedulePeriodUI();
       const periodRows = state.schedule.filter(r => {
@@ -8666,7 +8888,11 @@ window.tcIsDayShiftCode = value =>
       }
 
       fillScheduleTeamFocusOptions(periodRows);
-      renderScheduleTeamView(rows, period, dateMeta);
+      if (scheduleCurrentView() === 'TIME') {
+        renderScheduleTimeViewV6146(rows, period, dateMeta);
+      } else {
+        renderScheduleTeamView(rows, period, dateMeta);
+      }
       applyScheduleViewMode();
 
       const thaiDays = ["อา","จ","อ","พ","พฤ","ศ","ส"];
@@ -9400,16 +9626,16 @@ window.tcIsDayShiftCode = value =>
 
         if(saveError) {
           console.error(
-            'Schedule save RPC V6.14.5:',
+            'Schedule save RPC V6.14.6:',
             scheduleRpcErrorSummaryV6126(saveError)
           );
           if (window.TimeClockShiftAPI?.missingFunction?.(saveError)) {
-            throw new Error('SCHEDULE_SAVE_V6144_REQUIRED: กรุณารัน SQL V6.14.5 ก่อนใช้งานการบันทึกกะ');
+            throw new Error('SCHEDULE_SAVE_V6144_REQUIRED: กรุณารัน SQL V6.14.6 ก่อนใช้งานการบันทึกกะ');
           }
           throw saveError;
         }
         const scheduleSaveRpcMsV6144 = performance.now() - scheduleSaveStartedV6144;
-        console.info('[Schedule Save V6.14.5]', {
+        console.info('[Schedule Save V6.14.6]', {
           rpcMs: Math.round(scheduleSaveRpcMsV6144),
           server: saveResult?.performance || null,
           singleRecalculation: saveResult?.single_recalculation === true
@@ -9452,6 +9678,8 @@ window.tcIsDayShiftCode = value =>
             savedConfirm
               ? "CONFIRMED"
               : "PLANNED";
+          scheduleTimeAttendanceStateV6146.key = '';
+          scheduleTimeAttendanceStateV6146.loadedAt = 0;
           renderSchedule();
         }
         closeModal("assignModal");
@@ -9485,7 +9713,7 @@ window.tcIsDayShiftCode = value =>
           try{
             await loadAttendance();
           }catch(refreshErr){
-            console.warn('Attendance refresh after schedule save V6.14.5:', refreshErr?.message || refreshErr);
+            console.warn('Attendance refresh after schedule save V6.14.6:', refreshErr?.message || refreshErr);
             toast('บันทึกกะแล้ว แต่รีเฟรชหน้ารายละเอียดเวลาไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง','warning');
           }
 
@@ -9516,13 +9744,13 @@ window.tcIsDayShiftCode = value =>
         // still used for drawers/month-calendar return flows that depend on fresh
         // aggregated data.
         if (!teamReturnContext && !monthReturnContext && currentRow) {
-          // V6.14.5: the authoritative save has already committed. Do not keep the
+          // V6.14.6: the authoritative save has already committed. Do not keep the
           // blocking save overlay open while optional row enrichment runs.
           hideLoading();
           Promise.resolve(
             window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.([currentRow])
           ).then(() => renderSchedule()).catch(err =>
-            console.warn('Schedule row enrichment V6.14.5:', err?.message || err)
+            console.warn('Schedule row enrichment V6.14.6:', err?.message || err)
           );
           return;
         }
@@ -9554,7 +9782,7 @@ window.tcIsDayShiftCode = value =>
             window.TimeClockEmployeeMonthReturnContext = null;
           }
         }catch(refreshErr){
-          console.warn('Schedule return refresh V6.14.5:', refreshErr?.message || refreshErr);
+          console.warn('Schedule return refresh V6.14.6:', refreshErr?.message || refreshErr);
           toast('บันทึกกะเรียบร้อยแล้ว แต่รีเฟรชหน้าจอไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง','warning');
         }
       } catch (err) { toast(humanError(err), "error"); }
@@ -11601,7 +11829,7 @@ window.tcIsDayShiftCode = value =>
         return `พบรายการจัดกะเดิมที่สถานะยังไม่สมบูรณ์${count ? ` ${Number(count).toLocaleString("th-TH")} รายการ` : ""} กรุณาเปิดรายการและกดบันทึกใหม่ก่อนประกาศหรือล็อกเดือน`;
       }
       if (msg.includes("DAYOFF_QUOTA_EXHAUSTED")) return "วันหยุดคงเหลือไม่เพียงพอ ไม่สามารถกำหนดกะวันหยุดเพิ่มได้ กรุณาตรวจวันหยุดที่ใช้ไปหรือเปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน";
-      if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณารัน SQL V6.14.5 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
+      if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณารัน SQL V6.14.6 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
@@ -26178,7 +26406,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.5';
+  const VERSION='6.14.6';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -26665,9 +26893,9 @@ ${skippedSummary(compatibility.skipped)}
       || selectedCode==='OFF'
       || (selectedCode!=='LV' && selectedMaster?.is_workday===false)
     );
-    // V6.14.5 performance: a normal working shift or LV cannot consume a new
+    // V6.14.6 performance: a normal working shift or LV cannot consume a new
     // day-off quota. Skip the extra pre-save quota RPC for those common cases;
-    // the authoritative V6.14.5 save RPC still validates quota server-side.
+    // the authoritative V6.14.6 save RPC still validates quota server-side.
     if(proposedConsumesDayoffV6144){
       try{
         dayoffQuotaGuardV6142=await rpc('ta_validate_dayoff_quota_v6143',{
@@ -26676,7 +26904,7 @@ ${skippedSummary(compatibility.skipped)}
           p_proposed_shift_code:selectedCode||null
         });
       }catch(e){
-        app()?.toast?.('ตรวจโควต้าวันหยุดไม่สำเร็จ กรุณารัน SQL V6.14.5 ก่อนบันทึกกะ','error');
+        app()?.toast?.('ตรวจโควต้าวันหยุดไม่สำเร็จ กรุณารัน SQL V6.14.6 ก่อนบันทึกกะ','error');
         return {allowed:false};
       }
       if(dayoffQuotaGuardV6142?.allowed===false){
@@ -26685,7 +26913,7 @@ ${skippedSummary(compatibility.skipped)}
         return {allowed:false};
       }
     }else{
-      dayoffQuotaGuardV6142={allowed:true,skipped_precheck:true,reason:'NON_DAYOFF_SHIFT',guard_version:'V6.14.5'};
+      dayoffQuotaGuardV6142={allowed:true,skipped_precheck:true,reason:'NON_DAYOFF_SHIFT',guard_version:'V6.14.6'};
     }
     const guard=renderGuardPreview();
     if(guard?.hardBlock){app()?.toast?.(`กำหนดกะไม่ได้: เวลาพักจากกะก่อนหน้า ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม.`,'error');return {allowed:false};}
@@ -26708,7 +26936,7 @@ ${skippedSummary(compatibility.skipped)}
   async function saveExtension({preparation}={}){
     if(!st.current)return;const c=st.current,p=c.prepared||preparation||proposedPlan(),basis=p.basis||offBasisWindow();
     if(c.mode==='LEAVE'){await deleteExtension(c.empCode,c.workDate);return;}
-    // V6.14.5: ordinary fixed shifts do not need a Scheduling Rule row.
+    // V6.14.6: ordinary fixed shifts do not need a Scheduling Rule row.
     // If this date used to have a special rule, remove it once; otherwise skip
     // the extra network round-trip entirely.
     if(c.mode==='NORMAL'){
@@ -26831,7 +27059,7 @@ ${skippedSummary(compatibility.skipped)}
     try{
       quotaGuardBulkV6142=await rpc('ta_validate_dayoff_quota_bulk_v6143',{p_rows:payload});
     }catch(e){
-      app()?.toast?.('ตรวจโควต้าวันหยุดแบบหลายรายการไม่สำเร็จ กรุณารัน SQL V6.14.5 ก่อนบันทึก','error');
+      app()?.toast?.('ตรวจโควต้าวันหยุดแบบหลายรายการไม่สำเร็จ กรุณารัน SQL V6.14.6 ก่อนบันทึก','error');
       return {allowed:false,blocks,warnings,quotaError:e};
     }
     if(quotaGuardBulkV6142?.allowed===false){

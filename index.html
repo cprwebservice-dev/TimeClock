@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.5 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.6 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.5 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.6 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.5-20260819" rel="stylesheet"/>
+<link href="./app.css?v=6.14.6-20260819" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.5</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.6</span></div>
 </form>
 </div>
 </section>
@@ -359,7 +359,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.5</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.5 Team 15-Day View</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.6</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.6 Team 15-Day + Time View</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -576,6 +576,7 @@
 <div class="schedule-view-shell section-gap">
 <div class="schedule-view-switch" id="scheduleViewSwitch" aria-label="เปลี่ยนมุมมองปฏิทินจัดกะ">
 <button class="active" data-schedule-view="TEAM" type="button"><span class="view-icon">◔</span><span>มุมมองทีม</span></button>
+<button data-schedule-view="TIME" type="button"><span class="view-icon">◷</span><span>มุมมองเวลา</span></button>
 <button data-schedule-view="PERSON" type="button"><span class="view-icon">☰</span><span>มุมมองรายบุคคล</span></button>
 </div>
 <div class="schedule-view-helper">
@@ -591,8 +592,8 @@
 </div>
 <div class="panel section-gap schedule-workspace" id="scheduleTeamWorkspace" data-schedule-view-panel="TEAM">
 <div class="panel-header schedule-panel-header schedule-panel-header-team">
-<div><h3>ตารางกะสรุปรายหน่วยงาน</h3><p>สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล</p></div>
-<div class="schedule-legend"><span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span></div>
+<div><h3 id="scheduleTeamWorkspaceTitleV6146">ตารางกะสรุปรายหน่วยงาน</h3><p id="scheduleTeamWorkspaceSubtitleV6146">สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล</p></div>
+<div class="schedule-legend" id="scheduleTeamLegendV6146"><span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span></div>
 </div>
 
 <div class="schedule-team-week-selector-v61152" aria-live="polite">
@@ -604,11 +605,11 @@
 </div>
 
 <div class="schedule-team-toolbar">
-<div class="schedule-team-tip">มุมมองทีมเหมาะสำหรับดูภาพรวมการครอบคลุมกำลังคน ก่อนเจาะลงไปดูรายบุคคล</div>
+<div class="schedule-team-tip" id="scheduleTeamTipV6146">มุมมองทีมเหมาะสำหรับดูภาพรวมการครอบคลุมกำลังคน ก่อนเจาะลงไปดูรายบุคคล</div>
 <div class="schedule-team-stats">
 <div class="schedule-mini-kpi"><span>ทีมที่แสดง</span><strong id="scheduleTeamVisibleCount" data-value="0">0</strong></div>
 <div class="schedule-mini-kpi"><span>พนักงานรวม</span><strong id="scheduleTeamEmployeeCount">0</strong></div>
-<div class="schedule-mini-kpi warning"><span>จุดที่ต้องตรวจสอบ</span><strong id="scheduleTeamAlertCount">0</strong></div>
+<div class="schedule-mini-kpi warning"><span id="scheduleTeamAlertLabelV6146">จุดที่ต้องตรวจสอบ</span><strong id="scheduleTeamAlertCount">0</strong></div>
 </div>
 </div>
 <div class="panel-body schedule-grid-body"><div class="table-wrap schedule-team-grid-wrap" id="scheduleTeamWrap"></div></div>
@@ -2507,6 +2508,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.5-20260819"></script>
+<script src="./app.js?v=6.14.6-20260819"></script>
 </body>
 </html>
