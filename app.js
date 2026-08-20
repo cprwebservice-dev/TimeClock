@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.13";
-document.documentElement.dataset.timeClockBuild = "6.14.13";
+window.__TIME_CLOCK_BUILD__ = "V6.14.14";
+document.documentElement.dataset.timeClockBuild = "6.14.14";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.13";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.13',
+  version: '6.14.14',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -12434,6 +12434,7 @@ window.tcIsDayShiftCode = value =>
   let monthCopyMonthV61413 = "";
   let monthCopySourceRowsV61413 = [];
   const monthCopyTargetsV61413 = new Set();
+  let monthCopyApplyingV61414 = false;
   const app = () => window.TimeClockApp;
   const wrap = () => document.getElementById("scheduleTableWrap");
   const $ = id => document.getElementById(id);
@@ -13142,24 +13143,63 @@ ${skippedSummary(compatibility.skipped)}
     if($('scheduleMonthCopySourceSummaryV61413'))$('scheduleMonthCopySourceSummaryV61413').innerHTML=`<span>ต้นทาง</span><strong>${monthCopyEscV61413(source.emp_code)} • ${monthCopyEscV61413(source.full_name||'-')}</strong><small>${monthCopyEscV61413(monthCopyMonthV61413)}</small>`;
     if($('scheduleMonthCopyTargetSummaryV61413'))$('scheduleMonthCopyTargetSummaryV61413').innerHTML=`<span>ปลายทาง</span><strong>${monthCopyTargetsV61413.size.toLocaleString('th-TH')} คน</strong><small>ตรวจ Preview ก่อนยืนยัน</small>`;
     modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');
+    document.body.classList.add('month-copy-modal-open-v61414');
     refreshMonthCopyPreviewV61413();
   }
 
-  function closeMonthCopyPasteV61413(){const modal=$('scheduleMonthCopyModalV61413');modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');}
+  function closeMonthCopyPasteV61413(){
+    const modal=$('scheduleMonthCopyModalV61413');
+    modal?.classList.add('hidden');
+    modal?.setAttribute('aria-hidden','true');
+    document.body.classList.remove('month-copy-modal-open-v61414');
+  }
 
+  // V6.14.14: The preview modal itself is the confirmation surface.
+  // Do not open tcConfirm() on top of it. Close Preview first, then let
+  // savePayload() display any rule-specific warning (6h/48h/quota/etc.) alone.
   async function applyMonthCopyV61413(){
-    const plan=await buildMonthCopyPlanV61413(true);
-    if(plan.reason)return app()?.toast(plan.reason,'error');
-    if(!plan.payload.length)return app()?.toast('ไม่มีรายการกะที่สามารถวางได้','warning');
-    const q=plan.summary;
-    const source=monthCopyEmployeeMetaV61413(plan.source);
-    const overwrite=plan.mode==='OVERWRITE';
-    const warning=overwrite?'\n\n⚠ โหมดวางทับ: กะที่ Manager จัดไว้แล้วของปลายทางอาจถูกแทนที่':'';
-    const ok=await window.tcConfirm(`ยืนยันการวางกะทั้งเดือน\n\nต้นทาง ${source.emp_code} • ${source.full_name||'-'}\nปลายทาง ${q.targetCount.toLocaleString('th-TH')} คน\nเดือน ${plan.month}\nรายการที่จะบันทึก ${q.ready.toLocaleString('th-TH')} รายการ\n• กะทำงาน ${q.workCount.toLocaleString('th-TH')}\n• วันหยุด ${q.offCount.toLocaleString('th-TH')}\n• ลา / HOL / กะพิเศษจะไม่คัดลอก${warning}\n\nระบบจะตรวจ Work Pattern, Scope, Start Date, พักขั้นต่ำ 6 ชม., 48 ชม. และโควต้าวันหยุดก่อนบันทึก ต้องการดำเนินการต่อหรือไม่?`);
-    if(!ok)return;
-    closeMonthCopyPasteV61413();
-    const saved=await savePayload(plan.payload,`คัดลอกรูปแบบกะทั้งเดือนจาก ${plan.source} ไป ${q.targetCount} คน`,false,'คัดลอกทั้งเดือน');
-    if(saved)resetMonthCopyWorkflowV61413({silent:true});
+    if(monthCopyApplyingV61414)return;
+    const applyBtn=$('scheduleMonthCopyApplyV61413');
+    const originalText=applyBtn?.textContent||'ยืนยันวางกะ';
+    monthCopyApplyingV61414=true;
+    if(applyBtn){applyBtn.disabled=true;applyBtn.textContent='กำลังตรวจสอบ...';}
+    let modalClosed=false;
+    try{
+      // Keep validation inside the current preview modal; avoid a second
+      // full-screen loading backdrop while the preview is still visible.
+      const plan=await buildMonthCopyPlanV61413(false);
+      if(plan.reason){app()?.toast(plan.reason,'error');return;}
+      if(!plan.payload.length){app()?.toast('ไม่มีรายการกะที่สามารถวางได้','warning');return;}
+      const q=plan.summary;
+
+      // Clicking this button is the user's final confirmation of the Preview.
+      // Close it BEFORE savePayload(), because savePayload may need to show a
+      // business-rule confirm modal. This guarantees one modal at a time.
+      closeMonthCopyPasteV61413();
+      modalClosed=true;
+
+      const saved=await savePayload(
+        plan.payload,
+        `คัดลอกรูปแบบกะทั้งเดือนจาก ${plan.source} ไป ${q.targetCount} คน`,
+        false,
+        'คัดลอกทั้งเดือน'
+      );
+      if(saved){
+        resetMonthCopyWorkflowV61413({silent:true});
+      }else if(monthCopyPhaseV61413==='TARGET'&&monthCopySourceV61413&&monthCopyTargetsV61413.size){
+        // User may cancel a 48h/quota/compatibility warning. Return to Preview
+        // instead of leaving the workflow in an unclear half-finished state.
+        requestAnimationFrame(()=>openMonthCopyPasteV61413());
+      }
+    }catch(e){
+      app()?.toast(app()?.humanError?.(e)||e.message||String(e),'error');
+      if(modalClosed&&monthCopyPhaseV61413==='TARGET'&&monthCopySourceV61413&&monthCopyTargetsV61413.size){
+        requestAnimationFrame(()=>openMonthCopyPasteV61413());
+      }
+    }finally{
+      monthCopyApplyingV61414=false;
+      if(applyBtn){applyBtn.disabled=false;applyBtn.textContent=originalText;}
+    }
   }
   async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!await window.tcConfirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
   async function applyHistory(item,mode){
@@ -13249,7 +13289,11 @@ ${skippedSummary(compatibility.skipped)}
     $('scheduleMonthCopyCloseV61413')?.addEventListener('click',closeMonthCopyPasteV61413);
     $('scheduleMonthCopyCancelV61413')?.addEventListener('click',closeMonthCopyPasteV61413);
     $('scheduleMonthCopyApplyV61413')?.addEventListener('click',applyMonthCopyV61413);
-    $('scheduleMonthCopyModeV61413')?.addEventListener('change',refreshMonthCopyPreviewV61413);
+    $('scheduleMonthCopyModeV61413')?.addEventListener('change',()=>{
+      const btn=$('scheduleMonthCopyApplyV61413');
+      if(btn&&!monthCopyApplyingV61414)btn.textContent=monthCopyPasteModeV61413()==='OVERWRITE'?'ยืนยันและวางทับ':'ยืนยันวางกะ';
+      refreshMonthCopyPreviewV61413();
+    });
     $('scheduleMonthCopyModalV61413')?.addEventListener('click',e=>{if(e.target?.id==='scheduleMonthCopyModalV61413')closeMonthCopyPasteV61413();});
     $("scheduleTeamWeekSelectV61151")?.addEventListener(
       "change",
@@ -26763,7 +26807,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.13';
+  const VERSION='6.14.14';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

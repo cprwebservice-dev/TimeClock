@@ -21462,3 +21462,14 @@ body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 t
 .dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr.month-copy-target-v61413 .schedule-emp-name{background-color:#17362f!important}
 body.theme-dark .month-copy-route-card-v61413,.dark .month-copy-route-card-v61413{background:#183147;border-color:#3d5d76}body.theme-dark .month-copy-route-card-v61413.target,.dark .month-copy-route-card-v61413.target{background:#17362e;border-color:#3d695c}body.theme-dark .month-copy-warning-v61413,.dark .month-copy-warning-v61413{background:#382d1e;border-color:#6a5739}body.theme-dark .month-copy-target-item-v61413,.dark .month-copy-target-item-v61413,body.theme-dark .month-copy-preview-grid-v61413>span,.dark .month-copy-preview-grid-v61413>span{background:#1a2e3e;border-color:#395166}
 @media(max-width:900px){.person-month-copy-workflow-v61413{flex-direction:column}.month-copy-status-target-v61413{flex:1 1 auto}.month-copy-route-v61413{grid-template-columns:1fr}.month-copy-route-arrow-v61413{transform:rotate(90deg)}.month-copy-preview-grid-v61413{grid-template-columns:repeat(2,1fr)}.month-copy-target-list-v61413{grid-template-columns:1fr}}
+
+
+/* ========================================================================== */
+/* V6.14.14 — Month-copy modal stack fix                                      */
+/* Preview is one confirmation surface; rule warnings must never be hidden.   */
+/* ========================================================================== */
+body.month-copy-modal-open-v61414{overflow:hidden}
+body.month-copy-modal-open-v61414 .global-action-modal-backdrop{z-index:16000!important}
+body.month-copy-modal-open-v61414 .toast-stack{z-index:16500!important}
+body.month-copy-modal-open-v61414 .loading-overlay{z-index:15500!important}
+#scheduleMonthCopyApplyV61413:disabled{cursor:wait;opacity:.72}
