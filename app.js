@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.17";
-document.documentElement.dataset.timeClockBuild = "6.14.17";
+window.__TIME_CLOCK_BUILD__ = "V6.14.18";
+document.documentElement.dataset.timeClockBuild = "6.14.18";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.17";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.17',
+  version: '6.14.18',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -17620,21 +17620,13 @@ ${skippedSummary(compatibility.skipped)}
     return ['S134','S135'].includes(String(code||'').toUpperCase())?'NIGHT':'DAY';
   }
   function employeePositionPolicyV61417(row){
-    const backend=String(row?.position_policy_code||'').toUpperCase();
-    const position=String(row?.position_name||'').trim();
-    const isManager=backend==='DEPARTMENT_MANAGER'||position.includes('ผู้จัดการแผนก')||/ผจก\.?\s*แผนก/i.test(position);
-    const isTechnician=backend==='TECHNICIAN'||position.includes('ช่างเทคนิค');
-    if(isManager)return {code:'DEPARTMENT_MANAGER',label:'ผู้จัดการแผนก',forcedPattern:'TECH_5D',weeklyOff:[6,0],note:'5 วัน • หยุด เสาร์–อาทิตย์ + นักขัตฤกษ์'};
-    if(isTechnician)return {code:'TECHNICIAN',label:'ช่างเทคนิค',forcedPattern:null,weeklyOff:null,note:'เลือก 5/6 วันได้ตามการจัดทีม'};
-    return {code:backend||'STANDARD',label:'ตามรูปแบบ',forcedPattern:null,weeklyOff:null,note:'ตาม Work Pattern'};
+    return {code:'CONFIG_DRIVEN',label:'ตามค่าที่กำหนด',forcedPattern:null,weeklyOff:null,note:'รูปแบบและวันหยุดอ้างอิงค่าที่กำหนดใน Work Pattern'};
   }
   function effectivePatternForEmployeeV61417(row,requestedPattern){
-    return employeePositionPolicyV61417(row).forcedPattern||String(requestedPattern||row?.pattern_code||'TECH_6D').toUpperCase();
+    return String(requestedPattern||row?.pattern_code||'TECH_6D').toUpperCase();
   }
   function weeklyOffDisplayV61417(row){
-    const policy=employeePositionPolicyV61417(row);
-    const list=policy.forcedPattern==='TECH_5D'?[6,0]:(row?.weekly_off_dows||[]);
-    const label=dowText(list);
+    const label=dowText(row?.weekly_off_dows||[]);
     return `${label}${label&&label!=='-'?' + ':''}นักขัตฤกษ์`;
   }
   function workPatternGuardMessageV61417(guard){
@@ -17663,20 +17655,16 @@ ${skippedSummary(compatibility.skipped)}
       return guard;
     }catch(e){
       wp.effectiveDateGuardRpcReady=false;
-      console.warn('V6.14.17 effective-date guard unavailable:',e);
-      if(showToast)app()?.toast?.('กรุณารัน SQL V6.14.17 เพื่อเชื่อมวันเริ่มใช้กับรอบระบบ','error');
+      console.warn('V6.14.18 effective-date guard unavailable:',e);
+      if(showToast)app()?.toast?.('กรุณารัน SQL V6.14.18 เพื่อเชื่อมวันเริ่มใช้กับรอบระบบ','error');
       return {allowed:false,error:e};
     }
   }
   function renderBulkPositionPolicyV61417(){
     const host=$('wpBulkPositionPolicyV61417');
     if(!host)return;
-    const selected=(wp.employees||[]).filter(r=>wp.selectedEmployees.has(String(r.emp_code)));
-    const managers=selected.filter(r=>employeePositionPolicyV61417(r).code==='DEPARTMENT_MANAGER');
-    host.classList.toggle('hidden',managers.length===0);
-    if(managers.length){
-      host.innerHTML=`<strong>Policy ตำแหน่ง:</strong> ผู้จัดการแผนก ${managers.length.toLocaleString('th-TH')} คน จะใช้ <b>5 วัน/สัปดาห์</b> และหยุด <b>เสาร์–อาทิตย์ + นักขัตฤกษ์</b> อัตโนมัติ`;
-    }
+    host.classList.add('hidden');
+    host.innerHTML='';
   }
   function employeeEffectiveDefaultShiftV61416(row){
     const explicit=String(row?.effective_default_shift_code||row?.assigned_default_shift_code||row?.employee_default_shift_code||'').toUpperCase();
@@ -17741,11 +17729,11 @@ ${skippedSummary(compatibility.skipped)}
         <td class="select-col"><input type="checkbox" class="wp-row-check-v61416" data-wp-select-emp="${esc(r.emp_code)}" ${selected?'checked':''} aria-label="เลือก ${esc(r.full_name||r.emp_code)}"></td>
         <td><div class="wp-employee-v61416"><strong>${esc(r.full_name||'-')}</strong><small>${esc(r.emp_code)}</small></div></td>
         <td><div class="wp-org-v61416"><strong>${esc(r.department||'-')}</strong><small>${esc([r.area,r.sub_area].filter(Boolean).join(' / ')||'')}</small></div></td>
-        <td><div class="wp-position-v61417"><span>${esc(r.position_name||'-')}</span>${employeePositionPolicyV61417(r).code==='DEPARTMENT_MANAGER'?'<small class="wp-position-policy-v61417">Policy • 5 วัน</small>':''}</div></td>
+        <td><div class="wp-position-v61417"><span>${esc(r.position_name||'-')}</span></div></td>
         <td><div class="employee-pattern-type-v61111"><strong class="wp-pattern-chip-v61416 ${r.pattern_code==='TECH_5D'?'five':'six'}">${esc(patternShortLabelV61416(r.pattern_code))}</strong><span class="assignment-state-v61111 ${assignmentState.cls}">${esc(assignmentState.text)}</span></div></td>
         <td><div class="wp-shift-chip-v61416 ${period.toLowerCase()}"><span class="icon">${period==='NIGHT'?'☾':'☀'}</span><span><strong>${esc(period==='NIGHT'?'กะดึก':'กะเช้า')} • ${esc(shiftCode)}</strong><small>${esc(shiftInfo.time)} • ${esc(source)}</small></span></div></td>
         <td><span class="weekly-off-chip-v61111">${esc(weeklyOffDisplayV61417(r))}</span><small class="wp-off-pair-v61416">คู่ ${esc(shiftInfo.off)}</small></td>
-        <td class="nowrap">${r.effective_from?`<span class="effective-date-v61111 start">${esc(fmtDate(r.effective_from))}</span>`:'<span class="data-missing-v61111">Auto ตามตำแหน่ง</span>'}</td>
+        <td class="nowrap">${r.effective_from?`<span class="effective-date-v61111 start">${esc(fmtDate(r.effective_from))}</span>`:'<span class="data-missing-v61111">ค่าเริ่มต้นระบบ</span>'}</td>
         <td><span class="employee-pattern-recorder-v6119 ${String(recordedBy).startsWith('ข้อมูลเดิม')?'legacy':''}" title="${esc(recordedBy)}">${esc(recordedBy)}</span></td>
         <td><button class="btn btn-light btn-sm employee-pattern-action-v61111" data-assign-pattern="${esc(r.emp_code)}">✎ แก้ไข</button></td>
       </tr>`;
@@ -17766,7 +17754,7 @@ ${skippedSummary(compatibility.skipped)}
       const [positionsResult,assignmentResult,shiftResult]=await Promise.allSettled([
         rows.length?rpc('ta_get_employee_positions_v655',{p_emp_codes:empCodes,p_effective_date:effectiveDate}):Promise.resolve([]),
         rows.length?rpc('ta_get_employee_pattern_assignment_meta_v61111',{p_emp_codes:empCodes,p_effective_date:effectiveDate}):Promise.resolve([]),
-        rows.length?rpc('ta_get_employee_pattern_default_shift_v61417',{p_emp_codes:empCodes,p_effective_date:effectiveDate}):Promise.resolve([])
+        rows.length?rpc('ta_get_employee_pattern_default_shift_v61418',{p_emp_codes:empCodes,p_effective_date:effectiveDate}):Promise.resolve([])
       ]);
       const positions=positionsResult.status==='fulfilled'?(positionsResult.value||[]):[];
       const assignmentMeta=assignmentResult.status==='fulfilled'?(assignmentResult.value||[]):[];
@@ -17774,8 +17762,8 @@ ${skippedSummary(compatibility.skipped)}
       wp.defaultShiftRpcReady=shiftResult.status==='fulfilled';
       if(assignmentResult.status==='rejected')console.error('Employee Pattern assignment metadata:',assignmentResult.reason);
       if(shiftResult.status==='rejected'){
-        console.warn('V6.14.17 position/default-shift metadata unavailable:',shiftResult.reason);
-        if(warning){warning.classList.remove('hidden');warning.textContent='ยังไม่ได้ติดตั้ง SQL V6.14.17 • Position Policy และการตรวจรอบระบบของวันเริ่มใช้ยังไม่พร้อม';}
+        console.warn('V6.14.18 config-driven/default-shift metadata unavailable:',shiftResult.reason);
+        if(warning){warning.classList.remove('hidden');warning.textContent='ยังไม่ได้ติดตั้ง SQL V6.14.18 • การกำหนด Work Pattern / กะตั้งต้น และการตรวจรอบระบบของวันเริ่มใช้ยังไม่พร้อม';}
       }
       const positionMap=new Map(positions.map(p=>[String(p.emp_code),p.position_name]));
       const assignmentMap=new Map(assignmentMeta.map(item=>[String(item.emp_code),item]));
@@ -17825,13 +17813,12 @@ ${skippedSummary(compatibility.skipped)}
     const r=wp.employees.find(x=>String(x.emp_code)===String(emp));if(!r)return;
     $('epEmpCode').value=r.emp_code;
     $('epEmployee').innerHTML=`<strong>${esc(r.emp_code)} • ${esc(r.full_name||'')}</strong><small>${esc([r.department,r.position_name].filter(Boolean).join(' • ')||'-')}</small>`;
-    const policy=employeePositionPolicyV61417(r);
-    const patternCode=policy.forcedPattern||r.pattern_code||'TECH_6D';
+    const patternCode=r.pattern_code||'TECH_6D';
     $('epPattern').value=patternCode;
-    $('epPattern').disabled=Boolean(policy.forcedPattern);
+    $('epPattern').disabled=false;
     if($('epPositionPolicyV61417')){
-      $('epPositionPolicyV61417').classList.toggle('hidden',!policy.forcedPattern);
-      $('epPositionPolicyV61417').innerHTML=policy.forcedPattern?`<strong>Policy ตำแหน่ง:</strong> ${esc(policy.note)}`:'';
+      $('epPositionPolicyV61417').classList.add('hidden');
+      $('epPositionPolicyV61417').innerHTML='';
     }
     $('epFrom').value=String(r.effective_from||new Date().toISOString().slice(0,10)).slice(0,10);
     setTimeout(()=>validateWorkPatternEffectiveDateV61417($('epFrom').value,{input:$('epFrom'),showToast:false,autoCorrect:true}),0);
@@ -17842,7 +17829,7 @@ ${skippedSummary(compatibility.skipped)}
   }
   function invalidateWorkPatternScheduleV61416(empCodes=[]){
     if(app()?.state)app().state.schedule=[];
-    document.dispatchEvent(new CustomEvent('timeclock:employee-work-pattern-updated',{detail:{empCodes:[...empCodes],version:'V6.14.17'}}));
+    document.dispatchEvent(new CustomEvent('timeclock:employee-work-pattern-updated',{detail:{empCodes:[...empCodes],version:'V6.14.18'}}));
   }
   async function saveEmployeePattern(){
     const emp=$('epEmpCode')?.value;
@@ -17851,13 +17838,13 @@ ${skippedSummary(compatibility.skipped)}
     const pattern=effectivePatternForEmployeeV61417(row,requestedPattern);
     const period=qsa('input[name="epShiftPeriodV61416"]').find(i=>i.checked)?.value||'DAY';
     const shift=defaultShiftForPatternV61416(pattern,period);
-    if(!wp.defaultShiftRpcReady||!wp.effectiveDateGuardRpcReady){app()?.toast?.('กรุณารัน SQL V6.14.17 ก่อนบันทึกรูปแบบการทำงาน','error');return;}
+    if(!wp.defaultShiftRpcReady||!wp.effectiveDateGuardRpcReady){app()?.toast?.('กรุณารัน SQL V6.14.18 ก่อนบันทึกรูปแบบการทำงาน','error');return;}
     const guard=await validateWorkPatternEffectiveDateV61417($('epFrom').value,{input:$('epFrom'),showToast:true,autoCorrect:true});
     if(!guard.allowed)return;
     try{
       const btn=$('epSaveBtn');if(btn)btn.disabled=true;
       app()?.showLoading?.('กำลังบันทึกรูปแบบและกะตั้งต้น...');
-      const result=await rpc('ta_assign_employee_work_patterns_bulk_v61417',{p_rows:[{emp_code:emp,pattern_code:pattern,default_shift_code:shift.code,effective_from:$('epFrom').value,effective_to:$('epTo').value||null,note:$('epNote').value||null}]});
+      const result=await rpc('ta_assign_employee_work_patterns_bulk_v61418',{p_rows:[{emp_code:emp,pattern_code:pattern,default_shift_code:shift.code,effective_from:$('epFrom').value,effective_to:$('epTo').value||null,note:$('epNote').value||null}]});
       $('employeePatternModal').classList.add('hidden');
       invalidateWorkPatternScheduleV61416([emp]);
       app()?.toast?.(`บันทึก ${patternShortLabelV61416(pattern)} • ${period==='NIGHT'?'กะดึก':'กะเช้า'} ${shift.code} แล้ว`,'success');
@@ -17869,34 +17856,31 @@ ${skippedSummary(compatibility.skipped)}
 
   async function applyBulkEmployeePatternV61416(){
     if(!wp.selectedEmployees.size)return;
-    if(!wp.defaultShiftRpcReady){app()?.toast?.('กรุณารัน SQL V6.14.17 ก่อนใช้ Bulk Assignment','error');return;}
+    if(!wp.defaultShiftRpcReady){app()?.toast?.('กรุณารัน SQL V6.14.18 ก่อนใช้ Bulk Assignment','error');return;}
     let effectiveFrom=$('wpBulkEffectiveDateV61416')?.value||$('employeePatternDate')?.value||new Date().toISOString().slice(0,10);
     const guard=await validateWorkPatternEffectiveDateV61417(effectiveFrom,{input:$('wpBulkEffectiveDateV61416'),showToast:true,autoCorrect:true});
     if(!guard.allowed)return;
     effectiveFrom=$('wpBulkEffectiveDateV61416')?.value||effectiveFrom;
     const shift=defaultShiftForPatternV61416(wp.bulkPatternCode,wp.bulkShiftPeriod);
     const selectedRows=(wp.employees||[]).filter(r=>wp.selectedEmployees.has(String(r.emp_code)));
-    const managerRows=selectedRows.filter(r=>employeePositionPolicyV61417(r).code==='DEPARTMENT_MANAGER');
     const names=selectedRows.slice(0,3).map(r=>r.full_name||r.emp_code).join(', ');
     const extra=selectedRows.length>3?` และอีก ${selectedRows.length-3} คน`:'';
-    const policyNote=managerRows.length?`\n\nPolicy ตำแหน่ง: ผู้จัดการแผนก ${managerRows.length.toLocaleString('th-TH')} คน จะใช้ 5 วัน/สัปดาห์ และหยุด เสาร์–อาทิตย์ + นักขัตฤกษ์ โดยอัตโนมัติ`:'';
-    const message=`ยืนยันกำหนดรูปแบบให้ ${selectedRows.length.toLocaleString('th-TH')} คน?\n\n${patternShortLabelV61416(wp.bulkPatternCode)} • ${wp.bulkShiftPeriod==='NIGHT'?'กะดึก':'กะเช้า'} ${shift.code} (${shift.time})\nวันหยุดคู่ ${shift.off} + นักขัตฤกษ์\nเริ่มใช้ ${fmtDate(effectiveFrom)}${policyNote}\n\n${names}${extra}\n\nหมายเหตุ: วันที่จัดกะด้วยมือไว้แล้วจะไม่ถูกเขียนทับ ระบบเปลี่ยนเฉพาะ Auto Shift ตั้งต้นของพนักงาน`;
+    const message=`ยืนยันกำหนดรูปแบบให้ ${selectedRows.length.toLocaleString('th-TH')} คน?\n\n${patternShortLabelV61416(wp.bulkPatternCode)} • ${wp.bulkShiftPeriod==='NIGHT'?'กะดึก':'กะเช้า'} ${shift.code} (${shift.time})\nวันหยุดคู่ ${shift.off} + นักขัตฤกษ์\nเริ่มใช้ ${fmtDate(effectiveFrom)}\n\n${names}${extra}\n\nหมายเหตุ: วันที่จัดกะด้วยมือไว้แล้วจะไม่ถูกเขียนทับ ระบบเปลี่ยนเฉพาะ Auto Shift ตั้งต้นของพนักงาน`;
     const confirmed=window.tcConfirm?await window.tcConfirm(message):window.confirm(message);
     if(!confirmed)return;
     const rows=selectedRows.map(r=>{
       const effectivePattern=effectivePatternForEmployeeV61417(r,wp.bulkPatternCode);
       const effectiveShift=defaultShiftForPatternV61416(effectivePattern,wp.bulkShiftPeriod);
-      return {emp_code:r.emp_code,pattern_code:effectivePattern,default_shift_code:effectiveShift.code,effective_from:effectiveFrom,effective_to:null,note:'Bulk Technician Work Pattern V6.14.17'};
+      return {emp_code:r.emp_code,pattern_code:effectivePattern,default_shift_code:effectiveShift.code,effective_from:effectiveFrom,effective_to:null,note:'Bulk Technician Work Pattern V6.14.18'};
     });
     const button=$('wpBulkApplyBtnV61416');
     try{
       if(button){button.disabled=true;button.textContent='กำลังบันทึก...';}
       app()?.showLoading?.(`กำลังปรับรูปแบบ ${rows.length.toLocaleString('th-TH')} คน...`);
-      const result=await rpc('ta_assign_employee_work_patterns_bulk_v61417',{p_rows:rows});
+      const result=await rpc('ta_assign_employee_work_patterns_bulk_v61418',{p_rows:rows});
       invalidateWorkPatternScheduleV61416(rows.map(r=>r.emp_code));
       wp.selectedEmployees.clear();
-      const adjusted=Number(result?.position_policy_adjusted_rows||0);
-      app()?.toast?.(`บันทึกสำเร็จ ${Number(result?.processed_rows||rows.length).toLocaleString('th-TH')} คน${adjusted?` • ปรับตาม Policy ตำแหน่ง ${adjusted.toLocaleString('th-TH')} คน`:''}`,'success');
+      app()?.toast?.(`บันทึกสำเร็จ ${Number(result?.processed_rows||rows.length).toLocaleString('th-TH')} คน • ใช้ค่าที่กำหนดจาก Work Pattern`,'success');
       if(result?.retroactive_rebuild_required){app()?.toast?.('มีการกำหนดย้อนหลัง • Auto Shift ปรับแล้ว แต่ข้อมูล Attendance ย้อนหลังควรใช้เมนูประมวลผล Attendance ใหม่เมื่อต้องการคำนวณย้อนหลัง','warning');}
       await loadEmployeePatterns();
     }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message||String(e),'error');}
@@ -18184,10 +18168,6 @@ ${skippedSummary(compatibility.skipped)}
       if(pattern){
         wp.bulkPatternCode=pattern.dataset.wpBulkPattern;
         updateBulkWorkPatternControlsV61416();
-        if(wp.bulkPatternCode==='TECH_6D'){
-          const managers=(wp.employees||[]).filter(r=>wp.selectedEmployees.has(String(r.emp_code))&&employeePositionPolicyV61417(r).code==='DEPARTMENT_MANAGER').length;
-          if(managers)app()?.toast?.(`ผู้จัดการแผนก ${managers.toLocaleString('th-TH')} คนจะคง 5 วัน/สัปดาห์ตาม Policy ตำแหน่ง`,'info');
-        }
         return;
       }
       const shift=e.target.closest('[data-wp-bulk-shift]');
@@ -18246,7 +18226,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.17',
+    version:'6.14.18',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns
@@ -18265,7 +18245,7 @@ ${skippedSummary(compatibility.skipped)}
     '6.11.15-ready';
 
   document.documentElement.dataset.workPatternModule =
-    '6.14.17-ready';
+    '6.14.18-ready';
 
   document.readyState==='loading'
     ? document.addEventListener(
@@ -27036,7 +27016,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.17';
+  const VERSION='6.14.18';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

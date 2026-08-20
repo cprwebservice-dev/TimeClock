@@ -21524,7 +21524,7 @@ html[data-theme="dark"] .ep-shift-choice-v61416 span,body.theme-dark .ep-shift-c
 html[data-theme="dark"] .ep-shift-preview-v61416,body.theme-dark .ep-shift-preview-v61416,html.dark .ep-shift-preview-v61416{border-color:#6c4e29;background:linear-gradient(90deg,#2f281f,#172a3d)}
 
 
-/* V6.14.17 — Position policy + System Period effective-date guard */
+/* V6.14.18 — Config-driven Work Pattern + System Period effective-date guard */
 .wp-position-v61417{display:flex;flex-direction:column;gap:4px;min-width:0}
 .wp-position-policy-v61417{display:inline-flex;align-self:flex-start;align-items:center;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c;border-radius:999px;padding:2px 7px;font-size:9px;font-weight:900;white-space:nowrap}
 .wp-position-policy-note-v61417{margin:8px 0;padding:9px 12px;border:1px solid #fdba74;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:11px;line-height:1.5}
