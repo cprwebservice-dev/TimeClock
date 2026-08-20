@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.8";
+window.__TIME_CLOCK_BUILD__ = "V6.14.9";
 document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.8',
+  version: '6.14.9',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1427,6 +1427,12 @@ window.tcIsDayShiftCode = value =>
             "th-TH",
             { month:"long", year:"numeric" }
           ).format(monthDate)
+        );
+
+        setText(
+          "scheduleTeamPeriodReadOnlyV6149",
+          currentWeek?.label
+          || `ช่วงที่ ${range.weekNumber} • ${startText} – ${endText} • ${range.dates.length} วัน`
         );
 
         const weekSelect =
@@ -5703,7 +5709,7 @@ window.tcIsDayShiftCode = value =>
       }
       if (text) {
         text.textContent = mode === "TIME"
-          ? "ดูจำนวนพนักงานปกติ ขาดงาน มาสาย และกลับก่อนรายทีม/รายวัน • คลิก Label เพื่อดูรายชื่อและเวลาเข้า–ออก"
+          ? "ดูจำนวนพนักงานปกติ ขาดงาน มาสาย กลับก่อน และลารายทีม/รายวัน • คลิก Label เพื่อดูรายชื่อและเวลาเข้า–ออก"
           : mode === "TEAM"
             ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานทำงานอัตโนมัติ • เมื่อหัวหน้างานปรับกะและกดบันทึก ระบบมีผลทันที"
             : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงเฉพาะไอคอน • วางเมาส์บนไอคอนเพื่อดูรหัสกะ เวลา และรายละเอียด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
@@ -5719,7 +5725,7 @@ window.tcIsDayShiftCode = value =>
         ? "สรุปสถานะการมาทำงานรายทีมในช่วงประมาณ 15 วันที่เลือก • คลิกแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
         : "สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล";
       if (teamLegendV6146) teamLegendV6146.innerHTML = mode === "TIME"
-        ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span>'
+        ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-leave-v6149">ลา</span>'
         : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
       if (teamTipV6146) teamTipV6146.textContent = mode === "TIME"
         ? "มุมมองเวลาเหมาะสำหรับหัวหน้างานติดตามการมาทำงานรายวัน แล้วคลิกดูรายชื่อพนักงานที่ต้องติดตาม"
@@ -6455,7 +6461,8 @@ window.tcIsDayShiftCode = value =>
         || row?.calculation_status
         || ''
       ).trim().toUpperCase();
-      const leave = Boolean(row?.leave_request_id || row?.leave_type_code)
+      const leave = shiftMeta.tone === 'leave'
+        || Boolean(row?.leave_request_id || row?.leave_type_code)
         || dayType === 'LEAVE'
         || raw.includes('LEAVE');
 
@@ -8766,10 +8773,13 @@ window.tcIsDayShiftCode = value =>
       const shiftMeta = scheduleResolveShiftMeta(baseRow || merged);
       const date = String(baseRow?.work_date || attendanceRow?.work_date || '').slice(0,10);
       const dayType = String(merged?.day_type || baseRow?.day_type || '').toUpperCase();
-      const leave = Boolean(merged?.leave_request_id || merged?.leave_type_code) || dayType === 'LEAVE';
+      const leave = shiftMeta.tone === 'leave'
+        || Boolean(merged?.leave_request_id || merged?.leave_type_code)
+        || dayType === 'LEAVE';
       const off = !shiftMeta.isWorking || ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType);
-      if (leave || off) return {eligible:false,normal:false,absence:false,late:false,early:false,pending:false};
-      if (date > todayISO()) return {eligible:true,normal:false,absence:false,late:false,early:false,pending:true};
+      if (leave) return {eligible:false,normal:false,absence:false,late:false,early:false,leave:true,pending:false};
+      if (off) return {eligible:false,normal:false,absence:false,late:false,early:false,leave:false,pending:false};
+      if (date > todayISO()) return {eligible:true,normal:false,absence:false,late:false,early:false,leave:false,pending:true};
 
       const punch = attendancePunchStateV61120(merged);
       const late = Number(merged?.late_minutes || 0) > 0;
@@ -8777,9 +8787,9 @@ window.tcIsDayShiftCode = value =>
       const raw = String(merged?.display_status || merged?.attendance_result || merged?.attendance_status || merged?.calculation_status || '').toUpperCase();
       let absence = raw === 'ABSENCE' || raw === 'ABSENT' || Number(merged?.absence_minutes || 0) > 0;
       if (date < todayISO() && (!punch.anyPunch || !punch.complete)) absence = true;
-      if (date === todayISO() && !punch.complete && !absence) return {eligible:true,normal:false,absence:false,late,early,pending:true};
+      if (date === todayISO() && !punch.complete && !absence) return {eligible:true,normal:false,absence:false,late,early,leave:false,pending:true};
       const normal = !absence && punch.complete && !late && !early;
-      return {eligible:true,normal,absence,late,early,pending:false};
+      return {eligible:true,normal,absence,late,early,leave:false,pending:false};
     }
 
     function renderScheduleTimeViewV6146(rows, period, dateMeta) {
@@ -8810,7 +8820,7 @@ window.tcIsDayShiftCode = value =>
         const team = teams.get(unit); team.employees.add(emp); totalEmployees.add(emp);
         const names = Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : [];
         names.forEach(name => { const n=String(name||'').trim(); if(n) team.managerNames.set(n,(team.managerNames.get(n)||0)+1); });
-        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,pending:0,eligible:0});
+        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,leave:0,pending:0,eligible:0});
         const metrics = scheduleTimeMetricsV6146(row, attendanceMap.get(`${emp}|${date}`));
         const day = team.days.get(date);
         if (metrics.eligible) day.eligible += 1;
@@ -8818,6 +8828,7 @@ window.tcIsDayShiftCode = value =>
         if (metrics.absence) day.absence += 1;
         if (metrics.late) day.late += 1;
         if (metrics.early) day.early += 1;
+        if (metrics.leave) day.leave += 1;
         if (metrics.pending) day.pending += 1;
       }
 
@@ -8838,7 +8849,7 @@ window.tcIsDayShiftCode = value =>
         const managerLabel = scheduleTeamManagerLabelV61121(team);
         html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
         for (const date of period.dates) {
-          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,pending:0,eligible:0};
+          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,leave:0,pending:0,eligible:0};
           const loading=scheduleTimeAttendanceStateV6146.loading && scheduleTimeAttendanceStateV6146.key===key;
           const error=scheduleTimeAttendanceStateV6146.error && scheduleTimeAttendanceStateV6146.key===key;
           const future=date>todayISO();
@@ -8851,7 +8862,8 @@ window.tcIsDayShiftCode = value =>
               day.normal > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-normal"><i></i><small>ปกติ</small><strong>${safe(formatNumber(day.normal))}</strong></span>` : '',
               day.absence > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-absence"><i></i><small>ขาดงาน</small><strong>${safe(formatNumber(day.absence))}</strong></span>` : '',
               day.late > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-late"><i></i><small>สาย</small><strong>${safe(formatNumber(day.late))}</strong></span>` : '',
-              day.early > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-early"><i></i><small>กลับก่อน</small><strong>${safe(formatNumber(day.early))}</strong></span>` : ''
+              day.early > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-early"><i></i><small>กลับก่อน</small><strong>${safe(formatNumber(day.early))}</strong></span>` : '',
+              day.leave > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-leave"><i></i><small>ลา</small><strong>${safe(formatNumber(day.leave))}</strong></span>` : ''
             ].filter(Boolean);
             body = timeRowsV6148.length
               ? `<div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 time-team-counts-v6148 ${timeRowsV6148.length <= 2 ? 'is-compact' : ''}">${timeRowsV6148.join('')}</div>`
@@ -26429,7 +26441,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.8';
+  const VERSION='6.14.9';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
