@@ -21086,3 +21086,79 @@ body.theme-dark #scheduleTeamWorkspace .time-view-empty-v6147,
 @media(max-width:900px){
   .schedule-team-drawer-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 }
+
+
+/* ========================================================================== */
+/* V6.14.8 — Time View labels follow Team View visual structure               */
+/* UI-only: same stacked row pattern as Team View; only non-zero metrics show. */
+/* ========================================================================== */
+#scheduleTeamWorkspace .schedule-time-summary-card-v6146{
+  min-height:126px!important;
+  height:auto!important;
+  padding:6px 5px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  gap:4px!important;
+  overflow:hidden!important;
+}
+#scheduleTeamWorkspace .time-team-counts-v6148{
+  width:100%!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:3px!important;
+  align-content:start!important;
+}
+#scheduleTeamWorkspace .time-team-row-v6148{
+  width:100%!important;
+  min-width:0!important;
+  height:18px!important;
+  min-height:18px!important;
+  padding:2px 4px!important;
+  display:grid!important;
+  grid-template-columns:5px minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:4px!important;
+  border:1px solid transparent!important;
+  border-radius:7px!important;
+  line-height:1!important;
+}
+#scheduleTeamWorkspace .time-team-row-v6148>i{
+  width:5px!important;
+  height:5px!important;
+  border-radius:999px!important;
+  display:block!important;
+}
+#scheduleTeamWorkspace .time-team-row-v6148 small{
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  font-size:6.5px!important;
+  font-weight:850!important;
+  text-align:left!important;
+}
+#scheduleTeamWorkspace .time-team-row-v6148 strong{
+  font-size:10px!important;
+  font-weight:950!important;
+  text-align:right!important;
+}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-normal{background:#ecfdf3!important;border-color:#bbf7d0!important;color:#15803d!important}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-normal>i{background:#22c55e!important}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-absence{background:#fff1f2!important;border-color:#fecdd3!important;color:#be123c!important}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-absence>i{background:#ef4444!important}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-late{background:#fff7ed!important;border-color:#fed7aa!important;color:#c2410c!important}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-late>i{background:#f97316!important}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-early{background:#fff8e1!important;border-color:#fde68a!important;color:#a16207!important}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-early>i{background:#d97706!important}
+
+body.theme-dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-normal,
+.dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-normal{background:#17352a!important;border-color:#2d6048!important;color:#9fe0b7!important}
+body.theme-dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-absence,
+.dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-absence{background:#3a2229!important;border-color:#6f3f49!important;color:#ffb5c2!important}
+body.theme-dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-late,
+.dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-late{background:#3a2c1c!important;border-color:#6f5130!important;color:#f4c27e!important}
+body.theme-dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-early,
+.dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-early{background:#372f18!important;border-color:#66582d!important;color:#eedb83!important}
