@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.10";
+window.__TIME_CLOCK_BUILD__ = "V6.14.11";
 document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.10',
+  version: '6.14.11',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1400,7 +1400,7 @@ window.tcIsDayShiftCode = value =>
         $("schedulePersonMonthInlineV61152")
           ?.classList.add("hidden");
 
-        // V6.14.10: TEAM/TIME period context must follow the exact range used
+        // V6.14.11: TEAM/TIME period context must follow the exact range used
         // by the grid. Never derive it from PERSON's remembered month.
         const selectedMonth =
           String(range.month || "").slice(0,7)
@@ -5689,7 +5689,7 @@ window.tcIsDayShiftCode = value =>
         ? "สรุปสถานะการมาทำงานรายทีมในช่วงประมาณ 15 วันที่เลือก • คลิกแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
         : "สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล";
       if (teamLegendV6146) teamLegendV6146.innerHTML = mode === "TIME"
-        ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-leave-v6149">ลา</span>'
+        ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-off-v61411">หยุด</span><span class="badge time-legend-leave-v6149">ลา</span>'
         : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
       if (teamTipV6146) teamTipV6146.textContent = mode === "TIME"
         ? "มุมมองเวลาเหมาะสำหรับหัวหน้างานติดตามการมาทำงานรายวัน แล้วคลิกดูรายชื่อพนักงานที่ต้องติดตาม"
@@ -5730,7 +5730,7 @@ window.tcIsDayShiftCode = value =>
           `${sourceMonth}-01`
         );
       } else {
-        // V6.14.10: TEAM and TIME share their own remembered 15-day cursor.
+        // V6.14.11: TEAM and TIME share their own remembered 15-day cursor.
         // PERSON month is intentionally independent and must not lock this view.
         const rememberedTeamStart =
           String(scheduleViewState.teamPeriodStart || "").slice(0,10);
@@ -7243,6 +7243,45 @@ window.tcIsDayShiftCode = value =>
       finally { hideLoading(); }
     }
 
+    // V6.14.11: TEAM DAILY DETAIL and TIME VIEW must classify the exact same
+    // merged attendance object. Keep schedule fields authoritative while enriching
+    // with Attendance Detail, punch metadata and Time Certification.
+    function scheduleMergeTeamAttendanceRowV61411(scheduleRow, attendanceRow = {}, punchRow = {}, certificationRow = {}) {
+      const merged = {
+        ...(scheduleRow || {}),
+        ...(attendanceRow || {}),
+        ...(punchRow || {}),
+        ...(certificationRow || {}),
+        emp_code: scheduleRow?.emp_code || attendanceRow?.emp_code || punchRow?.emp_code || certificationRow?.emp_code,
+        full_name: attendanceRow?.full_name || scheduleRow?.full_name,
+        department: attendanceRow?.department || scheduleRow?.department,
+        assigned_shift_code: scheduleRow?.assigned_shift_code,
+        effective_shift_code: scheduleRow?.effective_shift_code,
+        auto_shift_code: scheduleRow?.auto_shift_code,
+        shift_code: scheduleRow?.shift_code,
+        shift_start_time: scheduleRow?.shift_start_time,
+        shift_end_time: scheduleRow?.shift_end_time,
+        effective_shift_start_time: scheduleRow?.effective_shift_start_time,
+        effective_shift_end_time: scheduleRow?.effective_shift_end_time
+      };
+      return normalizeAttendanceStatusFromPunchesV61120(merged);
+    }
+
+    function scheduleTeamAttendanceFlagsV61411(row) {
+      const normalized = normalizeAttendanceStatusFromPunchesV61120({ ...(row || {}) });
+      const status = scheduleTeamAttendanceStatus(normalized);
+      return {
+        status,
+        normal: status === 'NORMAL',
+        absence: status === 'ABSENCE',
+        late: status === 'LATE',
+        early: scheduleTeamIsEarlyV6147(normalized),
+        off: status === 'OFF',
+        leave: status === 'LEAVE',
+        pending: status === 'UPCOMING'
+      };
+    }
+
     async function fetchScheduleTeamDayAttendance(unit, date, baseRows) {
       const empCodes = [...new Set((baseRows || []).map(row => String(row.emp_code || '').trim()).filter(Boolean))];
       if (!empCodes.length) return [];
@@ -7335,27 +7374,12 @@ window.tcIsDayShiftCode = value =>
       const byEmpCertification = new Map(certificationRows.map(row => [String(row.emp_code || '').trim(), row]));
       return (baseRows || []).map(scheduleRow => {
         const key = String(scheduleRow.emp_code || '').trim();
-        const attendanceRow = byEmp.get(key) || {};
-        const punchRow = byEmpPunch.get(key) || {};
-        const certificationRow = byEmpCertification.get(key) || {};
-        const merged = {
-          ...scheduleRow,
-          ...attendanceRow,
-          ...punchRow,
-          ...certificationRow,
-          emp_code: scheduleRow.emp_code || attendanceRow.emp_code || punchRow.emp_code,
-          full_name: attendanceRow.full_name || scheduleRow.full_name,
-          department: attendanceRow.department || scheduleRow.department,
-          assigned_shift_code: scheduleRow.assigned_shift_code,
-          effective_shift_code: scheduleRow.effective_shift_code,
-          auto_shift_code: scheduleRow.auto_shift_code,
-          shift_code: scheduleRow.shift_code,
-          shift_start_time: scheduleRow.shift_start_time,
-          shift_end_time: scheduleRow.shift_end_time,
-          effective_shift_start_time: scheduleRow.effective_shift_start_time,
-          effective_shift_end_time: scheduleRow.effective_shift_end_time
-        };
-        return normalizeAttendanceStatusFromPunchesV61120(merged);
+        return scheduleMergeTeamAttendanceRowV61411(
+          scheduleRow,
+          byEmp.get(key) || {},
+          byEmpPunch.get(key) || {},
+          byEmpCertification.get(key) || {}
+        );
       });
     }
 
@@ -8682,6 +8706,35 @@ window.tcIsDayShiftCode = value =>
       throw lastError || new Error('ATTENDANCE_TIME_VIEW_LOAD_FAILED');
     }
 
+    async function fetchScheduleTimePunchMetaChunkV61411(startDate, endDate, empCodes) {
+      if (!empCodes?.length) return [];
+      const attempts = [
+        ['ta_get_attendance_shift_punch_meta_v61110', {p_start_date:startDate,p_end_date:endDate,p_emp_codes:empCodes}],
+        ['ta_get_attendance_shift_punch_meta_v6119', {p_start_date:startDate,p_end_date:endDate,p_emp_codes:empCodes}]
+      ];
+      for (const [fn,args] of attempts) {
+        const response = await state.client.rpc(fn,args);
+        if (!response.error) return Array.isArray(response.data) ? response.data : [];
+        if (!window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          console.warn('Schedule Time punch meta V6.14.11:', response.error);
+          return [];
+        }
+      }
+      return [];
+    }
+
+    async function fetchScheduleTimeCertificationChunkV61411(startDate, endDate, empCodes) {
+      if (!empCodes?.length) return [];
+      const response = await state.client.rpc('ta_get_time_certification_range_v61139', {
+        p_start_date:startDate, p_end_date:endDate, p_emp_codes:empCodes
+      });
+      if (!response.error) return Array.isArray(response.data) ? response.data : [];
+      if (!window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        console.warn('Schedule Time certification V6.14.11:', response.error);
+      }
+      return [];
+    }
+
     async function ensureScheduleTimeAttendanceV6146(period, rows = []) {
       const key = scheduleTimeAttendanceKeyV6146(period, rows);
       if (scheduleTimeAttendanceStateV6146.key === key && (scheduleTimeAttendanceStateV6146.loading || scheduleTimeAttendanceStateV6146.loadedAt)) return;
@@ -8700,24 +8753,63 @@ window.tcIsDayShiftCode = value =>
 
       const chunks = [];
       for (let i=0;i<empCodes.length;i+=45) chunks.push(empCodes.slice(i,i+45));
-      const collected = [];
+      const attendanceRows = [];
+      const punchRows = [];
+      const certificationRows = [];
       try {
+        // V6.14.11: load the same enrichment layers used by TEAM DAILY DETAIL.
+        // Keep requests batched to preserve the TIME VIEW performance profile.
         for (let cursor=0; cursor<chunks.length; cursor+=3) {
           const group = chunks.slice(cursor,cursor+3);
-          const results = await Promise.all(group.map(chunk => fetchScheduleTimeAttendanceChunkV6146(period.startDate,period.endDate,chunk,0)));
-          results.forEach(result => collected.push(...result));
+          const results = await Promise.all(group.map(async chunk => {
+            const [attendance,punch,certification] = await Promise.all([
+              fetchScheduleTimeAttendanceChunkV6146(period.startDate,period.endDate,chunk,0),
+              fetchScheduleTimePunchMetaChunkV61411(period.startDate,period.endDate,chunk),
+              fetchScheduleTimeCertificationChunkV61411(period.startDate,period.endDate,chunk)
+            ]);
+            return {attendance,punch,certification};
+          }));
+          results.forEach(result => {
+            attendanceRows.push(...result.attendance);
+            punchRows.push(...result.punch);
+            certificationRows.push(...result.certification);
+          });
         }
-        const unique = new Map();
-        collected.forEach((row,index) => {
-          const emp = String(row?.emp_code || '').trim();
-          const date = String(row?.work_date || '').slice(0,10);
-          unique.set(emp && date ? `${emp}|${date}` : `__${index}`, row);
+
+        const byAttendance = new Map();
+        attendanceRows.forEach(row => {
+          const emp=String(row?.emp_code||'').trim();
+          const date=String(row?.work_date||'').slice(0,10);
+          if (emp && date) byAttendance.set(`${emp}|${date}`,row);
         });
-        scheduleTimeAttendanceStateV6146.rows = [...unique.values()];
+        const byPunch = new Map();
+        punchRows.forEach(row => {
+          const emp=String(row?.emp_code||'').trim();
+          const date=String(row?.work_date||'').slice(0,10);
+          if (emp && date) byPunch.set(`${emp}|${date}`,row);
+        });
+        const byCertification = new Map();
+        certificationRows.forEach(row => {
+          const emp=String(row?.emp_code||'').trim();
+          const date=String(row?.work_date||'').slice(0,10);
+          if (emp && date) byCertification.set(`${emp}|${date}`,row);
+        });
+
+        scheduleTimeAttendanceStateV6146.rows = (rows || []).map(scheduleRow => {
+          const emp=String(scheduleRow?.emp_code||'').trim();
+          const date=String(scheduleRow?.work_date||'').slice(0,10);
+          const rowKey=`${emp}|${date}`;
+          return scheduleMergeTeamAttendanceRowV61411(
+            scheduleRow,
+            byAttendance.get(rowKey)||{},
+            byPunch.get(rowKey)||{},
+            byCertification.get(rowKey)||{}
+          );
+        });
         scheduleTimeAttendanceStateV6146.loadedAt = Date.now();
       } catch (error) {
         scheduleTimeAttendanceStateV6146.error = error;
-        console.warn('Schedule Time View V6.14.8:', error);
+        console.warn('Schedule Time View V6.14.11:', error);
       } finally {
         scheduleTimeAttendanceStateV6146.loading = false;
         if (scheduleCurrentView() === 'TIME' && scheduleTimeAttendanceStateV6146.key === key) renderSchedule();
@@ -8725,27 +8817,20 @@ window.tcIsDayShiftCode = value =>
     }
 
     function scheduleTimeMetricsV6146(baseRow, attendanceRow) {
-      const merged = { ...(baseRow || {}), ...(attendanceRow || {}) };
-      const shiftMeta = scheduleResolveShiftMeta(baseRow || merged);
-      const date = String(baseRow?.work_date || attendanceRow?.work_date || '').slice(0,10);
-      const dayType = String(merged?.day_type || baseRow?.day_type || '').toUpperCase();
-      const leave = shiftMeta.tone === 'leave'
-        || Boolean(merged?.leave_request_id || merged?.leave_type_code)
-        || dayType === 'LEAVE';
-      const off = !shiftMeta.isWorking || ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType);
-      if (leave) return {eligible:false,normal:false,absence:false,late:false,early:false,leave:true,pending:false};
-      if (off) return {eligible:false,normal:false,absence:false,late:false,early:false,leave:false,pending:false};
-      if (date > todayISO()) return {eligible:true,normal:false,absence:false,late:false,early:false,leave:false,pending:true};
-
-      const punch = attendancePunchStateV61120(merged);
-      const late = Number(merged?.late_minutes || 0) > 0;
-      const early = Number(merged?.early_leave_minutes || merged?.early_minutes || 0) > 0;
-      const raw = String(merged?.display_status || merged?.attendance_result || merged?.attendance_status || merged?.calculation_status || '').toUpperCase();
-      let absence = raw === 'ABSENCE' || raw === 'ABSENT' || Number(merged?.absence_minutes || 0) > 0;
-      if (date < todayISO() && (!punch.anyPunch || !punch.complete)) absence = true;
-      if (date === todayISO() && !punch.complete && !absence) return {eligible:true,normal:false,absence:false,late,early,leave:false,pending:true};
-      const normal = !absence && punch.complete && !late && !early;
-      return {eligible:true,normal,absence,late,early,leave:false,pending:false};
+      // V6.14.11: use the exact TEAM DAILY DETAIL classifier. This keeps the
+      // summary label and the drawer KPI counts identical for the same team/day.
+      const merged = scheduleMergeTeamAttendanceRowV61411(baseRow || {}, attendanceRow || {}, {}, {});
+      const flags = scheduleTeamAttendanceFlagsV61411(merged);
+      return {
+        eligible: !flags.off && !flags.leave,
+        normal: flags.normal,
+        absence: flags.absence,
+        late: flags.late,
+        early: flags.early,
+        off: flags.off,
+        leave: flags.leave,
+        pending: flags.pending
+      };
     }
 
     function renderScheduleTimeViewV6146(rows, period, dateMeta) {
@@ -8776,7 +8861,7 @@ window.tcIsDayShiftCode = value =>
         const team = teams.get(unit); team.employees.add(emp); totalEmployees.add(emp);
         const names = Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : [];
         names.forEach(name => { const n=String(name||'').trim(); if(n) team.managerNames.set(n,(team.managerNames.get(n)||0)+1); });
-        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,leave:0,pending:0,eligible:0});
+        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0});
         const metrics = scheduleTimeMetricsV6146(row, attendanceMap.get(`${emp}|${date}`));
         const day = team.days.get(date);
         if (metrics.eligible) day.eligible += 1;
@@ -8784,6 +8869,7 @@ window.tcIsDayShiftCode = value =>
         if (metrics.absence) day.absence += 1;
         if (metrics.late) day.late += 1;
         if (metrics.early) day.early += 1;
+        if (metrics.off) day.off += 1;
         if (metrics.leave) day.leave += 1;
         if (metrics.pending) day.pending += 1;
       }
@@ -8805,7 +8891,7 @@ window.tcIsDayShiftCode = value =>
         const managerLabel = scheduleTeamManagerLabelV61121(team);
         html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
         for (const date of period.dates) {
-          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,leave:0,pending:0,eligible:0};
+          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0};
           const loading=scheduleTimeAttendanceStateV6146.loading && scheduleTimeAttendanceStateV6146.key===key;
           const error=scheduleTimeAttendanceStateV6146.error && scheduleTimeAttendanceStateV6146.key===key;
           const future=date>todayISO();
@@ -8819,6 +8905,7 @@ window.tcIsDayShiftCode = value =>
               day.absence > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-absence"><i></i><small>ขาดงาน</small><strong>${safe(formatNumber(day.absence))}</strong></span>` : '',
               day.late > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-late"><i></i><small>สาย</small><strong>${safe(formatNumber(day.late))}</strong></span>` : '',
               day.early > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-early"><i></i><small>กลับก่อน</small><strong>${safe(formatNumber(day.early))}</strong></span>` : '',
+              day.off > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-off"><i></i><small>หยุด</small><strong>${safe(formatNumber(day.off))}</strong></span>` : '',
               day.leave > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-leave"><i></i><small>ลา</small><strong>${safe(formatNumber(day.leave))}</strong></span>` : ''
             ].filter(Boolean);
             body = timeRowsV6148.length
@@ -26398,7 +26485,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.10';
+  const VERSION='6.14.11';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

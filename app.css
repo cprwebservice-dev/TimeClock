@@ -21286,3 +21286,34 @@ body.theme-dark #scheduleTeamWorkspace .schedule-team-period-readonly-v61410,
     white-space:normal!important;
   }
 }
+
+
+/* ========================================================================== */
+/* V6.14.11 — TIME VIEW accuracy parity + OFF label                           */
+/* TIME labels and TEAM DAILY DETAIL now share the same attendance classifier. */
+/* ========================================================================== */
+.time-legend-off-v61411{
+  background:var(--shift-off-soft,#eef1f5)!important;
+  color:var(--shift-off-text,#64748b)!important;
+  border-color:var(--shift-off-border,#d6dde6)!important;
+}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-off{
+  background:var(--shift-off-soft,#eef1f5)!important;
+  border-color:var(--shift-off-border,#d6dde6)!important;
+  color:var(--shift-off-text,#64748b)!important;
+}
+#scheduleTeamWorkspace .time-team-row-v6148.tone-time-off>i{
+  background:var(--shift-off-text,#64748b)!important;
+}
+/* Up to six non-zero rows: normal / absence / late / early / off / leave. */
+#scheduleTeamWorkspace .schedule-time-summary-card-v6146{
+  min-height:142px!important;
+}
+body.theme-dark .time-legend-off-v61411,
+.dark .time-legend-off-v61411,
+body.theme-dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-off,
+.dark #scheduleTeamWorkspace .time-team-row-v6148.tone-time-off{
+  background:var(--shift-off-soft,#263644)!important;
+  border-color:var(--shift-off-border,#465969)!important;
+  color:var(--shift-off-text,#c1ced8)!important;
+}
