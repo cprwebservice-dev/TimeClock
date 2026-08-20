@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.9 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.8 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.9 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.8 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.9-20260820" rel="stylesheet"/>
+<link href="./app.css?v=6.14.8-20260819" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.9</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.8</span></div>
 </form>
 </div>
 </section>
@@ -359,7 +359,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.9</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.9 Time Leave + Single Period Control</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.8</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.8 Team/Time Label Consistency</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -596,12 +596,12 @@
 <div class="schedule-legend" id="scheduleTeamLegendV6146"><span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span></div>
 </div>
 
-<div class="schedule-team-week-selector-v61152 schedule-team-period-context-v6149" aria-live="polite">
+<div class="schedule-team-week-selector-v61152 schedule-team-period-context-v6149 schedule-team-period-context-v61410" aria-live="polite">
   <div class="schedule-team-week-selector-copy-v61152">
     <span>ช่วงที่กำลังแสดง</span>
     <strong id="scheduleTeamWeekMonthV61152">-</strong>
   </div>
-  <div class="schedule-team-period-readonly-v6149" id="scheduleTeamPeriodReadOnlyV6149">-</div>
+  <div id="scheduleTeamPeriodReadOnlyV6149" class="schedule-team-period-readonly-v6149 schedule-team-period-readonly-v61410">-</div>
 </div>
 
 <div class="schedule-team-toolbar">
@@ -2508,6 +2508,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.9-20260820"></script>
+<script src="./app.js?v=6.14.8-20260819"></script>
 </body>
 </html>

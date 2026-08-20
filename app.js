@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.9";
+window.__TIME_CLOCK_BUILD__ = "V6.14.10";
 document.documentElement.dataset.timeClockBuild = "6.13.9";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.13.9";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.9',
+  version: '6.14.10',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1400,23 +1400,14 @@ window.tcIsDayShiftCode = value =>
         $("schedulePersonMonthInlineV61152")
           ?.classList.add("hidden");
 
+        // V6.14.10: TEAM/TIME period context must follow the exact range used
+        // by the grid. Never derive it from PERSON's remembered month.
         const selectedMonth =
-          scheduleViewState.personMonth
-          || String(range.month || "").slice(0,7)
+          String(range.month || "").slice(0,7)
+          || String(scheduleViewState.teamPeriodStart || "").slice(0,7)
           || monthISO();
 
-        const weekOptions =
-          scheduleTeamWeekOptionsV61151(
-            selectedMonth
-          );
-
-        const currentWeek =
-          weekOptions.find(
-            option =>
-              option.startDate === range.startDate
-          )
-          || weekOptions[0]
-          || null;
+        scheduleViewState.teamPeriodStart = range.startDate;
 
         const monthDate =
           new Date(`${selectedMonth}-01T00:00:00`);
@@ -1431,35 +1422,8 @@ window.tcIsDayShiftCode = value =>
 
         setText(
           "scheduleTeamPeriodReadOnlyV6149",
-          currentWeek?.label
-          || `ช่วงที่ ${range.weekNumber} • ${startText} – ${endText} • ${range.dates.length} วัน`
+          `ช่วงที่ ${range.weekNumber} • ${startText} – ${endText} • ${range.dates.length} วัน`
         );
-
-        const weekSelect =
-          $("scheduleTeamWeekSelectV61151");
-
-        if (weekSelect) {
-          const signature =
-            `${selectedMonth}|${weekOptions.length}`;
-
-          if (
-            weekSelect.dataset.signature !== signature
-          ) {
-            weekSelect.innerHTML =
-              weekOptions
-                .map(option =>
-                  `<option value="${safe(option.startDate)}">${safe(option.label)}</option>`
-                )
-                .join("");
-
-            weekSelect.dataset.signature = signature;
-          }
-
-          weekSelect.value =
-            currentWeek?.startDate
-            || weekOptions[0]?.startDate
-            || range.startDate;
-        }
       }
 
       const prev = $("schedulePrevMonthBtn");
@@ -5766,27 +5730,19 @@ window.tcIsDayShiftCode = value =>
           `${sourceMonth}-01`
         );
       } else {
-        const selectedMonth =
-          scheduleViewState.personMonth
-          || currentCursor.slice(0,7)
-          || monthISO();
-
+        // V6.14.10: TEAM and TIME share their own remembered 15-day cursor.
+        // PERSON month is intentionally independent and must not lock this view.
         const rememberedTeamStart =
-          String(
-            scheduleViewState.teamPeriodStart
-            || ""
-          ).slice(0,10);
+          String(scheduleViewState.teamPeriodStart || "").slice(0,10);
 
-        const teamStart =
-          rememberedTeamStart.startsWith(
-            `${selectedMonth}-`
-          )
-            ? rememberedTeamStart
-            : `${selectedMonth}-01`;
+        const fallbackTeamStart =
+          currentMode !== "PERSON" && currentCursor
+            ? scheduleBlockStartForDate(currentCursor)
+            : `${(currentCursor.slice(0,7) || monthISO())}-01`;
 
         scheduleViewState.teamPeriodStart =
           scheduleBlockStartForDate(
-            teamStart
+            rememberedTeamStart || fallbackTeamStart
           );
 
         setVal(
@@ -12892,10 +12848,11 @@ ${skippedSummary(compatibility.skipped)}
     if($("schedulePeriodStart")){
       $("schedulePeriodStart").value = next;
     }
+    scheduleViewState.teamPeriodStart = next;
     try {
       localStorage.setItem(
         "timeclock.schedule.teamPeriodStart",
-        next
+        scheduleViewState.teamPeriodStart
       );
     } catch (_) {}
     window.TimeClockSchedulePeriod?.sync?.();
@@ -26441,7 +26398,7 @@ ${skippedSummary(compatibility.skipped)}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.9';
+  const VERSION='6.14.10';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
