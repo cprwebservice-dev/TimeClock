@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.28";
-document.documentElement.dataset.timeClockBuild = "6.14.28";
+window.__TIME_CLOCK_BUILD__ = "V6.14.29";
+document.documentElement.dataset.timeClockBuild = "6.14.29";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.28";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.28',
+  version: '6.14.29',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -7821,78 +7821,48 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function fetchEmployeeMonthScheduleV6130(empCode, bounds) {
-      // V6.13.5: dedicated Monthly Personal RPC first. It is independent from
-      // the old V6.12.6 Work Plan metadata chain and returns only one employee.
-      const args = {
-        p_emp_code: empCode,
-        p_start_date: bounds.start,
-        p_end_date: bounds.end
+      // V6.14.29 consistency rule:
+      // MONTHLY PERSONAL OVERVIEW must use the exact same canonical Schedule Grid
+      // transport as "ตารางกะรายบุคคล • เต็มเดือน". The old dedicated RPC was
+      // logically based on the same grid, but it could time out independently and
+      // it created a second read path that was harder to prove identical at runtime.
+      //
+      // Base schedule = ta_get_schedule_range_light_v61425 through getMonthlySchedule.
+      // Enrichment = the same Work Plan + Scheduling Rule enrichers used by Full Month.
+      const rows = await window.TimeClockShiftAPI.getMonthlySchedule(
+        window.TimeClockApp || { state },
+        {
+          p_month: `${bounds.value}-01`,
+          p_start_date: bounds.start,
+          p_end_date: bounds.end,
+          p_zone: null,
+          p_department: null,
+          p_emp_codes: [empCode],
+          p_schedule_statuses: null,
+          p_disable_range_paging: true
+        }
+      );
+
+      const canonicalRows = (rows || []).map(row => ({ ...row }));
+      const period = {
+        startDate: bounds.start,
+        endDate: bounds.end,
+        month: bounds.value,
+        viewMode: 'PERSON',
+        personDisplayMode: 'MONTH'
       };
 
-      let rows = [];
-      let dedicatedError = null;
-      try {
-        const response = await employeeMonthWithTimeoutV61427(
-          state.client.rpc('ta_get_employee_month_schedule_v6134', args),
-          30000,
-          'โหลด Monthly Personal Overview V6.14.28'
-        );
-        if (response.error) dedicatedError = response.error;
-        else rows = Array.isArray(response.data) ? response.data : [];
-      } catch (error) {
-        dedicatedError = error;
-      }
-
-      if (dedicatedError) {
-        // Keep the personal calendar usable on BOTH PostgreSQL errors and the
-        // browser-side timeout wrapper. V6.12.8 only fell back on response.error,
-        // so a thrown timeout could still blank the entire modal.
-        const dedicatedSummaryV61426 = scheduleRpcErrorSummaryV6126(dedicatedError);
-        const dedicatedMessageV61426 = String(
-          dedicatedSummaryV61426.message
-          || dedicatedSummaryV61426.details
-          || ''
-        ).toLowerCase();
-        const dedicatedTimeoutV61426 = dedicatedMessageV61426.includes('ใช้เวลานานเกิน')
-          || dedicatedMessageV61426.includes('statement timeout')
-          || dedicatedMessageV61426.includes('canceling statement');
-        if (dedicatedTimeoutV61426) {
-          console.info(
-            'Monthly Personal dedicated RPC timed out; canonical V6.14.25 schedule fallback is being used.',
-            dedicatedSummaryV61426.message || dedicatedSummaryV61426.code || 'timeout'
-          );
-        } else {
-          scheduleLogRpcOnceV6126(
-            'employee-month-v6130-fallback',
-            'Monthly Personal dedicated RPC unavailable; canonical V6.14.25 schedule fallback is being used:',
-            dedicatedError
-          );
-        }
-        try {
-          rows = await window.TimeClockShiftAPI.getMonthlySchedule(
-            window.TimeClockApp || { state },
-            {
-              p_month: `${bounds.value}-01`,
-              p_start_date: bounds.start,
-              p_end_date: bounds.end,
-              p_zone: null,
-              p_department: null,
-              p_emp_codes: [empCode],
-              p_schedule_statuses: null,
-              p_disable_range_paging: true
-            }
-          );
-        } catch (fallbackError) {
-          if (window.TimeClockShiftAPI?.missingFunction?.(dedicatedError)
-              || String(fallbackError?.message || '').includes('SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED')) {
-            throw new Error('MONTHLY_PERSONAL_SCHEDULE_REQUIRED: กรุณารัน SQL V6.14.25 เพื่อเปิดใช้ Schedule Grid กลาง');
-          }
-          throw fallbackError || dedicatedError;
-        }
-      }
+      // Full Month renders base rows first and enriches asynchronously. Monthly
+      // Personal has only one employee, so wait for both enrichers before drawing
+      // the popup. That makes Shift Code / effective time / Work Template /
+      // Scheduling Rule deterministic and equal to the final Full Month state.
+      await Promise.all([
+        enrichScheduleWorkPlanMetaV6118(period, canonicalRows),
+        window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(canonicalRows)
+      ]);
 
       const unique = new Map();
-      (rows || []).forEach((row, index) => {
+      canonicalRows.forEach((row, index) => {
         const emp = String(row?.emp_code || '').trim();
         const date = String(row?.work_date || '').slice(0,10);
         const key = emp && date ? `${emp}|${date}` : `__row_${index}`;
@@ -7901,6 +7871,83 @@ window.tcIsDayShiftCode = value =>
       return [...unique.values()].sort((a,b) =>
         String(a?.work_date || '').localeCompare(String(b?.work_date || ''))
       );
+    }
+
+    // V6.14.29: Attendance/Punch/Certification enrich the personal calendar,
+    // but they must never overwrite the canonical schedule fields. This mirrors
+    // scheduleMergeTeamAttendanceRowV61411 and extends the protection to Work
+    // Pattern, day classification, Work Template and Scheduling Rule metadata.
+    const EMPLOYEE_MONTH_SCHEDULE_KEYS_V61429 = Object.freeze([
+      'emp_code','full_name','start_date','resign_date','position_name','department','zone','area','sub_area','pc',
+      'day_type','is_public_holiday','is_weekly_off','holiday_name','expected_day',
+      'auto_shift_code','suggested_shift_code','suggestion_confidence','assigned_shift_code','effective_shift_code',
+      'is_confirmed','schedule_status','shift_start_time','shift_end_time','schedule_note','schedule_source',
+      'pattern_code','pattern_name','template_code','default_shift_code','employee_default_template_code',
+      'daily_work_template_code','effective_work_template_code','template_category','customer_window_start','customer_window_end',
+      'work_plan_status','schedule_rule_mode','work_mode_code','base_shift_code','generated_shift_code',
+      'first_segment_end','second_segment_start','second_segment_planned_end','custom_start_time','custom_end_time',
+      'off_window_start','off_window_end','off_basis_shift_code','planned_minutes',
+      'pattern_scheduled_minutes','pattern_standard_work_minutes','shift_pattern_match'
+    ]);
+
+    function employeeMonthMergeCanonicalV61429(scheduleRow, attendanceRow) {
+      if (!scheduleRow && !attendanceRow) return null;
+      const merged = {
+        ...(scheduleRow || {}),
+        ...(attendanceRow || {})
+      };
+      if (scheduleRow) {
+        EMPLOYEE_MONTH_SCHEDULE_KEYS_V61429.forEach(key => {
+          if (Object.prototype.hasOwnProperty.call(scheduleRow,key)) {
+            merged[key] = scheduleRow[key];
+          }
+        });
+      }
+      return normalizeAttendanceStatusFromPunchesV61120(merged);
+    }
+
+    function employeeMonthEmploymentStateV61429(scheduleRows, workDate) {
+      const first = (scheduleRows || []).find(Boolean) || {};
+      const startDate = String(first?.start_date || '').slice(0,10);
+      const resignDate = String(first?.resign_date || '').slice(0,10);
+      if (startDate && workDate < startDate) return 'BEFORE_START';
+      if (resignDate && workDate > resignDate) return 'AFTER_RESIGN';
+      return 'ACTIVE';
+    }
+
+    function employeeMonthScheduleFallbackStatusV61429(scheduleRow, workDate, employmentState = 'ACTIVE') {
+      if (employmentState === 'BEFORE_START') {
+        return { status:'BEFORE_START', label:'ยังไม่เริ่มงาน', tone:'neutral' };
+      }
+      if (employmentState === 'AFTER_RESIGN') {
+        return { status:'AFTER_RESIGN', label:'ลาออกแล้ว', tone:'neutral' };
+      }
+      if (!scheduleRow) {
+        return {
+          status:'UNPROCESSED',
+          label: workDate > todayISO() ? 'รอทำงาน' : 'ยังไม่ประมวลผล',
+          tone:'neutral'
+        };
+      }
+      const shift = scheduleResolveShiftMeta(scheduleRow);
+      const code = window.tcShiftCode(
+        scheduleRow?.assigned_shift_code
+        || scheduleRow?.effective_shift_code
+        || scheduleRow?.auto_shift_code
+        || scheduleRow?.shift_code
+        || ''
+      );
+      if (code === 'LV' || shift?.tone === 'leave') {
+        return { status:'LEAVE', label:'ลา', tone:'leave' };
+      }
+      if (!shift?.isWorking || shift?.tone === 'off' || shift?.tone === 'holiday') {
+        return { status:'DAY_OFF', label:'วันหยุด', tone:'off' };
+      }
+      return {
+        status:'UNPROCESSED',
+        label: workDate > todayISO() ? 'รอทำงาน' : 'ยังไม่ประมวลผล',
+        tone:'neutral'
+      };
     }
 
     async function fetchEmployeeMonthBundleV61138(empCode, monthValue, forceFresh = false) {
@@ -7923,8 +7970,8 @@ window.tcIsDayShiftCode = value =>
           bounds
         );
 
-        // V6.13.5 monthly schedule already includes Work Plan / Template
-        // metadata, so do not issue a second month-wide Work Plan RPC.
+        // V6.14.29 schedulePromise already runs the exact same Work Plan +
+        // Scheduling Rule enrichers as Full Month. No second metadata RPC here.
         const workPlanPromise = Promise.resolve({ data: [], error: null });
 
         const attendancePromise =
@@ -7957,7 +8004,7 @@ window.tcIsDayShiftCode = value =>
             p_month: `${bounds.value}-01`
           }),
           15000,
-          'โหลดโควต้าวันหยุด Monthly Personal V6.14.28'
+          'โหลดโควต้าวันหยุด Monthly Personal V6.14.29'
         );
 
         const settled = await Promise.allSettled([
@@ -8301,16 +8348,18 @@ window.tcIsDayShiftCode = value =>
       }
 
       let workdays = 0;
-      let fallbackOffDaysV61426 = 0;
+      let scheduledOffDaysV61429 = 0;
       let absenceDays = 0;
       let lateDays = 0;
       let earlyDays = 0;
       let splitDays = 0;
       scheduleRows.forEach(scheduleRow => {
+        const date = String(scheduleRow?.work_date || '').slice(0,10);
+        if (!date || employeeMonthEmploymentStateV61429(scheduleRows,date) !== 'ACTIVE') return;
         const shift = scheduleResolveShiftMeta(scheduleRow);
         if (shift.isWorking) workdays += 1;
         if (employeeMonthConsumesDayoffFallbackV61426(scheduleRow)) {
-          fallbackOffDaysV61426 += 1;
+          scheduledOffDaysV61429 += 1;
         }
         if (scheduleWorkTemplateCodeV6118(scheduleRow) === 'SPLIT_FLEX') splitDays += 1;
       });
@@ -8320,19 +8369,21 @@ window.tcIsDayShiftCode = value =>
       const dayoffBalanceV61426 = employeeMonthCalendarStateV61121.dayoffBalance;
       const canonicalUsedV61426 = Number(dayoffBalanceV61426?.used_days);
       const hasCanonicalDayoffV61426 = Number.isFinite(canonicalUsedV61426);
-      const offDays = hasCanonicalDayoffV61426
-        ? canonicalUsedV61426
-        : fallbackOffDaysV61426;
+      // The large number means "days shown as day-off in the canonical Full Month
+      // schedule". Quota consumption remains canonical and is shown separately
+      // underneath, avoiding the old ambiguity between calendar days and quota use.
+      const offDays = scheduledOffDaysV61429;
       const quotaDaysV61426 = Number(dayoffBalanceV61426?.month_quota_days);
       const carriedDaysV61426 = Number(dayoffBalanceV61426?.carried_in_days);
       const balanceDaysV61426 = Number(dayoffBalanceV61426?.balance_days);
       const dayoffMetaV61426 = hasCanonicalDayoffV61426
         ? [
-            Number.isFinite(quotaDaysV61426) ? `โควต้า ${formatNumber(quotaDaysV61426)}` : '',
+            `ใช้โควต้า ${formatNumber(canonicalUsedV61426)}`,
+            Number.isFinite(quotaDaysV61426) ? `โควต้าเดือน ${formatNumber(quotaDaysV61426)}` : '',
             Number.isFinite(carriedDaysV61426) && carriedDaysV61426 !== 0 ? `ยกมา ${formatNumber(carriedDaysV61426)}` : '',
             Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)}` : ''
           ].filter(Boolean).join(' • ')
-        : 'วันหยุดประจำสัปดาห์ + นักขัตฤกษ์ ตามตารางกะ';
+        : 'นับจากตารางกะเดียวกับรายบุคคลเต็มเดือน';
       attendanceRows.forEach(row => {
         const flags = attendancePolicyFlagsV61428(row);
         if (flags.absence) absenceDays += 1;
@@ -8353,7 +8404,7 @@ window.tcIsDayShiftCode = value =>
       ).size;
       $('employeeMonthScheduleSummary').innerHTML = `
         <div class="month-overview-kpi primary"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></div>
-        <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>วันหยุด</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(formatNumber(offDays))}</strong></div>
+        <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>วันหยุดตามตาราง</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(formatNumber(offDays))}</strong></div>
         <div class="month-overview-kpi danger"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>เวลาไม่ครบ หรือ เข้าช้า ≥ 30 นาที</small></div><strong>${safe(formatNumber(absenceDays))}</strong></div>
         <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>เข้าหลังเริ่มกะ 1–29 นาที</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
         <div class="month-overview-kpi early"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></div>
@@ -8373,22 +8424,29 @@ window.tcIsDayShiftCode = value =>
         const workDate = `${bounds.value}-${String(day).padStart(2,'0')}`;
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;
-        const merged = scheduleRow || attendanceRow ? { ...(scheduleRow || {}), ...(attendanceRow || {}) } : null;
+        const merged = employeeMonthMergeCanonicalV61429(scheduleRow, attendanceRow);
+        const employmentStateV61429 = employeeMonthEmploymentStateV61429(scheduleRows,workDate);
         const d = new Date(`${workDate}T00:00:00`);
         const dow = d.getDay();
-        const shift = merged ? scheduleResolveShiftMeta(merged) : { code:'-', label:'-', tone:'off', isWorking:false };
-        const statusMeta = employeeMonthStatusMetaV61121(attendanceRow ? merged : null, workDate);
+        const shift = scheduleRow
+          ? scheduleResolveShiftMeta(scheduleRow)
+          : (merged ? scheduleResolveShiftMeta(merged) : { code:'-', label:'-', tone:'off', isWorking:false });
+        const statusMeta = attendanceRow
+          ? employeeMonthStatusMetaV61121(merged, workDate)
+          : employeeMonthScheduleFallbackStatusV61429(scheduleRow,workDate,employmentStateV61429);
         const actualIn = merged ? scheduleTeamSegmentActualTime(merged, 1, 'IN') : '-';
         const actualOut = merged ? scheduleTeamSegmentActualTime(merged, 1, 'OUT') : '-';
-        const split = merged && scheduleWorkTemplateCodeV6118(merged) === 'SPLIT_FLEX';
+        const splitSourceV61429 = scheduleRow || merged;
+        const split = splitSourceV61429 && scheduleWorkTemplateCodeV6118(splitSourceV61429) === 'SPLIT_FLEX';
         const shift2In = split ? scheduleTeamSegmentActualTime(merged, 2, 'IN') : '-';
         const shift2Out = split ? scheduleTeamSegmentActualTime(merged, 2, 'OUT') : '-';
         const anomalyHtml = employeeMonthAnomalyHtmlV61121(attendanceRow ? merged : null);
-        const templateCode = merged ? employeeMonthTemplateCodeV61127(merged) : '-';
-        const editButton = canEdit && scheduleRow
+        const templateCode = (scheduleRow || merged) ? employeeMonthTemplateCodeV61127(scheduleRow || merged) : '-';
+        const activeEmploymentV61429 = employmentStateV61429 === 'ACTIVE';
+        const editButton = canEdit && scheduleRow && activeEmploymentV61429
           ? `<button type="button" class="employee-month-edit-btn" data-employee-month-edit-date="${safe(workDate)}" title="จัดกะ" aria-label="จัดกะ"><span>✎</span><em>กะ</em></button>`
           : '';
-        const certificationButton = merged ? timeCertificationButtonV61139(merged,'employee-month') : '';
+        const certificationButton = merged && activeEmploymentV61429 ? timeCertificationButtonV61139(merged,'employee-month') : '';
         const certificationBadge = merged ? timeCertificationBadgeV61139(merged) : '';
         const isToday = workDate === todayISO();
         const workingShiftOverride =
@@ -8425,45 +8483,56 @@ window.tcIsDayShiftCode = value =>
           )
         );
 
-        const dayKindClass = workingShiftOverride
-          ? 'month-day-kind-work-v61153 month-day-work-override-v61155'
-          : holiday
-            ? 'month-day-kind-holiday-v61153'
-            : weeklyOff
-              ? 'month-day-kind-off-v61153'
-              : 'month-day-kind-work-v61153';
+        const dayKindClass = employmentStateV61429 === 'BEFORE_START'
+          ? 'month-day-kind-inactive-v61429 month-day-before-start-v61429'
+          : employmentStateV61429 === 'AFTER_RESIGN'
+            ? 'month-day-kind-inactive-v61429 month-day-after-resign-v61429'
+            : workingShiftOverride
+              ? 'month-day-kind-work-v61153 month-day-work-override-v61155'
+              : holiday
+                ? 'month-day-kind-holiday-v61153'
+                : weeklyOff
+                  ? 'month-day-kind-off-v61153'
+                  : 'month-day-kind-work-v61153';
         const dayName = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][dow];
 
-        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} tone-${safe(statusMeta.tone)}" data-month-date="${safe(workDate)}">
+        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)}" data-month-date="${safe(workDate)}">
           <div class="employee-month-day-head">
             <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
             <span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span>
           </div>
 
-          <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
-            shift.tone === 'night'
-              ? 'NIGHT'
-              : shift.tone === 'holiday'
-                ? 'HOL'
-                : shift.tone === 'leave'
-                  ? 'LV'
-                  : shift.tone === 'off'
-                    ? 'OFF'
-                    : 'DAY'
-          )}">
-            <div class="employee-month-shift-top-v61127"><b>${safe(shift.code || '-')}</b>${templateCode !== '-' ? `<span class="month-template-code-v61127">${safe(templateCode)}</span>` : ''}</div>
-            <small>${safe(shift.label || '-')}</small>
-            ${split?'<em>+ งานลูกค้าช่วงดึก</em>':''}
-          </div>
+          ${employmentStateV61429 !== 'ACTIVE' ? `
+            <div class="employee-month-inactive-v61429">
+              <strong>${safe(statusMeta.label)}</strong>
+              <small>${employmentStateV61429==='BEFORE_START' ? 'ตรงกับช่วงก่อนวันเริ่มงานในตารางกะรายบุคคลเต็มเดือน' : 'ตรงกับช่วงหลังวันลาออกในตารางกะรายบุคคลเต็มเดือน'}</small>
+            </div>
+          ` : `
+            <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
+              shift.tone === 'night'
+                ? 'NIGHT'
+                : shift.tone === 'holiday'
+                  ? 'HOL'
+                  : shift.tone === 'leave'
+                    ? 'LV'
+                    : shift.tone === 'off'
+                      ? 'OFF'
+                      : 'DAY'
+            )}">
+              <div class="employee-month-shift-top-v61127"><b>${safe(shift.code || '-')}</b>${templateCode !== '-' ? `<span class="month-template-code-v61127">${safe(templateCode)}</span>` : ''}</div>
+              <small>${safe(shift.label || '-')}</small>
+              ${split?'<em>+ งานลูกค้าช่วงดึก</em>':''}
+            </div>
 
-          <div class="employee-month-punch-grid-v61127">
-            <div><span>เวลาเข้า</span><b>${safe(actualIn)}</b></div>
-            <div><span>เวลาออก</span><b>${safe(actualOut)}</b></div>
-          </div>
+            <div class="employee-month-punch-grid-v61127">
+              <div><span>เวลาเข้า</span><b>${safe(actualIn)}</b></div>
+              <div><span>เวลาออก</span><b>${safe(actualOut)}</b></div>
+            </div>
 
-          ${split ? `<div class="employee-month-punch-grid-v61127 secondary"><div><span>กะ 2 เข้า</span><b>${safe(shift2In)}</b></div><div><span>กะ 2 ออก</span><b>${safe(shift2Out)}</b></div></div>` : ''}
+            ${split ? `<div class="employee-month-punch-grid-v61127 secondary"><div><span>กะ 2 เข้า</span><b>${safe(shift2In)}</b></div><div><span>กะ 2 ออก</span><b>${safe(shift2Out)}</b></div></div>` : ''}
 
-          <div class="employee-month-anomalies">${anomalyHtml || `<span class="month-anomaly ${safe(statusMeta.tone)}">${safe(statusMeta.label)}</span>`}</div>
+            <div class="employee-month-anomalies">${anomalyHtml || `<span class="month-anomaly ${safe(statusMeta.tone)}">${safe(statusMeta.label)}</span>`}</div>
+          `}
 
           <div class="employee-month-day-footer-v61149">
             <div class="employee-month-cert-slot-v61149">
@@ -27303,7 +27372,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.28';
+  const VERSION='6.14.29';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

@@ -1,0 +1,43 @@
+Time-Clock Enterprise V6.14.29
+MONTHLY PERSONAL OVERVIEW vs ตารางกะรายบุคคล • เต็มเดือน
+
+AUDIT RESULT
+============
+
+Canonical schedule source
+[PASS] Full Month -> TimeClockShiftAPI.getMonthlySchedule -> ta_get_schedule_range_light_v61425
+[PASS] Monthly Personal V6.14.29 -> the same TimeClockShiftAPI.getMonthlySchedule -> ta_get_schedule_range_light_v61425
+[REMOVED FROM CRITICAL PATH] ta_get_employee_month_schedule_v6134 dedicated reader
+
+Schedule enrichment
+[PASS] Both use enrichScheduleWorkPlanMetaV6118
+[PASS] Both use TimeClockSchedulingRulesV6120.enrichScheduleRows
+
+Authoritative fields protected in Monthly Personal
+[PASS] Shift code (assigned/effective/auto)
+[PASS] Shift start/end
+[PASS] Work Pattern
+[PASS] Day type / public holiday / weekly off
+[PASS] Work Template / customer window
+[PASS] Scheduling Rule / custom time / dynamic off
+[PASS] Schedule status / source
+Attendance, punch and certification remain enrichment only.
+
+Monthly KPIs
+[PASS] Workdays derived from canonical schedule rows.
+[PASS] Day-off primary number = canonical schedule-visible day-off count.
+[PASS] Day-off quota used/quota/carry/balance = ta_get_dayoff_balance_v61425, displayed separately.
+[PASS] Absence/Late/Early = Attendance Policy V6.14.28.
+[PASS] Split/Late-customer count = canonical Work Template.
+
+Employment dates
+[PASS] Before start date -> inactive / ยังไม่เริ่มงาน.
+[PASS] After resign date -> inactive / ลาออกแล้ว.
+[PASS] No edit/certification action outside active employment.
+
+Period / actions retained
+[PASS] Closed System Period remains read-only for Manager.
+[PASS] HR Admin override behavior unchanged.
+[PASS] Time Certification rules unchanged.
+
+No backend migration is required for V6.14.29.

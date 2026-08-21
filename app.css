@@ -21840,3 +21840,38 @@ body.theme-dark #assignModal .assignment-modal-footer-v61428,.dark #assignModal 
   #assignModal .assignment-modal-footer-v61428 .btn{flex:1 1 110px}
   #assignModal #deleteAssignmentBtn{order:3;flex-basis:100%;margin-right:0!important}
 }
+
+/* ========================================================================== 
+   V6.14.29 — Monthly Personal / Full-Month schedule consistency
+   ========================================================================== */
+#employeeMonthScheduleModal .employee-month-day.month-day-kind-inactive-v61429{
+  background:#f8fafc;
+  border-style:dashed;
+  opacity:.82;
+}
+#employeeMonthScheduleModal .employee-month-day.is-before-start-v61429,
+#employeeMonthScheduleModal .employee-month-day.is-after-resign-v61429{
+  box-shadow:none;
+}
+#employeeMonthScheduleModal .employee-month-inactive-v61429{
+  min-height:116px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  text-align:center;
+  border:1px dashed #cbd5e1;
+  border-radius:12px;
+  background:#fff;
+  color:#64748b;
+  padding:12px 8px;
+}
+#employeeMonthScheduleModal .employee-month-inactive-v61429 strong{
+  color:#475569;
+  font-size:13px;
+}
+#employeeMonthScheduleModal .employee-month-inactive-v61429 small{
+  font-size:10px;
+  line-height:1.45;
+}
