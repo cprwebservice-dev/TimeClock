@@ -1,0 +1,80 @@
+AUDIT — Time-Clock Enterprise V6.14.25
+Day-off Calculation Consistency
+
+ผลตรวจ V6.14.24 ก่อนแก้
+[ISSUE 1] Day-off quota ยังใช้ Position Policy
+- ta_get_dayoff_balance_v6134 เลือก manager_weekly_off_dows / other_weekly_off_dows จากตำแหน่ง
+- _ta_dayoff_consumes_quota_v6142 ใช้ Position Policy แบบเดียวกัน
+- ขัดกับ V6.14.18 ที่ Work Pattern เป็น Source of Truth
+
+[ISSUE 2] Schedule Grid ถูก V6.14.18 replace แล้วกลับไปจับ Weekly-off จาก Default Shift
+- หาก Default = S043 แต่กะทำงานล่าสุดก่อนวันหยุด = S135
+  หน้าตารางบางจุดมีโอกาสแสดง OS043 แทน OS135
+- ขัดกับ V6.13.5 ที่กำหนด latest effective work shift + 60-day cross-month resolver
+
+[ISSUE 3] Browser มี fallback เก่าจาก PC
+- PC 4 => Sat/Sun
+- PC 5 => Sun
+- แม้ปัจจุบัน function ไม่ถูกเรียก แต่เป็น logic ที่ไม่ควรคงไว้หลัง Config-driven Work Pattern
+
+V6.14.25 Canonical Sources
+A. Work Pattern
+- ta_resolve_employee_work_pattern_v651
+- explicit monthly assignment wins
+- weekly_off_dows = ta_work_patterns.weekly_off_dows
+- no Position/PC force
+
+B. Paired Day-off Basis
+- ta_get_off_shift_basis_read_v61425 : read-only Schedule Grid resolver
+- ta_get_off_shift_basis_v61425      : Popup/Bulk resolver
+- lookback 60 days across months
+- skips non-working days; explicit working shift on a holiday/off-day may be basis
+- HOUR_BASED keeps matching custom time window
+- SPLIT_WAIT_NIGHT maps from base shift
+- fallback = target Work Pattern default shift
+- V6.13.5 and V6.13.4 compatibility entry points delegate to V6.14.25
+
+C. Day-off Quota
+- ta_get_dayoff_balance_v61425
+- ta_get_dayoff_balance_v6134 delegates to V6.14.25
+- _ta_dayoff_consumes_quota_v6142 rewritten config-driven
+- V6.14.3 hard guard therefore inherits the new calculation
+
+D. Schedule views
+- ta_get_schedule_range_light_v61425
+- ta_get_schedule_range_light_v6134 delegates to V6.14.25
+- Person 15D / Full Month / Team / Time use the same frontend schedule loader
+- Monthly Personal V6.13.4 dedicated RPC reads V6.13.4 grid name, which now delegates to V6.14.25
+
+E. Mutation paths expected to agree
+- Assignment Popup
+- Quick/Bulk
+- Fill Down / Fill Right
+- Paste
+- 7-day Pattern
+- Copy Week
+- Copy Month
+- Undo / Redo
+All keep the central bulk validation + Scheduling Rule sync. Day-off sync calls V6.13.5 compatibility name, which delegates to V6.14.25.
+
+Expected business examples
+1) TECH_6D DAY S043, normal Sunday => OS043
+2) TECH_6D DAY but latest work shift Saturday manually S135 => Sunday OS135
+3) TECH_5D NIGHT S134, no prior work shift in 60 days => OS134 fallback
+4) Public holiday with no explicit shift => HOL
+5) Public holiday overridden by explicit working shift => employee works; day-off quota not consumed for that date
+6) LV/LEAVE => day-off quota not consumed
+7) Manager position configured TECH_6D => follows TECH_6D weekly_off_dows, not manager position rule
+8) Work Pattern changes next month => quota and Schedule use the new month's weekly_off_dows
+
+Static validation required before release
+- node --check app.js
+- HTML parse index.html / 404.html
+- frontend prefers ta_get_schedule_range_light_v61425
+- frontend prefers ta_get_off_shift_basis_v61425
+- frontend prefers ta_get_dayoff_balance_v61425
+- no browser PC-based weekly-off fallback remains
+- ZIP integrity test
+
+Database runtime note
+The migration is source-audited in the build environment. Actual Supabase function execution must be confirmed by running the V6.14.25 Verify SQL after migration.

@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.24";
-document.documentElement.dataset.timeClockBuild = "6.14.24";
+window.__TIME_CLOCK_BUILD__ = "V6.14.25";
+document.documentElement.dataset.timeClockBuild = "6.14.25";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.24";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.24',
+  version: '6.14.25',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -466,178 +466,9 @@ window.tcIsDayShiftCode = value =>
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   };
 
-  const parsePcGroup = value => {
-    const text = String(value || "").trim().toUpperCase();
-    const match = text.match(/[0-9]+/);
-    return match ? match[0] : text;
-  };
-
-  const isNaturalWeeklyOff = (pc, date) => {
-    const dow = date.getDay(); // 0 Sunday, 6 Saturday
-    const group = parsePcGroup(pc);
-    if (group === "4") return dow === 0 || dow === 6;
-    if (group === "5") return dow === 0;
-    return false;
-  };
-
-  async function fetchEmployeesForSchedule(client, params, monthStart, endDate) {
-    const pageSize = 1000;
-    const rows = [];
-    for (let from = 0; from < 10000; from += pageSize) {
-      let query = client.from("employees")
-        .select("EmployeeId,full_name,position_name,department,pc,area,zone,sub_area,car_team,manager_department,manager_division,manager_gm,manager_avp,start_date,resign_date")
-        .or(`start_date.is.null,start_date.lte.${endDate}`)
-        .or(`resign_date.is.null,resign_date.gte.${monthStart}`)
-        .order("EmployeeId", { ascending: true })
-        .range(from, from + pageSize - 1);
-      if (params.p_department) query = query.eq("department", params.p_department);
-      if (Array.isArray(params.p_emp_codes) && params.p_emp_codes.length) query = query.in("EmployeeId", params.p_emp_codes);
-      const { data, error } = await query;
-      if (error) throw error;
-      rows.push(...(data || []));
-      if (!data || data.length < pageSize) break;
-    }
-    return rows;
-  }
-
-  async function fetchOptional(client, table, select, configure) {
-    try {
-      let query = client.from(table).select(select);
-      query = configure ? configure(query) : query;
-      const { data, error } = await query;
-      if (error) return [];
-      return data || [];
-    } catch {
-      return [];
-    }
-  }
-
-  function patternShiftFor(patternsByEmp, detailsByPattern, empCode, workDate) {
-    const patterns = patternsByEmp.get(empCode) || [];
-    const active = patterns
-      .filter(p => (!p.effective_start || p.effective_start <= workDate) && (!p.effective_end || p.effective_end >= workDate))
-      .sort((a, b) => String(b.effective_start || "").localeCompare(String(a.effective_start || "")))[0];
-    if (!active) return null;
-    const details = detailsByPattern.get(active.pattern_code) || [];
-    if (!details.length) return null;
-    const cycle = Math.max(...details.map(d => Number(d.day_no || 0)), 0);
-    if (!cycle) return null;
-    const start = new Date(`${active.effective_start}T00:00:00`);
-    const current = new Date(`${workDate}T00:00:00`);
-    const diff = Math.round((current - start) / 86400000);
-    const dayNo = ((diff + Number(active.start_day_no || 1) - 1) % cycle + cycle) % cycle + 1;
-    return details.find(d => Number(d.day_no) === dayNo)?.shift_code || null;
-  }
-
-  async function ensureMonthlyMatrix(client, rows, params, monthStart, endDate) {
-    let employees;
-    try {
-      employees = await fetchEmployeesForSchedule(client, params, monthStart, endDate);
-    } catch {
-      return rows;
-    }
-    if (!employees.length) return rows;
-
-    const [holidays, shiftMaster, patterns, patternDetails, shiftRules] = await Promise.all([
-      fetchOptional(client, "holidays", "holiday_date,holiday_name", q => q.gte("holiday_date", monthStart).lte("holiday_date", endDate)),
-      fetchOptional(client, "shift_master", "shift_code,shift_name,start_time,end_time,is_workday,is_active", q => q.eq("is_active", true)),
-      fetchOptional(client, "employee_shift_patterns", "emp_code,pattern_code,effective_start,effective_end,start_day_no", q => q.lte("effective_start", endDate).or(`effective_end.is.null,effective_end.gte.${monthStart}`)),
-      fetchOptional(client, "shift_pattern_details", "pattern_code,day_no,shift_code"),
-      fetchOptional(client, "ta_shift_schedule_rules_v6123", "shift_code,paired_off_shift_code")
-    ]);
-
-    const holidayMap = new Map(holidays.map(h => [String(h.holiday_date).slice(0, 10), h.holiday_name || "วันหยุดนักขัตฤกษ์"]));
-    const shiftMap = new Map(shiftMaster.map(s => [String(s.shift_code || "").toUpperCase(), s]));
-    const pairedDayoffMap = new Map(
-      (shiftRules || [])
-        .map(r => [window.tcShiftCode(r.shift_code), window.tcShiftCode(r.paired_off_shift_code)])
-        .filter(([workCode, offCode]) => workCode && offCode)
-    );
-    const canonicalDayoffFallback = new Map([
-      ['STD','OSTD'],['S043','OS043'],['S134','OS134'],['S135','OS135']
-    ]);
-    const resolvePairedDefaultDayoffV6134 = workCode => {
-      const normalized = window.tcShiftCode(workCode);
-      const configured = window.tcShiftCode(pairedDayoffMap.get(normalized) || '');
-      const fallback = window.tcShiftCode(canonicalDayoffFallback.get(normalized) || '');
-      const candidate = configured || fallback;
-      const meta = shiftMap.get(candidate);
-      return candidate && meta && meta.is_active !== false && meta.is_workday === false ? candidate : '';
-    };
-    const patternsByEmp = new Map();
-    patterns.forEach(p => {
-      const key = String(p.emp_code || "").trim();
-      if (!patternsByEmp.has(key)) patternsByEmp.set(key, []);
-      patternsByEmp.get(key).push(p);
-    });
-    const detailsByPattern = new Map();
-    patternDetails.forEach(d => {
-      const key = String(d.pattern_code || "").trim();
-      if (!detailsByPattern.has(key)) detailsByPattern.set(key, []);
-      detailsByPattern.get(key).push(d);
-    });
-
-    const rowMap = new Map();
-    (rows || []).forEach(row => {
-      const key = `${String(row.emp_code || "").trim()}|${String(row.work_date || "").slice(0, 10)}`;
-      rowMap.set(key, { ...row });
-    });
-
-    const start = new Date(`${monthStart}T00:00:00`);
-    const end = new Date(`${endDate}T00:00:00`);
-    for (const emp of employees) {
-      const empCode = String(emp.EmployeeId || emp.emp_code || "").trim();
-      if (!empCode) continue;
-      for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + 1)) {
-        const workDate = isoDateLocal(cursor);
-        if (emp.start_date && workDate < String(emp.start_date).slice(0, 10)) continue;
-        if (emp.resign_date && workDate > String(emp.resign_date).slice(0, 10)) continue;
-        const key = `${empCode}|${workDate}`;
-        const existing = rowMap.get(key) || {};
-        const publicHoliday = holidayMap.has(workDate);
-        const weeklyOff = !publicHoliday && isNaturalWeeklyOff(emp.pc, cursor);
-        const patternShift = patternShiftFor(patternsByEmp, detailsByPattern, empCode, workDate);
-        const defaultWorkCode = window.tcShiftCode(
-          patternShift || (parsePcGroup(emp.pc) === "4" ? "STD" : "S043")
-        );
-        const defaultDayoffCode = resolvePairedDefaultDayoffV6134(defaultWorkCode);
-        const fallbackAutoCode = publicHoliday
-          ? "HOL"
-          : patternShift || (weeklyOff ? defaultDayoffCode : defaultWorkCode);
-        const autoCode = window.tcShiftCode(existing.auto_shift_code || existing.shift_code || fallbackAutoCode || "");
-        const effectiveCode = existing.assigned_shift_code || existing.effective_shift_code || autoCode;
-        const shift = shiftMap.get(String(effectiveCode || "").toUpperCase()) || {};
-        rowMap.set(key, {
-          ...emp,
-          ...existing,
-          work_date: workDate,
-          emp_code: empCode,
-          full_name: existing.full_name || emp.full_name,
-          position_name: existing.position_name || emp.position_name,
-          department: existing.department || emp.department,
-          area: existing.area || emp.area || emp.zone,
-          zone: existing.zone || emp.zone || emp.area,
-          sub_area: existing.sub_area || emp.sub_area,
-          pc: existing.pc || emp.pc,
-          day_type: publicHoliday ? "PUBLIC_HOLIDAY" : weeklyOff ? "WEEKLY_OFF" : "WORKDAY",
-          is_public_holiday: publicHoliday,
-          is_weekly_off: weeklyOff,
-          holiday_name: publicHoliday ? holidayMap.get(workDate) : null,
-          expected_day: existing.expected_day ?? (publicHoliday || weeklyOff ? 0 : 1),
-          default_shift_code: existing.default_shift_code || defaultWorkCode,
-          auto_shift_code: autoCode,
-          suggested_shift_code: existing.suggested_shift_code || autoCode,
-          suggestion_confidence: existing.suggestion_confidence ?? (patternShift ? 95 : publicHoliday || weeklyOff ? 100 : 70),
-          effective_shift_code: effectiveCode,
-          schedule_status: existing.schedule_status || (existing.assigned_shift_code ? (existing.is_confirmed ? "CONFIRMED" : "ASSIGNED") : "AUTO"),
-          shift_start_time: existing.shift_start_time || existing.effective_shift_start_time || shift.start_time || null,
-          shift_end_time: existing.shift_end_time || existing.effective_shift_end_time || shift.end_time || null
-        });
-      }
-    }
-    return [...rowMap.values()];
-  }
-
+  // V6.14.25: removed the unused browser-side PC/position day-off matrix fallback.
+  // Schedule day type and paired day-off now come only from the canonical
+  // config-driven Schedule RPC / Work Pattern resolver.
 
 
   function scheduleText(value) {
@@ -918,10 +749,8 @@ window.tcIsDayShiftCode = value =>
       from < maxRows;
       from += pageSize
     ) {
-      let request = client.rpc(
-        "ta_get_schedule_range_light_v6134",
-        rpcArgs
-      );
+      const scheduleRpcName = "ta_get_schedule_range_light_v61425";
+      let request = client.rpc(scheduleRpcName,rpcArgs);
 
       if (!disableRangePaging) {
         if (typeof request?.order === "function") {
@@ -938,26 +767,18 @@ window.tcIsDayShiftCode = value =>
         }
       }
 
-      const response =
-        await withTimeout(
-          request,
-          30000,
-          `โหลดตารางกะ Lightweight V6.13.5 ชุด ${
-            Math.floor(from / pageSize) + 1
-          }`
-        );
+      let response = await withTimeout(
+        request,
+        30000,
+        `โหลดตารางกะ Day-off Consistency V6.14.25 ชุด ${Math.floor(from / pageSize) + 1}`
+      );
 
       if(response.error) {
-        if(
-          missingFunction(
-            response.error
-          )
-        ) {
+        if(missingFunction(response.error)) {
           throw new Error(
-            "SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED: กรุณารัน SQL V6.13.5"
+            "SCHEDULE_DAYOFF_V61425_REQUIRED: กรุณารัน SQL V6.14.25 เพื่อให้ทุกหน้าจัดกะใช้การคำนวณวันหยุดชุดเดียวกัน"
           );
         }
-
         throw response.error;
       }
 
@@ -27263,7 +27084,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.19';
+  const VERSION='6.14.25';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27282,6 +27103,7 @@ ${names}${extra}
     if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
     const {data,error}=await client.rpc(name,args);if(error)throw error;return data;
   }
+  const missingRpcV61425=e=>/PGRST202|42883|could not find|does not exist|schema cache/i.test(String(e?.code||'')+' '+String(e?.message||e||''));
   const fmtTime=v=>app()?.formatTime?.(v)||String(v||'-').slice(0,5)||'-';
   const fmtDate=v=>app()?.formatDate?.(v)||v||'-';
   function isoAddDays(date,days){const d=new Date(`${String(date).slice(0,10)}T00:00:00`);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10);}
@@ -27554,13 +27376,13 @@ ${names}${extra}
   function ensureShiftOption(code,label){const s=$('assignShiftCode');if(!s||!code)return;if(![...s.options].some(o=>o.value===code)){const o=document.createElement('option');o.value=code;o.textContent=label||code;s.appendChild(o);}}
   async function fetchOffBasisV6135(empCode,workDate){
     const args={p_emp_code:String(empCode||''),p_work_date:String(workDate||'').slice(0,10)};
-    const names=['ta_get_off_shift_basis_v6135','ta_get_off_shift_basis_v6134','ta_get_off_shift_basis_v6130','ta_get_off_shift_basis_v6123'];
-    let lastError=null;
-    for(const name of names){
-      try{const b=await rpc(name,args);if(b)return Array.isArray(b)?b[0]:b;}catch(e){lastError=e;}
+    try{
+      const b=await rpc('ta_get_off_shift_basis_v61425',args);
+      return Array.isArray(b)?b[0]:b;
+    }catch(e){
+      if(missingRpcV61425(e))throw new Error('DAYOFF_RESOLVER_V61425_REQUIRED: กรุณารัน SQL V6.14.25');
+      throw e;
     }
-    if(lastError)throw lastError;
-    return null;
   }
   function normalizeOffBasisV6135(b){
     if(!b)return null;
@@ -27677,16 +27499,16 @@ ${names}${extra}
     const args={p_emp_code:st.current.empCode,p_month:`${String(st.current.workDate).slice(0,7)}-01`};
     try{
       let q;
-      try{q=await rpc('ta_get_dayoff_balance_v6134',args);}
+      try{q=await rpc('ta_get_dayoff_balance_v61425',args);}
       catch(e){
-        try{q=await rpc('ta_get_dayoff_balance_v6133',args);}
-        catch(e2){q=await rpc('ta_get_dayoff_balance_v6120',args);}
+        if(missingRpcV61425(e))throw new Error('DAYOFF_BALANCE_V61425_REQUIRED: กรุณารัน SQL V6.14.25');
+        throw e;
       }
       st.quota=Array.isArray(q)?q[0]:q;
       renderModeGrid();
       refreshAssignmentPreview();
     }catch(e){
-      console.warn('Day-off quota load V6.13.5:',e?.message||e);
+      console.warn('Day-off quota load V6.14.25:',e?.message||e);
     }
     renderGuardPreview();
     scheduleServerGuardPreviewV6141();
@@ -28008,7 +27830,7 @@ ${names}${extra}
   /* Admin configuration */
   function ensureAdminUi(){
     if($('workModeAdminV6120'))return;const page=$('page-work-patterns');if(!page)return;const panels=page.querySelectorAll('.panel');const anchor=panels[panels.length-1];
-    anchor?.insertAdjacentHTML('afterend',`<div class="panel section-gap work-mode-admin-v6120" id="workModeAdminV6120"><div class="panel-header"><div><span class="work-pattern-section-kicker-v61111">SCHEDULING RULES V6.12</span><h3>รูปแบบการจัดกะและกฎการทำงาน</h3><p>เปิด/ปิดรูปแบบรายวัน กำหนดหน่วยงานที่ใช้งาน และตั้งค่าโควต้าวันหยุด</p></div><button type="button" class="btn btn-light" id="workModeRefreshV6120">↻ รีเฟรช</button></div><div class="panel-body"><div class="work-mode-admin-grid-v6120" id="workModeAdminCardsV6120"></div><div class="dayoff-settings-v6120"><div><strong>โควต้าวันหยุด</strong><small>ผู้จัดการแผนก: เสาร์ + อาทิตย์ + นักขัตฤกษ์ • ตำแหน่งอื่น: อาทิตย์ + นักขัตฤกษ์</small></div><label>เริ่มนับตั้งแต่ <input class="input" type="month" id="dayoffStartMonthV6120"></label><button class="btn btn-primary" type="button" id="saveDayoffSettingsV6120">บันทึก</button></div><div class="work-mode-admin-note-v6120" id="workModeAdminNoteV6120"></div></div></div>`);
+    anchor?.insertAdjacentHTML('afterend',`<div class="panel section-gap work-mode-admin-v6120" id="workModeAdminV6120"><div class="panel-header"><div><span class="work-pattern-section-kicker-v61111">SCHEDULING RULES V6.12</span><h3>รูปแบบการจัดกะและกฎการทำงาน</h3><p>เปิด/ปิดรูปแบบรายวัน กำหนดหน่วยงานที่ใช้งาน และตั้งค่าโควต้าวันหยุด</p></div><button type="button" class="btn btn-light" id="workModeRefreshV6120">↻ รีเฟรช</button></div><div class="panel-body"><div class="work-mode-admin-grid-v6120" id="workModeAdminCardsV6120"></div><div class="dayoff-settings-v6120"><div><strong>โควต้าวันหยุด</strong><small>วันหยุดประจำสัปดาห์อ้างอิง Work Pattern ที่กำหนดให้พนักงาน • วันนักขัตฤกษ์เป็นวันหยุดอัตโนมัติ</small></div><label>เริ่มนับตั้งแต่ <input class="input" type="month" id="dayoffStartMonthV6120"></label><button class="btn btn-primary" type="button" id="saveDayoffSettingsV6120">บันทึก</button></div><div class="work-mode-admin-note-v6120" id="workModeAdminNoteV6120"></div></div></div>`);
     document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop hidden" id="workModeScopeModalV6120"><div class="modal"><div class="modal-header"><div><h3 id="workModeScopeTitleV6120">กำหนดการเปิดใช้รูปแบบ</h3><p>เลือกทุกหน่วยงาน หรือจำกัดเฉพาะหน่วยงานที่ต้องการ</p></div><button type="button" class="btn btn-light btn-icon" id="workModeScopeCloseV6120">×</button></div><div class="modal-body"><input type="hidden" id="workModeScopeCodeV6120"><label class="mobileta-option-card"><input type="checkbox" id="workModeActiveV6120"><span><strong>เปิดใช้งาน</strong><small>ปิดแล้ว User จะไม่เห็นรูปแบบนี้ในหน้าจัดกะ</small></span></label><div class="field section-gap"><label>ขอบเขตหน่วยงาน</label><select class="select" id="workModeScopeTypeV6120"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select></div><div class="work-mode-dept-list-v6120 hidden" id="workModeDeptListV6120"></div></div><div class="modal-footer"><button class="btn btn-light" id="workModeScopeCancelV6120">ยกเลิก</button><button class="btn btn-primary" id="workModeScopeSaveV6120">บันทึกการตั้งค่า</button></div></div></div>`);
     $('workModeRefreshV6120')?.addEventListener('click',loadAdminPanel);$('saveDayoffSettingsV6120')?.addEventListener('click',saveDayoffSettings);$('workModeScopeCloseV6120')?.addEventListener('click',closeScopeModal);$('workModeScopeCancelV6120')?.addEventListener('click',closeScopeModal);$('workModeScopeTypeV6120')?.addEventListener('change',async()=>{if($('workModeScopeTypeV6120')?.value==='SELECTED'){const box=$('workModeDeptListV6120');if(box)box.innerHTML='<small>กำลังโหลดรายการหน่วยงาน...</small>';await loadDepartmentOptions();}renderDeptScope();});$('workModeScopeSaveV6120')?.addEventListener('click',saveScopeModal);
     document.addEventListener('click',e=>{const b=e.target.closest('[data-edit-work-mode-v6120]');if(b)openScopeModal(b.dataset.editWorkModeV6120);});
