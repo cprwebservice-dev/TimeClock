@@ -1,0 +1,40 @@
+AUDIT — TimeAttendance V6.14.34
+Night Sequence Guard: หลังวันกะดึก วันถัดไปต้องเป็นกะดึกหรือวันหยุด
+
+[PASS] Assignment Popup
+- Previous night -> morning/day = BLOCK even if theoretical rest >= 6h.
+- Previous night -> night = ALLOW subject to minimum-rest 6h.
+- Previous night -> paired day-off / HOL = ALLOW.
+- Previous night -> LV = BLOCK per latest business rule.
+- Previous night -> split morning + late customer/night = BLOCK because first segment is morning/day.
+- Previous night -> hour-based starting at night = ALLOW subject to 6h.
+
+[PASS] Person 15-Day / Full-Month Quick Actions
+- NORMAL: blocked/skipped per selected employee/date when previous day is night.
+- NIGHT: allowed when 6h rest also passes.
+- Day-off: allowed and resolves paired OSTD/OS043/OS134/OS135.
+- LV: blocked when previous day is night.
+- Boundary row from prior day remains available for day 1 validation.
+
+[PASS] Other bulk mutation paths
+- savePayload / saveSchedulePayload call central validateBulk.
+- Copy/Paste, Month Copy, Fill, 7-Day Pattern, Previous Week, Undo/Redo pass through validateBulk.
+- Clear shift checks resulting default shift; if it would revert to morning after night, BLOCK.
+- Delete single assignment now runs the same projected-clear validateBulk before delete RPC.
+
+[PASS] Server guard
+- Existing RPC signature ta_validate_schedule_guard_v6141 retained for compatibility.
+- guard_version becomes V6.14.34.
+- Adds night_sequence_block / previous_is_night / target_is_night / target_is_dayoff / target_is_leave.
+- Minimum rest <360 min retained.
+- >48h warning retained.
+
+Expected matrix
+1) S134 -> STD = BLOCK
+2) S135 -> S043 = BLOCK
+3) S134 -> S134 = ALLOW if rest >= 6h
+4) S135 -> S135 = ALLOW if rest >= 6h
+5) S134/S135 -> OSTD/OS043/OS134/OS135/HOL = ALLOW
+6) S134/S135 -> LV = BLOCK
+7) S134/S135 -> Split morning + night = BLOCK
+8) S134/S135 -> Hour-based night start = ALLOW if rest >= 6h
