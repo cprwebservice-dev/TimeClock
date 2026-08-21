@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.32";
-document.documentElement.dataset.timeClockBuild = "6.14.32";
+window.__TIME_CLOCK_BUILD__ = "V6.14.33";
+document.documentElement.dataset.timeClockBuild = "6.14.33";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.32";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.32',
+  version: '6.14.33',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5128,7 +5128,7 @@ window.tcIsDayShiftCode = value =>
           // transport strategy; scope/filter/business rules remain unchanged.
           // V6.12.9: the grid RPC is lightweight, but keep each request small
           // and avoid a burst of concurrent PostgreSQL statements.
-          // V6.14.32: fetch one hidden day before the visible PERSON range.
+          // V6.14.33: fetch one hidden day before the visible PERSON range.
           // The row is not rendered, but is retained for the 6-hour transition
           // guard so day 1 of a 15-day/full-month view can see the prior night.
           const personGuardStartDateV61431 = (()=>{
@@ -13008,14 +13008,14 @@ window.tcIsDayShiftCode = value =>
         emp_code: item.emp_code,
         work_date: item.work_date,
         shift_code: shift.shift_code,
-        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.32 mixed-pattern + minimum-rest smart quick shift`
+        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.33 mixed-pattern + minimum-rest smart quick shift`
       });
 
       const groupKey = `${pattern}|${shift.shift_code}`;
       summary.set(groupKey, (summary.get(groupKey) || 0) + 1);
     });
 
-    // V6.14.32 — use the same minimum-rest transition logic as the Assignment
+    // V6.14.33 — use the same minimum-rest transition logic as the Assignment
     // popup and the bulk guard before showing the quick-action confirmation.
     // This prevents one night→morning conflict from failing the whole 15-day /
     // full-month quick action after the user has already confirmed it.
@@ -27449,7 +27449,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.32';
+  const VERSION='6.14.33';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -28089,7 +28089,7 @@ ${names}${extra}
     }else{
       dayoffQuotaGuardV6142={allowed:true,skipped_precheck:true,reason:'NON_DAYOFF_SHIFT',guard_version:'V6.14.8'};
     }
-    // V6.14.32: save validation must use the CURRENT proposal only. A cached
+    // V6.14.33: save validation must use the CURRENT proposal only. A cached
     // async guard from a previously selected morning shift must never block a
     // newly selected night shift / leave / day-off.
     const guard=localGuard();

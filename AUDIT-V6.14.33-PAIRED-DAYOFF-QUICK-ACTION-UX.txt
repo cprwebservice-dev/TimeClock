@@ -1,0 +1,10 @@
+AUDIT V6.14.33 — Paired Day-off Quick Action UX
+
+PASS
+1. Quick button no longer displays literal OFF to the user.
+2. Button displays “วันหยุด / ตามกะล่าสุด”.
+3. Underlying action remains data-quick-shift=OFF.
+4. validateBulk still resolves OFF to paired day-off code per employee/date.
+5. Existing mapping remains STD→OSTD, S043→OS043, S134→OS134, S135→OS135.
+6. Same toolbar is used by 15-day and full-month person schedule views.
+7. No backend or SQL change.
