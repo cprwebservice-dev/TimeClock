@@ -21545,3 +21545,31 @@ html[data-theme="dark"] .employee-pattern-modal-v61416 #epPattern:disabled,body.
 html[data-theme="dark"] .wp-month-rule-v61419{background:#2b211b!important;border-color:#9a5a20!important}
 html[data-theme="dark"] .wp-month-rule-v61419 strong,html[data-theme="dark"] .wp-month-rule-v61419>span{color:#fdba74!important}
 html[data-theme="dark"] .wp-month-legacy-v61419{background:#352417;border-color:#8a5a2b;color:#fdba74}
+
+
+/* ==========================================================================
+   V6.14.20 — Closed-period Monthly Personal actions + full-month lock position
+   ========================================================================== */
+
+/* Monthly Personal Overview: once a Manager period is closed, the day card is
+   informational only. Hide the closed Schedule / Certification action labels. */
+#employeeMonthScheduleModal .system-period-action-hidden-v61420{
+  display:none!important;
+}
+#employeeMonthScheduleModal .employee-month-day-actions-v61139.system-period-actions-hidden-v61420{
+  display:none!important;
+  margin:0!important;
+  min-height:0!important;
+}
+
+/* Person Schedule • Full month: keep the closed-period lock out of the shift
+   code area and anchor it consistently at the lower-right corner of the label. */
+#scheduleTableWrap.schedule-person-full-month-v61420 .system-period-closed-cell .schedule-cell{
+  padding-right:0!important;
+}
+#scheduleTableWrap.schedule-person-full-month-v61420 .system-period-cell-lock{
+  top:auto!important;
+  right:4px!important;
+  bottom:4px!important;
+  left:auto!important;
+}

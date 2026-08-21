@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.19";
-document.documentElement.dataset.timeClockBuild = "6.14.19";
+window.__TIME_CLOCK_BUILD__ = "V6.14.20";
+document.documentElement.dataset.timeClockBuild = "6.14.20";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.19";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.19',
+  version: '6.14.20',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1396,6 +1396,13 @@ window.tcIsDayShiftCode = value =>
       const current = $("scheduleTodayBtn");
 
       const person15 = personMode && range.personDisplayMode === "15D";
+      const scheduleTableWrapV61420 = $("scheduleTableWrap");
+      if (scheduleTableWrapV61420) {
+        scheduleTableWrapV61420.classList.toggle(
+          "schedule-person-full-month-v61420",
+          personMode && !person15
+        );
+      }
       if (prev) {
         prev.title = personMode && !person15 ? "เดือนก่อน" : "ช่วงก่อน";
         prev.innerHTML = personMode && !person15
@@ -25961,6 +25968,21 @@ ${names}${extra}
     });
   }
 
+  function syncEmployeeMonthActionSlotV61420(source){
+    const day = source?.matches?.("[data-month-date]")
+      ? source
+      : source?.closest?.("[data-month-date]");
+    const actions = day?.querySelector?.(".employee-month-day-actions-v61139");
+    if(!actions) return;
+    const hasVisibleAction = [...actions.children].some(child =>
+      !child.classList.contains("system-period-action-hidden-v61420")
+    );
+    actions.classList.toggle(
+      "system-period-actions-hidden-v61420",
+      !hasVisibleAction
+    );
+  }
+
   function applyMonthPeriod(statuses,currentRole){
     const modal=$("employeeMonthScheduleModal");
     if(!modal||modal.classList.contains("hidden")) return;
@@ -25978,8 +26000,13 @@ ${names}${extra}
         if(!edit.dataset.periodOriginalText) edit.dataset.periodOriginalText=edit.textContent||"จัดกะ";
         edit.disabled=closed;
         edit.classList.toggle("period-action-disabled",closed);
-        edit.textContent=closed?"🔒 ปิดรอบ":edit.dataset.periodOriginalText;
+        // V6.14.20: Monthly Personal Overview is read-only after the Manager
+        // schedule period closes. Do not render a redundant "ปิดรอบ" action label.
+        edit.classList.toggle("system-period-action-hidden-v61420",closed);
+        edit.setAttribute("aria-hidden",closed?"true":"false");
+        edit.textContent=edit.dataset.periodOriginalText;
       }
+      syncEmployeeMonthActionSlotV61420(day);
     });
     const first=days[0]?.dataset?.monthDate;
     if(first){
@@ -26055,15 +26082,31 @@ ${names}${extra}
     button.classList.toggle("time-cert-period-override-v61144",override);
     button.classList.toggle("time-cert-period-due-v61144",!closed&&dueSoon);
 
+    const inMonthlyPersonalOverviewV61420 = Boolean(
+      button.closest?.("#employeeMonthScheduleModal")
+    );
+    button.classList.toggle(
+      "system-period-action-hidden-v61420",
+      inMonthlyPersonalOverviewV61420 && closed
+    );
+    button.setAttribute(
+      "aria-hidden",
+      inMonthlyPersonalOverviewV61420 && closed ? "true" : "false"
+    );
+
     if(closed){
       button.disabled=true;
-      button.innerHTML="<span>🔒</span>ปิดรอบรับรอง";
-      button.title=`ปิดรอบรับรองเวลาสำหรับ Manager • Deadline ${deadline}`;
+      if(!inMonthlyPersonalOverviewV61420){
+        button.innerHTML="<span>🔒</span>ปิดรอบรับรอง";
+        button.title=`ปิดรอบรับรองเวลาสำหรับ Manager • Deadline ${deadline}`;
+      }
+      syncEmployeeMonthActionSlotV61420(button);
       return;
     }
 
     button.disabled=false;
     button.innerHTML=button.dataset.certOriginalHtml;
+    syncEmployeeMonthActionSlotV61420(button);
 
     if(override){
       button.title=`รอบรับรองปิดสำหรับ Manager • HR Admin Override • Deadline ${deadline}`;
