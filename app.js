@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.22";
-document.documentElement.dataset.timeClockBuild = "6.14.22";
+window.__TIME_CLOCK_BUILD__ = "V6.14.23";
+document.documentElement.dataset.timeClockBuild = "6.14.23";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.22";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.22',
+  version: '6.14.23',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -17902,7 +17902,36 @@ ${skippedSummary(compatibility.skipped)}
   function invalidateWorkPatternScheduleV61416(empCodes=[]){
     if(app()?.state)app().state.schedule=[];
     try{window.TimeClockConsistencyV61415?.invalidateAll?.();}catch(_){ }
-    document.dispatchEvent(new CustomEvent('timeclock:employee-work-pattern-updated',{detail:{empCodes:[...empCodes],version:'V6.14.19'}}));
+    document.dispatchEvent(new CustomEvent('timeclock:employee-work-pattern-updated',{detail:{empCodes:[...empCodes],version:'V6.14.23'}}));
+  }
+
+  async function getWorkPatternEditAccessV61423(rows=[],effectiveMonth='',options={}){
+    const list=(rows||[]).filter(r=>String(r?.emp_code||'').trim());
+    const codes=[...new Set(list.map(r=>String(r.emp_code).trim()))];
+    if(!codes.length)return {ready:true,allowedRows:[],deniedRows:[],accessMap:new Map()};
+    const month=workPatternMonthStartV61419(effectiveMonth||$('wpBulkEffectiveDateV61416')?.value||$('employeePatternDate')?.value);
+    if(!month)return {ready:false,allowedRows:[],deniedRows:list,accessMap:new Map()};
+    try{
+      const accessRows=await rpc('ta_get_employee_work_pattern_edit_access_v61423',{
+        p_emp_codes:codes,
+        p_effective_date:month
+      })||[];
+      const accessMap=new Map(accessRows.map(x=>[String(x.emp_code),x]));
+      const allowedRows=[];
+      const deniedRows=[];
+      for(const row of list){
+        const access=accessMap.get(String(row.emp_code));
+        if(access?.can_edit===true)allowedRows.push(row);
+        else deniedRows.push({...row,_work_pattern_access:access||null});
+      }
+      return {ready:true,allowedRows,deniedRows,accessMap,month};
+    }catch(error){
+      console.warn('V6.14.23 Work Pattern edit-access preflight unavailable:',error);
+      if(options.showToast!==false){
+        app()?.toast?.('กรุณารัน SQL V6.14.23 ก่อนใช้งานการกำหนดรูปแบบหลายคน เพื่อให้สิทธิ์ VIEW / EDIT ตรงกัน','error');
+      }
+      return {ready:false,allowedRows:[],deniedRows:list,accessMap:new Map(),error,month};
+    }
   }
 
   async function refreshWorkPatternAttendanceV61419(empCodes=[],effectiveMonth=''){
@@ -17938,6 +17967,13 @@ ${skippedSummary(compatibility.skipped)}
     if(!guard.allowed)return;
     const normalizedFrom=workPatternMonthStartV61419($('epFrom').value);
     if(effectiveTo&&effectiveTo<normalizedFrom){app()?.toast?.('เดือนสิ้นสุดต้องไม่ก่อนเดือนเริ่มใช้','error');return;}
+    const editAccess=await getWorkPatternEditAccessV61423([{...row,emp_code:emp}],normalizedFrom,{showToast:true});
+    if(!editAccess.ready)return;
+    if(!editAccess.allowedRows.length){
+      const reason=editAccess.deniedRows?.[0]?._work_pattern_access?.access_reason||'NO_EDIT_SCOPE';
+      app()?.toast?.(`ไม่มีสิทธิ์แก้ไขรูปแบบการทำงานของพนักงานคนนี้ (${reason})`,'error');
+      return;
+    }
     try{
       const btn=$('epSaveBtn');if(btn)btn.disabled=true;
       app()?.showLoading?.('กำลังบันทึก Monthly Work Pattern...');
@@ -17966,9 +18002,27 @@ ${skippedSummary(compatibility.skipped)}
     effectiveMonth=workPatternMonthValueV61419($('wpBulkEffectiveDateV61416')?.value||effectiveMonth);
     const effectiveFrom=workPatternMonthStartV61419(effectiveMonth);
     const shift=defaultShiftForPatternV61416(wp.bulkPatternCode,wp.bulkShiftPeriod);
-    const selectedRows=(wp.employees||[]).filter(r=>wp.selectedEmployees.has(String(r.emp_code)));
+    let selectedRows=(wp.employees||[]).filter(r=>wp.selectedEmployees.has(String(r.emp_code)));
+    const editAccess=await getWorkPatternEditAccessV61423(selectedRows,effectiveFrom,{showToast:true});
+    if(!editAccess.ready)return;
+    const deniedCount=editAccess.deniedRows.length;
+    if(deniedCount){
+      editAccess.deniedRows.forEach(r=>wp.selectedEmployees.delete(String(r.emp_code)));
+      selectedRows=editAccess.allowedRows;
+      renderEmployeePatternsV61416();
+      app()?.toast?.(`คัดออก ${deniedCount.toLocaleString('th-TH')} คนที่ดูข้อมูลได้แต่ไม่มีสิทธิ์ EDIT_SCHEDULE • จะบันทึกเฉพาะ ${selectedRows.length.toLocaleString('th-TH')} คนที่แก้ไขได้`,'warning');
+    }else{
+      selectedRows=editAccess.allowedRows;
+    }
+    if(!selectedRows.length){
+      app()?.toast?.('ไม่มีพนักงานที่มีสิทธิ์แก้ไขรูปแบบการทำงานในรายการที่เลือก','error');
+      return;
+    }
     const names=selectedRows.slice(0,3).map(r=>r.full_name||r.emp_code).join(', ');
     const extra=selectedRows.length>3?` และอีก ${selectedRows.length-3} คน`:'';
+    const permissionNote=deniedCount?`
+ระบบตัด ${deniedCount.toLocaleString('th-TH')} คนที่ไม่มีสิทธิ์แก้ไขออกจากรายการแล้ว
+`:'';
     const message=`ยืนยันกำหนดรูปแบบให้ ${selectedRows.length.toLocaleString('th-TH')} คน?
 
 ${patternShortLabelV61416(wp.bulkPatternCode)} • ${wp.bulkShiftPeriod==='NIGHT'?'กะดึก':'กะเช้า'} ${shift.code} (${shift.time})
@@ -17977,13 +18031,13 @@ ${patternShortLabelV61416(wp.bulkPatternCode)} • ${wp.bulkShiftPeriod==='NIGHT
 
 ${names}${extra}
 
-รูปแบบ 5/6 วันและกะตั้งต้นในหน้านี้เป็น Monthly Baseline • หากต้องเปลี่ยนเฉพาะบางวัน ให้จัดกะในปฏิทิน`; 
+รูปแบบ 5/6 วันและกะตั้งต้นในหน้านี้เป็น Monthly Baseline • หากต้องเปลี่ยนเฉพาะบางวัน ให้จัดกะในปฏิทิน${permissionNote}`; 
     const confirmed=window.tcConfirm?await window.tcConfirm(message):window.confirm(message);
     if(!confirmed)return;
     const rows=selectedRows.map(r=>{
       const effectivePattern=effectivePatternForEmployeeV61417(r,wp.bulkPatternCode);
       const effectiveShift=defaultShiftForPatternV61416(effectivePattern,wp.bulkShiftPeriod);
-      return {emp_code:r.emp_code,pattern_code:effectivePattern,default_shift_code:effectiveShift.code,effective_from:effectiveFrom,effective_to:null,note:'Bulk Technician Monthly Work Pattern V6.14.19'};
+      return {emp_code:r.emp_code,pattern_code:effectivePattern,default_shift_code:effectiveShift.code,effective_from:effectiveFrom,effective_to:null,note:'Bulk Technician Monthly Work Pattern V6.14.23'};
     });
     const button=$('wpBulkApplyBtnV61416');
     try{
@@ -18263,9 +18317,32 @@ ${names}${extra}
     $('epFrom')?.addEventListener('change',e=>validateWorkPatternEffectiveDateV61417(e.target.value,{input:e.target,showToast:true,autoCorrect:true}));
     $('epPattern')?.addEventListener('change',updateEmployeeShiftPreviewV61416);
     qsa('input[name="epShiftPeriodV61416"]').forEach(input=>input.addEventListener('change',updateEmployeeShiftPreviewV61416));
-    $('employeePatternSelectAllV61416')?.addEventListener('change',e=>{
-      currentFilteredEmployeePatternsV61416().forEach(r=>e.target.checked?wp.selectedEmployees.add(String(r.emp_code)):wp.selectedEmployees.delete(String(r.emp_code)));
-      renderEmployeePatternsV61416();
+    $('employeePatternSelectAllV61416')?.addEventListener('change',async e=>{
+      const visible=currentFilteredEmployeePatternsV61416();
+      if(!e.target.checked){
+        visible.forEach(r=>wp.selectedEmployees.delete(String(r.emp_code)));
+        renderEmployeePatternsV61416();
+        return;
+      }
+      const month=workPatternMonthStartV61419($('wpBulkEffectiveDateV61416')?.value||$('employeePatternDate')?.value);
+      e.target.disabled=true;
+      try{
+        app()?.showLoading?.(`กำลังตรวจสิทธิ์ ${visible.length.toLocaleString('th-TH')} คน...`);
+        const access=await getWorkPatternEditAccessV61423(visible,month,{showToast:true});
+        if(!access.ready){
+          e.target.checked=false;
+          return;
+        }
+        visible.forEach(r=>wp.selectedEmployees.delete(String(r.emp_code)));
+        access.allowedRows.forEach(r=>wp.selectedEmployees.add(String(r.emp_code)));
+        if(access.deniedRows.length){
+          app()?.toast?.(`เลือกได้ ${access.allowedRows.length.toLocaleString('th-TH')} คน • ${access.deniedRows.length.toLocaleString('th-TH')} คนเป็นสิทธิ์ดูอย่างเดียว จึงไม่ถูกเลือก`,'warning');
+        }
+        renderEmployeePatternsV61416();
+      }finally{
+        e.target.disabled=false;
+        app()?.hideLoading?.();
+      }
     });
     $('wpBulkClearV61416')?.addEventListener('click',()=>{wp.selectedEmployees.clear();renderEmployeePatternsV61416();});
     $('wpBulkApplyBtnV61416')?.addEventListener('click',applyBulkEmployeePatternV61416);
