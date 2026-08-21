@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.29";
-document.documentElement.dataset.timeClockBuild = "6.14.29";
+window.__TIME_CLOCK_BUILD__ = "V6.14.30";
+document.documentElement.dataset.timeClockBuild = "6.14.30";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.29";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.29',
+  version: '6.14.30',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -7821,7 +7821,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function fetchEmployeeMonthScheduleV6130(empCode, bounds) {
-      // V6.14.29 consistency rule:
+      // V6.14.30 consistency rule:
       // MONTHLY PERSONAL OVERVIEW must use the exact same canonical Schedule Grid
       // transport as "ตารางกะรายบุคคล • เต็มเดือน". The old dedicated RPC was
       // logically based on the same grid, but it could time out independently and
@@ -7873,7 +7873,7 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
-    // V6.14.29: Attendance/Punch/Certification enrich the personal calendar,
+    // V6.14.30: Attendance/Punch/Certification enrich the personal calendar,
     // but they must never overwrite the canonical schedule fields. This mirrors
     // scheduleMergeTeamAttendanceRowV61411 and extends the protection to Work
     // Pattern, day classification, Work Template and Scheduling Rule metadata.
@@ -7970,7 +7970,7 @@ window.tcIsDayShiftCode = value =>
           bounds
         );
 
-        // V6.14.29 schedulePromise already runs the exact same Work Plan +
+        // V6.14.30 schedulePromise already runs the exact same Work Plan +
         // Scheduling Rule enrichers as Full Month. No second metadata RPC here.
         const workPlanPromise = Promise.resolve({ data: [], error: null });
 
@@ -8004,7 +8004,7 @@ window.tcIsDayShiftCode = value =>
             p_month: `${bounds.value}-01`
           }),
           15000,
-          'โหลดโควต้าวันหยุด Monthly Personal V6.14.29'
+          'โหลดโควต้าวันหยุด Monthly Personal V6.14.30'
         );
 
         const settled = await Promise.allSettled([
@@ -12799,10 +12799,33 @@ window.tcIsDayShiftCode = value =>
     return candidates[0] || null;
   }
 
+  // V6.14.30 — mixed 5D/6D quick actions must resolve per TARGET employee.
+  // Core business mappings are stable and must not depend on whichever pattern
+  // happens to be first in the visible table or on stale Shift Master metadata.
+  const QUICK_SHIFT_BY_PATTERN_V61430 = Object.freeze({
+    TECH_5D: Object.freeze({ NORMAL: "STD", NIGHT: "S134" }),
+    TECH_6D: Object.freeze({ NORMAL: "S043", NIGHT: "S135" })
+  });
+
   function semanticShiftForPattern(action, pattern, row=null){
     if (pattern === "UNASSIGNED") return null;
-    if (action === "NORMAL") return window.TimeClockSchedulingRulesV6120?.resolveWorkingShift?.("NORMAL", pattern, row) || defaultShiftForPattern(pattern, row);
-    if (action === "NIGHT") return window.TimeClockSchedulingRulesV6120?.resolveWorkingShift?.("NIGHT", pattern, row) || nightShiftForPattern(pattern, row);
+
+    const normalizedAction = String(action || "").trim().toUpperCase();
+    const preferredCode = QUICK_SHIFT_BY_PATTERN_V61430?.[pattern]?.[normalizedAction] || null;
+    if (preferredCode) {
+      const preferred = configuredShift(preferredCode);
+      if (
+        preferred
+        && preferred.is_active !== false
+        && supportsPattern(preferred, pattern)
+        && (!row || window.TimeClockSchedulingRulesV6120?.isShiftAllowedForRow?.(preferredCode, row) !== false)
+      ) {
+        return preferred;
+      }
+    }
+
+    if (normalizedAction === "NORMAL") return window.TimeClockSchedulingRulesV6120?.resolveWorkingShift?.("NORMAL", pattern, row) || defaultShiftForPattern(pattern, row);
+    if (normalizedAction === "NIGHT") return window.TimeClockSchedulingRulesV6120?.resolveWorkingShift?.("NIGHT", pattern, row) || nightShiftForPattern(pattern, row);
     return configuredShift(action);
   }
 
@@ -12821,29 +12844,35 @@ window.tcIsDayShiftCode = value =>
       : ["TECH_5D","TECH_6D"];
 
     const normalCodes = patterns
-      .map(pattern => defaultShiftForPattern(pattern)?.shift_code)
+      .map(pattern => semanticShiftForPattern("NORMAL", pattern)?.shift_code)
       .filter(Boolean);
 
     const nightCodes = patterns
-      .map(pattern => nightShiftForPattern(pattern)?.shift_code)
+      .map(pattern => semanticShiftForPattern("NIGHT", pattern)?.shift_code)
       .filter(Boolean);
 
     if ($("scheduleQuickNormalCode")) {
+      const unique = [...new Set(normalCodes)];
       $("scheduleQuickNormalCode").textContent =
-        normalCodes.length === 1
-          ? normalCodes[0]
-          : normalCodes.length > 1
-            ? [...new Set(normalCodes)].join(" / ")
-            : "ยังไม่ตั้งค่า";
+        patterns.length > 1 && normalCodes.length > 1
+          ? `5D→${QUICK_SHIFT_BY_PATTERN_V61430.TECH_5D.NORMAL} • 6D→${QUICK_SHIFT_BY_PATTERN_V61430.TECH_6D.NORMAL}`
+          : unique.length === 1
+            ? unique[0]
+            : unique.length > 1
+              ? unique.join(" / ")
+              : "ยังไม่ตั้งค่า";
     }
 
     if ($("scheduleQuickNightCode")) {
+      const unique = [...new Set(nightCodes)];
       $("scheduleQuickNightCode").textContent =
-        nightCodes.length === 1
-          ? nightCodes[0]
-          : nightCodes.length > 1
-            ? [...new Set(nightCodes)].join(" / ")
-            : "ยังไม่ตั้งค่า";
+        patterns.length > 1 && nightCodes.length > 1
+          ? `5D→${QUICK_SHIFT_BY_PATTERN_V61430.TECH_5D.NIGHT} • 6D→${QUICK_SHIFT_BY_PATTERN_V61430.TECH_6D.NIGHT}`
+          : unique.length === 1
+            ? unique[0]
+            : unique.length > 1
+              ? unique.join(" / ")
+              : "ยังไม่ตั้งค่า";
     }
 
     if ($("scheduleQuickNormalBtn")) {
@@ -12900,7 +12929,14 @@ window.tcIsDayShiftCode = value =>
         return;
       }
 
-      if (!supportsPattern(shift, pattern)) {
+      const coreCode = window.tcShiftCode(item.shift_code);
+      const stableCorePattern = ["STD","S134"].includes(coreCode)
+        ? "TECH_5D"
+        : ["S043","S135"].includes(coreCode)
+          ? "TECH_6D"
+          : null;
+
+      if ((stableCorePattern && stableCorePattern !== pattern) || (!stableCorePattern && !supportsPattern(shift, pattern))) {
         skipped.push({
           ...item,
           pattern,
@@ -12958,7 +12994,7 @@ window.tcIsDayShiftCode = value =>
         emp_code: item.emp_code,
         work_date: item.work_date,
         shift_code: shift.shift_code,
-        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern`
+        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.30 mixed-pattern smart quick shift`
       });
 
       const groupKey = `${pattern}|${shift.shift_code}`;
@@ -27372,7 +27408,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.29';
+  const VERSION='6.14.30';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

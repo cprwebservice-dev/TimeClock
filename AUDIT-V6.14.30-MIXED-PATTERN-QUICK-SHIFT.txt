@@ -1,0 +1,37 @@
+Time-Clock Enterprise V6.14.30
+Audit: Mixed 5D/6D Quick Shift — 15 Days / Full Month
+========================================================
+
+ROOT CAUSE
+[FOUND] Backend Work Pattern validator compares the employee's resolved pattern
+        with shift_master.applicable_pattern_codes.
+[FOUND] A mixed 5D/6D selection must not use one fixed working shift code.
+[FOUND] Frontend already had a smart-action concept, but resolution still depended
+        on Shift Master/default metadata and could diverge from the stable core
+        business mapping / backend metadata.
+
+FIX
+[PASS] Per-target employee mapping is now explicit:
+       TECH_5D NORMAL -> STD
+       TECH_5D NIGHT  -> S134
+       TECH_6D NORMAL -> S043
+       TECH_6D NIGHT  -> S135
+[PASS] Mixed selection confirmation groups the number of cells by Work Pattern.
+[PASS] Quick-button subtitle shows both mappings when the table contains both groups.
+[PASS] 15-day and Full-Month modes share the same Schedule Pro quick-action pipeline.
+[PASS] Existing System Period / Permission / Day-off Quota / 6h / 48h / Finalizer
+       pipelines remain unchanged.
+
+BACKEND HARDENING
+[PASS] SQL repairs stable applicable_pattern_codes for core work/day-off pairs.
+[PASS] _ta_validate_shift_pattern_v651 treats the core mapping as canonical.
+[PASS] Custom shift codes still use shift_master.applicable_pattern_codes.
+[PASS] V6.14.24 bulk writer is not replaced; only its existing validation helper
+       is made consistent with the application mapping.
+
+STATIC VALIDATION
+[PASS] node --check app.js
+[PASS] index.html parse
+[PASS] 404.html parse
+[PASS] no duplicate HTML ids
+[PASS] package ZIP integrity
