@@ -1,0 +1,47 @@
+AUDIT — TimeAttendance V6.14.37
+Canonical Neighbor State + Full-Day Leave Aware Night Guard
+
+ROOT CAUSE CONFIRMED
+- Monthly Personal/Attendance can display a FULL-DAY LEAVE from Attendance/Leave overlay.
+- Structural Schedule may still carry its underlying default shift (e.g. S043/STD) for that same date.
+- V6.14.36 Night Sequence local/backend checks classified only the structural shift code.
+- Result: calendar showed "ลา" but guard could report "วันก่อนหน้าเป็น S043" and falsely block Night.
+
+FIXED — BACKEND SOURCE OF TRUTH
+[PASS] _ta_is_full_day_leave_v61437 resolves FULL-DAY leave from:
+- explicit shift_calendar LV
+- ta_daily_work_plans day_override_type=LEAVE
+- APPROVED ta_leave_requests + FULL_DAY request day
+- attendance calculation fallback for older/imported rows
+[PASS] Partial leave is NOT a full-day separator.
+[PASS] _ta_night_sequence_state_v61437 emits state_code=LV for approved full-day leave.
+[PASS] ta_get_night_sequence_context_v61437 gives previous/current/next to Assignment Popup.
+[PASS] ta_validate_night_sequence_bulk_v61437 projects all payload rows together.
+[PASS] row_violations maps invalid final sequence back to payload cells for Quick Action filtering.
+[PASS] legacy ta_validate_night_sequence_bulk_v61435 delegates to V6.14.37.
+[PASS] deferred DB trigger uses the same canonical state.
+[PASS] ta_validate_schedule_guard_v6141 resets 6h/48h continuity on full-day leave.
+
+FIXED — FRONTEND
+[PASS] Assignment Popup receives neighbor rows from the visible source (including Monthly Attendance overlay).
+[PASS] Assignment Popup also fetches canonical Backend neighbor context before rendering final guard state.
+[PASS] Server guard is authoritative; stale/local interpretation is no longer OR-ed back into a PASS result.
+[PASS] Save no longer rejects from local Night Sequence before authoritative server validation.
+[PASS] Quick Action 15D/Full Month uses server row_violations for Night Sequence and local candidate math only for 6h minimum rest.
+[PASS] Bulk validate prefers V6.14.37 with V6.14.35 compatibility fallback.
+
+EXPECTED MATRIX
+- LV -> NIGHT -> OFF = ALLOW (subject to ordinary guards)
+- OFF -> NIGHT -> LV = ALLOW
+- NIGHT -> NIGHT -> OFF = ALLOW if minimum rest >= 6h
+- DAY -> NIGHT -> OFF = BLOCK
+- OFF -> NIGHT -> DAY = BLOCK
+- NIGHT -> LV -> DAY = ALLOW for the LV day; the day after LV is evaluated independently
+- NIGHT -> DAY = BLOCK
+
+STATIC VALIDATION
+- node --check app.js
+- HTML parse index.html / 404.html
+- duplicate id scan
+- version/cache-bust scan
+- ZIP integrity
