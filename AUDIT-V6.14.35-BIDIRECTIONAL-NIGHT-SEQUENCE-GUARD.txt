@@ -1,0 +1,59 @@
+AUDIT — TimeAttendance V6.14.35
+Bidirectional Night Sequence Guard • ตรวจทั้งวันก่อนหน้า + วันถัดไป
+
+สาเหตุที่ V6.14.34 ยังมีบางจุดผิด
+- V6.14.34 เน้นตรวจจาก “วันก่อนหน้าเป็นกะดึก → วันนี้ต้อง Night/Day-off” เป็นหลัก
+- จึงยังมีช่องทางที่สามารถสร้างกะดึกไว้ตรงกลางระหว่างกะเช้าได้
+  ตัวอย่าง STD -> S134 -> STD หรือ S043 -> S135 -> S043
+- Bulk/Quick บางเส้นทางตรวจทีละ Candidate จึงไม่เห็น Final Projection ของหลายวันที่เปลี่ยนพร้อมกัน
+
+กฎกลาง V6.14.35
+1) ถ้าวัน D เป็นกะดึก: D-1 ต้องไม่ใช่กะเช้า/กลางวัน
+2) ถ้าวัน D เป็นกะดึก: D+1 ต้องเป็นกะดึก หรือ “วันหยุดจริง” เท่านั้น
+3) LV = ลา ไม่ถือเป็นวันหยุดสำหรับข้อ 2
+4) กะเช้า + งานลูกค้าช่วงดึก / กะเช้า + รอเข้ากะดึก ยังถือเป็น Day-starting workday
+5) กะนับชั่วโมงที่เริ่ม >= 18:00 ถือเป็น Night
+6) Minimum Rest < 6 ชั่วโมงยัง BLOCK เหมือนเดิม
+7) >48 ชั่วโมงยัง Warning เหมือนเดิม
+8) Day-off quota / Work Pattern / Scope / Start Date / System Period คงเดิม
+
+Expected Matrix
+- OFF/HOL -> NIGHT -> NIGHT -> OFF/HOL = ALLOW (ถ้าพักขั้นต่ำผ่าน)
+- LV -> NIGHT -> NIGHT -> OFF/HOL = ALLOW (LV ก่อน Night ไม่ใช่กะเช้า)
+- MORNING -> NIGHT = BLOCK
+- NIGHT -> MORNING = BLOCK
+- NIGHT -> LV = BLOCK
+- NIGHT -> NIGHT = ALLOW ถ้าพัก >= 6 ชม.
+- MORNING -> NIGHT -> MORNING = BLOCK
+- เปลี่ยนวันนี้เป็น MORNING ขณะที่พรุ่งนี้เป็น NIGHT = BLOCK
+
+[PASS] Assignment Popup
+- Local preview ตรวจทั้ง Previous / Next
+- Server precheck ใช้ ta_validate_night_sequence_bulk_v61435
+- Popup ส่ง proposed_start_time / proposed_end_time เพื่อรองรับ Hour Based
+- Save ยังใช้ V6.14.4 atomic Shift + Work Plan pipeline
+- Deferred DB trigger ตรวจ final transaction อีกชั้น
+
+[PASS] Person Schedule 15 วัน / เต็มเดือน
+- โหลด hidden boundary ทั้ง 1 วันก่อนช่วง และ 1 วันหลังช่วง
+- Quick Normal/Night ใช้ final projected candidate set ก่อนยืนยัน
+- หลายวันที่เลือกพร้อมกันเห็นกันเองก่อนตรวจ เช่น OFF -> NIGHT -> NIGHT -> OFF
+- Invalid Candidate ถูกข้าม พร้อมบอกเหตุผล
+
+[PASS] Other Schedule Mutation Paths
+- savePayload / saveSchedulePayload -> central validateBulk
+- Paste / Month Copy / Fill Down / Fill Right / 7-Day Pattern / Previous Week / Undo / Redo ใช้ central validation
+- Central validation เรียก authoritative whole-payload RPC V6.14.35
+
+[PASS] Backend Authority
+- ta_validate_night_sequence_bulk_v61435 = Final projected payload validator
+- ta_audit_night_sequence_v61435 = ตรวจข้อมูลปัจจุบัน
+- Deferred constraint trigger บน shift_calendar = safety net สำหรับ single/direct write
+- ta_assign_shifts_bulk_v61424 ถูก patch ให้เรียก V6.14.35 ก่อนเขียนทุก row
+- Bulk transaction ยังไม่คำนวณ Attendance ภายใน transaction; finalizer เดิมคงไว้
+
+Static checks
+- node --check app.js = PASS
+- index.html / 404.html parse = PASS
+- duplicate HTML ids = PASS
+- ZIP integrity = PASS (ตรวจหลังสร้าง package)

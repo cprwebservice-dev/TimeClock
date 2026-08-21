@@ -1,0 +1,49 @@
+AUDIT — TimeAttendance V6.14.36
+Night Sequence Guard — Allow NIGHT -> LV
+
+Business rule corrected from V6.14.35
+1) A Night shift still cannot have morning/day work on the previous calendar day.
+2) The next calendar day after a Night may be:
+   - another Night shift
+   - a true Day-off / HOL
+   - Leave (LV)
+3) LV remains Leave. It is NOT converted to Day-off and does not consume Day-off quota.
+4) Minimum rest 6h and >48h warning remain unchanged.
+
+Expected matrix
+- DAY -> NIGHT = BLOCK
+- NIGHT -> NIGHT = ALLOW subject to minimum rest >= 6h
+- OFF/HOL/LV -> NIGHT = ALLOW subject to minimum rest where applicable
+- NIGHT -> DAY = BLOCK
+- NIGHT -> OFF/HOL = ALLOW
+- NIGHT -> LV = ALLOW
+- NIGHT -> LV -> DAY = ALLOW (the immediate successor of Night is LV)
+- NIGHT -> LV -> NIGHT = ALLOW subject to the Night's previous-day rule (LV is not day-work)
+
+Frontend consistency
+[PASS] Assignment Popup uses targetLeave as an allowed Night successor.
+[PASS] Neighbor projection allows following.leave after a target Night.
+[PASS] Previous Night -> current LV is not locally blocked.
+[PASS] Person 15-Day / Full-Month Quick/Bulk path uses the same corrected central validation.
+[PASS] Copy/Paste/Fill/Pattern/Month Copy/Undo/Redo remain routed through central Bulk validation.
+[PASS] UI guidance now says Night / Day-off / LV.
+
+Backend consistency
+[PASS] Compatibility RPC ta_validate_night_sequence_bulk_v61435 is replaced in-place with V6.14.36 behavior.
+[PASS] Current-state audit ta_audit_night_sequence_v61435 accepts next_is_leave.
+[PASS] Deferred DB safety-net remains attached; no trigger recreation needed.
+[PASS] ta_assign_shifts_bulk_v61424 already calls ta_validate_night_sequence_bulk_v61435, therefore inherits the correction.
+[PASS] LV remains classified separately from is_dayoff.
+
+Static checks
+[PASS] node --check app.js
+[PASS] index.html parsed
+[PASS] 404.html parsed
+[PASS] old UI message that LV is invalid after Night removed
+[PASS] ZIP integrity checked
+
+SQL runtime
+- Run SQL_ที่ต้องรัน_V6.14.36_NIGHT_SEQUENCE_LV_ALLOW.sql
+- Then run SQL_สำหรับตรวจสอบ_V6.14.36_NIGHT_SEQUENCE_LV_ALLOW.sql
+- Checks 1-8 should be PASS.
+- Final audit query should not report NIGHT -> LV as a violation.

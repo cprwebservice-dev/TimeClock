@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.34";
-document.documentElement.dataset.timeClockBuild = "6.14.34";
+window.__TIME_CLOCK_BUILD__ = "V6.14.36";
+document.documentElement.dataset.timeClockBuild = "6.14.36";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.34";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.34',
+  version: '6.14.36',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5128,12 +5128,18 @@ window.tcIsDayShiftCode = value =>
           // transport strategy; scope/filter/business rules remain unchanged.
           // V6.12.9: the grid RPC is lightweight, but keep each request small
           // and avoid a burst of concurrent PostgreSQL statements.
-          // V6.14.34: fetch one hidden day before the visible PERSON range.
-          // The row is not rendered, but is retained for the 6-hour transition
-          // guard so day 1 of a 15-day/full-month view can see the prior night.
+          // V6.14.35: fetch one hidden day on BOTH sides of the visible
+          // PERSON range. The hidden rows are never rendered; they exist only
+          // so the bidirectional Night Sequence guard can validate the first and
+          // last visible day against the real previous/next effective schedule.
           const personGuardStartDateV61431 = (()=>{
             const d=new Date(`${period.startDate}T00:00:00`);
             d.setDate(d.getDate()-1);
+            return d.toISOString().slice(0,10);
+          })();
+          const personGuardEndDateV61435 = (()=>{
+            const d=new Date(`${period.endDate}T00:00:00`);
+            d.setDate(d.getDate()+1);
             return d.toISOString().slice(0,10);
           })();
           const employeeBatchSize = 28;
@@ -5167,7 +5173,7 @@ window.tcIsDayShiftCode = value =>
                   {
                     p_month:`${period.month}-01`,
                     p_start_date:personGuardStartDateV61431,
-                    p_end_date:period.endDate,
+                    p_end_date:personGuardEndDateV61435,
                     p_zone:val("scheduleZone")||null,
                     p_department:val("scheduleDepartment")||null,
                     p_emp_codes:chunk,
@@ -5196,7 +5202,7 @@ window.tcIsDayShiftCode = value =>
             });
 
             const personRowsV61431=[...unique.values()];
-            state.scheduleGuardBoundaryRowsV61431=personRowsV61431.filter(row=>String(row?.work_date||'').slice(0,10)<period.startDate);
+            state.scheduleGuardBoundaryRowsV61431=personRowsV61431.filter(row=>{const date=String(row?.work_date||'').slice(0,10);return date<period.startDate||date>period.endDate;});
             data = personRowsV61431.filter(row=>{
               const date=String(row?.work_date||'').slice(0,10);
               return date>=period.startDate&&date<=period.endDate;
@@ -13015,14 +13021,14 @@ window.tcIsDayShiftCode = value =>
         emp_code: item.emp_code,
         work_date: item.work_date,
         shift_code: shift.shift_code,
-        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.34 mixed-pattern + night-sequence + minimum-rest smart quick shift`
+        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.36 mixed-pattern + bidirectional-night-sequence + LV-compatible + minimum-rest smart quick shift`
       });
 
       const groupKey = `${pattern}|${shift.shift_code}`;
       summary.set(groupKey, (summary.get(groupKey) || 0) + 1);
     });
 
-    // V6.14.34 — use the same minimum-rest transition logic as the Assignment
+    // V6.14.35 — use the same minimum-rest transition logic as the Assignment
     // popup and the bulk guard before showing the quick-action confirmation.
     // This prevents one night→morning conflict from failing the whole 15-day /
     // full-month quick action after the user has already confirmed it.
@@ -13051,7 +13057,7 @@ window.tcIsDayShiftCode = value =>
     if (restBlocked.length) {
       const nightPolicy = restBlocked.filter(x=>x.nightSequenceBlock).length;
       const otherRest = restBlocked.length-nightPolicy;
-      if(nightPolicy) lines.push(`• ข้ามเพราะวันก่อนเป็นกะดึก: ${nightPolicy.toLocaleString("th-TH")} ช่อง (วันถัดไปต้องเป็นกะดึกหรือวันหยุด)`);
+      if(nightPolicy) lines.push(`• ข้ามเพราะลำดับกะดึกไม่ผ่าน: ${nightPolicy.toLocaleString("th-TH")} ช่อง (ตรวจทั้งวันก่อนหน้าและวันถัดไป)`);
       if(otherRest) lines.push(`• ข้ามเพราะพักต่ำกว่า 6 ชม.: ${otherRest.toLocaleString("th-TH")} ช่อง`);
       lines.push('  แนะนำ: กำหนดวันหยุดตามกะล่าสุด หรือเลือกกะกลางคืนแทน');
     }
@@ -13060,9 +13066,11 @@ window.tcIsDayShiftCode = value =>
       const firstRest=restBlocked[0];
       const restText=firstRest?.restMinutes!=null?(firstRest.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2}):'-';
       return app()?.toast(
-        firstRest?.nightToMorning
-          ? `กำหนดกะเช้าไม่ได้: วันก่อนหน้าเป็นกะดึก (${firstRest.previousCode||'-'}) ทำให้พักเพียง ${restText} ชม. ต่ำกว่า 6 ชม. • แนะนำให้กำหนดวันหยุด หรือเลือกกะกลางคืน`
-          : (skippedSummary(skipped) || (firstRest?`กำหนดกะไม่ได้: เวลาพัก ${restText} ชม. ต่ำกว่า 6 ชม.`:"ไม่มีรายการที่สามารถกำหนดกะได้")),
+        firstRest?.nightSequenceBlock
+          ? sequenceBlockMessageV61435(firstRest)
+          : firstRest?.nightToMorning
+            ? `กำหนดกะเช้าไม่ได้: วันก่อนหน้าเป็นกะดึก (${firstRest.previousCode||'-'}) ทำให้พักเพียง ${restText} ชม. ต่ำกว่า 6 ชม. • แนะนำให้กำหนดวันหยุด หรือเลือกกะกลางคืน`
+            : (skippedSummary(skipped) || (firstRest?`กำหนดกะไม่ได้: เวลาพัก ${restText} ชม. ต่ำกว่า 6 ชม.`:"ไม่มีรายการที่สามารถกำหนดกะได้")),
         "error"
       );
     }
@@ -27456,7 +27464,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.34';
+  const VERSION='6.14.36';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27603,8 +27611,7 @@ ${names}${extra}
       || window.tcIsNightShiftCode?.(code)===true
       || String(sm?.shift_name||'').toLowerCase().includes('กะดึก')
       || String(sm?.shift_name||'').toLowerCase().includes('กลางคืน')
-      || (start!=null&&start>=18*60)
-      || (start!=null&&end!=null&&end<=start);
+      || (start!=null&&start>=18*60);
   }
   function transitionAgainstPreviousV61431(prev,date,targetStart,targetCode,targetEnd=null){
     if(!prev||isOffRow(prev))return {hardBlock:false,restMinutes:null,nightToMorning:false,nightSequenceBlock:false};
@@ -27614,7 +27621,7 @@ ${names}${extra}
     const previousCode=String(prev.base_shift_code||rowCode(prev)||'').toUpperCase();
     const previousStartMinutes=minsOf(prevStart);
     const previousCrossesMidnight=Boolean(prevEndValue&&prevStart&&minsOf(prevEndValue)<=minsOf(prevStart));
-    const previousNight=shiftLooksNightV61431(previousCode)||previousCrossesMidnight||(previousStartMinutes!=null&&previousStartMinutes>=18*60);
+    const previousNight=shiftLooksNightV61431(previousCode)||(previousStartMinutes!=null&&previousStartMinutes>=18*60);
 
     const normalizedTargetCode=String(targetCode||'').toUpperCase();
     const targetMaster=shiftMaster(normalizedTargetCode);
@@ -27622,19 +27629,19 @@ ${names}${extra}
     const targetEndValue=targetEnd||fmtTime(targetMaster?.end_time)||null;
     const targetCrossesMidnight=Boolean(targetEndValue&&targetStart&&minsOf(targetEndValue)<=minsOf(targetStart));
     const targetNight=shiftLooksNightV61431(targetMaster||normalizedTargetCode)
-      || (targetStartMinutes!=null&&targetStartMinutes>=18*60)
-      || (targetCrossesMidnight&&targetStartMinutes!=null&&targetStartMinutes>=12*60);
+      || (targetStartMinutes!=null&&targetStartMinutes>=18*60);
     const targetDayoff=normalizedTargetCode==='OFF'
       || normalizedTargetCode==='HOL'
       || (normalizedTargetCode!=='LV'&&targetMaster?.is_workday===false);
     const targetLeave=normalizedTargetCode==='LV';
     const targetMorning=!targetNight&&targetStartMinutes!=null&&targetStartMinutes<12*60;
 
-    // V6.14.34 business rule: after any night shift / overnight night work,
+    // V6.14.36 business rule: after any night shift / overnight night work,
     // the NEXT calendar day may only be another night shift or a true day-off.
-    // Leave (LV), morning/day work, and clearing back to a day default are not
-    // valid next-day states after a night shift.
-    const nightSequenceBlock=Boolean(previousNight&&!targetNight&&!targetDayoff);
+    // Leave (LV) is a valid non-working successor after a Night, but it remains
+    // LEAVE (not a day-off and does not consume day-off quota). Morning/day work
+    // and clearing back to a day default remain invalid immediately after Night.
+    const nightSequenceBlock=Boolean(previousNight&&!targetNight&&!targetDayoff&&!targetLeave);
 
     const prevEnd=prevEndValue?dateTimeFor(isoAddDays(date,-1),prevEndValue,prevStart):null;
     const nextStart=targetStart?dateTimeFor(date,targetStart):null;
@@ -27660,15 +27667,118 @@ ${names}${extra}
       nightToMorning:Boolean(previousNight&&targetMorning)
     };
   }
+  function rowNightStateV61435(r){
+    if(!r)return {exists:false,code:'',night:false,dayoff:false,leave:false,dayWork:false,start:null,end:null};
+    const code=String(r.base_shift_code||rowCode(r)||'').trim().toUpperCase();
+    const sm=shiftMaster(code);
+    const leave=code==='LV';
+    const day=String(r?.day_type||'').toUpperCase();
+    const assigned=String(r?.assigned_shift_code||r?.shift_code||'').trim().toUpperCase();
+    const assignedMaster=assigned?shiftMaster(assigned):null;
+    const explicitWorking=Boolean(assigned&&assignedMaster?.is_workday!==false&&!['OFF','HOL','LV'].includes(assigned));
+    const dayoff=!leave&&(
+      code==='OFF'||code==='HOL'||sm?.is_workday===false||String(r?.schedule_rule_mode||'').toUpperCase()==='DYNAMIC_OFF'||
+      (!explicitWorking&&['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day))
+    );
+    const w=rowWindow(r)||{};
+    const start=w.start||r.shift_start_time||sm?.start_time||null;
+    const end=w.end||r.shift_end_time||sm?.end_time||null;
+    const startMinutes=minsOf(start);
+    // Business definition V6.14.36: a Night shift starts as a night shift.
+    // Morning + late-customer / Split that merely crosses midnight is still a
+    // DAY-starting workday and cannot be used as the preceding day of a Night.
+    const night=!leave&&!dayoff&&(
+      sm?.is_night_shift===true||['S134','S135'].includes(code)||
+      window.tcIsNightShiftCode?.(code)===true||(startMinutes!=null&&startMinutes>=18*60)
+    );
+    return {exists:true,code,night,dayoff,leave,dayWork:!leave&&!dayoff&&!night,start,end};
+  }
+  function proposedNightStateV61435(targetCode,targetStart,targetEnd=null){
+    const code=String(targetCode||'').trim().toUpperCase();
+    const sm=shiftMaster(code);
+    const leave=code==='LV';
+    const dayoff=!leave&&(code==='OFF'||code==='HOL'||(code&&sm?.is_workday===false));
+    const start=targetStart||fmtTime(sm?.start_time)||null;
+    const end=targetEnd||fmtTime(sm?.end_time)||null;
+    const startMinutes=minsOf(start);
+    const night=!leave&&!dayoff&&(
+      sm?.is_night_shift===true||['S134','S135'].includes(code)||
+      window.tcIsNightShiftCode?.(code)===true||(startMinutes!=null&&startMinutes>=18*60)
+    );
+    return {exists:Boolean(code),code,night,dayoff,leave,dayWork:Boolean(code)&&!leave&&!dayoff&&!night,start,end};
+  }
+  function transitionAgainstNeighborsV61435(prev,next,date,targetStart,targetCode,targetEnd=null){
+    const base=transitionAgainstPreviousV61431(prev,date,targetStart,targetCode,targetEnd);
+    const previous=rowNightStateV61435(prev);
+    const target=proposedNightStateV61435(targetCode,targetStart,targetEnd);
+    const following=rowNightStateV61435(next);
+
+    // Canonical V6.14.36 invariant:
+    // 1) A Night may NOT have a morning/day work shift on the previous date.
+    // 2) The calendar day after a Night must be another Night, a true Day-off, or LV.
+    // 3) Therefore changing a day to morning/day is also blocked when tomorrow
+    //    is already a Night (otherwise that Night would have an invalid previous day).
+    const targetNightPreviousMorningBlock=Boolean(target.night&&previous.dayWork);
+    const targetNightNextBlock=Boolean(target.night&&following.exists&&!following.night&&!following.dayoff&&!following.leave);
+    const previousNightTargetInvalidBlock=Boolean(previous.night&&!target.night&&!target.dayoff&&!target.leave);
+    const nextNightTargetMorningBlock=Boolean(following.night&&target.dayWork);
+    const nightSequenceBlock=Boolean(
+      targetNightPreviousMorningBlock||targetNightNextBlock||
+      previousNightTargetInvalidBlock||nextNightTargetMorningBlock
+    );
+    let sequenceReason=null;
+    if(targetNightPreviousMorningBlock)sequenceReason='NIGHT_PREVIOUS_DAY_WORK';
+    else if(targetNightNextBlock)sequenceReason='NIGHT_NEXT_NOT_NIGHT_DAYOFF_OR_LEAVE';
+    else if(previousNightTargetInvalidBlock)sequenceReason='PREVIOUS_NIGHT_TARGET_INVALID';
+    else if(nextNightTargetMorningBlock)sequenceReason='DAY_WORK_BEFORE_NEXT_NIGHT';
+
+    return {
+      ...base,
+      hardBlock:Boolean(base.minimumRestBlock||nightSequenceBlock),
+      nightSequenceBlock,
+      sequenceReason,
+      previousCode:previous.code||base.previousCode||'',
+      previousNight:previous.night,
+      previousDayWork:previous.dayWork,
+      targetCode:target.code,
+      targetNight:target.night,
+      targetDayoff:target.dayoff,
+      targetLeave:target.leave,
+      targetDayWork:target.dayWork,
+      nextCode:following.code,
+      nextNight:following.night,
+      nextDayoff:following.dayoff,
+      nextLeave:following.leave,
+      nextDayWork:following.dayWork,
+      targetNightPreviousMorningBlock,
+      targetNightNextBlock,
+      previousNightTargetInvalidBlock,
+      nextNightTargetMorningBlock
+    };
+  }
+  function sequenceBlockMessageV61435(t){
+    const prev=t?.previousCode||'-', next=t?.nextCode||'-';
+    switch(String(t?.sequenceReason||'').toUpperCase()){
+      case 'NIGHT_PREVIOUS_DAY_WORK':
+        return `กำหนดกะดึกไม่ได้: วันก่อนหน้าเป็นกะเช้า/กลางวัน ${prev} • ก่อนเริ่มชุดกะดึกต้องเป็นวันหยุด/ลา หรือกะดึก ไม่ใช่กะเช้า`;
+      case 'NIGHT_NEXT_NOT_NIGHT_OR_DAYOFF':
+      case 'NIGHT_NEXT_NOT_NIGHT_DAYOFF_OR_LEAVE':
+        return `กำหนดกะดึกไม่ได้: วันถัดไปเป็น ${next} • หลังจัดกะดึก วันถัดไปต้องเป็น “กะดึก”, “วันหยุด” หรือ “ลา (LV)”`;
+      case 'DAY_WORK_BEFORE_NEXT_NIGHT':
+        return `กำหนดกะเช้า/กลางวันไม่ได้: วันถัดไปเป็นกะดึก ${next} • วันก่อนหน้าของกะดึกต้องไม่ใช่กะเช้า/กลางวัน`;
+      case 'PREVIOUS_NIGHT_TARGET_INVALID':
+        return `กำหนดกะไม่ได้: วันก่อนหน้าเป็นกะดึก ${prev} • วันถัดจากกะดึกต้องเป็น “กะดึก”, “วันหยุด” หรือ “ลา (LV)”`;
+      default:
+        return 'กำหนดกะไม่ได้ตามเงื่อนไขลำดับกะดึก';
+    }
+  }
   function currentTransitionV61431(){
     if(!st.current)return {hardBlock:false,restMinutes:null,nightToMorning:false,nightSequenceBlock:false};
     const p=proposedPlan();
     const targetCode=p.leave?'LV':($('assignShiftCode')?.value||st.current.baseShiftCode||null);
-    // A paired day-off / HOL is explicitly allowed after a night shift. LV is
-    // intentionally NOT treated as day-off under the V6.14.34 sequence rule.
-    if(p.off&&!p.leave)return {hardBlock:false,restMinutes:null,nightToMorning:false,nightSequenceBlock:false,targetDayoff:true};
-    return transitionAgainstPreviousV61431(
+    return transitionAgainstNeighborsV61435(
       previousRow(st.current.empCode,st.current.workDate),
+      nextRow(st.current.empCode,st.current.workDate),
       st.current.workDate,
       p.start,
       targetCode,
@@ -27677,9 +27787,7 @@ ${names}${extra}
   }
   function restAdviceTextV61431(t){
     const hours=t?.restMinutes==null?'-':(t.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2});
-    if(t?.nightSequenceBlock){
-      return `วันก่อนหน้าเป็นกะดึก ${t.previousCode||''} • วันถัดไปกำหนดได้เฉพาะ “กะดึก” หรือ “วันหยุดตามกะล่าสุด” เท่านั้น`;
-    }
+    if(t?.nightSequenceBlock)return sequenceBlockMessageV61435(t);
     if(t?.nightToMorning){
       return `วันก่อนหน้าเป็นกะดึก ${t.previousCode||''} ทำให้ก่อนกะเช้าวันนี้พักเพียง ${hours} ชม. ต่ำกว่า 6 ชม. • กะเช้าจัดไม่ได้ แนะนำให้กำหนดวันหยุดตามกะล่าสุด หรือเลือกกะกลางคืน`;
     }
@@ -27699,6 +27807,12 @@ ${names}${extra}
   }
   function previousRow(emp,date){
     const target=isoAddDays(date,-1);
+    return (app()?.state?.schedule||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date||'').slice(0,10)===target)
+      || (app()?.state?.scheduleGuardBoundaryRowsV61431||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date||'').slice(0,10)===target)
+      || null;
+  }
+  function nextRow(emp,date){
+    const target=isoAddDays(date,1);
     return (app()?.state?.schedule||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date||'').slice(0,10)===target)
       || (app()?.state?.scheduleGuardBoundaryRowsV61431||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date||'').slice(0,10)===target)
       || null;
@@ -27948,7 +28062,7 @@ ${names}${extra}
     scheduleServerGuardPreviewV6141();
   }
   function isAuthoritativeGuardV6141(server){
-    return ['V6.14.1','V6.14.34'].includes(String(server?.guard_version||'').toUpperCase());
+    return ['V6.14.1','V6.14.34','V6.14.35','V6.14.36'].includes(String(server?.guard_version||'').toUpperCase());
   }
   async function fetchScheduleGuardV6141(){
     if(!st.current)return null;
@@ -27963,11 +28077,33 @@ ${names}${extra}
       p_proposed_planned_minutes:Number(p.planned||0),
       p_is_off:Boolean(p.off)
     };
+    let base=null,sequence=null,sequenceError=null;
+    try{base=await rpc('ta_validate_schedule_guard_v6141',args);}catch(e){}
     try{
-      return await rpc('ta_validate_schedule_guard_v6141',args);
-    }catch(e){
-      return null;
+      sequence=await rpc('ta_validate_night_sequence_bulk_v61435',{p_rows:[{
+        emp_code:c.empCode,
+        work_date:c.workDate,
+        shift_code:args.p_proposed_shift_code,
+        proposed_start_time:p.start||null,
+        proposed_end_time:p.end||null,
+        note:'ASSIGNMENT_PREVIEW_V61435'
+      }]});
+    }catch(e){sequenceError=e;}
+    if(sequenceError){
+      return {...(base||{}),night_sequence_backend_missing:true,night_sequence_backend_error:String(sequenceError?.message||sequenceError||'')};
     }
+    const violation=Array.isArray(sequence?.violations)?sequence.violations[0]:null;
+    return {
+      ...(base||{}),
+      guard_version:'V6.14.36',
+      hard_block:Boolean(base?.hard_block===true||sequence?.allowed===false),
+      night_sequence_block:sequence?.allowed===false,
+      night_sequence_reason:violation?.reason||null,
+      night_sequence_night_date:violation?.night_date||null,
+      previous_shift_code:violation?.previous_code||base?.previous_shift_code||null,
+      next_shift_code:violation?.next_code||null,
+      sequence_guard:sequence||null
+    };
   }
   function scheduleServerGuardPreviewV6141(){
     if(!st.current)return;
@@ -28005,20 +28141,22 @@ ${names}${extra}
     const targetMasterV61431=shiftMaster($('assignShiftCode')?.value||st.current?.baseShiftCode||'');
     const targetMorningV61431=!shiftLooksNightV61431(targetMasterV61431)&&minsOf(targetPlanV61431?.start)!=null&&minsOf(targetPlanV61431.start)<12*60;
     const nightSequenceBlock=Boolean(g.nightSequenceBlock||authoritative?.night_sequence_block===true);
+    const nightSequenceReason=authoritative?.night_sequence_reason||g.sequenceReason||null;
+    const sequenceContextV61435={...g,sequenceReason:nightSequenceReason,previousCode:authoritative?.previous_shift_code||g.previousCode,nextCode:authoritative?.next_shift_code||g.nextCode,nightSequenceBlock};
     const nightToMorning=Boolean(g.nightToMorning&&hardBlock);
     const morningRestBlock=Boolean(hardBlock&&targetMorningV61431&&!nightSequenceBlock);
     const quotaState=dayoffQuotaAvailabilityV6142();
     const adviceTextV61431=nightSequenceBlock
-      ? restAdviceTextV61431({...g,restMinutes,nightSequenceBlock:true})
+      ? restAdviceTextV61431({...sequenceContextV61435,restMinutes,nightSequenceBlock:true})
       : nightToMorning
         ? restAdviceTextV61431({...g,restMinutes,nightToMorning})
         : morningRestBlock
           ? `กะเช้าที่เลือกเริ่ม ${targetPlanV61431.start||'-'} น. แต่เวลาพักจากกะ/ช่วงงานก่อนหน้ามีเพียง ${rest} ต่ำกว่า 6 ชม. • กะเช้าจัดไม่ได้ แนะนำให้กำหนดวันหยุดตามกะล่าสุด หรือเลือกกะกลางคืน`
           : restAdviceTextV61431({...g,restMinutes,nightToMorning:false});
     const advice=hardBlock
-      ? `<div class="rest-transition-advice-v61431 ${(nightSequenceBlock||morningRestBlock)?'night-morning':''}"><div><strong>${nightSequenceBlock?'หลัง “กะดึก” วันถัดไปต้องเป็นกะดึกหรือวันหยุด':nightToMorning?'กะดึก → กะเช้า ไม่ผ่านพักขั้นต่ำ':morningRestBlock?'กะเช้าไม่ผ่านพักขั้นต่ำ':'พักขั้นต่ำไม่เพียงพอ'}</strong><small>${esc(adviceTextV61431)}</small></div>${(nightSequenceBlock||morningRestBlock)?`<div class="rest-transition-actions-v61431"><button type="button" class="btn btn-light btn-sm" data-rest-suggestion-v61431="DAYOFF" ${quotaState.loaded&&!quotaState.allowed?'disabled title="วันหยุดคงเหลือไม่พอ"':''}>แนะนำ: วันหยุด</button><button type="button" class="btn btn-light btn-sm" data-rest-suggestion-v61431="NIGHT">เลือกกะกลางคืน</button></div>`:''}</div>`
+      ? `<div class="rest-transition-advice-v61431 ${(nightSequenceBlock||morningRestBlock)?'night-morning':''}"><div><strong>${nightSequenceBlock?'เงื่อนไขลำดับกะดึกไม่ผ่าน':nightToMorning?'กะดึก → กะเช้า ไม่ผ่านพักขั้นต่ำ':morningRestBlock?'กะเช้าไม่ผ่านพักขั้นต่ำ':'พักขั้นต่ำไม่เพียงพอ'}</strong><small>${esc(adviceTextV61431)}</small></div>${(nightSequenceBlock||morningRestBlock)?`<div class="rest-transition-actions-v61431"><button type="button" class="btn btn-light btn-sm" data-rest-suggestion-v61431="DAYOFF" ${quotaState.loaded&&!quotaState.allowed?'disabled title="วันหยุดคงเหลือไม่พอ"':''}>แนะนำ: วันหยุด</button><button type="button" class="btn btn-light btn-sm" data-rest-suggestion-v61431="NIGHT">เลือกกะกลางคืน</button></div>`:''}</div>`
       : '';
-    box.innerHTML=`${advice}<div class="rule-kpi-v6120 ${hardBlock?'danger':'ok'}"><span>${nightSequenceBlock?'เงื่อนไขหลังการจัดกะดึก':'พักก่อนกะถัดไป'}</span><strong>${nightSequenceBlock?'กะดึก / วันหยุด เท่านั้น':esc(rest)}</strong><small>${nightSequenceBlock?'กะเช้า / กะกลางวัน / ลา / ล้างกะ ไม่สามารถใช้เป็นวันถัดไปได้':hardBlock?(morningRestBlock?'กะเช้าจัดไม่ได้ • ขั้นต่ำ 6 ชม.':'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้'):'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>วันหยุดคงเหลือ</span><strong>${quota.balance_days==null?'-':esc(Number(quota.balance_days).toLocaleString('th-TH'))} วัน</strong><small>${esc(quotaMeta)}</small></div>`;
+    box.innerHTML=`${advice}<div class="rule-kpi-v6120 ${hardBlock?'danger':'ok'}"><span>${nightSequenceBlock?'เงื่อนไขลำดับกะดึก':'พักก่อนกะถัดไป'}</span><strong>${nightSequenceBlock?'ตรวจวันก่อนหน้า + วันถัดไป':esc(rest)}</strong><small>${nightSequenceBlock?'กะดึกต้องไม่ถูกคั่นด้วยกะเช้า และวันถัดไปต้องเป็นกะดึก/วันหยุด/ลา LV':hardBlock?(morningRestBlock?'กะเช้าจัดไม่ได้ • ขั้นต่ำ 6 ชม.':'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้'):'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>วันหยุดคงเหลือ</span><strong>${quota.balance_days==null?'-':esc(Number(quota.balance_days).toLocaleString('th-TH'))} วัน</strong><small>${esc(quotaMeta)}</small></div>`;
     return {
       ...g,
       restMinutes,
@@ -28027,7 +28165,7 @@ ${names}${extra}
       morningRestBlock,
       continuousAfter,
       warning48,
-      source:authoritative?'SERVER_V6141':'LOCAL'
+      nightSequenceReason,source:authoritative?'SERVER_V61435':'LOCAL'
     };
   }
   async function loadQuota(){
@@ -28131,7 +28269,7 @@ ${names}${extra}
     }else{
       dayoffQuotaGuardV6142={allowed:true,skipped_precheck:true,reason:'NON_DAYOFF_SHIFT',guard_version:'V6.14.8'};
     }
-    // V6.14.34: save validation must use the CURRENT proposal only. A cached
+    // V6.14.36: save validation must use the CURRENT proposal only. A cached
     // async guard from a previously selected morning shift must never block a
     // newly selected night shift / leave / day-off.
     const guard=localGuard();
@@ -28139,7 +28277,7 @@ ${names}${extra}
     if(guard?.hardBlock){
       app()?.toast?.(
         guard.nightSequenceBlock
-          ? `กำหนดกะไม่ได้: วันก่อนหน้าเป็นกะดึก ${guard.previousCode||''} • วันถัดไปต้องเป็น “กะดึก” หรือ “วันหยุดตามกะล่าสุด” เท่านั้น`
+          ? sequenceBlockMessageV61435(guard)
           : guard.nightToMorning
             ? `กำหนดกะเช้าไม่ได้: วันก่อนหน้าเป็นกะดึก ${guard.previousCode||''} และมีเวลาพักเพียง ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม. • แนะนำให้จัดเป็นวันหยุด หรือเลือกกะกลางคืน`
             : guard.morningRestBlock
@@ -28150,6 +28288,10 @@ ${names}${extra}
       return {allowed:false};
     }
     let server=await fetchScheduleGuardV6141();
+    if(server?.night_sequence_backend_missing){
+      app()?.toast?.('ตรวจเงื่อนไขลำดับกะดึก V6.14.36 ไม่สำเร็จ กรุณารัน SQL V6.14.36 ก่อนจัดกะ','error');
+      return {allowed:false};
+    }
     if(isAuthoritativeGuardV6141(server)){
       st.serverGuardV6141=server;
       st.serverGuardKeyV61432=guardProposalKeyV61432();
@@ -28168,7 +28310,7 @@ ${names}${extra}
       const selectedTargetMorningV61431=!shiftLooksNightV61431(selectedTargetMasterV61431)&&minsOf(p.start)!=null&&minsOf(p.start)<12*60;
       app()?.toast?.(
         server?.night_sequence_block===true
-          ? `กำหนดกะไม่ได้: วันก่อนหน้าเป็นกะดึก ${server.previous_shift_code||''} • วันถัดไปต้องเป็น “กะดึก” หรือ “วันหยุดตามกะล่าสุด” เท่านั้น`
+          ? sequenceBlockMessageV61435({sequenceReason:server.night_sequence_reason,previousCode:server.previous_shift_code,nextCode:server.next_shift_code,nightSequenceBlock:true})
           : selectedTargetMorningV61431
             ? `กำหนดกะเช้าไม่ได้: เวลาพักจากกะ/ช่วงงานก่อนหน้ามีเพียง ${(Number(server.rest_minutes||0)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม. • แนะนำให้จัดเป็นวันหยุด หรือเลือกกะกลางคืน`
             : (server.message||'กำหนดกะไม่ได้ เนื่องจากเวลาพักต่ำกว่า 6 ชั่วโมง'),
@@ -28222,36 +28364,45 @@ ${names}${extra}
   async function precheckMinimumRestBulk(payload=[]){
     if(!payload.length)return {allowed:[],blocked:[]};
     await loadRuntimeShiftRules();
-    const virtual=bulkVirtualMap();
-    const allowed=[],blocked=[];
-    const items=[...payload].sort((a,b)=>String(a.emp_code).localeCompare(String(b.emp_code))||String(a.work_date).localeCompare(String(b.work_date)));
-    for(const item of items){
-      const emp=String(item.emp_code||''),date=String(item.work_date||'').slice(0,10),code=String(item.shift_code||'').toUpperCase();
-      if(!emp||!date){allowed.push(item);continue;}
-      const key=`${emp}|${date}`,targetRow=virtual.get(key)||{};
-      const prev=virtual.get(`${emp}|${isoAddDays(date,-1)}`);
-      if(!code){
-        const fallbackCode=String(targetRow.auto_shift_code||targetRow.default_shift_code||'').toUpperCase();
-        const fallbackMaster=shiftMaster(fallbackCode);
-        const fallbackTransition=transitionAgainstPreviousV61431(prev,date,fmtTime(fallbackMaster?.start_time),fallbackCode,fmtTime(fallbackMaster?.end_time));
-        if(fallbackTransition.nightSequenceBlock){blocked.push({emp,date,code:null,clearsTo:fallbackCode,...fallbackTransition});continue;}
-        virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:null});allowed.push(item);continue;
+    let remaining=[...payload].map(x=>({...x}));
+    const blockedByKey=new Map();
+    const maxRounds=Math.max(2,remaining.length+2);
+    for(let round=0;round<maxRounds&&remaining.length;round++){
+      const virtual=bulkVirtualMap();
+      // Project ALL candidate rows first. This is critical for consecutive Night
+      // selections: D and D+1 must see each other before either is validated.
+      for(const item of remaining){
+        const emp=String(item.emp_code||''),date=String(item.work_date||'').slice(0,10),raw=String(item.shift_code||'').toUpperCase();
+        if(!emp||!date)continue;
+        const key=`${emp}|${date}`,base=virtual.get(key)||{};
+        let code=raw;
+        if(!code)code=String(base.auto_shift_code||base.default_shift_code||base.suggested_shift_code||'').toUpperCase();
+        const sm=shiftMaster(code);
+        virtual.set(key,{...base,emp_code:emp,work_date:date,shift_code:code,assigned_shift_code:raw||null,effective_shift_code:code,shift_start_time:fmtTime(sm?.start_time)||base.shift_start_time||null,shift_end_time:fmtTime(sm?.end_time)||base.shift_end_time||null,schedule_rule_mode:['OFF','HOL'].includes(code)||(sm?.is_workday===false&&code!=='LV')?'DYNAMIC_OFF':base.schedule_rule_mode});
       }
-      if(['OFF','HOL'].includes(code)){virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:code,schedule_rule_mode:code==='OFF'?'DYNAMIC_OFF':targetRow.schedule_rule_mode});allowed.push(item);continue;}
-      if(code==='LV'){
-        const leaveTransition=transitionAgainstPreviousV61431(prev,date,null,'LV',null);
-        if(leaveTransition.nightSequenceBlock){blocked.push({emp,date,code,...leaveTransition});continue;}
-        virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:code});allowed.push(item);continue;
+      const roundBlocked=[];
+      for(const item of remaining){
+        const emp=String(item.emp_code||''),date=String(item.work_date||'').slice(0,10);
+        if(!emp||!date)continue;
+        const target=virtual.get(`${emp}|${date}`)||{};
+        const code=String(target.effective_shift_code||target.shift_code||'').toUpperCase();
+        const sm=shiftMaster(code);
+        const start=fmtTime(target.shift_start_time||sm?.start_time),end=fmtTime(target.shift_end_time||sm?.end_time);
+        const t=transitionAgainstNeighborsV61435(
+          virtual.get(`${emp}|${isoAddDays(date,-1)}`),
+          virtual.get(`${emp}|${isoAddDays(date,1)}`),
+          date,start,code,end
+        );
+        if(t.hardBlock)roundBlocked.push({emp,date,code,...t});
       }
-      const sm=shiftMaster(code);
-      if(!sm||sm.is_workday===false){allowed.push(item);continue;}
-      const start=fmtTime(sm.start_time),end=fmtTime(sm.end_time);
-      const transition=transitionAgainstPreviousV61431(prev,date,start,code,end);
-      if(transition.hardBlock){blocked.push({emp,date,code,...transition});continue;}
-      allowed.push(item);
-      virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:code,assigned_shift_code:code,shift_start_time:start,shift_end_time:end});
+      if(!roundBlocked.length)break;
+      const keys=new Set(roundBlocked.map(x=>`${x.emp}|${x.date}`));
+      roundBlocked.forEach(x=>blockedByKey.set(`${x.emp}|${x.date}`,x));
+      const next=remaining.filter(x=>!keys.has(`${x.emp_code}|${String(x.work_date||'').slice(0,10)}`));
+      if(next.length===remaining.length)break;
+      remaining=next;
     }
-    return {allowed,blocked};
+    return {allowed:remaining,blocked:[...blockedByKey.values()]};
   }
   async function validateBulk(payload=[]){
     if(!payload.length)return {allowed:true};
@@ -28343,10 +28494,22 @@ ${names}${extra}
       else if(first.offMappingMissing)app()?.toast?.(`บันทึกไม่ได้: กะทำงาน ${first.basisCode||'-'} ยังไม่ได้จับคู่กะวันหยุด กรุณาตั้งค่าที่เมนู ตั้งค่ากะทำงาน`,'error');
       else if(first.offMissingBasis)app()?.toast?.(`บันทึกไม่ได้: ${first.emp} วันที่ ${fmtDate(first.date)} ไม่พบทั้งกะทำงานย้อนหลังและกะตั้งต้นสำหรับอ้างอิงวันหยุด`,'error');
       else if(special)app()?.toast?.(`กะพิเศษ ${special.code} ไม่รองรับการคัดลอก/Fill ด้วยรหัสกะอย่างเดียว กรุณาเปิดวันนั้นแล้วเลือก “กะนับชั่วโมง” หรือ “กะเช้า + รอเข้ากะดึก” เพื่อให้ระบบเก็บช่วงเวลาครบถ้วน`,'error');
-      else if(first.nightSequenceBlock)app()?.toast?.(`บันทึกไม่ได้: ${first.emp} วันที่ ${fmtDate(first.date)} วันก่อนหน้าเป็นกะดึก ${first.previousCode||'-'} • วันถัดไปต้องเป็นกะดึกหรือวันหยุดเท่านั้น${first.code==='LV'?' (ลา LV ไม่ใช่วันหยุดตามกฎนี้)':''}`,'error');
+      else if(first.nightSequenceBlock)app()?.toast?.(`บันทึกไม่ได้: ${first.emp} วันที่ ${fmtDate(first.date)} วันก่อนหน้าเป็นกะดึก ${first.previousCode||'-'} • วันถัดไปต้องเป็นกะดึก วันหยุด หรือ ลา LV`,'error');
       else if(first.nightToMorning)app()?.toast?.(`บันทึกไม่ได้: ${first.emp} วันที่ ${fmtDate(first.date)} วันก่อนหน้าเป็นกะดึก ${first.previousCode||'-'} จึงพักก่อนกะเช้าเพียง ${(first.rest/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม. • แนะนำให้จัดวันหยุด หรือเลือกกะกลางคืน`,'error');
       else app()?.toast?.(`บันทึกไม่ได้ ${blocks.length.toLocaleString('th-TH')} รายการ: ${first.emp} วันที่ ${fmtDate(first.date)} พักเพียง ${(Number(first.rest||0)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. (ขั้นต่ำ 6 ชม.)`,'error');
       return {allowed:false,blocks,warnings};
+    }
+    let nightSequenceGuardV61435=null;
+    try{
+      nightSequenceGuardV61435=await rpc('ta_validate_night_sequence_bulk_v61435',{p_rows:payload});
+    }catch(e){
+      app()?.toast?.('ตรวจเงื่อนไขลำดับกะดึกไม่สำเร็จ กรุณารัน SQL V6.14.36 ก่อนจัดกะ','error');
+      return {allowed:false,blocks,warnings,nightSequenceError:e};
+    }
+    if(nightSequenceGuardV61435?.allowed===false){
+      const firstSeq=(nightSequenceGuardV61435.violations||[])[0]||{};
+      app()?.toast?.(sequenceBlockMessageV61435({sequenceReason:firstSeq.reason,previousCode:firstSeq.previous_code,nextCode:firstSeq.next_code,nightSequenceBlock:true}),'error');
+      return {allowed:false,blocks,warnings,nightSequenceGuard:nightSequenceGuardV61435};
     }
     let quotaGuardBulkV6142=null;
     try{
