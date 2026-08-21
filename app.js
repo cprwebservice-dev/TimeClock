@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.27";
-document.documentElement.dataset.timeClockBuild = "6.14.27";
+window.__TIME_CLOCK_BUILD__ = "V6.14.28";
+document.documentElement.dataset.timeClockBuild = "6.14.28";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.27";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.27',
+  version: '6.14.28',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1537,94 +1537,153 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
-    function attendanceDisplayStatus(r) {
-      const backend = String(r?.display_status || '')
-        .trim()
-        .toUpperCase();
-      const dayType = String(r?.day_type || '')
-        .trim()
-        .toUpperCase();
-      const rawStatus = String(
-        r?.calculation_status
-        || r?.attendance_result
-        || r?.attendance_status
-        || 'NORMAL'
-      ).toUpperCase();
+    const ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428 = 30;
 
-      if (
-        r?.leave_request_id
-        || r?.leave_type_code
+    // V6.14.28 canonical attendance display/statistics policy.
+    // Primary status precedence: Leave / Day off / Absence / Late / Early / Normal.
+    // Late >= 30 minutes is classified as ABSENCE but keeps the actual late minutes;
+    // it is not converted into full-shift absence_minutes here, so payroll deductions
+    // are not silently changed by a UI/statistics rule.
+    function attendancePolicyFlagsV61428(r) {
+      const row = r || {};
+      const dayType = String(row?.day_type || '').trim().toUpperCase();
+      const rawStatus = String(
+        row?.calculation_status
+        || row?.attendance_result
+        || row?.attendance_status
+        || ''
+      ).trim().toUpperCase();
+      const backendStatus = String(row?.display_status || '').trim().toUpperCase();
+      const leave = Boolean(
+        row?.leave_request_id
+        || row?.leave_type_code
         || dayType === 'LEAVE'
         || [
-          'LEAVE_APPROVED',
-          'LEAVE_WITH_TIME',
-          'PARTIAL_LEAVE',
-          'PARTIAL_LEAVE_NO_TIME'
+          'LEAVE','LEAVE_APPROVED','LEAVE_WITH_TIME',
+          'PARTIAL_LEAVE','PARTIAL_LEAVE_NO_TIME'
         ].includes(rawStatus)
-      ) {
-        return 'LEAVE';
-      }
+        || backendStatus === 'LEAVE'
+      );
 
-      const workingShiftOverride =
-        attendanceHasWorkingShiftOverrideV61155(r);
-
-      if (
+      const workingShiftOverride = attendanceHasWorkingShiftOverrideV61155(row);
+      const naturalDayOff = Boolean(
         !workingShiftOverride
-        && ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
-      ) {
-        return 'DAY_OFF';
+        && (
+          row?.is_weekly_off
+          || row?.is_public_holiday
+          || ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(dayType)
+        )
+      );
+      const dayOff = !leave && naturalDayOff;
+
+      const punchState = attendancePunchStateV61120(row);
+      const workDate = String(row?.work_date || '').slice(0,10);
+      const future = Boolean(workDate && workDate > todayISO());
+      const hasPlannedWindow = Boolean(attendanceShiftTime(row,'start') && attendanceShiftTime(row,'end'));
+      const plannedWork = Boolean(
+        !leave
+        && !dayOff
+        && (
+          workingShiftOverride
+          || dayType === 'WORKDAY'
+          || Number(row?.expected_day || 0) === 1
+          || hasPlannedWindow
+        )
+      );
+
+      const lateMinutes = Math.max(0, Number(row?.late_minutes || 0) || 0);
+      const earlyMinutes = Math.max(0, Number(row?.early_leave_minutes ?? row?.early_minutes ?? 0) || 0);
+
+      let missingReason = null;
+      if (plannedWork && !future && !punchState.complete) {
+        if (!punchState.anyPunch) missingReason = 'MISSING_BOTH';
+        else if (!punchState.shift1In) missingReason = 'MISSING_IN';
+        else if (!punchState.shift1Out) missingReason = 'MISSING_OUT';
+        else if (punchState.shift2Required && !punchState.shift2In) missingReason = 'MISSING_IN';
+        else if (punchState.shift2Required && !punchState.shift2Out) missingReason = 'MISSING_OUT';
+        else missingReason = 'MISSING_TIME';
       }
 
-      const punchState = attendancePunchStateV61120(r);
-      if (punchState.complete) {
-        // Preserve meaningful non-absence statuses after complete punches exist.
-        const staleAbsenceStatuses = new Set([
-          'ABSENCE','ABSENT','NO_TIME','MISSING_BOTH','MISSING_IN','MISSING_OUT'
-        ]);
-        if (backend && !staleAbsenceStatuses.has(backend)) return backend;
-        if (rawStatus && !staleAbsenceStatuses.has(rawStatus)) {
-          return rawStatus === 'OVERTIME' ? 'NORMAL' : rawStatus;
-        }
-        if (Number(r?.late_minutes || 0) > 0) return 'LATE';
-        return 'NORMAL';
-      }
+      const absenceByMissing = Boolean(missingReason);
+      const absenceByLate = Boolean(
+        plannedWork
+        && !future
+        && punchState.complete
+        && lateMinutes >= ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428
+      );
+      const absence = absenceByMissing || absenceByLate;
+      const late = Boolean(
+        plannedWork
+        && !future
+        && punchState.complete
+        && lateMinutes >= 1
+        && lateMinutes < ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428
+      );
+      const early = Boolean(
+        plannedWork
+        && !future
+        && punchState.complete
+        && earlyMinutes > 0
+      );
+      const upcoming = Boolean(plannedWork && future);
 
-      if (attendanceAbsenceMinutes(r) > 0) return 'ABSENCE';
-      if (backend) return backend;
-      if (rawStatus === 'OVERTIME') return 'NORMAL';
-      return rawStatus || 'NORMAL';
+      let primaryStatus = 'NORMAL';
+      if (leave) primaryStatus = 'LEAVE';
+      else if (dayOff) primaryStatus = 'DAY_OFF';
+      else if (upcoming) primaryStatus = 'UPCOMING';
+      else if (absence) primaryStatus = 'ABSENCE';
+      else if (late && early) primaryStatus = 'LATE_AND_EARLY_LEAVE';
+      else if (late) primaryStatus = 'LATE';
+      else if (early) primaryStatus = 'EARLY_LEAVE';
+      else if ([
+        'WORKED_ON_WEEKLY_OFF','WORKED_ON_HOLIDAY',
+        'WORKED_ON_COMP_OFF','WORKED_ON_OFFDAY'
+      ].includes(rawStatus)) primaryStatus = rawStatus;
+      else if (rawStatus === 'OVERTIME') primaryStatus = 'NORMAL';
+
+      return {
+        primaryStatus,
+        leave,
+        dayOff,
+        upcoming,
+        plannedWork,
+        punchState,
+        absence,
+        absenceByMissing,
+        absenceByLate,
+        absenceReason: absenceByLate ? 'LATE_30_PLUS' : missingReason,
+        late,
+        lateMinutes,
+        early,
+        earlyMinutes,
+        thresholdMinutes: ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428
+      };
+    }
+
+    function attendanceDisplayStatus(r) {
+      return attendancePolicyFlagsV61428(r).primaryStatus;
     }
 
     function normalizeAttendanceStatusFromPunchesV61120(r) {
       if (!r) return r;
-      const punchState = attendancePunchStateV61120(r);
       const originalStatus = String(r.display_status || '').trim().toUpperCase();
       const originalAbsence = Number(r.absence_minutes || 0);
+      const flags = attendancePolicyFlagsV61428(r);
 
+      // Missing punches keep the existing full-shift absence minute behavior.
+      // Late >=30 is status-only ABSENCE; actual late_minutes remains available.
       r.absence_minutes = attendanceAbsenceMinutes(r);
-      r.display_status = attendanceDisplayStatus(r);
-
-      if (r.absence_minutes > 0) {
-        r.absence_reason = !punchState.anyPunch
-          ? 'MISSING_BOTH'
-          : !punchState.shift1In
-            ? 'MISSING_IN'
-            : !punchState.shift1Out
-              ? 'MISSING_OUT'
-              : punchState.shift2Required && !punchState.shift2In
-                ? 'MISSING_IN'
-                : punchState.shift2Required && !punchState.shift2Out
-                  ? 'MISSING_OUT'
-                  : (r.absence_reason || 'MISSING_TIME');
-      } else if (punchState.complete) {
-        r.absence_reason = null;
-      }
+      r.display_status = flags.primaryStatus;
+      r.absence_reason = flags.absence ? flags.absenceReason : null;
+      r.attendance_policy_version = 'V6.14.28';
+      r.attendance_policy_threshold_minutes = ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428;
 
       r._attendance_status_corrected_by_punch_v61120 = Boolean(
-        punchState.complete
+        flags.punchState.complete
         && (
           ['ABSENCE','ABSENT','NO_TIME','MISSING_BOTH','MISSING_IN','MISSING_OUT'].includes(originalStatus)
           || originalAbsence > 0
+          || flags.absenceByLate
         )
       );
       return r;
@@ -1637,8 +1696,13 @@ window.tcIsDayShiftCode = value =>
 
       return ({
         ABSENCE:"ขาดงาน",
+        ABSENT:"ขาดงาน",
         LEAVE:"ลา",
         DAY_OFF:"วันหยุด",
+        UPCOMING:"รอทำงาน",
+        LATE:"มาสาย",
+        EARLY_LEAVE:"กลับก่อน",
+        LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",
         NORMAL:"ปกติ"
       })[status] || attendanceLabel(status);
     }
@@ -1993,9 +2057,9 @@ window.tcIsDayShiftCode = value =>
         ["overtime_minutes","OT",r => (Number(r.overtime_minutes || 0)/60).toFixed(2)],
         ["waiting_minutes","รอคอย",r => (Number(r.waiting_minutes || 0)/60).toFixed(2)],
         ["break_deducted_minutes","พัก",r => (Number(r.break_deducted_minutes || 0)/60).toFixed(2)],
-        ["late_minutes","มาสาย(นาที)",r => Number(r.late_minutes || 0)],
+        ["late_minutes","เข้าหลังเริ่มกะ(นาที)",r => Number(r.late_minutes || 0)],
         ["early_leave_minutes","กลับก่อน(นาที)",r => Number(r.early_leave_minutes || 0)],
-        ["absence_minutes","ขาดงาน(นาที)",r => attendanceAbsenceMinutes(r)],
+        ["absence_minutes","ขาดงานจากเวลาไม่ครบ(นาที)",r => attendanceAbsenceMinutes(r)],
         ["comp_off_balance","วันหยุดชดเชยคงเหลือ",r => r.comp_off_balance ?? 0]
       ].filter(definition =>
         attendanceIsColumnVisible(definition[0])
@@ -3792,9 +3856,11 @@ window.tcIsDayShiftCode = value =>
       const cards = [
         ["พนักงาน", d.total_employees, "คนในขอบเขตข้อมูล", "♙", ""],
         ["รายการทั้งหมด", d.total_rows, "วัน-พนักงาน", "▦", ""],
-        ["ลงเวลาครบ", d.complete_time_rows, "มีเวลาเข้าและออก", "✓", "green"],
-        ["เวลาไม่ครบ", Number(d.missing_in_rows||0)+Number(d.missing_out_rows||0), "ขาดเวลาเข้าหรือออก", "!", "orange"],
-        ["ไม่พบเวลา", d.absent_rows ?? d.no_time_rows, "วันทำงานที่ไม่มีเวลา", "×", "red"],
+        ["ลงเวลาครบคู่", d.complete_time_rows, "มีเวลาเข้าและออก (ข้อมูลเทคนิค)", "✓", "green"],
+        ["ขาดงาน", d.absent_rows ?? 0, "เวลาไม่ครบ หรือ เข้าหลังเริ่มกะ ≥ 30 นาที", "×", "red"],
+        ["มาสาย", d.late_rows ?? 0, "เข้าหลังเริ่มกะ 1–29 นาที", "!", "orange"],
+        ["กลับก่อน", d.early_leave_rows ?? 0, "ลงเวลาออกก่อนเวลาสิ้นสุดกะ", "↙", "orange"],
+        ["เวลาไม่ครบ", Number(d.missing_in_rows||0)+Number(d.missing_out_rows||0), "ใช้ตรวจสาเหตุขาดงานจาก Punch", "…", ""],
         ["ชั่วโมงสุทธิ", Number(d.paid_work_hours||0), "ชั่วโมงหลังหักพัก/รอคอย", "◷", "blue"],
         ["ชั่วโมงปกติ", Number(d.regular_hours||0), "ชั่วโมงปกติรวม", "◉", "green"],
         ["OT", Number(d.overtime_hours||0), `${formatNumber(d.overtime_rows||0)} รายการ`, "＋", "orange"],
@@ -3804,16 +3870,17 @@ window.tcIsDayShiftCode = value =>
       ];
       $("dashboardKpis").innerHTML = cards.map(c => `<div class="panel kpi-card ${c[4]}"><div class="kpi-label">${safe(c[0])}</div><div class="kpi-value">${formatNumber(c[1])}</div><div class="kpi-sub">${safe(c[2])}</div><div class="kpi-icon">${c[3]}</div></div>`).join("");
       const bars = [
-        ["ลงเวลาครบ", d.complete_time_rows, "green"],
-        ["ไม่พบเวลาเข้า", d.missing_in_rows, "orange"],
-        ["ไม่พบเวลาออก", d.missing_out_rows, "orange"],
+        ["ขาดงาน", d.absent_rows, "red"],
+        ["มาสาย 1–29 นาที", d.late_rows, "orange"],
+        ["กลับก่อน", d.early_leave_rows, "orange"],
         ["ทำงานในวันหยุด", d.worked_on_offday_rows, "blue"]
       ];
       const max = Math.max(1, ...bars.map(x => Number(x[1]||0)));
       $("dashboardBars").innerHTML = bars.map(x => `<div class="status-row"><span>${safe(x[0])}</span><div class="bar-track"><div class="bar-fill ${x[2]}" style="width:${Math.max(2, Number(x[1]||0)/max*100)}%"></div></div><strong class="text-right">${formatNumber(x[1])}</strong></div>`).join("");
       $("dashboardQuick").innerHTML = [
-        ["ขาดเวลาเข้า", d.missing_in_rows, "attendance"],
-        ["ขาดเวลาออก", d.missing_out_rows, "attendance"],
+        ["ขาดงาน", d.absent_rows, "attendance"],
+        ["มาสาย 1–29 นาที", d.late_rows, "attendance"],
+        ["กลับก่อน", d.early_leave_rows, "attendance"],
         ["กะที่หัวหน้างานบันทึก", d.confirmed_rows, "schedule"]
       ].map(x => `<button class="quick-item" data-go-page="${x[2]}"><div><strong>${safe(x[0])}</strong><span> คลิกเพื่อดูรายละเอียด</span></div><span class="badge badge-blue">${formatNumber(x[1])}</span></button>`).join("");
     }
@@ -4497,9 +4564,14 @@ window.tcIsDayShiftCode = value =>
 
         if (val("attStatus")) {
           const wantedStatus = String(val("attStatus") || '').toUpperCase();
-          state.attendance = state.attendance.filter(row =>
-            attendanceDisplayStatus(row) === wantedStatus
-          );
+          state.attendance = state.attendance.filter(row => {
+            const flags = attendancePolicyFlagsV61428(row);
+            if (wantedStatus === 'ABSENCE') return flags.absence;
+            if (wantedStatus === 'LATE') return flags.late;
+            if (wantedStatus === 'EARLY_LEAVE') return flags.early;
+            if (wantedStatus === 'LATE_AND_EARLY_LEAVE') return flags.late && flags.early;
+            return flags.primaryStatus === wantedStatus;
+          });
         }
 
         if(
@@ -6247,40 +6319,12 @@ window.tcIsDayShiftCode = value =>
     };
 
     function scheduleTeamAttendanceStatus(row) {
-      const shiftMeta = scheduleResolveShiftMeta(row);
-      const dayType = String(row?.day_type || '').trim().toUpperCase();
-      const raw = String(
-        row?.display_status
-        || row?.attendance_result
-        || row?.attendance_status
-        || row?.calculation_status
-        || ''
-      ).trim().toUpperCase();
-      const leave = shiftMeta.tone === 'leave'
-        || Boolean(row?.leave_request_id || row?.leave_type_code)
-        || dayType === 'LEAVE'
-        || raw.includes('LEAVE');
-
-      if (leave) return 'LEAVE';
-      if (['off','holiday'].includes(shiftMeta.tone) || ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)) return 'OFF';
-
-      const workDate = String(row?.work_date || '').slice(0,10);
-      const isFuture = Boolean(workDate && workDate > todayISO());
-      const plannedWork = shiftMeta.isWorking;
-      if (plannedWork && isFuture) return 'UPCOMING';
-
-      // V6.11.20: after punch-meta enrichment, complete IN/OUT beats a stale
-      // ABSENCE/absence_minutes returned by an older attendance calculation row.
-      const punchState = attendancePunchStateV61120(row);
-      if (plannedWork && punchState.complete) {
-        if (Number(row?.late_minutes || 0) > 0 || raw === 'LATE') return 'LATE';
-        return 'NORMAL';
-      }
-
-      if (raw === 'ABSENCE' || raw === 'ABSENT' || Number(row?.absence_minutes || 0) > 0) return 'ABSENCE';
-      if (Number(row?.late_minutes || 0) > 0) return 'LATE';
-      if (plannedWork && !isFuture && !punchState.anyPunch) return 'ABSENCE';
-      if (plannedWork && !isFuture && !punchState.complete) return 'ABSENCE';
+      const flags = attendancePolicyFlagsV61428(row);
+      if (flags.leave) return 'LEAVE';
+      if (flags.dayOff) return 'OFF';
+      if (flags.upcoming) return 'UPCOMING';
+      if (flags.absence) return 'ABSENCE';
+      if (flags.late) return 'LATE';
       return 'NORMAL';
     }
 
@@ -6848,7 +6892,8 @@ window.tcIsDayShiftCode = value =>
       const rawIn = scheduleTeamSegmentActualTime(row,1,'IN');
       const rawOut = scheduleTeamSegmentActualTime(row,1,'OUT');
       const active = timeCertificationActiveV61139(row);
-      const late = Number(row.late_minutes || 0) > 0;
+      const attendanceFlagsV61428 = attendancePolicyFlagsV61428(row);
+      const late = attendanceFlagsV61428.late || attendanceFlagsV61428.absenceByLate;
       const missingIn = rawIn === '-';
       const missingOut = rawOut === '-';
       const hasSecondShift = timeCertificationHasSecondShiftV61145(row);
@@ -7372,7 +7417,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function scheduleTeamIsEarlyV6147(row) {
-      return Number(row?.early_leave_minutes || row?.early_minutes || 0) > 0;
+      return attendancePolicyFlagsV61428(row).early;
     }
 
     function scheduleTeamDrawerMatchesFilterV6147(row, filterKey) {
@@ -7399,7 +7444,7 @@ window.tcIsDayShiftCode = value =>
       const cards = [
         ['ALL','ทั้งหมด','all'],
         ['NORMAL','ปกติ','normal'],
-        ['LATE','สาย','late'],
+        ['LATE','สาย 1–29','late'],
         ['ABSENCE','ขาดงาน','absence'],
         ['EARLY','กลับก่อน','early'],
         ['OFF','หยุด','off'],
@@ -7756,7 +7801,7 @@ window.tcIsDayShiftCode = value =>
       return [...unique.values()];
     }
 
-    // V6.14.27: app-core does not share the private withTimeout helpers from
+    // V6.14.28: app-core does not share the private withTimeout helpers from
     // shift-api/system-period IIFEs. Keep a Monthly Personal scoped helper so
     // both the dedicated schedule RPC and canonical day-off balance can time out
     // without throwing `ReferenceError: withTimeout is not defined`.
@@ -7790,7 +7835,7 @@ window.tcIsDayShiftCode = value =>
         const response = await employeeMonthWithTimeoutV61427(
           state.client.rpc('ta_get_employee_month_schedule_v6134', args),
           30000,
-          'โหลด Monthly Personal Overview V6.14.27'
+          'โหลด Monthly Personal Overview V6.14.28'
         );
         if (response.error) dedicatedError = response.error;
         else rows = Array.isArray(response.data) ? response.data : [];
@@ -7903,7 +7948,7 @@ window.tcIsDayShiftCode = value =>
           }
         );
 
-        // V6.14.27: the Monthly Personal "วันหยุด" KPI must use the same
+        // V6.14.28: the Monthly Personal "วันหยุด" KPI must use the same
         // canonical day-off balance as Assignment / Bulk guards. This avoids a
         // browser-side recount that used to exclude public holidays.
         const dayoffBalancePromise = employeeMonthWithTimeoutV61427(
@@ -7912,7 +7957,7 @@ window.tcIsDayShiftCode = value =>
             p_month: `${bounds.value}-01`
           }),
           15000,
-          'โหลดโควต้าวันหยุด Monthly Personal V6.14.27'
+          'โหลดโควต้าวันหยุด Monthly Personal V6.14.28'
         );
 
         const settled = await Promise.allSettled([
@@ -8076,27 +8121,36 @@ window.tcIsDayShiftCode = value =>
           tone: 'neutral'
         };
       }
-      const status = attendanceDisplayStatus(row);
-      if (status === 'ABSENCE') return { status, label: 'ขาดงาน', tone: 'danger' };
-      if (status === 'LEAVE') return { status, label: 'ลา', tone: 'leave' };
-      if (status === 'DAY_OFF') return { status, label: 'วันหยุด', tone: 'off' };
-      if (Number(row?.late_minutes || 0) > 0) return { status: 'LATE', label: 'สาย', tone: 'late' };
-      if (Number(row?.early_leave_minutes || 0) > 0) return { status: 'EARLY', label: 'กลับก่อน', tone: 'early' };
-      return { status: status || 'NORMAL', label: 'ปกติ', tone: 'normal' };
+      const flags = attendancePolicyFlagsV61428(row);
+      if (flags.upcoming) return { status:'UNPROCESSED', label:'รอทำงาน', tone:'neutral' };
+      if (flags.absence) return { status:'ABSENCE', label:'ขาดงาน', tone:'danger' };
+      if (flags.leave) return { status:'LEAVE', label:'ลา', tone:'leave' };
+      if (flags.dayOff) return { status:'DAY_OFF', label:'วันหยุด', tone:'off' };
+      if (flags.late && flags.early) return { status:'LATE_AND_EARLY_LEAVE', label:'สายและกลับก่อน', tone:'late' };
+      if (flags.late) return { status:'LATE', label:'สาย', tone:'late' };
+      if (flags.early) return { status:'EARLY_LEAVE', label:'กลับก่อน', tone:'early' };
+      return { status: flags.primaryStatus || 'NORMAL', label: 'ปกติ', tone: 'normal' };
     }
 
     function employeeMonthAnomalyHtmlV61121(row) {
       if (!row) return '';
       const bits = [];
-      const status = attendanceDisplayStatus(row);
-      if (status === 'ABSENCE') bits.push('<span class="month-anomaly danger">ขาดงาน</span>');
-      if (Number(row?.late_minutes || 0) > 0) {
-        bits.push(`<span class="month-anomaly late">สาย ${safe(formatNumber(row.late_minutes))} นาที</span>`);
+      const flags = attendancePolicyFlagsV61428(row);
+      if (flags.absence) {
+        const reasonText = ({
+          MISSING_BOTH:'ไม่ลงเวลาทั้งเข้าและออก',
+          MISSING_IN:'ไม่ลงเวลาเข้า',
+          MISSING_OUT:'ไม่ลงเวลาออก',
+          LATE_30_PLUS:`เข้าหลังเริ่มกะ ${formatNumber(flags.lateMinutes)} นาที`
+        })[flags.absenceReason] || '';
+        bits.push(`<span class="month-anomaly danger">ขาดงาน${reasonText ? ` • ${safe(reasonText)}` : ''}</span>`);
+      } else if (flags.late) {
+        bits.push(`<span class="month-anomaly late">สาย ${safe(formatNumber(flags.lateMinutes))} นาที</span>`);
       }
-      if (Number(row?.early_leave_minutes || 0) > 0) {
-        bits.push(`<span class="month-anomaly early">กลับก่อน ${safe(formatNumber(row.early_leave_minutes))} นาที</span>`);
+      if (flags.early) {
+        bits.push(`<span class="month-anomaly early">กลับก่อน ${safe(formatNumber(flags.earlyMinutes))} นาที</span>`);
       }
-      if (status === 'LEAVE') bits.push('<span class="month-anomaly leave">ลา</span>');
+      if (flags.leave) bits.push('<span class="month-anomaly leave">ลา</span>');
       return bits.join('');
     }
 
@@ -8280,24 +8334,28 @@ window.tcIsDayShiftCode = value =>
           ].filter(Boolean).join(' • ')
         : 'วันหยุดประจำสัปดาห์ + นักขัตฤกษ์ ตามตารางกะ';
       attendanceRows.forEach(row => {
-        if (attendanceDisplayStatus(row) === 'ABSENCE') absenceDays += 1;
-        if (Number(row?.late_minutes || 0) > 0) lateDays += 1;
-        if (Number(row?.early_leave_minutes || 0) > 0) earlyDays += 1;
+        const flags = attendancePolicyFlagsV61428(row);
+        if (flags.absence) absenceDays += 1;
+        if (flags.late) lateDays += 1;
+        if (flags.early) earlyDays += 1;
       });
 
       const certifiedDays = attendanceRows.filter(row => timeCertificationActiveV61139(row)).length;
 
       const anomalyDays = new Set(
         attendanceRows
-          .filter(row => attendanceDisplayStatus(row) === 'ABSENCE' || Number(row?.late_minutes || 0) > 0 || Number(row?.early_leave_minutes || 0) > 0)
+          .filter(row => {
+            const flags = attendancePolicyFlagsV61428(row);
+            return flags.absence || flags.late || flags.early;
+          })
           .map(row => String(row?.work_date || '').slice(0,10))
           .filter(Boolean)
       ).size;
       $('employeeMonthScheduleSummary').innerHTML = `
         <div class="month-overview-kpi primary"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></div>
         <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>วันหยุด</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(formatNumber(offDays))}</strong></div>
-        <div class="month-overview-kpi danger"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>วันที่ไม่มีเวลาเข้า/ออกครบ</small></div><strong>${safe(formatNumber(absenceDays))}</strong></div>
-        <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>จำนวนวันที่มาสาย</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
+        <div class="month-overview-kpi danger"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>เวลาไม่ครบ หรือ เข้าช้า ≥ 30 นาที</small></div><strong>${safe(formatNumber(absenceDays))}</strong></div>
+        <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>เข้าหลังเริ่มกะ 1–29 นาที</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
         <div class="month-overview-kpi early"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></div>
         <div class="month-overview-kpi split"><div class="month-kpi-icon">ดึก</div><div><span>งานลูกค้าช่วงดึก</span><small>วันที่มีช่วงงานกะที่ 2</small></div><strong>${safe(formatNumber(splitDays))}</strong></div>
         <div class="month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>รับรองแล้ว ${safe(formatNumber(certifiedDays))} วัน • ตรวจรายละเอียดจาก Badge ในแต่ละวัน</small></div>`;
@@ -9688,7 +9746,14 @@ window.tcIsDayShiftCode = value =>
       const patternCode = r?.pattern_code || r?.resolved_pattern_code || (String(r?.pc || "").match(/4/) ? "TECH_5D" : "TECH_6D");
       const selectedShift = r?.assigned_shift_code || r?.suggested_shift_code || r?.effective_shift_code || r?.default_shift_code || (patternCode === "TECH_5D" ? "STD" : "S043");
       setVal("assignEmpCode", empCode); setVal("assignWorkDate", workDate);
-      setText("assignEmployeeInfo", `${r?.full_name || empCode} | ${formatDate(workDate)} | ${SHIFT_PATTERN_META[patternCode]?.label || patternCode} | กะปัจจุบัน ${r?.assigned_shift_code || r?.effective_shift_code || r?.auto_shift_code || "-"}`);
+      const assignmentInfoV61428 = $("assignEmployeeInfo");
+      if (assignmentInfoV61428) {
+        const employeeNameV61428 = r?.full_name || empCode;
+        const currentShiftV61428 = r?.assigned_shift_code || r?.effective_shift_code || r?.auto_shift_code || "-";
+        const patternLabelV61428 = SHIFT_PATTERN_META[patternCode]?.label || patternCode || '-';
+        const initialsV61428 = String(employeeNameV61428 || empCode || '?').trim().replace(/\s+/g,'').slice(0,2);
+        assignmentInfoV61428.innerHTML = `<span class="assignment-employee-avatar-v61428">${safe(initialsV61428 || 'พน')}</span><div class="assignment-employee-main-v61428"><strong>${safe(employeeNameV61428)}</strong><small>${safe(empCode)} • ${safe(formatDate(workDate))}</small></div><div class="assignment-employee-tags-v61428"><span>${safe(patternLabelV61428)}</span><span>กะปัจจุบัน <b>${safe(currentShiftV61428)}</b></span></div>`;
+      }
       fillShiftSelect(patternCode, selectedShift);
       setVal("assignShiftCode", selectedShift);
       setVal("assignNote", r?.schedule_note || ""); setVal("assignReason", "กำหนดกะจากหน้าปฏิทิน");
@@ -12048,7 +12113,7 @@ window.tcIsDayShiftCode = value =>
       }
       return "badge-gray";
     }
-    function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",DAY_OFF:"วันหยุด",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-"; }
+    function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",DAY_OFF:"วันหยุด",MISSING_IN:"ไม่ลงเวลาเข้า",MISSING_OUT:"ไม่ลงเวลาออก",MISSING_BOTH:"ไม่ลงเวลาทั้งเข้าและออก",LATE_30_PLUS:"เข้าหลังเริ่มกะ ≥30 นาที",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-"; }
     function emptyRow(cols) { return `<tr><td colspan="${cols}" class="table-empty">ไม่พบข้อมูล</td></tr>`; }
     function humanError(err) {
       const msg = err?.message || err?.error_description || String(err || "เกิดข้อผิดพลาด");
@@ -12133,6 +12198,7 @@ window.tcIsDayShiftCode = value =>
       attendanceShiftTime,
       normalizeTemplateCodeV665,
       attendancePunchStateV61120,
+      attendancePolicyFlagsV61428,
       normalizeAttendanceStatusFromPunchesV61120,
       attendanceAbsenceMinutes,
       attendanceDisplayStatus,
@@ -13517,7 +13583,7 @@ ${skippedSummary(compatibility.skipped)}
   const app=()=>window.TimeClockApp;
   const safe=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
   const STORAGE_KEY="timeclock_report_jobs_v60";
-  const names={attendance:"รายละเอียดเวลาทำงาน",schedule:"ตารางจัดกะรายเดือน",summary:"สรุป Dashboard",late:"มาสายและกลับก่อน"};
+  const names={attendance:"รายละเอียดเวลาทำงาน",schedule:"ตารางจัดกะรายเดือน",summary:"สรุป Dashboard",late:"ความผิดปกติเวลาเข้า–ออก"};
   const downloads=new Map();
   const val=id=>$(id)?.value||"";
   const client=()=>app()?.state?.client||null;
@@ -13552,9 +13618,9 @@ ${skippedSummary(compatibility.skipped)}
           p_limit:5000
         }
       );
-      const filtered=type==="late"?data.filter(r=>Number(r.late_minutes||0)>0||Number(r.early_leave_minutes||0)>0):data;
+      const filtered=type==="late"?data.filter(r=>{const f=app()?.attendancePolicyFlagsV61428?.(r);return f ? (f.late||f.absenceByLate||f.early) : (Number(r.late_minutes||0)>0||Number(r.early_leave_minutes||0)>0);}):data;
       const shiftTime=(r,side)=>app()?.attendanceShiftTime?.(r,side)||r[side==="start"?"shift_start_time":"shift_end_time"];
-      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","มาสาย(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...filtered.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,r.day_type,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),(Number(r.net_work_minutes||0)/60).toFixed(2),(Number(r.regular_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,r.calculation_status||r.attendance_result||r.attendance_status])];
+      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","เข้าหลังเริ่มกะ(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...filtered.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,r.day_type,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),(Number(r.net_work_minutes||0)/60).toFixed(2),(Number(r.regular_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,app()?.attendanceDisplayLabel?.(r)||(r.calculation_status||r.attendance_result||r.attendance_status)])];
     }
     if(type==="schedule"){
       const month=`${start.slice(0,7)}-01`;const data=await window.TimeClockShiftAPI.getMonthlySchedule(app(),{p_month:month,p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept,p_emp_codes:null,p_schedule_statuses:null});
@@ -13562,7 +13628,7 @@ ${skippedSummary(compatibility.skipped)}
     }
     if(type==="summary"){
       const raw=await rpc("ta_get_dashboard_overview_v640",{p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept});const d=Array.isArray(raw)?raw[0]||{}:raw||{};
-      return [["รายการ","จำนวน"],["พนักงานทั้งหมด",d.total_employees],["รายการทั้งหมด",d.total_rows],["ลงเวลาครบ",d.complete_time_rows],["ไม่พบเวลาเข้า",d.missing_in_rows],["ไม่พบเวลาออก",d.missing_out_rows],["ไม่มีข้อมูลเวลา",d.absent_rows??d.no_time_rows],["ทำงานวันหยุด",d.worked_on_offday_rows],["กะที่หัวหน้างานบันทึก",d.confirmed_rows],["ชั่วโมงสุทธิ",d.paid_work_hours],["ชั่วโมงปกติ",d.regular_hours],["OT",d.overtime_hours],["ช่วงรอคอย",d.waiting_hours],["ชั่วโมงทำงานวันหยุด",d.offday_work_hours],["วันที่ได้รับวันหยุดชดเชย",d.comp_off_earned_rows],["พนักงาน TECH_6D",d.tech_6d_rows],["พนักงาน TECH_5D",d.tech_5d_rows]];
+      return [["รายการ","จำนวน"],["พนักงานทั้งหมด",d.total_employees],["รายการทั้งหมด",d.total_rows],["ลงเวลาครบคู่",d.complete_time_rows],["ขาดงาน",d.absent_rows],["มาสาย 1–29 นาที",d.late_rows],["กลับก่อน",d.early_leave_rows],["ไม่พบเวลาเข้า (วิเคราะห์สาเหตุ)",d.missing_in_rows],["ไม่พบเวลาออก (วิเคราะห์สาเหตุ)",d.missing_out_rows],["ไม่ลงเวลาทั้งเข้าและออก",d.no_time_rows],["ทำงานวันหยุด",d.worked_on_offday_rows],["กะที่หัวหน้างานบันทึก",d.confirmed_rows],["ชั่วโมงสุทธิ",d.paid_work_hours],["ชั่วโมงปกติ",d.regular_hours],["OT",d.overtime_hours],["ช่วงรอคอย",d.waiting_hours],["ชั่วโมงทำงานวันหยุด",d.offday_work_hours],["วันที่ได้รับวันหยุดชดเชย",d.comp_off_earned_rows],["พนักงาน TECH_6D",d.tech_6d_rows],["พนักงาน TECH_5D",d.tech_5d_rows]];
     }
     throw new Error("ไม่พบประเภทรายงาน");
   }
@@ -13966,7 +14032,7 @@ ${skippedSummary(compatibility.skipped)}
     );
   };
   const issueOf = r => String(r?.issue_type || r?.attendance_result || r?.attendance_status || r?.time_pair_status || "NEED_REVIEW").toUpperCase();
-  const statusLabel = s => ({NORMAL:"ปกติ",ABSENT:"ไม่มีเวลา",MISSING_IN:"ไม่พบเวลาเข้า",MISSING_OUT:"ไม่พบเวลาออก",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-";
+  const statusLabel = s => ({NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",MISSING_IN:"ไม่ลงเวลาเข้า",MISSING_OUT:"ไม่ลงเวลาออก",MISSING_BOTH:"ไม่ลงเวลาทั้งเข้าและออก",LATE_30_PLUS:"เข้าหลังเริ่มกะ ≥30 นาที",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-";
 
   function client(){ return app()?.state?.client || null; }
   async function rpc(name,args={}){
@@ -14032,7 +14098,7 @@ ${skippedSummary(compatibility.skipped)}
       ["attendance","◷","รายละเอียดเวลาทำงาน","เวลาเข้า–ออก กะ ชั่วโมงสุทธิ สาย และกลับก่อน"],
       ["schedule","▣","ตารางจัดกะรายเดือน","กะอัตโนมัติ กะที่หัวหน้างานบันทึก รูปแบบช่วงงาน และประเภทวัน"],
       ["summary","▦","สรุป Dashboard","สรุปจำนวนพนักงานและสถานะสำคัญ"],
-      ["late","◴","มาสายและกลับก่อน","เฉพาะรายการที่มีนาทีมาสายหรือกลับก่อน"]
+      ["late","◴","ความผิดปกติเวลาเข้า–ออก","สาย 1–29 นาที / เข้าช้า ≥30 นาที / กลับก่อน"]
     ];
     return `<section id="page-report" class="page report-center-page"><div class="report-hero"><div><span class="eyebrow">ENTERPRISE REPORT CENTER</span><h2>ศูนย์รายงาน Time-Clock</h2><p>สร้างรายงาน CSV, Excel และ Print/PDF โดยไม่กระทบหน้าการทำงานหลัก</p></div><button id="reportRefreshJobsBtn" class="btn btn-light">รีเฟรชประวัติ</button></div><div class="panel section-gap"><div class="panel-body"><div class="report-filter-grid"><div class="field"><label>วันที่เริ่มต้น</label><input id="reportStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="reportEnd" class="input" type="date"></div><div class="field"><label>พื้นที่</label><select id="reportZone" class="select"><option value="">ทุกพื้นที่</option></select></div><div class="field"><label>หน่วยงาน</label><select id="reportDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div></div></div></div><div class="report-card-grid section-gap">${cards.map(c=>`<article class="report-type-card"><div class="report-icon">${c[1]}</div><h3>${c[2]}</h3><p>${c[3]}</p><div class="report-format-actions"><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-orange" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div><div class="panel section-gap"><div class="panel-header"><div><h3>ประวัติการส่งออก</h3><p>เก็บประวัติใน Browser และบันทึก Log ใน Supabase เมื่อพร้อมใช้งาน</p></div><button id="reportClearJobsBtn" class="btn btn-danger-soft">ล้างประวัติ</button></div><div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>รายงาน</th><th>ช่วงข้อมูล</th><th>จำนวนแถว</th><th>สถานะ</th><th>ไฟล์</th></tr></thead><tbody id="reportJobsBody"></tbody></table></div></div></div></section>`;
   }
@@ -14734,7 +14800,7 @@ ${skippedSummary(compatibility.skipped)}
       all.filter(r=>attendanceStatus(r)==="NORMAL").length
     );
     $("attGridAbsent").textContent=num(
-      all.filter(r=>attendanceAbsence(r)>0).length
+      all.filter(r=>app()?.attendancePolicyFlagsV61428?.(r)?.absence).length
     );
     $("attGridMissing").textContent=num(
       all.filter(r=>
@@ -14745,7 +14811,7 @@ ${skippedSummary(compatibility.skipped)}
       ).length
     );
     $("attGridLate").textContent=num(
-      all.filter(r=>Number(r.late_minutes||0)>0).length
+      all.filter(r=>app()?.attendancePolicyFlagsV61428?.(r)?.late).length
     );
     $("attGridOffday").textContent=num(
       all.filter(r=>attendanceStatus(r)==="DAY_OFF").length
@@ -15072,13 +15138,23 @@ ${skippedSummary(compatibility.skipped)}
       ?? 0;
 
     const issueNotes=[];
-    if(absence>0){
+    const attendanceFlagsV61428 = app()?.attendancePolicyFlagsV61428?.(row);
+    if(attendanceFlagsV61428?.absenceByLate){
+      issueNotes.push(`ขาดงาน • เข้าหลังเริ่มกะ ${num(late)} นาที`);
+    }else if(attendanceFlagsV61428?.absenceByMissing){
+      const missingText=({
+        MISSING_BOTH:"ไม่ลงเวลาทั้งเข้าและออก",
+        MISSING_IN:"ไม่ลงเวลาเข้า",
+        MISSING_OUT:"ไม่ลงเวลาออก"
+      })[attendanceFlagsV61428.absenceReason]||"เวลาเข้า–ออกไม่ครบ";
+      issueNotes.push(`ขาดงาน • ${missingText}`);
+    }else if(absence>0){
       issueNotes.push(`ขาดงาน ${num(absence)} นาที`);
     }
-    if(late>0){
+    if(attendanceFlagsV61428?.late){
       issueNotes.push(`มาสาย ${num(late)} นาที`);
     }
-    if(early>0){
+    if(attendanceFlagsV61428?.early || (!attendanceFlagsV61428 && early>0)){
       issueNotes.push(`กลับก่อน ${num(early)} นาที`);
     }
     if(
@@ -15274,7 +15350,7 @@ ${skippedSummary(compatibility.skipped)}
           calculation.break_deducted_minutes
           ?? row.break_deducted_minutes
         )} ชม.`],
-      ["มาสาย",`${num(late)} นาที`],
+      ["เข้าหลังเริ่มกะ",`${num(late)} นาที`],
       ["กลับก่อน",`${num(early)} นาที`],
       ["ขาดงาน",`${num(absence)} นาที`],
       ["วันหยุดชดเชยคงเหลือ",
@@ -16899,8 +16975,8 @@ ${skippedSummary(compatibility.skipped)}
   function answerAssistant(question){const q=question.toLowerCase();const att=app()?.state?.attendance||[],sch=app()?.state?.schedule||[],dash=app()?.state?.dashboard||{};
     if(q.includes("missing in")||q.includes("ไม่พบเวลาเข้า")){const n=Number(dash.missing_in_rows||0);return `พบรายการไม่พบเวลาเข้า ${num(n)} รายการ ตามช่วงข้อมูล Dashboard ล่าสุด`;}
     if(q.includes("missing out")||q.includes("ไม่พบเวลาออก")){const n=Number(dash.missing_out_rows||0);return `พบรายการไม่พบเวลาออก ${num(n)} รายการ ตามช่วงข้อมูล Dashboard ล่าสุด`;}
-    if(q.includes("ไม่มีเวลา")||q.includes("absent")){const n=Number(dash.absent_rows||dash.no_time_rows||0);return `พบพนักงาน/วันทำงานที่ไม่มีข้อมูลเวลา ${num(n)} รายการ`;}
-    if(q.includes("มาสาย")&&q.includes("หน่วยงาน")){const m={};att.forEach(r=>{if(Number(r.late_minutes||0)>0){const k=r.department||"ไม่ระบุ";m[k]=(m[k]||0)+Number(r.late_minutes||0);}});const top=Object.entries(m).sort((a,b)=>b[1]-a[1])[0];return top?`หน่วยงานที่มีนาทีมาสายรวมสูงสุดคือ ${top[0]} จำนวน ${num(top[1])} นาที จากข้อมูลรายละเอียดเวลาที่โหลดล่าสุด`:`ยังไม่มีข้อมูลมาสายในรายละเอียดเวลาที่โหลดล่าสุด`;}
+    if(q.includes("ขาดงาน")||q.includes("ไม่มีเวลา")||q.includes("absent")){const n=Number(dash.absent_rows||0);return `พบสถานะขาดงาน ${num(n)} รายการ (รวมเวลาไม่ครบ และเข้าเกินกะตั้งแต่ 30 นาทีขึ้นไป)`;}
+    if(q.includes("มาสาย")&&q.includes("หน่วยงาน")){const m={};att.forEach(r=>{const f=app()?.attendancePolicyFlagsV61428?.(r);if(f?.late){const k=r.department||"ไม่ระบุ";m[k]=(m[k]||0)+Number(f.lateMinutes||0);}});const top=Object.entries(m).sort((a,b)=>b[1]-a[1])[0];return top?`หน่วยงานที่มีนาทีมาสาย (1–29 นาที) รวมสูงสุดคือ ${top[0]} จำนวน ${num(top[1])} นาที จากข้อมูลรายละเอียดเวลาที่โหลดล่าสุด`:`ยังไม่มีข้อมูลมาสาย 1–29 นาทีในรายละเอียดเวลาที่โหลดล่าสุด`;}
     if(q.includes("ยืนยัน")&&q.includes("กะ")){return "ระบบปัจจุบันไม่มีขั้นตอนยืนยันกะแยกต่างหาก เมื่อหัวหน้างานเลือกหรือปรับกะแล้วกดบันทึก ระบบถือว่าเป็นการยืนยันและมีผลทันที ส่วนกะมาตรฐานทำงานอัตโนมัติโดยไม่ต้องบันทึก";}
     if(q.includes("สรุป")||q.includes("dashboard")){return `พนักงาน ${num(dash.total_employees)} คน • รายการทั้งหมด ${num(dash.total_rows)} • ลงเวลาครบ ${num(dash.complete_time_rows)} • เวลาไม่ครบ ${num(Number(dash.missing_in_rows||0)+Number(dash.missing_out_rows||0))}`;}
     return "ยังไม่พบรูปแบบคำถามนี้ ลองถามเรื่อง Missing IN, Missing OUT, ไม่มีเวลา, หน่วยงานที่มาสาย, รายการปรับกะ หรือสรุป Dashboard";
@@ -27227,7 +27303,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.27';
+  const VERSION='6.14.28';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27398,7 +27474,7 @@ ${names}${extra}
     if($('assignWorkModeV6120'))return;
     const info=$('assignEmployeeInfo');if(!info)return;
     info.insertAdjacentHTML('afterend',`<section class="assign-rule-shell-v6120">
-      <div class="assign-rule-head-v6120"><div><span>รูปแบบการทำงานของวันนี้</span><strong id="assignModeTitleV6120">เลือกประเภทการจัดกะ</strong></div><small>ระบบจะแสดงเฉพาะรูปแบบที่หน่วยงานใช้งานได้</small></div>
+      <div class="assign-rule-head-v6120"><div><span><b class="assignment-step-v61428">1</b> รูปแบบการทำงานของวันนี้</span><strong id="assignModeTitleV6120">เลือกประเภทการจัดกะ</strong></div><small>เลือก 1 รูปแบบ • ระบบกรองตามสิทธิ์และหน่วยงาน</small></div>
       <input type="hidden" id="assignWorkModeV6120" value="NORMAL">
       <div class="assign-mode-grid-v6120" id="assignModeGridV6120"></div>
       <div class="assign-mode-fields-v6120 hidden" id="assignSplitWaitFieldsV6120"><div class="form-row-3"><div class="field"><label>ออกจากกะช่วงแรก *</label><input class="input" type="time" id="assignFirstEndV6120" value="15:00"><small class="field-help">เช่น 15:00 น.</small></div><div class="field"><label>กลับเข้าทำงาน *</label><input class="input" type="time" id="assignSecondStartV6120" value="21:00"><small class="field-help">ช่วงรอจะไม่นับเป็นเวลาทำงาน</small></div><div class="field"><label>คาดว่างานเสร็จ *</label><input class="input" type="time" id="assignSecondEndV6120" value="01:00"><small class="field-help">ใช้ตรวจพักขั้นต่ำ 6 ชม. กะถัดไป</small></div></div><div class="split-wait-preview-v6120" id="assignSplitPreviewV6120"></div></div>
@@ -27489,7 +27565,7 @@ ${names}${extra}
   function setShiftFieldMode(mode){
     const field=$('assignShiftCode')?.closest('.field');if(!field)return;
     const hide=['HOUR_BASED','DYNAMIC_OFF','LEAVE'].includes(mode);field.classList.toggle('hidden',hide);
-    const label=field.querySelector('label');if(label)label.textContent=mode==='SPLIT_WAIT_NIGHT'?'กะช่วงแรก (เวลาเริ่มกะ)':mode==='NORMAL_LATE_CUSTOMER'?'กะหลัก':'กะทำงาน';
+    const label=field.querySelector('label');if(label){const text=mode==='SPLIT_WAIT_NIGHT'?'กะช่วงแรก (เวลาเริ่มกะ)':mode==='NORMAL_LATE_CUSTOMER'?'กะหลัก':'กะทำงาน';label.innerHTML=`<span class="assignment-step-v61428">2</span> ${text}`;}
   }
   function chooseMode(code){
     if(!st.current)return;st.current.mode=String(code||'NORMAL').toUpperCase();$('assignWorkModeV6120').value=st.current.mode;

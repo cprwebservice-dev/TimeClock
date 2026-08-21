@@ -1,0 +1,67 @@
+AUDIT — Time-Clock Enterprise V6.14.28
+Attendance Policy Consistency + Compact Shift Assignment UX
+================================================================
+
+A. ผลทบทวนก่อนแก้
+[ISSUE] Calculation Engine เดิมถือ late_minutes > 0 เป็น LATE ทั้งหมด
+        จึงไม่แยก 1–29 นาที กับ >=30 นาที
+[ISSUE] Missing IN / Missing OUT มี diagnostic status แยก แม้ V6.6.4 จะคิด absence_minutes เต็มกะแล้ว
+[ISSUE] Dashboard เดิมนับ late_rows จาก late_minutes > 0 จึงรวมกรณี >=30 นาทีอยู่ใน “มาสาย”
+[ISSUE] หลายหน้าจอมี logic แปลงสถานะของตัวเอง ทำให้ตัวเลข/Label มีโอกาสไม่ตรงกัน
+
+B. Canonical Attendance Policy V6.14.28
+1. Workday + complete punch + late 1–29 นาที       => LATE / “มาสาย”
+2. Workday + complete punch + late >=30 นาที       => ABSENT / UI “ขาดงาน”
+3. Workday + missing IN / OUT / both                => UI “ขาดงาน”
+   - เก็บ MISSING_IN / MISSING_OUT / MISSING_BOTH เป็น technical reason
+   - absence_minutes ยังคง full-shift ตาม V6.6.4
+4. Complete punch + OUT ก่อน shift end               => EARLY_LEAVE / “กลับก่อน”
+5. >=30 นาที + กลับก่อน                              => Primary “ขาดงาน” และยังนับ “กลับก่อน” แยก
+6. Leave / natural day-off / future planned day      => ไม่ถูกจัดเป็นขาดงานจากกฎนี้
+7. Explicit working shift on natural OFF/HOL          => ถือเป็น expected workday
+
+C. Payroll / deduction safety
+- V6.14.28 เปลี่ยน late >=30 เป็น Attendance classification เท่านั้น
+- ไม่เปลี่ยน late >=30 ให้ absence_minutes = full shift
+- ป้องกันการเปลี่ยนผลค่าจ้างโดยอัตโนมัติโดยไม่ได้รับ Policy เพิ่มเติม
+
+D. UI/Statistics paths aligned
+[PASS] Dashboard absent_rows = missing punch OR late >=30
+[PASS] Dashboard late_rows = 1–29 only
+[PASS] Dashboard early_leave_rows = OUT before shift end
+[PASS] Attendance Detail status/filter/KPI/export use canonical frontend flags
+[PASS] Raw late column renamed “เข้าหลังเริ่มกะ(นาที)” เพื่อไม่ตีความ >=30 ว่าเป็น “มาสาย”
+[PASS] TEAM DAILY / Team summary uses same flags
+[PASS] MONTHLY PERSONAL OVERVIEW uses same flags
+[PASS] Reports use canonical status label
+[PASS] Smart Data Assistant summary uses same Dashboard policy
+
+E. Shift Assignment Popup UX
+[PASS] Existing field IDs and save pipeline preserved
+[PASS] Employee/date/work-pattern/current-shift summary added
+[PASS] 3-step information hierarchy
+       1 รูปแบบการทำงานของวันนี้
+       2 กะทำงาน
+       3 รายละเอียดเพิ่มเติม
+[PASS] Work Mode cards compact + responsive
+[PASS] Modal body scrolls; footer action area remains clear
+[PASS] Dark mode styles retained
+[PASS] Existing schedule guards remain unchanged
+       - System Period
+       - User/Manager Scope
+       - Day-off quota
+       - 6h minimum rest / 48h continuous-work guard
+       - Scheduling Rule extension sync
+       - Certification-aware Attendance refresh
+
+F. Static validation
+[PASS] node --check app.js
+[PASS] index.html parsed successfully
+[PASS] 404.html parsed successfully
+[PASS] HTML IDs unique
+[PASS] CSS brace balance
+[PASS] V6.14.27 references removed from release files
+
+G. Runtime verification
+ต้องรัน SQL_สำหรับตรวจสอบ_V6.14.28_ATTENDANCE_POLICY.sql หลัง Migration
+เพื่อยืนยันข้อมูลจริงใน Supabase โดยเฉพาะ late >=30, late 1–29 และ Missing Punch

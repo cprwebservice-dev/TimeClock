@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.27 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.28 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.27 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.28 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.27-20260821" rel="stylesheet"/>
+<link href="./app.css?v=6.14.28-20260821" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.27</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.28</span></div>
 </form>
 </div>
 </section>
@@ -359,7 +359,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.27</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.27 Monthly Personal Timeout Scope Fix</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.28</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.28 Attendance Policy + Compact Assignment UX</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -416,7 +416,7 @@
 </div>
 </div>
 </div>
-<div class="field attendance-filter-field attendance-filter-status"><label>สถานะ</label><select class="select" id="attStatus"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENCE">ขาดงาน</option><option value="LEAVE">ลา</option><option value="DAY_OFF">วันหยุด</option><option value="LATE">มาสาย</option><option value="EARLY_LEAVE">กลับก่อน</option><option value="LATE_AND_EARLY_LEAVE">สายและกลับก่อน</option></select></div>
+<div class="field attendance-filter-field attendance-filter-status"><label>สถานะ</label><select class="select" id="attStatus"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENCE">ขาดงาน (เวลาไม่ครบ / สาย ≥30 นาที)</option><option value="LEAVE">ลา</option><option value="DAY_OFF">วันหยุด</option><option value="LATE">มาสาย (1–29 นาที)</option><option value="EARLY_LEAVE">กลับก่อน</option><option value="LATE_AND_EARLY_LEAVE">สายและกลับก่อน</option></select></div>
 <div class="toolbar-actions attendance-filter-actions">
 <button class="btn btn-primary" id="loadAttendanceBtn">ค้นหา</button>
 <button class="btn btn-success" id="attendanceExcelBtn">Excel</button>
@@ -435,9 +435,9 @@
 <label><input data-att-column-toggle="overtime_minutes" type="checkbox"/> OT</label>
 <label><input data-att-column-toggle="waiting_minutes" type="checkbox"/> รอคอย</label>
 <label><input data-att-column-toggle="break_deducted_minutes" type="checkbox"/> พัก</label>
-<label><input data-att-column-toggle="late_minutes" type="checkbox"/> มาสาย</label>
+<label><input data-att-column-toggle="late_minutes" type="checkbox"/> เข้าหลังเริ่มกะ</label>
 <label><input data-att-column-toggle="early_leave_minutes" type="checkbox"/> กลับก่อน</label>
-<label><input data-att-column-toggle="absence_minutes" type="checkbox"/> ขาดงาน</label>
+<label><input data-att-column-toggle="absence_minutes" type="checkbox"/> ขาดงานจากเวลาไม่ครบ</label>
 <label><input data-att-column-toggle="comp_off_balance" type="checkbox"/> วันหยุดชดเชยคงเหลือ</label>
 <small>ค่าเริ่มต้นซ่อน และการเลือกมีผลต่อ Export Excel</small>
 </div>
@@ -466,9 +466,9 @@
 <th class="attendance-col-hidden" data-att-col="overtime_minutes">OT</th>
 <th class="attendance-col-hidden" data-att-col="waiting_minutes">รอคอย</th>
 <th class="attendance-col-hidden" data-att-col="break_deducted_minutes">พัก</th>
-<th class="attendance-col-hidden" data-att-col="late_minutes">มาสาย(นาที)</th>
+<th class="attendance-col-hidden" data-att-col="late_minutes">เข้าหลังเริ่มกะ(นาที)</th>
 <th class="attendance-col-hidden" data-att-col="early_leave_minutes">กลับก่อน(นาที)</th>
-<th class="attendance-col-hidden" data-att-col="absence_minutes">ขาดงาน(นาที)</th>
+<th class="attendance-col-hidden" data-att-col="absence_minutes">ขาดงานจากเวลาไม่ครบ(นาที)</th>
 <th class="attendance-col-hidden" data-att-col="comp_off_balance">วันหยุดชดเชยคงเหลือ</th>
 </tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
 </div>
@@ -1092,7 +1092,7 @@
 </div>
 <div class="panel section-gap">
 <div class="panel-header">
-<div><h3>คำนวณผลย้อนหลังหลังเปลี่ยนกะตั้งต้น</h3><p>ใช้เมื่อแก้เวลาเริ่ม–สิ้นสุดหรือเปลี่ยนกะตั้งต้น เพื่ออัปเดตชั่วโมง สาย กลับก่อน และ OT</p></div>
+<div><h3>คำนวณผลย้อนหลังหลังเปลี่ยนกะตั้งต้น</h3><p>ใช้เมื่อแก้เวลาเริ่ม–สิ้นสุดหรือเปลี่ยนกะตั้งต้น เพื่ออัปเดตชั่วโมง สถานะเวลาเข้า กลับก่อน และ OT</p></div>
 </div>
 <div class="panel-body">
 <div class="shift-recalc-grid">
@@ -1686,20 +1686,46 @@
 
 <!-- Shift Assignment Modal -->
 <div class="modal-backdrop hidden" id="assignModal">
-<div class="modal">
-<div class="modal-header"><h3>กำหนดกะทำงาน</h3><button class="btn btn-light btn-icon" data-close-modal="assignModal">×</button></div>
-<div class="modal-body">
-<input id="assignEmpCode" type="hidden"><input id="assignWorkDate" type="hidden">
-<div id="assignEmployeeInfo" style="padding:13px;border-radius:12px;background:var(--blue-100);color:var(--blue-700);margin-bottom:15px;font-weight:700"></div>
-<div class="field"><label>กะทำงาน</label><select class="select" id="assignShiftCode"></select><small class="field-help">เมื่อหัวหน้างานกด “บันทึกกะ” ระบบจะถือว่าเป็นการยืนยันการจัดกะและมีผลทันที</small></div>
-<div class="assignment-save-policy-v61117"><span>✓</span><div><strong>บันทึกครั้งเดียว</strong><small>ไม่ต้องยืนยันกะแยกอีกครั้ง • การเปลี่ยนกะจะถูกบันทึกพร้อมผู้ดำเนินการและวันเวลา</small></div></div>
-<div class="field"><label>รูปแบบช่วงงานของวันนี้</label><select class="select" id="assignWorkTemplate"><option value="">กำลังโหลดรูปแบบช่วงงาน...</option></select><small class="field-help" id="assignWorkTemplateHelp">ค่าเริ่มต้นเป็นกะปกติ และสามารถเลือกงานลูกค้าช่วงดึกเฉพาะวันที่ต้องใช้งาน</small></div>
-<div class="form-row hidden" id="assignCustomerWindowRow"><div class="field"><label>คาดว่าจะเริ่มงานลูกค้า *</label><input class="input" id="assignCustomerStart" type="time" value="22:00"/><small class="field-help">ใช้เป็นเวลาเริ่มงานลูกค้าช่วงดึก</small></div><div class="field"><label>คาดว่าจะสิ้นสุด</label><select class="select" id="assignCustomerEndMode"><option value="ACTUAL_OUT" selected>ตามเวลาออกจริง</option><option value="FIXED">กำหนดเวลา</option></select><div class="assign-customer-end-fixed hidden" id="assignCustomerEndFixedWrap"><input class="input" id="assignCustomerEnd" type="time"/><small class="field-help">รองรับข้ามวัน เช่น 22:00–03:00</small></div><small class="field-help" id="assignCustomerEndModeHelp">ตามเวลาออกจริง: ระบบจะใช้ OUT จริงเป็นเวลาสิ้นสุดงานลูกค้าช่วงดึก</small></div></div>
-<div class="field"><label>หมายเหตุ</label><input class="input" id="assignNote" placeholder="หมายเหตุการจัดกะ / งานลูกค้า"/></div>
-<div class="field"><label>เหตุผลการเปลี่ยนแปลง</label><input class="input" id="assignReason" value="กำหนดกะจากหน้าปฏิทิน"/></div>
-</input></input></div>
-<div class="modal-footer"><button class="btn btn-danger" id="deleteAssignmentBtn" style="margin-right:auto">ลบกะที่จัดไว้</button><button class="btn btn-light" data-close-modal="assignModal">ยกเลิก</button><button class="btn btn-primary" id="saveAssignmentBtn">บันทึกกะ</button></div>
-</div>
+  <div class="modal assignment-modal-v61428">
+    <div class="modal-header assignment-modal-header-v61428">
+      <div class="assignment-modal-title-v61428">
+        <span>SHIFT ASSIGNMENT</span>
+        <h3>กำหนดกะทำงาน</h3>
+        <p>เลือกประเภทงาน → เลือกกะ → ตรวจเงื่อนไข → บันทึก</p>
+      </div>
+      <button class="btn btn-light btn-icon" data-close-modal="assignModal" aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body assignment-modal-body-v61428">
+      <input id="assignEmpCode" type="hidden">
+      <input id="assignWorkDate" type="hidden">
+      <div id="assignEmployeeInfo" class="assignment-employee-summary-v61428"></div>
+
+      <section class="assignment-shift-section-v61428">
+        <div class="field">
+          <label><span class="assignment-step-v61428">2</span> กะทำงาน</label>
+          <select class="select" id="assignShiftCode"></select>
+          <small class="field-help">แสดงเฉพาะกะที่ใช้ได้กับรูปแบบการทำงานและหน่วยงานนี้</small>
+        </div>
+      </section>
+
+      <div class="assignment-save-policy-v61117 assignment-save-policy-v61428"><span>✓</span><div><strong>บันทึกครั้งเดียว มีผลทันที</strong><small>ระบบบันทึกผู้ดำเนินการ วันเวลา และประมวลผล Attendance ตาม Pipeline เดิม</small></div></div>
+      <div class="field"><label>รูปแบบช่วงงานของวันนี้</label><select class="select" id="assignWorkTemplate"><option value="">กำลังโหลดรูปแบบช่วงงาน...</option></select><small class="field-help" id="assignWorkTemplateHelp">ค่าเริ่มต้นเป็นกะปกติ และสามารถเลือกงานลูกค้าช่วงดึกเฉพาะวันที่ต้องใช้งาน</small></div>
+      <div class="form-row hidden assignment-customer-row-v61428" id="assignCustomerWindowRow"><div class="field"><label>คาดว่าจะเริ่มงานลูกค้า *</label><input class="input" id="assignCustomerStart" type="time" value="22:00"/><small class="field-help">เวลาเริ่มงานช่วงดึก</small></div><div class="field"><label>คาดว่าจะสิ้นสุด</label><select class="select" id="assignCustomerEndMode"><option value="ACTUAL_OUT" selected>ตามเวลาออกจริง</option><option value="FIXED">กำหนดเวลา</option></select><div class="assign-customer-end-fixed hidden" id="assignCustomerEndFixedWrap"><input class="input" id="assignCustomerEnd" type="time"/><small class="field-help">รองรับข้ามวัน เช่น 22:00–03:00</small></div><small class="field-help" id="assignCustomerEndModeHelp">ระบบจะใช้ OUT จริงเป็นเวลาสิ้นสุด</small></div></div>
+
+      <section class="assignment-meta-section-v61428">
+        <div class="assignment-meta-title-v61428"><span class="assignment-step-v61428">3</span><strong>รายละเอียดเพิ่มเติม</strong><small>ใส่เฉพาะข้อมูลที่จำเป็น</small></div>
+        <div class="assignment-meta-grid-v61428">
+          <div class="field"><label>หมายเหตุ</label><input class="input" id="assignNote" placeholder="เช่น งานลูกค้า / เหตุผลเฉพาะวัน"/></div>
+          <div class="field"><label>เหตุผลการเปลี่ยนแปลง</label><input class="input" id="assignReason" value="กำหนดกะจากหน้าปฏิทิน"/></div>
+        </div>
+      </section>
+    </div>
+    <div class="modal-footer assignment-modal-footer-v61428">
+      <button class="btn btn-danger" id="deleteAssignmentBtn" style="margin-right:auto">ลบกะที่จัดไว้</button>
+      <button class="btn btn-light" data-close-modal="assignModal">ยกเลิก</button>
+      <button class="btn btn-primary" id="saveAssignmentBtn">บันทึกกะ</button>
+    </div>
+  </div>
 </div>
 <!-- Shift Master Modal -->
 <div class="modal-backdrop hidden" id="shiftMasterModal">
@@ -2563,6 +2589,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.27-20260821"></script>
+<script src="./app.js?v=6.14.28-20260821"></script>
 </body>
 </html>
