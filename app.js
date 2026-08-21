@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.23";
-document.documentElement.dataset.timeClockBuild = "6.14.23";
+window.__TIME_CLOCK_BUILD__ = "V6.14.24";
+document.documentElement.dataset.timeClockBuild = "6.14.24";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.23";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.23',
+  version: '6.14.24',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -312,17 +312,37 @@ window.tcIsDayShiftCode = value =>
       throw new Error(periodCheck.message || "SYSTEM_PERIOD_SCHEDULE_CLOSED");
     }
 
-    let response = await client.rpc("ta_assign_shifts_bulk_v6143", {
+    // V6.14.24: use the write-only guarded bulk RPC.
+    // V6.14.3 -> V6.11.17 bulk writer recalculates Attendance inside the
+    // transaction, while V6.14.15+ finalizes/recalculates again after the
+    // Scheduling Rule extension is saved. Large bulk actions can therefore hit
+    // statement timeout / HTTP 500 before the final canonical refresh.
+    // V6.14.24 keeps all write guards but defers Attendance to the existing
+    // post-extension finalizer.
+    let response = await client.rpc("ta_assign_shifts_bulk_v61424", {
       p_rows: cleanRows,
       p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
       p_confirm_now: Boolean(confirmNow)
     });
     if (!response.error) return response.data;
-    if (!missingFunction(response.error)) throw response.error;
 
-    throw new Error(
-      "DAYOFF_QUOTA_GUARD_V6143_REQUIRED: กรุณาติดตั้ง Day-off Quota Guard V6.14.3 ก่อนบันทึกกะแบบหลายรายการ"
-    );
+    // Backward compatibility only when the new migration has not been run yet.
+    // Do not retry old V6.14.3 on a real V6.14.24 database/runtime error,
+    // otherwise the same mutation may be attempted twice.
+    if (missingFunction(response.error)) {
+      response = await client.rpc("ta_assign_shifts_bulk_v6143", {
+        p_rows: cleanRows,
+        p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
+        p_confirm_now: Boolean(confirmNow)
+      });
+      if (!response.error) return response.data;
+      if (!missingFunction(response.error)) throw response.error;
+      throw new Error(
+        "BULK_SCHEDULE_V61424_REQUIRED: กรุณารัน SQL V6.14.24 เพื่อแก้ปัญหา Bulk Schedule 500 / Double Recalculation"
+      );
+    }
+
+    throw response.error;
   }
 
   async function deleteBulk(app, empCodes, startDate, endDate, changeReason) {
