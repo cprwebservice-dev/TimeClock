@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.21";
-document.documentElement.dataset.timeClockBuild = "6.14.21";
+window.__TIME_CLOCK_BUILD__ = "V6.14.22";
+document.documentElement.dataset.timeClockBuild = "6.14.22";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.21";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.21',
+  version: '6.14.22',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1401,6 +1401,10 @@ window.tcIsDayShiftCode = value =>
         scheduleTableWrapV61420.classList.toggle(
           "schedule-person-full-month-v61420",
           personMode && !person15
+        );
+        scheduleTableWrapV61420.classList.toggle(
+          "schedule-person-15-day-v61422",
+          personMode && person15
         );
       }
       if (prev) {

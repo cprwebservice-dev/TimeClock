@@ -21607,3 +21607,40 @@ html[data-theme="dark"] #scheduleTableWrap.schedule-person-full-month-v61420 .sy
   background:rgba(255,255,255,.88)!important;
   color:#000!important;
 }
+
+
+/* ==========================================================================
+   V6.14.22 — Person 15-day closed-period lock icon aligned with full month
+   ========================================================================== */
+
+/* Keep Person Schedule 15-day and Full-month views visually consistent:
+   closed-period lock is centered inside the shift label and always black. */
+#scheduleTableWrap.schedule-person-15-day-v61422 .system-period-closed-cell .schedule-cell{
+  padding-right:0!important;
+}
+#scheduleTableWrap.schedule-person-15-day-v61422 .system-period-cell-lock{
+  top:50%!important;
+  right:auto!important;
+  bottom:auto!important;
+  left:50%!important;
+  transform:translate(-50%,-50%)!important;
+  width:18px!important;
+  height:18px!important;
+  border:0!important;
+  border-radius:5px!important;
+  background:rgba(255,255,255,.88)!important;
+  color:#000!important;
+  box-shadow:none!important;
+}
+#scheduleTableWrap.schedule-person-15-day-v61422 .system-period-cell-lock svg{
+  width:12px!important;
+  height:12px!important;
+  stroke:#000!important;
+}
+body.theme-dark #scheduleTableWrap.schedule-person-15-day-v61422 .system-period-cell-lock,
+.dark #scheduleTableWrap.schedule-person-15-day-v61422 .system-period-cell-lock,
+html[data-theme="dark"] #scheduleTableWrap.schedule-person-15-day-v61422 .system-period-cell-lock{
+  border:0!important;
+  background:rgba(255,255,255,.88)!important;
+  color:#000!important;
+}
