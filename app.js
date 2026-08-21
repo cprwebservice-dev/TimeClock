@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.30";
-document.documentElement.dataset.timeClockBuild = "6.14.30";
+window.__TIME_CLOCK_BUILD__ = "V6.14.31";
+document.documentElement.dataset.timeClockBuild = "6.14.31";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.30";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.30',
+  version: '6.14.31',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5095,6 +5095,7 @@ window.tcIsDayShiftCode = value =>
         let data = [];
 
         if (personMode) {
+          state.scheduleGuardBoundaryRowsV61431=[];
           const selectedDepartment =
             String(val("scheduleDepartment") || "").trim();
 
@@ -5127,6 +5128,14 @@ window.tcIsDayShiftCode = value =>
           // transport strategy; scope/filter/business rules remain unchanged.
           // V6.12.9: the grid RPC is lightweight, but keep each request small
           // and avoid a burst of concurrent PostgreSQL statements.
+          // V6.14.31: fetch one hidden day before the visible PERSON range.
+          // The row is not rendered, but is retained for the 6-hour transition
+          // guard so day 1 of a 15-day/full-month view can see the prior night.
+          const personGuardStartDateV61431 = (()=>{
+            const d=new Date(`${period.startDate}T00:00:00`);
+            d.setDate(d.getDate()-1);
+            return d.toISOString().slice(0,10);
+          })();
           const employeeBatchSize = 28;
           const chunks = [];
 
@@ -5157,7 +5166,7 @@ window.tcIsDayShiftCode = value =>
                   window.TimeClockApp||{state},
                   {
                     p_month:`${period.month}-01`,
-                    p_start_date:period.startDate,
+                    p_start_date:personGuardStartDateV61431,
                     p_end_date:period.endDate,
                     p_zone:val("scheduleZone")||null,
                     p_department:val("scheduleDepartment")||null,
@@ -5186,7 +5195,12 @@ window.tcIsDayShiftCode = value =>
               unique.set(key,row);
             });
 
-            data = [...unique.values()];
+            const personRowsV61431=[...unique.values()];
+            state.scheduleGuardBoundaryRowsV61431=personRowsV61431.filter(row=>String(row?.work_date||'').slice(0,10)<period.startDate);
+            data = personRowsV61431.filter(row=>{
+              const date=String(row?.work_date||'').slice(0,10);
+              return date>=period.startDate&&date<=period.endDate;
+            });
           }
 
           state.scheduleScopeEmployeesV61151 =
@@ -12994,27 +13008,54 @@ window.tcIsDayShiftCode = value =>
         emp_code: item.emp_code,
         work_date: item.work_date,
         shift_code: shift.shift_code,
-        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.30 mixed-pattern smart quick shift`
+        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.31 mixed-pattern + minimum-rest smart quick shift`
       });
 
       const groupKey = `${pattern}|${shift.shift_code}`;
       summary.set(groupKey, (summary.get(groupKey) || 0) + 1);
     });
 
-    const lines = [...summary.entries()].map(([key,count]) => {
+    // V6.14.31 — use the same minimum-rest transition logic as the Assignment
+    // popup and the bulk guard before showing the quick-action confirmation.
+    // This prevents one night→morning conflict from failing the whole 15-day /
+    // full-month quick action after the user has already confirmed it.
+    const restPrecheck = await window.TimeClockSchedulingRulesV6120?.precheckMinimumRestBulk?.(mapped) || {allowed: mapped, blocked: []};
+    const restBlocked = Array.isArray(restPrecheck.blocked) ? restPrecheck.blocked : [];
+    const blockedKeys = new Set(restBlocked.map(x => `${x.emp}|${x.date}`));
+    const allowedMapped = mapped.filter(x => !blockedKeys.has(`${x.emp_code}|${x.work_date}`));
+    mapped.length = 0;
+    mapped.push(...allowedMapped);
+
+    const finalSummary = new Map();
+    mapped.forEach(item=>{
+      const row=rowForKey(`${item.emp_code}|${item.work_date}`).row;
+      const pattern=rowPattern(row);
+      const key=`${pattern}|${item.shift_code}`;
+      finalSummary.set(key,(finalSummary.get(key)||0)+1);
+    });
+    const lines = [...finalSummary.entries()].map(([key,count]) => {
       const [pattern,shiftCode] = key.split("|");
       return `• ${pattern === "TECH_5D" ? "5 วัน" : "6 วัน"}: ${count.toLocaleString("th-TH")} ช่อง → ${shiftCode}`;
     });
 
     if (skipped.length) {
-      lines.push(
-        `• ข้าม: ${skipped.length.toLocaleString("th-TH")} ช่อง`
-      );
+      lines.push(`• ข้ามเพราะ Work Pattern/ตั้งค่า: ${skipped.length.toLocaleString("th-TH")} ช่อง`);
+    }
+    if (restBlocked.length) {
+      const nightMorning = restBlocked.filter(x=>x.nightToMorning).length;
+      const otherRest = restBlocked.length-nightMorning;
+      if(nightMorning) lines.push(`• ข้ามคืนกะดึก → กะเช้า: ${nightMorning.toLocaleString("th-TH")} ช่อง (พักต่ำกว่า 6 ชม.)`);
+      if(otherRest) lines.push(`• ข้ามเพราะพักต่ำกว่า 6 ชม.: ${otherRest.toLocaleString("th-TH")} ช่อง`);
+      lines.push('  แนะนำ: กำหนดวันหยุดตามกะล่าสุด หรือเลือกกะกลางคืนแทน');
     }
 
     if (!mapped.length) {
+      const firstRest=restBlocked[0];
+      const restText=firstRest?.restMinutes!=null?(firstRest.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2}):'-';
       return app()?.toast(
-        skippedSummary(skipped) || "ไม่มีรายการที่สามารถกำหนดกะได้",
+        firstRest?.nightToMorning
+          ? `กำหนดกะเช้าไม่ได้: วันก่อนหน้าเป็นกะดึก (${firstRest.previousCode||'-'}) ทำให้พักเพียง ${restText} ชม. ต่ำกว่า 6 ชม. • แนะนำให้กำหนดวันหยุด หรือเลือกกะกลางคืน`
+          : (skippedSummary(skipped) || (firstRest?`กำหนดกะไม่ได้: เวลาพัก ${restText} ชม. ต่ำกว่า 6 ชม.`:"ไม่มีรายการที่สามารถกำหนดกะได้")),
         "error"
       );
     }
@@ -13023,8 +13064,8 @@ window.tcIsDayShiftCode = value =>
       `กำหนด${smartActionLabel(action)}จำนวน ${mapped.length.toLocaleString("th-TH")} ช่อง`,
       "",
       ...lines,
-      skipped.length
-        ? "\nรายการที่ไม่รองรับจะไม่ถูกบันทึก"
+      (skipped.length || restBlocked.length)
+        ? "\nรายการที่ไม่ผ่านเงื่อนไขจะถูกข้าม และไม่ถูกบันทึก"
         : ""
     ].join("\n");
 
@@ -13037,9 +13078,9 @@ window.tcIsDayShiftCode = value =>
       `กำหนด${smartActionLabel(action)}`
     );
 
-    if (skipped.length) {
+    if (skipped.length || restBlocked.length) {
       app()?.toast(
-        `บันทึกสำเร็จ ${mapped.length.toLocaleString("th-TH")} ช่อง • ข้าม ${skipped.length.toLocaleString("th-TH")} ช่อง`,
+        `บันทึกสำเร็จ ${mapped.length.toLocaleString("th-TH")} ช่อง • ข้าม ${(skipped.length+restBlocked.length).toLocaleString("th-TH")} ช่อง`,
         "info"
       );
     }
@@ -27408,7 +27449,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.30';
+  const VERSION='6.14.31';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27547,6 +27588,64 @@ ${names}${extra}
     const sm=shiftMaster(rowCode(r));
     return {start:r.shift_start_time||r.effective_shift_start_time||sm?.start_time,end:r.shift_end_time||r.effective_shift_end_time||sm?.end_time};
   }
+  function shiftLooksNightV61431(codeOrShift){
+    const sm=typeof codeOrShift==='object'&&codeOrShift?codeOrShift:shiftMaster(codeOrShift);
+    const code=String(sm?.shift_code||codeOrShift||'').toUpperCase();
+    const start=minsOf(sm?.start_time),end=minsOf(sm?.end_time);
+    return sm?.is_night_shift===true
+      || window.tcIsNightShiftCode?.(code)===true
+      || String(sm?.shift_name||'').toLowerCase().includes('กะดึก')
+      || String(sm?.shift_name||'').toLowerCase().includes('กลางคืน')
+      || (start!=null&&start>=18*60)
+      || (start!=null&&end!=null&&end<=start);
+  }
+  function transitionAgainstPreviousV61431(prev,date,targetStart,targetCode){
+    if(!prev||isOffRow(prev)||!targetStart)return {hardBlock:false,restMinutes:null,nightToMorning:false};
+    const pw=rowWindow(prev);
+    const prevStart=pw?.secondStart||pw?.start;
+    const prevEnd=pw?.end?dateTimeFor(isoAddDays(date,-1),pw.end,prevStart):null;
+    const nextStart=dateTimeFor(date,targetStart);
+    if(!prevEnd||!nextStart)return {hardBlock:false,restMinutes:null,nightToMorning:false};
+    const restMinutes=Math.round((nextStart-prevEnd)/60000);
+    const previousCode=String(prev.base_shift_code||rowCode(prev)||'').toUpperCase();
+    const previousCrossesMidnight=Boolean(pw?.end&&prevStart&&minsOf(pw.end)<=minsOf(prevStart));
+    const previousNight=shiftLooksNightV61431(previousCode)||previousCrossesMidnight;
+    const targetMaster=shiftMaster(targetCode);
+    const targetNight=shiftLooksNightV61431(targetMaster||targetCode);
+    const targetStartMinutes=minsOf(targetStart);
+    const targetMorning=!targetNight&&targetStartMinutes!=null&&targetStartMinutes<12*60;
+    return {
+      hardBlock:restMinutes<360,
+      restMinutes,
+      previousCode,
+      previousStart:pw?.start||null,
+      previousEnd:pw?.end||null,
+      previousNight,
+      targetCode:String(targetCode||'').toUpperCase(),
+      targetStart,
+      targetNight,
+      targetMorning,
+      nightToMorning:restMinutes<360&&previousNight&&targetMorning
+    };
+  }
+  function currentTransitionV61431(){
+    if(!st.current)return {hardBlock:false,restMinutes:null,nightToMorning:false};
+    const p=proposedPlan();
+    if(p.off)return {hardBlock:false,restMinutes:null,nightToMorning:false};
+    return transitionAgainstPreviousV61431(
+      previousRow(st.current.empCode,st.current.workDate),
+      st.current.workDate,
+      p.start,
+      $('assignShiftCode')?.value||st.current.baseShiftCode||null
+    );
+  }
+  function restAdviceTextV61431(t){
+    const hours=t?.restMinutes==null?'-':(t.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2});
+    if(t?.nightToMorning){
+      return `วันก่อนหน้าเป็นกะดึก ${t.previousCode||''} ทำให้ก่อนกะเช้าวันนี้พักเพียง ${hours} ชม. ต่ำกว่า 6 ชม. • กะเช้าจัดไม่ได้ แนะนำให้กำหนดวันหยุดตามกะล่าสุด หรือเลือกกะกลางคืน`;
+    }
+    return `เวลาพักจากกะก่อนหน้า ${hours} ชม. ต่ำกว่า 6 ชม.`;
+  }
   function rowPlannedMinutes(r){
     if(!r||isOffRow(r))return 0;
     const mode=String(r.schedule_rule_mode||r.work_mode_code||'').toUpperCase();
@@ -27559,7 +27658,12 @@ ${names}${extra}
     const sm=shiftMaster(rowCode(r));
     return Number(sm?.scheduled_minutes_including_break||0)||spanMinutes(r.shift_start_time||sm?.start_time,r.shift_end_time||sm?.end_time);
   }
-  function previousRow(emp,date){return (app()?.state?.schedule||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date||'').slice(0,10)===isoAddDays(date,-1));}
+  function previousRow(emp,date){
+    const target=isoAddDays(date,-1);
+    return (app()?.state?.schedule||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date||'').slice(0,10)===target)
+      || (app()?.state?.scheduleGuardBoundaryRowsV61431||[]).find(r=>String(r.emp_code)===String(emp)&&String(r.work_date||'').slice(0,10)===target)
+      || null;
+  }
   function previousWorkingRow(emp,date){
     for(let i=1;i<=60;i++){
       const r=(app()?.state?.schedule||[]).find(x=>String(x.emp_code)===String(emp)&&String(x.work_date||'').slice(0,10)===isoAddDays(date,-i));
@@ -27590,7 +27694,28 @@ ${names}${extra}
     const templateField=$('assignWorkTemplate')?.closest('.field');if(templateField)templateField.classList.add('assignment-system-template-v6120');
     ['assignFirstEndV6120','assignSecondStartV6120','assignSecondEndV6120','assignHourStartV6120'].forEach(id=>$(id)?.addEventListener('input',refreshAssignmentPreview));
     $('assignShiftCode')?.addEventListener('change',()=>{if(st.current&&!['HOUR_BASED','DYNAMIC_OFF'].includes(st.current.mode)){st.current.baseShiftCode=$('assignShiftCode').value;refreshAssignmentPreview();}});
-    document.addEventListener('click',e=>{const b=e.target.closest('[data-work-mode-v6120]');if(b&&!b.disabled){chooseMode(b.dataset.workModeV6120);}});
+    document.addEventListener('click',e=>{
+      const b=e.target.closest('[data-work-mode-v6120]');
+      if(b&&!b.disabled){chooseMode(b.dataset.workModeV6120);return;}
+      const suggestion=e.target.closest('[data-rest-suggestion-v61431]');
+      if(!suggestion||suggestion.disabled||!st.current)return;
+      const action=String(suggestion.dataset.restSuggestionV61431||'').toUpperCase();
+      if(action==='DAYOFF'){
+        chooseMode('DYNAMIC_OFF');
+        app()?.toast?.('แนะนำวันหยุดตามกะล่าสุด เพื่อให้มีเวลาพักเพียงพอก่อนกลับเข้ากะ','info');
+        return;
+      }
+      if(action==='NIGHT'){
+        chooseMode('NORMAL');
+        const night=resolveWorkingShift('NIGHT',st.current.patternCode,st.current.row);
+        if(night&&$('assignShiftCode')){
+          ensureShiftOption(night.shift_code,`${night.shift_name||'กะกลางคืน'} • ${fmtTime(night.start_time)}–${fmtTime(night.end_time)} (${night.shift_code})`);
+          $('assignShiftCode').value=night.shift_code;
+          st.current.baseShiftCode=night.shift_code;
+          refreshAssignmentPreview();
+        }else app()?.toast?.('ไม่พบกะกลางคืนที่เปิดใช้สำหรับพนักงาน/หน่วยงานนี้','warning');
+      }
+    });
   }
   async function modeOptions(emp){
     try{
@@ -27753,9 +27878,10 @@ ${names}${extra}
     return {mode,start:fmtTime(sm?.start_time),end:plannedEnd,planned};
   }
   function localGuard(){
-    const c=st.current,p=proposedPlan(),prev=previousRow(c.empCode,c.workDate);let rest=null,hard=false;
-    if(prev&&!isOffRow(prev)&&!p.off){const pw=rowWindow(prev);const prevEnd=pw?.end?dateTimeFor(isoAddDays(c.workDate,-1),pw.end,pw.secondStart||pw.start):null;const nextStart=p.start?dateTimeFor(c.workDate,p.start):null;if(prevEnd&&nextStart){rest=Math.round((nextStart-prevEnd)/60000);hard=rest<360;}}
-    const before=continuousBefore(c.empCode,c.workDate),after=p.off?0:before+Number(p.planned||0);return {restMinutes:rest,hardBlock:hard,continuousBefore:before,continuousAfter:after,warning48:!p.off&&after>2880};
+    const c=st.current,p=proposedPlan();
+    const transition=currentTransitionV61431();
+    const before=continuousBefore(c.empCode,c.workDate),after=p.off?0:before+Number(p.planned||0);
+    return {...transition,continuousBefore:before,continuousAfter:after,warning48:!p.off&&after>2880};
   }
   let guardPreviewTimerV6141=null;
   let guardPreviewSeqV6141=0;
@@ -27808,11 +27934,27 @@ ${names}${extra}
     const quota=st.quota||{};
     const rest=restMinutes==null?'ตรวจเมื่อมีข้อมูลกะก่อนหน้า':`${(restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.`;
     const quotaMeta=quota.month_quota_days==null?'เริ่มแสดงหลังติดตั้ง Day-off Quota':`ยกมา ${Number(quota.carried_in_days||0).toLocaleString('th-TH')} • โควต้า ${Number(quota.month_quota_days||0).toLocaleString('th-TH')} • ใช้ ${Number(quota.used_days||0).toLocaleString('th-TH')}`;
-    box.innerHTML=`<div class="rule-kpi-v6120 ${hardBlock?'danger':'ok'}"><span>พักก่อนกะถัดไป</span><strong>${esc(rest)}</strong><small>${hardBlock?'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้':'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>วันหยุดคงเหลือ</span><strong>${quota.balance_days==null?'-':esc(Number(quota.balance_days).toLocaleString('th-TH'))} วัน</strong><small>${esc(quotaMeta)}</small></div>`;
+    const targetPlanV61431=proposedPlan();
+    const targetMasterV61431=shiftMaster($('assignShiftCode')?.value||st.current?.baseShiftCode||'');
+    const targetMorningV61431=!shiftLooksNightV61431(targetMasterV61431)&&minsOf(targetPlanV61431?.start)!=null&&minsOf(targetPlanV61431.start)<12*60;
+    const nightToMorning=Boolean(g.nightToMorning&&hardBlock);
+    const morningRestBlock=Boolean(hardBlock&&targetMorningV61431);
+    const quotaState=dayoffQuotaAvailabilityV6142();
+    const adviceTextV61431=nightToMorning
+      ? restAdviceTextV61431({...g,restMinutes,nightToMorning})
+      : morningRestBlock
+        ? `กะเช้าที่เลือกเริ่ม ${targetPlanV61431.start||'-'} น. แต่เวลาพักจากกะ/ช่วงงานก่อนหน้ามีเพียง ${rest} ต่ำกว่า 6 ชม. • กะเช้าจัดไม่ได้ แนะนำให้กำหนดวันหยุดตามกะล่าสุด หรือเลือกกะกลางคืน`
+        : restAdviceTextV61431({...g,restMinutes,nightToMorning:false});
+    const advice=hardBlock
+      ? `<div class="rest-transition-advice-v61431 ${morningRestBlock?'night-morning':''}"><div><strong>${nightToMorning?'กะดึก → กะเช้า ไม่ผ่านพักขั้นต่ำ':morningRestBlock?'กะเช้าไม่ผ่านพักขั้นต่ำ':'พักขั้นต่ำไม่เพียงพอ'}</strong><small>${esc(adviceTextV61431)}</small></div>${morningRestBlock?`<div class="rest-transition-actions-v61431"><button type="button" class="btn btn-light btn-sm" data-rest-suggestion-v61431="DAYOFF" ${quotaState.loaded&&!quotaState.allowed?'disabled title="วันหยุดคงเหลือไม่พอ"':''}>แนะนำ: วันหยุด</button><button type="button" class="btn btn-light btn-sm" data-rest-suggestion-v61431="NIGHT">เลือกกะกลางคืน</button></div>`:''}</div>`
+      : '';
+    box.innerHTML=`${advice}<div class="rule-kpi-v6120 ${hardBlock?'danger':'ok'}"><span>พักก่อนกะถัดไป</span><strong>${esc(rest)}</strong><small>${hardBlock?(morningRestBlock?'กะเช้าจัดไม่ได้ • ขั้นต่ำ 6 ชม.':'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้'):'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>วันหยุดคงเหลือ</span><strong>${quota.balance_days==null?'-':esc(Number(quota.balance_days).toLocaleString('th-TH'))} วัน</strong><small>${esc(quotaMeta)}</small></div>`;
     return {
       ...g,
       restMinutes,
       hardBlock,
+      nightToMorning,
+      morningRestBlock,
       continuousAfter,
       warning48,
       source:authoritative?'SERVER_V6141':'LOCAL'
@@ -27919,7 +28061,17 @@ ${names}${extra}
       dayoffQuotaGuardV6142={allowed:true,skipped_precheck:true,reason:'NON_DAYOFF_SHIFT',guard_version:'V6.14.8'};
     }
     const guard=renderGuardPreview();
-    if(guard?.hardBlock){app()?.toast?.(`กำหนดกะไม่ได้: เวลาพักจากกะก่อนหน้า ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม.`,'error');return {allowed:false};}
+    if(guard?.hardBlock){
+      app()?.toast?.(
+        guard.nightToMorning
+          ? `กำหนดกะเช้าไม่ได้: วันก่อนหน้าเป็นกะดึก ${guard.previousCode||''} และมีเวลาพักเพียง ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม. • แนะนำให้จัดเป็นวันหยุด หรือเลือกกะกลางคืน`
+          : guard.morningRestBlock
+            ? `กำหนดกะเช้าไม่ได้: เวลาพักจากกะ/ช่วงงานก่อนหน้ามีเพียง ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม. • แนะนำให้จัดเป็นวันหยุด หรือเลือกกะกลางคืน`
+            : `กำหนดกะไม่ได้: เวลาพักจากกะก่อนหน้า ${(guard.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม.`,
+        'error'
+      );
+      return {allowed:false};
+    }
     let server=await fetchScheduleGuardV6141();
     if(!isAuthoritativeGuardV6141(server)){
       // Keep the old endpoint only as a minimum-rest safety fallback. Its 48-hour
@@ -27929,7 +28081,17 @@ ${names}${extra}
         if(legacy?.hard_block===true)server=legacy;
       }catch(e){}
     }
-    if(server?.hard_block===true){app()?.toast?.(server.message||'กำหนดกะไม่ได้ เนื่องจากเวลาพักต่ำกว่า 6 ชั่วโมง','error');return {allowed:false};}
+    if(server?.hard_block===true){
+      const selectedTargetMasterV61431=shiftMaster(String($('assignShiftCode')?.value||'').toUpperCase());
+      const selectedTargetMorningV61431=!shiftLooksNightV61431(selectedTargetMasterV61431)&&minsOf(p.start)!=null&&minsOf(p.start)<12*60;
+      app()?.toast?.(
+        selectedTargetMorningV61431
+          ? `กำหนดกะเช้าไม่ได้: เวลาพักจากกะ/ช่วงงานก่อนหน้ามีเพียง ${(Number(server.rest_minutes||0)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม. • แนะนำให้จัดเป็นวันหยุด หรือเลือกกะกลางคืน`
+          : (server.message||'กำหนดกะไม่ได้ เนื่องจากเวลาพักต่ำกว่า 6 ชั่วโมง'),
+        'error'
+      );
+      return {allowed:false};
+    }
     const authoritative=isAuthoritativeGuardV6141(server);
     const warn48=authoritative?server?.warning_48h===true:Boolean(guard?.warning48);
     const continuousForWarning=authoritative?Number(server?.continuous_minutes_after||0):Number(guard?.continuousAfter||0);
@@ -27953,7 +28115,7 @@ ${names}${extra}
   }
   function bulkVirtualMap(){
     const map=new Map();
-    (app()?.state?.schedule||[]).forEach(r=>map.set(`${String(r.emp_code)}|${String(r.work_date||'').slice(0,10)}`,{...r}));
+    [...(app()?.state?.scheduleGuardBoundaryRowsV61431||[]),...(app()?.state?.schedule||[])].forEach(r=>map.set(`${String(r.emp_code)}|${String(r.work_date||'').slice(0,10)}`,{...r}));
     return map;
   }
   function bulkFindPreviousWorking(map,emp,date){
@@ -27972,6 +28134,29 @@ ${names}${extra}
       total+=rowPlannedMinutes(r);
     }
     return total;
+  }
+  async function precheckMinimumRestBulk(payload=[]){
+    if(!payload.length)return {allowed:[],blocked:[]};
+    await loadRuntimeShiftRules();
+    const virtual=bulkVirtualMap();
+    const allowed=[],blocked=[];
+    const items=[...payload].sort((a,b)=>String(a.emp_code).localeCompare(String(b.emp_code))||String(a.work_date).localeCompare(String(b.work_date)));
+    for(const item of items){
+      const emp=String(item.emp_code||''),date=String(item.work_date||'').slice(0,10),code=String(item.shift_code||'').toUpperCase();
+      if(!emp||!date){allowed.push(item);continue;}
+      const key=`${emp}|${date}`,targetRow=virtual.get(key)||{};
+      if(!code){virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:null});allowed.push(item);continue;}
+      if(['OFF','HOL','LV'].includes(code)){virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:code,schedule_rule_mode:code==='OFF'?'DYNAMIC_OFF':targetRow.schedule_rule_mode});allowed.push(item);continue;}
+      const sm=shiftMaster(code);
+      if(!sm||sm.is_workday===false){allowed.push(item);continue;}
+      const start=fmtTime(sm.start_time),end=fmtTime(sm.end_time);
+      const prev=virtual.get(`${emp}|${isoAddDays(date,-1)}`);
+      const transition=transitionAgainstPreviousV61431(prev,date,start,code);
+      if(transition.hardBlock){blocked.push({emp,date,code,...transition});continue;}
+      allowed.push(item);
+      virtual.set(key,{...targetRow,emp_code:emp,work_date:date,shift_code:code,assigned_shift_code:code,shift_start_time:start,shift_end_time:end});
+    }
+    return {allowed,blocked};
   }
   async function validateBulk(payload=[]){
     if(!payload.length)return {allowed:true};
@@ -28039,12 +28224,9 @@ ${names}${extra}
       }
       const start=fmtTime(sm.start_time),end=fmtTime(sm.end_time);const planned=Number(sm.scheduled_minutes_including_break||0)||spanMinutes(start,end);
       const prev=virtual.get(`${emp}|${isoAddDays(date,-1)}`);
-      let rest=null;
-      if(prev&&!isOffRow(prev)){
-        const pw=rowWindow(prev);const prevEnd=pw?.end?dateTimeFor(isoAddDays(date,-1),pw.end,pw.secondStart||pw.start):null;const nextStart=start?dateTimeFor(date,start):null;
-        if(prevEnd&&nextStart)rest=Math.round((nextStart-prevEnd)/60000);
-      }
-      if(rest!=null&&rest<360)blocks.push({emp,date,code,rest});
+      const transitionV61431=transitionAgainstPreviousV61431(prev,date,start,code);
+      const rest=transitionV61431.restMinutes;
+      if(transitionV61431.hardBlock)blocks.push({emp,date,code,rest,...transitionV61431});
       const before=bulkContinuousBefore(virtual,emp,date),after=before+planned;
       if(after>2880)warnings.push({emp,date,code,after});
       virtual.set(key,{emp_code:emp,work_date:date,shift_code:code,assigned_shift_code:code,shift_start_time:start,shift_end_time:end});
@@ -28055,6 +28237,7 @@ ${names}${extra}
       else if(first.offMappingMissing)app()?.toast?.(`บันทึกไม่ได้: กะทำงาน ${first.basisCode||'-'} ยังไม่ได้จับคู่กะวันหยุด กรุณาตั้งค่าที่เมนู ตั้งค่ากะทำงาน`,'error');
       else if(first.offMissingBasis)app()?.toast?.(`บันทึกไม่ได้: ${first.emp} วันที่ ${fmtDate(first.date)} ไม่พบทั้งกะทำงานย้อนหลังและกะตั้งต้นสำหรับอ้างอิงวันหยุด`,'error');
       else if(special)app()?.toast?.(`กะพิเศษ ${special.code} ไม่รองรับการคัดลอก/Fill ด้วยรหัสกะอย่างเดียว กรุณาเปิดวันนั้นแล้วเลือก “กะนับชั่วโมง” หรือ “กะเช้า + รอเข้ากะดึก” เพื่อให้ระบบเก็บช่วงเวลาครบถ้วน`,'error');
+      else if(first.nightToMorning)app()?.toast?.(`บันทึกไม่ได้: ${first.emp} วันที่ ${fmtDate(first.date)} วันก่อนหน้าเป็นกะดึก ${first.previousCode||'-'} จึงพักก่อนกะเช้าเพียง ${(first.rest/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. ต่ำกว่า 6 ชม. • แนะนำให้จัดวันหยุด หรือเลือกกะกลางคืน`,'error');
       else app()?.toast?.(`บันทึกไม่ได้ ${blocks.length.toLocaleString('th-TH')} รายการ: ${first.emp} วันที่ ${fmtDate(first.date)} พักเพียง ${(first.rest/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. (ขั้นต่ำ 6 ชม.)`,'error');
       return {allowed:false,blocks,warnings};
     }
@@ -28230,7 +28413,7 @@ ${names}${extra}
   async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   function init(){ensureAssignmentUi();ensureAdminUi();ensureShiftRuleAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));document.querySelector('[data-page="admin-shifts"]')?.addEventListener('click',()=>setTimeout(()=>loadShiftRuleAdmin(),0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();loadRuntimeShiftRules();});document.addEventListener('timeclock:effective-role-changed',()=>{loadAdminPanel();loadShiftRuleAdmin();});document.documentElement.dataset.schedulingRulesVersion=VERSION;}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,ensureRuntimeRules:loadRuntimeShiftRules};
+  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,ensureRuntimeRules:loadRuntimeShiftRules};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;

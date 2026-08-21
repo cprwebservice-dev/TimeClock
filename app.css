@@ -21875,3 +21875,6 @@ body.theme-dark #assignModal .assignment-modal-footer-v61428,.dark #assignModal 
   font-size:10px;
   line-height:1.45;
 }
+
+/* V6.14.31 — Night→Morning minimum-rest guidance */
+.rest-transition-advice-v61431{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid #f2c36b;background:#fff8e8;border-radius:12px;margin-bottom:2px}.rest-transition-advice-v61431.night-morning{border-color:#f0a85b;background:#fff4e5}.rest-transition-advice-v61431>div:first-child{display:flex;flex-direction:column;gap:3px;min-width:0}.rest-transition-advice-v61431 strong{font-size:13px;color:#8b4b08}.rest-transition-advice-v61431 small{font-size:11px;line-height:1.45;color:#7a5a2c}.rest-transition-actions-v61431{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.rest-transition-actions-v61431 .btn{white-space:nowrap}@media(max-width:760px){.rest-transition-advice-v61431{align-items:flex-start;flex-direction:column}.rest-transition-actions-v61431{width:100%;justify-content:flex-start}}

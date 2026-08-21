@@ -1,0 +1,36 @@
+AUDIT — TimeAttendance V6.14.31
+Night → Morning Minimum Rest Guard + Quick Shift Consistency
+
+[PASS] Backend business rule retained
+- Minimum rest < 360 minutes remains BLOCK via V6.14.1 guard.
+- >48h rule unchanged.
+- Day-off quota unchanged.
+- Work Pattern / Scope / Start Date / System Period unchanged.
+
+[PASS] Assignment Popup
+- Detects previous-day night / overnight work window.
+- Morning proposal with rest < 6h is BLOCKED.
+- Displays specific Night→Morning guidance instead of generic rest error.
+- Suggests Day-off and offers one-click "เลือกกะกลางคืน".
+- Night proposal remains allowed when computed rest >= 6h.
+- Server hard-block fallback also gives morning-specific guidance.
+
+[PASS] Person schedule quick actions
+- 15-day and Full-month use same smartBulkAssign pipeline.
+- NORMAL retains 5D→STD and 6D→S043 mapping.
+- NIGHT retains 5D→S134 and 6D→S135 mapping.
+- Minimum-rest precheck runs before confirmation.
+- Night→Morning conflicts are skipped per cell; valid cells can still save.
+- Confirmation shows blocked count + recommendation.
+
+[PASS] Boundary day
+- PERSON schedule fetches one hidden day before visible range.
+- Day 1 of 15-day/full-month can validate rest against prior day/night shift.
+- Hidden boundary row is not rendered in the visible table.
+
+Expected cases
+1) S134 19:30-05:00 -> STD 08:30 = 210 min / 3.5h => BLOCK
+2) S135 19:30-04:30 -> S043 08:30 = 240 min / 4h => BLOCK
+3) S134 19:30-05:00 -> S134 19:30 = 870 min / 14.5h => ALLOW
+4) S135 19:30-04:30 -> S135 19:30 = 900 min / 15h => ALLOW
+5) Previous day is paired OFF/HOL/LV => minimum-rest transition does not block
