@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.31";
-document.documentElement.dataset.timeClockBuild = "6.14.31";
+window.__TIME_CLOCK_BUILD__ = "V6.14.32";
+document.documentElement.dataset.timeClockBuild = "6.14.32";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.31";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.31',
+  version: '6.14.32',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -5128,7 +5128,7 @@ window.tcIsDayShiftCode = value =>
           // transport strategy; scope/filter/business rules remain unchanged.
           // V6.12.9: the grid RPC is lightweight, but keep each request small
           // and avoid a burst of concurrent PostgreSQL statements.
-          // V6.14.31: fetch one hidden day before the visible PERSON range.
+          // V6.14.32: fetch one hidden day before the visible PERSON range.
           // The row is not rendered, but is retained for the 6-hour transition
           // guard so day 1 of a 15-day/full-month view can see the prior night.
           const personGuardStartDateV61431 = (()=>{
@@ -13008,14 +13008,14 @@ window.tcIsDayShiftCode = value =>
         emp_code: item.emp_code,
         work_date: item.work_date,
         shift_code: shift.shift_code,
-        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.31 mixed-pattern + minimum-rest smart quick shift`
+        note: `กำหนด${smartActionLabel(action)}ตาม Work Pattern ${pattern} • V6.14.32 mixed-pattern + minimum-rest smart quick shift`
       });
 
       const groupKey = `${pattern}|${shift.shift_code}`;
       summary.set(groupKey, (summary.get(groupKey) || 0) + 1);
     });
 
-    // V6.14.31 — use the same minimum-rest transition logic as the Assignment
+    // V6.14.32 — use the same minimum-rest transition logic as the Assignment
     // popup and the bulk guard before showing the quick-action confirmation.
     // This prevents one night→morning conflict from failing the whole 15-day /
     // full-month quick action after the user has already confirmed it.
@@ -27449,7 +27449,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.31';
+  const VERSION='6.14.32';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27462,7 +27462,7 @@ ${names}${extra}
     DYNAMIC_OFF:{label:'วันหยุดตามกะล่าสุด',short:'หยุด',icon:'⌂',desc:'อ้างอิงกะทำงานล่าสุดย้อนหลังข้ามเดือน • หากไม่พบใช้กะตั้งต้น'}
     ,LEAVE:{label:'ลา',short:'ลา',icon:'▤',desc:'กำหนดวันลาในตารางกะ • ใช้รหัส LV และไม่หักโควต้าวันหยุด'}
   };
-  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:''};
+  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:'',serverGuardV6141:null,serverGuardKeyV61432:''};
   async function rpc(name,args={}){
     const client=app()?.state?.client;
     if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
@@ -27692,8 +27692,11 @@ ${names}${extra}
       <div class="schedule-rule-status-v6120" id="assignRuleStatusV6120"></div>
     </section>`);
     const templateField=$('assignWorkTemplate')?.closest('.field');if(templateField)templateField.classList.add('assignment-system-template-v6120');
-    ['assignFirstEndV6120','assignSecondStartV6120','assignSecondEndV6120','assignHourStartV6120'].forEach(id=>$(id)?.addEventListener('input',refreshAssignmentPreview));
-    $('assignShiftCode')?.addEventListener('change',()=>{if(st.current&&!['HOUR_BASED','DYNAMIC_OFF'].includes(st.current.mode)){st.current.baseShiftCode=$('assignShiftCode').value;refreshAssignmentPreview();}});
+    ['assignFirstEndV6120','assignSecondStartV6120','assignSecondEndV6120','assignHourStartV6120'].forEach(id=>$(id)?.addEventListener('input',()=>refreshAssignmentGuardV61432()));
+    $('assignShiftCode')?.addEventListener('change',()=>{
+      if(st.current&&!['HOUR_BASED','DYNAMIC_OFF'].includes(st.current.mode))st.current.baseShiftCode=$('assignShiftCode').value;
+      refreshAssignmentGuardV61432();
+    });
     document.addEventListener('click',e=>{
       const b=e.target.closest('[data-work-mode-v6120]');
       if(b&&!b.disabled){chooseMode(b.dataset.workModeV6120);return;}
@@ -27712,7 +27715,7 @@ ${names}${extra}
           ensureShiftOption(night.shift_code,`${night.shift_name||'กะกลางคืน'} • ${fmtTime(night.start_time)}–${fmtTime(night.end_time)} (${night.shift_code})`);
           $('assignShiftCode').value=night.shift_code;
           st.current.baseShiftCode=night.shift_code;
-          refreshAssignmentPreview();
+          refreshAssignmentGuardV61432();
         }else app()?.toast?.('ไม่พบกะกลางคืนที่เปิดใช้สำหรับพนักงาน/หน่วยงานนี้','warning');
       }
     });
@@ -27798,7 +27801,9 @@ ${names}${extra}
     const label=field.querySelector('label');if(label){const text=mode==='SPLIT_WAIT_NIGHT'?'กะช่วงแรก (เวลาเริ่มกะ)':mode==='NORMAL_LATE_CUSTOMER'?'กะหลัก':'กะทำงาน';label.innerHTML=`<span class="assignment-step-v61428">2</span> ${text}`;}
   }
   function chooseMode(code){
-    if(!st.current)return;st.current.mode=String(code||'NORMAL').toUpperCase();$('assignWorkModeV6120').value=st.current.mode;
+    if(!st.current)return;
+    invalidateServerGuardV61432();
+    st.current.mode=String(code||'NORMAL').toUpperCase();$('assignWorkModeV6120').value=st.current.mode;
     renderModeGrid();
     ['assignSplitWaitFieldsV6120','assignHourFieldsV6120','assignOffFieldsV6120'].forEach(id=>$(id)?.classList.add('hidden'));
     $('assignCustomerWindowRow')?.classList.add('hidden');
@@ -27821,6 +27826,7 @@ ${names}${extra}
     else if(mode==='LEAVE'){ensureShiftOption('LV','ลา • LV');$('assignShiftCode').value='LV';}
     else if(st.current.baseShiftCode&&mode!=='HOUR_BASED'&&[...($('assignShiftCode')?.options||[])].some(o=>o.value===st.current.baseShiftCode)){$('assignShiftCode').value=st.current.baseShiftCode;}
     refreshAssignmentPreview();
+    scheduleServerGuardPreviewV6141();
   }
   function ensureShiftOption(code,label){const s=$('assignShiftCode');if(!s||!code)return;if(![...s.options].some(o=>o.value===code)){const o=document.createElement('option');o.value=code;o.textContent=label||code;s.appendChild(o);}}
   async function fetchOffBasisV6135(empCode,workDate){
@@ -27885,6 +27891,23 @@ ${names}${extra}
   }
   let guardPreviewTimerV6141=null;
   let guardPreviewSeqV6141=0;
+  function guardProposalKeyV61432(){
+    if(!st.current)return '';
+    const p=proposedPlan();
+    const code=String($('assignShiftCode')?.value||st.current.baseShiftCode||'').toUpperCase();
+    return [String(st.current.empCode||''),String(st.current.workDate||'').slice(0,10),String(st.current.mode||''),code,p.start||'',p.end||'',Number(p.planned||0),p.off?'1':'0'].join('|');
+  }
+  function invalidateServerGuardV61432(){
+    st.serverGuardV6141=null;
+    st.serverGuardKeyV61432='';
+    guardPreviewSeqV6141++;
+    if(guardPreviewTimerV6141){clearTimeout(guardPreviewTimerV6141);guardPreviewTimerV6141=null;}
+  }
+  function refreshAssignmentGuardV61432(){
+    invalidateServerGuardV61432();
+    refreshAssignmentPreview();
+    scheduleServerGuardPreviewV6141();
+  }
   function isAuthoritativeGuardV6141(server){
     return String(server?.guard_version||'').toUpperCase()==='V6.14.1';
   }
@@ -27909,14 +27932,17 @@ ${names}${extra}
   }
   function scheduleServerGuardPreviewV6141(){
     if(!st.current)return;
+    const proposalKey=guardProposalKeyV61432();
     st.serverGuardV6141=null;
+    st.serverGuardKeyV61432='';
     if(guardPreviewTimerV6141)clearTimeout(guardPreviewTimerV6141);
     const seq=++guardPreviewSeqV6141;
     guardPreviewTimerV6141=setTimeout(async()=>{
       const server=await fetchScheduleGuardV6141();
-      if(seq!==guardPreviewSeqV6141||!st.current)return;
+      if(seq!==guardPreviewSeqV6141||!st.current||proposalKey!==guardProposalKeyV61432())return;
       if(isAuthoritativeGuardV6141(server)){
         st.serverGuardV6141=server;
+        st.serverGuardKeyV61432=proposalKey;
         renderGuardPreview(server);
       }
     },220);
@@ -27926,7 +27952,9 @@ ${names}${extra}
     const box=$('assignRuleStatusV6120');
     if(!box||!st.current)return;
     const g=localGuard();
-    const authoritative=isAuthoritativeGuardV6141(server)?server:(isAuthoritativeGuardV6141(st.serverGuardV6141)?st.serverGuardV6141:null);
+    const currentProposalKeyV61432=guardProposalKeyV61432();
+    const cachedGuardV61432=(st.serverGuardKeyV61432===currentProposalKeyV61432&&isAuthoritativeGuardV6141(st.serverGuardV6141))?st.serverGuardV6141:null;
+    const authoritative=isAuthoritativeGuardV6141(server)?server:cachedGuardV61432;
     const restMinutes=authoritative?.rest_minutes??g.restMinutes;
     const hardBlock=authoritative?.hard_block===true||(authoritative?false:g.hardBlock);
     const continuousAfter=authoritative?.continuous_minutes_after??g.continuousAfter;
@@ -27976,11 +28004,12 @@ ${names}${extra}
     }catch(e){
       console.warn('Day-off quota load V6.14.25:',e?.message||e);
     }
+    invalidateServerGuardV61432();
     renderGuardPreview();
     scheduleServerGuardPreviewV6141();
   }
   async function openAssignment({row,empCode,workDate,patternCode,selectedShift}){
-    ensureAssignmentUi();st.serverGuardV6141=null;st.current={row,empCode:String(empCode),workDate:String(workDate).slice(0,10),patternCode,baseShiftCode:selectedShift,mode:'NORMAL',extension:null,patternRule:null};
+    ensureAssignmentUi();invalidateServerGuardV61432();st.current={row,empCode:String(empCode),workDate:String(workDate).slice(0,10),patternCode,baseShiftCode:selectedShift,mode:'NORMAL',extension:null,patternRule:null};
     st.modes=await modeOptions(empCode);
     try{const patterns=await rpc('ta_get_work_patterns',{});st.current.patternRule=(patterns||[]).find(x=>String(x.pattern_code||'').toUpperCase()===String(patternCode||'').toUpperCase())||null;}catch(e){}
     try{const ext=await rpc('ta_get_schedule_rule_assignment_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});st.current.extension=Array.isArray(ext)?ext[0]:ext;}catch(e){}
@@ -28060,7 +28089,11 @@ ${names}${extra}
     }else{
       dayoffQuotaGuardV6142={allowed:true,skipped_precheck:true,reason:'NON_DAYOFF_SHIFT',guard_version:'V6.14.8'};
     }
-    const guard=renderGuardPreview();
+    // V6.14.32: save validation must use the CURRENT proposal only. A cached
+    // async guard from a previously selected morning shift must never block a
+    // newly selected night shift / leave / day-off.
+    const guard=localGuard();
+    renderGuardPreview();
     if(guard?.hardBlock){
       app()?.toast?.(
         guard.nightToMorning
@@ -28073,6 +28106,11 @@ ${names}${extra}
       return {allowed:false};
     }
     let server=await fetchScheduleGuardV6141();
+    if(isAuthoritativeGuardV6141(server)){
+      st.serverGuardV6141=server;
+      st.serverGuardKeyV61432=guardProposalKeyV61432();
+      renderGuardPreview(server);
+    }
     if(!isAuthoritativeGuardV6141(server)){
       // Keep the old endpoint only as a minimum-rest safety fallback. Its 48-hour
       // calculation reads assigned rows only and is not authoritative anymore.

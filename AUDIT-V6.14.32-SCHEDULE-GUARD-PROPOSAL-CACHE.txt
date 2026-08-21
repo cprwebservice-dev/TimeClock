@@ -1,0 +1,14 @@
+V6.14.32 Schedule Guard Proposal Cache Audit
+
+[PASS] Popup guard cache bound to employee/date/mode/shift/start/end/planned/off proposal key
+[PASS] Changing shift invalidates prior server guard
+[PASS] Changing mode invalidates prior server guard
+[PASS] Changing special shift time invalidates prior server guard
+[PASS] prepareSave local precheck uses current proposal only
+[PASS] authoritative V6.14.1 server guard re-fetched for current proposal before save
+[PASS] LEAVE/DYNAMIC_OFF bypass minimum-rest block by p_is_off=true
+[PASS] Night -> Night uses selected night start time
+[PASS] Night -> Morning remains blocked when rest < 360 minutes
+[PASS] Bulk/Quick Action path remains candidate-based and independent of Popup guard cache
+
+No SQL migration required.
