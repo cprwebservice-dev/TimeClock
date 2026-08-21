@@ -1,0 +1,25 @@
+AUDIT — Time-Clock Enterprise V6.14.27
+Monthly Personal Timeout Scope Fix
+===================================
+
+ROOT CAUSE
+[CONFIRMED] V6.14.26 introduced calls to `withTimeout(...)` inside app-core Monthly Personal code.
+The existing helpers named `withTimeout` are private to separate IIFEs, so they are not visible
+from app-core. This causes `ReferenceError: withTimeout is not defined`.
+
+OBSERVED CHAIN
+1) fetchEmployeeMonthScheduleV6130 -> withTimeout undefined
+2) error is caught and misclassified as Dedicated RPC unavailable -> canonical schedule fallback
+3) fetchEmployeeMonthBundleV61138 -> dayoffBalancePromise calls withTimeout undefined outside that catch
+4) whole Monthly Personal bundle rejects -> red Employee month calendar error
+
+FIX
+- Added `employeeMonthWithTimeoutV61427` in Monthly Personal/app-core scope.
+- Replaced only the 2 V6.14.26 Monthly Personal timeout calls.
+- Existing private timeout helpers in shift-api/system-period remain unchanged.
+- No database migration required.
+
+STATIC VALIDATION
+- node --check app.js
+- index.html / 404.html basic HTML parse
+- ZIP integrity

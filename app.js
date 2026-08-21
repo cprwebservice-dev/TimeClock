@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.26";
-document.documentElement.dataset.timeClockBuild = "6.14.26";
+window.__TIME_CLOCK_BUILD__ = "V6.14.27";
+document.documentElement.dataset.timeClockBuild = "6.14.27";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.26";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.26',
+  version: '6.14.27',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -7756,6 +7756,25 @@ window.tcIsDayShiftCode = value =>
       return [...unique.values()];
     }
 
+    // V6.14.27: app-core does not share the private withTimeout helpers from
+    // shift-api/system-period IIFEs. Keep a Monthly Personal scoped helper so
+    // both the dedicated schedule RPC and canonical day-off balance can time out
+    // without throwing `ReferenceError: withTimeout is not defined`.
+    function employeeMonthWithTimeoutV61427(promise, milliseconds = 30000, label = 'คำขอ') {
+      let timer = null;
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error(`${label} ใช้เวลานานเกิน ${Math.round(milliseconds / 1000)} วินาที`)),
+            milliseconds
+          );
+        })
+      ]).finally(() => {
+        if (timer !== null) clearTimeout(timer);
+      });
+    }
+
     async function fetchEmployeeMonthScheduleV6130(empCode, bounds) {
       // V6.13.5: dedicated Monthly Personal RPC first. It is independent from
       // the old V6.12.6 Work Plan metadata chain and returns only one employee.
@@ -7768,10 +7787,10 @@ window.tcIsDayShiftCode = value =>
       let rows = [];
       let dedicatedError = null;
       try {
-        const response = await withTimeout(
+        const response = await employeeMonthWithTimeoutV61427(
           state.client.rpc('ta_get_employee_month_schedule_v6134', args),
           30000,
-          'โหลด Monthly Personal Overview V6.14.26'
+          'โหลด Monthly Personal Overview V6.14.27'
         );
         if (response.error) dedicatedError = response.error;
         else rows = Array.isArray(response.data) ? response.data : [];
@@ -7884,16 +7903,16 @@ window.tcIsDayShiftCode = value =>
           }
         );
 
-        // V6.14.26: the Monthly Personal "วันหยุด" KPI must use the same
+        // V6.14.27: the Monthly Personal "วันหยุด" KPI must use the same
         // canonical day-off balance as Assignment / Bulk guards. This avoids a
         // browser-side recount that used to exclude public holidays.
-        const dayoffBalancePromise = withTimeout(
+        const dayoffBalancePromise = employeeMonthWithTimeoutV61427(
           state.client.rpc('ta_get_dayoff_balance_v61425', {
             p_emp_code: empCode,
             p_month: `${bounds.value}-01`
           }),
           15000,
-          'โหลดโควต้าวันหยุด Monthly Personal V6.14.26'
+          'โหลดโควต้าวันหยุด Monthly Personal V6.14.27'
         );
 
         const settled = await Promise.allSettled([
@@ -27208,7 +27227,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.26';
+  const VERSION='6.14.27';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
