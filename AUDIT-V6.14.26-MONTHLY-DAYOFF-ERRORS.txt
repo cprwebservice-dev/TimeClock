@@ -1,0 +1,44 @@
+AUDIT — Time-Clock Enterprise V6.14.26
+Monthly Personal Day-off KPI + Console Errors
+================================================
+
+A. Day-off consistency
+[PASS] Canonical Work Pattern = ta_resolve_employee_work_pattern_v651
+[PASS] Canonical quota = ta_get_dayoff_balance_v61425
+[PASS] Canonical schedule grid = ta_get_schedule_range_light_v61425
+[PASS] Legacy V6.13.4 balance/grid delegate to V6.14.25
+[PASS] Assignment modal reads ta_get_dayoff_balance_v61425
+[PASS] Bulk/Single guards use V6.14.3 and inherit V6.14.25 consumption rules
+[FIXED] Monthly Personal KPI no longer excludes public holidays locally
+[FIXED] Monthly Personal KPI value now prefers dayoffBalance.used_days
+[FIXED] Fallback day-off count respects effective working override and LV/LEAVE
+
+B. Expected rules
+- Natural weekly off -> consumes day-off quota
+- Natural public holiday -> consumes day-off quota
+- Same date weekly off + public holiday -> one date / one quota day
+- Explicit working shift on natural day-off -> does NOT consume quota
+- LV / LEAVE -> does NOT consume quota
+- Explicit paired-off / non-workday shift -> consumes quota
+- Carry forward affects balance, not current-month used_days
+
+C. Console
+[FIXED] aria-hidden focus warning for employeeMonthScheduleModal
+  Root cause: close button kept focus while ancestor got aria-hidden=true
+  Fix: restore/blur focus before hiding + inert while closed
+
+[IMPROVED] Monthly Personal dedicated RPC fallback warning
+  Browser timeout increased 15s -> 30s
+  Timeout fallback logs as info because fallback is handled
+  Non-timeout backend failures remain warnings
+
+[EXTERNAL-LIKELY] "A listener indicated an asynchronous response by returning true..."
+  This signature is typical of browser extension/content-script message ports.
+  App does not suppress it. Verify in Incognito / extensions disabled.
+
+D. Static checks
+- node --check app.js
+- HTML parse index.html / 404.html
+- employeeMonthScheduleModal starts inert + aria-hidden=true
+- app removes inert before open and restores focus before aria-hidden on close
+- Monthly KPI reads ta_get_dayoff_balance_v61425 in the monthly bundle

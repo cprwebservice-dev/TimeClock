@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.25";
-document.documentElement.dataset.timeClockBuild = "6.14.25";
+window.__TIME_CLOCK_BUILD__ = "V6.14.26";
+document.documentElement.dataset.timeClockBuild = "6.14.26";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.25";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.25',
+  version: '6.14.26',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -7516,6 +7516,8 @@ window.tcIsDayShiftCode = value =>
       month: '',
       scheduleRows: [],
       attendanceRows: [],
+      dayoffBalance: null,
+      returnFocusEl: null,
       loading: false,
       loadToken: 0
     };
@@ -7545,15 +7547,21 @@ window.tcIsDayShiftCode = value =>
       return {
         scheduleRows: employeeMonthCloneRowsV61138(cached.scheduleRows),
         attendanceRows: employeeMonthCloneRowsV61138(cached.attendanceRows),
+        dayoffBalance: cached.dayoffBalance && typeof cached.dayoffBalance === 'object'
+          ? { ...cached.dayoffBalance }
+          : null,
         savedAt: cached.savedAt
       };
     }
 
-    function employeeMonthCacheSetV61138(empCode, monthValue, scheduleRows, attendanceRows) {
+    function employeeMonthCacheSetV61138(empCode, monthValue, scheduleRows, attendanceRows, dayoffBalance = null) {
       const key = employeeMonthCacheKeyV61138(empCode, monthValue);
       employeeMonthCacheV61138.set(key, {
         scheduleRows: employeeMonthCloneRowsV61138(scheduleRows),
         attendanceRows: employeeMonthCloneRowsV61138(attendanceRows),
+        dayoffBalance: dayoffBalance && typeof dayoffBalance === 'object'
+          ? { ...dayoffBalance }
+          : null,
         savedAt: Date.now()
       });
     }
@@ -7762,8 +7770,8 @@ window.tcIsDayShiftCode = value =>
       try {
         const response = await withTimeout(
           state.client.rpc('ta_get_employee_month_schedule_v6134', args),
-          15000,
-          'โหลด Monthly Personal Overview V6.13.5'
+          30000,
+          'โหลด Monthly Personal Overview V6.14.26'
         );
         if (response.error) dedicatedError = response.error;
         else rows = Array.isArray(response.data) ? response.data : [];
@@ -7775,11 +7783,27 @@ window.tcIsDayShiftCode = value =>
         // Keep the personal calendar usable on BOTH PostgreSQL errors and the
         // browser-side timeout wrapper. V6.12.8 only fell back on response.error,
         // so a thrown timeout could still blank the entire modal.
-        scheduleLogRpcOnceV6126(
-          'employee-month-v6130-fallback',
-          'Monthly Personal V6.13.5 dedicated RPC unavailable; using lightweight schedule fallback:',
-          dedicatedError
-        );
+        const dedicatedSummaryV61426 = scheduleRpcErrorSummaryV6126(dedicatedError);
+        const dedicatedMessageV61426 = String(
+          dedicatedSummaryV61426.message
+          || dedicatedSummaryV61426.details
+          || ''
+        ).toLowerCase();
+        const dedicatedTimeoutV61426 = dedicatedMessageV61426.includes('ใช้เวลานานเกิน')
+          || dedicatedMessageV61426.includes('statement timeout')
+          || dedicatedMessageV61426.includes('canceling statement');
+        if (dedicatedTimeoutV61426) {
+          console.info(
+            'Monthly Personal dedicated RPC timed out; canonical V6.14.25 schedule fallback is being used.',
+            dedicatedSummaryV61426.message || dedicatedSummaryV61426.code || 'timeout'
+          );
+        } else {
+          scheduleLogRpcOnceV6126(
+            'employee-month-v6130-fallback',
+            'Monthly Personal dedicated RPC unavailable; canonical V6.14.25 schedule fallback is being used:',
+            dedicatedError
+          );
+        }
         try {
           rows = await window.TimeClockShiftAPI.getMonthlySchedule(
             window.TimeClockApp || { state },
@@ -7797,7 +7821,7 @@ window.tcIsDayShiftCode = value =>
         } catch (fallbackError) {
           if (window.TimeClockShiftAPI?.missingFunction?.(dedicatedError)
               || String(fallbackError?.message || '').includes('SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED')) {
-            throw new Error('MONTHLY_PERSONAL_RPC_V6134_REQUIRED: กรุณารัน SQL V6.13.5');
+            throw new Error('MONTHLY_PERSONAL_SCHEDULE_REQUIRED: กรุณารัน SQL V6.14.25 เพื่อเปิดใช้ Schedule Grid กลาง');
           }
           throw fallbackError || dedicatedError;
         }
@@ -7860,12 +7884,25 @@ window.tcIsDayShiftCode = value =>
           }
         );
 
+        // V6.14.26: the Monthly Personal "วันหยุด" KPI must use the same
+        // canonical day-off balance as Assignment / Bulk guards. This avoids a
+        // browser-side recount that used to exclude public holidays.
+        const dayoffBalancePromise = withTimeout(
+          state.client.rpc('ta_get_dayoff_balance_v61425', {
+            p_emp_code: empCode,
+            p_month: `${bounds.value}-01`
+          }),
+          15000,
+          'โหลดโควต้าวันหยุด Monthly Personal V6.14.26'
+        );
+
         const settled = await Promise.allSettled([
           schedulePromise,
           workPlanPromise,
           attendancePromise,
           punchPromise,
-          certificationPromise
+          certificationPromise,
+          dayoffBalancePromise
         ]);
 
         const [
@@ -7873,7 +7910,8 @@ window.tcIsDayShiftCode = value =>
           workPlanResult,
           attendanceResult,
           punchResult,
-          certificationResult
+          certificationResult,
+          dayoffBalanceResult
         ] = settled;
 
         // Schedule is the structural source of the monthly calendar. After adaptive
@@ -7893,6 +7931,21 @@ window.tcIsDayShiftCode = value =>
         const certificationResponse = certificationResult.status === 'fulfilled'
           ? certificationResult.value
           : { data: [], error: certificationResult.reason };
+        const dayoffBalanceResponse = dayoffBalanceResult.status === 'fulfilled'
+          ? dayoffBalanceResult.value
+          : { data: null, error: dayoffBalanceResult.reason };
+        const dayoffBalance = !dayoffBalanceResponse?.error
+          && dayoffBalanceResponse?.data
+          && typeof dayoffBalanceResponse.data === 'object'
+          ? { ...dayoffBalanceResponse.data }
+          : null;
+
+        if (dayoffBalanceResponse?.error) {
+          console.info(
+            'Monthly Personal canonical day-off balance unavailable; effective-schedule fallback will be used.',
+            scheduleRpcErrorSummaryV6126(dayoffBalanceResponse.error).message || 'DAYOFF_BALANCE_UNAVAILABLE'
+          );
+        }
 
         // Attendance is enrichment for the personal overview. Do not blank the whole
         // calendar if only attendance detail is temporarily unavailable.
@@ -7972,12 +8025,14 @@ window.tcIsDayShiftCode = value =>
           empCode,
           bounds.value,
           scheduleRows,
-          attendanceRows
+          attendanceRows,
+          dayoffBalance
         );
 
         return {
           scheduleRows,
           attendanceRows,
+          dayoffBalance,
           savedAt: Date.now(),
           source: 'NETWORK'
         };
@@ -8099,6 +8154,33 @@ window.tcIsDayShiftCode = value =>
         .join('');
     }
 
+    function employeeMonthConsumesDayoffFallbackV61426(scheduleRow) {
+      if (!scheduleRow) return false;
+      const assignedCode = window.tcShiftCode(scheduleRow?.assigned_shift_code || '');
+      const effectiveCode = window.tcShiftCode(
+        scheduleRow?.effective_shift_code
+        || scheduleRow?.auto_shift_code
+        || scheduleRow?.shift_code
+        || ''
+      );
+      const code = assignedCode || effectiveCode;
+      if (['LV','LEAVE'].includes(code)) return false;
+
+      // scheduleResolveShiftMeta already gives an explicitly assigned working
+      // shift precedence over a natural weekly-off/public-holiday date.
+      const shift = scheduleResolveShiftMeta(scheduleRow);
+      if (shift?.isWorking) return false;
+
+      const dayType = String(scheduleRow?.day_type || '').trim().toUpperCase();
+      return Boolean(
+        shift?.tone === 'off'
+        || shift?.tone === 'holiday'
+        || scheduleRow?.is_weekly_off
+        || scheduleRow?.is_public_holiday
+        || ['WEEKLY_OFF','COMP_OFF','DAY_OFF','HOLIDAY','PUBLIC_HOLIDAY'].includes(dayType)
+      );
+    }
+
     function renderEmployeeMonthCalendarV61121() {
       const modal = $('employeeMonthScheduleModal');
       const grid = $('employeeMonthScheduleGrid');
@@ -8146,32 +8228,38 @@ window.tcIsDayShiftCode = value =>
       }
 
       let workdays = 0;
-      let offDays = 0;
+      let fallbackOffDaysV61426 = 0;
       let absenceDays = 0;
       let lateDays = 0;
       let earlyDays = 0;
       let splitDays = 0;
       scheduleRows.forEach(scheduleRow => {
         const shift = scheduleResolveShiftMeta(scheduleRow);
-        const dayType = String(scheduleRow?.day_type || '').trim().toUpperCase();
-        const isPublicHoliday = Boolean(
-          scheduleRow?.is_public_holiday
-          || dayType === 'PUBLIC_HOLIDAY'
-          || shift.tone === 'holiday'
-        );
         if (shift.isWorking) workdays += 1;
-        if (
-          !isPublicHoliday
-          && (
-            shift.tone === 'off'
-            || scheduleRow?.is_weekly_off
-            || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(dayType)
-          )
-        ) {
-          offDays += 1;
+        if (employeeMonthConsumesDayoffFallbackV61426(scheduleRow)) {
+          fallbackOffDaysV61426 += 1;
         }
         if (scheduleWorkTemplateCodeV6118(scheduleRow) === 'SPLIT_FLEX') splitDays += 1;
       });
+
+      // Canonical source of truth: exactly the same RPC used by the Assignment
+      // day-off quota panel and inherited by the V6.14.3 hard guard.
+      const dayoffBalanceV61426 = employeeMonthCalendarStateV61121.dayoffBalance;
+      const canonicalUsedV61426 = Number(dayoffBalanceV61426?.used_days);
+      const hasCanonicalDayoffV61426 = Number.isFinite(canonicalUsedV61426);
+      const offDays = hasCanonicalDayoffV61426
+        ? canonicalUsedV61426
+        : fallbackOffDaysV61426;
+      const quotaDaysV61426 = Number(dayoffBalanceV61426?.month_quota_days);
+      const carriedDaysV61426 = Number(dayoffBalanceV61426?.carried_in_days);
+      const balanceDaysV61426 = Number(dayoffBalanceV61426?.balance_days);
+      const dayoffMetaV61426 = hasCanonicalDayoffV61426
+        ? [
+            Number.isFinite(quotaDaysV61426) ? `โควต้า ${formatNumber(quotaDaysV61426)}` : '',
+            Number.isFinite(carriedDaysV61426) && carriedDaysV61426 !== 0 ? `ยกมา ${formatNumber(carriedDaysV61426)}` : '',
+            Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)}` : ''
+          ].filter(Boolean).join(' • ')
+        : 'วันหยุดประจำสัปดาห์ + นักขัตฤกษ์ ตามตารางกะ';
       attendanceRows.forEach(row => {
         if (attendanceDisplayStatus(row) === 'ABSENCE') absenceDays += 1;
         if (Number(row?.late_minutes || 0) > 0) lateDays += 1;
@@ -8188,7 +8276,7 @@ window.tcIsDayShiftCode = value =>
       ).size;
       $('employeeMonthScheduleSummary').innerHTML = `
         <div class="month-overview-kpi primary"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></div>
-        <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>วันหยุด</span><small>กะ OFF / วันหยุดประจำสัปดาห์</small></div><strong>${safe(formatNumber(offDays))}</strong></div>
+        <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>วันหยุด</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(formatNumber(offDays))}</strong></div>
         <div class="month-overview-kpi danger"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>วันที่ไม่มีเวลาเข้า/ออกครบ</small></div><strong>${safe(formatNumber(absenceDays))}</strong></div>
         <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>จำนวนวันที่มาสาย</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
         <div class="month-overview-kpi early"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></div>
@@ -8337,8 +8425,18 @@ window.tcIsDayShiftCode = value =>
       employeeMonthCalendarStateV61121.loading = true;
       const loadToken = ++employeeMonthCalendarStateV61121.loadToken;
 
-      $('employeeMonthScheduleModal')?.classList.remove('hidden');
-      $('employeeMonthScheduleModal')?.setAttribute('aria-hidden','false');
+      const employeeMonthModalV61426 = $('employeeMonthScheduleModal');
+      const modalWasHiddenV61426 = Boolean(employeeMonthModalV61426?.classList.contains('hidden'));
+      if (modalWasHiddenV61426) {
+        const activeV61426 = document.activeElement;
+        employeeMonthCalendarStateV61121.returnFocusEl =
+          activeV61426 instanceof HTMLElement && !employeeMonthModalV61426?.contains(activeV61426)
+            ? activeV61426
+            : null;
+      }
+      employeeMonthModalV61426?.removeAttribute('inert');
+      employeeMonthModalV61426?.classList.remove('hidden');
+      employeeMonthModalV61426?.setAttribute('aria-hidden','false');
 
       const cached = !forceFresh
         ? employeeMonthCacheGetV61138(code, month)
@@ -8347,6 +8445,7 @@ window.tcIsDayShiftCode = value =>
       if (cached) {
         employeeMonthCalendarStateV61121.scheduleRows = cached.scheduleRows;
         employeeMonthCalendarStateV61121.attendanceRows = cached.attendanceRows;
+        employeeMonthCalendarStateV61121.dayoffBalance = cached.dayoffBalance || null;
         renderEmployeeMonthCalendarV61121();
       } else if ($('employeeMonthScheduleGrid')) {
         $('employeeMonthScheduleGrid').innerHTML =
@@ -8367,6 +8466,10 @@ window.tcIsDayShiftCode = value =>
           employeeMonthCloneRowsV61138(bundle.scheduleRows);
         employeeMonthCalendarStateV61121.attendanceRows =
           employeeMonthCloneRowsV61138(bundle.attendanceRows);
+        employeeMonthCalendarStateV61121.dayoffBalance =
+          bundle.dayoffBalance && typeof bundle.dayoffBalance === 'object'
+            ? { ...bundle.dayoffBalance }
+            : null;
 
         // Manager enrichment is intentionally skipped here:
         // Monthly Personal Overview does not render manager data.
@@ -8387,8 +8490,29 @@ window.tcIsDayShiftCode = value =>
     }
 
     function closeEmployeeMonthCalendarV61121() {
-      $('employeeMonthScheduleModal')?.classList.add('hidden');
-      $('employeeMonthScheduleModal')?.setAttribute('aria-hidden','true');
+      const modalV61426 = $('employeeMonthScheduleModal');
+      const activeV61426 = document.activeElement;
+      const returnFocusV61426 = employeeMonthCalendarStateV61121.returnFocusEl;
+
+      // Move focus OUT of the modal before setting aria-hidden/inert. Chrome
+      // otherwise blocks aria-hidden because the close button still owns focus.
+      if (modalV61426?.contains(activeV61426)) {
+        if (
+          returnFocusV61426 instanceof HTMLElement
+          && returnFocusV61426.isConnected
+          && !modalV61426.contains(returnFocusV61426)
+        ) {
+          try { returnFocusV61426.focus({ preventScroll:true }); }
+          catch (_) { activeV61426?.blur?.(); }
+        } else {
+          activeV61426?.blur?.();
+        }
+      }
+
+      modalV61426?.setAttribute('inert','');
+      modalV61426?.classList.add('hidden');
+      modalV61426?.setAttribute('aria-hidden','true');
+      employeeMonthCalendarStateV61121.returnFocusEl = null;
       window.TimeClockEmployeeMonthReturnContext = null;
     }
 
@@ -27084,7 +27208,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.25';
+  const VERSION='6.14.26';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
