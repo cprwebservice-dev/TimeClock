@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.18 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.19 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.18 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.19 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.18-20260820" rel="stylesheet"/>
+<link href="./app.css?v=6.14.19-20260820" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.18</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.19</span></div>
 </form>
 </div>
 </section>
@@ -359,7 +359,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.18</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.18 Config-Driven Work Pattern + System Period Guard</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.19</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.19 Monthly Work Pattern + Save Consistency</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -964,7 +964,7 @@
 <div class="work-pattern-filterbar-v61111 work-pattern-filterbar-v61416">
 <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="employeePatternSearch" placeholder="รหัสพนักงาน หรือ ชื่อ-นามสกุล"/></div>
 <div class="field"><label>หน่วยงาน</label><select class="select" id="employeePatternDepartmentFilterV61416"><option value="ALL">ทุกหน่วยงาน</option></select></div>
-<div class="field"><label>วันที่อ้างอิง</label><input class="input" id="employeePatternDate" type="date"/></div>
+<div class="field"><label>เดือนที่อ้างอิง</label><input class="input" id="employeePatternDate" type="month"/><small class="wp-month-helper-v61419">แสดงค่าที่มีผลตั้งแต่วันที่ 1 ของเดือน</small></div>
 <div class="field"><label>รูปแบบ</label><select class="select" id="employeePatternPatternFilterV61416"><option value="ALL">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option></select></div>
 <div class="field"><label>กะตั้งต้น</label><select class="select" id="employeePatternShiftFilterV61416"><option value="ALL">ทั้งหมด</option><option value="DAY">กะเช้า</option><option value="NIGHT">กะดึก</option></select></div>
 <div class="toolbar-actions"><button type="button" class="btn btn-primary" id="employeePatternLoadBtn">⌕ ค้นหา</button></div>
@@ -978,11 +978,11 @@
 <div class="wp-bulk-controls-v61416">
 <div class="wp-bulk-control-v61416"><span class="wp-bulk-label-v61416">1. รูปแบบการทำงาน</span><div class="wp-segment-v61416"><button type="button" data-wp-bulk-pattern="TECH_5D">5 วัน</button><button type="button" class="active" data-wp-bulk-pattern="TECH_6D">6 วัน</button></div></div>
 <div class="wp-bulk-control-v61416"><span class="wp-bulk-label-v61416">2. กะตั้งต้น</span><div class="wp-segment-v61416 shift"><button type="button" class="active day" data-wp-bulk-shift="DAY">☀ กะเช้า</button><button type="button" class="night" data-wp-bulk-shift="NIGHT">☾ กะดึก</button></div></div>
-<div class="wp-bulk-control-v61416 date"><span class="wp-bulk-label-v61416">3. เริ่มใช้</span><input class="input" id="wpBulkEffectiveDateV61416" type="date"><small class="wp-period-hint-v61417">อิงรอบแก้ไขกะ + รับรองเวลา</small></div>
+<div class="wp-bulk-control-v61416 date"><span class="wp-bulk-label-v61416">3. เริ่มใช้เดือน</span><input class="input" id="wpBulkEffectiveDateV61416" type="month"><small class="wp-period-hint-v61417">Monthly Baseline • มีผลตั้งแต่วันที่ 1 • อิงรอบแก้ไขกะ + รับรองเวลา</small></div>
 <div class="wp-bulk-map-v61416"><span>Auto Shift ที่จะใช้</span><strong id="wpBulkMappingV61416">S043 • 08:30–17:30</strong><small id="wpBulkDayoffMappingV61416">วันหยุดคู่: OS043</small></div>
 <button type="button" class="btn btn-orange wp-bulk-apply-v61416" id="wpBulkApplyBtnV61416" disabled>✓ ใช้กับ 0 คน</button>
 </div>
-<div id="wpBulkPositionPolicyV61417" class="wp-position-policy-note-v61417 hidden"></div><div class="wp-bulk-note-v61416"><span>ⓘ</span><p><strong>หลักการ:</strong> ทุกตำแหน่งใช้ค่าที่กำหนดจากหน้านี้เป็นหลัก • วันหยุดอ้างอิง Work Pattern ที่ตั้งค่าไว้ • วันที่จัดกะเองแล้วจะใช้กะที่จัดไว้ • วันเริ่มใช้ต้องไม่ย้อนเข้าเดือนที่ปิดรอบแก้ไขกะหรือรับรองเวลา</p></div>
+<div id="wpBulkPositionPolicyV61417" class="wp-position-policy-note-v61417 hidden"></div><div class="wp-bulk-note-v61416 wp-month-rule-v61419"><span>ⓘ</span><p><strong>Monthly Baseline:</strong> รูปแบบ 5/6 วันและกะตั้งต้นจากหน้านี้มีผลเต็มเดือน ไม่สามารถเริ่มกลางเดือนได้ • หากต้องเปลี่ยนกะเฉพาะบางวันให้จัดในปฏิทิน • วันเริ่มใช้ต้องไม่ย้อนเข้าเดือนที่ปิดรอบแก้ไขกะหรือรับรองเวลา</p></div>
 </div>
 <div class="work-pattern-load-note-v61111 hidden" id="workPatternMetaWarningV61111"></div>
 <div class="table-wrap section-gap"><table class="employee-pattern-table-v6119 employee-pattern-table-v61416"><thead><tr><th class="select-col"><span class="sr-only">เลือก</span></th><th>พนักงาน</th><th>หน่วยงาน</th><th>ตำแหน่ง</th><th>รูปแบบ</th><th>กะตั้งต้น</th><th>วันหยุดตั้งต้น</th><th>เริ่มใช้</th><th>ผู้บันทึก</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
@@ -2563,6 +2563,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.18-20260820"></script>
+<script src="./app.js?v=6.14.19-20260820"></script>
 </body>
 </html>

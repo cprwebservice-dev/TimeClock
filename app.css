@@ -21534,3 +21534,14 @@ html[data-theme="dark"] .ep-shift-preview-v61416,body.theme-dark .ep-shift-previ
 html[data-theme="dark"] .wp-position-policy-v61417,body.dark .wp-position-policy-v61417{border-color:#9a3412;background:#431407;color:#fdba74}
 html[data-theme="dark"] .wp-position-policy-note-v61417,body.dark .wp-position-policy-note-v61417{border-color:#9a3412;background:#431407;color:#fed7aa}
 html[data-theme="dark"] .employee-pattern-modal-v61416 #epPattern:disabled,body.dark .employee-pattern-modal-v61416 #epPattern:disabled{background:#18283b;color:#cbd5e1}
+
+
+/* V6.14.19 — Monthly Work Pattern + save consistency */
+.wp-month-helper-v61419{display:block;margin-top:5px;font-size:11px;color:var(--slate-500,#64748b);font-weight:600}
+.wp-month-rule-v61419{border-color:#fdba74!important;background:linear-gradient(135deg,#fff7ed,#fff)!important}
+.wp-month-rule-v61419>span{color:#ea580c!important}
+.wp-month-rule-v61419 strong{color:#c2410c}
+.wp-month-legacy-v61419{display:inline-flex;margin-top:5px;padding:2px 7px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;font-size:10px;font-weight:800}
+html[data-theme="dark"] .wp-month-rule-v61419{background:#2b211b!important;border-color:#9a5a20!important}
+html[data-theme="dark"] .wp-month-rule-v61419 strong,html[data-theme="dark"] .wp-month-rule-v61419>span{color:#fdba74!important}
+html[data-theme="dark"] .wp-month-legacy-v61419{background:#352417;border-color:#8a5a2b;color:#fdba74}
