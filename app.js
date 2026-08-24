@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.55";
-document.documentElement.dataset.timeClockBuild = "6.14.55";
+window.__TIME_CLOCK_BUILD__ = "V6.14.56";
+document.documentElement.dataset.timeClockBuild = "6.14.56";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.55";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.55',
+  version: '6.14.56',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1598,6 +1598,17 @@ window.tcIsDayShiftCode = value =>
 
     const ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428 = 30;
 
+    // V6.14.56 — The Attendance Detail column named "สาย" is intentionally
+    // limited to the LATE policy band only (1–29 minutes). A delay of 30+
+    // minutes is ABSENCE and its minutes are shown in "ขาดงาน(นาที)" instead,
+    // preventing the same minutes from appearing in both columns.
+    function attendanceLateMinutesForDisplayV61456(r) {
+      const minutes = Math.max(0, Number(r?.late_minutes || 0) || 0);
+      return minutes >= 1 && minutes < ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428
+        ? minutes
+        : 0;
+    }
+
     // V6.14.28 canonical attendance display/statistics policy.
     // Primary status precedence: Leave / Day off / Absence / Late / Early / Normal.
     // Late >= 30 minutes is classified as ABSENCE and contributes the actual late
@@ -2131,7 +2142,7 @@ window.tcIsDayShiftCode = value =>
         ["overtime_minutes","OT",r => (Number(r.overtime_minutes || 0)/60).toFixed(2)],
         ["waiting_minutes","รอคอย",r => (Number(r.waiting_minutes || 0)/60).toFixed(2)],
         ["break_deducted_minutes","พัก",r => (Number(r.break_deducted_minutes || 0)/60).toFixed(2)],
-        ["late_minutes","เข้าหลังเริ่มกะ(นาที)",r => Number(r.late_minutes || 0)],
+        ["late_minutes","สาย(นาที)",r => attendanceLateMinutesForDisplayV61456(r)],
         ["early_leave_minutes","กลับก่อน(นาที)",r => Number(r.early_leave_minutes || 0)],
         ["absence_minutes","ขาดงาน(นาที)",r => attendanceAbsenceMinutes(r)],
         ["comp_off_balance","วันหยุดชดเชยคงเหลือ",r => r.comp_off_balance ?? 0]
@@ -4760,7 +4771,7 @@ window.tcIsDayShiftCode = value =>
           <td data-att-col="overtime_minutes" class="text-right${optionalClass("overtime_minutes")}">${minutesToHours(r.overtime_minutes)}</td>
           <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${minutesToHours(r.waiting_minutes)}</td>
           <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${minutesToHours(r.break_deducted_minutes)}</td>
-          <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${formatNumber(r.late_minutes)}</td>
+          <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${formatNumber(attendanceLateMinutesForDisplayV61456(r))}</td>
           <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${formatNumber(r.early_leave_minutes)}</td>
           <td data-att-col="absence_minutes" class="text-right${optionalClass("absence_minutes")}">${formatNumber(attendanceAbsenceMinutes(r))}</td>
           <td data-att-col="comp_off_balance" class="text-right${optionalClass("comp_off_balance")}">${r.comp_off_earned?"ได้รับ":""}${r.comp_off_balance!=null?` ${formatNumber(r.comp_off_balance)}`:"-"}</td>
@@ -12481,6 +12492,7 @@ window.tcIsDayShiftCode = value =>
       normalizeTemplateCodeV665,
       attendancePunchStateV61120,
       attendancePolicyFlagsV61428,
+      attendanceLateMinutesForDisplayV61456,
       normalizeAttendanceStatusFromPunchesV61120,
       attendanceAbsenceMinutes,
       attendanceDisplayStatus,
@@ -15148,7 +15160,7 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="overtime_minutes" class="text-right calc-ot${optionalClass("overtime_minutes")}">${(Number(r.overtime_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
             <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${(Number(r.waiting_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
             <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${(Number(r.break_deducted_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
-            <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${num(r.late_minutes)}</td>
+            <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${num(app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0))}</td>
             <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${num(r.early_leave_minutes)}</td>
             <td data-att-col="absence_minutes" class="text-right absence-value${optionalClass("absence_minutes")}">${num(attendanceAbsence(r))}</td>
             <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${esc(comp)}</td>
@@ -19094,7 +19106,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.55',
+    version:'6.14.56',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27913,7 +27925,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.55';
+  const VERSION='6.14.56';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

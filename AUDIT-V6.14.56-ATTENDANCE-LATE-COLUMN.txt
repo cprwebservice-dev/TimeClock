@@ -1,0 +1,22 @@
+AUDIT — TimeAttendance V6.14.56
+Attendance Detail: Late Column 1–29 Minutes Only
+============================================================
+
+Requested behavior
+- Rename optional column "เข้าหลังเริ่มกะ" -> "สาย".
+- Display late minutes only when 1 <= late_minutes <= 29.
+- late_minutes >= 30 remains ABSENCE and appears in ขาดงาน(นาที), not in สาย(นาที).
+
+Examples
+- Shift 19:30, IN 19:30 -> สาย 0 / ขาดงาน 0
+- Shift 19:30, IN 19:31 -> สาย 1 / ขาดงาน 0
+- Shift 19:30, IN 19:59 -> สาย 29 / ขาดงาน 0
+- Shift 19:30, IN 20:00 -> สาย 0 / ขาดงาน 30
+- Shift 19:30, IN 20:10 -> สาย 0 / ขาดงาน 40
+
+Scope
+- Attendance Detail grid header/toggle
+- Attendance Detail grid values
+- Attendance Detail Excel export header/values
+- No backend/SQL change
+- Other business rules unchanged
