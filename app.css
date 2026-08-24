@@ -21907,3 +21907,28 @@ body[data-theme="dark"] #page-work-patterns .work-template-card-v61438.hour-temp
 html.dark #page-work-patterns .work-template-card-v61438.hour-template-v61438,
 body.dark #page-work-patterns .work-template-card-v61438.hour-template-v61438,
 body.darkmode #page-work-patterns .work-template-card-v61438.hour-template-v61438{background:#17283b;border-color:#33506f}
+
+/* V6.14.39 — Work Template NORMAL uses current Shift Master codes, grouped by 5D/6D. */
+#page-work-patterns .normal-template-v61439 .work-template-pattern-groups-v61439{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+#page-work-patterns .work-template-pattern-group-v61439{border:1px solid var(--slate-200);border-radius:12px;background:var(--surface,#fff);padding:10px}
+#page-work-patterns .work-template-pattern-group-head-v61439{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+#page-work-patterns .work-template-pattern-group-head-v61439 strong{display:block;color:var(--slate-800);font-size:11px}
+#page-work-patterns .work-template-pattern-group-head-v61439 small{display:block;margin-top:2px;color:var(--slate-500);font-size:9px}
+#page-work-patterns .work-template-shift-list-v61439{display:grid;gap:7px}
+#page-work-patterns .work-template-shift-row-v61439{display:grid;grid-template-columns:minmax(78px,.9fr) minmax(52px,.55fr) minmax(96px,1fr);align-items:center;gap:8px;padding:8px 9px;border-radius:9px;border:1px solid transparent;font-size:10px}
+#page-work-patterns .work-template-shift-row-v61439.day{background:var(--amber-50,#fffbeb);border-color:var(--amber-200,#fde68a);color:var(--amber-800,#92400e)}
+#page-work-patterns .work-template-shift-row-v61439.night{background:var(--blue-50,#eff6ff);border-color:var(--blue-200,#bfdbfe);color:var(--blue-800,#1e40af)}
+#page-work-patterns .work-template-shift-row-v61439 strong{font-size:11px;letter-spacing:.02em}
+#page-work-patterns .work-template-shift-period-v61439{font-weight:800}
+#page-work-patterns .work-template-shift-row-v61439.inactive{opacity:.5;filter:grayscale(.35)}
+@media(max-width:860px){#page-work-patterns .normal-template-v61439 .work-template-pattern-groups-v61439{grid-template-columns:1fr}}
+html[data-theme="dark"] #page-work-patterns .work-template-pattern-group-v61439,
+body[data-theme="dark"] #page-work-patterns .work-template-pattern-group-v61439,
+html.dark #page-work-patterns .work-template-pattern-group-v61439,
+body.dark #page-work-patterns .work-template-pattern-group-v61439,
+body.darkmode #page-work-patterns .work-template-pattern-group-v61439{background:#17283b;border-color:#33506f}
+html[data-theme="dark"] #page-work-patterns .work-template-pattern-group-head-v61439 strong,
+body[data-theme="dark"] #page-work-patterns .work-template-pattern-group-head-v61439 strong,
+html.dark #page-work-patterns .work-template-pattern-group-head-v61439 strong,
+body.dark #page-work-patterns .work-template-pattern-group-head-v61439 strong,
+body.darkmode #page-work-patterns .work-template-pattern-group-head-v61439 strong{color:#e7eef8}

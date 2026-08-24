@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.38";
-document.documentElement.dataset.timeClockBuild = "6.14.38";
+window.__TIME_CLOCK_BUILD__ = "V6.14.39";
+document.documentElement.dataset.timeClockBuild = "6.14.39";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.38";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.38',
+  version: '6.14.39',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -17887,6 +17887,21 @@ ${skippedSummary(compatibility.skipped)}
     return values.join(', ');
   }
 
+  function workTemplateShiftDetailV61439(code,fallbackStart,fallbackEnd){
+    const target=String(code||'').toUpperCase();
+    const rows=app()?.state?.filters?.shifts||[];
+    const row=(Array.isArray(rows)?rows:[]).find(item=>String(item?.shift_code||'').toUpperCase()===target);
+    const start=row?.start_time?String(row.start_time).slice(0,5):fallbackStart;
+    const end=row?.end_time?String(row.end_time).slice(0,5):fallbackEnd;
+    return {
+      code:target,
+      start:start||'-',
+      end:end||'-',
+      active:row?row.is_active!==false:true,
+      name:String(row?.shift_name||'').trim()
+    };
+  }
+
   function renderTemplates(){
     const box=$('workTemplateCards');if(!box)return;
     const badge=$('workTemplateAccessBadgeV61438');
@@ -17907,24 +17922,40 @@ ${skippedSummary(compatibility.skipped)}
       start:s.planned_start_time?String(s.planned_start_time).slice(0,5):'ยืดหยุ่น',
       end:s.planned_end_time?String(s.planned_end_time).slice(0,5):'ไม่กำหนด'
     }));
-    const firstSegment=t=>formatSegments(t)[0]||null;
-    const st6Seg=firstSegment(normal6);
-    const st5Seg=firstSegment(normal5);
     const pattern5=wp.patterns.find(r=>String(r?.pattern_code||'').toUpperCase()==='TECH_5D');
     const pattern6=wp.patterns.find(r=>String(r?.pattern_code||'').toUpperCase()==='TECH_6D');
     const hours5=hours(pattern5?.scheduled_minutes_including_break||570);
     const hours6=hours(pattern6?.scheduled_minutes_including_break||540);
+    // V6.14.39: Work Template card must show the CURRENT Shift Master business codes,
+    // not legacy/internal template codes as if they were shift codes.
+    const shift5Day=workTemplateShiftDetailV61439('STD','08:30','18:00');
+    const shift5Night=workTemplateShiftDetailV61439('S134','19:30','05:00');
+    const shift6Day=workTemplateShiftDetailV61439('S043','08:30','17:30');
+    const shift6Night=workTemplateShiftDetailV61439('S135','19:30','04:30');
 
     const defs=[
       {
-        mode:'NORMAL',badge:'NORMAL',title:'กะปกติ',code:'ST6 / ST5',
-        note:'กะมาตรฐานตาม Work Pattern และกะตั้งต้นของพนักงาน • ใช้เป็นค่าเริ่มต้นในวันทำงานที่ยังไม่ได้ Override',
-        segments:[
-          {type:'ST6',start:st6Seg?.start||'08:30',end:st6Seg?.end||'17:30'},
-          {type:'ST5',start:st5Seg?.start||'08:30',end:st5Seg?.end||'18:00'}
+        mode:'NORMAL',badge:'NORMAL',title:'กะปกติ',code:'Work Template • ST5 / ST6',
+        note:'กะมาตรฐานตาม Work Pattern และกะตั้งต้นของพนักงาน • แสดงรหัสกะปัจจุบันจาก Shift Master แยก 5 วัน / 6 วัน',
+        groups:[
+          {
+            pattern:'TECH_5D',label:'รูปแบบการทำงาน 5 วัน/สัปดาห์',template:'ST5',
+            shifts:[
+              {period:'DAY',label:'กะเช้า',...shift5Day},
+              {period:'NIGHT',label:'กะดึก',...shift5Night}
+            ]
+          },
+          {
+            pattern:'TECH_6D',label:'รูปแบบการทำงาน 6 วัน/สัปดาห์',template:'ST6',
+            shifts:[
+              {period:'DAY',label:'กะเช้า',...shift6Day},
+              {period:'NIGHT',label:'กะดึก',...shift6Night}
+            ]
+          }
         ],
+        segments:[],
         ready:!!normal6&&!!normal5,
-        cls:'normal-template'
+        cls:'normal-template normal-template-v61439'
       },
       {
         mode:'NORMAL_LATE_CUSTOMER',badge:'DAILY',title:'กะปกติ + งานลูกค้าช่วงดึก',
@@ -17983,9 +18014,20 @@ ${skippedSummary(compatibility.skipped)}
         <h3>${esc(card.title)}</h3>
         <small class="work-template-code-v61111">${esc(card.code)}</small>
         <p>${esc(card.note)}</p>
-        <div class="work-template-segments">
+        ${Array.isArray(card.groups)&&card.groups.length?`<div class="work-template-pattern-groups-v61439">
+          ${card.groups.map(group=>`<section class="work-template-pattern-group-v61439">
+            <div class="work-template-pattern-group-head-v61439"><div><strong>${esc(group.label)}</strong><small>${esc(group.pattern)} • Work Template ${esc(group.template)}</small></div></div>
+            <div class="work-template-shift-list-v61439">
+              ${(group.shifts||[]).map(shift=>`<div class="work-template-shift-row-v61439 ${String(shift.period||'').toLowerCase()} ${shift.active===false?'inactive':''}">
+                <span class="work-template-shift-period-v61439">${shift.period==='NIGHT'?'☾':'☀'} ${esc(shift.label)}</span>
+                <strong>${esc(shift.code)}</strong>
+                <span>${esc(shift.start)}–${esc(shift.end)}</span>
+              </div>`).join('')}
+            </div>
+          </section>`).join('')}
+        </div>`:`<div class="work-template-segments">
           ${card.segments.length?card.segments.map(s=>`<span class="segment-${String(s.type).toLowerCase().replace(/[^a-z0-9_-]/g,'-')}"><b>${esc(s.type)}</b> ${esc(s.start)}–${esc(s.end)}</span>`).join(''):'<span class="segment-waiting"><b>ตรวจสอบ</b> ยังไม่พบรายละเอียด Template</span>'}
-        </div>
+        </div>`}
       </article>`;
     }).join('');
   }
@@ -18880,7 +18922,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.38',
+    version:'6.14.39',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,

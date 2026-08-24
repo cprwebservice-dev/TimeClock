@@ -1,0 +1,12 @@
+AUDIT — TimeAttendance V6.14.39
+Work Template Current Shift Codes by Work Pattern
+
+[PASS] NORMAL card distinguishes Work Template code from Shift Master code
+[PASS] TECH_5D shows DAY STD 08:30-18:00
+[PASS] TECH_5D shows NIGHT S134 19:30-05:00
+[PASS] TECH_6D shows DAY S043 08:30-17:30
+[PASS] TECH_6D shows NIGHT S135 19:30-04:30
+[PASS] Shift times prefer currently loaded Shift Master values
+[PASS] Existing Work Template access/scope filtering retained
+[PASS] Other Work Template cards retained
+[PASS] No SQL migration required
