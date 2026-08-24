@@ -1,0 +1,50 @@
+AUDIT — TimeAttendance V6.14.57
+H.MM Duration Display Consistency
+=================================
+
+เป้าหมาย
+- คง Calculation Core เป็นหน่วย "นาที" ตามเดิม
+- ปรับเฉพาะการแสดงผล/Export ของ:
+  1) ชม.สุทธิ
+  2) ชม.ปกติ
+  3) OT
+  4) รอคอย
+  ให้เป็นรูปแบบ ชั่วโมง.นาที (H.MM)
+
+ตัวอย่างที่ตรวจ
+- 42 นาที  -> 0.42
+- 40 นาที  -> 0.40
+- 180 นาที -> 3.00
+- 271 นาที -> 4.31
+- 469 นาที -> 7.49
+- 480 นาที -> 8.00
+
+หลักการ
+- Backend ยังเก็บ/คำนวณ *_minutes เหมือนเดิม
+- ไม่เปลี่ยนสูตร OT / Waiting / Net Work / Regular Work
+- ไม่ใช้ decimal-hour (/60) สำหรับ 4 ช่องนี้ในการแสดงผลอีกต่อไป
+- H.MM เป็นรูปแบบแสดงผล ชั่วโมง.นาที ไม่ใช่ค่าชั่วโมงฐานสิบ
+
+จุดที่ปรับ
+[PASS] Attendance Detail main renderer
+[PASS] Attendance Enterprise renderer
+[PASS] Attendance CSV/Excel matrix
+[PASS] Report > Attendance export
+[PASS] Report > Schedule export (Net/OT/Waiting)
+[PASS] Person Schedule calculation tooltip (Net/OT/Waiting)
+[PASS] Schedule calculation flags (OT/Waiting)
+[UNCHANGED] Break display
+[UNCHANGED] Off-day work display
+[UNCHANGED] Dashboard calculation/storage
+[UNCHANGED] Backend / SQL / Payroll arithmetic
+
+Validation
+[PASS] node --check app.js
+[PASS] index.html parse
+[PASS] 404.html parse
+[PASS] duplicate HTML IDs = 0
+[PASS] H.MM sample conversion tests
+[PASS] targeted legacy /60 decimal-hour display expressions removed
+
+SQL
+- ไม่ต้องรัน SQL

@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.56";
-document.documentElement.dataset.timeClockBuild = "6.14.56";
+window.__TIME_CLOCK_BUILD__ = "V6.14.57";
+document.documentElement.dataset.timeClockBuild = "6.14.57";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.56";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.56',
+  version: '6.14.57',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1318,6 +1318,21 @@ window.tcIsDayShiftCode = value =>
     };
     const formatNumber = (n) => Number(n || 0).toLocaleString("th-TH");
     const minutesToHours = (n) => Number.isFinite(Number(n)) ? (Number(n) / 60).toLocaleString("th-TH", {minimumFractionDigits:1,maximumFractionDigits:1}) : "-";
+
+    // V6.14.57 — Attendance duration display uses H.MM (hours.minutes), not
+    // decimal hours. The Calculation Core remains minute-based. Examples:
+    // 42 minutes -> 0.42, 180 minutes -> 3.00, 469 minutes -> 7.49.
+    // This is a presentation/export formatter only; it does not change payroll
+    // arithmetic or the canonical *_minutes values stored by the backend.
+    function attendanceMinutesToHourMinuteV61457(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return "-";
+      const sign = numeric < 0 ? "-" : "";
+      const totalMinutes = Math.round(Math.abs(numeric));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${sign}${hours}.${String(minutes).padStart(2,"0")}`;
+    }
     const attendanceShiftCode = r => normalizeTemplateCodeV665(
       r?.effective_shift_code
       || r?.assigned_shift_code
@@ -2137,10 +2152,10 @@ window.tcIsDayShiftCode = value =>
         ["shift_2_in","งานลูกค้าช่วงดึก • ลงจริง เวลาเข้า",r => workSegmentTimeV6118(r.shift_2_actual_in_at)],
         ["shift_2_out","งานลูกค้าช่วงดึก • ลงจริง เวลาออก",r => workSegmentTimeV6118(r.shift_2_actual_out_at)],
         ["display_status","สถานะ",r => attendanceDisplayLabel(r)],
-        ["net_work_minutes","ชม.สุทธิ",r => (Number(r.net_work_minutes || 0)/60).toFixed(2)],
-        ["regular_minutes","ชม.ปกติ",r => (Number(r.regular_minutes || 0)/60).toFixed(2)],
-        ["overtime_minutes","OT",r => (Number(r.overtime_minutes || 0)/60).toFixed(2)],
-        ["waiting_minutes","รอคอย",r => (Number(r.waiting_minutes || 0)/60).toFixed(2)],
+        ["net_work_minutes","ชม.สุทธิ",r => attendanceMinutesToHourMinuteV61457(r.net_work_minutes || 0)],
+        ["regular_minutes","ชม.ปกติ",r => attendanceMinutesToHourMinuteV61457(r.regular_minutes || 0)],
+        ["overtime_minutes","OT",r => attendanceMinutesToHourMinuteV61457(r.overtime_minutes || 0)],
+        ["waiting_minutes","รอคอย",r => attendanceMinutesToHourMinuteV61457(r.waiting_minutes || 0)],
         ["break_deducted_minutes","พัก",r => (Number(r.break_deducted_minutes || 0)/60).toFixed(2)],
         ["late_minutes","สาย(นาที)",r => attendanceLateMinutesForDisplayV61456(r)],
         ["early_leave_minutes","กลับก่อน(นาที)",r => Number(r.early_leave_minutes || 0)],
@@ -4766,10 +4781,10 @@ window.tcIsDayShiftCode = value =>
           <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_in">${attendancePunchCellV6119(r.shift_2_actual_in_at,2,"IN")}</td>
           <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_out">${attendancePunchCellV6119(r.shift_2_actual_out_at,2,"OUT")}</td>
           <td data-att-col="display_status">${badge(attendanceDisplayLabel(r), statusBadgeClass(displayStatus))}</td>
-          <td data-att-col="net_work_minutes" class="text-right">${minutesToHours(r.net_work_minutes)}</td>
-          <td data-att-col="regular_minutes" class="text-right">${minutesToHours(r.regular_minutes)}</td>
-          <td data-att-col="overtime_minutes" class="text-right${optionalClass("overtime_minutes")}">${minutesToHours(r.overtime_minutes)}</td>
-          <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${minutesToHours(r.waiting_minutes)}</td>
+          <td data-att-col="net_work_minutes" class="text-right">${attendanceMinutesToHourMinuteV61457(r.net_work_minutes)}</td>
+          <td data-att-col="regular_minutes" class="text-right">${attendanceMinutesToHourMinuteV61457(r.regular_minutes)}</td>
+          <td data-att-col="overtime_minutes" class="text-right${optionalClass("overtime_minutes")}">${attendanceMinutesToHourMinuteV61457(r.overtime_minutes)}</td>
+          <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${attendanceMinutesToHourMinuteV61457(r.waiting_minutes)}</td>
           <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${minutesToHours(r.break_deducted_minutes)}</td>
           <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${formatNumber(attendanceLateMinutesForDisplayV61456(r))}</td>
           <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${formatNumber(r.early_leave_minutes)}</td>
@@ -6338,9 +6353,9 @@ window.tcIsDayShiftCode = value =>
         split && customerStart !== '-' ? `ช่วงที่ 2 ${customerStart}–${customerEnd !== '-' ? customerEnd : 'ตามเวลาออก'}` : null,
         context.statusLabel || null,
         context.patternLabel || null,
-        Number(row?.waiting_minutes || 0) > 0 ? `ช่วงรอ ${(Number(row.waiting_minutes)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. (ไม่นับเวลาทำงาน)` : null,
-        Number(row?.paid_work_minutes ?? row?.net_work_minutes ?? 0) > 0 ? `ชั่วโมงสุทธิ ${(Number(row?.paid_work_minutes ?? row?.net_work_minutes ?? 0)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.` : null,
-        Number(row?.overtime_minutes || 0) > 0 ? `OT ${(Number(row.overtime_minutes)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.` : null,
+        Number(row?.waiting_minutes || 0) > 0 ? `ช่วงรอ ${attendanceMinutesToHourMinuteV61457(row.waiting_minutes)} ชม. (ไม่นับเวลาทำงาน)` : null,
+        Number(row?.paid_work_minutes ?? row?.net_work_minutes ?? 0) > 0 ? `ชั่วโมงสุทธิ ${attendanceMinutesToHourMinuteV61457(row?.paid_work_minutes ?? row?.net_work_minutes ?? 0)} ชม.` : null,
+        Number(row?.overtime_minutes || 0) > 0 ? `OT ${attendanceMinutesToHourMinuteV61457(row.overtime_minutes)} ชม.` : null,
         row?.comp_off_earned ? 'ได้รับวันหยุดชดเชย' : null
       ].filter(Boolean);
       return lines.join('|');
@@ -9692,8 +9707,8 @@ window.tcIsDayShiftCode = value =>
               ? `กะที่ 2 ${customerStart}-${customerEndLabel}`
               : null,
             r.calculation_status,
-            Number(r.overtime_minutes||0)>0 ? `OT ${(Number(r.overtime_minutes)/60).toFixed(1)} ชม.` : null,
-            Number(r.waiting_minutes||0)>0 ? `รอ ${(Number(r.waiting_minutes)/60).toFixed(1)} ชม.` : null,
+            Number(r.overtime_minutes||0)>0 ? `OT ${attendanceMinutesToHourMinuteV61457(r.overtime_minutes)} ชม.` : null,
+            Number(r.waiting_minutes||0)>0 ? `รอ ${attendanceMinutesToHourMinuteV61457(r.waiting_minutes)} ชม.` : null,
             r.comp_off_earned ? "ได้วันหยุดชดเชย" : null
           ].filter(Boolean).join(" | ");
 
@@ -12487,6 +12502,7 @@ window.tcIsDayShiftCode = value =>
       formatDateTime,
       formatTime,
       minutesToHours,
+      attendanceMinutesToHourMinuteV61457,
       attendanceShiftCode,
       attendanceShiftTime,
       normalizeTemplateCodeV665,
@@ -13979,11 +13995,11 @@ ${skippedSummary(compatibility.skipped)}
       );
       const filtered=type==="late"?data.filter(r=>{const f=app()?.attendancePolicyFlagsV61428?.(r);return f ? (f.late||f.absenceByLate||f.early) : (Number(r.late_minutes||0)>0||Number(r.early_leave_minutes||0)>0);}):data;
       const shiftTime=(r,side)=>app()?.attendanceShiftTime?.(r,side)||r[side==="start"?"shift_start_time":"shift_end_time"];
-      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","เข้าหลังเริ่มกะ(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...filtered.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,r.day_type,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),(Number(r.net_work_minutes||0)/60).toFixed(2),(Number(r.regular_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,app()?.attendanceDisplayLabel?.(r)||(r.calculation_status||r.attendance_result||r.attendance_status)])];
+      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","เข้าหลังเริ่มกะ(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...filtered.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,r.day_type,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0)??"0.00",(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,app()?.attendanceDisplayLabel?.(r)||(r.calculation_status||r.attendance_result||r.attendance_status)])];
     }
     if(type==="schedule"){
       const month=`${start.slice(0,7)}-01`;const data=await window.TimeClockShiftAPI.getMonthlySchedule(app(),{p_month:month,p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept,p_emp_codes:null,p_schedule_statuses:null});
-      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","รูปแบบช่วงงาน","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","สถานะ","แหล่งการจัดกะ","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,app()?.workTemplateLabelV6118?.(r.template_code||r.effective_work_template_code)||r.template_code||r.effective_work_template_code||"-",r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(String(r.template_code||r.effective_work_template_code||'').toUpperCase()==='SPLIT_FLEX'?"ตามเวลาออก":""),r.schedule_status,r.assigned_shift_code?"หัวหน้างานบันทึก":"กะมาตรฐานอัตโนมัติ",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),(Number(r.paid_work_minutes||0)/60).toFixed(2),(Number(r.overtime_minutes||0)/60).toFixed(2),(Number(r.waiting_minutes||0)/60).toFixed(2),(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
+      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","รูปแบบช่วงงาน","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","สถานะ","แหล่งการจัดกะ","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,app()?.workTemplateLabelV6118?.(r.template_code||r.effective_work_template_code)||r.template_code||r.effective_work_template_code||"-",r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(String(r.template_code||r.effective_work_template_code||'').toUpperCase()==='SPLIT_FLEX'?"ตามเวลาออก":""),r.schedule_status,r.assigned_shift_code?"หัวหน้างานบันทึก":"กะมาตรฐานอัตโนมัติ",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),app()?.attendanceMinutesToHourMinuteV61457?.(r.paid_work_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0)??"0.00",(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
     }
     if(type==="summary"){
       const raw=await rpc("ta_get_dashboard_overview_v640",{p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept});const d=Array.isArray(raw)?raw[0]||{}:raw||{};
@@ -15155,10 +15171,10 @@ ${skippedSummary(compatibility.skipped)}
             <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_in">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_in_at,2,"IN")||"-"}</td>
             <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_out">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_out_at,2,"OUT")||"-"}</td>
             <td data-att-col="display_status"><span class="fc-badge ${badgeClass}">${esc(attendanceStatusText(r))}</span></td>
-            <td data-att-col="net_work_minutes" class="text-right">${(Number(r.net_work_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
-            <td data-att-col="regular_minutes" class="text-right">${(Number(r.regular_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
-            <td data-att-col="overtime_minutes" class="text-right calc-ot${optionalClass("overtime_minutes")}">${(Number(r.overtime_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
-            <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${(Number(r.waiting_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
+            <td data-att-col="net_work_minutes" class="text-right">${app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0) ?? "0.00"}</td>
+            <td data-att-col="regular_minutes" class="text-right">${app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0) ?? "0.00"}</td>
+            <td data-att-col="overtime_minutes" class="text-right calc-ot${optionalClass("overtime_minutes")}">${app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0) ?? "0.00"}</td>
+            <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0) ?? "0.00"}</td>
             <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${(Number(r.break_deducted_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
             <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${num(app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0))}</td>
             <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${num(r.early_leave_minutes)}</td>
@@ -19106,7 +19122,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.56',
+    version:'6.14.57',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27925,7 +27941,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.56';
+  const VERSION='6.14.57';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
