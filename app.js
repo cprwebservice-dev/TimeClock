@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.39";
-document.documentElement.dataset.timeClockBuild = "6.14.39";
+window.__TIME_CLOCK_BUILD__ = "V6.14.40";
+document.documentElement.dataset.timeClockBuild = "6.14.40";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.39";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.39',
+  version: '6.14.40',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -6136,7 +6136,7 @@ window.tcIsDayShiftCode = value =>
       const icons = {
         day: `<svg ${common}><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg>`,
         night: `<svg ${common}><path d="M20.5 14.2A8.3 8.3 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>`,
-        off: `<svg ${common}><path d="M3 19v-7h18v7M5 12V7h5a3 3 0 0 1 3 3v2M13 12V9h4a4 4 0 0 1 4 4"></path><path d="M3 16h18M5 19v2M19 19v2"></path></svg>`,
+        off: `<svg ${common} class="schedule-off-calendar-x-v61440"><path d="M6.5 2v3M15.5 2v3"></path><path d="M4.5 4h13a2 2 0 0 1 2 2v5.2"></path><path d="M4.5 8h15"></path><path d="M4.5 4v14a2 2 0 0 0 2 2h5.2"></path><path d="m14.5 14.5 5 5M19.5 14.5l-5 5"></path></svg>`,
         leave: `<svg ${common}><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v5h5M10 12h5M10 16h4"></path></svg>`,
         holiday: `<svg ${common}><path d="m12 3 1.55 4.45L18 9l-4.45 1.55L12 15l-1.55-4.45L6 9l4.45-1.55L12 3Z"></path><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15ZM5 14l.7 1.8L7.5 16.5l-1.8.7L5 19l-.7-1.8-1.8-.7 1.8-.7L5 14Z"></path></svg>`,
         hour: `<svg ${common}><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>`,
@@ -17926,7 +17926,7 @@ ${skippedSummary(compatibility.skipped)}
     const pattern6=wp.patterns.find(r=>String(r?.pattern_code||'').toUpperCase()==='TECH_6D');
     const hours5=hours(pattern5?.scheduled_minutes_including_break||570);
     const hours6=hours(pattern6?.scheduled_minutes_including_break||540);
-    // V6.14.39: Work Template card must show the CURRENT Shift Master business codes,
+    // V6.14.40: Work Template card must show the CURRENT Shift Master business codes,
     // not legacy/internal template codes as if they were shift codes.
     const shift5Day=workTemplateShiftDetailV61439('STD','08:30','18:00');
     const shift5Night=workTemplateShiftDetailV61439('S134','19:30','05:00');
@@ -18922,7 +18922,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.39',
+    version:'6.14.40',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,

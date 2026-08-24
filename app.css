@@ -21932,3 +21932,39 @@ body[data-theme="dark"] #page-work-patterns .work-template-pattern-group-head-v6
 html.dark #page-work-patterns .work-template-pattern-group-head-v61439 strong,
 body.dark #page-work-patterns .work-template-pattern-group-head-v61439 strong,
 body.darkmode #page-work-patterns .work-template-pattern-group-head-v61439 strong{color:#e7eef8}
+
+
+/* ========================================================================== */
+/* V6.14.40 — Person Schedule OFF icon: transparent Calendar-X               */
+/* Applies only to Person 15-Day / Full-Month schedule labels.               */
+/* OFF icon color remains driven by System Settings --shift-off-text.         */
+/* ========================================================================== */
+#page-schedule #schedulePersonWorkspace .monthly-person-schedule-table-v61146
+.schedule-cell.schedule-icon-only-v6136.icon-tone-off{
+  background:transparent!important;
+  border-color:transparent!important;
+  color:var(--shift-off-text,#64748b)!important;
+}
+#page-schedule #schedulePersonWorkspace .monthly-person-schedule-table-v61146
+.schedule-cell.schedule-icon-only-v6136.icon-tone-off .schedule-shift-icon-v6136{
+  background:transparent!important;
+  color:inherit!important;
+}
+#page-schedule #schedulePersonWorkspace .monthly-person-schedule-table-v61146
+.schedule-cell.schedule-icon-only-v6136.icon-tone-off .schedule-off-calendar-x-v61440{
+  width:24px!important;
+  height:24px!important;
+  fill:none!important;
+  stroke:currentColor!important;
+  stroke-width:2.25!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+body.theme-dark #page-schedule #schedulePersonWorkspace .monthly-person-schedule-table-v61146
+.schedule-cell.schedule-icon-only-v6136.icon-tone-off,
+.dark #page-schedule #schedulePersonWorkspace .monthly-person-schedule-table-v61146
+.schedule-cell.schedule-icon-only-v6136.icon-tone-off{
+  background:transparent!important;
+  border-color:transparent!important;
+  color:var(--shift-off-text,#c1ced8)!important;
+}

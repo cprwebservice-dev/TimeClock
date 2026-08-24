@@ -1,0 +1,10 @@
+AUDIT — TimeAttendance V6.14.40
+Person Schedule OFF Calendar-X Icon
+
+[PASS] OFF SVG changed from bed icon to Calendar-X outline based on supplied reference.
+[PASS] SVG uses stroke=currentColor, so OFF color remains controlled by System Settings.
+[PASS] OFF schedule tile background and border are transparent in Person schedule only.
+[PASS] Scope is #schedulePersonWorkspace monthly-person-schedule-table, covering 15-day and full-month Person views.
+[PASS] Day / Night / Holiday / Leave / Hour / Split icons unchanged.
+[PASS] Scheduling rules, shift codes, quota, night sequence, permissions, and backend untouched.
+[PASS] No SQL required.
