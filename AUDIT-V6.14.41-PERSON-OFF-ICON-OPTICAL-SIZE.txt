@@ -1,0 +1,10 @@
+AUDIT — TimeAttendance V6.14.41
+Person OFF Calendar-X Optical Size Match
+
+[PASS] Applies only to Person Schedule 15-Day / Full-Month OFF labels.
+[PASS] OFF Calendar-X SVG display size = 26x26 px.
+[PASS] Calendar-X path drawing area widened to visually match Day/Night/Leave/HOL icons.
+[PASS] OFF label background remains transparent.
+[PASS] OFF icon uses currentColor and therefore System Settings --shift-off-text.
+[PASS] Other shift icons and schedule logic are unchanged.
+[PASS] No SQL migration required.
