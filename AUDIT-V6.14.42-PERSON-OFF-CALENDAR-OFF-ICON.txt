@@ -1,0 +1,11 @@
+AUDIT — TimeAttendance V6.14.42
+Person OFF Icon — Calendar-Off Slash
+
+[PASS] Person 15-Day and Full-Month use the shared icon renderer.
+[PASS] OFF / paired day-off renders a calendar outline with one diagonal slash, not an X.
+[PASS] OFF icon has transparent background and transparent border.
+[PASS] OFF icon stroke uses currentColor.
+[PASS] System Settings --shift-off-text continues to control OFF icon color.
+[PASS] Day / Night / Leave / HOL / Hour / Split icons unchanged.
+[PASS] No scheduling/business-rule code changed.
+[PASS] No SQL required.
