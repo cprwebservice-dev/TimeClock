@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.53";
-document.documentElement.dataset.timeClockBuild = "6.14.53";
+window.__TIME_CLOCK_BUILD__ = "V6.14.55";
+document.documentElement.dataset.timeClockBuild = "6.14.55";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.53";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.53',
+  version: '6.14.55',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1467,20 +1467,35 @@ window.tcIsDayShiftCode = value =>
           'PARTIAL_LEAVE_NO_TIME'
         ].includes(rawStatus);
 
+      const workingShiftOverride = attendanceHasWorkingShiftOverrideV61155(r);
+
       if (
         isLeave
-        || dayType !== 'WORKDAY'
+        || (dayType !== 'WORKDAY' && !workingShiftOverride)
       ) {
         return 0;
       }
 
-      // V6.11.20: Punches enriched from ta_get_attendance_shift_punch_meta_v61110
-      // are the final source of truth for presence. A stale backend ABSENCE value must
-      // never override a complete IN/OUT pair (including cross-midnight night shifts).
+      // V6.14.55 — "ขาดงาน(นาที)" has one canonical meaning in Attendance UI:
+      //   • incomplete punch pair = full scheduled absence (existing rule)
+      //   • complete punch pair + late >= 30 = the actual late minutes
+      // Late 1–29 minutes remains LATE and contributes 0 absence minutes.
       const punchState = attendancePunchStateV61120(r);
-      if (punchState.complete) return 0;
-
+      const lateMinutes = Math.max(0, Number(r?.late_minutes || 0) || 0);
       const backendValue = Number(r?.absence_minutes);
+
+      if (punchState.complete) {
+        if (lateMinutes >= ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428) {
+          return Math.max(
+            lateMinutes,
+            Number.isFinite(backendValue) && backendValue > 0
+              ? backendValue
+              : 0
+          );
+        }
+        return 0;
+      }
+
       if (Number.isFinite(backendValue) && backendValue > 0) {
         return backendValue;
       }
@@ -1585,9 +1600,9 @@ window.tcIsDayShiftCode = value =>
 
     // V6.14.28 canonical attendance display/statistics policy.
     // Primary status precedence: Leave / Day off / Absence / Late / Early / Normal.
-    // Late >= 30 minutes is classified as ABSENCE but keeps the actual late minutes;
-    // it is not converted into full-shift absence_minutes here, so payroll deductions
-    // are not silently changed by a UI/statistics rule.
+    // Late >= 30 minutes is classified as ABSENCE and contributes the actual late
+    // minutes to the canonical "ขาดงาน(นาที)" value. Missing punches remain full-shift
+    // absence; Late 1–29 remains LATE.
     function attendancePolicyFlagsV61428(r) {
       const row = r || {};
       const dayType = String(row?.day_type || '').trim().toUpperCase();
@@ -1728,12 +1743,12 @@ window.tcIsDayShiftCode = value =>
       const originalAbsence = Number(r.absence_minutes || 0);
       const flags = attendancePolicyFlagsV61428(r);
 
-      // Missing punches keep the existing full-shift absence minute behavior.
-      // Late >=30 is status-only ABSENCE; actual late_minutes remains available.
+      // V6.14.55: Missing punches keep full-shift absence minutes;
+      // complete-punch Late >=30 contributes the actual late minutes.
       r.absence_minutes = attendanceAbsenceMinutes(r);
       r.display_status = flags.primaryStatus;
       r.absence_reason = flags.absence ? flags.absenceReason : null;
-      r.attendance_policy_version = 'V6.14.28';
+      r.attendance_policy_version = 'V6.14.55';
       r.attendance_policy_threshold_minutes = ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428;
 
       r._attendance_status_corrected_by_punch_v61120 = Boolean(
@@ -2093,7 +2108,7 @@ window.tcIsDayShiftCode = value =>
     function attendanceExportMatrix(rows) {
       const definitions = [
         ["work_date","วันที่",r => formatDate(r.work_date)],
-        ["emp_code","รหัสพนักงาน",r => r.emp_code],
+        ["emp_code","รหัส",r => r.emp_code],
         ["full_name","ชื่อ-นามสกุล",r => r.full_name],
         ["department","หน่วยงาน",r => r.department],
         ["zone","พื้นที่",r => r.zone || r.area],
@@ -2102,23 +2117,23 @@ window.tcIsDayShiftCode = value =>
         ["template_code","รูปแบบช่วงงาน",r => workTemplateLabelV6118(r.template_code)],
         ["day_type","ประเภทวัน",r => attendanceLabel(r.day_type)],
         ["shift_code","กะ",r => attendanceShiftCode(r)],
-        ["shift_1_start","เริ่มกะ กะที่ 1",r => workSegmentTimeV6118(r.shift_1_planned_start_at)],
-        ["shift_1_end","สิ้นสุดกะ กะที่ 1",r => workSegmentTimeV6118(r.shift_1_planned_end_at)],
-        ["shift_1_in","เวลาเข้า กะที่ 1",r => workSegmentTimeV6118(r.shift_1_actual_in_at)],
-        ["shift_1_out","เวลาออก กะที่ 1",r => workSegmentTimeV6118(r.shift_1_actual_out_at)],
-        ["shift_2_start","เริ่มงานลูกค้าช่วงดึก",r => workSegmentTimeV6118(r.shift_2_planned_start_at)],
-        ["shift_2_end","สิ้นสุดงานลูกค้าช่วงดึก",r => r.shift_2_planned_end_at ? workSegmentTimeV6118(r.shift_2_planned_end_at) : (r.shift_2_planned_start_at ? "ตามเวลาออก" : "-")],
-        ["shift_2_in","เวลาเข้างานลูกค้าช่วงดึก",r => workSegmentTimeV6118(r.shift_2_actual_in_at)],
-        ["shift_2_out","เวลาออกงานลูกค้าช่วงดึก",r => workSegmentTimeV6118(r.shift_2_actual_out_at)],
+        ["shift_1_start","กะที่ 1 • แผน เริ่มกะ",r => workSegmentTimeV6118(r.shift_1_planned_start_at)],
+        ["shift_1_end","กะที่ 1 • แผน สิ้นสุดกะ",r => workSegmentTimeV6118(r.shift_1_planned_end_at)],
+        ["shift_1_in","กะที่ 1 • ลงจริง เวลาเข้า",r => workSegmentTimeV6118(r.shift_1_actual_in_at)],
+        ["shift_1_out","กะที่ 1 • ลงจริง เวลาออก",r => workSegmentTimeV6118(r.shift_1_actual_out_at)],
+        ["shift_2_start","งานลูกค้าช่วงดึก • แผน เริ่ม",r => workSegmentTimeV6118(r.shift_2_planned_start_at)],
+        ["shift_2_end","งานลูกค้าช่วงดึก • แผน สิ้นสุด",r => r.shift_2_planned_end_at ? workSegmentTimeV6118(r.shift_2_planned_end_at) : (r.shift_2_planned_start_at ? "ตามเวลาออก" : "-")],
+        ["shift_2_in","งานลูกค้าช่วงดึก • ลงจริง เวลาเข้า",r => workSegmentTimeV6118(r.shift_2_actual_in_at)],
+        ["shift_2_out","งานลูกค้าช่วงดึก • ลงจริง เวลาออก",r => workSegmentTimeV6118(r.shift_2_actual_out_at)],
         ["display_status","สถานะ",r => attendanceDisplayLabel(r)],
-        ["net_work_minutes","ชั่วโมงสุทธิ",r => (Number(r.net_work_minutes || 0)/60).toFixed(2)],
-        ["regular_minutes","ชั่วโมงปกติ",r => (Number(r.regular_minutes || 0)/60).toFixed(2)],
+        ["net_work_minutes","ชม.สุทธิ",r => (Number(r.net_work_minutes || 0)/60).toFixed(2)],
+        ["regular_minutes","ชม.ปกติ",r => (Number(r.regular_minutes || 0)/60).toFixed(2)],
         ["overtime_minutes","OT",r => (Number(r.overtime_minutes || 0)/60).toFixed(2)],
         ["waiting_minutes","รอคอย",r => (Number(r.waiting_minutes || 0)/60).toFixed(2)],
         ["break_deducted_minutes","พัก",r => (Number(r.break_deducted_minutes || 0)/60).toFixed(2)],
         ["late_minutes","เข้าหลังเริ่มกะ(นาที)",r => Number(r.late_minutes || 0)],
         ["early_leave_minutes","กลับก่อน(นาที)",r => Number(r.early_leave_minutes || 0)],
-        ["absence_minutes","ขาดงานจากเวลาไม่ครบ(นาที)",r => attendanceAbsenceMinutes(r)],
+        ["absence_minutes","ขาดงาน(นาที)",r => attendanceAbsenceMinutes(r)],
         ["comp_off_balance","วันหยุดชดเชยคงเหลือ",r => r.comp_off_balance ?? 0]
       ].filter(definition =>
         attendanceIsColumnVisible(definition[0])
@@ -19079,7 +19094,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.53',
+    version:'6.14.55',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27898,7 +27913,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.53';
+  const VERSION='6.14.55';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

@@ -1,0 +1,54 @@
+AUDIT — TimeAttendance V6.14.55
+Absence Minutes + Attendance Grid / Excel Consistency
+=====================================================
+
+A. User case
+- Employee 7825787, 14/08/2026
+- Planned S135 start 19:30
+- Actual IN 20:10
+- Late = 40 minutes
+- Complete punch pair
+- Expected result after Backend V6.14.55 recalculation:
+  Status = ขาดงาน
+  ขาดงาน(นาที) = 40
+
+B. Canonical absence-minute rule
+- Missing IN / Missing OUT / Missing both on expected workday = full scheduled absence minutes (existing rule retained).
+- Complete punch + Late 1-29 = มาสาย, absence_minutes = 0.
+- Complete punch + Late >=30 = ขาดงาน, absence_minutes = actual late_minutes.
+- Early leave remains a separate metric.
+- Leave / natural OFF / HOL without working-shift override = 0 absence minutes.
+- Explicit working-shift override on OFF/HOL follows workday rule.
+
+C. Attendance Detail UI
+- Column renamed from "ขาดงานจากเวลาไม่ครบ(นาที)" to "ขาดงาน(นาที)".
+- Column toggle renamed from "ขาดงานจากเวลาไม่ครบ" to "ขาดงาน".
+- Frontend fallback uses late_minutes for complete-punch Late >=30, so stale zero backend values do not render as 0 while the refreshed API is loading.
+
+D. Attendance Excel export
+- Uses the same attendance rows as the grid.
+- Optional-column visibility remains identical to the grid selection.
+- Column order remains aligned with the grid.
+- Header labels aligned with the grid, including "ขาดงาน(นาที)".
+- Absence value uses the same attendanceAbsenceMinutes resolver as the grid.
+
+E. Backend V6.14.55
+- _ta_apply_absence_v664 persists actual late minutes into absence_minutes for complete-punch Late >=30.
+- Missing-punch full-shift rule remains delegated to _ta_absence_minutes_v664.
+- ta_get_attendance_detail_v664 returns canonical absence_minutes and LATE_30_PLUS resolved reason.
+- Existing late >=30 rows are backfilled by firing the canonical trigger.
+- Dashboard absent count remains incomplete punch OR Late >=30.
+
+F. Retained logic
+- V6.14.52 cross-midnight / Shift-2 punch ownership retained.
+- V6.14.49 Waiting / Worktime / OT rules retained.
+- V6.14.53 Schedule Work-Mode icon color rules retained.
+- Late 1-29 / Early Leave / Leave / Day-off / Night Sequence / 6h / 48h rules unchanged except for the requested absence-minute meaning.
+
+G. Static validation
+- node --check app.js: PASS
+- index.html parse: PASS
+- 404.html parse: PASS
+- duplicate HTML IDs: 0
+- old Attendance label removed from UI/export: PASS
+- ZIP integrity: PASS
