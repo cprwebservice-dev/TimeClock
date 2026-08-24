@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.57";
-document.documentElement.dataset.timeClockBuild = "6.14.57";
+window.__TIME_CLOCK_BUILD__ = "V6.14.58";
+document.documentElement.dataset.timeClockBuild = "6.14.58";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.57";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.57',
+  version: '6.14.58',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -6320,9 +6320,32 @@ window.tcIsDayShiftCode = value =>
       return { kind:'unknown', label:'กะทำงาน', tone:shift?.tone || 'day' };
     }
 
+    /* V6.14.58 — Special work-mode icon colors must follow System Settings
+       even when older shift-code/day-night CSS has higher/later specificity.
+       Use CSS-variable-backed inline !important declarations only for the
+       three special work modes; normal shift coloring remains unchanged. */
+    function schedulePersonSpecialToneStyleV61458(tone) {
+      const key = String(tone || '').trim().toLowerCase();
+      if (key === 'split') {
+        return 'background:var(--shift-split-soft,#eef0ff)!important;border-color:var(--shift-split-border,#bdc0f7)!important;color:var(--shift-split-text,#6366f1)!important;';
+      }
+      if (key === 'hour') {
+        return 'background:var(--shift-hour-soft,#e6f7f2)!important;border-color:var(--shift-hour-border,#a8ddd4)!important;color:var(--shift-hour-text,#0f9488)!important;';
+      }
+      return '';
+    }
+
+    function schedulePersonSpecialIconStyleV61458(tone) {
+      const key = String(tone || '').trim().toLowerCase();
+      if (key === 'split') return 'color:var(--shift-split-text,#6366f1)!important;';
+      if (key === 'hour') return 'color:var(--shift-hour-text,#0f9488)!important;';
+      return '';
+    }
+
     function schedulePersonIconHtmlV6136(row) {
       const meta = schedulePersonIconMetaV6136(row);
-      return `<span class="schedule-shift-icon-v6136 icon-${safe(meta.kind)}" aria-hidden="true">${schedulePersonIconSvgV6136(meta.kind)}</span>`;
+      const iconStyleV61458 = schedulePersonSpecialIconStyleV61458(meta.tone);
+      return `<span class="schedule-shift-icon-v6136 icon-${safe(meta.kind)}"${iconStyleV61458 ? ` style="${iconStyleV61458}"` : ''} aria-hidden="true">${schedulePersonIconSvgV6136(meta.kind)}</span>`;
     }
 
     function schedulePersonTooltipV6136(row, context = {}) {
@@ -9739,7 +9762,8 @@ window.tcIsDayShiftCode = value =>
           });
           const iconAriaV6136 = `${personShiftIconMetaV6136.label}${normalizedCode && normalizedCode !== '-' ? ` ${normalizedCode}` : ''}${shiftTimeLabel ? ` ${shiftTimeLabel}` : ''}`;
 
-          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${managerOwnEmployee?"manager-self-readonly":""}" ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
+          const personSpecialToneStyleV61458 = schedulePersonSpecialToneStyleV61458(personShiftIconMetaV6136.tone);
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${managerOwnEmployee?"manager-self-readonly":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
         }
 
         html += `</tr>`;
@@ -19122,7 +19146,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.57',
+    version:'6.14.58',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27941,7 +27965,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.57';
+  const VERSION='6.14.58';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

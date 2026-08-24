@@ -1,0 +1,32 @@
+AUDIT — TimeAttendance V6.14.58
+Special Work-Mode Icon Colors / System Settings Final Cascade
+=============================================================
+
+Problem confirmed
+- Person Schedule special icons could retain older shift/day CSS colors even though
+  System Settings exposes SPLIT and HOUR colors.
+- Existing V6.14.53 CSS variables were present, but the final rendered cell still
+  carried legacy shift visual classes. The new guard makes the special mode tone
+  the final presentation authority.
+
+Rules
+- NORMAL_LATE_CUSTOMER (กะปกติ + งานลูกค้าช่วงดึก) -> SPLIT color family
+- SPLIT_WAIT_NIGHT (กะเช้า + รอเข้ากะดึก) -> SPLIT color family
+- HOUR_BASED (กะนับชั่วโมง) -> HOUR color family
+- Uses --shift-split-* / --shift-hour-* generated from System Settings.
+- Background, border, icon stroke/text all follow those variables.
+- Light/Dark both supported.
+- Normal day/night/OFF/HOL/LV colors and all scheduling/attendance logic unchanged.
+- No SQL required.
+
+Implementation
+- Added CSS-variable-backed inline !important presentation guard for special tones.
+- Added final high-specificity CSS defense for special tone cells/icons.
+- Settings changes still update CSS variables live; existing grid colors update without
+  requiring a calculation/rebuild.
+
+Validation
+- node --check app.js: PASS
+- HTML parse: PASS
+- Duplicate HTML IDs: PASS
+- ZIP integrity: PASS

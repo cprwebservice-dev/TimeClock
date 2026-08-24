@@ -22131,3 +22131,43 @@ body.theme-dark #assignModal .assign-mode-card-v6120.mode-tone-off>span,
 .dark #assignModal .assign-mode-card-v6120.mode-tone-off>span{background:var(--shift-off-soft-strong)!important}
 body.theme-dark #assignModal .assign-mode-card-v6120.mode-tone-lv>span,
 .dark #assignModal .assign-mode-card-v6120.mode-tone-lv>span{background:var(--shift-lv-soft-strong)!important}
+
+
+/* ==========================================================================
+   V6.14.58 — Person Schedule special work-mode colors: System Settings wins
+   NORMAL_LATE_CUSTOMER / SPLIT_WAIT_NIGHT -> SPLIT color family
+   HOUR_BASED                              -> HOUR color family
+   Inline CSS-variable guards in app.js are the final cascade authority.
+   ========================================================================== */
+#page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split{
+  background:var(--shift-split-soft,#eef0ff)!important;
+  border-color:var(--shift-split-border,#bdc0f7)!important;
+  color:var(--shift-split-text,#6366f1)!important;
+}
+#page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-hour{
+  background:var(--shift-hour-soft,#e6f7f2)!important;
+  border-color:var(--shift-hour-border,#a8ddd4)!important;
+  color:var(--shift-hour-text,#0f9488)!important;
+}
+#page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split .schedule-shift-icon-v6136,
+#page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split .schedule-shift-icon-v6136 svg{
+  color:var(--shift-split-text,#6366f1)!important;
+  stroke:currentColor!important;
+}
+#page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-hour .schedule-shift-icon-v6136,
+#page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-hour .schedule-shift-icon-v6136 svg{
+  color:var(--shift-hour-text,#0f9488)!important;
+  stroke:currentColor!important;
+}
+body.theme-dark #page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split,
+.dark #page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-split{
+  background:var(--shift-split-soft-strong,rgba(99,102,241,.20))!important;
+  border-color:var(--shift-split-border,#bdc0f7)!important;
+  color:var(--shift-split-text,#6366f1)!important;
+}
+body.theme-dark #page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-hour,
+.dark #page-schedule #schedulePersonWorkspace .schedule-icon-only-v6136.icon-tone-hour{
+  background:var(--shift-hour-soft-strong,rgba(15,148,136,.20))!important;
+  border-color:var(--shift-hour-border,#a8ddd4)!important;
+  color:var(--shift-hour-text,#0f9488)!important;
+}
