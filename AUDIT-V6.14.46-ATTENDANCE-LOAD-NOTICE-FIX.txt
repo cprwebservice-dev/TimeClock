@@ -1,0 +1,15 @@
+AUDIT — TimeAttendance V6.14.46
+Attendance Load Notice ReferenceError Fix
+
+Scope
+- Fixes browser console error: renderAttendanceDataNotice is not defined.
+- Retains V6.14.45 Generated Shift Cache + role-aware RPC 400 fixes.
+- No scheduling, Night Sequence, Day-off, attendance calculation, or backend SQL logic changed.
+
+[PASS] timeclock:attendance-loaded listener now points to a defined renderAttendanceDataNotice(detail) function.
+[PASS] Normal attendance loads stay silent; only the existing 5,000-row cap produces a warning toast.
+[PASS] attendanceStatusText fallback no longer self-recurses if the base label helper is unavailable.
+[PASS] index.html and 404.html use app.js/app.css cache key V6.14.46-20260824e.
+[PASS] Generated Shift cache fix from V6.14.45 remains in app.js.
+[PASS] HR-only ta_get_work_mode_admin_v6120 role routing from V6.14.45 remains in app.js.
+[PASS] No SQL migration required.

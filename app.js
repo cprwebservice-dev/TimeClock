@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.45";
-document.documentElement.dataset.timeClockBuild = "6.14.45";
+window.__TIME_CLOCK_BUILD__ = "V6.14.46";
+document.documentElement.dataset.timeClockBuild = "6.14.46";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.45";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.45',
+  version: '6.14.46',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -14878,8 +14878,24 @@ ${skippedSummary(compatibility.skipped)}
       || "NORMAL";
   }
   function attendanceStatusText(r){
+    // V6.14.46: never recurse when the base attendance label helper is absent.
+    // Keep the displayed label aligned with the already-resolved enterprise status.
     return app()?.attendanceDisplayLabel?.(r)
-      || attendanceStatusText(r);
+      || statusLabel(attendanceStatus(r));
+  }
+
+  function renderAttendanceDataNotice(detail={}){
+    // V6.14.46: the attendance loader dispatches this event after a successful load.
+    // Older builds registered the listener but omitted this renderer, causing an
+    // Uncaught ReferenceError on every attendance load.  Keep normal loads silent;
+    // only warn when the existing 5,000-row safety cap was reached.
+    const count=Number(detail?.count||0);
+    if(Boolean(detail?.reachedLimit)){
+      app()?.toast?.(
+        `โหลดข้อมูล ${count.toLocaleString("th-TH")} รายการ และถึงขีดจำกัด 5,000 รายการ กรุณาลดช่วงวันที่หรือเลือกพนักงานให้แคบลง`,
+        "warning"
+      );
+    }
   }
   function attendanceAbsence(r){
     return Number(
@@ -18924,7 +18940,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.45',
+    version:'6.14.46',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27751,7 +27767,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.45';
+  const VERSION='6.14.46';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
