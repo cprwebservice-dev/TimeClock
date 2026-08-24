@@ -1,0 +1,13 @@
+AUDIT — TimeAttendance V6.14.45
+Generated Shift Cache + Work Mode Admin RPC 400 Fix
+
+[PASS] SPLIT_WAIT_NIGHT resolver return is cached before selected Shift Master validation.
+[PASS] SW08301500-style generated shifts remain backend-created; frontend does not invent a database row.
+[PASS] HOUR_BASED H5/H6 generated shifts use the same cache hydration.
+[PASS] Generated paired day-off has a scoped cache fallback only for DYNAMIC_OFF.
+[PASS] Unknown ordinary shift codes still fail Shift Master validation.
+[PASS] Work Template access calls ta_get_work_mode_admin_v6120 only when profile role is HR_ADMIN.
+[PASS] Non-HR Work Template access goes directly to employee-scope permission resolution, avoiding expected HTTP 400/HR_ADMIN_REQUIRED noise.
+[PASS] Scheduling Rules admin panel remains HR_ADMIN-gated.
+[PASS] Night Sequence / Minimum Rest / Day-off quota / Work Pattern / Permission logic unchanged.
+[PASS] No SQL migration required.

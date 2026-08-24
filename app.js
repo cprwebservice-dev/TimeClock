@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.44";
-document.documentElement.dataset.timeClockBuild = "6.14.44";
+window.__TIME_CLOCK_BUILD__ = "V6.14.45";
+document.documentElement.dataset.timeClockBuild = "6.14.45";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.44";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.44',
+  version: '6.14.45',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -17780,28 +17780,30 @@ ${skippedSummary(compatibility.skipped)}
     wp.templateAccessLoaded=false;
     wp.templateAccessSource='';
 
-    // HR Admin can read the canonical Work Mode config directly.  This is the
-    // same source used by the Scheduling Rules setup panel, so the Template
-    // cards immediately follow เปิด/ปิด + Department Scope.
-    try{
-      const adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];
-      if(Array.isArray(adminRows)&&adminRows.length){
-        wp.templateAccessRows=adminRows
-          .filter(r=>WORK_TEMPLATE_MODE_CODES_V61438.includes(String(r?.mode_code||'').toUpperCase()))
-          .map(r=>({
-            ...r,
-            mode_code:String(r?.mode_code||'').toUpperCase(),
-            is_allowed:r?.is_active!==false,
-            access_source:'ADMIN_CONFIG'
-          }));
-        wp.templateAccessLoaded=true;
-        wp.templateAccessSource='ADMIN_CONFIG';
-        return wp.templateAccessRows;
+    // V6.14.45: ta_get_work_mode_admin_v6120 is HR-only.  V6.14.38 called it
+    // optimistically for every role and then caught HR_ADMIN_REQUIRED, which
+    // still produced an HTTP 400 line in DevTools.  Gate the RPC before making
+    // the request; non-HR users go directly to the employee-scope resolver.
+    const profileRoleV61445=String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'').trim().toUpperCase();
+    if(profileRoleV61445==='HR_ADMIN'){
+      try{
+        const adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];
+        if(Array.isArray(adminRows)&&adminRows.length){
+          wp.templateAccessRows=adminRows
+            .filter(r=>WORK_TEMPLATE_MODE_CODES_V61438.includes(String(r?.mode_code||'').toUpperCase()))
+            .map(r=>({
+              ...r,
+              mode_code:String(r?.mode_code||'').toUpperCase(),
+              is_allowed:r?.is_active!==false,
+              access_source:'ADMIN_CONFIG'
+            }));
+          wp.templateAccessLoaded=true;
+          wp.templateAccessSource='ADMIN_CONFIG';
+          return wp.templateAccessRows;
+        }
+      }catch(e){
+        console.warn('Work Template admin config V6.14.45:',e?.message||e);
       }
-    }catch(_){
-      // Non-HR roles normally cannot read the admin config.  Resolve the same
-      // permission through representative employees in the departments visible
-      // to the current user instead.
     }
 
     const representatives=new Map();
@@ -17926,7 +17928,7 @@ ${skippedSummary(compatibility.skipped)}
     const pattern6=wp.patterns.find(r=>String(r?.pattern_code||'').toUpperCase()==='TECH_6D');
     const hours5=hours(pattern5?.scheduled_minutes_including_break||570);
     const hours6=hours(pattern6?.scheduled_minutes_including_break||540);
-    // V6.14.44: Work Template card must show the CURRENT Shift Master business codes,
+    // V6.14.45: Work Template card must show the CURRENT Shift Master business codes,
     // not legacy/internal template codes as if they were shift codes.
     const shift5Day=workTemplateShiftDetailV61439('STD','08:30','18:00');
     const shift5Night=workTemplateShiftDetailV61439('S134','19:30','05:00');
@@ -18922,7 +18924,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.44',
+    version:'6.14.45',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27749,7 +27751,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.44';
+  const VERSION='6.14.45';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27780,6 +27782,35 @@ ${names}${extra}
   function patternBreak(){const configured=Number(st.current?.patternRule?.break_minutes||st.current?.row?.break_minutes||0);return configured>=0&&configured!==0?configured:60;}
   function defaultTemplate(pattern){return pattern==='TECH_5D'?'ST5':'ST6';}
   function shiftMaster(code){return (app()?.state?.filters?.shifts||[]).find(s=>String(s.shift_code||'').toUpperCase()===String(code||'').toUpperCase());}
+  // V6.14.45: generated shifts are inserted by the Backend resolver before it
+  // returns, but the browser Shift Master cache was loaded earlier.  Hydrate the
+  // returned row locally so the same save flow can validate it immediately.
+  function rememberGeneratedShiftV61445(resolved,{patternCode,shiftName,isWorkday=true,breakMinutes=0}={}){
+    const code=String(resolved?.shift_code||'').trim().toUpperCase();
+    if(!code)return null;
+    const start=fmtTime(resolved?.start_time);
+    const end=fmtTime(resolved?.end_time);
+    const startMin=minsOf(start),endMin=minsOf(end);
+    const filters=app()?.state?.filters;
+    if(!filters)return null;
+    if(!Array.isArray(filters.shifts))filters.shifts=[];
+    const existing=filters.shifts.find(x=>String(x?.shift_code||'').trim().toUpperCase()===code);
+    const row={
+      ...(existing||{}),
+      shift_code:code,
+      shift_name:String(shiftName||resolved?.shift_name||existing?.shift_name||code),
+      start_time:start||existing?.start_time||null,
+      end_time:end||existing?.end_time||null,
+      is_night_shift:(startMin!=null&&endMin!=null)?endMin<=startMin:Boolean(existing?.is_night_shift),
+      is_workday:Boolean(isWorkday),
+      break_minutes:Math.max(0,Number(breakMinutes??existing?.break_minutes??0)||0),
+      is_active:true,
+      note:'[SYSTEM_GENERATED_V6120]',
+      applicable_pattern_codes:patternCode?[String(patternCode).trim().toUpperCase()]:(existing?.applicable_pattern_codes||[])
+    };
+    if(existing)Object.assign(existing,row);else filters.shifts.push(row);
+    return existing||row;
+  }
   function rowCode(r){return String(r?.assigned_shift_code||r?.effective_shift_code||r?.auto_shift_code||r?.shift_code||'').toUpperCase();}
   function rowDepartment(r){return String(r?.department||r?.unit_name||r?.org_unit||'').trim();}
   function runtimeShiftRule(code){return (st.runtimeShiftRules||[]).find(r=>String(r.shift_code||'').toUpperCase()===String(code||'').toUpperCase())||null;}
@@ -28566,6 +28597,13 @@ ${names}${extra}
       if(!p.baseShiftCode||!p.firstEnd||!p.secondStart||!p.end){app()?.toast?.('กรุณาระบุเวลาออกช่วงแรก เวลาเข้าช่วงดึก และเวลาคาดว่างานเสร็จให้ครบ','error');return {allowed:false};}
       if(spanMinutes(p.start,p.firstEnd)<=0){app()?.toast?.('เวลาออกช่วงแรกไม่ถูกต้อง','error');return {allowed:false};}
       const resolved=await rpc('ta_resolve_split_wait_shift_v6120',{p_pattern_code:c.patternCode,p_base_shift_code:p.baseShiftCode,p_first_segment_end:p.firstEnd});
+      const baseMasterV61445=shiftMaster(p.baseShiftCode);
+      rememberGeneratedShiftV61445(resolved,{
+        patternCode:c.patternCode,
+        shiftName:`กะช่วงแรก ${resolved.start_time||p.start||''}–${resolved.end_time||p.firstEnd||''}`,
+        isWorkday:true,
+        breakMinutes:Number(resolved?.planned_minutes||0)<300?0:Number(baseMasterV61445?.break_minutes??60)
+      });
       ensureShiftOption(resolved.shift_code,`${modeDefs[mode].label} • ${resolved.start_time}-${resolved.end_time}`);$('assignShiftCode').value=resolved.shift_code;
       if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value==='SPLIT_FLEX'))$('assignWorkTemplate').value='SPLIT_FLEX';
       $('assignCustomerStart').value=p.secondStart;$('assignCustomerEndMode').value='FIXED';$('assignCustomerEnd').value=p.end;
@@ -28573,6 +28611,10 @@ ${names}${extra}
     }else if(mode==='HOUR_BASED'){
       if(!p.start){app()?.toast?.('กรุณาระบุเวลาเริ่มกะนับชั่วโมง','error');return {allowed:false};}
       const resolved=await rpc('ta_resolve_hour_based_shift_v6120',{p_pattern_code:c.patternCode,p_start_time:p.start,p_scheduled_minutes:patternTotal(c.patternCode),p_break_minutes:patternBreak()});
+      rememberGeneratedShiftV61445(resolved,{
+        patternCode:c.patternCode,shiftName:`กะนับชั่วโมง ${resolved.start_time||p.start||''}–${resolved.end_time||''}`,
+        isWorkday:true,breakMinutes:patternBreak()
+      });
       ensureShiftOption(resolved.shift_code,`${modeDefs[mode].label} • ${resolved.start_time}-${resolved.end_time}`);$('assignShiftCode').value=resolved.shift_code;c.generatedShiftCode=resolved.shift_code;c.customEnd=resolved.end_time;
       const t=defaultTemplate(c.patternCode);if([...($('assignWorkTemplate')?.options||[])].some(o=>o.value===t))$('assignWorkTemplate').value=t;
     }else if(mode==='DYNAMIC_OFF'){
@@ -28586,7 +28628,15 @@ ${names}${extra}
     }
     const selectedCode=String($('assignShiftCode')?.value||'').toUpperCase();
     if(!selectedCode){app()?.toast?.(`ไม่มีกะทำงานที่เปิดใช้สำหรับหน่วยงาน ${rowDepartment(c.row)||'-'}`,'error');return {allowed:false};}
-    const selectedMaster=shiftMaster(selectedCode)||(selectedCode==='LV'?{shift_code:'LV',shift_name:'ลา',is_workday:false,is_active:true}:null);
+    let selectedMaster=shiftMaster(selectedCode)||(selectedCode==='LV'?{shift_code:'LV',shift_name:'ลา',is_workday:false,is_active:true}:null);
+    // Generated paired day-off rows can have the same one-request cache gap as
+    // SW/H5/H6.  Use the resolver payload only for generated/off proposals;
+    // ordinary unknown Shift Master codes must still fail loudly.
+    if(!selectedMaster&&mode==='DYNAMIC_OFF'&&p?.basis&&selectedCode){
+      selectedMaster=rememberGeneratedShiftV61445({shift_code:selectedCode,start_time:p.basis.start,end_time:p.basis.end},{
+        patternCode:c.patternCode,shiftName:p.basis.offShiftName||`วันหยุดตามกะ ${selectedCode}`,isWorkday:false,breakMinutes:0
+      });
+    }
     if(!selectedMaster){app()?.toast?.(`ไม่พบรหัสกะ ${selectedCode} ใน Shift Master กรุณารีเฟรชตั้งค่ากะทำงาน`,'error');return {allowed:false};}
     if(!p.off&&selectedMaster.is_workday===false){app()?.toast?.(`รหัส ${selectedCode} เป็นกะวันหยุด จึงไม่สามารถเลือกในช่อง “กะทำงาน” ได้ กรุณาเลือกประเภท “วันหยุดตามกะล่าสุด”`,'error');return {allowed:false};}
     if(!p.off&&selectedMaster.is_workday!==false&&!shiftAllowedForDepartment(selectedCode,rowDepartment(c.row))){app()?.toast?.(`กะ ${selectedCode} ไม่ได้เปิดใช้สำหรับหน่วยงาน ${rowDepartment(c.row)||'-'}`,'error');return {allowed:false};}
