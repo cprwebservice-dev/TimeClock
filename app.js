@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.46";
-document.documentElement.dataset.timeClockBuild = "6.14.46";
+window.__TIME_CLOCK_BUILD__ = "V6.14.47";
+document.documentElement.dataset.timeClockBuild = "6.14.47";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.46";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.46',
+  version: '6.14.47',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -1480,6 +1480,18 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
+    // V6.14.47 — Canonical non-working shift resolver.
+    // Paired OFF codes keep start/end times for schedule context, but those times
+    // must never turn a day-off into a working shift in Attendance UI/statistics.
+    function scheduleIsNonWorkingShiftV61447(codeValue, shiftMaster = null) {
+      const code = window.tcShiftCode(codeValue || '');
+      if (!code) return false;
+      if (['OFF','HOL','LV','OSTD','OS043','OS134','OS135'].includes(code)) return true;
+      if (/^OH[56]\d*/.test(code)) return true;
+      if (shiftMaster?.is_workday === false) return true;
+      return false;
+    }
+
     function attendanceHasWorkingShiftOverrideV61155(r) {
       if (!r) return false;
 
@@ -1494,7 +1506,7 @@ window.tcIsDayShiftCode = value =>
 
       if (
         assignedCode
-        && ['OFF','HOL','LV'].includes(assignedCode)
+        && scheduleIsNonWorkingShiftV61447(assignedCode)
       ) {
         return false;
       }
@@ -1512,7 +1524,12 @@ window.tcIsDayShiftCode = value =>
         || ''
       ).trim().toUpperCase();
 
-      if (!code || ['OFF','HOL','LV'].includes(code)) {
+      if (!code || scheduleIsNonWorkingShiftV61447(
+        code,
+        state.filters.shifts.find(
+          shift => window.tcShiftCode(shift.shift_code) === window.tcShiftCode(code)
+        ) || null
+      ) || shiftMeta?.isWorking === false) {
         return false;
       }
 
@@ -1566,10 +1583,24 @@ window.tcIsDayShiftCode = value =>
       );
 
       const workingShiftOverride = attendanceHasWorkingShiftOverrideV61155(row);
+      const attendanceShiftCodeV61447 = String(
+        row?.assigned_shift_code
+        || row?.effective_shift_code
+        || row?.shift_code
+        || ''
+      ).trim();
+      const attendanceShiftMasterV61447 = state.filters.shifts.find(
+        shift => window.tcShiftCode(shift.shift_code) === window.tcShiftCode(attendanceShiftCodeV61447)
+      ) || null;
+      const explicitDayOffShiftV61447 = scheduleIsNonWorkingShiftV61447(
+        attendanceShiftCodeV61447,
+        attendanceShiftMasterV61447
+      );
       const naturalDayOff = Boolean(
         !workingShiftOverride
         && (
-          row?.is_weekly_off
+          explicitDayOffShiftV61447
+          || row?.is_weekly_off
           || row?.is_public_holiday
           || ['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(dayType)
         )
@@ -6095,11 +6126,12 @@ window.tcIsDayShiftCode = value =>
               ? `${shiftStart}–${shiftEnd}`
               : (code || '-');
 
+      const nonWorkingShiftV61447 = scheduleIsNonWorkingShiftV61447(code, shiftMaster);
       const tone = code === 'HOL'
         ? 'holiday'
         : code === 'LV'
           ? 'leave'
-          : code === 'OFF' || shiftMaster?.is_workday === false
+          : nonWorkingShiftV61447
             ? 'off'
             : shiftMaster?.is_night_shift === true
               || window.tcIsNightShiftCode(code)
@@ -6110,7 +6142,9 @@ window.tcIsDayShiftCode = value =>
               : 'day';
 
       if (schedulingRuleDisplayV6120) {
-        const ruleTone = schedulingRuleDisplayV6120.tone || tone;
+        const ruleTone = nonWorkingShiftV61447
+          ? 'off'
+          : (schedulingRuleDisplayV6120.tone || tone);
         return {
           code,
           label: schedulingRuleDisplayV6120.label || label,
@@ -14878,14 +14912,14 @@ ${skippedSummary(compatibility.skipped)}
       || "NORMAL";
   }
   function attendanceStatusText(r){
-    // V6.14.46: never recurse when the base attendance label helper is absent.
+    // V6.14.47: never recurse when the base attendance label helper is absent.
     // Keep the displayed label aligned with the already-resolved enterprise status.
     return app()?.attendanceDisplayLabel?.(r)
       || statusLabel(attendanceStatus(r));
   }
 
   function renderAttendanceDataNotice(detail={}){
-    // V6.14.46: the attendance loader dispatches this event after a successful load.
+    // V6.14.47: the attendance loader dispatches this event after a successful load.
     // Older builds registered the listener but omitted this renderer, causing an
     // Uncaught ReferenceError on every attendance load.  Keep normal loads silent;
     // only warn when the existing 5,000-row safety cap was reached.
@@ -18940,7 +18974,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.46',
+    version:'6.14.47',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27767,7 +27801,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.46';
+  const VERSION='6.14.47';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

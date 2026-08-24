@@ -1,0 +1,30 @@
+AUDIT — TimeAttendance V6.14.47
+Off-day Punch Ownership / Cross-midnight Attendance Consistency
+
+ROOT CAUSE
+[PASS] Legacy rebuild_attendance_workday used an any-mode IN fallback within shift start -6h / +4h.
+[PASS] For OS043 08:30, the IN window begins 02:30, allowing a previous overnight OUT at 02:30 to be reused as the next day-off IN.
+[PASS] Frontend attendanceHasWorkingShiftOverride treated a paired OFF shift with start/end times as a working shift.
+
+BACKEND FIX
+[PASS] Expected workday state is resolved before punch fallback.
+[PASS] Any-mode IN fallback is allowed only when expected_day=1.
+[PASS] Any-mode OUT fallback is allowed only when expected_day=1.
+[PASS] Non-working days use explicit IN/OUT modes only.
+[PASS] Historical rows are cleaned only when current day is non-working and its first_in exactly equals previous work_date last_out/source timestamp.
+[PASS] Raw time_logs are not changed.
+[PASS] Match version = SHIFT_WINDOW_V61447_OFFDAY_STRICT.
+
+FRONTEND FIX
+[PASS] OSTD / OS043 / OS134 / OS135 are canonical non-working shift codes even if Shift Master cache is unavailable.
+[PASS] Generated OH5*/OH6* day-off codes are non-working.
+[PASS] shift_master.is_workday=false is authoritative before start/end times.
+[PASS] Paired OFF cannot become plannedWork merely because it carries shift times.
+[PASS] Shared attendance policy therefore applies consistently to Monthly Personal, Attendance Detail, Team Daily and schedule-derived status displays.
+
+UNCHANGED
+[PASS] Late 1–29 / Absent >=30 rules unchanged.
+[PASS] Missing punch rules for expected workdays unchanged.
+[PASS] Night Sequence / 6h rest / 48h warning unchanged.
+[PASS] Day-off quota / Work Pattern / permission paths unchanged.
+[PASS] Time Certification paths unchanged.
