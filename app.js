@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.49";
-document.documentElement.dataset.timeClockBuild = "6.14.49";
+window.__TIME_CLOCK_BUILD__ = "V6.14.52";
+document.documentElement.dataset.timeClockBuild = "6.14.52";
 
 
 /* ===== js/config.js ===== */
@@ -13,12 +13,12 @@ document.documentElement.dataset.timeClockBuild = "6.14.49";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.49',
+  version: '6.14.52',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
 
-/* ===== V6.14.49 Calendar-Date Safety (retains V61448 utility name) =====
+/* ===== V6.14.52 Calendar-Date Safety (retains V61448 utility name) =====
    Business dates are calendar dates, not UTC timestamps. Never derive YYYY-MM-DD
    from local-midnight Date objects with toISOString() in Thailand (+07).
 */
@@ -2086,6 +2086,7 @@ window.tcIsDayShiftCode = value =>
         }
       );
 
+      sanitizeCrossMidnightPunchOwnershipV61452(rows);
       return rows;
     }
 
@@ -6438,6 +6439,77 @@ window.tcIsDayShiftCode = value =>
       return formatTime(value);
     }
 
+
+    // V6.14.52 defensive UI ownership guard.
+    // Backend is authoritative; this prevents an older/stale punch-meta payload from
+    // visually reusing the previous work-date terminal OUT as the next date Shift-1 IN.
+    function attendancePunchTimestampKeyV61452(value, fallbackDate, sourceDate = '') {
+      if (value == null || value === '') return '';
+      const raw = String(value).trim();
+      const full = raw.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/);
+      if (full) return `${full[1]}T${full[2]}:${full[3]}`;
+      const time = raw.match(/^(\d{1,2}):(\d{2})/);
+      if (!time) return '';
+      const date = String(sourceDate || fallbackDate || '').slice(0,10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return '';
+      return `${date}T${String(time[1]).padStart(2,'0')}:${time[2]}`;
+    }
+
+    function sanitizeCrossMidnightPunchOwnershipV61452(rows) {
+      if (!Array.isArray(rows) || rows.length < 2) return rows;
+      const groups = new Map();
+      rows.forEach(row => {
+        const emp = String(row?.emp_code || '').trim();
+        const date = String(row?.work_date || '').slice(0,10);
+        if (!emp || !date) return;
+        if (!groups.has(emp)) groups.set(emp,new Map());
+        groups.get(emp).set(date,row);
+      });
+      groups.forEach(byDate => {
+        [...byDate.keys()].sort().forEach(date => {
+          const row = byDate.get(date);
+          const prevDate = window.TimeClockCalendarV61448.addDays(date,-1);
+          const prev = byDate.get(prevDate);
+          if (!prev || !row) return;
+
+          const prevCandidates = [
+            ['shift_2_actual_out_at', prev?.source_out_date],
+            ['actual_out_shift_2_at', prev?.source_out_date],
+            ['actual_out_2_at', prev?.source_out_date],
+            ['shift_1_actual_out_at', prev?.source_out_date],
+            ['actual_out_at', prev?.source_out_date],
+            ['last_out', prev?.source_out_date]
+          ];
+          let previousTerminal = '';
+          for (const [key,sourceDate] of prevCandidates) {
+            const candidate = attendancePunchTimestampKeyV61452(prev?.[key],prevDate,sourceDate);
+            if (candidate && candidate.slice(0,10) === date) {
+              previousTerminal = candidate;
+              break;
+            }
+          }
+          if (!previousTerminal) return;
+
+          const currentKeys = [
+            'shift_1_actual_in_at','actual_in_shift_1_at','actual_in_1_at','actual_in_at','first_in'
+          ];
+          let removed = false;
+          currentKeys.forEach(key => {
+            const current = attendancePunchTimestampKeyV61452(row?.[key],date,row?.source_in_date);
+            if (current && current === previousTerminal) {
+              row[key] = null;
+              removed = true;
+            }
+          });
+          if (removed) {
+            row.cross_midnight_ui_guard_v61452 = true;
+            row.cross_midnight_removed_in_at_v61452 = previousTerminal;
+          }
+        });
+      });
+      return rows;
+    }
+
     function scheduleTeamSegmentPlannedRange(row, segmentNo) {
       const startRaw = segmentNo === 2
         ? (row?.shift_2_planned_start_at || row?.customer_window_start)
@@ -8204,7 +8276,10 @@ window.tcIsDayShiftCode = value =>
           });
         }
 
-        const attendanceRows = [...byDate.values()]
+        const mergedAttendanceRowsV61452 = [...byDate.values()]
+          .sort((a,b) => String(a.work_date).localeCompare(String(b.work_date)));
+        sanitizeCrossMidnightPunchOwnershipV61452(mergedAttendanceRowsV61452);
+        const attendanceRows = mergedAttendanceRowsV61452
           .map(row => normalizeAttendanceStatusFromPunchesV61120(row))
           .sort((a,b) => String(a.work_date).localeCompare(String(b.work_date)));
 
@@ -9150,6 +9225,7 @@ window.tcIsDayShiftCode = value =>
             byCertification.get(rowKey)||{}
           );
         });
+        sanitizeCrossMidnightPunchOwnershipV61452(scheduleTimeAttendanceStateV6146.rows);
         scheduleTimeAttendanceStateV6146.loadedAt = Date.now();
       } catch (error) {
         scheduleTimeAttendanceStateV6146.error = error;
@@ -19003,7 +19079,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.49',
+    version:'6.14.52',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27822,7 +27898,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.49';
+  const VERSION='6.14.52';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
