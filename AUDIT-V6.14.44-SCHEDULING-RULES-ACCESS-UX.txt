@@ -1,0 +1,37 @@
+AUDIT — TimeAttendance V6.14.44
+Scheduling Rules / Work Mode Access UX
+
+Scope
+- Updated only: รูปแบบการจัดกะและกฎการทำงาน > การตั้งค่า Work Mode / หน่วยงาน
+- Scheduling business rules, shift assignment, Night Sequence, Day-off quota calculation and backend RPC contracts unchanged.
+- No SQL migration required.
+
+[PASS] Main Scheduling Rules panel
+- Responsive auto-fit cards replace the dense 5-column layout.
+- Overview shows number of enabled Work Modes and number limited by department.
+- Each card shows a clear scope summary: all departments or count of granted departments.
+- Full-width "จัดการสิทธิ์" action improves discoverability.
+
+[PASS] Work Mode configuration modal
+- Wider responsive modal and clearer active/scope sections.
+- Search field: "ค้นหาชื่อหน่วยงาน...".
+- Department filters: ทั้งหมด / ให้สิทธิ์แล้ว / ยังไม่ให้สิทธิ์.
+- Selected count and visible-result count update live.
+- "เลือกทั้งหมดที่แสดง" and "ยกเลิกที่แสดง" operate on current search/filter results.
+- Selected state is preserved when changing search/filter via an in-memory draft Set.
+- Save uses the draft set rather than only currently-rendered checkboxes.
+
+[PASS] Department source handling
+- Existing filter cache remains the first source.
+- Existing V6.10.22 / V6.10.26 RPC fallbacks remain.
+- Already-granted scope values are merged into the selectable list so a granted department is not hidden if absent from current filter cache.
+
+[PASS] Responsive + Dark Mode
+- 2-column/1-column department list by viewport.
+- Search/filter/action toolbar stacks on small screens.
+- Dark mode styles added for the new controls.
+
+[PASS] Static validation
+- node --check app.js
+- index.html / 404.html parsed successfully
+- Build version V6.14.44
