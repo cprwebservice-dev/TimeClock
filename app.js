@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.52";
-document.documentElement.dataset.timeClockBuild = "6.14.52";
+window.__TIME_CLOCK_BUILD__ = "V6.14.53";
+document.documentElement.dataset.timeClockBuild = "6.14.53";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.52";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.52',
+  version: '6.14.53',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -19079,7 +19079,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.52',
+    version:'6.14.53',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27898,7 +27898,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.52';
+  const VERSION='6.14.53';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27911,6 +27911,17 @@ ${names}${extra}
     DYNAMIC_OFF:{label:'วันหยุดตามกะล่าสุด',short:'หยุด',icon:'⌂',desc:'อ้างอิงกะทำงานล่าสุดย้อนหลังข้ามเดือน • หากไม่พบใช้กะตั้งต้น'}
     ,LEAVE:{label:'ลา',short:'ลา',icon:'▤',desc:'กำหนดวันลาในตารางกะ • ใช้รหัส LV และไม่หักโควต้าวันหยุด'}
   };
+  // V6.14.53 — Work-mode icons in Schedule must use the same color families
+  // as System Settings. Both split-style modes share the SPLIT setting; Hour
+  // Based uses HOUR. Normal/Off/Leave are mapped too so the popup is consistent.
+  function workModeToneV61453(modeCode){
+    const code=String(modeCode||'').trim().toUpperCase();
+    if(['NORMAL_LATE_CUSTOMER','SPLIT_WAIT_NIGHT'].includes(code))return 'split';
+    if(code==='HOUR_BASED')return 'hour';
+    if(code==='DYNAMIC_OFF')return 'off';
+    if(code==='LEAVE')return 'lv';
+    return 'day';
+  }
   const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:'',serverGuardV6141:null,serverGuardKeyV61432:'',scopeDraft:new Set(),scopeSearch:'',scopeFilter:'ALL'};
   async function rpc(name,args={}){
     const client=app()?.state?.client;
@@ -28443,7 +28454,8 @@ ${names}${extra}
       const blockedText=quotaBlocked
         ? `วันหยุดคงเหลือ ${Number(quotaState.balance||0).toLocaleString('th-TH')} วัน • ไม่สามารถกำหนดวันหยุดเพิ่มได้`
         : (x.scope_label||'หน่วยงานนี้ยังไม่เปิดใช้');
-      return `<button type="button" class="assign-mode-card-v6120 ${st.current?.mode===code?'active':''} ${quotaBlocked?'quota-exhausted-v6142':''}" data-work-mode-v6120="${esc(code)}" ${allowed?'':'disabled'} title="${esc(allowed?d.desc:blockedText)}"><span>${esc(d.icon)}</span><div><strong>${esc(d.label)}</strong><small>${esc(allowed?d.desc:blockedText)}</small></div>${allowed?'<i>เลือก</i>':quotaBlocked?'<i>สิทธิ์หมด</i>':'<i>ปิดใช้</i>'}</button>`;
+      const toneV61453=workModeToneV61453(code);
+      return `<button type="button" class="assign-mode-card-v6120 mode-tone-${esc(toneV61453)} ${st.current?.mode===code?'active':''} ${quotaBlocked?'quota-exhausted-v6142':''}" data-work-mode-v6120="${esc(code)}" ${allowed?'':'disabled'} title="${esc(allowed?d.desc:blockedText)}"><span>${esc(d.icon)}</span><div><strong>${esc(d.label)}</strong><small>${esc(allowed?d.desc:blockedText)}</small></div>${allowed?'<i>เลือก</i>':quotaBlocked?'<i>สิทธิ์หมด</i>':'<i>ปิดใช้</i>'}</button>`;
     }).join('');
   }
   function populateWorkingShiftOptions(splitOnly=false){
@@ -29340,7 +29352,8 @@ ${names}${extra}
       const allScope=String(r.scope_mode||'ALL').toUpperCase()==='ALL';
       const scopeTitle=allScope?'ทุกหน่วยงาน':selected.length?`${selected.length.toLocaleString('th-TH')} หน่วยงานที่ให้สิทธิ์`:'ยังไม่ได้เลือกหน่วยงาน';
       const scopePreview=allScope?'ผู้ใช้ที่มีสิทธิ์ในระบบสามารถใช้งานได้':selected.length?`${selected.slice(0,3).join(' • ')}${selected.length>3?` • +${selected.length-3}`:''}`:'กรุณาเลือกหน่วยงานก่อนใช้งาน';
-      return `<article class="work-mode-admin-card-v6120 ${r.is_active!==false?'active':'inactive'}">
+      const toneV61453=workModeToneV61453(code);
+      return `<article class="work-mode-admin-card-v6120 mode-tone-${esc(toneV61453)} ${r.is_active!==false?'active':'inactive'}">
         <div class="work-mode-admin-card-head-v6120"><span>${esc(d.icon||'•')}</span><em>${r.is_active!==false?'เปิดใช้':'ปิดใช้'}</em></div>
         <h4>${esc(r.mode_name||d.label||code)}</h4><p>${esc(r.description||d.desc||'')}</p>
         <div class="scope-chip-v6120 ${allScope?'all':'limited'}"><small>${allScope?'ขอบเขต':'สิทธิ์หน่วยงาน'}</small><strong>${esc(scopeTitle)}</strong><span>${esc(scopePreview)}</span></div>

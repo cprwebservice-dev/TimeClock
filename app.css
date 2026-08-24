@@ -22057,3 +22057,77 @@ body.theme-dark .work-mode-dept-row-v61444.selected em,.dark .work-mode-dept-row
 .assignment-customer-calc-v61449.hidden{display:none!important;}
 .hour-end-preview-v6120 strong{display:block;}
 .hour-end-preview-v6120 small{display:block;margin-top:4px;line-height:1.45;opacity:.78;}
+
+
+/* ========================================================================== */
+/* V6.14.53 — Schedule Work-Mode Icon Colors follow System Settings           */
+/*                                                                            */
+/* NORMAL_LATE_CUSTOMER + SPLIT_WAIT_NIGHT -> --shift-split-*                 */
+/* HOUR_BASED                              -> --shift-hour-*                   */
+/* Normal / Off / Leave are aligned as well for one consistent popup.         */
+/* ========================================================================== */
+#assignModal .assign-mode-card-v6120.mode-tone-day>span,
+#page-work-patterns .work-mode-admin-card-v6120.mode-tone-day .work-mode-admin-card-head-v6120>span{
+  background:var(--shift-d-soft,#e8f1ff)!important;
+  color:var(--shift-d-text,#2563eb)!important;
+  box-shadow:inset 0 0 0 1px var(--shift-d-border,#c3d8f7)!important;
+}
+#assignModal .assign-mode-card-v6120.mode-tone-split>span,
+#page-work-patterns .work-mode-admin-card-v6120.mode-tone-split .work-mode-admin-card-head-v6120>span{
+  background:var(--shift-split-soft,#eef0ff)!important;
+  color:var(--shift-split-text,#6366f1)!important;
+  box-shadow:inset 0 0 0 1px var(--shift-split-border,#bdc0f7)!important;
+}
+#assignModal .assign-mode-card-v6120.mode-tone-hour>span,
+#page-work-patterns .work-mode-admin-card-v6120.mode-tone-hour .work-mode-admin-card-head-v6120>span{
+  background:var(--shift-hour-soft,#e6f7f2)!important;
+  color:var(--shift-hour-text,#0f9488)!important;
+  box-shadow:inset 0 0 0 1px var(--shift-hour-border,#a8ddd4)!important;
+}
+#assignModal .assign-mode-card-v6120.mode-tone-off>span,
+#page-work-patterns .work-mode-admin-card-v6120.mode-tone-off .work-mode-admin-card-head-v6120>span{
+  background:var(--shift-off-soft,#eef1f5)!important;
+  color:var(--shift-off-text,#64748b)!important;
+  box-shadow:inset 0 0 0 1px var(--shift-off-border,#dde2e9)!important;
+}
+#assignModal .assign-mode-card-v6120.mode-tone-lv>span,
+#page-work-patterns .work-mode-admin-card-v6120.mode-tone-lv .work-mode-admin-card-head-v6120>span{
+  background:var(--shift-lv-soft,#e5f8ec)!important;
+  color:var(--shift-lv-text,#0f766e)!important;
+  box-shadow:inset 0 0 0 1px var(--shift-lv-border,#b8e7c8)!important;
+}
+
+/* Active card border follows the same System Settings family instead of blue. */
+#assignModal .assign-mode-card-v6120.mode-tone-day.active{border-color:var(--shift-d-text,#2563eb)!important;box-shadow:0 0 0 2px var(--shift-d-soft-strong,rgba(37,99,235,.20))!important}
+#assignModal .assign-mode-card-v6120.mode-tone-split.active{border-color:var(--shift-split-text,#6366f1)!important;box-shadow:0 0 0 2px var(--shift-split-soft-strong,rgba(99,102,241,.20))!important}
+#assignModal .assign-mode-card-v6120.mode-tone-hour.active{border-color:var(--shift-hour-text,#0f9488)!important;box-shadow:0 0 0 2px var(--shift-hour-soft-strong,rgba(15,148,136,.20))!important}
+#assignModal .assign-mode-card-v6120.mode-tone-off.active{border-color:var(--shift-off-text,#64748b)!important;box-shadow:0 0 0 2px var(--shift-off-soft-strong,rgba(100,116,139,.20))!important}
+#assignModal .assign-mode-card-v6120.mode-tone-lv.active{border-color:var(--shift-lv-text,#0f766e)!important;box-shadow:0 0 0 2px var(--shift-lv-soft-strong,rgba(15,118,110,.20))!important}
+
+/* Team summary split badge must also follow the same SPLIT setting. */
+#page-schedule .team-day-count-v61115.tone-split{
+  background:var(--shift-split-soft,#eef0ff)!important;
+  border-color:var(--shift-split-border,#bdc0f7)!important;
+  color:var(--shift-split-text,#6366f1)!important;
+}
+#page-schedule .team-day-count-v61115.tone-split>i{
+  background:var(--shift-split-text,#6366f1)!important;
+}
+body.theme-dark #page-schedule .team-day-count-v61115.tone-split,
+.dark #page-schedule .team-day-count-v61115.tone-split{
+  background:var(--shift-split-soft-strong)!important;
+  border-color:var(--shift-split-border)!important;
+  color:var(--shift-split-text)!important;
+}
+
+/* Dark mode uses stronger translucent surfaces while retaining configured hue. */
+body.theme-dark #assignModal .assign-mode-card-v6120.mode-tone-day>span,
+.dark #assignModal .assign-mode-card-v6120.mode-tone-day>span{background:var(--shift-d-soft-strong)!important}
+body.theme-dark #assignModal .assign-mode-card-v6120.mode-tone-split>span,
+.dark #assignModal .assign-mode-card-v6120.mode-tone-split>span{background:var(--shift-split-soft-strong)!important}
+body.theme-dark #assignModal .assign-mode-card-v6120.mode-tone-hour>span,
+.dark #assignModal .assign-mode-card-v6120.mode-tone-hour>span{background:var(--shift-hour-soft-strong)!important}
+body.theme-dark #assignModal .assign-mode-card-v6120.mode-tone-off>span,
+.dark #assignModal .assign-mode-card-v6120.mode-tone-off>span{background:var(--shift-off-soft-strong)!important}
+body.theme-dark #assignModal .assign-mode-card-v6120.mode-tone-lv>span,
+.dark #assignModal .assign-mode-card-v6120.mode-tone-lv>span{background:var(--shift-lv-soft-strong)!important}

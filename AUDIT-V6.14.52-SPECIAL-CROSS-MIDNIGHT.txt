@@ -1,0 +1,19 @@
+AUDIT — TimeAttendance V6.14.52
+
+ROOT CAUSE
+[FIX] V6.14.51 historical repair relied on previous attendance_workday.last_out, which can represent Shift 1 instead of the terminal Shift 2 OUT on special two-segment days.
+[FIX] Public punch-meta RPC could merge stale/current IN metadata into Monthly/Attendance/Team/Time views without previous-day ownership context.
+
+BACKEND
+[PASS DESIGN] previous ownership uses canonical paid terminal segment and early-morning terminal punch safety net.
+[PASS DESIGN] public ta_get_attendance_shift_punch_meta_v61110 filters Shift-1 IN <= previous_owned_until_at.
+[PASS DESIGN] internal V6.14.49 Worktime/Waiting/OT resolver uses the same guard.
+[PASS DESIGN] historical repair clears current first_in inside previous ownership even if current source labels it MODE_IN.
+
+FRONTEND
+[PASS] Monthly/Attendance/Time-view defensive exact-duplicate sanitizer added.
+[PASS] UI safety net only removes an IN when its full date+minute exactly equals the previous work-date terminal OUT on the successor calendar date.
+[PASS] Backend remains source of truth.
+
+UNCHANGED
+Late/Absent/Early Leave, Waiting/Net Work/OT V6.14.49, Night Sequence, 6h rest, 48h warning, Leave, Day-off quota, Certification policy.
