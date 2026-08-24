@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.48";
-document.documentElement.dataset.timeClockBuild = "6.14.48";
+window.__TIME_CLOCK_BUILD__ = "V6.14.49";
+document.documentElement.dataset.timeClockBuild = "6.14.49";
 
 
 /* ===== js/config.js ===== */
@@ -13,12 +13,12 @@ document.documentElement.dataset.timeClockBuild = "6.14.48";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.48',
+  version: '6.14.49',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
 
-/* ===== V6.14.48 Calendar-Date Safety =====
+/* ===== V6.14.49 Calendar-Date Safety (retains V61448 utility name) =====
    Business dates are calendar dates, not UTC timestamps. Never derive YYYY-MM-DD
    from local-midnight Date objects with toISOString() in Thailand (+07).
 */
@@ -6264,7 +6264,11 @@ window.tcIsDayShiftCode = value =>
       if (isHoliday) return { kind:'holiday', label:'วันหยุดนักขัตฤกษ์', tone:'holiday' };
       if (isOff) return { kind:'off', label:'วันหยุด', tone:'off' };
       if (isHour) return { kind:'hour', label:'กะนับชั่วโมง', tone:'hour' };
-      if (isSplit) return { kind:'split', label:'กะเช้า + งานช่วงดึก', tone:'split' };
+      if (isSplit) return {
+        kind:'split',
+        label:(ruleMode==='SPLIT_WAIT_NIGHT'||String(code||'').startsWith('SW'))?'กะเช้า + รอเข้ากะดึก':'กะปกติ + งานลูกค้าช่วงดึก',
+        tone:'split'
+      };
       if (shift?.tone === 'night' || window.tcIsNightShiftCode(code)) {
         return { kind:'night', label:'กะดึก', tone:'night' };
       }
@@ -6308,6 +6312,8 @@ window.tcIsDayShiftCode = value =>
         context.statusLabel || null,
         context.patternLabel || null,
         Number(row?.waiting_minutes || 0) > 0 ? `ช่วงรอ ${(Number(row.waiting_minutes)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม. (ไม่นับเวลาทำงาน)` : null,
+        Number(row?.paid_work_minutes ?? row?.net_work_minutes ?? 0) > 0 ? `ชั่วโมงสุทธิ ${(Number(row?.paid_work_minutes ?? row?.net_work_minutes ?? 0)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.` : null,
+        Number(row?.overtime_minutes || 0) > 0 ? `OT ${(Number(row.overtime_minutes)/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.` : null,
         row?.comp_off_earned ? 'ได้รับวันหยุดชดเชย' : null
       ].filter(Boolean);
       return lines.join('|');
@@ -18997,7 +19003,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.48',
+    version:'6.14.49',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27816,7 +27822,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.48';
+  const VERSION='6.14.49';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27845,6 +27851,11 @@ ${names}${extra}
   function dateTimeFor(date,time,afterTime=null){if(!date||!time)return null;let d=String(date).slice(0,10);if(afterTime!=null&&minsOf(time)<=minsOf(afterTime))d=isoAddDays(d,1);return new Date(`${d}T${String(time).slice(0,5)}:00`);}
   function patternTotal(pattern){const configured=Number(st.current?.patternRule?.scheduled_minutes_including_break||st.current?.row?.scheduled_minutes_including_break||0);return configured>0?configured:(pattern==='TECH_5D'?570:540);}
   function patternBreak(){const configured=Number(st.current?.patternRule?.break_minutes||st.current?.row?.break_minutes||0);return configured>=0&&configured!==0?configured:60;}
+  function patternStandard(pattern){
+    const configured=Number(st.current?.patternRule?.standard_work_minutes||st.current?.row?.standard_work_minutes||0);
+    return configured>0?configured:Math.max(0,patternTotal(pattern)-patternBreak());
+  }
+  function assignmentHoursV61449(minutes){return (Math.max(0,Number(minutes||0))/60).toLocaleString('th-TH',{maximumFractionDigits:2});}
   function defaultTemplate(pattern){return pattern==='TECH_5D'?'ST5':'ST6';}
   function shiftMaster(code){return (app()?.state?.filters?.shifts||[]).find(s=>String(s.shift_code||'').toUpperCase()===String(code||'').toUpperCase());}
   function isNonWorkingShiftV61448(codeValue,shift=null){
@@ -28206,7 +28217,13 @@ ${names}${extra}
     }
     if(mode==='HOUR_BASED')return Number(r.planned_minutes_including_break||0)||spanMinutes(r.custom_start_time,r.custom_end_time);
     const sm=shiftMaster(rowCode(r));
-    return Number(sm?.scheduled_minutes_including_break||0)||spanMinutes(r.shift_start_time||sm?.start_time,r.shift_end_time||sm?.end_time);
+    const base=Number(sm?.scheduled_minutes_including_break||0)||spanMinutes(r.shift_start_time||sm?.start_time,r.shift_end_time||sm?.end_time);
+    if(mode==='NORMAL_LATE_CUSTOMER'){
+      const secondStart=r.second_segment_start||r.customer_window_start||r.shift_2_planned_start_at;
+      const secondEnd=r.second_segment_planned_end||r.customer_window_end||r.shift_2_planned_end_at;
+      return base+(secondStart&&secondEnd?spanMinutes(secondStart,secondEnd):0);
+    }
+    return base;
   }
   function contextStateRowV61437(side,emp,date){
     const item=st.current?.nightSequenceContextV61437?.[side]||null;
@@ -28274,7 +28291,13 @@ ${names}${extra}
       <div class="schedule-rule-status-v6120" id="assignRuleStatusV6120"></div>
     </section>`);
     const templateField=$('assignWorkTemplate')?.closest('.field');if(templateField)templateField.classList.add('assignment-system-template-v6120');
+    const customerRowV61449=$('assignCustomerWindowRow');
+    if(customerRowV61449&&!$('assignCustomerCalcPreviewV61449')){
+      customerRowV61449.insertAdjacentHTML('beforeend','<div class="split-wait-preview-v6120 assignment-customer-calc-v61449" id="assignCustomerCalcPreviewV61449"></div>');
+    }
     ['assignFirstEndV6120','assignSecondStartV6120','assignSecondEndV6120','assignHourStartV6120'].forEach(id=>$(id)?.addEventListener('input',()=>refreshAssignmentGuardV61432()));
+    ['assignCustomerStart','assignCustomerEnd'].forEach(id=>$(id)?.addEventListener('input',()=>refreshAssignmentGuardV61432()));
+    $('assignCustomerEndMode')?.addEventListener('change',()=>refreshAssignmentGuardV61432());
     $('assignShiftCode')?.addEventListener('change',()=>{
       if(st.current&&!['HOUR_BASED','DYNAMIC_OFF'].includes(st.current.mode))st.current.baseShiftCode=$('assignShiftCode').value;
       refreshAssignmentGuardV61432();
@@ -28450,9 +28473,48 @@ ${names}${extra}
     return {start:fmtTime(w?.start||sm?.start_time),end:fmtTime(w?.end||sm?.end_time),basisCode:basisCode||rowCode(r),offShiftCode:null,offShiftName:null,resolutionType:special?'BACKEND_SPECIAL_DAYOFF_REQUIRED':'MAPPING_MISSING',mappingMissing:true};
   }
   function refreshAssignmentPreview(){
-    if(!st.current)return;const mode=st.current.mode;
-    if(mode==='HOUR_BASED'){const start=$('assignHourStartV6120')?.value,end=addMinutes(start,patternTotal(st.current.patternCode));$('assignHourEndV6120').textContent=start&&end?`${start} → ${end}${minsOf(end)<=minsOf(start)?' (+1)':''} • รวมพัก ${(patternTotal(st.current.patternCode)/60).toLocaleString('th-TH')} ชม.`:'-';}
-    if(mode==='SPLIT_WAIT_NIGHT'){const sm=shiftMaster(st.current.baseShiftCode||$('assignShiftCode')?.value);const start=fmtTime(sm?.start_time)||'-',first=$('assignFirstEndV6120')?.value||'-',second=$('assignSecondStartV6120')?.value||'-',end=$('assignSecondEndV6120')?.value||'-';const work=spanMinutes(start,first)+spanMinutes(second,end),wait=spanMinutes(first,second);$('assignSplitPreviewV6120').innerHTML=`<span>ช่วงที่ 1 <b>${esc(start)}–${esc(first)}</b></span><span class="wait">รอ <b>${esc((wait/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</b> • ไม่นับ</span><span>ช่วงที่ 2 <b>${esc(second)}–${esc(end)}${minsOf(end)<=minsOf(second)?' (+1)':''}</b></span><strong>เวลาทำงานตามแผน ${esc((work/60).toLocaleString('th-TH',{maximumFractionDigits:2}))} ชม.</strong>`;}
+    if(!st.current)return;
+    const mode=st.current.mode;
+    const total=patternTotal(st.current.patternCode);
+    const breakM=patternBreak();
+    const standard=patternStandard(st.current.patternCode);
+
+    if(mode==='HOUR_BASED'){
+      const start=$('assignHourStartV6120')?.value,end=addMinutes(start,total);
+      $('assignHourEndV6120').innerHTML=start&&end
+        ? `<strong>${esc(start)} → ${esc(end)}${minsOf(end)<=minsOf(start)?' (+1)':''}</strong><small>รวมพัก ${esc(assignmentHoursV61449(total))} ชม. • สุทธิ ${esc(assignmentHoursV61449(standard))} ชม. • OT = เวลาออกจริงหลัง ${esc(end)}</small>`
+        : '-';
+    }
+
+    if(mode==='SPLIT_WAIT_NIGHT'){
+      const sm=shiftMaster(st.current.baseShiftCode||$('assignShiftCode')?.value);
+      const start=fmtTime(sm?.start_time)||'-',first=$('assignFirstEndV6120')?.value||'-',second=$('assignSecondStartV6120')?.value||'-',end=$('assignSecondEndV6120')?.value||'-';
+      const work1=spanMinutes(start,first),work2=spanMinutes(second,end),gross=work1+work2,wait=spanMinutes(first,second);
+      const deduct=gross>=300?Math.min(breakM,gross):0,net=Math.max(0,gross-deduct),plannedOt=Math.max(0,net-standard);
+      $('assignSplitPreviewV6120').innerHTML=`<span>ช่วงที่ 1 <b>${esc(start)}–${esc(first)}</b></span><span class="wait">รอ <b>${esc(assignmentHoursV61449(wait))} ชม.</b> • ไม่นับ</span><span>ช่วงที่ 2 <b>${esc(second)}–${esc(end)}${minsOf(end)<=minsOf(second)?' (+1)':''}</b></span><strong>รวมช่วงทำงาน ${esc(assignmentHoursV61449(gross))} ชม. • หักพัก ${esc(assignmentHoursV61449(deduct))} • สุทธิ ${esc(assignmentHoursV61449(net))} ชม.</strong><small>OT ตามเวลาจริง = ชั่วโมงสุทธิรวมกะ 1 + กะ 2 ที่เกิน ${esc(assignmentHoursV61449(standard))} ชม./วัน${plannedOt>0?` • ตามแผนประมาณ ${esc(assignmentHoursV61449(plannedOt))} ชม.`:''}</small>`;
+    }
+
+    const customerPreview=$('assignCustomerCalcPreviewV61449');
+    if(customerPreview){
+      if(mode==='NORMAL_LATE_CUSTOMER'){
+        const sm=shiftMaster(st.current.baseShiftCode||$('assignShiftCode')?.value);
+        const start=fmtTime(sm?.start_time),firstEnd=fmtTime(sm?.end_time);
+        const second=$('assignCustomerStart')?.value||null;
+        const fixed=$('assignCustomerEndMode')?.value==='FIXED';
+        const end=fixed?$('assignCustomerEnd')?.value:null;
+        const wait=firstEnd&&second?spanMinutes(firstEnd,second):0;
+        const firstGross=start&&firstEnd?spanMinutes(start,firstEnd):0;
+        const secondGross=second&&end?spanMinutes(second,end):0;
+        const gross=firstGross+secondGross;
+        const deduct=gross>=300?Math.min(breakM,gross):0;
+        customerPreview.classList.remove('hidden');
+        customerPreview.innerHTML=`<span>กะที่ 1 <b>${esc(start||'-')}–${esc(firstEnd||'-')}</b></span><span class="wait">รอ <b>${esc(assignmentHoursV61449(wait))} ชม.</b> • ไม่นับ</span><span>กะที่ 2 <b>${esc(second||'-')}–${esc(end||'ตามเวลาออกจริง')}</b></span><strong>${fixed?`รวมช่วงทำงาน ${esc(assignmentHoursV61449(gross))} ชม. • หักพัก ${esc(assignmentHoursV61449(deduct))} ชม.`:'เวลาทำงานกะที่ 2 ใช้ IN/OUT จริง'}</strong><small>OT = เวลาทำงานจริงของกะที่ 2 ตั้งแต่เวลาเริ่มกะที่ 2 • ช่วงรอไม่คิดเป็นเวลาทำงาน/OT</small>`;
+      }else{
+        customerPreview.classList.add('hidden');
+        customerPreview.innerHTML='';
+      }
+    }
+
     if(mode==='DYNAMIC_OFF'){const quotaStateV6142=dayoffQuotaAvailabilityV6142();const w=offBasisWindow();$('assignOffPreviewV6120').innerHTML=(quotaStateV6142.loaded&&!quotaStateV6142.allowed)?`<strong class="text-danger">วันหยุดคงเหลือ 0 วัน</strong><small>ใช้โควต้าวันหยุดครบแล้ว จึงไม่สามารถกำหนดวันหยุดเพิ่มได้ • หากต้องการย้ายวันหยุด ให้เปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน หรือทำรายการย้ายแบบ Bulk ในชุดเดียว</small>`:w?(w.mappingMissing?`<strong class="text-danger">ยังไม่ได้จับคู่กะวันหยุดของ ${esc(w.basisCode||'')}</strong><small>ไปที่ ตั้งค่ากะทำงาน → กฎการเลือกกะและกะวันหยุดคู่กัน</small>`:`<span>ระบบเลือกกะวันหยุดให้อัตโนมัติ</span><strong>${esc(w.offShiftCode||'วันหยุด')} • ${esc(w.start)}–${esc(w.end)}${minsOf(w.end)<=minsOf(w.start)?' (+1)':''}</strong><small>${w.usedDefaultFallback?`ไม่พบกะทำงานย้อนหลัง • ใช้กะตั้งต้น ${esc(w.basisCode||'')}`:`อ้างอิงกะทำงานล่าสุด ${w.basisDate?`${esc(fmtDate(String(w.basisDate).slice(0,10)))} • `:''}${esc(w.basisCode||'')}`} → ${String(w.resolutionType||'').includes('SPECIAL')?'กะพิเศษแบบ Dynamic':'จับคู่ตาม Set Up'}</small>`):`<strong>ยังไม่พบข้อมูลกะสำหรับกำหนดวันหยุด</strong><small>ระบบตรวจย้อนหลังข้ามเดือนไม่เกิน 60 วันแล้ว และไม่พบทั้งกะทำงานล่าสุดหรือกะตั้งต้นที่จับคู่วันหยุดได้</small>`;}
     renderGuardPreview();
   }

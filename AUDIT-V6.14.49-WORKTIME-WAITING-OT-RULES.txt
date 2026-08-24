@@ -1,0 +1,75 @@
+AUDIT — TimeAttendance V6.14.49
+Work Time / Waiting / OT Rules Consistency
+============================================================
+
+FINDINGS BEFORE FIX
+[ISSUE 1] Generic Calculation Core used one first_in -> last_out span across the day.
+          For split work, planned WAITING was subtracted, but actual OUT1 -> IN2
+          was not the canonical source of waiting/work duration.
+[ISSUE 2] Generic OT rule was paid_work_minutes - daily OT threshold for every
+          Work Template. This did not match the requested per-mode OT rules.
+[ISSUE 3] Scheduling Rule extension was written AFTER the main Schedule save
+          recalculation. Waiting/OT could remain calculated with the old mode
+          until a later rebuild.
+[ISSUE 4] Popup Split Wait preview showed gross working windows but did not show
+          standard break/net work/OT rule clearly.
+[ISSUE 5] Person Schedule split label did not distinguish Normal+Late Customer
+          from Split Wait Night consistently.
+
+V6.14.49 CANONICAL RULES
+1. WAITING
+   - Prefer actual Shift1 OUT -> Shift2 IN when both exist.
+   - Fallback to planned Shift1 end -> planned Shift2 start.
+   - WAITING is never paid work and never OT.
+
+2. NET WORK FOR TWO-SHIFT MODES
+   - Shift1 work = actual IN1 -> OUT1, not earlier than planned Shift1 start.
+   - Shift2 work = actual IN2 -> OUT2, not earlier than planned Shift2 start.
+   - Gross work = Shift1 + Shift2.
+   - Break deducted once using existing daily break rule (>= 5h => configured break).
+   - Net/Paid work = Gross - Break.
+
+3. OT
+   NORMAL
+   - OT = actual OUT after planned Shift end.
+
+   NORMAL_LATE_CUSTOMER
+   - OT = actual worked duration of Shift2, starting no earlier than planned Shift2 start.
+   - Shift1 remains regular working period.
+
+   SPLIT_WAIT_NIGHT
+   - OT = max(0, Net work - standard_work_minutes).
+   - Regular = min(Net work, standard_work_minutes).
+
+   HOUR_BASED
+   - OT = actual OUT after the computed Shift end.
+
+4. SOURCE OF TRUTH / PIPELINE
+   - New BEFORE trigger: trg_zy_ta_work_mode_metrics_v61449
+   - Runs before trg_zz_ta_calc_absence_v664, so V6.14.28 classification sees final OT.
+   - ta_upsert_schedule_rule_assignment_v6120 now recalculates after metadata save.
+   - ta_delete_schedule_rule_assignment_v6120 recalculates after metadata delete.
+   - Every existing Calculation Core path inherits the central trigger.
+
+5. FRONTEND
+   - Split Wait preview now shows Shift1 / Waiting / Shift2 / Gross / Break / Net / OT rule.
+   - Normal + Late Customer preview shows planned waiting and Shift2 OT rule.
+   - Hour-based preview shows net daily hours and OT-after-end rule.
+   - Person Schedule tooltip includes Waiting / Net / OT.
+   - Split schedule label differentiates the two work modes.
+   - 48h planned-work helper includes the second segment for NORMAL_LATE_CUSTOMER when end is known.
+
+STATIC CHECKS REQUIRED
+- node --check app.js
+- parse index.html / 404.html
+- no duplicate IDs
+- V6.14.49 cache key
+- ZIP integrity
+
+DATABASE RUNTIME
+- Run SQL สำหรับตรวจสอบ.
+- Checks 1-12 should PASS.
+- Runtime audit: negative_waiting_rows=0, negative_work_or_ot_rows=0,
+  split_total_mismatch_rows=0.
+- stale_metric_rows may be >0 immediately after installation for historical data;
+  recalculate/rebuild the affected date range, then rerun verification.

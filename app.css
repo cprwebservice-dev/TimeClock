@@ -22047,3 +22047,13 @@ body.theme-dark .work-mode-dept-filters-v61444 button,.dark .work-mode-dept-filt
 body.theme-dark .work-mode-dept-filters-v61444 button.active,.dark .work-mode-dept-filters-v61444 button.active{background:#172b40;border-color:#4f8fc5;color:#bfdbfe}
 body.theme-dark .work-mode-dept-row-v61444 em,.dark .work-mode-dept-row-v61444 em{background:#243142;color:#94a3b8}
 body.theme-dark .work-mode-dept-row-v61444.selected em,.dark .work-mode-dept-row-v61444.selected em{background:#174234;color:#86efac}
+
+/* V6.14.49 — Work Time / Waiting / OT preview */
+.assignment-customer-calc-v61449{
+  grid-column:1 / -1;
+  width:100%;
+  margin-top:2px;
+}
+.assignment-customer-calc-v61449.hidden{display:none!important;}
+.hour-end-preview-v6120 strong{display:block;}
+.hour-end-preview-v6120 small{display:block;margin-top:4px;line-height:1.45;opacity:.78;}
