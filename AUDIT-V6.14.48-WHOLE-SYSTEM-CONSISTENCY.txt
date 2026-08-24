@@ -1,0 +1,83 @@
+AUDIT — TimeAttendance / Time-Clock Enterprise V6.14.48
+Whole-System Consistency Audit
+Date: 2026-08-24
+
+SCOPE REVIEWED
+- Dashboard / filters / notifications / reports
+- Attendance Detail / Attendance status / Time Certification
+- Person Schedule 15D / Full Month / Team / Monthly Personal
+- Quick / Bulk / Copy / Paste / Fill / Copy Previous Week
+- Work Pattern / Shift Master / paired day-off presentation
+- Night Sequence / 6h-rest frontend integration
+- Shift Change Request date defaults + Attendance certification button
+- Backend Attendance rebuild / expected_day / off-day punch ownership
+- Static security path: direct browser writes to core scheduling/attendance tables
+
+CONFIRMED BUGS FOUND AND FIXED
+
+[CRITICAL-1] V6.14.47 Attendance rebuild reintroduced legacy PC-based expected_day
+- V6.14.47 called get_expected_day_by_schedule(...pc...).
+- That conflicts with V6.14.25 where configured Work Pattern weekly_off_dows is authoritative.
+- V6.14.48 adds _ta_expected_workday_v61448:
+  Full-day Leave -> Daily Plan override -> explicit Shift -> Public Holiday -> Work Pattern weekly_off_dows.
+- No PC/position expected-day call remains in rebuild_attendance_workday.
+
+[CRITICAL-2] Calendar dates used UTC toISOString in multiple modules
+- In Thailand (+07), local midnight -> toISOString() can become the previous calendar date.
+- Affected paths included PERSON hidden neighbor dates, Time Certification overnight end,
+  Today buttons/defaults, Copy Previous Week, Work Pattern month dates, Shift Requests,
+  notifications, reports and Night Sequence isoAddDays.
+- V6.14.48 adds TimeClockCalendarV61448 and uses timezone-safe calendar arithmetic.
+
+[HIGH-3] Quick Action all-blocked Night Sequence could throw ReferenceError
+- Schedule Pro called sequenceBlockMessageV61435 outside its module scope.
+- V6.14.48 exports sequenceBlockMessage from TimeClockSchedulingRulesV6120 and uses it safely.
+
+[HIGH-4] Attendance Detail > Time Certification could throw ReferenceError
+- certifyAttendance() called attendanceDetailRow() from another IIFE/module scope.
+- V6.14.48 uses the local attendanceRow(emp,date) source.
+
+[HIGH-5] Work Pattern save wrote standard_work_minutes = scheduled minutes
+- Example risk: 6D scheduled 540 + break 60 was saved as standard 540 instead of net 480.
+- V6.14.48 frontend computes standard = scheduled - break.
+- Backend repairs only the exact old corruption signature and installs a 5D/6D minutes guard.
+
+[HIGH-6] Paired/generated OFF could be treated as working when Shift Master cache was stale/missing
+- Some legacy UI checks only excluded OFF/HOL/LV.
+- V6.14.48 centralizes OSTD/OS043/OS134/OS135/OH5*/OH6* as non-working,
+  while explicit real working shifts continue to override natural weekly/public holidays.
+
+STATIC VALIDATION
+[PASS] node --check app.js
+[PASS] index.html parse
+[PASS] 404.html parse
+[PASS] 715 HTML ids; duplicate ids = 0
+[PASS] TypeScript lexical-name audit: TS2304 undefined-name errors = 0
+[PASS] No direct browser insert/update/upsert/delete to shift_calendar
+[PASS] No direct browser write to attendance_workday
+[PASS] No direct browser write to ta_attendance_calculations
+[PASS] No direct browser write to ta_daily_work_plans
+[PASS] No direct browser write to ta_employee_work_patterns
+[PASS] Remaining toISOString().slice(0,10) = only the intentional timezone-adjusted local-date helper
+[PASS] V6.14.48 version/cache-bust scan
+
+BUSINESS RULES INTENTIONALLY UNCHANGED
+- 5D: 570 scheduled / 510 standard net / break 60 / OT threshold 510
+- 6D: 540 scheduled / 480 standard net / break 60 / OT threshold 480
+- Late 1–29 min; >=30 min classified absent
+- Missing IN/OUT/both = absent on expected workday
+- 6h minimum rest and >48h warning
+- Night Sequence: DAY -> NIGHT blocked; NIGHT successor = NIGHT/OFF/HOL/LV
+- Paired day-off: STD->OSTD, S043->OS043, S134->OS134, S135->OS135
+- Day-off quota, System Period, Scope/Permission and Time Certification business policy unchanged
+
+RUNTIME DATABASE VALIDATION
+Run SQL_สำหรับตรวจสอบ_V6.14.48_WHOLE_SYSTEM_CONSISTENCY.sql after migration.
+Checks 1-20 should be PASS. Checks 7/8 may show CHECK only if Work Pattern parameters
+have intentionally been changed from the current 5D/6D baseline.
+Recent data counters should ideally be 0:
+- expected_day_mismatch_rows
+- nonwork_absence_rows
+- nonwork_out_reused_as_in_rows
+If expected_day_mismatch_rows > 0, those historical rows need the existing Attendance Rebuild
+for the reported period so punch matching is regenerated with V6.14.48 rules.

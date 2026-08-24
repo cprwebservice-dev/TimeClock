@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.47";
-document.documentElement.dataset.timeClockBuild = "6.14.47";
+window.__TIME_CLOCK_BUILD__ = "V6.14.48";
+document.documentElement.dataset.timeClockBuild = "6.14.48";
 
 
 /* ===== js/config.js ===== */
@@ -13,10 +13,36 @@ document.documentElement.dataset.timeClockBuild = "6.14.47";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.47',
+  version: '6.14.48',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
+
+/* ===== V6.14.48 Calendar-Date Safety =====
+   Business dates are calendar dates, not UTC timestamps. Never derive YYYY-MM-DD
+   from local-midnight Date objects with toISOString() in Thailand (+07).
+*/
+window.TimeClockCalendarV61448 = Object.freeze((()=>{
+  const localISO=(value=new Date())=>{
+    const d=value instanceof Date?value:new Date(value);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  };
+  const today=()=>localISO(new Date());
+  const month=()=>today().slice(0,7);
+  const addDays=(value,days=0)=>{
+    const m=String(value||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m)return String(value||'').slice(0,10);
+    const d=new Date(Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3])));
+    d.setUTCDate(d.getUTCDate()+Number(days||0));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+  };
+  const monthStart=(value=new Date())=>{
+    if(value instanceof Date)return `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2,'0')}-01`;
+    const v=String(value||today()).slice(0,7);
+    return /^\d{4}-\d{2}$/.test(v)?`${v}-01`:today().slice(0,7)+'-01';
+  };
+  return {localISO,today,month,addDays,monthStart};
+})());
 
 /* ===== V6.11.57 Canonical Shift Codes =====
    Legacy -> Current
@@ -1027,10 +1053,11 @@ window.tcIsDayShiftCode = value =>
     const setVal = (id, value) => { if ($(id)) $(id).value = value ?? ""; };
     const setText = (id, value) => { if ($(id)) $(id).textContent = value ?? ""; };
     const safe = (v) => String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-    const todayISO = () => new Date().toISOString().slice(0, 10);
-    const monthISO = () => new Date().toISOString().slice(0, 7);
-    const firstDayOfMonth = (d = new Date()) => new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
-    const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const localISO = d => window.TimeClockCalendarV61448.localISO(d);
+    const todayISO = () => window.TimeClockCalendarV61448.today();
+    const monthISO = () => window.TimeClockCalendarV61448.month();
+    const firstDayOfMonth = (d = new Date()) => window.TimeClockCalendarV61448.monthStart(d);
+    const addCalendarDaysISO = (value,days) => window.TimeClockCalendarV61448.addDays(value,days);
     const parseLocalISO = value => {
       const [y,m,d] = String(value || "").slice(0,10).split("-").map(Number);
       return new Date(y, (m || 1)-1, d || 1);
@@ -1480,7 +1507,7 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
-    // V6.14.47 — Canonical non-working shift resolver.
+    // V6.14.48 — Canonical non-working shift resolver.
     // Paired OFF codes keep start/end times for schedule context, but those times
     // must never turn a day-off into a working shift in Attendance UI/statistics.
     function scheduleIsNonWorkingShiftV61447(codeValue, shiftMaster = null) {
@@ -5163,16 +5190,8 @@ window.tcIsDayShiftCode = value =>
           // PERSON range. The hidden rows are never rendered; they exist only
           // so the bidirectional Night Sequence guard can validate the first and
           // last visible day against the real previous/next effective schedule.
-          const personGuardStartDateV61431 = (()=>{
-            const d=new Date(`${period.startDate}T00:00:00`);
-            d.setDate(d.getDate()-1);
-            return d.toISOString().slice(0,10);
-          })();
-          const personGuardEndDateV61435 = (()=>{
-            const d=new Date(`${period.endDate}T00:00:00`);
-            d.setDate(d.getDate()+1);
-            return d.toISOString().slice(0,10);
-          })();
+          const personGuardStartDateV61431 = addCalendarDaysISO(period.startDate,-1);
+          const personGuardEndDateV61435 = addCalendarDaysISO(period.endDate,1);
           const employeeBatchSize = 28;
           const chunks = [];
 
@@ -6112,7 +6131,7 @@ window.tcIsDayShiftCode = value =>
       const shiftStart = formatTime(effectiveWindowV6133.start);
       const shiftEnd = formatTime(effectiveWindowV6133.end);
 
-      const hasTime = !['OFF','HOL','LV'].includes(code)
+      const hasTime = !scheduleIsNonWorkingShiftV61447(code,shiftMaster)
         && shiftStart !== '-'
         && shiftEnd !== '-';
 
@@ -6204,8 +6223,7 @@ window.tcIsDayShiftCode = value =>
       // that will actually be worked.
       const assignedWorkingV6141 = Boolean(
         assignedCodeV6141
-        && !['OFF','HOL','LV'].includes(assignedCodeV6141)
-        && assignedMasterV6141?.is_workday !== false
+        && !scheduleIsNonWorkingShiftV61447(assignedCodeV6141,assignedMasterV6141)
       );
       const isLeave = Boolean(
         row?.leave_request_id
@@ -6634,9 +6652,7 @@ window.tcIsDayShiftCode = value =>
         && startMin != null
         && outMin <= startMin
       ) {
-        const d = new Date(`${workDate}T00:00:00`);
-        d.setDate(d.getDate()+1);
-        date = d.toISOString().slice(0,10);
+        date = addCalendarDaysISO(workDate,1);
       }
 
       const ms = timeCertificationDateTimeMsV61139(date,time);
@@ -6933,7 +6949,7 @@ window.tcIsDayShiftCode = value =>
         const startMin = attendanceClockMinutes(shiftStartTime);
         const endMin = attendanceClockMinutes(shiftEndTime);
         if (startMin != null && endMin != null && endMin <= startMin) {
-          const d = new Date(`${workDate}T00:00:00`); d.setDate(d.getDate()+1); shiftEndDate = d.toISOString().slice(0,10);
+          shiftEndDate = addCalendarDaysISO(workDate,1);
         }
       }
 
@@ -9456,7 +9472,7 @@ window.tcIsDayShiftCode = value =>
           const shiftStart = formatTime(effectiveWindowV6133.start);
           const shiftEnd = formatTime(effectiveWindowV6133.end);
           const showShiftTime =
-            !["OFF","HOL","LV"].includes(normalizedCode)
+            !scheduleIsNonWorkingShiftV61447(normalizedCode,shiftMaster)
             && shiftStart !== "-"
             && shiftEnd !== "-";
           const shiftTimeLabel = showShiftTime
@@ -12350,6 +12366,9 @@ window.tcIsDayShiftCode = value =>
       renderSchedule,
       scheduleRowPattern,
       scheduleFilteredRows,
+      scheduleIsNonWorkingShift: scheduleIsNonWorkingShiftV61447,
+      calendarTodayISO: todayISO,
+      calendarAddDaysISO: addCalendarDaysISO,
       openAssignment,
       toast,
       showLoading,
@@ -12601,7 +12620,7 @@ window.tcIsDayShiftCode = value =>
     $('clearDashboardFilterBtn')?.addEventListener('click', () => {
       const end = new Date();
       const start = new Date(end); start.setDate(start.getDate()-30);
-      const iso = d => d.toISOString().slice(0,10);
+      const iso = d => window.TimeClockCalendarV61448.localISO(d);
       if ($('dashStart')) $('dashStart').value = iso(start);
       if ($('dashEnd')) $('dashEnd').value = iso(end);
       if ($('dashZone')) $('dashZone').value = '';
@@ -13137,7 +13156,7 @@ window.tcIsDayShiftCode = value =>
       const restText=firstRest?.restMinutes!=null?(firstRest.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2}):'-';
       return app()?.toast(
         firstRest?.nightSequenceBlock
-          ? sequenceBlockMessageV61435(firstRest)
+          ? (window.TimeClockSchedulingRulesV6120?.sequenceBlockMessage?.(firstRest) || 'กำหนดกะไม่ได้ตามเงื่อนไขลำดับกะดึก')
           : firstRest?.nightToMorning
             ? `กำหนดกะเช้าไม่ได้: วันก่อนหน้าเป็นกะดึก (${firstRest.previousCode||'-'}) ทำให้พักเพียง ${restText} ชม. ต่ำกว่า 6 ชม. • แนะนำให้กำหนดวันหยุด หรือเลือกกะกลางคืน`
             : (skippedSummary(skipped) || (firstRest?`กำหนดกะไม่ได้: เวลาพัก ${restText} ชม. ต่ำกว่า 6 ชม.`:"ไม่มีรายการที่สามารถกำหนดกะได้")),
@@ -13331,7 +13350,7 @@ ${skippedSummary(compatibility.skipped)}
 
   function monthCopyCurrentMonthV61413(){
     const range=window.TimeClockSchedulePeriod?.range?.()||{};
-    return String(range.month||scheduleViewState.personMonth||$('schedulePeriodStart')?.value||new Date().toISOString().slice(0,7)).slice(0,7);
+    return String(range.month||scheduleViewState.personMonth||$('schedulePeriodStart')?.value||window.TimeClockCalendarV61448.month()).slice(0,7);
   }
 
   function resetMonthCopyWorkflowV61413({silent=false}={}){
@@ -13683,7 +13702,7 @@ ${skippedSummary(compatibility.skipped)}
   function setPersonDaysModeV61412(mode){
     const next=String(mode||'MONTH').toUpperCase()==='15D'?'15D':'MONTH';
     if(String(scheduleViewState.personDisplayMode||'MONTH').toUpperCase()===next){window.TimeClockSchedulePeriod?.sync?.();return;}
-    const current=String($('schedulePeriodStart')?.value||`${scheduleViewState.personMonth||new Date().toISOString().slice(0,7)}-01`).slice(0,10);
+    const current=String($('schedulePeriodStart')?.value||`${scheduleViewState.personMonth||window.TimeClockCalendarV61448.month()}-01`).slice(0,10);
     scheduleViewState.personDisplayMode=next;
     scheduleViewState.personMonth=current.slice(0,7);
     scheduleViewState.personPeriodStart=scheduleBlockStartForDate(current);
@@ -13766,7 +13785,7 @@ ${skippedSummary(compatibility.skipped)}
     );
 
     $("scheduleTodayBtn")?.addEventListener("click",()=>{
-      const today=new Date().toISOString().slice(0,10);
+      const today=window.TimeClockCalendarV61448.today();
       const personMode = window.TimeClockSchedulePeriod?.range?.().viewMode === "PERSON";
       const person15 = personMode && String(scheduleViewState.personDisplayMode||'MONTH').toUpperCase()==='15D';
       const start = personMode
@@ -13878,7 +13897,7 @@ ${skippedSummary(compatibility.skipped)}
     finally{app()?.hideLoading?.();}
   }
   function renderJobs(){const body=$("reportJobsBody");if(!body)return;const list=jobs();body.innerHTML=list.length?list.map(j=>`<tr><td>${safe(fmtDateTime(j.created_at))}</td><td>${safe(j.name)}<small style="display:block;color:#64748b">${safe(String(j.format||"").toUpperCase())}</small></td><td>${safe(j.range)}</td><td>${Number(j.rows||0).toLocaleString("th-TH")}</td><td><span class="job-status ${safe(j.status)}">${j.status==="completed"?"สำเร็จ":j.status==="failed"?"ไม่สำเร็จ":"กำลังทำงาน"}</span>${j.error?`<span class="report-job-error">${safe(j.error)}</span>`:""}</td><td>${j.status==="completed"?`<button class="report-file-link" data-redownload="${safe(j.filename)}">${safe(j.filename)}</button>`:"-"}</td></tr>`).join(""):`<tr><td colspan="6" class="report-empty">ยังไม่มีประวัติการส่งออก</td></tr>`;}
-  function setDefaults(){const now=new Date(),end=now.toISOString().slice(0,10),start=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);if($("reportStart")&&!val("reportStart"))$("reportStart").value=start;if($("reportEnd")&&!val("reportEnd"))$("reportEnd").value=end;renderJobs();}
+  function setDefaults(){const now=new Date(),end=window.TimeClockCalendarV61448.localISO(now),start=window.TimeClockCalendarV61448.monthStart(now);if($("reportStart")&&!val("reportStart"))$("reportStart").value=start;if($("reportEnd")&&!val("reportEnd"))$("reportEnd").value=end;renderJobs();}
   function init(){setDefaults();$("reportRefreshJobsBtn")?.addEventListener("click",renderJobs);$("reportClearJobsBtn")?.addEventListener("click",()=>{localStorage.removeItem(STORAGE_KEY);renderJobs();});}
 
   document.addEventListener("click",e=>{const b=e.target.closest("[data-run-report-format]");if(b){const [type,format]=b.dataset.runReportFormat.split("|");run(type,format);}const legacy=e.target.closest("[data-run-report]");if(legacy)run(legacy.dataset.runReport,"csv");const r=e.target.closest("[data-redownload]");if(r){const url=downloads.get(r.dataset.redownload);if(url){const a=document.createElement("a");a.href=url;a.download=r.dataset.redownload;a.click();}else app()?.toast?.("ไฟล์เดิมไม่ได้อยู่ในหน่วยความจำ กรุณาสร้างรายงานใหม่","error");}});
@@ -14912,14 +14931,14 @@ ${skippedSummary(compatibility.skipped)}
       || "NORMAL";
   }
   function attendanceStatusText(r){
-    // V6.14.47: never recurse when the base attendance label helper is absent.
+    // V6.14.48: never recurse when the base attendance label helper is absent.
     // Keep the displayed label aligned with the already-resolved enterprise status.
     return app()?.attendanceDisplayLabel?.(r)
       || statusLabel(attendanceStatus(r));
   }
 
   function renderAttendanceDataNotice(detail={}){
-    // V6.14.47: the attendance loader dispatches this event after a successful load.
+    // V6.14.48: the attendance loader dispatches this event after a successful load.
     // Older builds registered the listener but omitted this renderer, causing an
     // Uncaught ReferenceError on every attendance load.  Keep normal loads silent;
     // only warn when the existing 5,000-row safety cap was reached.
@@ -16194,8 +16213,7 @@ ${skippedSummary(compatibility.skipped)}
     const payload=[];
     const missing=[];
     items.forEach(x=>{
-      const d=new Date(`${x.date}T00:00:00`);d.setDate(d.getDate()-7);
-      const sourceDate=d.toISOString().slice(0,10);
+      const sourceDate=window.TimeClockCalendarV61448.addDays(x.date,-7);
       const source=rowAt(x.emp,sourceDate);
       let shiftCode=window.tcShiftCode(codeOf(source)||'');
       if(!shiftCode){
@@ -16991,7 +17009,7 @@ ${skippedSummary(compatibility.skipped)}
       employeeExportRows();
 
     exportExcel(
-      `Employee_Directory_${new Date().toISOString().slice(0,10)}.xls`,
+      `Employee_Directory_${window.TimeClockCalendarV61448.today()}.xls`,
       rows,
       `ข้อมูลพนักงาน ${employeeRows.length.toLocaleString("th-TH")} คน`
     );
@@ -17232,12 +17250,12 @@ ${skippedSummary(compatibility.skipped)}
   /* ------------------------------------------------------------------
      Notifications
      ------------------------------------------------------------------ */
-  async function loadNotifications(){const body=qs("#notificationDrawer .drawer-body");if(!body)return;try{const rows=await rpc("ta_get_notification_feed",{p_start_date:new Date(Date.now()-7*86400000).toISOString().slice(0,10),p_end_date:new Date().toISOString().slice(0,10),p_limit:50})||[];body.innerHTML=rows.length?rows.map(r=>{const target=["review","leave","time-correction","exception-center"].includes(String(r.target_page||""))?"attendance":(r.target_page||"dashboard");return `<button class="notice-card severity-${esc(r.severity)}" data-notice-page="${esc(target)}"><span class="notice-dot"></span><div><strong>${esc(r.title)}</strong><p>${esc(r.message)}</p><time>${fmtDate(r.event_date)}</time></div></button>`;}).join(""):`<div class="notification-empty">ไม่มีการแจ้งเตือนใหม่</div>`;const badge=$("notificationCount");if(badge)badge.textContent=rows.length;body.onclick=e=>{const b=e.target.closest("[data-notice-page]");if(b){app()?.switchPage?.(b.dataset.noticePage);$("notificationDrawer")?.classList.remove("open");}};}catch(e){body.innerHTML=`<div class="notification-empty">ไม่สามารถโหลดการแจ้งเตือนจากฐานข้อมูล<br><small>${esc(e.message||"")}</small></div>`;}}
+  async function loadNotifications(){const body=qs("#notificationDrawer .drawer-body");if(!body)return;try{const rows=await rpc("ta_get_notification_feed",{p_start_date:window.TimeClockCalendarV61448.addDays(window.TimeClockCalendarV61448.today(),-7),p_end_date:window.TimeClockCalendarV61448.today(),p_limit:50})||[];body.innerHTML=rows.length?rows.map(r=>{const target=["review","leave","time-correction","exception-center"].includes(String(r.target_page||""))?"attendance":(r.target_page||"dashboard");return `<button class="notice-card severity-${esc(r.severity)}" data-notice-page="${esc(target)}"><span class="notice-dot"></span><div><strong>${esc(r.title)}</strong><p>${esc(r.message)}</p><time>${fmtDate(r.event_date)}</time></div></button>`;}).join(""):`<div class="notification-empty">ไม่มีการแจ้งเตือนใหม่</div>`;const badge=$("notificationCount");if(badge)badge.textContent=rows.length;body.onclick=e=>{const b=e.target.closest("[data-notice-page]");if(b){app()?.switchPage?.(b.dataset.noticePage);$("notificationDrawer")?.classList.remove("open");}};}catch(e){body.innerHTML=`<div class="notification-empty">ไม่สามารถโหลดการแจ้งเตือนจากฐานข้อมูล<br><small>${esc(e.message||"")}</small></div>`;}}
 
   /* ------------------------------------------------------------------
      Init / Events
      ------------------------------------------------------------------ */
-  function setDefaults(){const today=new Date(),end=today.toISOString().slice(0,10),start=new Date(today.getFullYear(),today.getMonth(),1).toISOString().slice(0,10),monthAgo=new Date(today);monthAgo.setDate(monthAgo.getDate()-30);if($("auditStart"))$("auditStart").value=monthAgo.toISOString().slice(0,10);if($("auditEnd"))$("auditEnd").value=end;if($("reportStart")&&!$("reportStart").value)$("reportStart").value=start;if($("reportEnd")&&!$("reportEnd").value)$("reportEnd").value=end;}
+  function setDefaults(){const today=new Date(),end=window.TimeClockCalendarV61448.localISO(today),start=window.TimeClockCalendarV61448.monthStart(today),monthAgo=window.TimeClockCalendarV61448.addDays(end,-30);if($("auditStart"))$("auditStart").value=monthAgo;if($("auditEnd"))$("auditEnd").value=end;if($("reportStart")&&!$("reportStart").value)$("reportStart").value=start;if($("reportEnd")&&!$("reportEnd").value)$("reportEnd").value=end;}
   function bindGlobal(){
     document.addEventListener("timeclock:attendance-rendered",renderAttendanceEnterprise);
     document.addEventListener("timeclock:attendance-loaded",e=>renderAttendanceDataNotice(e.detail||{}));
@@ -17809,10 +17827,10 @@ ${skippedSummary(compatibility.skipped)}
   function workTemplateReferenceDateV61438(){
     const month=workPatternMonthValueV61419(
       $('employeePatternDate')?.value
-      || new Date().toISOString().slice(0,7)
+      || window.TimeClockCalendarV61448.month()
     );
     return workPatternMonthStartV61419(month)
-      || new Date().toISOString().slice(0,10);
+      || window.TimeClockCalendarV61448.today();
   }
 
   function workTemplateAccessibleDepartmentsV61438(){
@@ -18159,7 +18177,7 @@ ${skippedSummary(compatibility.skipped)}
     return EMPLOYEE_TEMPLATE_LABELS[category]||templateCode||'-';
   }
   function fillPatternOptions(){const pOpts=wp.patterns.filter(x=>x.is_active).map(x=>`<option value="${esc(x.pattern_code)}">${esc(x.pattern_name)}</option>`).join('');const tOpts=wp.templates.filter(x=>x.is_active&&!String(x.template_code||'').toUpperCase().includes('EARLY')).map(x=>`<option value="${esc(x.template_code)}">${esc(x.template_name)}</option>`).join('');if($('epPattern'))$('epPattern').innerHTML=pOpts;if($('epTemplate'))$('epTemplate').innerHTML='<option value="">เลือก Template</option>';if($('assignWorkTemplate'))$('assignWorkTemplate').innerHTML=tOpts;}
-  function openPattern(code){if(!canManageWorkPatternParameters()){app()?.toast?.('พารามิเตอร์รูปแบบการทำงานสำหรับ HR Admin เท่านั้น','error');return;}ensureWpModals();const r=wp.patterns.find(x=>x.pattern_code===code)||{pattern_code:'',pattern_name:'',work_days_per_week:6,scheduled_minutes_including_break:540,ot_threshold_minutes:540,break_minutes:60,default_start_time:'08:30',default_end_time:'17:30',weekly_off_dows:[0],carry_forward_months:3,is_active:true,note:''};wp.editing=r;$('wpCode').value=r.pattern_code||'';$('wpCode').disabled=!!r.pattern_code;$('wpName').value=r.pattern_name||'';$('wpDays').value=r.work_days_per_week||6;$('wpScheduled').value=r.scheduled_minutes_including_break||540;$('wpOt').value=r.ot_threshold_minutes||540;$('wpBreak').value=r.break_minutes||60;$('wpStart').value=String(r.default_start_time||'08:30').slice(0,5);$('wpEnd').value=String(r.default_end_time||'17:30').slice(0,5);$('wpCarry').value=r.carry_forward_months??3;$('wpActive').checked=r.is_active!==false;$('wpNote').value=r.note||'';qsa('[data-wp-dow]').forEach(c=>c.checked=(r.weekly_off_dows||[]).map(Number).includes(Number(c.dataset.wpDow)));$('workPatternModal').classList.remove('hidden');}
+  function openPattern(code){if(!canManageWorkPatternParameters()){app()?.toast?.('พารามิเตอร์รูปแบบการทำงานสำหรับ HR Admin เท่านั้น','error');return;}ensureWpModals();const r=wp.patterns.find(x=>x.pattern_code===code)||{pattern_code:'',pattern_name:'',work_days_per_week:6,scheduled_minutes_including_break:540,standard_work_minutes:480,ot_threshold_minutes:480,break_minutes:60,default_start_time:'08:30',default_end_time:'17:30',weekly_off_dows:[0],carry_forward_months:3,is_active:true,note:''};wp.editing=r;$('wpCode').value=r.pattern_code||'';$('wpCode').disabled=!!r.pattern_code;$('wpName').value=r.pattern_name||'';$('wpDays').value=r.work_days_per_week||6;$('wpScheduled').value=r.scheduled_minutes_including_break||540;$('wpOt').value=r.ot_threshold_minutes??Math.max(0,Number(r.scheduled_minutes_including_break||540)-Number(r.break_minutes||60));$('wpBreak').value=r.break_minutes||60;$('wpStart').value=String(r.default_start_time||'08:30').slice(0,5);$('wpEnd').value=String(r.default_end_time||'17:30').slice(0,5);$('wpCarry').value=r.carry_forward_months??3;$('wpActive').checked=r.is_active!==false;$('wpNote').value=r.note||'';qsa('[data-wp-dow]').forEach(c=>c.checked=(r.weekly_off_dows||[]).map(Number).includes(Number(c.dataset.wpDow)));$('workPatternModal').classList.remove('hidden');}
   async function savePattern(){
     if(!canManageWorkPatternParameters()){app()?.toast?.('ไม่มีสิทธิ์แก้ไขพารามิเตอร์รูปแบบการทำงาน','error');return;}
     const button=$('wpSaveBtn');
@@ -18168,7 +18186,12 @@ ${skippedSummary(compatibility.skipped)}
       if(!weekly.length)throw new Error('กรุณาเลือกวันหยุดตั้งต้นอย่างน้อย 1 วัน');
       if(button)button.disabled=true;
       app()?.showLoading?.('กำลังบันทึกและปรับข้อมูลรูปแบบการทำงาน...');
-      await rpc('ta_upsert_work_pattern',{p_data:{pattern_code:$('wpCode').value,pattern_name:$('wpName').value,work_days_per_week:Number($('wpDays').value),scheduled_minutes_including_break:Number($('wpScheduled').value),standard_work_minutes:Number($('wpScheduled').value),break_minutes:Number($('wpBreak').value),ot_threshold_minutes:Number($('wpOt').value),weekly_off_dows:weekly,default_start_time:$('wpStart').value,default_end_time:$('wpEnd').value,allow_comp_off:true,carry_forward_months:Number($('wpCarry').value),is_active:$('wpActive').checked,note:$('wpNote').value}});
+      const scheduledMinutes=Math.max(0,Number($('wpScheduled').value)||0);
+      const breakMinutes=Math.max(0,Number($('wpBreak').value)||0);
+      const standardMinutes=Math.max(0,scheduledMinutes-breakMinutes);
+      const otValue=Number($('wpOt').value);
+      const otThreshold=Number.isFinite(otValue)&&otValue>=0?otValue:standardMinutes;
+      await rpc('ta_upsert_work_pattern',{p_data:{pattern_code:$('wpCode').value,pattern_name:$('wpName').value,work_days_per_week:Number($('wpDays').value),scheduled_minutes_including_break:scheduledMinutes,standard_work_minutes:standardMinutes,break_minutes:breakMinutes,ot_threshold_minutes:otThreshold,weekly_off_dows:weekly,default_start_time:$('wpStart').value,default_end_time:$('wpEnd').value,allow_comp_off:true,carry_forward_months:Number($('wpCarry').value),is_active:$('wpActive').checked,note:$('wpNote').value}});
       $('workPatternModal').classList.add('hidden');
       try{window.TimeClockConsistencyV61415?.invalidateAll?.();}catch(_){ }
       if(app()?.state)app().state.schedule=[];
@@ -18374,8 +18397,8 @@ ${skippedSummary(compatibility.skipped)}
     if(warning){warning.classList.add('hidden');warning.textContent='';}
     body.innerHTML='<tr><td colspan="10" class="table-empty">กำลังโหลด...</td></tr>';
     try{
-      const referenceMonth=workPatternMonthValueV61419($('employeePatternDate')?.value||new Date().toISOString().slice(0,7));
-      const effectiveDate=workPatternMonthStartV61419(referenceMonth)||new Date().toISOString().slice(0,10);
+      const referenceMonth=workPatternMonthValueV61419($('employeePatternDate')?.value||window.TimeClockCalendarV61448.month());
+      const effectiveDate=workPatternMonthStartV61419(referenceMonth)||window.TimeClockCalendarV61448.today();
       if($('wpBulkEffectiveDateV61416')&&!$('wpBulkEffectiveDateV61416').value)$('wpBulkEffectiveDateV61416').value=referenceMonth;
 
       let rows=[];
@@ -18449,7 +18472,7 @@ ${skippedSummary(compatibility.skipped)}
       $('epPositionPolicyV61417').classList.add('hidden');
       $('epPositionPolicyV61417').innerHTML='';
     }
-    $('epFrom').value=workPatternMonthValueV61419(r.effective_from||$('employeePatternDate')?.value||new Date().toISOString().slice(0,7));
+    $('epFrom').value=workPatternMonthValueV61419(r.effective_from||$('employeePatternDate')?.value||window.TimeClockCalendarV61448.month());
     setTimeout(()=>validateWorkPatternEffectiveDateV61417($('epFrom').value,{input:$('epFrom'),showToast:false,autoCorrect:true}),0);
     $('epTo').value=r.effective_to?workPatternMonthValueV61419(r.effective_to):'';
     $('epNote').value=r.assignment_note||'';
@@ -18494,7 +18517,7 @@ ${skippedSummary(compatibility.skipped)}
   async function refreshWorkPatternAttendanceV61419(empCodes=[],effectiveMonth=''){
     const codes=[...new Set((empCodes||[]).map(x=>String(x||'').trim()).filter(Boolean))];
     const start=workPatternMonthStartV61419(effectiveMonth);
-    const today=new Date().toISOString().slice(0,10);
+    const today=window.TimeClockCalendarV61448.today();
     if(!codes.length||!start||start>today)return {skipped:true};
     const end=[today,workPatternMonthEndV61419(start)].sort()[0];
     const chunks=[];for(let i=0;i<codes.length;i+=40)chunks.push(codes.slice(i,i+40));
@@ -18553,7 +18576,7 @@ ${skippedSummary(compatibility.skipped)}
   async function applyBulkEmployeePatternV61416(){
     if(!wp.selectedEmployees.size)return;
     if(!wp.defaultShiftRpcReady){app()?.toast?.('กรุณารัน SQL V6.14.19 ก่อนใช้ Bulk Assignment','error');return;}
-    let effectiveMonth=workPatternMonthValueV61419($('wpBulkEffectiveDateV61416')?.value||$('employeePatternDate')?.value||new Date().toISOString().slice(0,7));
+    let effectiveMonth=workPatternMonthValueV61419($('wpBulkEffectiveDateV61416')?.value||$('employeePatternDate')?.value||window.TimeClockCalendarV61448.month());
     const guard=await validateWorkPatternEffectiveDateV61417(effectiveMonth,{input:$('wpBulkEffectiveDateV61416'),showToast:true,autoCorrect:true});
     if(!guard.allowed)return;
     effectiveMonth=workPatternMonthValueV61419($('wpBulkEffectiveDateV61416')?.value||effectiveMonth);
@@ -18926,7 +18949,7 @@ ${names}${extra}
     $('assignWorkTemplate')?.addEventListener('change',toggleCustomerWindow);
     $('assignCustomerEndMode')?.addEventListener('change',toggleCustomerEndModeV61110);
     const assignModal=$('assignModal');if(assignModal)new MutationObserver(()=>{if(!assignModal.classList.contains('hidden'))setTimeout(loadDailyPlanForModal,30);}).observe(assignModal,{attributes:true,attributeFilter:['class']});
-    const today=new Date().toISOString().slice(0,10);const currentMonth=workPatternMonthValueV61419(today);if($('employeePatternDate'))$('employeePatternDate').value=currentMonth;if($('wpBulkEffectiveDateV61416'))$('wpBulkEffectiveDateV61416').value=currentMonth;updateBulkWorkPatternControlsV61416();setTimeout(()=>validateWorkPatternEffectiveDateV61417(currentMonth,{input:$('wpBulkEffectiveDateV61416'),showToast:false,autoCorrect:true}),0);
+    const today=window.TimeClockCalendarV61448.today();const currentMonth=workPatternMonthValueV61419(today);if($('employeePatternDate'))$('employeePatternDate').value=currentMonth;if($('wpBulkEffectiveDateV61416'))$('wpBulkEffectiveDateV61416').value=currentMonth;updateBulkWorkPatternControlsV61416();setTimeout(()=>validateWorkPatternEffectiveDateV61417(currentMonth,{input:$('wpBulkEffectiveDateV61416'),showToast:false,autoCorrect:true}),0);
     applyWorkPatternParameterVisibility();
     document.addEventListener(
       'timeclock:effective-role-changed',
@@ -18974,7 +18997,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.47',
+    version:'6.14.48',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -19397,7 +19420,7 @@ ${names}${extra}
     ).trim();
     const date = String(
       prefill.date
-      || new Date().toISOString().slice(0,10)
+      || window.TimeClockCalendarV61448.today()
     ).slice(0,10);
     const row = attendanceRow(empCode,date);
     const fullName =
@@ -19503,14 +19526,10 @@ ${names}${extra}
 
     const start =
       $("shiftRequestStart")?.value
-      || new Date(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-        1
-      ).toISOString().slice(0,10);
+      || window.TimeClockCalendarV61448.monthStart(new Date());
     const end =
       $("shiftRequestEnd")?.value
-      || new Date().toISOString().slice(0,10);
+      || window.TimeClockCalendarV61448.today();
     const status =
       $("shiftRequestStatus")?.value;
     const search =
@@ -19732,7 +19751,7 @@ ${names}${extra}
 
   async function certifyAttendance(key,action) {
     const [emp,date] = String(key).split("|");
-    const base = attendanceDetailRow(key);
+    const base = attendanceRow(emp,date);
     if (!base) {
       return app()?.toast?.("ไม่พบข้อมูล Attendance รายการนี้","error");
     }
@@ -19820,12 +19839,8 @@ ${names}${extra}
   }
 
   function bind() {
-    const today = new Date().toISOString().slice(0,10);
-    const start = new Date(
-      new Date().getFullYear(),
-      new Date().getMonth(),
-      1
-    ).toISOString().slice(0,10);
+    const today = window.TimeClockCalendarV61448.today();
+    const start = window.TimeClockCalendarV61448.monthStart(new Date());
 
     if ($("shiftRequestStart")) {
       $("shiftRequestStart").value = start;
@@ -27801,7 +27816,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.47';
+  const VERSION='6.14.48';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -27823,7 +27838,7 @@ ${names}${extra}
   const missingRpcV61425=e=>/PGRST202|42883|could not find|does not exist|schema cache/i.test(String(e?.code||'')+' '+String(e?.message||e||''));
   const fmtTime=v=>app()?.formatTime?.(v)||String(v||'-').slice(0,5)||'-';
   const fmtDate=v=>app()?.formatDate?.(v)||v||'-';
-  function isoAddDays(date,days){const d=new Date(`${String(date).slice(0,10)}T00:00:00`);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10);}
+  function isoAddDays(date,days){return window.TimeClockCalendarV61448.addDays(date,days);}
   function minsOf(t){if(!t)return null;const m=String(t).match(/(\d{1,2}):(\d{2})/);return m?Number(m[1])*60+Number(m[2]):null;}
   function addMinutes(start,total){const m=minsOf(start);if(m==null)return null;const x=(m+Number(total||0))%(24*60);return `${String(Math.floor(x/60)).padStart(2,'0')}:${String(x%60).padStart(2,'0')}`;}
   function spanMinutes(start,end){const a=minsOf(start),b=minsOf(end);if(a==null||b==null)return 0;return b>=a?b-a:(1440-a)+b;}
@@ -27832,6 +27847,14 @@ ${names}${extra}
   function patternBreak(){const configured=Number(st.current?.patternRule?.break_minutes||st.current?.row?.break_minutes||0);return configured>=0&&configured!==0?configured:60;}
   function defaultTemplate(pattern){return pattern==='TECH_5D'?'ST5':'ST6';}
   function shiftMaster(code){return (app()?.state?.filters?.shifts||[]).find(s=>String(s.shift_code||'').toUpperCase()===String(code||'').toUpperCase());}
+  function isNonWorkingShiftV61448(codeValue,shift=null){
+    const code=window.tcShiftCode?.(codeValue||'')||String(codeValue||'').trim().toUpperCase();
+    if(!code)return false;
+    if(['OFF','HOL','LV','OSTD','OS043','OS134','OS135'].includes(code))return true;
+    if(/^OH[56]\d*/.test(code))return true;
+    if(shift?.is_workday===false)return true;
+    return false;
+  }
   // V6.14.45: generated shifts are inserted by the Backend resolver before it
   // returns, but the browser Shift Master cache was loaded earlier.  Hydrate the
   // returned row locally so the same save flow can validate it immediately.
@@ -27961,8 +27984,8 @@ ${names}${extra}
     const assignedMaster=assigned?shiftMaster(assigned):null;
     // V6.13.5: A manually assigned working shift wins over the natural
     // Sunday/holiday classification. This is essential for OFF-basis lookup.
-    if(assigned&&assignedMaster?.is_workday!==false&&!['OFF','HOL','LV'].includes(assigned))return false;
-    return ['OFF','HOL','LV'].includes(code)||sm?.is_workday===false||['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day)||r?.schedule_rule_mode==='DYNAMIC_OFF';
+    if(assigned&&!isNonWorkingShiftV61448(assigned,assignedMaster))return false;
+    return isNonWorkingShiftV61448(code,sm)||['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day)||r?.schedule_rule_mode==='DYNAMIC_OFF';
   }
   function rowWindow(r){
     if(!r)return null;
@@ -28011,9 +28034,7 @@ ${names}${extra}
     const targetCrossesMidnight=Boolean(targetEndValue&&targetStart&&minsOf(targetEndValue)<=minsOf(targetStart));
     const targetNight=shiftLooksNightV61431(targetMaster||normalizedTargetCode)
       || (targetStartMinutes!=null&&targetStartMinutes>=18*60);
-    const targetDayoff=normalizedTargetCode==='OFF'
-      || normalizedTargetCode==='HOL'
-      || (normalizedTargetCode!=='LV'&&targetMaster?.is_workday===false);
+    const targetDayoff=normalizedTargetCode!=='LV'&&isNonWorkingShiftV61448(normalizedTargetCode,targetMaster);
     const targetLeave=normalizedTargetCode==='LV';
     const targetMorning=!targetNight&&targetStartMinutes!=null&&targetStartMinutes<12*60;
 
@@ -28057,7 +28078,7 @@ ${names}${extra}
     const day=String(r?.day_type||'').toUpperCase();
     const assigned=String(r?.assigned_shift_code||r?.shift_code||'').trim().toUpperCase();
     const assignedMaster=assigned?shiftMaster(assigned):null;
-    const explicitWorking=Boolean(assigned&&assignedMaster?.is_workday!==false&&!['OFF','HOL','LV'].includes(assigned));
+    const explicitWorking=Boolean(assigned&&!isNonWorkingShiftV61448(assigned,assignedMaster));
     const dayoff=!leave&&(
       code==='OFF'||code==='HOL'||sm?.is_workday===false||String(r?.schedule_rule_mode||'').toUpperCase()==='DYNAMIC_OFF'||
       (!explicitWorking&&['WEEKLY_OFF','COMP_OFF','HOLIDAY','PUBLIC_HOLIDAY','DAY_OFF'].includes(day))
@@ -28283,7 +28304,7 @@ ${names}${extra}
   }
   async function modeOptions(emp){
     try{
-      const rows=await rpc('ta_get_work_modes_for_employee_v6120',{p_emp_code:String(emp),p_work_date:$('assignWorkDate')?.value||new Date().toISOString().slice(0,10)})||[];
+      const rows=await rpc('ta_get_work_modes_for_employee_v6120',{p_emp_code:String(emp),p_work_date:$('assignWorkDate')?.value||window.TimeClockCalendarV61448.today()})||[];
       const out=Array.isArray(rows)?[...rows]:[];
       if(!out.some(x=>String(x.mode_code||'').toUpperCase()==='LEAVE'))out.push({mode_code:'LEAVE',mode_name:'ลา',is_active:true,is_allowed:true,display_order:95,scope_label:'ใช้ได้ในทุกหน่วยงานที่มีสิทธิ์จัดกะ'});
       return out;
@@ -29291,7 +29312,7 @@ ${names}${extra}
   async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   function init(){ensureAssignmentUi();ensureAdminUi();ensureShiftRuleAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));document.querySelector('[data-page="admin-shifts"]')?.addEventListener('click',()=>setTimeout(()=>loadShiftRuleAdmin(),0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();loadRuntimeShiftRules();});document.addEventListener('timeclock:effective-role-changed',()=>{loadAdminPanel();loadShiftRuleAdmin();});document.documentElement.dataset.schedulingRulesVersion=VERSION;}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,ensureRuntimeRules:loadRuntimeShiftRules};
+  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,sequenceBlockMessage:sequenceBlockMessageV61435,ensureRuntimeRules:loadRuntimeShiftRules};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
