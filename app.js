@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.42";
-document.documentElement.dataset.timeClockBuild = "6.14.42";
+window.__TIME_CLOCK_BUILD__ = "V6.14.43";
+document.documentElement.dataset.timeClockBuild = "6.14.43";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.42";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.42',
+  version: '6.14.43',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -17926,7 +17926,7 @@ ${skippedSummary(compatibility.skipped)}
     const pattern6=wp.patterns.find(r=>String(r?.pattern_code||'').toUpperCase()==='TECH_6D');
     const hours5=hours(pattern5?.scheduled_minutes_including_break||570);
     const hours6=hours(pattern6?.scheduled_minutes_including_break||540);
-    // V6.14.42: Work Template card must show the CURRENT Shift Master business codes,
+    // V6.14.43: Work Template card must show the CURRENT Shift Master business codes,
     // not legacy/internal template codes as if they were shift codes.
     const shift5Day=workTemplateShiftDetailV61439('STD','08:30','18:00');
     const shift5Night=workTemplateShiftDetailV61439('S134','19:30','05:00');
@@ -18922,7 +18922,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.42',
+    version:'6.14.43',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,

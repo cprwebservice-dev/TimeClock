@@ -21935,14 +21935,14 @@ body.darkmode #page-work-patterns .work-template-pattern-group-head-v61439 stron
 
 
 /* ========================================================================== */
-/* V6.14.42 — Person Schedule OFF icon: transparent Calendar-Off slash               */
+/* V6.14.43 — Person Schedule OFF icon: transparent fill + System OFF border */
 /* Applies only to Person 15-Day / Full-Month schedule labels.               */
 /* OFF icon color remains driven by System Settings --shift-off-text.         */
 /* ========================================================================== */
 #page-schedule #schedulePersonWorkspace .monthly-person-schedule-table-v61146
 .schedule-cell.schedule-icon-only-v6136.icon-tone-off{
   background:transparent!important;
-  border-color:transparent!important;
+  border-color:var(--shift-off-border,#dde2e9)!important;
   color:var(--shift-off-text,#64748b)!important;
 }
 #page-schedule #schedulePersonWorkspace .monthly-person-schedule-table-v61146
@@ -21965,6 +21965,6 @@ body.theme-dark #page-schedule #schedulePersonWorkspace .monthly-person-schedule
 .dark #page-schedule #schedulePersonWorkspace .monthly-person-schedule-table-v61146
 .schedule-cell.schedule-icon-only-v6136.icon-tone-off{
   background:transparent!important;
-  border-color:transparent!important;
+  border-color:var(--shift-off-border,#465969)!important;
   color:var(--shift-off-text,#c1ced8)!important;
 }

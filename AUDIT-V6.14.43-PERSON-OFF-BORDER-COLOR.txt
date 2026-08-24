@@ -1,0 +1,9 @@
+AUDIT — TimeAttendance V6.14.43
+Person OFF Calendar-Off Border Color Fix
+
+[PASS] OFF label background remains transparent.
+[PASS] OFF label border restored to var(--shift-off-border).
+[PASS] OFF icon stroke remains currentColor / var(--shift-off-text).
+[PASS] Person 15-Day and Full-Month use the same OFF icon presentation.
+[PASS] Day/Night/Leave/HOL and scheduling logic unchanged.
+[PASS] No SQL migration required.
