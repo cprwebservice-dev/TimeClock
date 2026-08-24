@@ -1,0 +1,21 @@
+AUDIT — TimeAttendance V6.14.38
+Work Template Access Detail
+
+[PASS] Existing V6.14.37 night-sequence backend references retained.
+[PASS] No V6.14.37 guard/RPC name was changed.
+[PASS] Work Template section uses permission-aware data.
+[PASS] HR Admin source = ta_get_work_mode_admin_v6120.
+[PASS] Scoped user source = ta_get_work_modes_for_employee_v6120 by visible department representative.
+[PASS] Only active + allowed Work Template modes render.
+[PASS] NORMAL / NORMAL_LATE_CUSTOMER / SPLIT_WAIT_NIGHT / HOUR_BASED are supported.
+[PASS] DYNAMIC_OFF / LEAVE are intentionally excluded from Work Template cards.
+[PASS] NORMAL reads ST6/ST5 actual Work Template segment times when available.
+[PASS] NORMAL_LATE_CUSTOMER reads SPLIT_FLEX actual segments when available.
+[PASS] SPLIT_WAIT_NIGHT explains WORK / WAITING / WORK and that WAITING is not counted.
+[PASS] HOUR_BASED displays configured TECH_6D / TECH_5D scheduled hours including break.
+[PASS] Scope label is shown on each card.
+[PASS] Work Mode config save refreshes cards.
+[PASS] Employee scope reload refreshes cards for non-HR roles.
+[PASS] app.js syntax check passed.
+[PASS] index.html and 404.html parse passed.
+[PASS] No SQL migration required.

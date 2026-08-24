@@ -21878,3 +21878,32 @@ body.theme-dark #assignModal .assignment-modal-footer-v61428,.dark #assignModal 
 
 /* V6.14.31 — Night→Morning minimum-rest guidance */
 .rest-transition-advice-v61431{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid #f2c36b;background:#fff8e8;border-radius:12px;margin-bottom:2px}.rest-transition-advice-v61431.night-morning{border-color:#f0a85b;background:#fff4e5}.rest-transition-advice-v61431>div:first-child{display:flex;flex-direction:column;gap:3px;min-width:0}.rest-transition-advice-v61431 strong{font-size:13px;color:#8b4b08}.rest-transition-advice-v61431 small{font-size:11px;line-height:1.45;color:#7a5a2c}.rest-transition-actions-v61431{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.rest-transition-actions-v61431 .btn{white-space:nowrap}@media(max-width:760px){.rest-transition-advice-v61431{align-items:flex-start;flex-direction:column}.rest-transition-actions-v61431{width:100%;justify-content:flex-start}}
+
+/* ===== V6.14.38 Work Template Access Detail ===== */
+#page-work-patterns .work-template-card-v61438{position:relative;display:flex;flex-direction:column}
+#page-work-patterns .work-template-card-v61438 .work-template-segments{margin-top:auto}
+#page-work-patterns .work-template-access-row-v61438{display:flex;justify-content:flex-start;margin-top:8px}
+#page-work-patterns .work-template-access-chip-v61438{display:inline-flex;align-items:center;max-width:100%;padding:5px 8px;border-radius:999px;background:var(--emerald-50,#ecfdf5);border:1px solid var(--emerald-200,#a7f3d0);color:var(--emerald-700,#047857);font-size:9px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page-work-patterns .work-template-card-v61438.split-wait-template-v61438{border-color:#b8d7f5;background:linear-gradient(180deg,#fbfdff,#f7fbff)}
+#page-work-patterns .work-template-card-v61438.hour-template-v61438{border-color:#c8d3df;background:linear-gradient(180deg,#ffffff,#f8fafc)}
+#page-work-patterns .work-template-card-v61438 .segment-st6,
+#page-work-patterns .work-template-card-v61438 .segment-st5,
+#page-work-patterns .work-template-card-v61438 .segment-tech_6d,
+#page-work-patterns .work-template-card-v61438 .segment-tech_5d{background:var(--blue-100);color:var(--blue-700)}
+#page-work-patterns .work-template-card-v61438 .segment-waiting{background:var(--amber-100);color:var(--amber-700)}
+@media(min-width:1400px){#page-work-patterns .work-template-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+html[data-theme="dark"] #page-work-patterns .work-template-access-chip-v61438,
+body[data-theme="dark"] #page-work-patterns .work-template-access-chip-v61438,
+html.dark #page-work-patterns .work-template-access-chip-v61438,
+body.dark #page-work-patterns .work-template-access-chip-v61438,
+body.darkmode #page-work-patterns .work-template-access-chip-v61438{background:#123d34;border-color:#256b5c;color:#b7f7df}
+html[data-theme="dark"] #page-work-patterns .work-template-card-v61438.split-wait-template-v61438,
+body[data-theme="dark"] #page-work-patterns .work-template-card-v61438.split-wait-template-v61438,
+html.dark #page-work-patterns .work-template-card-v61438.split-wait-template-v61438,
+body.dark #page-work-patterns .work-template-card-v61438.split-wait-template-v61438,
+body.darkmode #page-work-patterns .work-template-card-v61438.split-wait-template-v61438,
+html[data-theme="dark"] #page-work-patterns .work-template-card-v61438.hour-template-v61438,
+body[data-theme="dark"] #page-work-patterns .work-template-card-v61438.hour-template-v61438,
+html.dark #page-work-patterns .work-template-card-v61438.hour-template-v61438,
+body.dark #page-work-patterns .work-template-card-v61438.hour-template-v61438,
+body.darkmode #page-work-patterns .work-template-card-v61438.hour-template-v61438{background:#17283b;border-color:#33506f}
