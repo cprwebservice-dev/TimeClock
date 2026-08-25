@@ -22539,3 +22539,5 @@ body.theme-dark .employee-month-punch-context-note-v61464,.dark .employee-month-
   .employee-month-punch-view-switch-v61464 .employee-month-punch-filter-v61460{flex:1;justify-content:center}
   .employee-month-punch-view-status-v61464{align-items:flex-start;flex-direction:column;gap:2px;padding-left:9px;padding-right:9px}
 }
+
+/* V6.14.65 — Raw Time Records: center detail column shows only GPS location/place. */

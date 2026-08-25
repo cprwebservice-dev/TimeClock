@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.64";
-document.documentElement.dataset.timeClockBuild = "6.14.64";
+window.__TIME_CLOCK_BUILD__ = "V6.14.65";
+document.documentElement.dataset.timeClockBuild = "6.14.65";
 
 
 /* ===== js/config.js ===== */
@@ -8255,22 +8255,13 @@ window.tcIsDayShiftCode = value =>
       const mode = employeeMonthPunchModeV61460(row);
       const modeLabel = mode === 'IN' ? 'เข้า' : mode === 'OUT' ? 'ออก' : 'ไม่ระบุ';
       const time = formatTime(row?.inout_time);
-      const gpsName = String(row?.gps_name || '').trim();
       const gpsLocation = String(row?.gps_location || '').trim();
       const source = [row?.source_sheet,row?.source_file].map(v=>String(v||'').trim()).filter(Boolean).join(' • ');
-      const detailBits = [
-        gpsName ? `พื้นที่: ${gpsName}` : '',
-        gpsLocation ? `พิกัด/สถานที่: ${gpsLocation}` : '',
-        row?.reader_name ? `เครื่อง: ${String(row.reader_name).trim()}` : '',
-        row?.project_name ? `โครงการ: ${String(row.project_name).trim()}` : '',
-        row?.remarks ? `หมายเหตุ: ${String(row.remarks).trim()}` : ''
-      ].filter(Boolean);
       return `<div class="employee-month-punch-record-v61460 mode-${safe(mode.toLowerCase())}">
         <time>${safe(time)}</time>
         <span class="employee-month-punch-mode-v61460 mode-${safe(mode.toLowerCase())}"><i></i>${safe(modeLabel)}</span>
         <div class="employee-month-punch-record-copy-v61460">
-          <strong>${safe(gpsName || source || 'ข้อมูลลงเวลา')}</strong>
-          <small>${safe(detailBits.join(' • ') || source || 'ไม่ระบุสถานที่/แหล่งข้อมูล')}</small>
+          <strong>${safe(gpsLocation || 'ไม่ระบุพิกัด/สถานที่')}</strong>
         </div>
         <span class="employee-month-punch-source-v61460">${safe(source || `Record #${row?.punch_id || '-'}`)}</span>
       </div>`;
