@@ -9160,16 +9160,28 @@ body.theme-dark .post-resign-cell{
 .schedule-self-readonly-badge{
   display:inline-flex;
   align-items:center;
-  min-height:17px;
-  padding:1px 5px;
+  justify-content:center;
+  width:20px;
+  height:20px;
+  min-width:20px;
+  padding:0;
   border:1px solid #cbd5e1;
   border-radius:999px;
   background:#f8fafc;
   color:#64748b;
-  font-size:7px;
-  font-weight:850;
   line-height:1;
   white-space:nowrap;
+  cursor:help;
+}
+
+.schedule-self-readonly-icon{
+  width:12px;
+  height:12px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 .manager-self-readonly-cell{
@@ -22541,3 +22553,5 @@ body.theme-dark .employee-month-punch-context-note-v61464,.dark .employee-month-
 }
 
 /* V6.14.65 — Raw Time Records: center detail column shows only GPS location/place. */
+
+/* V6.14.66 — Personal schedule: Manager self/read-only label is icon-only; tooltip keeps full meaning. */
