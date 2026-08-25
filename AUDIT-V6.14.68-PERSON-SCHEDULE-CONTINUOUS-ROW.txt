@@ -1,0 +1,22 @@
+AUDIT — TimeAttendance V6.14.68
+Personal Schedule Continuous Row UX
+
+SCOPE
+- Frontend CSS only + version/cache-bust update
+- Personal full-month schedule table only
+
+CHANGES
+[PASS] Employee frozen pane code/name/position uses one continuous visual band.
+[PASS] Internal frozen-column dividers are softened/removed.
+[PASS] One divider remains between employee information and calendar days.
+[PASS] Row hover continues into normal calendar cells.
+[PASS] Existing public-holiday and selected-cell backgrounds are preserved.
+[PASS] Manager own/read-only row tint includes position column.
+[PASS] Dark mode coverage added.
+
+UNCHANGED
+- Schedule data and write paths
+- Permissions / Manager self read-only behavior
+- Attendance / Late / Absence / Early leave
+- Night sequence / rest / day-off / leave / certification
+- Backend / SQL

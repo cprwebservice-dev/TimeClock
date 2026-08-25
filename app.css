@@ -22555,3 +22555,97 @@ body.theme-dark .employee-month-punch-context-note-v61464,.dark .employee-month-
 /* V6.14.65 — Raw Time Records: center detail column shows only GPS location/place. */
 
 /* V6.14.66 — Personal schedule: Manager self/read-only label is icon-only; tooltip keeps full meaning. */
+
+/* ========================================================================== */
+/* V6.14.68 — Personal Schedule Continuous Row UX                             */
+/* Frozen employee columns read as one continuous row instead of separate     */
+/* blocks. Day cells keep their existing business/status colors.               */
+/* ========================================================================== */
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > td{
+  min-height:54px;
+}
+
+/* The employee identity pane (code + name + position) is visually one band. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-1,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-2,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-3{
+  background:#fff!important;
+  transition:background-color .14s ease,border-color .14s ease;
+}
+
+/* Remove the boxed/cut look inside the frozen employee pane. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-1,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-2{
+  border-right-color:transparent!important;
+}
+
+/* Keep only one soft divider where employee data meets the calendar. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-3{
+  border-right:1px solid #d7e2ee!important;
+  box-shadow:8px 0 14px -14px rgba(15,23,42,.42)!important;
+}
+
+/* One continuous hover band across employee info and ordinary calendar cells. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-1,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-2,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-3,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .schedule-data-cell:not(.cell-selected):not(.public-holiday-cell){
+  background:#f4f9ff!important;
+}
+
+/* Keep row rhythm consistent from the frozen pane into every date cell. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > td{
+  border-bottom-color:#e3eaf2!important;
+}
+
+/* Manager-own row remains read-only, but the tint is no longer cut at name. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-1,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-2,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-3{
+  background:#f0f7ff!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row:hover > .schedule-data-cell:not(.cell-selected):not(.public-holiday-cell){
+  background:#f0f7ff!important;
+}
+
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-1,
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-2,
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-3,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-1,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-2,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-3{
+  background:#111c2d!important;
+}
+
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-1,
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-2,
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-3,
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .schedule-data-cell:not(.cell-selected):not(.public-holiday-cell),
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-1,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-2,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .sticky-col-3,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr:hover > .schedule-data-cell:not(.cell-selected):not(.public-holiday-cell){
+  background:#152338!important;
+}
+
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-3,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > .sticky-col-3{
+  border-right-color:#314258!important;
+  box-shadow:8px 0 14px -14px rgba(0,0,0,.72)!important;
+}
+
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > td,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > td{
+  border-bottom-color:#26364a!important;
+}
+
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-1,
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-2,
+body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-3,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-1,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-2,
+.dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tr.manager-self-schedule-row > .sticky-col-3{
+  background:#122b42!important;
+}

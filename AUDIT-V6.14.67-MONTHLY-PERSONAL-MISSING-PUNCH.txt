@@ -1,0 +1,12 @@
+AUDIT — TimeAttendance V6.14.67
+MONTHLY PERSONAL OVERVIEW — Missing Punch / Unprocessed Status
+
+[PASS] Past planned working day can use canonical Attendance policy even without Attendance enrichment row.
+[PASS] Past planned day with no IN/OUT => ABSENCE / ขาดงาน.
+[PASS] Future planned day => UPCOMING / รอทำงาน.
+[PASS] Leave and day-off classification retained.
+[PASS] Structural/no-evidence calendar day retains existing unprocessed fallback.
+[PASS] KPI absence/late/early uses same merged calendar-day policy as day cards.
+[PASS] Anomaly summary uses the same merged policy.
+[PASS] No SQL migration required.
+[PASS] No Schedule write / Attendance write / Work Pattern mutation introduced.

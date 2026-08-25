@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.67";
-document.documentElement.dataset.timeClockBuild = "6.14.67";
+window.__TIME_CLOCK_BUILD__ = "V6.14.68";
+document.documentElement.dataset.timeClockBuild = "6.14.68";
 
 
 /* ===== js/config.js ===== */
@@ -9001,7 +9001,7 @@ window.tcIsDayShiftCode = value =>
       return { status: flags.primaryStatus || 'NORMAL', label: 'ปกติ', tone: 'normal' };
     }
 
-    // V6.14.67 — Monthly Personal must not label a past scheduled workday as
+    // V6.14.68 — Monthly Personal must not label a past scheduled workday as
     // “ยังไม่ประมวลผล” merely because the Attendance enrichment response has no
     // row for that date. The canonical schedule already contains enough evidence
     // (working shift / planned window / leave / day-off) to apply the same
@@ -9270,7 +9270,7 @@ window.tcIsDayShiftCode = value =>
             Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)}` : ''
           ].filter(Boolean).join(' • ')
         : 'นับจากตารางกะเดียวกับรายบุคคลเต็มเดือน';
-      // V6.14.67: KPI/anomaly counts use the same merged Calendar + Attendance
+      // V6.14.68: KPI/anomaly counts use the same merged Calendar + Attendance
       // policy as each day card. This includes past scheduled workdays whose
       // Attendance enrichment row is missing but whose missing punches are still
       // canonically an absence.
