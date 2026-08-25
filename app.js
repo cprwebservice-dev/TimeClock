@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.62";
-document.documentElement.dataset.timeClockBuild = "6.14.62";
+window.__TIME_CLOCK_BUILD__ = "V6.14.63";
+document.documentElement.dataset.timeClockBuild = "6.14.63";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.62";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.62',
+  version: '6.14.63',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -679,6 +679,33 @@ window.tcIsDayShiftCode = value =>
     return data||null;
   }
 
+  // V6.14.63 — short-lived canonical Schedule read cache.
+  // Month navigation repeatedly asks for the same immutable read window across
+  // Schedule / Attendance calendar skeleton / Monthly Personal. Reuse only
+  // successful reads; every schedule/attendance mutation clears this cache.
+  const scheduleReadCacheV61463 = new Map();
+  const SCHEDULE_READ_CACHE_TTL_V61463 = 60000;
+
+  function scheduleReadCacheKeyV61463(args, disableRangePaging) {
+    return JSON.stringify({
+      start: args?.p_start_date || '',
+      end: args?.p_end_date || '',
+      zone: args?.p_zone || '',
+      department: args?.p_department || '',
+      employees: Array.isArray(args?.p_emp_codes) ? [...args.p_emp_codes].map(String).sort() : null,
+      statuses: Array.isArray(args?.p_schedule_statuses) ? [...args.p_schedule_statuses].map(String).sort() : null,
+      onePage: Boolean(disableRangePaging)
+    });
+  }
+
+  function cloneScheduleRowsV61463(rows) {
+    return (rows || []).map(row => ({ ...row }));
+  }
+
+  function clearScheduleReadCacheV61463() {
+    scheduleReadCacheV61463.clear();
+  }
+
   async function getMonthlySchedule(app, params) {
     const client =
       app?.state?.client;
@@ -762,6 +789,13 @@ window.tcIsDayShiftCode = value =>
 
     const disableRangePaging =
       params.p_disable_range_paging === true;
+
+    const scheduleCacheKeyV61463 = scheduleReadCacheKeyV61463(rpcArgs, disableRangePaging);
+    const scheduleCachedV61463 = scheduleReadCacheV61463.get(scheduleCacheKeyV61463);
+    if (scheduleCachedV61463
+        && Date.now() - Number(scheduleCachedV61463.savedAt || 0) <= SCHEDULE_READ_CACHE_TTL_V61463) {
+      return cloneScheduleRowsV61463(scheduleCachedV61463.rows);
+    }
 
     // V6.11.51:
     // Full-month PERSON view is batched by employee code before reaching this
@@ -865,6 +899,15 @@ window.tcIsDayShiftCode = value =>
           false;
       }
     });
+
+    scheduleReadCacheV61463.set(scheduleCacheKeyV61463, {
+      savedAt: Date.now(),
+      rows: cloneScheduleRowsV61463(rows)
+    });
+    if (scheduleReadCacheV61463.size > 36) {
+      const oldestKey = scheduleReadCacheV61463.keys().next().value;
+      if (oldestKey) scheduleReadCacheV61463.delete(oldestKey);
+    }
 
     return rows;
   }
@@ -971,7 +1014,8 @@ window.tcIsDayShiftCode = value =>
     missingFunction,
     scheduleText,
     meaningfulScheduleName,
-    mergeScheduleEmployeeMeta
+    mergeScheduleEmployeeMeta,
+    clearReadCache: clearScheduleReadCacheV61463
   });
 })();
 
@@ -2035,97 +2079,57 @@ window.tcIsDayShiftCode = value =>
       startDate,
       endDate
     ) {
-      if(
-        !state.client
-        || !Array.isArray(rows)
-        || !rows.length
-      ) {
+      if (!Array.isArray(rows) || !rows.length) return rows;
+
+      rows.forEach(attendanceSeedSingleSegmentMetaV61463);
+
+      if (!state.client) return rows;
+
+      // V6.14.63: v61110 scans raw punch windows. Calling it for every employee
+      // in a whole month caused the 500s shown in Console. Only special/multi-
+      // segment work needs this second resolver; normal shifts already have the
+      // canonical IN/OUT in Attendance Detail.
+      const specialRows = rows.filter(attendanceNeedsPunchMetaV61463);
+      const empCodes = [...new Set(
+        specialRows.map(row => String(row.emp_code || '').trim()).filter(Boolean)
+      )];
+
+      if (!empCodes.length) {
+        sanitizeCrossMidnightPunchOwnershipV61452(rows);
         return rows;
       }
 
-      const empCodes =
-        [...new Set(
-          rows
-            .map(
-              row =>
-                String(
-                  row.emp_code
-                  || ""
-                ).trim()
-            )
-            .filter(Boolean)
-        )];
+      const metaMap = new Map();
+      const chunks = [];
+      for (let i = 0; i < empCodes.length; i += 30) chunks.push(empCodes.slice(i, i + 30));
 
-      const {
-        data,
-        error
-      } =
-        await state.client.rpc(
-          "ta_get_attendance_shift_punch_meta_v61110",
-          {
-            p_start_date:
-              startDate,
-            p_end_date:
-              endDate,
-            p_emp_codes:
-              empCodes.length
-                ? empCodes
-                : null
-          }
-        );
-
-      if(error) {
-        if(
-          String(
-            error.message
-            || ""
-          ).includes(
-            "ta_get_attendance_shift_punch_meta_v61110"
-          )
-        ) {
-          throw new Error(
-            "WORK_PLAN_LINKAGE_RPC_REQUIRED"
+      try {
+        for (const chunk of chunks) {
+          const { data, error } = await state.client.rpc(
+            "ta_get_attendance_shift_punch_meta_v61110",
+            { p_start_date:startDate, p_end_date:endDate, p_emp_codes:chunk }
           );
+          if (error) throw error;
+          (data || []).forEach(meta => {
+            metaMap.set(`${String(meta.emp_code)}|${String(meta.work_date).slice(0,10)}`, meta);
+          });
         }
-
-        throw error;
+      } catch (error) {
+        // Do not make the whole page unusable when optional Shift-2 punch metadata
+        // times out. Base Attendance remains canonical; special details can retry
+        // when the user opens a narrower employee/day view.
+        console.warn('Attendance special punch metadata V6.14.63 deferred:', error);
+        sanitizeCrossMidnightPunchOwnershipV61452(rows);
+        return rows;
       }
 
-      const metaMap =
-        new Map(
-          (data || []).map(
-            meta => [
-              `${String(meta.emp_code)}|${String(meta.work_date).slice(0,10)}`,
-              meta
-            ]
-          )
-        );
-
-      rows.forEach(
-        row => {
-          const key =
-            `${String(row.emp_code)}|${String(row.work_date).slice(0,10)}`;
-
-          const meta =
-            metaMap.get(
-              key
-            );
-
-          if(meta) {
-            Object.assign(
-              row,
-              meta
-            );
-
-            if(
-              meta.effective_work_template_code
-            ) {
-              row.template_code =
-                meta.effective_work_template_code;
-            }
-          }
-        }
-      );
+      specialRows.forEach(row => {
+        const key = `${String(row.emp_code)}|${String(row.work_date).slice(0,10)}`;
+        const meta = metaMap.get(key);
+        if (!meta) return;
+        Object.assign(row, meta);
+        if (meta.effective_work_template_code) row.template_code = meta.effective_work_template_code;
+      });
 
       sanitizeCrossMidnightPunchOwnershipV61452(rows);
       return rows;
@@ -2607,6 +2611,87 @@ window.tcIsDayShiftCode = value =>
           .join("");
     }
 
+
+    // V6.14.63 — successful Attendance chunks are reused briefly when users
+    // move back/forward between months. Mutation/rebuild paths clear the cache.
+    const attendanceReadCacheV61463 = new Map();
+    const ATTENDANCE_READ_CACHE_TTL_V61463 = 60000;
+
+    function attendanceReadCacheKeyV61463(range, requestEmployeeCodes) {
+      return JSON.stringify({
+        start: range?.start || '',
+        end: range?.end || '',
+        area: val("attZone") || '',
+        subArea: val("attSubArea") || '',
+        department: val("attDepartment") || '',
+        employees: Array.isArray(requestEmployeeCodes) ? [...requestEmployeeCodes].map(String).sort() : null
+      });
+    }
+
+    function attendanceCloneRowsV61463(rows) {
+      return (rows || []).map(row => ({ ...row }));
+    }
+
+    function clearAttendanceReadCacheV61463() {
+      attendanceReadCacheV61463.clear();
+    }
+
+    function attendanceNeedsPunchMetaV61463(row) {
+      const mode = String(
+        row?.schedule_rule_mode
+        || row?.work_mode_code
+        || row?.effective_work_mode_code
+        || ''
+      ).trim().toUpperCase();
+      const template = String(
+        row?.daily_work_template_code
+        || row?.effective_work_template_code
+        || row?.template_code
+        || row?.employee_default_template_code
+        || ''
+      ).trim().toUpperCase();
+      return Number(row?.segment_count || row?.paid_segment_count || 0) > 1
+        || ['NORMAL_LATE_CUSTOMER','SPLIT_WAIT_NIGHT','HOUR_BASED'].includes(mode)
+        || ['SPLIT_FLEX','EARLY_SPLIT_FLEX'].includes(template)
+        || Boolean(row?.shift_2_planned_start_at || row?.customer_window_start || row?.second_segment_start);
+    }
+
+    function attendanceClockValueV61463(value) {
+      const raw = String(value ?? '').trim();
+      if (!raw) return '';
+      const timestampMatch = raw.match(/[T\s](\d{2}:\d{2}(?::\d{2})?)/);
+      if (timestampMatch) return timestampMatch[1].length === 5 ? `${timestampMatch[1]}:00` : timestampMatch[1];
+      const timeMatch = raw.match(/^(\d{1,2}:\d{2}(?::\d{2})?)/);
+      if (!timeMatch) return '';
+      const parts = timeMatch[1].split(':');
+      return `${String(parts[0]).padStart(2,'0')}:${parts[1]}:${parts[2] || '00'}`;
+    }
+
+    function attendanceSeedSingleSegmentMetaV61463(row) {
+      if (!row) return row;
+      const workDate = String(row.work_date || '').slice(0,10);
+      const start = attendanceClockValueV61463(row.effective_shift_start_time || row.shift_start_time || null);
+      const end = attendanceClockValueV61463(row.effective_shift_end_time || row.shift_end_time || null);
+      if (!row.shift_1_planned_start_at && workDate && start) {
+        row.shift_1_planned_start_at = attendanceScheduleTimestampV61462(workDate, start, false);
+      }
+      if (!row.shift_1_planned_end_at && workDate && end) {
+        const sm = attendanceClockMinutes(start);
+        const em = attendanceClockMinutes(end);
+        row.shift_1_planned_end_at = attendanceScheduleTimestampV61462(workDate, end, sm != null && em != null && em <= sm);
+      }
+      if (!row.shift_1_actual_in_at && (row.actual_in_at || row.first_in)) {
+        const inTime = attendanceClockValueV61463(row.actual_in_at || row.first_in);
+        if (inTime) row.shift_1_actual_in_at = `${workDate}T${inTime}`;
+      }
+      if (!row.shift_1_actual_out_at && (row.actual_out_at || row.last_out)) {
+        const outTime = attendanceClockValueV61463(row.actual_out_at || row.last_out);
+        const inM = attendanceClockMinutes(row.actual_in_at || row.first_in);
+        const outM = attendanceClockMinutes(outTime);
+        row.shift_1_actual_out_at = attendanceScheduleTimestampV61462(workDate, outTime, inM != null && outM != null && outM < inM);
+      }
+      return row;
+    }
 
     const attendanceEmployeeFilter = {
       options: [],
@@ -3951,7 +4036,10 @@ window.tcIsDayShiftCode = value =>
         const args = {
           p_start_date: val("dashStart"), p_end_date: val("dashEnd"), p_zone: val("dashZone") || null, p_department: val("dashDepartment") || null
         };
-        let response = await state.client.rpc("ta_get_dashboard_overview_v650", args);
+        let response = await state.client.rpc("ta_get_dashboard_overview_v61463", args);
+        if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          response = await state.client.rpc("ta_get_dashboard_overview_v650", args);
+        }
         if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
           response = await state.client.rpc("ta_get_dashboard_overview_v640", args);
         }
@@ -4185,14 +4273,24 @@ window.tcIsDayShiftCode = value =>
           5000
       };
 
+      const attendanceCacheKeyV61463 = depth === 0
+        ? attendanceReadCacheKeyV61463(range, requestEmployeeCodes)
+        : null;
+      if (attendanceCacheKeyV61463) {
+        const cached = attendanceReadCacheV61463.get(attendanceCacheKeyV61463);
+        if (cached && Date.now() - Number(cached.savedAt || 0) <= ATTENDANCE_READ_CACHE_TTL_V61463) {
+          return attendanceCloneRowsV61463(cached.rows);
+        }
+      }
+
       let response =
         await state.client.rpc(
-          "ta_get_attendance_detail_v61020",
+          "ta_get_attendance_detail_v61463",
           newArgs
         );
 
       let source =
-        "V6.10.20";
+        "V6.14.63";
 
       let serverStatusFilter =
         false;
@@ -4533,6 +4631,17 @@ window.tcIsDayShiftCode = value =>
       // punch-meta enrichment. This prevents stale backend ABSENCE values from
       // excluding rows that actually have complete IN/OUT punches.
 
+      if (attendanceCacheKeyV61463) {
+        attendanceReadCacheV61463.set(attendanceCacheKeyV61463, {
+          savedAt: Date.now(),
+          rows: attendanceCloneRowsV61463(rows)
+        });
+        if (attendanceReadCacheV61463.size > 48) {
+          const oldestKey = attendanceReadCacheV61463.keys().next().value;
+          if (oldestKey) attendanceReadCacheV61463.delete(oldestKey);
+        }
+      }
+
       return rows;
     }
 
@@ -4623,7 +4732,7 @@ window.tcIsDayShiftCode = value =>
           .filter(row => !subArea || String(row.sub_area || '') === String(subArea))
           .map(attendanceScheduleSkeletonRowV61462);
       } catch (error) {
-        console.warn('Attendance full-calendar V6.14.62 fallback to persisted rows:', error);
+        console.warn('Attendance full-calendar V6.14.63 fallback to persisted rows:', error);
         return [];
       }
     }
@@ -4688,35 +4797,18 @@ window.tcIsDayShiftCode = value =>
 
         const collected = [];
 
-        for(
-          let index = 0;
-          index < ranges.length;
-          index += 1
-        ) {
-          if(
-            requestId
-            !== attendanceLoadRequestId
-          ) {
-            return;
-          }
-
-          const rows =
-            await fetchAttendanceChunk(
-              ranges[index],
-              requestEmployeeCodes,
-              statuses
-            );
-
-          collected.push(
-            ...rows
+        // V6.14.63: at most two historical chunks in flight. This cuts month
+        // navigation latency without opening the high-concurrency burst that used
+        // to overload PostgREST / PostgreSQL.
+        for (let index = 0; index < ranges.length; index += 2) {
+          if (requestId !== attendanceLoadRequestId) return;
+          const group = ranges.slice(index, index + 2);
+          const groupRows = await Promise.all(
+            group.map(range => fetchAttendanceChunk(range, requestEmployeeCodes, statuses))
           );
-
-          if(
-            collected.length
-            >= 5000
-          ) {
-            break;
-          }
+          if (requestId !== attendanceLoadRequestId) return;
+          groupRows.forEach(rows => collected.push(...rows));
+          if (collected.length >= 5000) break;
         }
 
         if(
@@ -7573,6 +7665,8 @@ window.tcIsDayShiftCode = value =>
 
     function invalidateMutationCachesV61415(items = []) {
       const rows = normalizeMutationItemsV61415(items);
+      try { clearAttendanceReadCacheV61463(); } catch (_) {}
+      try { window.TimeClockShiftAPI?.clearReadCache?.(); } catch (_) {}
       try {
         scheduleTimeAttendanceStateV6146.key = '';
         scheduleTimeAttendanceStateV6146.rows = [];
@@ -7592,6 +7686,8 @@ window.tcIsDayShiftCode = value =>
     }
 
     function invalidateAllDerivedAttendanceCachesV61415() {
+      try { clearAttendanceReadCacheV61463(); } catch (_) {}
+      try { window.TimeClockShiftAPI?.clearReadCache?.(); } catch (_) {}
       try {
         scheduleTimeAttendanceStateV6146.key = '';
         scheduleTimeAttendanceStateV6146.rows = [];
@@ -7754,7 +7850,7 @@ window.tcIsDayShiftCode = value =>
       if (!empCodes.length) return [];
 
       const attempts = [
-        ['ta_get_attendance_detail_v61020', {
+        ['ta_get_attendance_detail_v61463', {
           p_start_date: date,
           p_end_date: date,
           p_area: null,
@@ -7801,18 +7897,22 @@ window.tcIsDayShiftCode = value =>
       }
 
       let punchMetaRows = [];
-      const punchAttempts = [
+      const specialPunchEmpCodesV61463 = [...new Set(
+        (baseRows || []).filter(attendanceNeedsPunchMetaV61463)
+          .map(row => String(row.emp_code || '').trim()).filter(Boolean)
+      )];
+      const punchAttempts = specialPunchEmpCodesV61463.length ? [
         ['ta_get_attendance_shift_punch_meta_v61110', {
           p_start_date: date,
           p_end_date: date,
-          p_emp_codes: empCodes
+          p_emp_codes: specialPunchEmpCodesV61463
         }],
         ['ta_get_attendance_shift_punch_meta_v6119', {
           p_start_date: date,
           p_end_date: date,
-          p_emp_codes: empCodes
+          p_emp_codes: specialPunchEmpCodesV61463
         }]
-      ];
+      ] : [];
       for (const [fn,args] of punchAttempts) {
         const response = await state.client.rpc(fn,args);
         if (!response.error) {
@@ -8366,7 +8466,7 @@ window.tcIsDayShiftCode = value =>
       };
 
       let response = await state.client.rpc(
-        'ta_get_attendance_detail_v61020',
+        'ta_get_attendance_detail_v61463',
         { ...common, p_area: null, p_sub_area: null, p_department: null }
       );
 
@@ -9627,7 +9727,7 @@ window.tcIsDayShiftCode = value =>
     async function fetchScheduleTimeAttendanceChunkV6146(startDate, endDate, empCodes, depth = 0) {
       if (!empCodes?.length) return [];
       const attempts = [
-        ['ta_get_attendance_detail_v61020', {
+        ['ta_get_attendance_detail_v61463', {
           p_start_date:startDate,p_end_date:endDate,p_area:null,p_sub_area:null,p_department:null,
           p_emp_codes:empCodes,p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
         }],
@@ -9722,6 +9822,10 @@ window.tcIsDayShiftCode = value =>
 
       const chunks = [];
       for (let i=0;i<empCodes.length;i+=45) chunks.push(empCodes.slice(i,i+45));
+      const specialPunchSetV61463 = new Set(
+        (rows || []).filter(attendanceNeedsPunchMetaV61463)
+          .map(row => String(row?.emp_code || '').trim()).filter(Boolean)
+      );
       const attendanceRows = [];
       const punchRows = [];
       const certificationRows = [];
@@ -9733,7 +9837,11 @@ window.tcIsDayShiftCode = value =>
           const results = await Promise.all(group.map(async chunk => {
             const [attendance,punch,certification] = await Promise.all([
               fetchScheduleTimeAttendanceChunkV6146(period.startDate,period.endDate,chunk,0),
-              fetchScheduleTimePunchMetaChunkV61411(period.startDate,period.endDate,chunk),
+              fetchScheduleTimePunchMetaChunkV61411(
+                period.startDate,
+                period.endDate,
+                chunk.filter(code => specialPunchSetV61463.has(String(code || '').trim()))
+              ),
               fetchScheduleTimeCertificationChunkV61411(period.startDate,period.endDate,chunk)
             ]);
             return {attendance,punch,certification};
@@ -14523,7 +14631,7 @@ ${skippedSummary(compatibility.skipped)}
     if(!start||!end)throw new Error("กรุณาเลือกช่วงวันที่");
     if(type==="attendance"||type==="late"){
       const data=await rpc(
-        "ta_get_attendance_detail_v61020",
+        "ta_get_attendance_detail_v61463",
         {
           p_start_date:start,
           p_end_date:end,
@@ -14545,7 +14653,7 @@ ${skippedSummary(compatibility.skipped)}
       return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","รูปแบบช่วงงาน","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","สถานะ","แหล่งการจัดกะ","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,app()?.workTemplateLabelV6118?.(r.template_code||r.effective_work_template_code)||r.template_code||r.effective_work_template_code||"-",r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(String(r.template_code||r.effective_work_template_code||'').toUpperCase()==='SPLIT_FLEX'?"ตามเวลาออก":""),r.schedule_status,r.assigned_shift_code?"หัวหน้างานบันทึก":"กะมาตรฐานอัตโนมัติ",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),app()?.attendanceMinutesToHourMinuteV61457?.(r.paid_work_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0)??"0.00",(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
     }
     if(type==="summary"){
-      const raw=await rpc("ta_get_dashboard_overview_v640",{p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept});const d=Array.isArray(raw)?raw[0]||{}:raw||{};
+      let raw;try{raw=await rpc("ta_get_dashboard_overview_v61463",{p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept});}catch(error){if(!window.TimeClockShiftAPI?.missingFunction?.(error))throw error;raw=await rpc("ta_get_dashboard_overview_v640",{p_start_date:start,p_end_date:end,p_zone:zone,p_department:dept});}const d=Array.isArray(raw)?raw[0]||{}:raw||{};
       return [["รายการ","จำนวน"],["พนักงานทั้งหมด",d.total_employees],["รายการทั้งหมด",d.total_rows],["ลงเวลาครบคู่",d.complete_time_rows],["ขาดงาน",d.absent_rows],["มาสาย 1–29 นาที",d.late_rows],["กลับก่อน",d.early_leave_rows],["ไม่พบเวลาเข้า (วิเคราะห์สาเหตุ)",d.missing_in_rows],["ไม่พบเวลาออก (วิเคราะห์สาเหตุ)",d.missing_out_rows],["ไม่ลงเวลาทั้งเข้าและออก",d.no_time_rows],["ทำงานวันหยุด",d.worked_on_offday_rows],["กะที่หัวหน้างานบันทึก",d.confirmed_rows],["ชั่วโมงสุทธิ",d.paid_work_hours],["ชั่วโมงปกติ",d.regular_hours],["OT",d.overtime_hours],["ช่วงรอคอย",d.waiting_hours],["ชั่วโมงทำงานวันหยุด",d.offday_work_hours],["วันที่ได้รับวันหยุดชดเชย",d.comp_off_earned_rows],["พนักงาน TECH_6D",d.tech_6d_rows],["พนักงาน TECH_5D",d.tech_5d_rows]];
     }
     throw new Error("ไม่พบประเภทรายงาน");
@@ -16625,27 +16733,52 @@ ${skippedSummary(compatibility.skipped)}
 
     let detail=null;
 
-    try{
-      detail=await rpc(
-        "ta_get_attendance_day_detail_v650",
-        {
-          p_emp_code:row.emp_code,
-          p_work_date:String(row.work_date)
-            .slice(0,10)
-        }
-      );
-    }catch(error){
+    const scheduleOnlyDayV61463 = Boolean(
+      row._attendance_calendar_row_v61462
+      && !row._attendance_has_persisted_row_v61462
+    );
+
+    if (scheduleOnlyDayV61463) {
+      // Calendar-only dates intentionally have no attendance_workday row yet.
+      // v650/v640 both throw ATTENDANCE_DAY_NOT_FOUND, which produced the two
+      // 400 requests in Console. Render directly from the canonical schedule row.
+      detail = {
+        employee: {
+          emp_code: row.emp_code,
+          full_name: row.full_name || '',
+          department: row.department || '',
+          area: row.area || row.zone || '',
+          sub_area: row.sub_area || ''
+        },
+        attendance: { ...row },
+        calculation: { ...row },
+        daily_plan: null,
+        segments: [],
+        comp_off: null,
+        schedule_only: true
+      };
+    } else {
       try{
         detail=await rpc(
-          "ta_get_attendance_day_detail_v640",
+          "ta_get_attendance_day_detail_v650",
           {
             p_emp_code:row.emp_code,
-            p_work_date:String(row.work_date)
-              .slice(0,10)
+            p_work_date:String(row.work_date).slice(0,10)
           }
         );
-      }catch(_){
-        detail=null;
+      }catch(error){
+        const messageV61463 = String(error?.message || error || '').toUpperCase();
+        if (!messageV61463.includes('ATTENDANCE_DAY_NOT_FOUND')) {
+          try{
+            detail=await rpc(
+              "ta_get_attendance_day_detail_v640",
+              {
+                p_emp_code:row.emp_code,
+                p_work_date:String(row.work_date).slice(0,10)
+              }
+            );
+          }catch(_){ detail=null; }
+        }
       }
     }
 
@@ -19689,7 +19822,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.62',
+    version:'6.14.63',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -28508,7 +28641,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.62';
+  const VERSION='6.14.63';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
