@@ -8004,7 +8004,7 @@ window.tcIsDayShiftCode = value =>
     function employeeMonthPunchDateLabelV61460(date) {
       const d = parseLocalISO(date);
       const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสฯ','ศุกร์','เสาร์'];
-      return `${days[d.getDay()]} ${fmtDate(date)}`;
+      return `${days[d.getDay()]} ${formatDate(date)}`;
     }
 
     function employeeMonthPunchRecordHtmlV61460(row) {
@@ -8959,7 +8959,7 @@ window.tcIsDayShiftCode = value =>
         const workDate = `${bounds.value}-${String(day).padStart(2,'0')}`;
         const rawPunchDayV61460 = rawPunchByDateV61460.get(workDate) || null;
         const rawPunchIndicatorV61460 = rawPunchDayV61460?.multiple
-          ? `<button type="button" class="employee-month-multi-punch-v61460" data-employee-month-punch-date="${safe(workDate)}" title="พบ ${safe(formatNumber(rawPunchDayV61460.total))} รายการลงเวลา • เข้า ${safe(formatNumber(rawPunchDayV61460.inCount))} / ออก ${safe(formatNumber(rawPunchDayV61460.outCount))} • คลิกดูข้อมูลดิบ" aria-label="ดูข้อมูลการลงเวลาหลายรายการวันที่ ${safe(fmtDate(workDate))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg><span>${safe(formatNumber(rawPunchDayV61460.total))}</span></button>`
+          ? `<button type="button" class="employee-month-multi-punch-v61460" data-employee-month-punch-date="${safe(workDate)}" title="พบ ${safe(formatNumber(rawPunchDayV61460.total))} รายการลงเวลา • เข้า ${safe(formatNumber(rawPunchDayV61460.inCount))} / ออก ${safe(formatNumber(rawPunchDayV61460.outCount))} • คลิกดูข้อมูลดิบ" aria-label="ดูข้อมูลการลงเวลาหลายรายการวันที่ ${safe(formatDate(workDate))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg><span>${safe(formatNumber(rawPunchDayV61460.total))}</span></button>`
           : '';
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;

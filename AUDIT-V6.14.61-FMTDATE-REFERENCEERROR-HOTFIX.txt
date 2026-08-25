@@ -1,0 +1,26 @@
+AUDIT — TimeAttendance V6.14.61
+MONTHLY PERSONAL OVERVIEW — fmtDate ReferenceError Hotfix
+============================================================
+
+A. Root cause
+[CONFIRMED] employeeMonthPunchDateLabelV61460() called fmtDate(), but fmtDate is declared in a different later module/IIFE and is not visible in Monthly Personal scope.
+[CONFIRMED] Calendar multi-punch aria-label repeated the same out-of-scope fmtDate() call.
+[CONFIRMED] Both errors match browser stack traces around app.js lines ~8007 and ~8962.
+
+B. Fix
+[PASS] Replaced both Monthly Personal fmtDate() calls with formatDate(), which is defined in the same application scope.
+[PASS] No Raw Punch classification or scheduling mutation introduced.
+[PASS] Cache key bumped to V6.14.61.
+
+C. Unchanged
+[PASS] Work Pattern rules unchanged.
+[PASS] Shift / Night Sequence / Day-off / Certification logic unchanged.
+[PASS] Raw Punch RPC ta_get_employee_time_punches_v61460 unchanged.
+[PASS] ta_get_attendance_shift_punch_meta_v61110 backend unchanged by this frontend hotfix.
+
+D. Runtime check
+- Open MONTHLY PERSONAL OVERVIEW.
+- Calendar must render without ReferenceError.
+- Click “ข้อมูลการลงเวลา”; panel must render date labels.
+- Click a multi-punch evidence icon; panel must focus the selected date.
+- If ta_get_attendance_shift_punch_meta_v61110 still returns HTTP 500, inspect its Supabase database error separately.
