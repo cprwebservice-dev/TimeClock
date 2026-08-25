@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.63";
-document.documentElement.dataset.timeClockBuild = "6.14.63";
+window.__TIME_CLOCK_BUILD__ = "V6.14.64";
+document.documentElement.dataset.timeClockBuild = "6.14.64";
 
 
 /* ===== js/config.js ===== */
@@ -8281,7 +8281,10 @@ window.tcIsDayShiftCode = value =>
       const summary = $('employeeMonthPunchSummary');
       const subtitle = $('employeeMonthPunchSubtitle');
       const multiCount = $('employeeMonthPunchMultiDayCount');
+      const allDayCount = $('employeeMonthPunchAllDayCount');
+      const allBtn = $('employeeMonthPunchAllBtn');
       const filterBtn = $('employeeMonthPunchMultiOnlyBtn');
+      const viewStatus = $('employeeMonthPunchViewStatus');
       if (!list || !summary) return;
 
       const rows = employeeMonthCalendarStateV61121.timePunchRows || [];
@@ -8290,9 +8293,15 @@ window.tcIsDayShiftCode = value =>
       const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
       if (subtitle) subtitle.textContent = `${employeeMonthCalendarStateV61121.empCode} • ${monthNames[bounds.month-1]} ${bounds.year+543} • ทุก Record ตามวัน/เวลาจริง`;
       if (multiCount) multiCount.textContent = String(stats.multipleDays || 0);
+      if (allDayCount) allDayCount.textContent = String(stats.days || 0);
+      const multiOnlyV61464 = Boolean(employeeMonthCalendarStateV61121.timePunchMultiOnly);
+      if (allBtn) {
+        allBtn.classList.toggle('active',!multiOnlyV61464);
+        allBtn.setAttribute('aria-pressed',multiOnlyV61464?'false':'true');
+      }
       if (filterBtn) {
-        filterBtn.classList.toggle('active',Boolean(employeeMonthCalendarStateV61121.timePunchMultiOnly));
-        filterBtn.setAttribute('aria-pressed',employeeMonthCalendarStateV61121.timePunchMultiOnly?'true':'false');
+        filterBtn.classList.toggle('active',multiOnlyV61464);
+        filterBtn.setAttribute('aria-pressed',multiOnlyV61464?'true':'false');
       }
       summary.innerHTML = [
         ['Records',stats.records,'รายการลงเวลาทั้งหมด'],
@@ -8301,31 +8310,77 @@ window.tcIsDayShiftCode = value =>
       ].map(([label,value,desc],index)=>`<div class="employee-month-punch-kpi-v61460 ${index===2&&Number(value)>0?'is-highlight':''}"><span>${safe(label)}</span><strong>${safe(formatNumber(value))}</strong><small>${safe(desc)}</small></div>`).join('');
 
       if (employeeMonthCalendarStateV61121.timePunchLoading) {
+        if (viewStatus) {
+          viewStatus.classList.remove('is-filtered-v61464');
+          viewStatus.innerHTML = '<strong>กำลังโหลดข้อมูลครบทุก Record</strong><span>ระบบกำลังอ่าน Punch ดิบของเดือนที่เลือก</span>';
+        }
         list.innerHTML = '<div class="employee-month-punch-loading-v61460"><span class="spinner"></span><strong>กำลังโหลดข้อมูลการลงเวลา...</strong><small>อ่าน Punch ดิบทุก Record ของเดือนที่เลือก</small></div>';
         return;
       }
       if (employeeMonthCalendarStateV61121.timePunchError) {
+        if (viewStatus) {
+          viewStatus.classList.remove('is-filtered-v61464');
+          viewStatus.innerHTML = '<strong>โหลดข้อมูลไม่สำเร็จ</strong><span>ยังไม่สามารถยืนยันจำนวน Record ที่ครบถ้วนได้</span>';
+        }
         list.innerHTML = `<div class="employee-month-punch-empty-v61460 is-error"><strong>โหลดข้อมูลการลงเวลาไม่สำเร็จ</strong><small>${safe(humanError(employeeMonthCalendarStateV61121.timePunchError))}</small></div>`;
         return;
       }
       if (!rows.length) {
+        if (viewStatus) {
+          viewStatus.classList.remove('is-filtered-v61464');
+          viewStatus.innerHTML = '<strong>ไม่พบ Record</strong><span>เดือนที่เลือกไม่มีข้อมูล Punch ดิบใน Time Logs</span>';
+        }
         list.innerHTML = '<div class="employee-month-punch-empty-v61460"><strong>ไม่พบข้อมูลการลงเวลา</strong><small>เดือนที่เลือกไม่มี Record ใน Time Logs</small></div>';
         return;
       }
 
-      let days = [...stats.byDay.values()].sort((a,b)=>a.date.localeCompare(b.date));
-      if (employeeMonthCalendarStateV61121.timePunchMultiOnly) days = days.filter(day=>day.multiple);
+      const allDaysV61464 = [...stats.byDay.values()].sort((a,b)=>a.date.localeCompare(b.date));
+      let days = allDaysV61464.map(day=>({...day,isContextV61464:false}));
+      if (multiOnlyV61464) {
+        const byDateV61464 = new Map(allDaysV61464.map(day=>[day.date,day]));
+        const selectedV61464 = new Set();
+        const contextV61464 = new Set();
+        const shiftDateV61464 = (date,delta) => {
+          const d = parseLocalISO(date);
+          d.setDate(d.getDate()+delta);
+          return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        };
+        allDaysV61464.filter(day=>day.multiple).forEach(day=>{
+          selectedV61464.add(day.date);
+          const ordered = day.rows || [];
+          const firstMode = ordered.length ? employeeMonthPunchModeV61460(ordered[0]) : 'UNKNOWN';
+          const lastMode = ordered.length ? employeeMonthPunchModeV61460(ordered[ordered.length-1]) : 'UNKNOWN';
+          if (firstMode === 'OUT') {
+            const prev = shiftDateV61464(day.date,-1);
+            if (byDateV61464.has(prev)) { selectedV61464.add(prev); contextV61464.add(prev); }
+          }
+          if (lastMode === 'IN') {
+            const next = shiftDateV61464(day.date,1);
+            if (byDateV61464.has(next)) { selectedV61464.add(next); contextV61464.add(next); }
+          }
+        });
+        days = allDaysV61464
+          .filter(day=>selectedV61464.has(day.date))
+          .map(day=>({...day,isContextV61464:contextV61464.has(day.date) && !day.multiple}));
+      }
+      const shownRecordsV61464 = days.reduce((sum,day)=>sum+Number(day.total||0),0);
+      if (viewStatus) {
+        viewStatus.classList.toggle('is-filtered-v61464',multiOnlyV61464);
+        viewStatus.innerHTML = multiOnlyV61464
+          ? `<strong>กำลังกรองวันที่มีหลายรายการ</strong><span>แสดง ${safe(formatNumber(shownRecordsV61464))}/${safe(formatNumber(stats.records))} Records • ${safe(formatNumber(days.length))}/${safe(formatNumber(stats.days))} วัน • ระบบเติมวันก่อน/หลังเมื่อจำเป็น เพื่อไม่ตัด Punch ข้ามเที่ยงคืน</span>`
+          : `<strong>แสดงข้อมูลครบทุก Record</strong><span>${safe(formatNumber(stats.records))} Records • ${safe(formatNumber(stats.days))} วันที่มีข้อมูลในเดือนที่เลือก</span>`;
+      }
       if (!days.length) {
         list.innerHTML = '<div class="employee-month-punch-empty-v61460"><strong>ไม่พบวันที่มีหลายรายการ</strong><small>ทุกวันที่มี Punch ในเดือนนี้มีรูปแบบปกติ 1 คู่หรือน้อยกว่า</small></div>';
         return;
       }
-      list.innerHTML = days.map(day => `<section class="employee-month-punch-day-v61460 ${day.multiple?'has-multiple':''}" data-punch-day="${safe(day.date)}">
+      list.innerHTML = days.map(day => `<section class="employee-month-punch-day-v61460 ${day.multiple?'has-multiple':''} ${day.isContextV61464?'is-context-v61464':''}" data-punch-day="${safe(day.date)}">
         <header>
           <div class="employee-month-punch-day-date-v61460"><strong>${safe(String(Number(day.date.slice(8,10))))}</strong><small>${safe(day.date.slice(5,7))}</small></div>
           <div class="employee-month-punch-day-copy-v61460"><strong>${safe(employeeMonthPunchDateLabelV61460(day.date))}</strong><small>${safe(`${day.total} รายการ • เข้า ${day.inCount} • ออก ${day.outCount}${day.unknownCount?` • ไม่ระบุ ${day.unknownCount}`:''}`)}</small></div>
-          ${day.multiple?`<span class="employee-month-punch-candidate-v61460" title="มีการลงเวลาหลายรายการในวันเดียวกัน • ใช้ประกอบการพิจารณากะพิเศษ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg><span>หลายรายการ</span></span>`:''}
+          ${day.multiple?`<span class="employee-month-punch-candidate-v61460" title="มีการลงเวลาหลายรายการในวันเดียวกัน • ใช้ประกอบการพิจารณากะพิเศษ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg><span>หลายรายการ</span></span>`:day.isContextV61464?'<span class="employee-month-punch-context-badge-v61464">วันต่อเนื่อง</span>':''}
         </header>
-        ${day.multiple?'<div class="employee-month-punch-advisory-v61460">อาจเป็นข้อมูลประกอบสำหรับ กะปกติ+งานลูกค้าช่วงดึก / กะเช้า+รอเข้ากะดึก / กะนับชั่วโมง • กรุณาตรวจสอบก่อนจัดกะ</div>':''}
+        ${day.multiple?'<div class="employee-month-punch-advisory-v61460">อาจเป็นข้อมูลประกอบสำหรับ กะปกติ+งานลูกค้าช่วงดึก / กะเช้า+รอเข้ากะดึก / กะนับชั่วโมง • กรุณาตรวจสอบก่อนจัดกะ</div>':day.isContextV61464?'<div class="employee-month-punch-context-note-v61464">แสดงวันนี้เพิ่มเติมเพื่อให้เห็น Punch ต่อเนื่องก่อน/หลังเที่ยงคืนครบถ้วน</div>':''}
         <div class="employee-month-punch-records-v61460">${day.rows.map(employeeMonthPunchRecordHtmlV61460).join('')}</div>
       </section>`).join('');
 
@@ -12863,6 +12918,9 @@ window.tcIsDayShiftCode = value =>
       $("timeCertificationRevokeBtn")?.addEventListener("click", revokeTimeCertificationV61139);
 
       $("employeeMonthPunchLogBtn")?.addEventListener("click", () => {
+        // V6.14.64: the primary Raw Time Records entry must always open the complete view.
+        // A previously selected filter must never make the user think Punch records are missing.
+        employeeMonthCalendarStateV61121.timePunchMultiOnly = false;
         employeeMonthOpenPunchPanelV61460();
         if (!employeeMonthCalendarStateV61121.timePunchRows.length && !employeeMonthCalendarStateV61121.timePunchLoading) {
           loadEmployeeMonthPunchesV61460().catch(()=>{});
@@ -12873,8 +12931,12 @@ window.tcIsDayShiftCode = value =>
           employeeMonthClosePunchPanelV61460();
         }
       });
+      $("employeeMonthPunchAllBtn")?.addEventListener("click", () => {
+        employeeMonthCalendarStateV61121.timePunchMultiOnly = false;
+        renderEmployeeMonthPunchPanelV61460();
+      });
       $("employeeMonthPunchMultiOnlyBtn")?.addEventListener("click", () => {
-        employeeMonthCalendarStateV61121.timePunchMultiOnly = !employeeMonthCalendarStateV61121.timePunchMultiOnly;
+        employeeMonthCalendarStateV61121.timePunchMultiOnly = true;
         renderEmployeeMonthPunchPanelV61460();
       });
 

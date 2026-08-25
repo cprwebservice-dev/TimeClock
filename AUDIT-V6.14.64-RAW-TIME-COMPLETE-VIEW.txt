@@ -1,0 +1,11 @@
+AUDIT — TimeAttendance V6.14.64
+RAW TIME RECORDS Complete View
+
+[PASS] Primary “ข้อมูลการลงเวลา” button resets view to ALL before opening.
+[PASS] Explicit ALL / MULTI segmented controls replace ambiguous toggle presentation.
+[PASS] View status exposes displayed Records/Days versus total Records/Days.
+[PASS] MULTI view includes adjacent in-month context when a multi day begins with OUT or ends with IN.
+[PASS] Context days are visually distinct and are not classified as multi-punch days.
+[PASS] No backend RPC signature changes.
+[PASS] Existing ta_get_employee_time_punches_v61460 remains the canonical raw time_logs reader.
+[PASS] No Schedule / Attendance / OT / Waiting / Leave / Night Sequence mutation introduced.
