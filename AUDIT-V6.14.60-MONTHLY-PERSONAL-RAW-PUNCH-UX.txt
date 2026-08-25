@@ -1,0 +1,54 @@
+AUDIT — TimeAttendance V6.14.60
+MONTHLY PERSONAL OVERVIEW — Raw Punch Evidence UX
+============================================================
+
+A. Concept correction
+[PASS] Schedule-table special badges disabled globally via scheduleSpecialWorkModeBadgeHtmlV61459() => ''.
+[PASS] Team schedule explicit badge renderer removed.
+[PASS] Time View explicit special badge renderer removed.
+[PASS] Team Daily explicit special badge renderer removed.
+[PASS] Person 15-day / full-month no longer appends a special-mode badge.
+[PASS] Core shift icons remain unchanged.
+[PASS] Existing Work Mode selection UI remains available; only schedule-table badges were removed.
+
+B. MONTHLY PERSONAL OVERVIEW
+[PASS] Added “ข้อมูลการลงเวลา” toolbar button.
+[PASS] Added raw-punch side panel inside Monthly Personal modal.
+[PASS] Panel shows every raw time_logs Record returned for selected employee/month.
+[PASS] Rows are ordered by date, time, Punch ID.
+[PASS] IN / OUT / unknown modes are visually distinct.
+[PASS] GPS/source/reader/project/remark metadata shown when available.
+[PASS] Summary shows total Records, days with records, multi-punch days.
+[PASS] “เฉพาะวันที่หลายรายการ” filter available.
+[PASS] Dark mode and responsive layout included.
+
+C. Calendar decision-support indicator
+[PASS] Multi-punch rule: record_count > 2 OR IN count > 1 OR OUT count > 1.
+[PASS] Multi-punch day gets a compact neutral-blue evidence icon with Record count.
+[PASS] Clicking icon opens raw panel focused on that date.
+[PASS] Indicator is advisory, not an Error/Warning state.
+[PASS] No automatic classification as NORMAL_LATE_CUSTOMER / SPLIT_WAIT_NIGHT / HOUR_BASED.
+[PASS] No automatic schedule mutation.
+
+D. Backend / security
+[PASS] New RPC: ta_get_employee_time_punches_v61460(text,date).
+[PASS] Reads public.time_logs only for requested employee/month.
+[PASS] Uses ta_can_access_employee_v680(...,'VIEW') for employee/date scope.
+[PASS] Does not UPDATE/DELETE/INSERT time_logs.
+[PASS] Does not mutate Schedule, Attendance, Waiting, OT or Work Pattern.
+
+E. Static validation
+[PASS] node --check app.js
+[PASS] index.html parsed successfully
+[PASS] 404.html parsed successfully
+[PASS] HTML IDs unique: 724 / duplicates 0
+[PASS] CSS brace balance: 5549 open / 5549 close
+[PASS] No visible schedule-special badge class references remain in index.html/app.js.
+
+F. Runtime verification required after Supabase migration
+- Run SQL_สำหรับตรวจสอบ_V6.14.60_MONTHLY_PERSONAL_RAW_PUNCHES.sql
+- Static checks 1–5 should be PASS.
+- Open MONTHLY PERSONAL OVERVIEW, choose a month, click “ข้อมูลการลงเวลา”.
+- Confirm every raw Record for that month is listed in date/time order.
+- Confirm dates with >1 IN or >1 OUT (or >2 total Records) show the evidence icon.
+- Confirm clicking the evidence icon focuses the same date in the raw panel.

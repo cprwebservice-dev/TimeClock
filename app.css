@@ -22283,3 +22283,130 @@ body.theme-dark #page-schedule #schedulePersonWorkspace .schedule-special-mode-b
 .time-view-special-modes-v61459{margin-top:5px}
 body.theme-dark .team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-split,.dark .team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-split{background:var(--shift-split-soft-strong,rgba(99,102,241,.20))}
 body.theme-dark .team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-hour,.dark .team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-hour{background:var(--shift-hour-soft-strong,rgba(15,148,136,.20))}
+
+/* ========================================================================== */
+/* V6.14.60 — MONTHLY PERSONAL raw-punch decision support                    */
+/* ========================================================================== */
+#employeeMonthScheduleModal .employee-month-modal-v61121{position:relative!important}
+
+.employee-month-punch-log-btn-v61460{display:inline-flex!important;align-items:center!important;gap:7px!important;position:relative!important}
+.employee-month-punch-log-btn-v61460>svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.employee-month-punch-log-btn-v61460.has-multiple{border-color:#a8c7f4!important;background:#f0f7ff!important;color:#155fa8!important}
+.employee-month-punch-log-btn-v61460.is-loading{opacity:.72;cursor:progress}
+.employee-month-punch-alert-count-v61460{display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#155fa8;color:#fff;font-size:9px;font-weight:900;line-height:1}
+.employee-month-punch-alert-count-v61460.hidden{display:none!important}
+
+.employee-month-multi-punch-legend-v61460{display:inline-flex;align-items:center;gap:5px;color:#155fa8;font-weight:800}
+.employee-month-multi-punch-legend-v61460>svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.employee-month-day-head-actions-v61460{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}
+.employee-month-multi-punch-v61460{display:inline-flex;align-items:center;gap:3px;height:22px;padding:0 6px;border:1px solid #9ec6f4;border-radius:999px;background:#edf6ff;color:#155fa8;box-shadow:0 2px 6px rgba(21,95,168,.08);cursor:pointer;font-size:9px;font-weight:900;line-height:1;transition:transform .14s ease,box-shadow .14s ease,background .14s ease}
+.employee-month-multi-punch-v61460:hover{transform:translateY(-1px);background:#e1f0ff;box-shadow:0 4px 10px rgba(21,95,168,.14)}
+.employee-month-multi-punch-v61460>svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.employee-month-multi-punch-v61460>span{min-width:9px;text-align:center}
+
+.employee-month-punch-overlay-v61460{position:absolute;inset:0;z-index:80;display:flex;justify-content:flex-end;overflow:hidden;border-radius:inherit}
+.employee-month-punch-overlay-v61460.hidden{display:none!important}
+.employee-month-punch-backdrop-v61460{position:absolute;inset:0;border:0;background:rgba(15,23,42,.34);backdrop-filter:blur(2px);cursor:default}
+.employee-month-punch-panel-v61460{position:relative;z-index:1;width:min(610px,94%);height:100%;display:flex;flex-direction:column;background:#f8fbff;border-left:1px solid #cadbea;box-shadow:-20px 0 50px rgba(15,23,42,.22);animation:employeeMonthPunchSlideV61460 .2s ease-out}
+@keyframes employeeMonthPunchSlideV61460{from{transform:translateX(28px);opacity:.5}to{transform:translateX(0);opacity:1}}
+
+.employee-month-punch-panel-head-v61460{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;border-bottom:1px solid #d8e5ef;background:linear-gradient(120deg,#edf6ff,#fff 60%,#fff7ed)}
+.employee-month-punch-panel-title-v61460{display:flex;align-items:center;gap:11px;min-width:0}
+.employee-month-punch-panel-title-v61460>div{min-width:0}
+.employee-month-punch-panel-title-v61460>div>span{display:block;color:#5f7992;font-size:8px;font-weight:900;letter-spacing:.13em}
+.employee-month-punch-panel-title-v61460 h4{margin:2px 0 1px;color:#153d68;font-size:18px;line-height:1.15}
+.employee-month-punch-panel-title-v61460 small{display:block;max-width:430px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#6f8294;font-size:10px}
+.employee-month-punch-panel-icon-v61460{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border:1px solid #b8d6f2;border-radius:12px;background:#eaf5ff;color:#155fa8}
+.employee-month-punch-panel-icon-v61460>svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+.employee-month-punch-summary-v61460{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 14px 8px}
+.employee-month-punch-kpi-v61460{min-width:0;padding:9px 10px;border:1px solid #d8e5ef;border-radius:11px;background:#fff}
+.employee-month-punch-kpi-v61460>span{display:block;color:#7890a5;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.employee-month-punch-kpi-v61460>strong{display:block;margin-top:2px;color:#173f6b;font-size:20px;line-height:1.05}
+.employee-month-punch-kpi-v61460>small{display:block;margin-top:3px;color:#7a8d9e;font-size:9px}
+.employee-month-punch-kpi-v61460.is-highlight{border-color:#a9caf0;background:#f0f7ff}
+.employee-month-punch-kpi-v61460.is-highlight>strong{color:#155fa8}
+
+.employee-month-punch-toolbar-v61460{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 14px 10px;border-bottom:1px solid #e1eaf2}
+.employee-month-punch-mode-legend-v61460{display:flex;align-items:center;gap:9px;flex-wrap:wrap;color:#6c8195;font-size:9px;font-weight:800}
+.employee-month-punch-mode-legend-v61460 span{display:inline-flex;align-items:center;gap:4px}
+.employee-month-punch-mode-legend-v61460 i{width:7px;height:7px;border-radius:999px;background:#94a3b8}
+.employee-month-punch-mode-legend-v61460 .mode-in i{background:#10a36d}
+.employee-month-punch-mode-legend-v61460 .mode-out i{background:#e57d24}
+.employee-month-punch-filter-v61460{display:inline-flex;align-items:center;gap:6px;min-height:29px;padding:5px 8px;border:1px solid #d2dfeb;border-radius:9px;background:#fff;color:#526a80;font-size:9px;font-weight:850;cursor:pointer}
+.employee-month-punch-filter-v61460>b{display:grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:#eef3f8;color:#526a80;font-size:8px}
+.employee-month-punch-filter-v61460.active{border-color:#9fc5ef;background:#edf6ff;color:#155fa8}
+.employee-month-punch-filter-v61460.active>b{background:#155fa8;color:#fff}
+
+.employee-month-punch-list-v61460{flex:1 1 auto;min-height:0;overflow:auto;padding:10px 14px 16px;scrollbar-gutter:stable}
+.employee-month-punch-day-v61460{margin-bottom:10px;border:1px solid #d9e5ef;border-radius:13px;background:#fff;overflow:hidden;transition:border-color .16s ease,box-shadow .16s ease}
+.employee-month-punch-day-v61460.has-multiple{border-color:#a9caf0;box-shadow:0 3px 12px rgba(21,95,168,.06)}
+.employee-month-punch-day-v61460.is-focus-v61460{border-color:#4b93dd;box-shadow:0 0 0 3px rgba(75,147,221,.15)}
+.employee-month-punch-day-v61460>header{display:flex;align-items:center;gap:9px;padding:9px 10px;background:#f8fbfd;border-bottom:1px solid #e5edf4}
+.employee-month-punch-day-date-v61460{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border:1px solid #c8dcec;border-radius:10px;background:#edf6ff;color:#155fa8}
+.employee-month-punch-day-date-v61460>strong{font-size:16px;line-height:1}
+.employee-month-punch-day-date-v61460>small{margin-top:1px;font-size:7px;font-weight:900;color:#748da3}
+.employee-month-punch-day-copy-v61460{min-width:0;flex:1}
+.employee-month-punch-day-copy-v61460>strong{display:block;color:#233f5a;font-size:11px}
+.employee-month-punch-day-copy-v61460>small{display:block;margin-top:2px;color:#768a9d;font-size:9px}
+.employee-month-punch-candidate-v61460{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border:1px solid #a7c9ef;border-radius:999px;background:#edf6ff;color:#155fa8;font-size:8px;font-weight:900;white-space:nowrap}
+.employee-month-punch-candidate-v61460>svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.employee-month-punch-advisory-v61460{padding:7px 10px;border-bottom:1px solid #dfeaf4;background:#f2f8ff;color:#526f8a;font-size:8.5px;font-weight:700;line-height:1.45}
+.employee-month-punch-records-v61460{display:flex;flex-direction:column}
+.employee-month-punch-record-v61460{display:grid;grid-template-columns:56px 54px minmax(0,1fr) auto;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid #edf2f6}
+.employee-month-punch-record-v61460:first-child{border-top:0}
+.employee-month-punch-record-v61460>time{font-variant-numeric:tabular-nums;color:#173f6b;font-size:12px;font-weight:900}
+.employee-month-punch-mode-v61460{display:inline-flex;align-items:center;gap:4px;width:max-content;padding:4px 6px;border-radius:7px;background:#f0f3f6;color:#667b8d;font-size:8px;font-weight:900}
+.employee-month-punch-mode-v61460>i{width:6px;height:6px;border-radius:999px;background:#94a3b8}
+.employee-month-punch-mode-v61460.mode-in{background:#eaf9f3;color:#087b53}.employee-month-punch-mode-v61460.mode-in>i{background:#10a36d}
+.employee-month-punch-mode-v61460.mode-out{background:#fff4e9;color:#b85c16}.employee-month-punch-mode-v61460.mode-out>i{background:#e57d24}
+.employee-month-punch-record-copy-v61460{min-width:0}
+.employee-month-punch-record-copy-v61460>strong,.employee-month-punch-record-copy-v61460>small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.employee-month-punch-record-copy-v61460>strong{color:#344f68;font-size:9.5px}.employee-month-punch-record-copy-v61460>small{margin-top:2px;color:#8293a2;font-size:8px}
+.employee-month-punch-source-v61460{max-width:145px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#95a3af;font-size:7.5px;text-align:right}
+
+.employee-month-punch-empty-v61460,.employee-month-punch-loading-v61460{min-height:180px;display:grid;place-items:center;align-content:center;gap:5px;padding:20px;text-align:center;color:#788a9a}
+.employee-month-punch-empty-v61460>strong,.employee-month-punch-loading-v61460>strong{color:#45627c;font-size:12px}.employee-month-punch-empty-v61460>small,.employee-month-punch-loading-v61460>small{font-size:9px}
+.employee-month-punch-empty-v61460.is-error>strong{color:#b53b3b}
+.employee-month-punch-panel-foot-v61460{flex:0 0 auto;display:flex;align-items:flex-start;gap:7px;padding:9px 14px;border-top:1px solid #dbe6ef;background:#f4f8fb;color:#718596;font-size:8.5px;line-height:1.4}
+.employee-month-punch-panel-foot-v61460>svg{flex:0 0 14px;width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+body.theme-dark .employee-month-punch-log-btn-v61460.has-multiple,.dark .employee-month-punch-log-btn-v61460.has-multiple{background:#172d43!important;border-color:#345d83!important;color:#9dccf5!important}
+body.theme-dark .employee-month-multi-punch-v61460,.dark .employee-month-multi-punch-v61460{background:#172d43;border-color:#345d83;color:#9dccf5}
+body.theme-dark .employee-month-punch-panel-v61460,.dark .employee-month-punch-panel-v61460{background:#111b26;border-left-color:#334658}
+body.theme-dark .employee-month-punch-panel-head-v61460,.dark .employee-month-punch-panel-head-v61460{background:linear-gradient(120deg,#172738,#121b26 60%,#2b2118);border-color:#334658}
+body.theme-dark .employee-month-punch-panel-title-v61460 h4,.dark .employee-month-punch-panel-title-v61460 h4{color:#d7eaff}
+body.theme-dark .employee-month-punch-panel-title-v61460>div>span,.dark .employee-month-punch-panel-title-v61460>div>span,body.theme-dark .employee-month-punch-panel-title-v61460 small,.dark .employee-month-punch-panel-title-v61460 small{color:#91a9bf}
+body.theme-dark .employee-month-punch-panel-icon-v61460,.dark .employee-month-punch-panel-icon-v61460{background:#173047;border-color:#365c7d;color:#a5d2f6}
+body.theme-dark .employee-month-punch-kpi-v61460,.dark .employee-month-punch-kpi-v61460,body.theme-dark .employee-month-punch-day-v61460,.dark .employee-month-punch-day-v61460{background:#17222d;border-color:#334658}
+body.theme-dark .employee-month-punch-kpi-v61460.is-highlight,.dark .employee-month-punch-kpi-v61460.is-highlight{background:#173047;border-color:#365c7d}
+body.theme-dark .employee-month-punch-kpi-v61460>strong,.dark .employee-month-punch-kpi-v61460>strong,body.theme-dark .employee-month-punch-record-v61460>time,.dark .employee-month-punch-record-v61460>time{color:#d6e9fa}
+body.theme-dark .employee-month-punch-kpi-v61460>span,.dark .employee-month-punch-kpi-v61460>span,body.theme-dark .employee-month-punch-kpi-v61460>small,.dark .employee-month-punch-kpi-v61460>small{color:#8ea4b7}
+body.theme-dark .employee-month-punch-toolbar-v61460,.dark .employee-month-punch-toolbar-v61460{border-color:#2e4153}
+body.theme-dark .employee-month-punch-filter-v61460,.dark .employee-month-punch-filter-v61460{background:#17222d;border-color:#334658;color:#a9bdcd}
+body.theme-dark .employee-month-punch-filter-v61460.active,.dark .employee-month-punch-filter-v61460.active{background:#173047;border-color:#365c7d;color:#a5d2f6}
+body.theme-dark .employee-month-punch-day-v61460>header,.dark .employee-month-punch-day-v61460>header{background:#151f29;border-color:#2c3d4d}
+body.theme-dark .employee-month-punch-day-date-v61460,.dark .employee-month-punch-day-date-v61460{background:#173047;border-color:#365c7d;color:#a5d2f6}
+body.theme-dark .employee-month-punch-day-copy-v61460>strong,.dark .employee-month-punch-day-copy-v61460>strong{color:#d2e1ed}
+body.theme-dark .employee-month-punch-day-copy-v61460>small,.dark .employee-month-punch-day-copy-v61460>small{color:#8da2b4}
+body.theme-dark .employee-month-punch-candidate-v61460,.dark .employee-month-punch-candidate-v61460{background:#173047;border-color:#365c7d;color:#a5d2f6}
+body.theme-dark .employee-month-punch-advisory-v61460,.dark .employee-month-punch-advisory-v61460{background:#162838;border-color:#2d4559;color:#9bb5ca}
+body.theme-dark .employee-month-punch-record-v61460,.dark .employee-month-punch-record-v61460{border-color:#293a49}
+body.theme-dark .employee-month-punch-record-copy-v61460>strong,.dark .employee-month-punch-record-copy-v61460>strong{color:#cbdbe8}
+body.theme-dark .employee-month-punch-record-copy-v61460>small,.dark .employee-month-punch-record-copy-v61460>small,body.theme-dark .employee-month-punch-source-v61460,.dark .employee-month-punch-source-v61460{color:#8297a8}
+body.theme-dark .employee-month-punch-panel-foot-v61460,.dark .employee-month-punch-panel-foot-v61460{background:#151f29;border-color:#2e4153;color:#8fa5b6}
+
+@media(max-width:900px){
+  .employee-month-punch-panel-v61460{width:min(560px,98%)}
+  .employee-month-punch-record-v61460{grid-template-columns:48px 50px minmax(0,1fr)}
+  .employee-month-punch-source-v61460{display:none}
+}
+@media(max-width:620px){
+  .employee-month-punch-panel-v61460{width:100%}
+  .employee-month-punch-summary-v61460{gap:5px;padding-left:9px;padding-right:9px}
+  .employee-month-punch-kpi-v61460{padding:7px}
+  .employee-month-punch-toolbar-v61460{align-items:flex-start;flex-direction:column}
+  .employee-month-punch-record-v61460{grid-template-columns:44px 48px minmax(0,1fr);gap:5px;padding:7px}
+  .employee-month-punch-log-btn-v61460>span{display:none}
+}

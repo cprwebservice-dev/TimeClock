@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.59";
-document.documentElement.dataset.timeClockBuild = "6.14.59";
+window.__TIME_CLOCK_BUILD__ = "V6.14.60";
+document.documentElement.dataset.timeClockBuild = "6.14.60";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.59";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.59',
+  version: '6.14.60',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -6420,11 +6420,10 @@ window.tcIsDayShiftCode = value =>
     }
 
     function scheduleSpecialWorkModeBadgeHtmlV61459(row, options = {}) {
-      const meta = scheduleSpecialWorkModeMetaV61459(row);
-      if (!meta) return '';
-      const compact = options.compact !== false;
-      const label = compact ? meta.glyph : `${meta.glyph} ${meta.short}`;
-      return `<span class="schedule-special-mode-badge-v61459 tone-${safe(meta.tone)} mode-${safe(meta.key)} ${compact?'is-compact':''} ${meta.warning?'has-warning':''}" title="${safe(meta.tooltip)}" aria-label="${safe(meta.label)}${meta.warning?' ต้องตรวจสอบ':''}"><span class="special-mode-glyph-v61459">${safe(label)}</span>${meta.warning?'<b class="special-mode-warning-v61459" aria-hidden="true">!</b>':''}</span>`;
+      // V6.14.60 concept reset: special Work Mode badges are intentionally not
+      // rendered inside any schedule table/calendar. Raw punch evidence in
+      // MONTHLY PERSONAL OVERVIEW is the Manager decision-support signal instead.
+      return '';
     }
 
     function schedulePersonTooltipV6136(row, context = {}) {
@@ -7776,16 +7775,15 @@ window.tcIsDayShiftCode = value =>
           const shift2In = scheduleTeamSegmentActualTime(row, 2, 'IN');
           const shift2Out = scheduleTeamSegmentActualTime(row, 2, 'OUT');
           const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(row);
-          const specialModeBadgeV61459 = scheduleSpecialWorkModeBadgeHtmlV61459(row,{compact:false});
           const splitWorkTemplate = Boolean(specialModeV61459 && ['customer','wait'].includes(specialModeV61459.key)) || templateCode === 'SPLIT_FLEX' || shift2Plan !== '-' || shift2In !== '-' || shift2Out !== '-';
           const splitModeLabelV61459 = specialModeV61459?.label || 'กะปกติ + งานลูกค้าช่วงดึก';
           const shiftDetailHtml = splitWorkTemplate
             ? `<div class="team-shift-stack"><small><b>กะ 1</b><span>${safe(shift1Plan)}</span></small><small class="secondary"><b>กะ 2</b><span>${safe(shift2Plan)}</span></small></div><small class="team-shift-meta">${safe(splitModeLabelV61459)}</small>`
             : `<strong class="team-shift-text tone-${safe(shift.tone)}">${safe(shift.code || '-')}</strong><small>${safe(scheduleTeamPlannedTime(row))}</small>`;
-          return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''} ${specialModeV61459?'has-special-mode-v61459':''}">
+          return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''}">
             <div class="team-employee-main">
               <div class="team-employee-avatar">${safe(initials)}</div>
-              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small>${specialModeBadgeV61459?`<div class="team-employee-special-mode-v61459">${specialModeBadgeV61459}</div>`:''}</div>
+              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
               <div class="team-employee-actions-v61118">
                 <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
                 ${timeCertificationBadgeV61139(row)}
@@ -7856,6 +7854,11 @@ window.tcIsDayShiftCode = value =>
       scheduleRows: [],
       attendanceRows: [],
       dayoffBalance: null,
+      timePunchRows: [],
+      timePunchLoading: false,
+      timePunchError: null,
+      timePunchMultiOnly: false,
+      timePunchLoadToken: 0,
       returnFocusEl: null,
       loading: false,
       loadToken: 0
@@ -7915,6 +7918,238 @@ window.tcIsDayShiftCode = value =>
       [...employeeMonthCacheV61138.keys()].forEach(key => {
         if (key.startsWith(`${emp}|`)) employeeMonthCacheV61138.delete(key);
       });
+    }
+
+    // V6.14.60 — Raw Punch evidence for MONTHLY PERSONAL OVERVIEW.
+    // This is advisory data only. It never mutates Schedule / Work Mode / Attendance.
+    const employeeMonthPunchCacheV61460 = new Map();
+    const EMPLOYEE_MONTH_PUNCH_CACHE_TTL_V61460 = 60000;
+
+    function employeeMonthPunchCacheKeyV61460(empCode, monthValue) {
+      return `${String(empCode || '').trim()}|${String(monthValue || '').slice(0,7)}`;
+    }
+
+    function employeeMonthPunchCacheInvalidateV61460(empCode, monthValue = null) {
+      const emp = String(empCode || '').trim();
+      if (!emp) return;
+      if (monthValue) {
+        employeeMonthPunchCacheV61460.delete(employeeMonthPunchCacheKeyV61460(emp,monthValue));
+        return;
+      }
+      [...employeeMonthPunchCacheV61460.keys()].forEach(key => {
+        if (key.startsWith(`${emp}|`)) employeeMonthPunchCacheV61460.delete(key);
+      });
+    }
+
+    function employeeMonthPunchModeV61460(row) {
+      const mode = String(row?.normalized_mode || row?.inout_mode || '').trim().toUpperCase();
+      if (['IN','I','เข้า'].includes(mode)) return 'IN';
+      if (['OUT','O','ออก'].includes(mode)) return 'OUT';
+      return 'UNKNOWN';
+    }
+
+    function employeeMonthPunchDayMapV61460(rows = employeeMonthCalendarStateV61121.timePunchRows) {
+      const map = new Map();
+      (rows || []).forEach(row => {
+        const date = String(row?.inout_date || '').slice(0,10);
+        if (!date) return;
+        if (!map.has(date)) map.set(date,{date,rows:[],total:0,inCount:0,outCount:0,unknownCount:0,multiple:false});
+        const day = map.get(date);
+        day.rows.push(row);
+        day.total += 1;
+        const mode = employeeMonthPunchModeV61460(row);
+        if (mode === 'IN') day.inCount += 1;
+        else if (mode === 'OUT') day.outCount += 1;
+        else day.unknownCount += 1;
+      });
+      map.forEach(day => {
+        day.rows.sort((a,b) => String(a?.inout_time || '').localeCompare(String(b?.inout_time || '')) || Number(a?.punch_id||0)-Number(b?.punch_id||0));
+        day.multiple = day.total > 2 || day.inCount > 1 || day.outCount > 1;
+      });
+      return map;
+    }
+
+    function employeeMonthPunchStatsV61460(rows = employeeMonthCalendarStateV61121.timePunchRows) {
+      const byDay = employeeMonthPunchDayMapV61460(rows);
+      const multipleDays = [...byDay.values()].filter(day => day.multiple);
+      return { records:(rows||[]).length, days:byDay.size, multipleDays:multipleDays.length, byDay };
+    }
+
+    function employeeMonthUpdatePunchButtonV61460() {
+      const btn = $('employeeMonthPunchLogBtn');
+      const count = $('employeeMonthPunchAlertCount');
+      const stats = employeeMonthPunchStatsV61460();
+      if (btn) {
+        btn.classList.toggle('is-loading',Boolean(employeeMonthCalendarStateV61121.timePunchLoading));
+        btn.classList.toggle('has-multiple',stats.multipleDays>0);
+        btn.disabled = Boolean(employeeMonthCalendarStateV61121.timePunchLoading);
+        btn.title = employeeMonthCalendarStateV61121.timePunchError
+          ? `โหลดข้อมูลการลงเวลาไม่สำเร็จ • ${humanError(employeeMonthCalendarStateV61121.timePunchError)}`
+          : stats.multipleDays>0
+            ? `ดู ${stats.records} Record • พบ ${stats.multipleDays} วันที่มีหลายรายการลงเวลา`
+            : `ดูข้อมูลการลงเวลาทุก Record ในเดือนที่เลือก`;
+      }
+      if (count) {
+        count.textContent = String(stats.multipleDays || 0);
+        count.classList.toggle('hidden',stats.multipleDays<=0);
+      }
+    }
+
+    function employeeMonthClosePunchPanelV61460() {
+      const overlay = $('employeeMonthPunchOverlay');
+      overlay?.classList.add('hidden');
+      overlay?.setAttribute('aria-hidden','true');
+    }
+
+    function employeeMonthPunchDateLabelV61460(date) {
+      const d = parseLocalISO(date);
+      const days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสฯ','ศุกร์','เสาร์'];
+      return `${days[d.getDay()]} ${fmtDate(date)}`;
+    }
+
+    function employeeMonthPunchRecordHtmlV61460(row) {
+      const mode = employeeMonthPunchModeV61460(row);
+      const modeLabel = mode === 'IN' ? 'เข้า' : mode === 'OUT' ? 'ออก' : 'ไม่ระบุ';
+      const time = formatTime(row?.inout_time);
+      const gpsName = String(row?.gps_name || '').trim();
+      const gpsLocation = String(row?.gps_location || '').trim();
+      const source = [row?.source_sheet,row?.source_file].map(v=>String(v||'').trim()).filter(Boolean).join(' • ');
+      const detailBits = [
+        gpsName ? `พื้นที่: ${gpsName}` : '',
+        gpsLocation ? `พิกัด/สถานที่: ${gpsLocation}` : '',
+        row?.reader_name ? `เครื่อง: ${String(row.reader_name).trim()}` : '',
+        row?.project_name ? `โครงการ: ${String(row.project_name).trim()}` : '',
+        row?.remarks ? `หมายเหตุ: ${String(row.remarks).trim()}` : ''
+      ].filter(Boolean);
+      return `<div class="employee-month-punch-record-v61460 mode-${safe(mode.toLowerCase())}">
+        <time>${safe(time)}</time>
+        <span class="employee-month-punch-mode-v61460 mode-${safe(mode.toLowerCase())}"><i></i>${safe(modeLabel)}</span>
+        <div class="employee-month-punch-record-copy-v61460">
+          <strong>${safe(gpsName || source || 'ข้อมูลลงเวลา')}</strong>
+          <small>${safe(detailBits.join(' • ') || source || 'ไม่ระบุสถานที่/แหล่งข้อมูล')}</small>
+        </div>
+        <span class="employee-month-punch-source-v61460">${safe(source || `Record #${row?.punch_id || '-'}`)}</span>
+      </div>`;
+    }
+
+    function renderEmployeeMonthPunchPanelV61460(focusDate = null) {
+      const list = $('employeeMonthPunchList');
+      const summary = $('employeeMonthPunchSummary');
+      const subtitle = $('employeeMonthPunchSubtitle');
+      const multiCount = $('employeeMonthPunchMultiDayCount');
+      const filterBtn = $('employeeMonthPunchMultiOnlyBtn');
+      if (!list || !summary) return;
+
+      const rows = employeeMonthCalendarStateV61121.timePunchRows || [];
+      const stats = employeeMonthPunchStatsV61460(rows);
+      const bounds = employeeMonthBoundsV61121(employeeMonthCalendarStateV61121.month);
+      const monthNames = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+      if (subtitle) subtitle.textContent = `${employeeMonthCalendarStateV61121.empCode} • ${monthNames[bounds.month-1]} ${bounds.year+543} • ทุก Record ตามวัน/เวลาจริง`;
+      if (multiCount) multiCount.textContent = String(stats.multipleDays || 0);
+      if (filterBtn) {
+        filterBtn.classList.toggle('active',Boolean(employeeMonthCalendarStateV61121.timePunchMultiOnly));
+        filterBtn.setAttribute('aria-pressed',employeeMonthCalendarStateV61121.timePunchMultiOnly?'true':'false');
+      }
+      summary.innerHTML = [
+        ['Records',stats.records,'รายการลงเวลาทั้งหมด'],
+        ['Days',stats.days,'วันที่มีข้อมูล'],
+        ['Multi',stats.multipleDays,'วันที่มีหลายรายการ']
+      ].map(([label,value,desc],index)=>`<div class="employee-month-punch-kpi-v61460 ${index===2&&Number(value)>0?'is-highlight':''}"><span>${safe(label)}</span><strong>${safe(formatNumber(value))}</strong><small>${safe(desc)}</small></div>`).join('');
+
+      if (employeeMonthCalendarStateV61121.timePunchLoading) {
+        list.innerHTML = '<div class="employee-month-punch-loading-v61460"><span class="spinner"></span><strong>กำลังโหลดข้อมูลการลงเวลา...</strong><small>อ่าน Punch ดิบทุก Record ของเดือนที่เลือก</small></div>';
+        return;
+      }
+      if (employeeMonthCalendarStateV61121.timePunchError) {
+        list.innerHTML = `<div class="employee-month-punch-empty-v61460 is-error"><strong>โหลดข้อมูลการลงเวลาไม่สำเร็จ</strong><small>${safe(humanError(employeeMonthCalendarStateV61121.timePunchError))}</small></div>`;
+        return;
+      }
+      if (!rows.length) {
+        list.innerHTML = '<div class="employee-month-punch-empty-v61460"><strong>ไม่พบข้อมูลการลงเวลา</strong><small>เดือนที่เลือกไม่มี Record ใน Time Logs</small></div>';
+        return;
+      }
+
+      let days = [...stats.byDay.values()].sort((a,b)=>a.date.localeCompare(b.date));
+      if (employeeMonthCalendarStateV61121.timePunchMultiOnly) days = days.filter(day=>day.multiple);
+      if (!days.length) {
+        list.innerHTML = '<div class="employee-month-punch-empty-v61460"><strong>ไม่พบวันที่มีหลายรายการ</strong><small>ทุกวันที่มี Punch ในเดือนนี้มีรูปแบบปกติ 1 คู่หรือน้อยกว่า</small></div>';
+        return;
+      }
+      list.innerHTML = days.map(day => `<section class="employee-month-punch-day-v61460 ${day.multiple?'has-multiple':''}" data-punch-day="${safe(day.date)}">
+        <header>
+          <div class="employee-month-punch-day-date-v61460"><strong>${safe(String(Number(day.date.slice(8,10))))}</strong><small>${safe(day.date.slice(5,7))}</small></div>
+          <div class="employee-month-punch-day-copy-v61460"><strong>${safe(employeeMonthPunchDateLabelV61460(day.date))}</strong><small>${safe(`${day.total} รายการ • เข้า ${day.inCount} • ออก ${day.outCount}${day.unknownCount?` • ไม่ระบุ ${day.unknownCount}`:''}`)}</small></div>
+          ${day.multiple?`<span class="employee-month-punch-candidate-v61460" title="มีการลงเวลาหลายรายการในวันเดียวกัน • ใช้ประกอบการพิจารณากะพิเศษ"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg><span>หลายรายการ</span></span>`:''}
+        </header>
+        ${day.multiple?'<div class="employee-month-punch-advisory-v61460">อาจเป็นข้อมูลประกอบสำหรับ กะปกติ+งานลูกค้าช่วงดึก / กะเช้า+รอเข้ากะดึก / กะนับชั่วโมง • กรุณาตรวจสอบก่อนจัดกะ</div>':''}
+        <div class="employee-month-punch-records-v61460">${day.rows.map(employeeMonthPunchRecordHtmlV61460).join('')}</div>
+      </section>`).join('');
+
+      if (focusDate) {
+        requestAnimationFrame(()=>{
+          const node = list.querySelector(`[data-punch-day="${CSS.escape(String(focusDate))}"]`);
+          node?.scrollIntoView?.({block:'start',behavior:'smooth'});
+          node?.classList.add('is-focus-v61460');
+          if (node) setTimeout(()=>node.classList.remove('is-focus-v61460'),1800);
+        });
+      }
+    }
+
+    function employeeMonthOpenPunchPanelV61460(focusDate = null) {
+      const overlay = $('employeeMonthPunchOverlay');
+      if (!overlay) return;
+      overlay.classList.remove('hidden');
+      overlay.setAttribute('aria-hidden','false');
+      renderEmployeeMonthPunchPanelV61460(focusDate);
+    }
+
+    async function loadEmployeeMonthPunchesV61460(options = {}) {
+      const empCode = String(employeeMonthCalendarStateV61121.empCode || '').trim();
+      const month = String(employeeMonthCalendarStateV61121.month || '').slice(0,7);
+      if (!empCode || !/^\d{4}-\d{2}$/.test(month)) return [];
+      const key = employeeMonthPunchCacheKeyV61460(empCode,month);
+      const forceFresh = Boolean(options?.forceFresh);
+      if (!forceFresh) {
+        const cached = employeeMonthPunchCacheV61460.get(key);
+        if (cached && Date.now()-Number(cached.savedAt||0) <= EMPLOYEE_MONTH_PUNCH_CACHE_TTL_V61460) {
+          employeeMonthCalendarStateV61121.timePunchRows = (cached.rows||[]).map(row=>({...row}));
+          employeeMonthCalendarStateV61121.timePunchError = null;
+          employeeMonthCalendarStateV61121.timePunchLoading = false;
+          employeeMonthUpdatePunchButtonV61460();
+          return employeeMonthCalendarStateV61121.timePunchRows;
+        }
+      }
+      const token = ++employeeMonthCalendarStateV61121.timePunchLoadToken;
+      employeeMonthCalendarStateV61121.timePunchLoading = true;
+      employeeMonthCalendarStateV61121.timePunchError = null;
+      employeeMonthUpdatePunchButtonV61460();
+      try {
+        const {data,error} = await state.client.rpc('ta_get_employee_time_punches_v61460',{
+          p_emp_code:empCode,
+          p_month:`${month}-01`
+        });
+        if (error) throw error;
+        if (token !== employeeMonthCalendarStateV61121.timePunchLoadToken) return [];
+        const rows = (Array.isArray(data)?data:[]).map(row=>({...row})).sort((a,b)=>String(a?.inout_date||'').localeCompare(String(b?.inout_date||'')) || String(a?.inout_time||'').localeCompare(String(b?.inout_time||'')) || Number(a?.punch_id||0)-Number(b?.punch_id||0));
+        employeeMonthCalendarStateV61121.timePunchRows = rows;
+        employeeMonthCalendarStateV61121.timePunchError = null;
+        employeeMonthPunchCacheV61460.set(key,{rows:rows.map(row=>({...row})),savedAt:Date.now()});
+        return rows;
+      } catch (error) {
+        if (token !== employeeMonthCalendarStateV61121.timePunchLoadToken) return [];
+        employeeMonthCalendarStateV61121.timePunchRows = [];
+        employeeMonthCalendarStateV61121.timePunchError = error;
+        if (!window.TimeClockShiftAPI?.missingFunction?.(error)) console.warn('Monthly Personal raw time punches V6.14.60:',error);
+        return [];
+      } finally {
+        if (token === employeeMonthCalendarStateV61121.timePunchLoadToken) {
+          employeeMonthCalendarStateV61121.timePunchLoading = false;
+          employeeMonthUpdatePunchButtonV61460();
+          // Re-render once so raw-punch evidence icons appear on the calendar.
+          if (!$('employeeMonthScheduleModal')?.classList.contains('hidden') && !employeeMonthCalendarStateV61121.loading) renderEmployeeMonthCalendarV61121();
+          if (!$('employeeMonthPunchOverlay')?.classList.contains('hidden')) renderEmployeeMonthPunchPanelV61460();
+        }
+      }
     }
 
     function employeeMonthBoundsV61121(monthValue) {
@@ -8608,6 +8843,9 @@ window.tcIsDayShiftCode = value =>
       const attendanceRows = employeeMonthCalendarStateV61121.attendanceRows || [];
       const scheduleByDate = new Map(scheduleRows.map(row => [String(row.work_date || '').slice(0,10), row]));
       const attendanceByDate = new Map(attendanceRows.map(row => [String(row.work_date || '').slice(0,10), row]));
+      const rawPunchStatsV61460 = employeeMonthPunchStatsV61460();
+      const rawPunchByDateV61460 = rawPunchStatsV61460.byDay;
+      employeeMonthUpdatePunchButtonV61460();
       const firstSchedule = scheduleRows[0] || {};
       const employeeName = firstSchedule.full_name
         || state.schedule.find(row => String(row.emp_code) === String(employeeMonthCalendarStateV61121.empCode))?.full_name
@@ -8706,7 +8944,7 @@ window.tcIsDayShiftCode = value =>
         <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>เข้าหลังเริ่มกะ 1–29 นาที</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
         <div class="month-overview-kpi early"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></div>
         <div class="month-overview-kpi split"><div class="month-kpi-icon">ดึก</div><div><span>งานลูกค้าช่วงดึก</span><small>วันที่มีช่วงงานกะที่ 2</small></div><strong>${safe(formatNumber(splitDays))}</strong></div>
-        <div class="month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>รับรองแล้ว ${safe(formatNumber(certifiedDays))} วัน • ตรวจรายละเอียดจาก Badge ในแต่ละวัน</small></div>`;
+        <div class="month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>รับรองแล้ว ${safe(formatNumber(certifiedDays))} วัน • ตรวจข้อมูลการลงเวลาเพื่อใช้ประกอบการจัดกะพิเศษ</small></div>`;
 
       renderEmployeeMonthHolidayListV61153(scheduleRows);
 
@@ -8719,6 +8957,10 @@ window.tcIsDayShiftCode = value =>
 
       for (let day = 1; day <= bounds.days; day += 1) {
         const workDate = `${bounds.value}-${String(day).padStart(2,'0')}`;
+        const rawPunchDayV61460 = rawPunchByDateV61460.get(workDate) || null;
+        const rawPunchIndicatorV61460 = rawPunchDayV61460?.multiple
+          ? `<button type="button" class="employee-month-multi-punch-v61460" data-employee-month-punch-date="${safe(workDate)}" title="พบ ${safe(formatNumber(rawPunchDayV61460.total))} รายการลงเวลา • เข้า ${safe(formatNumber(rawPunchDayV61460.inCount))} / ออก ${safe(formatNumber(rawPunchDayV61460.outCount))} • คลิกดูข้อมูลดิบ" aria-label="ดูข้อมูลการลงเวลาหลายรายการวันที่ ${safe(fmtDate(workDate))}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg><span>${safe(formatNumber(rawPunchDayV61460.total))}</span></button>`
+          : '';
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;
         const merged = employeeMonthMergeCanonicalV61429(scheduleRow, attendanceRow);
@@ -8736,7 +8978,6 @@ window.tcIsDayShiftCode = value =>
         const splitSourceV61429 = scheduleRow || merged;
         const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(splitSourceV61429);
         const split = Boolean(specialModeV61459 && ['customer','wait'].includes(specialModeV61459.key));
-        const specialModeBadgeV61459 = scheduleSpecialWorkModeBadgeHtmlV61459(splitSourceV61429,{compact:false});
         const shift2In = split ? scheduleTeamSegmentActualTime(merged, 2, 'IN') : '-';
         const shift2Out = split ? scheduleTeamSegmentActualTime(merged, 2, 'OUT') : '-';
         const anomalyHtml = employeeMonthAnomalyHtmlV61121(attendanceRow ? merged : null);
@@ -8798,9 +9039,8 @@ window.tcIsDayShiftCode = value =>
         html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)}" data-month-date="${safe(workDate)}">
           <div class="employee-month-day-head">
             <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
-            <span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span>
+            <div class="employee-month-day-head-actions-v61460">${rawPunchIndicatorV61460}<span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span></div>
           </div>
-          ${specialModeBadgeV61459 ? `<div class="employee-month-special-mode-v61459">${specialModeBadgeV61459}</div>` : ''}
 
           ${employmentStateV61429 !== 'ACTIVE' ? `
             <div class="employee-month-inactive-v61429">
@@ -8869,6 +9109,10 @@ window.tcIsDayShiftCode = value =>
       employeeMonthCalendarStateV61121.empCode = code;
       employeeMonthCalendarStateV61121.month = month;
       employeeMonthCalendarStateV61121.loading = true;
+      employeeMonthCalendarStateV61121.timePunchRows = [];
+      employeeMonthCalendarStateV61121.timePunchError = null;
+      employeeMonthCalendarStateV61121.timePunchMultiOnly = false;
+      employeeMonthClosePunchPanelV61460();
       const loadToken = ++employeeMonthCalendarStateV61121.loadToken;
 
       const employeeMonthModalV61426 = $('employeeMonthScheduleModal');
@@ -8883,6 +9127,8 @@ window.tcIsDayShiftCode = value =>
       employeeMonthModalV61426?.removeAttribute('inert');
       employeeMonthModalV61426?.classList.remove('hidden');
       employeeMonthModalV61426?.setAttribute('aria-hidden','false');
+      // Raw punches are intentionally non-blocking so the Calendar remains fast.
+      loadEmployeeMonthPunchesV61460({forceFresh}).catch(()=>{});
 
       const cached = !forceFresh
         ? employeeMonthCacheGetV61138(code, month)
@@ -8936,6 +9182,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function closeEmployeeMonthCalendarV61121() {
+      employeeMonthClosePunchPanelV61460();
       const modalV61426 = $('employeeMonthScheduleModal');
       const activeV61426 = document.activeElement;
       const returnFocusV61426 = employeeMonthCalendarStateV61121.returnFocusEl;
@@ -9202,19 +9449,13 @@ window.tcIsDayShiftCode = value =>
           const changeBadge = day.changed > 0
             ? `<span class="team-day-manual-change-v61117"><i></i>ปรับกะ ${safe(formatNumber(day.changed))}</span>`
             : '';
-          const specialModeBadgesV61459 = [
-            day.specialCustomer > 0 ? `<span class="team-special-mode-badge-v61459 tone-split" title="กะปกติ + งานลูกค้าช่วงดึก"><b>↗</b>ต่อดึก <strong>${safe(formatNumber(day.specialCustomer))}</strong></span>` : '',
-            day.specialWait > 0 ? `<span class="team-special-mode-badge-v61459 tone-split" title="กะเช้า + รอเข้ากะดึก"><b>⌛</b>รอดึก <strong>${safe(formatNumber(day.specialWait))}</strong></span>` : '',
-            day.specialHour > 0 ? `<span class="team-special-mode-badge-v61459 tone-hour" title="กะนับชั่วโมง"><b>◷</b>นับชม. <strong>${safe(formatNumber(day.specialHour))}</strong></span>` : '',
-            day.specialWarning > 0 ? `<span class="team-special-mode-badge-v61459 tone-warning" title="มีรูปแบบพิเศษที่ข้อมูลยังไม่สมบูรณ์"><b>!</b>ตรวจ ${safe(formatNumber(day.specialWarning))}</span>` : ''
-          ].filter(Boolean).join('');
+          const specialModeBadgesV61459 = '';
 
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.specialWarning>0?'has-special-warning-v61459':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อ • กะมาตรฐานทำงานอัตโนมัติ • Badge ด้านล่างแสดงรูปแบบการทำงานพิเศษ">
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดกะ">
             ${changeBadge ? `<div class="team-day-top-v61115 team-day-top-manual-v61117">${changeBadge}</div>` : ''}
             <div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 ${[day.day, day.night, day.split, offTotal].filter(value => value > 0).length <= 2 ? 'is-compact' : ''}">
               ${visibleShiftChips || '<span class="team-day-extra-empty">ไม่มีกะทำงาน</span>'}
             </div>
-            ${specialModeBadgesV61459 ? `<div class="team-day-special-modes-v61459">${specialModeBadgesV61459}</div>` : ''}
             ${extraBadges ? `<div class="team-day-bottom-v61115 team-day-bottom-extras-v61116"><span class="team-day-extras-v61115">${extraBadges}</span></div>` : ''}
           </button></td>`;
         }
@@ -9502,13 +9743,8 @@ window.tcIsDayShiftCode = value =>
               ? `<div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 time-team-counts-v6148 ${timeRowsV6148.length <= 2 ? 'is-compact' : ''}">${timeRowsV6148.join('')}</div>`
               : '<span class="time-view-empty-v6147">—</span>';
           }
-          const timeSpecialBadgesV61459 = [
-            day.specialCustomer>0?`<span class="team-special-mode-badge-v61459 tone-split" title="กะปกติ + งานลูกค้าช่วงดึก"><b>↗</b>ต่อดึก <strong>${safe(formatNumber(day.specialCustomer))}</strong></span>`:'',
-            day.specialWait>0?`<span class="team-special-mode-badge-v61459 tone-split" title="กะเช้า + รอเข้ากะดึก"><b>⌛</b>รอดึก <strong>${safe(formatNumber(day.specialWait))}</strong></span>`:'',
-            day.specialHour>0?`<span class="team-special-mode-badge-v61459 tone-hour" title="กะนับชั่วโมง"><b>◷</b>นับชม. <strong>${safe(formatNumber(day.specialHour))}</strong></span>`:'',
-            day.specialWarning>0?`<span class="team-special-mode-badge-v61459 tone-warning" title="มีรูปแบบพิเศษที่ควรตรวจสอบ"><b>!</b>ตรวจ ${safe(formatNumber(day.specialWarning))}</span>`:''
-          ].filter(Boolean).join('');
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''} ${day.specialWarning>0?'has-special-warning-v61459':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}${timeSpecialBadgesV61459?`<div class="team-day-special-modes-v61459 time-view-special-modes-v61459">${timeSpecialBadgesV61459}</div>`:''}</button></td>`;
+          const timeSpecialBadgesV61459 = '';
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}</button></td>`;
         }
         html+='</tr>';
       }
@@ -9875,9 +10111,7 @@ window.tcIsDayShiftCode = value =>
           const iconAriaV6136 = `${personShiftIconMetaV6136.label}${normalizedCode && normalizedCode !== '-' ? ` ${normalizedCode}` : ''}${shiftTimeLabel ? ` ${shiftTimeLabel}` : ''}`;
 
           const personSpecialToneStyleV61458 = schedulePersonSpecialToneStyleV61458(personShiftIconMetaV6136.tone);
-          const personSpecialModeBadgeV61459 = scheduleSpecialWorkModeBadgeHtmlV61459(r,{compact:true});
-          const personSpecialModeMetaV61459 = scheduleSpecialWorkModeMetaV61459(r);
-          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${personSpecialModeMetaV61459?`has-special-mode-v61459 special-mode-${safe(personSpecialModeMetaV61459.key)}`:''} ${managerOwnEmployee?"manager-self-readonly":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}${personSpecialModeBadgeV61459}</span></td>`;
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${managerOwnEmployee?"manager-self-readonly":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
         }
 
         html += `</tr>`;
@@ -12326,6 +12560,13 @@ window.tcIsDayShiftCode = value =>
           closeEmployeeMonthCalendarV61121();
           return;
         }
+        const punchDate = event.target.closest('[data-employee-month-punch-date]');
+        if (punchDate) {
+          event.preventDefault();
+          event.stopPropagation();
+          employeeMonthOpenPunchPanelV61460(String(punchDate.dataset.employeeMonthPunchDate || '').slice(0,10));
+          return;
+        }
         const certify = event.target.closest('[data-time-certify]');
         if (certify) {
           const workDate = String(certify.dataset.date || '').slice(0,10);
@@ -12369,9 +12610,29 @@ window.tcIsDayShiftCode = value =>
       $("timeCertificationSaveBtn")?.addEventListener("click", saveTimeCertificationV61139);
       $("timeCertificationRevokeBtn")?.addEventListener("click", revokeTimeCertificationV61139);
 
+      $("employeeMonthPunchLogBtn")?.addEventListener("click", () => {
+        employeeMonthOpenPunchPanelV61460();
+        if (!employeeMonthCalendarStateV61121.timePunchRows.length && !employeeMonthCalendarStateV61121.timePunchLoading) {
+          loadEmployeeMonthPunchesV61460().catch(()=>{});
+        }
+      });
+      $("employeeMonthPunchOverlay")?.addEventListener("click", event => {
+        if (event.target.closest('[data-employee-month-punch-close]')) {
+          employeeMonthClosePunchPanelV61460();
+        }
+      });
+      $("employeeMonthPunchMultiOnlyBtn")?.addEventListener("click", () => {
+        employeeMonthCalendarStateV61121.timePunchMultiOnly = !employeeMonthCalendarStateV61121.timePunchMultiOnly;
+        renderEmployeeMonthPunchPanelV61460();
+      });
+
       $("employeeMonthRecalcBtn")?.addEventListener("click", recalculateEmployeeMonthV61121);
       $("employeeMonthRefreshBtn")?.addEventListener("click", () => {
         employeeMonthCacheInvalidateV61138(
+          employeeMonthCalendarStateV61121.empCode,
+          employeeMonthCalendarStateV61121.month
+        );
+        employeeMonthPunchCacheInvalidateV61460(
           employeeMonthCalendarStateV61121.empCode,
           employeeMonthCalendarStateV61121.month
         );
@@ -19260,7 +19521,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.59',
+    version:'6.14.60',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -28079,7 +28340,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.59';
+  const VERSION='6.14.60';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
