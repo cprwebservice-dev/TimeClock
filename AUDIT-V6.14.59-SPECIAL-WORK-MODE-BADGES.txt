@@ -1,0 +1,40 @@
+AUDIT — TimeAttendance V6.14.59
+Special Work-Mode Badges / Scheduling UX
+============================================================
+
+A. Requested UX
+[PASS] กะปกติ + งานลูกค้าช่วงดึก has a distinct "↗ ต่อดึก" marker.
+[PASS] กะเช้า + รอเข้ากะดึก has a distinct "⌛ รอดึก" marker.
+[PASS] กะนับชั่วโมง has a distinct "◷ นับชม." marker.
+[PASS] Special markers do not replace the primary Day/Night/OFF/LV/HOL shift icon.
+[PASS] Marker colors use System Settings SPLIT/HOUR CSS variables.
+[PASS] Warning "!" is reserved for incomplete special-mode metadata / NEED_REVIEW.
+
+B. Coverage
+[PASS] ตารางกะรายบุคคล 15 วัน / เต็มเดือน — compact corner marker + tooltip.
+[PASS] Team View — special-mode count chips per team/day.
+[PASS] Time View — special-mode count chips retained alongside attendance status.
+[PASS] Team Daily Detail — employee-level special-mode marker and correct split label.
+[PASS] Monthly Personal Overview — visible special-mode badge above shift card.
+[PASS] Shift Assignment popup — special Work Mode cards receive a clear "รูปแบบพิเศษ" tag.
+[PASS] Person/Team/MPO legends explain the new symbols.
+
+C. Visual / Accessibility
+[PASS] Compact markers preserve cell center alignment and use native title tooltips.
+[PASS] Light/Dark mode rules included.
+[PASS] Responsive guide collapses cleanly on narrow screens.
+[PASS] Warning semantics use amber/red only for an actual review condition.
+
+D. Business Logic Safety
+[PASS] No SQL / Backend changes.
+[PASS] Shift assignment save flow unchanged.
+[PASS] Attendance, Waiting, Net Work, Regular, OT and Absence calculations unchanged.
+[PASS] Night Sequence, Day-off quota, System Period and Permission guards unchanged.
+
+E. Static Validation
+[PASS] node --check app.js
+[PASS] index.html parsed successfully
+[PASS] 404.html parsed successfully
+[PASS] 715 HTML IDs; duplicate IDs = 0
+[PASS] CSS brace balance
+[PASS] app.js / app.css / index.html / 404.html included in ZIP

@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.58";
-document.documentElement.dataset.timeClockBuild = "6.14.58";
+window.__TIME_CLOCK_BUILD__ = "V6.14.59";
+document.documentElement.dataset.timeClockBuild = "6.14.59";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.58";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.58',
+  version: '6.14.59',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -6348,6 +6348,85 @@ window.tcIsDayShiftCode = value =>
       return `<span class="schedule-shift-icon-v6136 icon-${safe(meta.kind)}"${iconStyleV61458 ? ` style="${iconStyleV61458}"` : ''} aria-hidden="true">${schedulePersonIconSvgV6136(meta.kind)}</span>`;
     }
 
+    /* V6.14.59 — Special Work-Mode marker shared by every scheduling view.
+       This is presentation/validation guidance only; it does not modify the
+       saved shift, Work Mode, Attendance, Waiting or OT calculations. */
+    function scheduleSpecialWorkModeMetaV61459(row) {
+      if (!row) return null;
+      const mode = String(row?.schedule_rule_mode || row?.work_mode_code || '').trim().toUpperCase();
+      const template = String(scheduleWorkTemplateCodeV6118(row) || '').trim().toUpperCase();
+      const code = window.tcShiftCode(
+        row?.assigned_shift_code || row?.effective_shift_code || row?.generated_shift_code || row?.shift_code || ''
+      );
+      const secondStart = formatTime(row?.second_segment_start || row?.customer_window_start || row?.shift_2_planned_start_at);
+      const secondEnd = formatTime(row?.second_segment_planned_end || row?.customer_window_end || row?.shift_2_planned_end_at);
+      const firstEnd = formatTime(row?.first_segment_end || row?.shift_1_planned_end_at || (String(code||'').startsWith('SW') ? row?.shift_end_time : null));
+      const shiftWindow = scheduleEffectiveShiftWindowV6133(row);
+      const start = formatTime(row?.custom_start_time || shiftWindow?.start);
+      const end = formatTime(row?.custom_end_time || shiftWindow?.end);
+      const needsReview = String(row?.schedule_status || '').trim().toUpperCase() === 'NEED_REVIEW';
+      const waiting = Number(row?.waiting_minutes || 0);
+      const net = Number(row?.paid_work_minutes ?? row?.net_work_minutes ?? 0);
+      const ot = Number(row?.overtime_minutes || 0);
+
+      if (mode === 'HOUR_BASED' || /^H[56]/.test(String(code||''))) {
+        const warning = needsReview || start === '-' || end === '-';
+        return {
+          key:'hour', tone:'hour', glyph:'◷', short:'นับชม.', label:'กะนับชั่วโมง', warning,
+          tooltip:[
+            'กะนับชั่วโมง',
+            start !== '-' ? `เริ่ม ${start}` : null,
+            end !== '-' ? `สิ้นสุด ${end}` : null,
+            net > 0 ? `ชม.สุทธิ ${attendanceMinutesToHourMinuteV61457(net)}` : null,
+            ot > 0 ? `OT ${attendanceMinutesToHourMinuteV61457(ot)}` : null,
+            warning ? '⚠ ต้องตรวจสอบรายละเอียดเวลา' : 'รูปแบบพิเศษ • คำนวณเวลาสิ้นสุดตามชั่วโมง'
+          ].filter(Boolean).join(' • ')
+        };
+      }
+
+      if (mode === 'SPLIT_WAIT_NIGHT' || String(code||'').startsWith('SW')) {
+        const warning = needsReview || firstEnd === '-' || secondStart === '-' || secondEnd === '-';
+        return {
+          key:'wait', tone:'split', glyph:'⌛', short:'รอดึก', label:'กะเช้า + รอเข้ากะดึก', warning,
+          tooltip:[
+            'กะเช้า + รอเข้ากะดึก',
+            firstEnd !== '-' ? `ออกกะ 1 ${firstEnd}` : null,
+            secondStart !== '-' ? `กลับเข้า ${secondStart}` : null,
+            secondEnd !== '-' ? `กะ 2 สิ้นสุด ${secondEnd}` : null,
+            waiting > 0 ? `รอ ${attendanceMinutesToHourMinuteV61457(waiting)} ชม.` : null,
+            net > 0 ? `ชม.สุทธิ ${attendanceMinutesToHourMinuteV61457(net)}` : null,
+            ot > 0 ? `OT ${attendanceMinutesToHourMinuteV61457(ot)}` : null,
+            warning ? '⚠ ต้องตรวจสอบข้อมูลกะ 1 / ช่วงรอ / กะ 2' : 'รูปแบบพิเศษ • ช่วงรอไม่นับเป็นเวลาทำงาน'
+          ].filter(Boolean).join(' • ')
+        };
+      }
+
+      if (mode === 'NORMAL_LATE_CUSTOMER' || template === 'SPLIT_FLEX') {
+        const warning = needsReview || secondStart === '-';
+        return {
+          key:'customer', tone:'split', glyph:'↗', short:'ต่อดึก', label:'กะปกติ + งานลูกค้าช่วงดึก', warning,
+          tooltip:[
+            'กะปกติ + งานลูกค้าช่วงดึก',
+            secondStart !== '-' ? `กะ 2 เริ่ม ${secondStart}` : null,
+            secondEnd !== '-' ? `กะ 2 สิ้นสุด ${secondEnd}` : 'กะ 2 สิ้นสุดตามเวลาออกจริง',
+            waiting > 0 ? `รอ ${attendanceMinutesToHourMinuteV61457(waiting)} ชม.` : null,
+            net > 0 ? `ชม.สุทธิ ${attendanceMinutesToHourMinuteV61457(net)}` : null,
+            ot > 0 ? `OT ${attendanceMinutesToHourMinuteV61457(ot)}` : null,
+            warning ? '⚠ ต้องตรวจสอบเวลาเริ่มงานลูกค้าช่วงดึก' : 'รูปแบบพิเศษ • กะที่ 2 เป็นงานช่วงดึก'
+          ].filter(Boolean).join(' • ')
+        };
+      }
+      return null;
+    }
+
+    function scheduleSpecialWorkModeBadgeHtmlV61459(row, options = {}) {
+      const meta = scheduleSpecialWorkModeMetaV61459(row);
+      if (!meta) return '';
+      const compact = options.compact !== false;
+      const label = compact ? meta.glyph : `${meta.glyph} ${meta.short}`;
+      return `<span class="schedule-special-mode-badge-v61459 tone-${safe(meta.tone)} mode-${safe(meta.key)} ${compact?'is-compact':''} ${meta.warning?'has-warning':''}" title="${safe(meta.tooltip)}" aria-label="${safe(meta.label)}${meta.warning?' ต้องตรวจสอบ':''}"><span class="special-mode-glyph-v61459">${safe(label)}</span>${meta.warning?'<b class="special-mode-warning-v61459" aria-hidden="true">!</b>':''}</span>`;
+    }
+
     function schedulePersonTooltipV6136(row, context = {}) {
       const meta = schedulePersonIconMetaV6136(row);
       const code = window.tcShiftCode(
@@ -7696,14 +7775,17 @@ window.tcIsDayShiftCode = value =>
           const shift1Out = scheduleTeamSegmentActualTime(row, 1, 'OUT');
           const shift2In = scheduleTeamSegmentActualTime(row, 2, 'IN');
           const shift2Out = scheduleTeamSegmentActualTime(row, 2, 'OUT');
-          const splitWorkTemplate = templateCode === 'SPLIT_FLEX' || shift2Plan !== '-' || shift2In !== '-' || shift2Out !== '-';
+          const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(row);
+          const specialModeBadgeV61459 = scheduleSpecialWorkModeBadgeHtmlV61459(row,{compact:false});
+          const splitWorkTemplate = Boolean(specialModeV61459 && ['customer','wait'].includes(specialModeV61459.key)) || templateCode === 'SPLIT_FLEX' || shift2Plan !== '-' || shift2In !== '-' || shift2Out !== '-';
+          const splitModeLabelV61459 = specialModeV61459?.label || 'กะปกติ + งานลูกค้าช่วงดึก';
           const shiftDetailHtml = splitWorkTemplate
-            ? `<div class="team-shift-stack"><small><b>กะ 1</b><span>${safe(shift1Plan)}</span></small><small class="secondary"><b>กะ 2</b><span>${safe(shift2Plan)}</span></small></div><small class="team-shift-meta">กะปกติ + งานลูกค้าช่วงดึก</small>`
+            ? `<div class="team-shift-stack"><small><b>กะ 1</b><span>${safe(shift1Plan)}</span></small><small class="secondary"><b>กะ 2</b><span>${safe(shift2Plan)}</span></small></div><small class="team-shift-meta">${safe(splitModeLabelV61459)}</small>`
             : `<strong class="team-shift-text tone-${safe(shift.tone)}">${safe(shift.code || '-')}</strong><small>${safe(scheduleTeamPlannedTime(row))}</small>`;
-          return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''}">
+          return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''} ${specialModeV61459?'has-special-mode-v61459':''}">
             <div class="team-employee-main">
               <div class="team-employee-avatar">${safe(initials)}</div>
-              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
+              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small>${specialModeBadgeV61459?`<div class="team-employee-special-mode-v61459">${specialModeBadgeV61459}</div>`:''}</div>
               <div class="team-employee-actions-v61118">
                 <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
                 ${timeCertificationBadgeV61139(row)}
@@ -8652,7 +8734,9 @@ window.tcIsDayShiftCode = value =>
         const actualIn = merged ? scheduleTeamSegmentActualTime(merged, 1, 'IN') : '-';
         const actualOut = merged ? scheduleTeamSegmentActualTime(merged, 1, 'OUT') : '-';
         const splitSourceV61429 = scheduleRow || merged;
-        const split = splitSourceV61429 && scheduleWorkTemplateCodeV6118(splitSourceV61429) === 'SPLIT_FLEX';
+        const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(splitSourceV61429);
+        const split = Boolean(specialModeV61459 && ['customer','wait'].includes(specialModeV61459.key));
+        const specialModeBadgeV61459 = scheduleSpecialWorkModeBadgeHtmlV61459(splitSourceV61429,{compact:false});
         const shift2In = split ? scheduleTeamSegmentActualTime(merged, 2, 'IN') : '-';
         const shift2Out = split ? scheduleTeamSegmentActualTime(merged, 2, 'OUT') : '-';
         const anomalyHtml = employeeMonthAnomalyHtmlV61121(attendanceRow ? merged : null);
@@ -8716,6 +8800,7 @@ window.tcIsDayShiftCode = value =>
             <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
             <span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span>
           </div>
+          ${specialModeBadgeV61459 ? `<div class="employee-month-special-mode-v61459">${specialModeBadgeV61459}</div>` : ''}
 
           ${employmentStateV61429 !== 'ACTIVE' ? `
             <div class="employee-month-inactive-v61429">
@@ -8736,7 +8821,7 @@ window.tcIsDayShiftCode = value =>
             )}">
               <div class="employee-month-shift-top-v61127"><b>${safe(shift.code || '-')}</b>${templateCode !== '-' ? `<span class="month-template-code-v61127">${safe(templateCode)}</span>` : ''}</div>
               <small>${safe(shift.label || '-')}</small>
-              ${split?'<em>+ งานลูกค้าช่วงดึก</em>':''}
+              ${specialModeV61459?.key==='customer'?'<em>+ งานลูกค้าช่วงดึก</em>':specialModeV61459?.key==='wait'?'<em>+ รอเข้ากะดึก</em>':specialModeV61459?.key==='hour'?'<em>• นับชั่วโมง</em>':''}
             </div>
 
             <div class="employee-month-punch-grid-v61127">
@@ -9011,6 +9096,10 @@ window.tcIsDayShiftCode = value =>
             day: 0,
             night: 0,
             split: 0,
+            specialCustomer: 0,
+            specialWait: 0,
+            specialHour: 0,
+            specialWarning: 0,
             labels: new Map()
           });
         }
@@ -9026,6 +9115,11 @@ window.tcIsDayShiftCode = value =>
         }
         const templateCode = scheduleWorkTemplateCodeV6118(row);
         const splitWorkTemplate = templateCode === 'SPLIT_FLEX' && shiftMeta.isWorking;
+        const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(row);
+        if (specialModeV61459?.key === 'customer') day.specialCustomer += 1;
+        if (specialModeV61459?.key === 'wait') day.specialWait += 1;
+        if (specialModeV61459?.key === 'hour') day.specialHour += 1;
+        if (specialModeV61459?.warning) day.specialWarning += 1;
         if (shiftMeta.tone === 'off') day.off += 1;
         if (shiftMeta.tone === 'holiday') day.holiday += 1;
         if (shiftMeta.tone === 'leave') day.leave += 1;
@@ -9108,12 +9202,19 @@ window.tcIsDayShiftCode = value =>
           const changeBadge = day.changed > 0
             ? `<span class="team-day-manual-change-v61117"><i></i>ปรับกะ ${safe(formatNumber(day.changed))}</span>`
             : '';
+          const specialModeBadgesV61459 = [
+            day.specialCustomer > 0 ? `<span class="team-special-mode-badge-v61459 tone-split" title="กะปกติ + งานลูกค้าช่วงดึก"><b>↗</b>ต่อดึก <strong>${safe(formatNumber(day.specialCustomer))}</strong></span>` : '',
+            day.specialWait > 0 ? `<span class="team-special-mode-badge-v61459 tone-split" title="กะเช้า + รอเข้ากะดึก"><b>⌛</b>รอดึก <strong>${safe(formatNumber(day.specialWait))}</strong></span>` : '',
+            day.specialHour > 0 ? `<span class="team-special-mode-badge-v61459 tone-hour" title="กะนับชั่วโมง"><b>◷</b>นับชม. <strong>${safe(formatNumber(day.specialHour))}</strong></span>` : '',
+            day.specialWarning > 0 ? `<span class="team-special-mode-badge-v61459 tone-warning" title="มีรูปแบบพิเศษที่ข้อมูลยังไม่สมบูรณ์"><b>!</b>ตรวจ ${safe(formatNumber(day.specialWarning))}</span>` : ''
+          ].filter(Boolean).join('');
 
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อ • กะมาตรฐานทำงานอัตโนมัติ • รายการที่หัวหน้างานบันทึกมีผลทันที">
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.specialWarning>0?'has-special-warning-v61459':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อ • กะมาตรฐานทำงานอัตโนมัติ • Badge ด้านล่างแสดงรูปแบบการทำงานพิเศษ">
             ${changeBadge ? `<div class="team-day-top-v61115 team-day-top-manual-v61117">${changeBadge}</div>` : ''}
             <div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 ${[day.day, day.night, day.split, offTotal].filter(value => value > 0).length <= 2 ? 'is-compact' : ''}">
               ${visibleShiftChips || '<span class="team-day-extra-empty">ไม่มีกะทำงาน</span>'}
             </div>
+            ${specialModeBadgesV61459 ? `<div class="team-day-special-modes-v61459">${specialModeBadgesV61459}</div>` : ''}
             ${extraBadges ? `<div class="team-day-bottom-v61115 team-day-bottom-extras-v61116"><span class="team-day-extras-v61115">${extraBadges}</span></div>` : ''}
           </button></td>`;
         }
@@ -9345,9 +9446,14 @@ window.tcIsDayShiftCode = value =>
         const team = teams.get(unit); team.employees.add(emp); totalEmployees.add(emp);
         const names = Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : [];
         names.forEach(name => { const n=String(name||'').trim(); if(n) team.managerNames.set(n,(team.managerNames.get(n)||0)+1); });
-        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0});
+        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0});
         const metrics = scheduleTimeMetricsV6146(row, attendanceMap.get(`${emp}|${date}`));
         const day = team.days.get(date);
+        const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(row);
+        if (specialModeV61459?.key === 'customer') day.specialCustomer += 1;
+        if (specialModeV61459?.key === 'wait') day.specialWait += 1;
+        if (specialModeV61459?.key === 'hour') day.specialHour += 1;
+        if (specialModeV61459?.warning) day.specialWarning += 1;
         if (metrics.eligible) day.eligible += 1;
         if (metrics.normal) day.normal += 1;
         if (metrics.absence) day.absence += 1;
@@ -9375,7 +9481,7 @@ window.tcIsDayShiftCode = value =>
         const managerLabel = scheduleTeamManagerLabelV61121(team);
         html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
         for (const date of period.dates) {
-          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0};
+          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0};
           const loading=scheduleTimeAttendanceStateV6146.loading && scheduleTimeAttendanceStateV6146.key===key;
           const error=scheduleTimeAttendanceStateV6146.error && scheduleTimeAttendanceStateV6146.key===key;
           const future=date>todayISO();
@@ -9396,7 +9502,13 @@ window.tcIsDayShiftCode = value =>
               ? `<div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 time-team-counts-v6148 ${timeRowsV6148.length <= 2 ? 'is-compact' : ''}">${timeRowsV6148.join('')}</div>`
               : '<span class="time-view-empty-v6147">—</span>';
           }
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}</button></td>`;
+          const timeSpecialBadgesV61459 = [
+            day.specialCustomer>0?`<span class="team-special-mode-badge-v61459 tone-split" title="กะปกติ + งานลูกค้าช่วงดึก"><b>↗</b>ต่อดึก <strong>${safe(formatNumber(day.specialCustomer))}</strong></span>`:'',
+            day.specialWait>0?`<span class="team-special-mode-badge-v61459 tone-split" title="กะเช้า + รอเข้ากะดึก"><b>⌛</b>รอดึก <strong>${safe(formatNumber(day.specialWait))}</strong></span>`:'',
+            day.specialHour>0?`<span class="team-special-mode-badge-v61459 tone-hour" title="กะนับชั่วโมง"><b>◷</b>นับชม. <strong>${safe(formatNumber(day.specialHour))}</strong></span>`:'',
+            day.specialWarning>0?`<span class="team-special-mode-badge-v61459 tone-warning" title="มีรูปแบบพิเศษที่ควรตรวจสอบ"><b>!</b>ตรวจ ${safe(formatNumber(day.specialWarning))}</span>`:''
+          ].filter(Boolean).join('');
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''} ${day.specialWarning>0?'has-special-warning-v61459':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}${timeSpecialBadgesV61459?`<div class="team-day-special-modes-v61459 time-view-special-modes-v61459">${timeSpecialBadgesV61459}</div>`:''}</button></td>`;
         }
         html+='</tr>';
       }
@@ -9763,7 +9875,9 @@ window.tcIsDayShiftCode = value =>
           const iconAriaV6136 = `${personShiftIconMetaV6136.label}${normalizedCode && normalizedCode !== '-' ? ` ${normalizedCode}` : ''}${shiftTimeLabel ? ` ${shiftTimeLabel}` : ''}`;
 
           const personSpecialToneStyleV61458 = schedulePersonSpecialToneStyleV61458(personShiftIconMetaV6136.tone);
-          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${managerOwnEmployee?"manager-self-readonly":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
+          const personSpecialModeBadgeV61459 = scheduleSpecialWorkModeBadgeHtmlV61459(r,{compact:true});
+          const personSpecialModeMetaV61459 = scheduleSpecialWorkModeMetaV61459(r);
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${personSpecialModeMetaV61459?`has-special-mode-v61459 special-mode-${safe(personSpecialModeMetaV61459.key)}`:''} ${managerOwnEmployee?"manager-self-readonly":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}${personSpecialModeBadgeV61459}</span></td>`;
         }
 
         html += `</tr>`;
@@ -19146,7 +19260,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.58',
+    version:'6.14.59',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -27965,7 +28079,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.58';
+  const VERSION='6.14.59';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -28522,7 +28636,9 @@ ${names}${extra}
         ? `วันหยุดคงเหลือ ${Number(quotaState.balance||0).toLocaleString('th-TH')} วัน • ไม่สามารถกำหนดวันหยุดเพิ่มได้`
         : (x.scope_label||'หน่วยงานนี้ยังไม่เปิดใช้');
       const toneV61453=workModeToneV61453(code);
-      return `<button type="button" class="assign-mode-card-v6120 mode-tone-${esc(toneV61453)} ${st.current?.mode===code?'active':''} ${quotaBlocked?'quota-exhausted-v6142':''}" data-work-mode-v6120="${esc(code)}" ${allowed?'':'disabled'} title="${esc(allowed?d.desc:blockedText)}"><span>${esc(d.icon)}</span><div><strong>${esc(d.label)}</strong><small>${esc(allowed?d.desc:blockedText)}</small></div>${allowed?'<i>เลือก</i>':quotaBlocked?'<i>สิทธิ์หมด</i>':'<i>ปิดใช้</i>'}</button>`;
+      const isSpecialV61459=['NORMAL_LATE_CUSTOMER','SPLIT_WAIT_NIGHT','HOUR_BASED'].includes(code);
+      const specialTagV61459=code==='NORMAL_LATE_CUSTOMER'?'ต่อดึก':code==='SPLIT_WAIT_NIGHT'?'รอดึก':code==='HOUR_BASED'?'นับชม.':'';
+      return `<button type="button" class="assign-mode-card-v6120 mode-tone-${esc(toneV61453)} ${isSpecialV61459?'is-special-work-mode-v61459':''} ${st.current?.mode===code?'active':''} ${quotaBlocked?'quota-exhausted-v6142':''}" data-work-mode-v6120="${esc(code)}" ${allowed?'':'disabled'} title="${esc(allowed?d.desc:blockedText)}"><span>${esc(d.icon)}</span><div><strong>${esc(d.label)}</strong><small>${esc(allowed?d.desc:blockedText)}</small>${isSpecialV61459?`<em class="assign-special-mode-tag-v61459">${esc(specialTagV61459)} • รูปแบบพิเศษ</em>`:''}</div>${allowed?'<i>เลือก</i>':quotaBlocked?'<i>สิทธิ์หมด</i>':'<i>ปิดใช้</i>'}</button>`;
     }).join('');
   }
   function populateWorkingShiftOptions(splitOnly=false){

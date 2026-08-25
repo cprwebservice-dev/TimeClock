@@ -22171,3 +22171,115 @@ body.theme-dark #page-schedule #schedulePersonWorkspace .schedule-icon-only-v613
   border-color:var(--shift-hour-border,#a8ddd4)!important;
   color:var(--shift-hour-text,#0f9488)!important;
 }
+
+/* ========================================================================== 
+   V6.14.59 — Special Work-Mode Badges / Scheduling UX
+   - NORMAL_LATE_CUSTOMER -> ต่อดึก (SPLIT family)
+   - SPLIT_WAIT_NIGHT     -> รอดึก (SPLIT family)
+   - HOUR_BASED           -> นับชม. (HOUR family)
+   - Warning mark is shown only when the special-mode metadata is incomplete
+     or Schedule status explicitly requires review.
+   ========================================================================== */
+.schedule-special-mode-guide-v61459{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:0 14px 10px;padding:9px 11px;border:1px solid var(--slate-200);
+  border-radius:12px;background:linear-gradient(90deg,var(--slate-50),var(--surface,#fff));
+}
+.schedule-special-guide-title-v61459{display:flex;align-items:baseline;gap:8px;min-width:max-content}
+.schedule-special-guide-title-v61459 strong{font-size:11px;color:var(--slate-800)}
+.schedule-special-guide-title-v61459 small{font-size:9px;color:var(--slate-500)}
+.schedule-special-guide-items-v61459{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.schedule-special-legend-chip-v61459{
+  display:inline-flex;align-items:center;gap:5px;min-height:25px;padding:4px 8px;
+  border:1px solid transparent;border-radius:999px;font-size:10px;font-weight:800;line-height:1;
+  white-space:nowrap;background:var(--slate-50);color:var(--slate-700)
+}
+.schedule-special-legend-chip-v61459>b{display:grid;place-items:center;min-width:16px;height:16px;border-radius:6px;font-size:11px;line-height:1}
+.schedule-special-legend-chip-v61459>small{font-size:9px;font-weight:600;opacity:.74}
+.schedule-special-legend-chip-v61459.tone-split{background:var(--shift-split-soft,#eef0ff);border-color:var(--shift-split-border,#bdc0f7);color:var(--shift-split-text,#6366f1)}
+.schedule-special-legend-chip-v61459.tone-split>b{background:var(--shift-split-soft-strong,rgba(99,102,241,.16))}
+.schedule-special-legend-chip-v61459.tone-hour{background:var(--shift-hour-soft,#e6f7f2);border-color:var(--shift-hour-border,#a8ddd4);color:var(--shift-hour-text,#0f9488)}
+.schedule-special-legend-chip-v61459.tone-hour>b{background:var(--shift-hour-soft-strong,rgba(15,148,136,.16))}
+.schedule-special-legend-chip-v61459.tone-warning{background:#fff7ed;border-color:#fed7aa;color:#c2410c}
+.schedule-special-legend-chip-v61459.tone-warning>b{background:#ffedd5}
+.schedule-special-legend-chip-v61459.compact{min-height:20px;padding:2px 6px;font-size:9px}
+.schedule-special-legend-chip-v61459.compact>b{min-width:13px;height:13px;font-size:9px}
+
+/* Person 15-day / full-month: keep the primary shift icon centered and add a
+   tiny corner marker that explains which special Work Mode the day uses. */
+#page-schedule #schedulePersonWorkspace .schedule-cell.schedule-icon-only-v6136.has-special-mode-v61459{position:relative!important;overflow:visible!important}
+#page-schedule #schedulePersonWorkspace .schedule-special-mode-badge-v61459.is-compact{
+  position:absolute;z-index:5;top:-5px;right:-5px;display:grid;place-items:center;
+  min-width:15px;height:15px;padding:0 3px;border:1.5px solid var(--surface,#fff);
+  border-radius:999px;font-size:8px;font-weight:900;line-height:1;letter-spacing:-.2px;
+  box-shadow:0 2px 6px rgba(15,23,42,.16);pointer-events:auto;cursor:help
+}
+#page-schedule #schedulePersonWorkspace .schedule-special-mode-badge-v61459.is-compact.tone-split{background:var(--shift-split-text,#6366f1);color:#fff}
+#page-schedule #schedulePersonWorkspace .schedule-special-mode-badge-v61459.is-compact.tone-hour{background:var(--shift-hour-text,#0f9488);color:#fff}
+#page-schedule #schedulePersonWorkspace .schedule-special-mode-badge-v61459.is-compact .special-mode-glyph-v61459{display:block;transform:translateY(-.1px)}
+.schedule-special-mode-badge-v61459.has-warning .special-mode-warning-v61459{
+  position:absolute;right:-5px;top:-5px;display:grid;place-items:center;width:9px;height:9px;
+  border:1px solid #fff;border-radius:999px;background:#ef4444;color:#fff;font-size:7px;font-style:normal;line-height:1
+}
+
+/* Team View: small secondary line summarises special modes without replacing
+   the primary morning/night/off coverage counts. */
+.team-day-special-modes-v61459{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:5px;padding-top:5px;border-top:1px dashed color-mix(in srgb,var(--slate-300) 65%,transparent)}
+.team-special-mode-badge-v61459{display:inline-flex;align-items:center;gap:3px;padding:3px 5px;border:1px solid transparent;border-radius:7px;font-size:8px;font-weight:800;line-height:1;white-space:nowrap}
+.team-special-mode-badge-v61459>b{font-size:9px}.team-special-mode-badge-v61459>strong{font-size:9px}
+.team-special-mode-badge-v61459.tone-split{background:var(--shift-split-soft,#eef0ff);border-color:var(--shift-split-border,#bdc0f7);color:var(--shift-split-text,#6366f1)}
+.team-special-mode-badge-v61459.tone-hour{background:var(--shift-hour-soft,#e6f7f2);border-color:var(--shift-hour-border,#a8ddd4);color:var(--shift-hour-text,#0f9488)}
+.team-special-mode-badge-v61459.tone-warning{background:#fff7ed;border-color:#fed7aa;color:#c2410c}
+.schedule-team-summary-card.has-special-warning-v61459{box-shadow:inset 0 0 0 1px #fdba74}
+.schedule-team-legend-v61459{gap:5px!important;flex-wrap:wrap}
+
+/* Monthly Personal Overview: visible text badge above the shift card. */
+.employee-month-special-mode-v61459{display:flex;align-items:center;min-height:23px;margin:3px 0 5px}
+.employee-month-special-mode-v61459 .schedule-special-mode-badge-v61459{
+  position:relative;display:inline-flex;align-items:center;gap:4px;max-width:100%;min-height:22px;
+  padding:3px 7px;border:1px solid transparent;border-radius:8px;font-size:9px;font-weight:900;line-height:1;
+  white-space:nowrap;overflow:visible
+}
+.employee-month-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-split{background:var(--shift-split-soft,#eef0ff);border-color:var(--shift-split-border,#bdc0f7);color:var(--shift-split-text,#6366f1)}
+.employee-month-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-hour{background:var(--shift-hour-soft,#e6f7f2);border-color:var(--shift-hour-border,#a8ddd4);color:var(--shift-hour-text,#0f9488)}
+.employee-month-special-mode-v61459 .special-mode-glyph-v61459{display:block}
+.employee-month-day-v61149:has(.employee-month-special-mode-v61459){border-color:color-mix(in srgb,var(--blue-300,#93c5fd) 55%,var(--slate-200))}
+
+/* Assignment popup: special modes are intentionally distinguishable from the
+   ordinary mode without introducing warning/red semantics. */
+#assignModal .assign-mode-card-v6120.is-special-work-mode-v61459{position:relative}
+#assignModal .assign-special-mode-tag-v61459{display:inline-flex!important;align-items:center;width:max-content!important;margin-top:6px!important;padding:3px 6px!important;border-radius:999px!important;font-size:8px!important;font-weight:900!important;font-style:normal!important;line-height:1!important}
+#assignModal .assign-mode-card-v6120.mode-tone-split .assign-special-mode-tag-v61459{background:var(--shift-split-soft,#eef0ff)!important;color:var(--shift-split-text,#6366f1)!important;border:1px solid var(--shift-split-border,#bdc0f7)!important}
+#assignModal .assign-mode-card-v6120.mode-tone-hour .assign-special-mode-tag-v61459{background:var(--shift-hour-soft,#e6f7f2)!important;color:var(--shift-hour-text,#0f9488)!important;border:1px solid var(--shift-hour-border,#a8ddd4)!important}
+
+body.theme-dark .schedule-special-mode-guide-v61459,.dark .schedule-special-mode-guide-v61459{background:#121b26;border-color:#334155}
+body.theme-dark .schedule-special-legend-chip-v61459.tone-split,.dark .schedule-special-legend-chip-v61459.tone-split,
+body.theme-dark .team-special-mode-badge-v61459.tone-split,.dark .team-special-mode-badge-v61459.tone-split,
+body.theme-dark .employee-month-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-split,.dark .employee-month-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-split{background:var(--shift-split-soft-strong,rgba(99,102,241,.20))}
+body.theme-dark .schedule-special-legend-chip-v61459.tone-hour,.dark .schedule-special-legend-chip-v61459.tone-hour,
+body.theme-dark .team-special-mode-badge-v61459.tone-hour,.dark .team-special-mode-badge-v61459.tone-hour,
+body.theme-dark .employee-month-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-hour,.dark .employee-month-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-hour{background:var(--shift-hour-soft-strong,rgba(15,148,136,.20))}
+body.theme-dark .schedule-special-legend-chip-v61459.tone-warning,.dark .schedule-special-legend-chip-v61459.tone-warning,
+body.theme-dark .team-special-mode-badge-v61459.tone-warning,.dark .team-special-mode-badge-v61459.tone-warning{background:#3b2617;border-color:#7c4a20;color:#fdba74}
+body.theme-dark #page-schedule #schedulePersonWorkspace .schedule-special-mode-badge-v61459.is-compact,.dark #page-schedule #schedulePersonWorkspace .schedule-special-mode-badge-v61459.is-compact{border-color:#17202b}
+
+@media(max-width:980px){
+  .schedule-special-mode-guide-v61459{align-items:flex-start;flex-direction:column}
+  .schedule-special-guide-items-v61459{justify-content:flex-start}
+  .schedule-special-guide-title-v61459{min-width:0;flex-wrap:wrap}
+}
+@media(max-width:640px){
+  .schedule-special-mode-guide-v61459{margin-left:8px;margin-right:8px;padding:8px}
+  .schedule-special-guide-title-v61459 small{display:none}
+  .schedule-special-legend-chip-v61459>small{display:none}
+}
+
+/* V6.14.59 — Team Daily Detail special-mode marker */
+.team-employee-special-mode-v61459{display:flex;align-items:center;margin-top:5px}
+.team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459{position:relative;display:inline-flex;align-items:center;gap:4px;min-height:21px;padding:3px 7px;border:1px solid transparent;border-radius:8px;font-size:9px;font-weight:900;line-height:1}
+.team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-split{background:var(--shift-split-soft,#eef0ff);border-color:var(--shift-split-border,#bdc0f7);color:var(--shift-split-text,#6366f1)}
+.team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-hour{background:var(--shift-hour-soft,#e6f7f2);border-color:var(--shift-hour-border,#a8ddd4);color:var(--shift-hour-text,#0f9488)}
+.team-employee-card.has-special-mode-v61459 .team-detail-card.is-shift{border-color:color-mix(in srgb,var(--shift-split-border,#bdc0f7) 58%,var(--slate-200))}
+.time-view-special-modes-v61459{margin-top:5px}
+body.theme-dark .team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-split,.dark .team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-split{background:var(--shift-split-soft-strong,rgba(99,102,241,.20))}
+body.theme-dark .team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-hour,.dark .team-employee-special-mode-v61459 .schedule-special-mode-badge-v61459.tone-hour{background:var(--shift-hour-soft-strong,rgba(15,148,136,.20))}
