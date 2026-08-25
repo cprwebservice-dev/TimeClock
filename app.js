@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.66";
-document.documentElement.dataset.timeClockBuild = "6.14.66";
+window.__TIME_CLOCK_BUILD__ = "V6.14.67";
+document.documentElement.dataset.timeClockBuild = "6.14.67";
 
 
 /* ===== js/config.js ===== */
@@ -9001,6 +9001,67 @@ window.tcIsDayShiftCode = value =>
       return { status: flags.primaryStatus || 'NORMAL', label: 'ปกติ', tone: 'normal' };
     }
 
+    // V6.14.67 — Monthly Personal must not label a past scheduled workday as
+    // “ยังไม่ประมวลผล” merely because the Attendance enrichment response has no
+    // row for that date. The canonical schedule already contains enough evidence
+    // (working shift / planned window / leave / day-off) to apply the same
+    // Missing-Punch policy used by Attendance Detail. A past planned workday with
+    // no IN/OUT is therefore ABSENCE; a future planned workday remains UPCOMING.
+    function employeeMonthCanonicalDayV61467(
+      scheduleRow,
+      attendanceRow,
+      workDate,
+      employmentState = 'ACTIVE'
+    ) {
+      const merged = employeeMonthMergeCanonicalV61429(scheduleRow, attendanceRow);
+
+      if (employmentState !== 'ACTIVE') {
+        return {
+          merged,
+          flags: merged ? attendancePolicyFlagsV61428(merged) : null,
+          useCanonical: false,
+          statusMeta: employeeMonthScheduleFallbackStatusV61429(
+            scheduleRow,
+            workDate,
+            employmentState
+          )
+        };
+      }
+
+      if (!merged) {
+        return {
+          merged: null,
+          flags: null,
+          useCanonical: false,
+          statusMeta: employeeMonthScheduleFallbackStatusV61429(
+            scheduleRow,
+            workDate,
+            employmentState
+          )
+        };
+      }
+
+      const flags = attendancePolicyFlagsV61428(merged);
+      const scheduleDefinesAttendanceState = Boolean(
+        scheduleRow
+        && (flags.plannedWork || flags.leave || flags.dayOff || flags.upcoming)
+      );
+      const useCanonical = Boolean(attendanceRow || scheduleDefinesAttendanceState);
+
+      return {
+        merged,
+        flags,
+        useCanonical,
+        statusMeta: useCanonical
+          ? employeeMonthStatusMetaV61121(merged, workDate)
+          : employeeMonthScheduleFallbackStatusV61429(
+              scheduleRow,
+              workDate,
+              employmentState
+            )
+      };
+    }
+
     function employeeMonthAnomalyHtmlV61121(row) {
       if (!row) return '';
       const bits = [];
@@ -9209,24 +9270,35 @@ window.tcIsDayShiftCode = value =>
             Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)}` : ''
           ].filter(Boolean).join(' • ')
         : 'นับจากตารางกะเดียวกับรายบุคคลเต็มเดือน';
-      attendanceRows.forEach(row => {
-        const flags = attendancePolicyFlagsV61428(row);
+      // V6.14.67: KPI/anomaly counts use the same merged Calendar + Attendance
+      // policy as each day card. This includes past scheduled workdays whose
+      // Attendance enrichment row is missing but whose missing punches are still
+      // canonically an absence.
+      const attendancePolicyDatesV61467 = new Set([
+        ...scheduleRows.map(row => String(row?.work_date || '').slice(0,10)),
+        ...attendanceRows.map(row => String(row?.work_date || '').slice(0,10))
+      ].filter(Boolean));
+      const anomalyDateSetV61467 = new Set();
+      attendancePolicyDatesV61467.forEach(workDate => {
+        const scheduleRow = scheduleByDate.get(workDate) || null;
+        const attendanceRow = attendanceByDate.get(workDate) || null;
+        const employmentState = employeeMonthEmploymentStateV61429(scheduleRows,workDate);
+        const canonical = employeeMonthCanonicalDayV61467(
+          scheduleRow,
+          attendanceRow,
+          workDate,
+          employmentState
+        );
+        if (!canonical.useCanonical || !canonical.flags) return;
+        const flags = canonical.flags;
         if (flags.absence) absenceDays += 1;
         if (flags.late) lateDays += 1;
         if (flags.early) earlyDays += 1;
+        if (flags.absence || flags.late || flags.early) anomalyDateSetV61467.add(workDate);
       });
 
       const certifiedDays = attendanceRows.filter(row => timeCertificationActiveV61139(row)).length;
-
-      const anomalyDays = new Set(
-        attendanceRows
-          .filter(row => {
-            const flags = attendancePolicyFlagsV61428(row);
-            return flags.absence || flags.late || flags.early;
-          })
-          .map(row => String(row?.work_date || '').slice(0,10))
-          .filter(Boolean)
-      ).size;
+      const anomalyDays = anomalyDateSetV61467.size;
       $('employeeMonthScheduleSummary').innerHTML = `
         <div class="month-overview-kpi primary"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></div>
         <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>วันหยุดตามตาราง</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(formatNumber(offDays))}</strong></div>
@@ -9253,16 +9325,20 @@ window.tcIsDayShiftCode = value =>
           : '';
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;
-        const merged = employeeMonthMergeCanonicalV61429(scheduleRow, attendanceRow);
         const employmentStateV61429 = employeeMonthEmploymentStateV61429(scheduleRows,workDate);
+        const canonicalDayV61467 = employeeMonthCanonicalDayV61467(
+          scheduleRow,
+          attendanceRow,
+          workDate,
+          employmentStateV61429
+        );
+        const merged = canonicalDayV61467.merged;
         const d = new Date(`${workDate}T00:00:00`);
         const dow = d.getDay();
         const shift = scheduleRow
           ? scheduleResolveShiftMeta(scheduleRow)
           : (merged ? scheduleResolveShiftMeta(merged) : { code:'-', label:'-', tone:'off', isWorking:false });
-        const statusMeta = attendanceRow
-          ? employeeMonthStatusMetaV61121(merged, workDate)
-          : employeeMonthScheduleFallbackStatusV61429(scheduleRow,workDate,employmentStateV61429);
+        const statusMeta = canonicalDayV61467.statusMeta;
         const actualIn = merged ? scheduleTeamSegmentActualTime(merged, 1, 'IN') : '-';
         const actualOut = merged ? scheduleTeamSegmentActualTime(merged, 1, 'OUT') : '-';
         const splitSourceV61429 = scheduleRow || merged;
@@ -9270,7 +9346,9 @@ window.tcIsDayShiftCode = value =>
         const split = Boolean(specialModeV61459 && ['customer','wait'].includes(specialModeV61459.key));
         const shift2In = split ? scheduleTeamSegmentActualTime(merged, 2, 'IN') : '-';
         const shift2Out = split ? scheduleTeamSegmentActualTime(merged, 2, 'OUT') : '-';
-        const anomalyHtml = employeeMonthAnomalyHtmlV61121(attendanceRow ? merged : null);
+        const anomalyHtml = employeeMonthAnomalyHtmlV61121(
+          canonicalDayV61467.useCanonical ? merged : null
+        );
         const templateCode = (scheduleRow || merged) ? employeeMonthTemplateCodeV61127(scheduleRow || merged) : '-';
         const activeEmploymentV61429 = employmentStateV61429 === 'ACTIVE';
         const editButton = canEdit && scheduleRow && activeEmploymentV61429
