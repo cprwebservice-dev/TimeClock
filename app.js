@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.60";
-document.documentElement.dataset.timeClockBuild = "6.14.60";
+window.__TIME_CLOCK_BUILD__ = "V6.14.62";
+document.documentElement.dataset.timeClockBuild = "6.14.62";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.60";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.60',
+  version: '6.14.62',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -2341,8 +2341,22 @@ window.tcIsDayShiftCode = value =>
     function setDefaultDates() {
       const start = firstDayOfMonth();
       const end = todayISO();
-      ["dashStart","attStart","reviewStart","leaveStart","correctionStart","exceptionStart"].forEach(id => setVal(id, start));
-      ["dashEnd","attEnd","reviewEnd","leaveEnd","correctionEnd","exceptionEnd"].forEach(id => setVal(id, end));
+      ["dashStart","reviewStart","leaveStart","correctionStart","exceptionStart"].forEach(id => setVal(id, start));
+      ["dashEnd","reviewEnd","leaveEnd","correctionEnd","exceptionEnd"].forEach(id => setVal(id, end));
+
+      // V6.14.62: Attendance Detail defaults to the complete calendar month.
+      // Future planned days remain visible as UPCOMING instead of disappearing
+      // simply because there is no punch yet. Other pages keep the old today-end.
+      const attendanceMonthDate = new Date(`${start}T00:00:00`);
+      const attendanceMonthEndDate = new Date(
+        attendanceMonthDate.getFullYear(),
+        attendanceMonthDate.getMonth() + 1,
+        0
+      );
+      const attendanceMonthEnd = `${attendanceMonthEndDate.getFullYear()}-${String(attendanceMonthEndDate.getMonth()+1).padStart(2,"0")}-${String(attendanceMonthEndDate.getDate()).padStart(2,"0")}`;
+      setVal("attStart", start);
+      setVal("attEnd", attendanceMonthEnd);
+
       setVal("schedulePeriodStart", scheduleBlockStartForDate(todayISO()));
       syncSchedulePeriodUI();
     }
@@ -4522,6 +4536,128 @@ window.tcIsDayShiftCode = value =>
       return rows;
     }
 
+    function attendanceScheduleTimestampV61462(workDate, timeValue, nextDay = false) {
+      const dateText = String(workDate || '').slice(0,10);
+      const timeText = String(timeValue || '').slice(0,5);
+      if (!dateText || !/^\d{2}:\d{2}$/.test(timeText)) return null;
+      let date = new Date(`${dateText}T00:00:00`);
+      if (nextDay) date.setDate(date.getDate() + 1);
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth()+1).padStart(2,'0');
+      const dd = String(date.getDate()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}T${timeText}:00`;
+    }
+
+    function attendanceScheduleSkeletonRowV61462(row) {
+      const result = { ...(row || {}) };
+      const workDate = String(result.work_date || '').slice(0,10);
+      const windowMeta = scheduleEffectiveShiftWindowV6133(result);
+      const startTime = windowMeta?.start || result.shift_start_time || null;
+      const endTime = windowMeta?.end || result.shift_end_time || null;
+      const startMinutes = attendanceClockMinutes(startTime);
+      const endMinutes = attendanceClockMinutes(endTime);
+      const code = window.tcShiftCode(
+        result.assigned_shift_code || result.effective_shift_code || result.auto_shift_code || result.shift_code || ''
+      );
+      const master = (state.filters.shifts || []).find(
+        shift => window.tcShiftCode(shift?.shift_code) === code
+      ) || null;
+      const nonWorking = scheduleIsNonWorkingShiftV61447(code, master);
+      const crossesMidnight = !nonWorking && startMinutes != null && endMinutes != null && endMinutes <= startMinutes;
+
+      result.work_date = workDate;
+      result.shift_code = result.shift_code || result.effective_shift_code || result.assigned_shift_code || result.auto_shift_code || null;
+      result.template_code = result.template_code || result.daily_work_template_code || result.effective_work_template_code || result.employee_default_template_code || null;
+      const rawDayType = result.calculation_day_type || result.day_type || '';
+      const leaveDay = code === 'LV' || Boolean(result.leave_request_id || result.leave_type_code || result.is_full_day_leave) || String(result.day_override_type || '').toUpperCase() === 'LEAVE';
+      result.day_type = leaveDay ? 'LEAVE' : (rawDayType || (result.is_public_holiday ? 'PUBLIC_HOLIDAY' : result.is_weekly_off ? 'WEEKLY_OFF' : 'WORKDAY'));
+      result.shift_1_planned_start_at = result.shift_1_planned_start_at || attendanceScheduleTimestampV61462(workDate, startTime, false);
+      result.shift_1_planned_end_at = result.shift_1_planned_end_at || attendanceScheduleTimestampV61462(workDate, endTime, crossesMidnight);
+      result._attendance_calendar_row_v61462 = true;
+      result._attendance_has_persisted_row_v61462 = false;
+      return result;
+    }
+
+    async function fetchAttendanceCalendarRowsV61462(requestEmployeeCodes, persistedRows = []) {
+      if (!window.TimeClockShiftAPI?.getMonthlySchedule) return [];
+      const startDate = val('attStart');
+      const endDate = val('attEnd');
+      if (!startDate || !endDate) return [];
+      const month = `${String(startDate).slice(0,7)}-01`;
+      const startObj = attendanceParseDate(startDate);
+      const endObj = attendanceParseDate(endDate);
+      const dayCount = startObj && endObj ? Math.max(1, Math.floor((endObj-startObj)/86400000)+1) : 31;
+      const maxEmployeeCount = Math.max(1, Math.floor(5000/dayCount));
+      const persistedCodes = [...new Set((persistedRows || []).map(row=>String(row?.emp_code||'').trim()).filter(Boolean))];
+      let calendarEmpCodes = Array.isArray(requestEmployeeCodes) && requestEmployeeCodes.length
+        ? [...new Set(requestEmployeeCodes.map(code=>String(code||'').trim()).filter(Boolean))]
+        : persistedCodes;
+      if (calendarEmpCodes.length > maxEmployeeCount) {
+        state.attendanceCalendarScopeLimitedV61462 = true;
+        calendarEmpCodes = calendarEmpCodes.slice(0,maxEmployeeCount);
+      } else {
+        state.attendanceCalendarScopeLimitedV61462 = false;
+      }
+      if (!calendarEmpCodes.length) return [];
+      try {
+        const rows = await window.TimeClockShiftAPI.getMonthlySchedule(
+          window.TimeClockApp || { state },
+          {
+            p_month: month,
+            p_start_date: startDate,
+            p_end_date: endDate,
+            p_zone: val('attZone') || null,
+            p_department: val('attDepartment') || null,
+            p_emp_codes: calendarEmpCodes,
+            p_schedule_statuses: null
+          }
+        );
+        const calendarRows = (rows || []).map(row => ({ ...row }));
+        const period = { startDate, endDate, month: String(startDate).slice(0,7), viewMode:'ATTENDANCE', personDisplayMode:'MONTH' };
+        await Promise.all([
+          enrichScheduleWorkPlanMetaV6118(period, calendarRows),
+          window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(calendarRows)
+        ]);
+        const subArea = val('attSubArea');
+        return calendarRows
+          .filter(row => !subArea || String(row.sub_area || '') === String(subArea))
+          .map(attendanceScheduleSkeletonRowV61462);
+      } catch (error) {
+        console.warn('Attendance full-calendar V6.14.62 fallback to persisted rows:', error);
+        return [];
+      }
+    }
+
+    function mergeAttendanceCalendarRowsV61462(calendarRows, attendanceRows) {
+      const merged = new Map();
+      (calendarRows || []).forEach((row,index) => {
+        const key = `${String(row.emp_code || '')}|${String(row.work_date || '').slice(0,10)}`;
+        if (key !== '|') merged.set(key, { ...row });
+        else merged.set(`__calendar_${index}`, { ...row });
+      });
+      (attendanceRows || []).forEach((row,index) => {
+        const key = `${String(row.emp_code || '')}|${String(row.work_date || '').slice(0,10)}`;
+        const base = merged.get(key) || {};
+        merged.set(key || `__attendance_${index}`, {
+          ...base,
+          ...row,
+          full_name: row.full_name || base.full_name || '',
+          department: row.department || base.department || '',
+          zone: row.zone || row.area || base.zone || base.area || '',
+          area: row.area || row.zone || base.area || base.zone || '',
+          sub_area: row.sub_area || base.sub_area || '',
+          pattern_code: row.pattern_code || base.pattern_code || base.resolved_pattern_code || '',
+          template_code: row.template_code || base.template_code || base.daily_work_template_code || base.effective_work_template_code || '',
+          _attendance_calendar_row_v61462: Boolean(base._attendance_calendar_row_v61462),
+          _attendance_has_persisted_row_v61462: true
+        });
+      });
+      return [...merged.values()].sort((a,b) =>
+        String(b.work_date || '').localeCompare(String(a.work_date || '')) ||
+        String(a.emp_code || '').localeCompare(String(b.emp_code || ''), 'th', {numeric:true})
+      );
+    }
+
     async function loadAttendance() {
       const requestId =
         ++attendanceLoadRequestId;
@@ -4645,12 +4781,20 @@ window.tcIsDayShiftCode = value =>
             }
           });
 
-        state.attendance =
-          [...unique.values()]
-            .slice(
-              0,
-              5000
-            );
+        const persistedAttendanceRows = [...unique.values()];
+        const calendarRowsV61462 = await fetchAttendanceCalendarRowsV61462(
+          requestEmployeeCodes,
+          persistedAttendanceRows
+        );
+        const mergedAttendanceRowsV61462 = mergeAttendanceCalendarRowsV61462(
+          calendarRowsV61462,
+          persistedAttendanceRows
+        );
+        state.attendanceFullCalendarLimitedV61462 =
+          Boolean(state.attendanceCalendarScopeLimitedV61462)
+          || mergedAttendanceRowsV61462.length > 5000
+          || collected.length >= 5000;
+        state.attendance = mergedAttendanceRowsV61462.slice(0,5000);
 
         await enrichAttendanceWorkSegmentsV6118(
           state.attendance,
@@ -4720,8 +4864,8 @@ window.tcIsDayShiftCode = value =>
                   activeEmployeeCodes,
 
                 reachedLimit:
-                  state.attendance.length
-                    >= 5000
+                  Boolean(state.attendanceFullCalendarLimitedV61462)
+                  || state.attendance.length >= 5000
               }
             }
           )
@@ -15411,6 +15555,20 @@ ${skippedSummary(compatibility.skipped)}
       </aside>
     `);
 
+    const setAttendanceMonthV61462=async offset=>{
+      const baseValue=$("attStart")?.value||new Date().toISOString().slice(0,10);
+      const base=new Date(`${String(baseValue).slice(0,10)}T00:00:00`);
+      if(offset===0){const now=new Date();base.setFullYear(now.getFullYear(),now.getMonth(),1);}else{base.setDate(1);base.setMonth(base.getMonth()+offset);}
+      const first=`${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,"0")}-01`;
+      const lastDate=new Date(base.getFullYear(),base.getMonth()+1,0);
+      const last=`${lastDate.getFullYear()}-${String(lastDate.getMonth()+1).padStart(2,"0")}-${String(lastDate.getDate()).padStart(2,"0")}`;
+      if($("attStart"))$("attStart").value=first;if($("attEnd"))$("attEnd").value=last;
+      $("loadAttendanceBtn")?.click();
+    };
+    $("attendancePrevMonthV61462")?.addEventListener("click",()=>setAttendanceMonthV61462(-1));
+    $("attendanceThisMonthV61462")?.addEventListener("click",()=>setAttendanceMonthV61462(0));
+    $("attendanceNextMonthV61462")?.addEventListener("click",()=>setAttendanceMonthV61462(1));
+
     $("attendancePageSize")?.addEventListener("change",e=>{attGrid.pageSize=Number(e.target.value);attGrid.page=1;renderAttendanceEnterprise();});
     $("attPrevPage")?.addEventListener("click",()=>{if(attGrid.page>1){attGrid.page--;renderAttendanceEnterprise();}});
     $("attNextPage")?.addEventListener("click",()=>{const max=Math.ceil(attGrid.rows.length/attGrid.pageSize)||1;if(attGrid.page<max){attGrid.page++;renderAttendanceEnterprise();}});
@@ -15550,8 +15708,10 @@ ${skippedSummary(compatibility.skipped)}
                     ? "neutral"
                     : "warning";
 
-          return `<tr data-att-key="${esc(key)}">
-            <td data-att-col="work_date" class="nowrap sticky-att-1">${fmtDate(r.work_date)}</td>
+          const punchState=app()?.attendancePolicyFlagsV61428?.(r)?.punchState;
+          const rowClass=`attendance-row-v61462 status-${String(status||"normal").toLowerCase()} ${punchState?.anyPunch?"has-punch":"no-punch"}`;
+          return `<tr class="${rowClass}" data-att-key="${esc(key)}">
+            <td data-att-col="work_date" class="nowrap sticky-att-1"><div class="attendance-date-cell-v61462"><strong>${fmtDate(r.work_date)}</strong><small>${new Date(`${String(r.work_date).slice(0,10)}T00:00:00`).toLocaleDateString("th-TH",{weekday:"short"})}</small></div></td>
             <td data-att-col="emp_code" class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td>
             <td data-att-col="full_name" class="nowrap">${esc(r.full_name)}</td>
             <td data-att-col="department">${esc(r.department||"-")}</td>
@@ -15612,6 +15772,14 @@ ${skippedSummary(compatibility.skipped)}
     $("attGridWaiting").textContent=num(
       all.filter(r=>Number(r.waiting_minutes||0)>0).length
     );
+
+    const coverageEl=$("attendanceCoverageV61462");
+    if(coverageEl){
+      const uniqueDays=new Set(all.map(r=>String(r.work_date||"").slice(0,10))).size;
+      const uniqueEmployees=new Set(all.map(r=>String(r.emp_code||"")).filter(Boolean)).size;
+      const noPunch=all.filter(r=>!app()?.attendancePolicyFlagsV61428?.(r)?.punchState?.anyPunch).length;
+      coverageEl.textContent=`${uniqueDays.toLocaleString("th-TH")} วัน • ${uniqueEmployees.toLocaleString("th-TH")} คน • ไม่มีการลงเวลา ${noPunch.toLocaleString("th-TH")} รายการ`;
+    }
 
     $("attPageInfo").textContent=
       `หน้า ${attGrid.page.toLocaleString("th-TH")} / `
@@ -19521,7 +19689,7 @@ ${names}${extra}
   }
 
   window.TimeClockWorkPatterns = {
-    version:'6.14.60',
+    version:'6.14.62',
     load:loadWorkPatternWorkspace,
     loadPatterns:loadWorkPatterns,
     loadEmployees:loadEmployeePatterns,
@@ -28340,7 +28508,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.60';
+  const VERSION='6.14.62';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];

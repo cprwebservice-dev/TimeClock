@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 
-<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.60 | index.html must begin with DOCTYPE -->
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.62 | index.html must begin with DOCTYPE -->
 <html lang="th">
 <head>
 <meta charset="utf-8"/>
 <link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <meta content="#0b1f3a" name="theme-color"/>
-<title>Time-Clock Enterprise V6.14.60 | CP Retailink</title>
+<title>Time-Clock Enterprise V6.14.62 | CP Retailink</title>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.61-20260825a" rel="stylesheet"/>
+<link href="./app.css?v=6.14.62-20260825a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.60</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.62</span></div>
 </form>
 </div>
 </section>
@@ -359,15 +359,32 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.60</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.60 Raw Punch Evidence • Monthly Personal UX</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.62</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.62 Full-Month Attendance Detail • UX Refresh</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
 </section>
 <!-- Attendance -->
 <section class="page" id="page-attendance">
-<div class="panel">
+<div class="attendance-hero-v61462">
+  <div class="attendance-hero-copy-v61462">
+    <span class="attendance-hero-eyebrow-v61462">ATTENDANCE DETAIL</span>
+    <h2>รายละเอียดเวลาทำงาน</h2>
+    <p>แสดงข้อมูลครบทุกวันตามช่วงวันที่ รวมวันหยุด วันลา วันที่ไม่มีการลงเวลา และวันที่ยังไม่ถึงกำหนดทำงาน</p>
+    <div class="attendance-hero-chips-v61462">
+      <span>✓ ครบทุกวันตามปฏิทิน</span>
+      <span id="attendanceCoverageV61462">กำลังเตรียมข้อมูล...</span>
+    </div>
+  </div>
+  <div class="attendance-month-nav-v61462">
+    <button class="btn btn-light" id="attendancePrevMonthV61462" type="button">‹ เดือนก่อน</button>
+    <button class="btn btn-primary" id="attendanceThisMonthV61462" type="button">เดือนนี้</button>
+    <button class="btn btn-light" id="attendanceNextMonthV61462" type="button">เดือนถัดไป ›</button>
+  </div>
+</div>
+<div class="panel attendance-filter-panel-v61462">
 <div class="panel-body">
+<div class="attendance-filter-heading-v61462"><div><strong>ตัวกรองข้อมูล</strong><span>เลือกช่วงเวลา พื้นที่ หน่วยงาน หรือพนักงาน</span></div><small>ค่าเริ่มต้นแสดงเต็มเดือน</small></div>
 <div class="toolbar attendance-filter-grid">
 <div class="field attendance-filter-field attendance-filter-date"><label>วันที่เริ่มต้น</label><input class="input" id="attStart" type="date"/></div>
 <div class="field attendance-filter-field attendance-filter-date"><label>วันที่สิ้นสุด</label><input class="input" id="attEnd" type="date"/></div>
@@ -425,8 +442,8 @@
 </div>
 </div>
 </div>
-<div class="panel section-gap">
-<div class="panel-header"><div><h3>รายละเอียดเวลาทำงาน</h3><p id="attendanceCount">0 รายการ</p></div></div>
+<div class="panel section-gap attendance-table-panel-v61462">
+<div class="panel-header"><div><h3>ตารางรายละเอียดรายวัน</h3><p id="attendanceCount">0 รายการ</p></div></div>
 <div class="attendance-column-controls">
 <strong>แสดงคอลัมน์เพิ่มเติม</strong>
 <label><input data-att-column-toggle="zone" type="checkbox"/> พื้นที่</label>
@@ -2619,6 +2636,6 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.61-20260825a"></script>
+<script src="./app.js?v=6.14.62-20260825a"></script>
 </body>
 </html>

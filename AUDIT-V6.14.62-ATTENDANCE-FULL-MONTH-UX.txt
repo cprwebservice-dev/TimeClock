@@ -1,0 +1,31 @@
+AUDIT — TimeAttendance V6.14.62
+Attendance Detail — Full Month Calendar + UX Refresh
+
+FUNCTIONAL
+[PASS-DESIGN] Attendance persisted rows are merged with ta_get_schedule_range_light_v61425 calendar rows.
+[PASS-DESIGN] Calendar rows without punches are not dropped.
+[PASS-DESIGN] Full current month is the Attendance default range.
+[PASS-DESIGN] Existing V6.14.55 status policy still decides ABSENCE/LATE/EARLY/DAY_OFF/LEAVE/UPCOMING.
+[PASS-DESIGN] Existing ta_get_attendance_shift_punch_meta_v61110 enrichment remains unchanged.
+[PASS-DESIGN] Existing 5,000-row safety cap remains active.
+
+UX/UI
+[PASS] New Attendance hero and full-calendar explanation.
+[PASS] Previous / current / next month quick actions.
+[PASS] Refined filter panel and result panel.
+[PASS] KPI cards use status-oriented visual accents.
+[PASS] Shift-1 / Shift-2 / Status table headers are visually grouped.
+[PASS] Rows have status accent and no-punch treatment.
+[PASS] Date cells show weekday abbreviation.
+[PASS] Dark mode and responsive rules included.
+
+UNCHANGED
+- Attendance calculations and stored values
+- Late 1–29 / Absent >=30 policy
+- Missing punch policy
+- Work Pattern / Scheduling Rule
+- Night sequence / minimum rest
+- Leave / Day-off / Public Holiday rules
+- OT / Waiting / Certification
+- Raw time_logs
+- Backend SQL
