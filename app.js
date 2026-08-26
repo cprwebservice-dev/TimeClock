@@ -7624,6 +7624,9 @@ window.tcIsDayShiftCode = value =>
         closeTimeCertificationModalV61139();
         toast('บันทึกรับรองเวลาและประมวลผล Attendance เรียบร้อย','success');
         await refreshTimeCertificationSourceV61139(empCode,workDate,source);
+        document.dispatchEvent(new CustomEvent('timeclock:time-certification-saved-v61481', {
+          detail: { empCode, workDate, source }
+        }));
       } catch (error) {
         toast(humanError(error),'error');
       } finally { hideLoading(); }
@@ -11283,6 +11286,14 @@ window.tcIsDayShiftCode = value =>
               })} และประมวลผลเวลาใหม่เรียบร้อย`,
           "success"
         );
+        document.dispatchEvent(new CustomEvent('timeclock:schedule-assignment-saved-v61481', {
+          detail: {
+            empCode: savedEmp,
+            workDate: savedDate,
+            shiftCode: savedShift,
+            workMode: String(rulePreparationV6120?.mode || '').toUpperCase() || 'NORMAL'
+          }
+        }));
 
         const returnContext =
           window.TimeClockAttendanceReturnContext;
@@ -12691,7 +12702,7 @@ window.tcIsDayShiftCode = value =>
       qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
-        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอแก้ไขกะ","พนักงานส่งคำขอ และ Manager พิจารณาตามสายบังคับบัญชา"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
+        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
         "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page);
@@ -18467,7 +18478,41 @@ ${skippedSummary(compatibility.skipped)}
   /* ------------------------------------------------------------------
      Notifications
      ------------------------------------------------------------------ */
-  async function loadNotifications(){const body=qs("#notificationDrawer .drawer-body");if(!body)return;try{const rows=await rpc("ta_get_notification_feed",{p_start_date:window.TimeClockCalendarV61448.addDays(window.TimeClockCalendarV61448.today(),-7),p_end_date:window.TimeClockCalendarV61448.today(),p_limit:50})||[];body.innerHTML=rows.length?rows.map(r=>{const target=["review","leave","time-correction","exception-center"].includes(String(r.target_page||""))?"attendance":(r.target_page||"dashboard");return `<button class="notice-card severity-${esc(r.severity)}" data-notice-page="${esc(target)}"><span class="notice-dot"></span><div><strong>${esc(r.title)}</strong><p>${esc(r.message)}</p><time>${fmtDate(r.event_date)}</time></div></button>`;}).join(""):`<div class="notification-empty">ไม่มีการแจ้งเตือนใหม่</div>`;const badge=$("notificationCount");if(badge)badge.textContent=rows.length;body.onclick=e=>{const b=e.target.closest("[data-notice-page]");if(b){app()?.switchPage?.(b.dataset.noticePage);$("notificationDrawer")?.classList.remove("open");}};}catch(e){body.innerHTML=`<div class="notification-empty">ไม่สามารถโหลดการแจ้งเตือนจากฐานข้อมูล<br><small>${esc(e.message||"")}</small></div>`;}}
+  async function loadNotifications(){
+    const body=qs("#notificationDrawer .drawer-body");
+    if(!body)return;
+    try{
+      const start=window.TimeClockCalendarV61448.addDays(window.TimeClockCalendarV61448.today(),-7);
+      const end=window.TimeClockCalendarV61448.today();
+      const basePromise=rpc("ta_get_notification_feed",{p_start_date:start,p_end_date:end,p_limit:50}).catch(()=>[]);
+      const requestPromise=rpc("ta_get_employee_request_notifications_v61481",{p_limit:50}).catch(error=>{
+        if(!window.TimeClockShiftAPI?.missingFunction?.(error))console.warn('Employee request notifications V6.14.81:',error?.message||error);
+        return [];
+      });
+      const [baseRows,requestRows]=await Promise.all([basePromise,requestPromise]);
+      const rows=[...(baseRows||[]).map(r=>({...r,_source:'BASE'})),...(requestRows||[]).map(r=>({...r,_source:'EMPLOYEE_REQUEST'}))]
+        .sort((a,b)=>String(b.event_at||b.created_at||b.event_date||'').localeCompare(String(a.event_at||a.created_at||a.event_date||'')))
+        .slice(0,50);
+      body.innerHTML=rows.length?rows.map(r=>{
+        const rawTarget=String(r.target_page||'');
+        const target=r._source==='EMPLOYEE_REQUEST'?'shift-requests':(["review","leave","time-correction","exception-center"].includes(rawTarget)?"attendance":(rawTarget||"dashboard"));
+        const unread=r.is_read===false?' is-unread-v61481':'';
+        return `<button class="notice-card severity-${esc(r.severity||'info')}${unread}" data-notice-page="${esc(target)}" ${r.notification_id?`data-employee-request-notification-v61481="${esc(r.notification_id)}"`:''}><span class="notice-dot"></span><div><strong>${esc(r.title)}</strong><p>${esc(r.message)}</p><time>${fmtDate(r.event_date||r.created_at||r.event_at)}</time></div></button>`;
+      }).join(""):`<div class="notification-empty">ไม่มีการแจ้งเตือนใหม่</div>`;
+      const unreadCount=rows.filter(r=>r._source!=='EMPLOYEE_REQUEST'||r.is_read===false).length;
+      const badge=$("notificationCount");if(badge)badge.textContent=unreadCount;
+      body.onclick=async e=>{
+        const b=e.target.closest("[data-notice-page]");
+        if(!b)return;
+        const notificationId=b.dataset.employeeRequestNotificationV61481;
+        if(notificationId){try{await rpc('ta_mark_employee_request_notification_read_v61481',{p_notification_id:notificationId});}catch(_){} }
+        app()?.switchPage?.(b.dataset.noticePage);
+        $("notificationDrawer")?.classList.remove("open");
+      };
+    }catch(e){
+      body.innerHTML=`<div class="notification-empty">ไม่สามารถโหลดการแจ้งเตือนจากฐานข้อมูล<br><small>${esc(e.message||"")}</small></div>`;
+    }
+  }
 
   /* ------------------------------------------------------------------
      Init / Events
@@ -20462,14 +20507,16 @@ ${names}${extra}
     CERTIFIED:"รับรองแล้ว",
     NOT_CERTIFIED:"ยังไม่รับรอง",
     REVOKED:"ยกเลิกการรับรอง",
-    STALE:"ต้องรับรองใหม่"
+    STALE:"ต้องรับรองใหม่",
+    IN_REVIEW:"กำลังดำเนินการ",
+    RESOLVED:"ดำเนินการแล้ว"
   })[safeStatus(value)] || value || "-";
   const statusClass = value => {
     const code = safeStatus(value);
-    if (["APPROVED","CERTIFIED"].includes(code)) {
+    if (["APPROVED","CERTIFIED","RESOLVED"].includes(code)) {
       return "success";
     }
-    if (code === "PENDING") return "warning";
+    if (["PENDING","IN_REVIEW"].includes(code)) return "warning";
     if (["REJECTED","CANCELLED","REVOKED"].includes(code)) {
       return "danger";
     }
@@ -20477,6 +20524,8 @@ ${names}${extra}
   };
 
   let shiftRequests = [];
+  let employeeRequestsV61481 = [];
+  let employeeRequestResolveContextV61481 = null;
 
   async function rpc(name,args={}) {
     const client = app()?.state?.client;
@@ -20498,6 +20547,104 @@ ${names}${extra}
     badge.textContent = Number(count || 0)
       .toLocaleString("th-TH");
     badge.classList.toggle("hidden",!Number(count));
+  }
+
+
+  function employeeRequestTypeLabelV61481(type) {
+    return ({
+      SHIFT_CHANGE:"ขอแก้ไขกะ",
+      TIME_ISSUE:"แจ้งปัญหาเวลาทำงาน",
+      SPECIAL_WORK:"แจ้งทำงานกะพิเศษ"
+    })[String(type || "").toUpperCase()] || type || "-";
+  }
+
+  function employeeRequestSubtypeLabelV61481(type, subtype) {
+    const key = String(subtype || "").toUpperCase();
+    if (String(type || "").toUpperCase() === "TIME_ISSUE") {
+      return ({
+        MISSING_IN:"ไม่มีเวลาเข้า",
+        MISSING_OUT:"ไม่มีเวลาออก",
+        WRONG_TIME:"เวลาไม่ถูกต้อง"
+      })[key] || key || "-";
+    }
+    if (String(type || "").toUpperCase() === "SPECIAL_WORK") {
+      return ({
+        NORMAL_LATE_CUSTOMER:"กะปกติ + งานลูกค้าช่วงดึก",
+        SPLIT_WAIT_NIGHT:"กะเช้า + รอเข้ากะดึก",
+        HOUR_BASED:"กะนับชั่วโมง"
+      })[key] || key || "-";
+    }
+    return key || "-";
+  }
+
+  function employeeRequestTypeBadgeV61481(type) {
+    const code = String(type || "").toUpperCase();
+    const cls = code === "TIME_ISSUE" ? "badge-orange" : code === "SPECIAL_WORK" ? "badge-purple" : "badge-blue";
+    return `<span class="badge ${cls}">${esc(employeeRequestTypeLabelV61481(code))}</span>`;
+  }
+
+  function employeeRequestFormatTimeV61481(value) {
+    if (!value) return "-";
+    const raw = String(value);
+    const match = raw.match(/(\d{1,2}):(\d{2})/);
+    return match ? `${match[1].padStart(2,"0")}:${match[2]}` : raw;
+  }
+
+  function employeeRequestDetailTextV61481(request) {
+    if (request.request_type === "SHIFT_CHANGE") {
+      return `${request.current_shift_code || "-"} → ${request.requested_shift_code || "-"}`;
+    }
+    const detail = request.detail || {};
+    if (request.request_type === "TIME_ISSUE") {
+      const punch = detail.punch_snapshot || {};
+      return `${employeeRequestSubtypeLabelV61481(request.request_type,request.request_subtype)} • เข้า ${employeeRequestFormatTimeV61481(punch.in)} / ออก ${employeeRequestFormatTimeV61481(punch.out)}`;
+    }
+    if (request.request_type === "SPECIAL_WORK") {
+      const modeLabel = employeeRequestSubtypeLabelV61481(request.request_type,request.request_subtype);
+      let times = "";
+      if (request.request_subtype === "SPLIT_WAIT_NIGHT") {
+        times = ` • ออกช่วงแรก ${employeeRequestFormatTimeV61481(detail.first_end)} • เข้าดึก ${employeeRequestFormatTimeV61481(detail.second_start)}–${employeeRequestFormatTimeV61481(detail.second_end)}`;
+      } else if (request.request_subtype === "HOUR_BASED") {
+        times = ` • เริ่ม ${employeeRequestFormatTimeV61481(detail.hour_start)}`;
+      } else {
+        times = ` • งานพิเศษ ${employeeRequestFormatTimeV61481(detail.special_start)}–${employeeRequestFormatTimeV61481(detail.special_end)}`;
+      }
+      return `${modeLabel}${times}${detail.work_location ? ` • ${detail.work_location}` : ""}`;
+    }
+    return "-";
+  }
+
+  function employeeRequestRawPunchTextV61481(row) {
+    const inValue = row?.actual_in_at || row?.first_in || row?.shift_1_actual_in_at || null;
+    const outValue = row?.actual_out_at || row?.last_out || row?.shift_1_actual_out_at || null;
+    return {
+      in: inValue ? employeeRequestFormatTimeV61481(inValue) : null,
+      out: outValue ? employeeRequestFormatTimeV61481(outValue) : null
+    };
+  }
+
+  function updateEmployeeRequestModeUIV61481() {
+    const type = String($("shiftRequestRequestType")?.value || "SHIFT_CHANGE").toUpperCase();
+    $("shiftRequestShiftChangeSectionV61481")?.classList.toggle("hidden", type !== "SHIFT_CHANGE");
+    $("shiftRequestTimeIssueSectionV61481")?.classList.toggle("hidden", type !== "TIME_ISSUE");
+    $("shiftRequestSpecialWorkSectionV61481")?.classList.toggle("hidden", type !== "SPECIAL_WORK");
+
+    if (type === "SPECIAL_WORK") {
+      const mode = String($("shiftRequestSpecialModeV61481")?.value || "NORMAL_LATE_CUSTOMER").toUpperCase();
+      $("shiftRequestCustomerFieldsV61481")?.classList.toggle("hidden", mode !== "NORMAL_LATE_CUSTOMER");
+      $("shiftRequestWaitFieldsV61481")?.classList.toggle("hidden", mode !== "SPLIT_WAIT_NIGHT");
+      $("shiftRequestHourFieldsV61481")?.classList.toggle("hidden", mode !== "HOUR_BASED");
+    }
+  }
+
+  function updateEmployeeRequestSnapshotV61481(empCode,date) {
+    const row = attendanceRow(empCode,date);
+    const punch = employeeRequestRawPunchTextV61481(row);
+    setText("shiftRequestPunchSnapshotV61481", `เข้า ${punch.in || "-"} • ออก ${punch.out || "-"}`);
+    if ($("shiftRequestCurrentShift")) {
+      $("shiftRequestCurrentShift").value = row?.assigned_shift_code || row?.effective_shift_code || row?.shift_code || $("shiftRequestCurrentShift").value || "-";
+    }
+    return { row, punch };
   }
 
   function roleLevelText(profile) {
@@ -20563,13 +20710,13 @@ ${names}${extra}
     if ($("shiftRequestSubtitle")) {
       $("shiftRequestSubtitle").textContent =
         isViewer()
-          ? "ตรวจสอบคำขอของตนเองและส่งคำขอแก้ไขกะให้ Manager"
+          ? "ตรวจสอบคำขอของตนเอง • แจ้งปัญหาเวลา / งานกะพิเศษ / ขอแก้ไขกะให้ Manager"
           : isManager()
-            ? `พิจารณาคำขอของพนักงานในขอบเขต ${
+            ? `พิจารณาคำขอและแจ้งข้อมูลของพนักงานในขอบเขต ${
                 roleLevelText(profile)
                 || "Manager"
               }`
-            : "ตรวจสอบและพิจารณาคำขอแก้ไขกะทั้งหมด";
+            : "ตรวจสอบและพิจารณาคำขอ / แจ้งข้อมูลทั้งหมด";
     }
 
     [
@@ -20673,6 +20820,14 @@ ${names}${extra}
       || row?.shift_code
       || "-";
     $("shiftRequestReason").value = "";
+    if ($("shiftRequestRequestType")) $("shiftRequestRequestType").value = "SHIFT_CHANGE";
+    if ($("shiftRequestTimeIssueTypeV61481")) $("shiftRequestTimeIssueTypeV61481").value = "MISSING_IN";
+    if ($("shiftRequestSpecialModeV61481")) $("shiftRequestSpecialModeV61481").value = "NORMAL_LATE_CUSTOMER";
+    [
+      "shiftRequestSpecialStartV61481","shiftRequestSpecialEndV61481",
+      "shiftRequestFirstEndV61481","shiftRequestSecondStartV61481","shiftRequestSecondEndV61481",
+      "shiftRequestHourStartV61481","shiftRequestWorkLocationV61481"
+    ].forEach(id => { if ($(id)) $(id).value = ""; });
     $("shiftRequestEmployeeDisplay").innerHTML =
       `<strong>${esc(empCode)} • ${esc(fullName)}</strong>
        <span>${esc(
@@ -20681,6 +20836,8 @@ ${names}${extra}
          || ""
        )}</span>`;
 
+    updateEmployeeRequestSnapshotV61481(empCode,date);
+    updateEmployeeRequestModeUIV61481();
     $("shiftRequestModal")?.classList.remove("hidden");
   }
 
@@ -20691,46 +20848,98 @@ ${names}${extra}
   async function submitShiftRequest() {
     const emp = $("shiftRequestEmpCode")?.value.trim();
     const date = $("shiftRequestWorkDate")?.value;
-    const requestedShift =
-      $("shiftRequestRequestedShift")?.value;
-    const reason =
-      $("shiftRequestReason")?.value.trim();
+    const requestType = String($("shiftRequestRequestType")?.value || "SHIFT_CHANGE").toUpperCase();
+    const requestedShift = $("shiftRequestRequestedShift")?.value;
+    const reason = $("shiftRequestReason")?.value.trim();
 
-    if (!emp || !date || !requestedShift || !reason) {
+    if (!emp || !date || !reason) {
       return app()?.toast?.(
-        "กรุณากรอกวันที่ กะที่ต้องการ และเหตุผล",
+        "กรุณาระบุวันที่และเหตุผล/รายละเอียดให้ครบ",
         "error"
       );
     }
 
-    app()?.showLoading?.("กำลังส่งคำขอแก้ไขกะ...");
+    if (requestType === "SHIFT_CHANGE" && !requestedShift) {
+      return app()?.toast?.("กรุณาเลือกกะที่ต้องการ","error");
+    }
+
+    const snapshot = updateEmployeeRequestSnapshotV61481(emp,date);
+    let requestSubtype = null;
+    let detail = {
+      current_shift_code: $("shiftRequestCurrentShift")?.value || null,
+      punch_snapshot: snapshot.punch,
+      source: "TIME_CLOCK_WEB_V6.14.81"
+    };
+
+    if (requestType === "TIME_ISSUE") {
+      requestSubtype = String($("shiftRequestTimeIssueTypeV61481")?.value || "").toUpperCase();
+      if (!requestSubtype) return app()?.toast?.("กรุณาเลือกปัญหาเวลาทำงาน","error");
+    }
+
+    if (requestType === "SPECIAL_WORK") {
+      requestSubtype = String($("shiftRequestSpecialModeV61481")?.value || "").toUpperCase();
+      detail = {
+        ...detail,
+        work_location: $("shiftRequestWorkLocationV61481")?.value.trim() || null,
+        special_start: $("shiftRequestSpecialStartV61481")?.value || null,
+        special_end: $("shiftRequestSpecialEndV61481")?.value || null,
+        first_end: $("shiftRequestFirstEndV61481")?.value || null,
+        second_start: $("shiftRequestSecondStartV61481")?.value || null,
+        second_end: $("shiftRequestSecondEndV61481")?.value || null,
+        hour_start: $("shiftRequestHourStartV61481")?.value || null
+      };
+
+      if (requestSubtype === "NORMAL_LATE_CUSTOMER" && (!detail.special_start || !detail.special_end)) {
+        return app()?.toast?.("กรุณาระบุช่วงเริ่ม–สิ้นสุดงานลูกค้าช่วงดึก","error");
+      }
+      if (requestSubtype === "SPLIT_WAIT_NIGHT" && (!detail.first_end || !detail.second_start || !detail.second_end)) {
+        return app()?.toast?.("กรุณาระบุเวลาออกช่วงแรก เวลาเข้ากะดึก และเวลาคาดว่างานเสร็จ","error");
+      }
+      if (requestSubtype === "HOUR_BASED" && !detail.hour_start) {
+        return app()?.toast?.("กรุณาระบุเวลาเริ่มกะนับชั่วโมง","error");
+      }
+    }
+
+    app()?.showLoading?.("กำลังส่งคำขอ / แจ้งข้อมูล...");
     try {
-      await rpc(
-        "ta_submit_shift_change_request_v680",
-        {
+      if (requestType === "SHIFT_CHANGE") {
+        await rpc(
+          "ta_submit_shift_change_request_v680",
+          {
+            p_emp_code: emp,
+            p_work_date: date,
+            p_requested_shift_code: requestedShift,
+            p_reason: reason
+          }
+        );
+      } else {
+        await rpc("ta_submit_employee_request_v61481", {
           p_emp_code: emp,
           p_work_date: date,
-          p_requested_shift_code:
-            requestedShift,
-          p_reason: reason
-        }
-      );
+          p_request_type: requestType,
+          p_request_subtype: requestSubtype,
+          p_reason: reason,
+          p_detail: detail
+        });
+      }
+
       closeModal("shiftRequestModal");
       app()?.toast?.(
-        "ส่งคำขอแก้ไขกะเรียบร้อย",
+        requestType === "TIME_ISSUE"
+          ? "ส่งแจ้งปัญหาเวลาทำงานเรียบร้อย"
+          : requestType === "SPECIAL_WORK"
+            ? "ส่งแจ้งงานกะพิเศษเรียบร้อย"
+            : "ส่งคำขอแก้ไขกะเรียบร้อย",
         "success"
       );
       await loadShiftRequests();
 
-      if (
-        app()?.state?.currentPage === "attendance"
-      ) {
+      if (app()?.state?.currentPage === "attendance") {
         await app()?.loadAttendance?.();
       }
     } catch (error) {
       app()?.toast?.(
-        app()?.humanError?.(error)
-        || error.message,
+        app()?.humanError?.(error) || error.message,
         "error"
       );
     } finally {
@@ -20741,78 +20950,79 @@ ${names}${extra}
   async function loadShiftRequests() {
     if (!$("shiftRequestBody")) return;
 
-    const start =
-      $("shiftRequestStart")?.value
-      || window.TimeClockCalendarV61448.monthStart(new Date());
-    const end =
-      $("shiftRequestEnd")?.value
-      || window.TimeClockCalendarV61448.today();
-    const status =
-      $("shiftRequestStatus")?.value;
-    const search =
-      $("shiftRequestSearch")?.value.trim();
+    const start = $("shiftRequestStart")?.value || window.TimeClockCalendarV61448.monthStart(new Date());
+    const end = $("shiftRequestEnd")?.value || window.TimeClockCalendarV61448.today();
+    const status = $("shiftRequestStatus")?.value;
+    const typeFilter = String($("shiftRequestTypeFilter")?.value || "").toUpperCase();
+    const search = $("shiftRequestSearch")?.value.trim();
 
-    app()?.showLoading?.(
-      "กำลังโหลดคำขอแก้ไขกะ..."
-    );
+    app()?.showLoading?.("กำลังโหลดคำขอ / แจ้งข้อมูล...");
     try {
-      shiftRequests = await rpc(
-        "ta_get_shift_change_requests_v680",
-        {
-          p_start_date: start,
-          p_end_date: end,
-          p_statuses: status ? [status] : null,
-          p_search: search || null,
-          p_limit: 3000
+      const legacyPromise = !typeFilter || typeFilter === "SHIFT_CHANGE"
+        ? rpc("ta_get_shift_change_requests_v680", {
+            p_start_date: start,
+            p_end_date: end,
+            p_statuses: status ? [status] : null,
+            p_search: search || null,
+            p_limit: 3000
+          })
+        : Promise.resolve([]);
+
+      const genericStatuses = status === "APPROVED"
+        ? ["APPROVED","RESOLVED"]
+        : status === "PENDING"
+          ? ["PENDING","IN_REVIEW"]
+          : status ? [status] : null;
+      const genericTypes = typeFilter && typeFilter !== "SHIFT_CHANGE" ? [typeFilter] : null;
+      const genericPromise = typeFilter === "SHIFT_CHANGE"
+        ? Promise.resolve([])
+        : rpc("ta_get_employee_requests_v61481", {
+            p_start_date: start,
+            p_end_date: end,
+            p_statuses: genericStatuses,
+            p_request_types: genericTypes,
+            p_search: search || null,
+            p_limit: 3000
+          });
+
+      const [legacyRows,genericRows] = await Promise.all([legacyPromise,genericPromise]);
+      const normalizedLegacy = (legacyRows || []).map(request => ({
+        ...request,
+        request_source: "LEGACY_SHIFT",
+        request_type: "SHIFT_CHANGE",
+        request_subtype: "SHIFT_CHANGE",
+        detail: {
+          current_shift_code: request.current_shift_code || null,
+          requested_shift_code: request.requested_shift_code || null
         }
-      ) || [];
+      }));
+      employeeRequestsV61481 = (genericRows || []).map(request => ({
+        ...request,
+        request_source: "EMPLOYEE_REQUEST_V61481",
+        detail: request.detail && typeof request.detail === "object" ? request.detail : {}
+      }));
+
+      shiftRequests = [...normalizedLegacy,...employeeRequestsV61481]
+        .sort((a,b) => String(b.requested_at || b.created_at || "").localeCompare(String(a.requested_at || a.created_at || "")));
 
       renderShiftRequests();
     } catch (error) {
-      app()?.toast?.(
-        app()?.humanError?.(error)
-        || error.message,
-        "error"
-      );
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally {
       app()?.hideLoading?.();
     }
   }
 
   function renderShiftRequests() {
-    const pending = shiftRequests.filter(
-      request => request.status === "PENDING"
-    ).length;
-    const approved = shiftRequests.filter(
-      request => request.status === "APPROVED"
-    ).length;
-    const closed = shiftRequests.filter(
-      request => [
-        "REJECTED","CANCELLED"
-      ].includes(request.status)
-    ).length;
+    const pending = shiftRequests.filter(request => ["PENDING","IN_REVIEW"].includes(String(request.status || "").toUpperCase())).length;
+    const approved = shiftRequests.filter(request => ["APPROVED","RESOLVED"].includes(String(request.status || "").toUpperCase())).length;
+    const closed = shiftRequests.filter(request => ["REJECTED","CANCELLED"].includes(String(request.status || "").toUpperCase())).length;
 
-    setText(
-      "shiftRequestCount",
-      `${shiftRequests.length
-        .toLocaleString("th-TH")} รายการ`
-    );
-    setText(
-      "shiftRequestKpiAll",
-      shiftRequests.length.toLocaleString("th-TH")
-    );
-    setText(
-      "shiftRequestKpiPending",
-      pending.toLocaleString("th-TH")
-    );
-    setText(
-      "shiftRequestKpiApproved",
-      approved.toLocaleString("th-TH")
-    );
-    setText(
-      "shiftRequestKpiClosed",
-      closed.toLocaleString("th-TH")
-    );
+    setText("shiftRequestCount",`${shiftRequests.length.toLocaleString("th-TH")} รายการ`);
+    setText("shiftRequestKpiAll",shiftRequests.length.toLocaleString("th-TH"));
+    setText("shiftRequestKpiPending",pending.toLocaleString("th-TH"));
+    setText("shiftRequestKpiApproved",approved.toLocaleString("th-TH"));
+    setText("shiftRequestKpiClosed",closed.toLocaleString("th-TH"));
     setNavBadge(pending);
 
     const body = $("shiftRequestBody");
@@ -20821,54 +21031,154 @@ ${names}${extra}
     body.innerHTML = shiftRequests.length
       ? shiftRequests.map(request => {
           const actions = [];
+          const isGeneric = request.request_source === "EMPLOYEE_REQUEST_V61481";
+          const status = String(request.status || "").toUpperCase();
+          const active = ["PENDING","IN_REVIEW"].includes(status);
 
-          if (
-            canManage()
-            && request.status === "PENDING"
-          ) {
-            actions.push(
-              `<button
-                class="btn btn-success btn-sm"
-                data-shift-request-decision="${esc(request.request_id)}|APPROVED"
-              >อนุมัติ</button>`
-            );
-            actions.push(
-              `<button
-                class="btn btn-danger-soft btn-sm"
-                data-shift-request-decision="${esc(request.request_id)}|REJECTED"
-              >ไม่อนุมัติ</button>`
-            );
+          if (!isGeneric && canManage() && status === "PENDING") {
+            actions.push(`<button class="btn btn-success btn-sm" data-shift-request-decision="${esc(request.request_id)}|APPROVED">อนุมัติ</button>`);
+            actions.push(`<button class="btn btn-danger-soft btn-sm" data-shift-request-decision="${esc(request.request_id)}|REJECTED">ไม่อนุมัติ</button>`);
           }
 
-          if (
-            request.requested_by_self
-            && request.status === "PENDING"
-          ) {
-            actions.push(
-              `<button
-                class="btn btn-light btn-sm"
-                data-shift-request-cancel="${esc(request.request_id)}"
-              >ยกเลิก</button>`
-            );
+          if (isGeneric && canManage() && active) {
+            if (request.request_type === "TIME_ISSUE") {
+              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-time-certify-v61481="${esc(request.request_id)}">รับรองเวลา</button>`);
+            } else if (request.request_type === "SPECIAL_WORK") {
+              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-special-review-v61481="${esc(request.request_id)}">ตรวจและจัดกะ</button>`);
+            }
+            actions.push(`<button class="btn btn-danger-soft btn-sm" data-employee-request-decision-v61481="${esc(request.request_id)}|REJECTED">ไม่อนุมัติ</button>`);
           }
 
-          return `<tr>
-            <td><strong>${esc(request.request_no)}</strong></td>
+          if (request.requested_by_self && active) {
+            if (isGeneric && status === "PENDING") {
+              actions.push(`<button class="btn btn-light btn-sm" data-employee-request-cancel-v61481="${esc(request.request_id)}">ยกเลิก</button>`);
+            } else if (!isGeneric && status === "PENDING") {
+              actions.push(`<button class="btn btn-light btn-sm" data-shift-request-cancel="${esc(request.request_id)}">ยกเลิก</button>`);
+            }
+          }
+
+          const requestType = request.request_type || "SHIFT_CHANGE";
+          const detailText = employeeRequestDetailTextV61481(request);
+          const requestNo = request.request_no || request.request_id || "-";
+
+          return `<tr class="employee-request-row-v61481 request-type-${esc(String(requestType).toLowerCase())}">
+            <td><strong>${esc(requestNo)}</strong></td>
             <td>${fmtDate(request.work_date)}</td>
-            <td>
-              <strong>${esc(request.emp_code)}</strong>
-              <small class="v650-cell-sub">${esc(request.full_name || "")}</small>
-            </td>
-            <td><span class="badge badge-gray">${esc(request.current_shift_code || "-")}</span></td>
-            <td><span class="badge badge-blue">${esc(request.requested_shift_code)}</span></td>
+            <td><strong>${esc(request.emp_code)}</strong><small class="v650-cell-sub">${esc(request.full_name || "")}</small></td>
+            <td>${employeeRequestTypeBadgeV61481(requestType)}</td>
+            <td><div class="employee-request-detail-v61481"><strong>${esc(detailText)}</strong>${request.request_subtype && requestType !== "SHIFT_CHANGE" ? `<small>${esc(employeeRequestSubtypeLabelV61481(requestType,request.request_subtype))}</small>` : ""}</div></td>
             <td>${esc(request.reason || "-")}</td>
             <td><span class="v650-status ${statusClass(request.status)}">${esc(statusLabel(request.status))}</span></td>
-            <td>${fmtDateTime(request.requested_at)}</td>
+            <td>${fmtDateTime(request.requested_at || request.created_at)}</td>
             <td>${esc(request.decision_note || "-")}</td>
             <td><div class="v650-actions">${actions.join("") || "-"}</div></td>
           </tr>`;
         }).join("")
-      : `<tr><td colspan="10" class="fc-empty">ไม่พบคำขอแก้ไขกะ</td></tr>`;
+      : `<tr><td colspan="10" class="fc-empty">ไม่พบคำขอ / แจ้งข้อมูล</td></tr>`;
+  }
+
+  async function fetchEmployeeRequestAttendanceV61481(empCode,workDate) {
+    const local = attendanceRow(empCode,workDate);
+    if (local) return local;
+    const rows = await rpc("ta_get_attendance_detail_v61463", {
+      p_start_date: workDate,
+      p_end_date: workDate,
+      p_area: null,
+      p_sub_area: null,
+      p_department: null,
+      p_emp_codes: [String(empCode)],
+      p_attendance_statuses: null,
+      p_schedule_statuses: null,
+      p_limit: 50
+    });
+    return Array.isArray(rows) ? rows[0] || null : null;
+  }
+
+  async function ensureEmployeeRequestScheduleRowV61481(empCode,workDate) {
+    const existing = (app()?.state?.schedule || []).find(row => String(row.emp_code) === String(empCode) && String(row.work_date || "").slice(0,10) === String(workDate).slice(0,10));
+    if (existing) return existing;
+    const rows = await window.TimeClockShiftAPI?.getMonthlySchedule?.(app(), {
+      p_start_date: workDate,
+      p_end_date: workDate,
+      p_zone: null,
+      p_department: null,
+      p_emp_codes: [String(empCode)],
+      p_schedule_statuses: null,
+      p_disable_range_paging: true
+    }) || [];
+    const row = rows.find(item => String(item.emp_code) === String(empCode) && String(item.work_date || "").slice(0,10) === String(workDate).slice(0,10)) || null;
+    if (row && !(app()?.state?.schedule || []).some(item => String(item.emp_code) === String(empCode) && String(item.work_date || "").slice(0,10) === String(workDate).slice(0,10))) {
+      app().state.schedule.push(row);
+    }
+    return row;
+  }
+
+  async function markEmployeeRequestInReviewV61481(requestId) {
+    try { await rpc("ta_mark_employee_request_in_review_v61481",{p_request_id:requestId}); } catch (error) { console.warn("Employee request in-review V6.14.81:",error?.message || error); }
+  }
+
+  async function resolveEmployeeRequestV61481(requestId,note=null) {
+    if (!requestId) return;
+    try {
+      await rpc("ta_resolve_employee_request_v61481",{p_request_id:requestId,p_note:note || null});
+      await loadShiftRequests();
+    } catch (error) {
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"warning");
+    }
+  }
+
+  async function reviewEmployeeTimeIssueV61481(request) {
+    if (!request) return;
+    app()?.showLoading?.("กำลังโหลดข้อมูลเวลาสำหรับรับรอง...");
+    try {
+      const row = await fetchEmployeeRequestAttendanceV61481(request.emp_code,String(request.work_date).slice(0,10));
+      if (!row) throw new Error("ไม่พบ Attendance ของวันที่แจ้ง กรุณาประมวลผล Attendance ก่อน");
+      await markEmployeeRequestInReviewV61481(request.request_id);
+      employeeRequestResolveContextV61481 = {requestId:request.request_id,type:"TIME_ISSUE",empCode:request.emp_code,workDate:String(request.work_date).slice(0,10)};
+      app()?.openTimeCertificationModalV61139?.({...row,emp_code:request.emp_code,work_date:String(request.work_date).slice(0,10)},"employee-request-v61481");
+    } catch (error) {
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
+    } finally { app()?.hideLoading?.(); }
+  }
+
+  async function reviewEmployeeSpecialWorkV61481(request) {
+    if (!request) return;
+    app()?.showLoading?.("กำลังเตรียมตารางกะสำหรับตรวจสอบ...");
+    try {
+      await ensureEmployeeRequestScheduleRowV61481(request.emp_code,String(request.work_date).slice(0,10));
+      await markEmployeeRequestInReviewV61481(request.request_id);
+      employeeRequestResolveContextV61481 = {requestId:request.request_id,type:"SPECIAL_WORK",empCode:request.emp_code,workDate:String(request.work_date).slice(0,10)};
+      await app()?.openAssignment?.(request.emp_code,String(request.work_date).slice(0,10));
+      window.TimeClockSchedulingRulesV6120?.prefillEmployeeRequestV61481?.(request);
+    } catch (error) {
+      employeeRequestResolveContextV61481 = null;
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
+    } finally { app()?.hideLoading?.(); }
+  }
+
+  async function decideEmployeeRequestV61481(requestId,decision) {
+    const note = await window.tcPrompt(decision === "REJECTED" ? "ระบุเหตุผลที่ไม่อนุมัติ" : "หมายเหตุการพิจารณา");
+    if (note === null) return;
+    try {
+      app()?.showLoading?.("กำลังบันทึกผลการพิจารณา...");
+      await rpc("ta_decide_employee_request_v61481",{p_request_id:requestId,p_decision:decision,p_note:note || null});
+      app()?.toast?.(decision === "REJECTED" ? "บันทึกผลไม่อนุมัติแล้ว" : "บันทึกผลแล้ว","success");
+      await loadShiftRequests();
+    } catch (error) {
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
+    } finally { app()?.hideLoading?.(); }
+  }
+
+  async function cancelEmployeeRequestV61481(requestId) {
+    if (!await window.tcConfirm("ยืนยันยกเลิกคำขอนี้?")) return;
+    try {
+      app()?.showLoading?.("กำลังยกเลิกคำขอ...");
+      await rpc("ta_cancel_employee_request_v61481",{p_request_id:requestId});
+      app()?.toast?.("ยกเลิกคำขอแล้ว","success");
+      await loadShiftRequests();
+    } catch (error) {
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
+    } finally { app()?.hideLoading?.(); }
   }
 
   async function decideShiftRequest(id,decision) {
@@ -21012,22 +21322,23 @@ ${names}${extra}
 
     const rows = [
       [
-        "เลขที่คำขอ","วันที่ทำงาน",
+        "เลขที่คำขอ","วันที่",
         "รหัสพนักงาน","ชื่อ-นามสกุล",
-        "กะเดิม","กะที่ขอ","เหตุผล",
-        "สถานะ","วันที่ส่งคำขอ",
+        "ประเภท","ประเภทย่อย","รายละเอียด","เหตุผล",
+        "สถานะ","วันที่แจ้ง",
         "หมายเหตุการพิจารณา"
       ],
       ...shiftRequests.map(request => [
-        request.request_no,
+        request.request_no || request.request_id,
         request.work_date,
         request.emp_code,
         request.full_name,
-        request.current_shift_code,
-        request.requested_shift_code,
+        employeeRequestTypeLabelV61481(request.request_type || "SHIFT_CHANGE"),
+        employeeRequestSubtypeLabelV61481(request.request_type || "SHIFT_CHANGE",request.request_subtype),
+        employeeRequestDetailTextV61481(request),
         request.reason,
         statusLabel(request.status),
-        request.requested_at,
+        request.requested_at || request.created_at,
         request.decision_note
       ])
     ];
@@ -21047,7 +21358,7 @@ ${names}${extra}
     const link = document.createElement("a");
     link.href = url;
     link.download =
-      `Shift_Request_${$("shiftRequestStart")?.value}_${$("shiftRequestEnd")?.value}.csv`;
+      `Employee_Request_${$("shiftRequestStart")?.value}_${$("shiftRequestEnd")?.value}.csv`;
     link.click();
     setTimeout(
       () => URL.revokeObjectURL(url),
@@ -21078,6 +21389,11 @@ ${names}${extra}
       "click",
       submitShiftRequest
     );
+    $("shiftRequestRequestType")?.addEventListener("change",updateEmployeeRequestModeUIV61481);
+    $("shiftRequestSpecialModeV61481")?.addEventListener("change",updateEmployeeRequestModeUIV61481);
+    $("shiftRequestWorkDate")?.addEventListener("change",() => {
+      updateEmployeeRequestSnapshotV61481($("shiftRequestEmpCode")?.value || "",$("shiftRequestWorkDate")?.value || "");
+    });
     $("shiftRequestExportBtn")?.addEventListener(
       "click",
       exportShiftRequests
@@ -21124,6 +21440,33 @@ ${names}${extra}
           return;
         }
 
+        const timeIssueButtonV61481 = event.target.closest("[data-employee-request-time-certify-v61481]");
+        if (timeIssueButtonV61481) {
+          const request = employeeRequestsV61481.find(item => String(item.request_id) === String(timeIssueButtonV61481.dataset.employeeRequestTimeCertifyV61481));
+          reviewEmployeeTimeIssueV61481(request);
+          return;
+        }
+
+        const specialButtonV61481 = event.target.closest("[data-employee-request-special-review-v61481]");
+        if (specialButtonV61481) {
+          const request = employeeRequestsV61481.find(item => String(item.request_id) === String(specialButtonV61481.dataset.employeeRequestSpecialReviewV61481));
+          reviewEmployeeSpecialWorkV61481(request);
+          return;
+        }
+
+        const genericDecisionV61481 = event.target.closest("[data-employee-request-decision-v61481]");
+        if (genericDecisionV61481) {
+          const [id,decision] = String(genericDecisionV61481.dataset.employeeRequestDecisionV61481 || "").split("|");
+          decideEmployeeRequestV61481(id,decision);
+          return;
+        }
+
+        const genericCancelV61481 = event.target.closest("[data-employee-request-cancel-v61481]");
+        if (genericCancelV61481) {
+          cancelEmployeeRequestV61481(genericCancelV61481.dataset.employeeRequestCancelV61481);
+          return;
+        }
+
         const decisionButton = event.target.closest(
           "[data-shift-request-decision]"
         );
@@ -21154,6 +21497,28 @@ ${names}${extra}
         }
       }
     );
+
+    document.addEventListener('timeclock:time-certification-saved-v61481', async event => {
+      const ctx = employeeRequestResolveContextV61481;
+      if (!ctx || ctx.type !== 'TIME_ISSUE') return;
+      const empCode = String(event?.detail?.empCode || '');
+      const workDate = String(event?.detail?.workDate || '').slice(0,10);
+      if (empCode !== String(ctx.empCode) || workDate !== String(ctx.workDate).slice(0,10)) return;
+      const requestId = ctx.requestId;
+      employeeRequestResolveContextV61481 = null;
+      await resolveEmployeeRequestV61481(requestId,'รับรองเวลาด้วย Time Certification เรียบร้อย');
+    });
+
+    document.addEventListener('timeclock:schedule-assignment-saved-v61481', async event => {
+      const ctx = employeeRequestResolveContextV61481;
+      if (!ctx || ctx.type !== 'SPECIAL_WORK') return;
+      const empCode = String(event?.detail?.empCode || '');
+      const workDate = String(event?.detail?.workDate || '').slice(0,10);
+      if (empCode !== String(ctx.empCode) || workDate !== String(ctx.workDate).slice(0,10)) return;
+      const requestId = ctx.requestId;
+      employeeRequestResolveContextV61481 = null;
+      await resolveEmployeeRequestV61481(requestId,`ปรับกะ/รูปแบบงานพิเศษ ${event?.detail?.workMode || ''} เรียบร้อย`);
+    });
 
     document.addEventListener(
       "timeclock:effective-role-changed",
@@ -30608,7 +30973,38 @@ ${names}${extra}
   async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
   function init(){ensureAssignmentUi();ensureAdminUi();ensureShiftRuleAdminUi();document.querySelector('[data-page="work-patterns"]')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));document.querySelector('[data-page="admin-shifts"]')?.addEventListener('click',()=>setTimeout(()=>loadShiftRuleAdmin(),0));$('workPatternRefreshBtn')?.addEventListener('click',()=>setTimeout(loadAdminPanel,0));window.addEventListener('ta:session-ready',()=>{loadAdminPanel();loadRuntimeShiftRules();});document.addEventListener('timeclock:effective-role-changed',()=>{loadAdminPanel();loadShiftRuleAdmin();});document.documentElement.dataset.schedulingRulesVersion=VERSION;}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,sequenceBlockMessage:sequenceBlockMessageV61435,ensureRuntimeRules:loadRuntimeShiftRules};
+
+  function prefillEmployeeRequestV61481(request={}){
+    if(!st.current)return false;
+    const detail=request?.detail&&typeof request.detail==='object'?request.detail:{};
+    const mode=String(request?.request_subtype||detail?.work_mode_code||'NORMAL_LATE_CUSTOMER').toUpperCase();
+    if(!['NORMAL_LATE_CUSTOMER','SPLIT_WAIT_NIGHT','HOUR_BASED'].includes(mode))return false;
+    chooseMode(mode);
+    if(mode==='NORMAL_LATE_CUSTOMER'){
+      if($('assignCustomerStart')&&detail.special_start)$('assignCustomerStart').value=String(detail.special_start).slice(0,5);
+      if($('assignCustomerEndMode'))$('assignCustomerEndMode').value='FIXED';
+      if($('assignCustomerEnd')&&detail.special_end)$('assignCustomerEnd').value=String(detail.special_end).slice(0,5);
+    }else if(mode==='SPLIT_WAIT_NIGHT'){
+      if($('assignFirstEndV6120')&&detail.first_end)$('assignFirstEndV6120').value=String(detail.first_end).slice(0,5);
+      if($('assignSecondStartV6120')&&detail.second_start)$('assignSecondStartV6120').value=String(detail.second_start).slice(0,5);
+      if($('assignSecondEndV6120')&&detail.second_end)$('assignSecondEndV6120').value=String(detail.second_end).slice(0,5);
+    }else if(mode==='HOUR_BASED'){
+      if($('assignHourStartV6120')&&detail.hour_start)$('assignHourStartV6120').value=String(detail.hour_start).slice(0,5);
+    }
+    if($('assignNote')){
+      const parts=[
+        `คำขอ ${request?.request_no||request?.request_id||''}`.trim(),
+        request?.reason||'',
+        detail?.work_location?`ลูกค้า/สถานที่: ${detail.work_location}`:''
+      ].filter(Boolean);
+      $('assignNote').value=parts.join(' • ');
+    }
+    if($('assignReason'))$('assignReason').value='อนุมัติคำขอแจ้งงานกะพิเศษจาก Employee Request Center V6.14.81';
+    refreshAssignmentPreview();
+    return true;
+  }
+
+  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,sequenceBlockMessage:sequenceBlockMessageV61435,ensureRuntimeRules:loadRuntimeShiftRules,prefillEmployeeRequestV61481};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;

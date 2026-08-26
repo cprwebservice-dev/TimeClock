@@ -81,7 +81,7 @@
 <div class="nav-label nav-label-spaced">เวลาทำงาน</div>
 <button class="nav-item" data-page="attendance"><span class="nav-icon">◷</span><span class="nav-text">รายละเอียดเวลาทำงาน</span></button>
 <div class="nav-label nav-label-spaced">คำขอและตรวจสอบ</div>
-<button class="nav-item" data-page="shift-requests"><span class="nav-icon">⇄</span><span class="nav-text">คำขอแก้ไขกะ</span><span class="nav-count hidden" id="shiftRequestNavBadge">0</span></button>
+<button class="nav-item" data-page="shift-requests"><span class="nav-icon">⇄</span><span class="nav-text">คำขอ / แจ้งข้อมูล</span><span class="nav-count hidden" id="shiftRequestNavBadge">0</span></button>
 <button class="nav-item" data-page="schedule"><span class="nav-icon">▣</span><span class="nav-text">ปฏิทินจัดกะ</span></button>
 <button class="nav-item" data-page="work-patterns"><span class="nav-icon">⌘</span><span class="nav-text">รูปแบบการทำงาน</span></button>
 
@@ -494,16 +494,16 @@
 <section class="page shift-request-page" id="page-shift-requests">
 <div class="shift-request-hero">
 <div>
-<span class="eyebrow">SHIFT CHANGE REQUEST</span>
-<h2>คำขอแก้ไขกะทำงาน</h2>
-<p id="shiftRequestSubtitle">พนักงานส่งคำขอแก้ไขกะของตนเอง และผู้จัดการพิจารณาภายในขอบเขตทีม</p>
+<span class="eyebrow">EMPLOYEE REQUEST CENTER</span>
+<h2>คำขอ / แจ้งข้อมูล</h2>
+<p id="shiftRequestSubtitle">พนักงานส่งคำขอแก้ไขกะ แจ้งปัญหาเวลา และแจ้งงานกะพิเศษ • Manager พิจารณาภายในขอบเขตทีม</p>
 </div>
-<button class="btn btn-primary" id="newShiftRequestBtn">+ ส่งคำขอแก้ไขกะ</button>
+<button class="btn btn-primary" id="newShiftRequestBtn">+ ส่งคำขอ / แจ้งข้อมูล</button>
 </div>
 <div class="shift-request-kpi-grid section-gap">
 <article><span>ทั้งหมด</span><strong id="shiftRequestKpiAll">0</strong><small>คำขอในช่วงวันที่</small></article>
 <article class="warning"><span>รอพิจารณา</span><strong id="shiftRequestKpiPending">0</strong><small>Manager ดำเนินการ</small></article>
-<article class="success"><span>อนุมัติแล้ว</span><strong id="shiftRequestKpiApproved">0</strong><small>นำกะไปใช้แล้ว</small></article>
+<article class="success"><span>ดำเนินการแล้ว</span><strong id="shiftRequestKpiApproved">0</strong><small>อนุมัติ / รับรอง / ปรับกะแล้ว</small></article>
 <article class="danger"><span>ไม่อนุมัติ/ยกเลิก</span><strong id="shiftRequestKpiClosed">0</strong><small>ปิดรายการแล้ว</small></article>
 </div>
 <div class="panel section-gap">
@@ -512,6 +512,7 @@
 <div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="shiftRequestStart" type="date"/></div>
 <div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="shiftRequestEnd" type="date"/></div>
 <div class="field"><label>สถานะ</label><select class="select" id="shiftRequestStatus"><option value="">ทุกสถานะ</option><option value="PENDING">รอพิจารณา</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
+<div class="field"><label>ประเภทคำขอ</label><select class="select" id="shiftRequestTypeFilter"><option value="">ทุกประเภท</option><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">แจ้งปัญหาเวลาทำงาน</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option></select></div>
 <div class="field"><label>ค้นหา</label><input class="input" id="shiftRequestSearch" placeholder="เลขที่คำขอ รหัส หรือชื่อพนักงาน"/></div>
 <div class="toolbar-actions"><button class="btn btn-primary" id="loadShiftRequestsBtn">ค้นหา</button></div>
 </div>
@@ -519,7 +520,7 @@
 </div>
 <div class="panel section-gap">
 <div class="panel-header">
-<div><h3>รายการคำขอแก้ไขกะ</h3><p id="shiftRequestCount">0 รายการ</p></div>
+<div><h3>รายการคำขอ / แจ้งข้อมูล</h3><p id="shiftRequestCount">0 รายการ</p></div>
 <button class="btn btn-success" id="shiftRequestExportBtn">Excel</button>
 </div>
 <div class="panel-body">
@@ -528,13 +529,13 @@
 <thead>
 <tr>
 <th>เลขที่คำขอ</th>
-<th>วันที่ทำงาน</th>
+<th>วันที่</th>
 <th>พนักงาน</th>
-<th>กะเดิม</th>
-<th>กะที่ขอ</th>
+<th>ประเภท</th>
+<th>รายละเอียด</th>
 <th>เหตุผล</th>
 <th>สถานะ</th>
-<th>วันที่ส่งคำขอ</th>
+<th>วันที่แจ้ง</th>
 <th>หมายเหตุการพิจารณา</th>
 <th>จัดการ</th>
 </tr>
@@ -1532,26 +1533,56 @@
 <!-- V6.5 Decision Modal -->
 
 <datalist id="v650EmployeeList"></datalist>
-<!-- V6.8 Shift Change Request Modal -->
+<!-- V6.14.81 Unified Employee Request Modal -->
 <div class="modal-backdrop hidden" id="shiftRequestModal">
-<div class="modal large">
+<div class="modal large employee-request-modal-v61481">
 <div class="modal-header">
-<div><h3>ส่งคำขอแก้ไขกะทำงาน</h3><p id="shiftRequestModalSubtitle">คำขอจะถูกส่งให้ Manager ตามสายบังคับบัญชา</p></div>
+<div><h3>ส่งคำขอ / แจ้งข้อมูล</h3><p id="shiftRequestModalSubtitle">รายการจะถูกส่งให้ Manager ตามสายบังคับบัญชา • พนักงานไม่สามารถแก้เวลา Attendance เองได้</p></div>
 <button class="btn btn-light btn-icon" data-v680-close="shiftRequestModal">×</button>
 </div>
 <div class="modal-body">
 <input id="shiftRequestEmpCode" type="hidden"/>
 <div class="shift-request-employee-card" id="shiftRequestEmployeeDisplay">-</div>
-<div class="form-row-3">
-<div class="field"><label>วันที่ทำงาน</label><input class="input" id="shiftRequestWorkDate" type="date"/></div>
-<div class="field"><label>กะปัจจุบัน</label><input class="input" disabled="" id="shiftRequestCurrentShift"/></div>
-<div class="field"><label>กะที่ต้องการ</label><select class="select" id="shiftRequestRequestedShift"></select></div>
+<div class="form-row-3 employee-request-top-grid-v61481">
+  <div class="field"><label>ประเภทคำขอ <span class="required-mark">*</span></label><select class="select" id="shiftRequestRequestType"><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">แจ้งปัญหาเวลาทำงาน</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option></select></div>
+  <div class="field"><label>วันที่ <span class="required-mark">*</span></label><input class="input" id="shiftRequestWorkDate" type="date"/></div>
+  <div class="field"><label>กะปัจจุบัน</label><input class="input" disabled="" id="shiftRequestCurrentShift"/></div>
 </div>
-<div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea class="textarea" id="shiftRequestReason" placeholder="ระบุเหตุผลที่ต้องการแก้ไขกะ"></textarea></div>
+
+<div class="employee-request-section-v61481" id="shiftRequestShiftChangeSectionV61481">
+  <div class="field"><label>กะที่ต้องการ <span class="required-mark">*</span></label><select class="select" id="shiftRequestRequestedShift"></select></div>
+</div>
+
+<div class="employee-request-section-v61481 hidden" id="shiftRequestTimeIssueSectionV61481">
+  <div class="form-row-2">
+    <div class="field"><label>ปัญหาที่พบ <span class="required-mark">*</span></label><select class="select" id="shiftRequestTimeIssueTypeV61481"><option value="MISSING_IN">ไม่มีเวลาเข้า</option><option value="MISSING_OUT">ไม่มีเวลาออก</option><option value="WRONG_TIME">เวลาไม่ถูกต้อง</option></select></div>
+    <div class="employee-request-readonly-v61481"><span>เวลาที่ระบบพบ</span><strong id="shiftRequestPunchSnapshotV61481">เข้า - • ออก -</strong><small>ข้อมูลนี้เป็นข้อมูลอ้างอิงเท่านั้น • User แก้เวลาเองไม่ได้</small></div>
+  </div>
+</div>
+
+<div class="employee-request-section-v61481 hidden" id="shiftRequestSpecialWorkSectionV61481">
+  <div class="field"><label>รูปแบบงานพิเศษ <span class="required-mark">*</span></label><select class="select" id="shiftRequestSpecialModeV61481"><option value="NORMAL_LATE_CUSTOMER">กะปกติ + งานลูกค้าช่วงดึก</option><option value="SPLIT_WAIT_NIGHT">กะเช้า + รอเข้ากะดึก</option><option value="HOUR_BASED">กะนับชั่วโมง</option></select></div>
+  <div class="employee-request-special-fields-v61481" id="shiftRequestCustomerFieldsV61481">
+    <div class="field"><label>ช่วงงานพิเศษเริ่ม</label><input class="input" id="shiftRequestSpecialStartV61481" type="time"/></div>
+    <div class="field"><label>คาดว่าสิ้นสุด</label><input class="input" id="shiftRequestSpecialEndV61481" type="time"/></div>
+  </div>
+  <div class="employee-request-special-fields-v61481 hidden" id="shiftRequestWaitFieldsV61481">
+    <div class="field"><label>ออกจากกะช่วงแรก</label><input class="input" id="shiftRequestFirstEndV61481" type="time"/></div>
+    <div class="field"><label>กลับเข้ากะดึก</label><input class="input" id="shiftRequestSecondStartV61481" type="time"/></div>
+    <div class="field"><label>คาดว่างานเสร็จ</label><input class="input" id="shiftRequestSecondEndV61481" type="time"/></div>
+  </div>
+  <div class="employee-request-special-fields-v61481 hidden" id="shiftRequestHourFieldsV61481">
+    <div class="field"><label>เวลาเริ่มทำงาน</label><input class="input" id="shiftRequestHourStartV61481" type="time"/></div>
+  </div>
+  <div class="field"><label>ลูกค้า / สถานที่ / งานที่ไปปฏิบัติ</label><input class="input" id="shiftRequestWorkLocationV61481" placeholder="เช่น งานติดตั้งลูกค้า จ.ชลบุรี"/></div>
+  <div class="employee-request-callout-v61481"><strong>เวลาที่แจ้งเป็นข้อมูลประกอบคำขอ</strong><span>ระบบจะยังใช้ Raw Punch จริงเป็นข้อมูลเวลาเข้า–ออก และ Manager ต้องตรวจสอบก่อนปรับรูปแบบกะ</span></div>
+</div>
+
+<div class="field"><label>เหตุผล / รายละเอียด <span class="required-mark">*</span></label><textarea class="textarea" id="shiftRequestReason" placeholder="ระบุเหตุผลหรือรายละเอียดให้ Manager ใช้ประกอบการพิจารณา"></textarea></div>
 </div>
 <div class="modal-footer">
 <button class="btn btn-light" data-v680-close="shiftRequestModal">ยกเลิก</button>
-<button class="btn btn-primary" id="submitShiftRequestBtn">ส่งคำขอ</button>
+<button class="btn btn-primary" id="submitShiftRequestBtn">ส่งคำขอ / แจ้งข้อมูล</button>
 </div>
 </div>
 </div>

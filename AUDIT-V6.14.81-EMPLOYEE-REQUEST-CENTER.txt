@@ -1,0 +1,11 @@
+V6.14.81 Audit
+
+PASS: Existing legacy shift-change request RPCs preserved.
+PASS: TIME_ISSUE does not allow employee time editing.
+PASS: TIME_ISSUE resolution is chained to successful Time Certification save event.
+PASS: SPECIAL_WORK resolution is chained to successful Schedule Assignment save event.
+PASS: Special-work prefill uses existing Scheduling Rules modes and existing validation/save pipeline.
+PASS: New request data stored in isolated V6.14.81 tables.
+PASS: Manager routing reuses current canonical schedule-manager resolver V6.11.24.
+PASS: In-app request notifications added without replacing existing notification feed.
+PASS: JavaScript syntax checked with node --check.
