@@ -9339,12 +9339,18 @@ window.tcIsDayShiftCode = value =>
       const quotaDaysV61426 = Number(dayoffBalanceV61426?.month_quota_days);
       const carriedDaysV61426 = Number(dayoffBalanceV61426?.carried_in_days);
       const balanceDaysV61426 = Number(dayoffBalanceV61426?.balance_days);
+      const dayoffQuotaDisplayV61478 = Number.isFinite(quotaDaysV61426)
+        ? formatNumber(quotaDaysV61426)
+        : '-';
+      const dayoffUsedDisplayV61478 = hasCanonicalDayoffV61426
+        ? formatNumber(canonicalUsedV61426)
+        : '-';
+      const dayoffKpiValueV61478 = `${dayoffQuotaDisplayV61478}/${dayoffUsedDisplayV61478}`;
       const dayoffMetaV61426 = hasCanonicalDayoffV61426
         ? [
-            `ใช้โควต้า ${formatNumber(canonicalUsedV61426)}`,
-            Number.isFinite(quotaDaysV61426) ? `โควต้าเดือน ${formatNumber(quotaDaysV61426)}` : '',
-            Number.isFinite(carriedDaysV61426) && carriedDaysV61426 !== 0 ? `ยกมา ${formatNumber(carriedDaysV61426)}` : '',
-            Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)}` : ''
+            `ตามตาราง ${formatNumber(offDays)} วัน`,
+            Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)} วัน` : '',
+            Number.isFinite(carriedDaysV61426) && carriedDaysV61426 !== 0 ? `ยกมา ${formatNumber(carriedDaysV61426)} วัน` : ''
           ].filter(Boolean).join(' • ')
         : 'นับจากตารางกะเดียวกับรายบุคคลเต็มเดือน';
       // V6.14.67: KPI/anomaly counts use the same merged Calendar + Attendance
@@ -9378,7 +9384,7 @@ window.tcIsDayShiftCode = value =>
       const anomalyDays = anomalyDateSetV61467.size;
       $('employeeMonthScheduleSummary').innerHTML = `
         <div class="month-overview-kpi primary"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></div>
-        <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>วันหยุดตามตาราง</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(formatNumber(offDays))}</strong></div>
+        <div class="month-overview-kpi off"><div class="month-kpi-icon">หยุด</div><div><span>โควต้าวันหยุด</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(dayoffKpiValueV61478)}</strong></div>
         <div class="month-overview-kpi danger"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>เวลาไม่ครบ หรือ เข้าช้า ≥ 30 นาที</small></div><strong>${safe(formatNumber(absenceDays))}</strong></div>
         <div class="month-overview-kpi late"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>เข้าหลังเริ่มกะ 1–29 นาที</small></div><strong>${safe(formatNumber(lateDays))}</strong></div>
         <div class="month-overview-kpi early"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></div>
@@ -29677,7 +29683,15 @@ ${names}${extra}
     const warning48=authoritative?.warning_48h===true||(authoritative?false:g.warning48);
     const quota=st.quota||{};
     const rest=restMinutes==null?'ตรวจเมื่อมีข้อมูลกะก่อนหน้า':`${(restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.`;
-    const quotaMeta=quota.month_quota_days==null?'เริ่มแสดงหลังติดตั้ง Day-off Quota':`ยกมา ${Number(quota.carried_in_days||0).toLocaleString('th-TH')} • โควต้า ${Number(quota.month_quota_days||0).toLocaleString('th-TH')} • ใช้ ${Number(quota.used_days||0).toLocaleString('th-TH')}`;
+    const quotaMeta=quota.month_quota_days==null
+      ? 'เริ่มแสดงหลังติดตั้ง Day-off Quota'
+      : [
+          `คงเหลือ ${Number(quota.balance_days||0).toLocaleString('th-TH')} วัน`,
+          Number(quota.carried_in_days||0)!==0 ? `ยกมา ${Number(quota.carried_in_days||0).toLocaleString('th-TH')} วัน` : ''
+        ].filter(Boolean).join(' • ');
+    const quotaKpiValue=quota.month_quota_days==null
+      ? '-'
+      : `${Number(quota.month_quota_days||0).toLocaleString('th-TH')}/${Number(quota.used_days||0).toLocaleString('th-TH')}`;
     const targetPlanV61431=proposedPlan();
     const targetMasterV61431=shiftMaster($('assignShiftCode')?.value||st.current?.baseShiftCode||'');
     const targetMorningV61431=!shiftLooksNightV61431(targetMasterV61431)&&minsOf(targetPlanV61431?.start)!=null&&minsOf(targetPlanV61431.start)<12*60;
@@ -29701,7 +29715,7 @@ ${names}${extra}
     const advice=hardBlock
       ? `<div class="rest-transition-advice-v61431 ${(nightSequenceBlock||morningRestBlock)?'night-morning':''}"><div><strong>${nightSequenceBlock?'เงื่อนไขลำดับกะดึกไม่ผ่าน':nightToMorning?'กะดึก → กะเช้า ไม่ผ่านพักขั้นต่ำ':morningRestBlock?'กะเช้าไม่ผ่านพักขั้นต่ำ':'พักขั้นต่ำไม่เพียงพอ'}</strong><small>${esc(adviceTextV61431)}</small></div>${(nightSequenceBlock||morningRestBlock)?`<div class="rest-transition-actions-v61431"><button type="button" class="btn btn-light btn-sm" data-rest-suggestion-v61431="DAYOFF" ${quotaState.loaded&&!quotaState.allowed?'disabled title="วันหยุดคงเหลือไม่พอ"':''}>แนะนำ: วันหยุด</button><button type="button" class="btn btn-light btn-sm" data-rest-suggestion-v61431="NIGHT">เลือกกะกลางคืน</button></div>`:''}</div>`
       : '';
-    box.innerHTML=`${advice}<div class="rule-kpi-v6120 ${hardBlock?'danger':'ok'}"><span>${nightSequenceBlock?'เงื่อนไขลำดับกะดึก':'พักก่อนกะถัดไป'}</span><strong>${nightSequenceBlock?'ตรวจวันก่อนหน้า + วันถัดไป':esc(rest)}</strong><small>${nightSequenceBlock?'กะดึกต้องไม่ถูกคั่นด้วยกะเช้า และวันถัดไปต้องเป็นกะดึก/วันหยุด/ลา LV':hardBlock?(morningRestBlock?'กะเช้าจัดไม่ได้ • ขั้นต่ำ 6 ชม.':'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้'):'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>วันหยุดคงเหลือ</span><strong>${quota.balance_days==null?'-':esc(Number(quota.balance_days).toLocaleString('th-TH'))} วัน</strong><small>${esc(quotaMeta)}</small></div>`;
+    box.innerHTML=`${advice}<div class="rule-kpi-v6120 ${hardBlock?'danger':'ok'}"><span>${nightSequenceBlock?'เงื่อนไขลำดับกะดึก':'พักก่อนกะถัดไป'}</span><strong>${nightSequenceBlock?'ตรวจวันก่อนหน้า + วันถัดไป':esc(rest)}</strong><small>${nightSequenceBlock?'กะดึกต้องไม่ถูกคั่นด้วยกะเช้า และวันถัดไปต้องเป็นกะดึก/วันหยุด/ลา LV':hardBlock?(morningRestBlock?'กะเช้าจัดไม่ได้ • ขั้นต่ำ 6 ชม.':'ต่ำกว่าเกณฑ์ 6 ชม. • บันทึกไม่ได้'):'ขั้นต่ำ 6 ชม.'}</small></div><div class="rule-kpi-v6120 ${warning48?'warn':'ok'}"><span>ทำงานต่อเนื่อง</span><strong>${esc((continuousAfter/60).toLocaleString('th-TH',{maximumFractionDigits:1}))} / 48 ชม.</strong><small>${warning48?'ควรกำหนดวันหยุด • ยังสามารถจัดกะต่อได้':'รวมพัก • Split ไม่รวมช่วงรอ'}</small></div><div class="rule-kpi-v6120 quota"><span>โควต้าวันหยุด</span><strong>${esc(quotaKpiValue)}</strong><small>${esc(quotaMeta)}</small></div>`;
     return {
       ...g,
       restMinutes,
