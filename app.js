@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.91";
-document.documentElement.dataset.timeClockBuild = "6.14.91";
+window.__TIME_CLOCK_BUILD__ = "V6.14.92";
+document.documentElement.dataset.timeClockBuild = "6.14.92";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.91";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.91',
+  version: '6.14.92',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -21435,7 +21435,7 @@ ${names}${extra}
 
     document.addEventListener(
       "click",
-      event => {
+      async event => {
         const requestButton = event.target.closest(
           "[data-detail-shift-request]"
         );
