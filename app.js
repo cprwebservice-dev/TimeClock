@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.93";
-document.documentElement.dataset.timeClockBuild = "6.14.93";
+window.__TIME_CLOCK_BUILD__ = "V6.14.94";
+document.documentElement.dataset.timeClockBuild = "6.14.94";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.93";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.93',
+  version: '6.14.94',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -20611,15 +20611,18 @@ ${names}${extra}
     }
     if (request.request_type === "SPECIAL_WORK") {
       const modeLabel = employeeRequestSubtypeLabelV61481(request.request_type,request.request_subtype);
+      const start = detail.reported_start_time || detail.second_start || detail.special_start || detail.hour_start;
+      const end = detail.reported_end_time || detail.second_end || detail.special_end;
+      const location = detail.customer_location || detail.work_location;
       let times = "";
       if (request.request_subtype === "SPLIT_WAIT_NIGHT") {
-        times = ` • ออกช่วงแรก ${employeeRequestFormatTimeV61481(detail.first_end)} • เข้าดึก ${employeeRequestFormatTimeV61481(detail.second_start)}–${employeeRequestFormatTimeV61481(detail.second_end)}`;
+        times = ` • กะ 2 ${employeeRequestFormatTimeV61481(start)}–${employeeRequestFormatTimeV61481(end)}`;
       } else if (request.request_subtype === "HOUR_BASED") {
-        times = ` • เริ่ม ${employeeRequestFormatTimeV61481(detail.hour_start)}`;
+        times = ` • เริ่ม ${employeeRequestFormatTimeV61481(start)}`;
       } else {
-        times = ` • งานพิเศษ ${employeeRequestFormatTimeV61481(detail.special_start)}–${employeeRequestFormatTimeV61481(detail.special_end)}`;
+        times = ` • กะ 2 งานลูกค้า ${employeeRequestFormatTimeV61481(start)}–${employeeRequestFormatTimeV61481(end)}`;
       }
-      return `${modeLabel}${times}${detail.work_location ? ` • ${detail.work_location}` : ""}`;
+      return `${modeLabel}${times}${location ? ` • ${location}` : ""}`;
     }
     if (request.request_type === "DAYOFF_SWAP") {
       return `สลับวันหยุด ${fmtDate(request.work_date)} → ${fmtDate(detail.target_date)}`;
@@ -21149,6 +21152,51 @@ ${names}${extra}
     }
   }
 
+  function clearEmployeeRequestContextV61494(){
+    ["employeeRequestAssignContextV61494","employeeRequestTimeCertContextV61494"].forEach(id=>{
+      const el=$(id);if(el){el.classList.add("hidden");el.innerHTML="";}
+    });
+  }
+
+  function employeeRequestContextHtmlV61494(request,kind){
+    const d=request?.detail||{},type=String(request?.request_type||"").toUpperCase();
+    const subtypeLabel=employeeRequestSubtypeLabelV61481(type,request?.request_subtype);
+    const rows=[];
+    rows.push(["เลขที่คำขอ",request?.request_no||"-"]);
+    rows.push(["วันที่",fmtDate(request?.work_date)]);
+    rows.push(["รายการ",subtypeLabel]);
+    if(type==="SPECIAL_WORK"){
+      const start=d.reported_start_time||d.second_start||d.special_start||d.hour_start;
+      const end=d.reported_end_time||d.second_end||d.special_end;
+      if(request?.request_subtype==="HOUR_BASED"){
+        rows.push(["ช่วงงาน",`กะนับชั่วโมง • เริ่ม ${employeeRequestFormatTimeV61481(start)}`]);
+      }else{
+        rows.push(["ช่วงงาน",`กะที่ 2 • ${employeeRequestFormatTimeV61481(start)}–${employeeRequestFormatTimeV61481(end)}`]);
+      }
+      rows.push(["ลูกค้า / สถานที่",d.customer_location||d.work_location||"-"]);
+    }else if(type==="TIME_ISSUE"){
+      const p=d.punch_snapshot||{};
+      rows.push(["เวลาที่ระบบพบ",`เข้า ${employeeRequestFormatTimeV61481(p.in)} • ออก ${employeeRequestFormatTimeV61481(p.out)}`]);
+    }else if(type==="DAYOFF_SWAP"){
+      rows.push(["วันหยุดเดิม",fmtDate(request?.work_date)]);
+      rows.push(["หยุดแทน",fmtDate(d.target_date)]);
+      if(d.quota_snapshot)rows.push(["โควต้า",`${d.quota_snapshot.month_quota_days??0} / ใช้ไป ${d.quota_snapshot.used_days??0} / คงเหลือ ${d.quota_snapshot.balance_days??0}`]);
+    }else if(type==="LEAVE_REQUEST"){
+      rows.push(["ประเภทลา",d.leave_type||"-"]);
+      rows.push(["ช่วงลา",`${fmtDate(request?.work_date)}${d.end_date&&String(d.end_date)!==String(request?.work_date)?` – ${fmtDate(d.end_date)}`:""}`]);
+      if(request?.request_subtype==="PARTIAL_DAY")rows.push(["เวลา",`${employeeRequestFormatTimeV61481(d.leave_start_time)}–${employeeRequestFormatTimeV61481(d.leave_end_time)}`]);
+    }
+    rows.push(["เหตุผลจากพนักงาน",request?.reason||"-"]);
+    return `<div class="employee-request-context-head-v61494"><span>${kind==="time"?"ข้อมูลคำขอประกอบการรับรองเวลา":"ข้อมูลจากพนักงาน"}</span><strong>${esc(employeeRequestTypeLabelV61481(type))}</strong></div><div class="employee-request-context-grid-v61494">${rows.map(([a,b])=>`<div><span>${esc(a)}</span><strong>${esc(b)}</strong></div>`).join("")}</div>`;
+  }
+
+  function showEmployeeRequestContextV61494(request,kind="assign"){
+    const id=kind==="time"?"employeeRequestTimeCertContextV61494":"employeeRequestAssignContextV61494";
+    const el=$(id);if(!el)return;
+    el.innerHTML=employeeRequestContextHtmlV61494(request,kind);
+    el.classList.remove("hidden");
+  }
+
   async function reviewEmployeeTimeIssueV61481(request) {
     if (!request) return;
     app()?.showLoading?.("กำลังโหลดข้อมูลเวลาสำหรับรับรอง...");
@@ -21164,6 +21212,7 @@ ${names}${extra}
         {...row,emp_code:request.emp_code,work_date:String(request.work_date).slice(0,10)},
         "employee-request-v61481"
       );
+      showEmployeeRequestContextV61494(request,"time");
     } catch (error) {
       app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally { app()?.hideLoading?.(); }
@@ -21181,10 +21230,43 @@ ${names}${extra}
       }
       await app().openAssignment(request.emp_code,String(request.work_date).slice(0,10));
       window.TimeClockSchedulingRulesV6120?.prefillEmployeeRequestV61481?.(request);
+      showEmployeeRequestContextV61494(request,"assign");
     } catch (error) {
       employeeRequestResolveContextV61481 = null;
       app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally { app()?.hideLoading?.(); }
+  }
+
+  function dateRangeV61494(start,end){
+    const out=[];let d=String(start).slice(0,10),last=String(end||start).slice(0,10);
+    while(d<=last&&out.length<40){out.push(d);const x=new Date(`${d}T00:00:00`);x.setDate(x.getDate()+1);d=`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;}
+    return out;
+  }
+
+  async function reviewEmployeeDayoffSwapV61494(request){
+    if(!request)return;const target=String(request.detail?.target_date||"").slice(0,10);
+    if(!target){app()?.toast?.("คำขอไม่มีวันที่ต้องการหยุดแทน","error");return;}
+    try{
+      await markEmployeeRequestInReviewV61481(request.request_id);
+      employeeRequestResolveContextV61481={requestId:request.request_id,type:"DAYOFF_SWAP",empCode:request.emp_code,sourceDate:String(request.work_date).slice(0,10),targetDate:target,stage:"SOURCE",request};
+      await app().openAssignment(request.emp_code,String(request.work_date).slice(0,10));
+      window.TimeClockSchedulingRulesV6120?.prefillDayoffSwapV61494?.(request,"SOURCE");
+      showEmployeeRequestContextV61494(request,"assign");
+      app()?.toast?.("ขั้นที่ 1/2: เปลี่ยนวันหยุดเดิมให้เป็นกะทำงาน แล้วบันทึก","info");
+    }catch(e){employeeRequestResolveContextV61481=null;app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
+  }
+
+  async function reviewEmployeeLeaveV61494(request){
+    if(!request)return;
+    const dates=dateRangeV61494(request.work_date,request.detail?.end_date||request.work_date);
+    try{
+      await markEmployeeRequestInReviewV61481(request.request_id);
+      employeeRequestResolveContextV61481={requestId:request.request_id,type:"LEAVE_REQUEST",empCode:request.emp_code,dates,index:0,request};
+      await app().openAssignment(request.emp_code,dates[0]);
+      window.TimeClockSchedulingRulesV6120?.prefillLeaveRequestV61494?.(request);
+      showEmployeeRequestContextV61494(request,"assign");
+      app()?.toast?.(`จัดลา ${dates.length} วัน • บันทึก LV วันที่ 1/${dates.length}`,"info");
+    }catch(e){employeeRequestResolveContextV61481=null;app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
   }
 
   async function decideEmployeeRequestV61481(requestId,decision) {
@@ -21501,9 +21583,7 @@ ${names}${extra}
           const id=String(dayoffButtonV61491.getAttribute("data-employee-request-dayoff-review-v61491")||"");
           const request=shiftRequests.find(item=>String(item.request_id)===id);
           if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
-          await markEmployeeRequestInReviewV61481(request.request_id);
-          app()?.toast?.(`คำขอสลับวันหยุด ${fmtDate(request.work_date)} → ${fmtDate(request.detail?.target_date)} • กรุณาตรวจและปรับกะทั้ง 2 วัน`,"info");
-          await app()?.openAssignment?.(request.emp_code,String(request.work_date).slice(0,10));
+          await reviewEmployeeDayoffSwapV61494(request);
           return;
         }
 
@@ -21513,9 +21593,7 @@ ${names}${extra}
           const id=String(leaveButtonV61491.getAttribute("data-employee-request-leave-review-v61491")||"");
           const request=shiftRequests.find(item=>String(item.request_id)===id);
           if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
-          await markEmployeeRequestInReviewV61481(request.request_id);
-          app()?.toast?.(`คำขอลา ${request.detail?.leave_type||""} • กรุณาจัดกะ LV แล้วบันทึก`,"info");
-          await app()?.openAssignment?.(request.emp_code,String(request.work_date).slice(0,10));
+          await reviewEmployeeLeaveV61494(request);
           return;
         }
 
@@ -21575,14 +21653,47 @@ ${names}${extra}
     });
 
     document.addEventListener('timeclock:schedule-assignment-saved-v61481', async event => {
-      const ctx = employeeRequestResolveContextV61481;
-      if (!ctx || ctx.type !== 'SPECIAL_WORK') return;
-      const empCode = String(event?.detail?.empCode || '');
-      const workDate = String(event?.detail?.workDate || '').slice(0,10);
-      if (empCode !== String(ctx.empCode) || workDate !== String(ctx.workDate).slice(0,10)) return;
-      const requestId = ctx.requestId;
-      employeeRequestResolveContextV61481 = null;
-      await resolveEmployeeRequestV61481(requestId,`ปรับกะ/รูปแบบงานพิเศษ ${event?.detail?.workMode || ''} เรียบร้อย`);
+      const ctx=employeeRequestResolveContextV61481;if(!ctx)return;
+      const empCode=String(event?.detail?.empCode||''),workDate=String(event?.detail?.workDate||'').slice(0,10),shiftCode=String(event?.detail?.shiftCode||'').toUpperCase();
+      if(empCode!==String(ctx.empCode))return;
+
+      if(ctx.type==='SPECIAL_WORK'){
+        if(workDate!==String(ctx.workDate).slice(0,10))return;
+        const id=ctx.requestId;employeeRequestResolveContextV61481=null;clearEmployeeRequestContextV61494();
+        await resolveEmployeeRequestV61481(id,`ปรับกะ/รูปแบบงานพิเศษ ${event?.detail?.workMode||''} เรียบร้อย`);return;
+      }
+
+      if(ctx.type==='DAYOFF_SWAP'){
+        if(ctx.stage==='SOURCE'&&workDate===ctx.sourceDate){
+          const sm=(app()?.state?.filters?.shifts||[]).find(x=>String(x.shift_code||'').toUpperCase()===shiftCode);
+          if(sm?.is_workday===false||['LV','HOL','OFF'].includes(shiftCode)){app()?.toast?.("วันเดิมต้องเปลี่ยนเป็นกะทำงานก่อน","warning");return;}
+          ctx.stage='TARGET';
+          await app().openAssignment(ctx.empCode,ctx.targetDate);
+          window.TimeClockSchedulingRulesV6120?.prefillDayoffSwapV61494?.(ctx.request,"TARGET");
+          showEmployeeRequestContextV61494(ctx.request,"assign");
+          app()?.toast?.("ขั้นที่ 2/2: เปลี่ยนวันที่เลือกให้เป็นวันหยุด แล้วบันทึก","info");return;
+        }
+        if(ctx.stage==='TARGET'&&workDate===ctx.targetDate){
+          const sm=(app()?.state?.filters?.shifts||[]).find(x=>String(x.shift_code||'').toUpperCase()===shiftCode);
+          if(sm?.is_workday!==false&&!/^O/.test(shiftCode)&&!['OFF'].includes(shiftCode)){app()?.toast?.("วันที่หยุดแทนต้องบันทึกเป็นกะวันหยุด","warning");return;}
+          const id=ctx.requestId;employeeRequestResolveContextV61481=null;clearEmployeeRequestContextV61494();
+          await resolveEmployeeRequestV61481(id,"สลับวันหยุดครบทั้งวันเดิมและวันหยุดใหม่แล้ว");return;
+        }
+      }
+
+      if(ctx.type==='LEAVE_REQUEST'){
+        const expected=ctx.dates?.[ctx.index];if(workDate!==expected)return;
+        if(shiftCode!=='LV'){app()?.toast?.("คำขอลาต้องบันทึกกะ LV ก่อน","warning");return;}
+        ctx.index+=1;
+        if(ctx.index>=ctx.dates.length){
+          const id=ctx.requestId;employeeRequestResolveContextV61481=null;clearEmployeeRequestContextV61494();
+          await resolveEmployeeRequestV61481(id,"จัดกะ LV ตามช่วงวันที่ขอลาเรียบร้อย");return;
+        }
+        await app().openAssignment(ctx.empCode,ctx.dates[ctx.index]);
+        window.TimeClockSchedulingRulesV6120?.prefillLeaveRequestV61494?.(ctx.request);
+        showEmployeeRequestContextV61494(ctx.request,"assign");
+        app()?.toast?.(`บันทึก LV วันที่ ${ctx.index+1}/${ctx.dates.length}`,"info");
+      }
     });
 
     document.addEventListener(
@@ -31080,7 +31191,26 @@ ${names}${extra}
     return true;
   }
 
-  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,sequenceBlockMessage:sequenceBlockMessageV61435,ensureRuntimeRules:loadRuntimeShiftRules,prefillEmployeeRequestV61481};
+  function prefillDayoffSwapV61494(request={},stage="SOURCE"){
+    if(!st.current)return false;const d=request.detail||{};
+    if(stage==="TARGET"){chooseMode("DYNAMIC_OFF");}
+    else{
+      chooseMode("NORMAL");
+      const code=String(d.source_replacement_shift_code||st.current.baseShiftCode||"").toUpperCase();
+      if(code&&[...($("assignShiftCode")?.options||[])].some(o=>String(o.value).toUpperCase()===code))$("assignShiftCode").value=code;
+    }
+    if($("assignNote"))$("assignNote").value=`คำขอ ${request.request_no||""} • สลับวันหยุด ${request.work_date} → ${d.target_date||""} • ${request.reason||""}`;
+    if($("assignReason"))$("assignReason").value="ดำเนินการคำขอสลับวันหยุดจาก Employee Portal V6.14.94";
+    refreshAssignmentPreview();return true;
+  }
+  function prefillLeaveRequestV61494(request={}){
+    if(!st.current)return false;chooseMode("LEAVE");
+    if($("assignNote"))$("assignNote").value=`คำขอ ${request.request_no||""} • ${request.detail?.leave_type||"ลา"} • ${request.reason||""}`;
+    if($("assignReason"))$("assignReason").value="ดำเนินการคำขอลาจาก Employee Portal V6.14.94";
+    refreshAssignmentPreview();return true;
+  }
+
+  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,sequenceBlockMessage:sequenceBlockMessageV61435,ensureRuntimeRules:loadRuntimeShiftRules,prefillEmployeeRequestV61481,prefillDayoffSwapV61494,prefillLeaveRequestV61494};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;

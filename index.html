@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.93-20260826a" rel="stylesheet"/>
+<link href="./app.css?v=6.14.94-20260826a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.93</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.94</span></div>
 </form>
 </div>
 </section>
@@ -361,7 +361,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.93</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.93 Request Center Completion</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.94</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.94 Employee Request Workflow</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -1662,6 +1662,7 @@
     <div class="modal-body time-certification-body-v61139">
       <input id="timeCertificationEmpCode" type="hidden"/><input id="timeCertificationWorkDate" type="hidden"/>
       <div class="time-cert-context-v61139" id="timeCertificationContext"></div>
+      <div class="employee-request-context-v61494 hidden" id="employeeRequestTimeCertContextV61494"></div>
       <div class="time-cert-columns-v61139">
         <section class="time-cert-card-v61139">
           <div class="time-cert-section-title-v61139"><span>1</span><div><strong>ข้อมูลเวลาเดิม</strong><small>ข้อมูลกะและ Punch จริงจะไม่ถูกแก้ไข</small></div></div>
@@ -1830,6 +1831,7 @@
       <input id="assignEmpCode" type="hidden">
       <input id="assignWorkDate" type="hidden">
       <div id="assignEmployeeInfo" class="assignment-employee-summary-v61428"></div>
+      <div class="employee-request-context-v61494 hidden" id="employeeRequestAssignContextV61494"></div>
 
       <section class="assignment-shift-section-v61428">
         <div class="field">
@@ -2721,6 +2723,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.14.93-20260826a"></script>
+<script src="./app.js?v=6.14.94-20260826a"></script>
 </body>
 </html>
