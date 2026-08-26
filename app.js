@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.84";
-document.documentElement.dataset.timeClockBuild = "6.14.84";
+window.__TIME_CLOCK_BUILD__ = "V6.14.90";
+document.documentElement.dataset.timeClockBuild = "6.14.90";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.84";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.84',
+  version: '6.14.90',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -21376,7 +21376,12 @@ ${names}${extra}
       $("shiftRequestStart").value = start;
     }
     if ($("shiftRequestEnd")) {
-      $("shiftRequestEnd").value = today;
+      // V6.14.90: Employee Portal can submit special-work notices in advance.
+      // Default Request Center horizon includes the next 31 days so future
+      // requests are visible to Manager without manually extending the filter.
+      const requestEndV61490 = new Date();
+      requestEndV61490.setDate(requestEndV61490.getDate()+31);
+      $("shiftRequestEnd").value = window.TimeClockCalendarV61448.dateKey(requestEndV61490);
     }
 
     $("newShiftRequestBtn")?.addEventListener(
