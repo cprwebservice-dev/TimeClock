@@ -1,0 +1,26 @@
+AUDIT — TimeAttendance V6.14.73
+
+Finding
+- V6.14.72 calculation core completed 26 segment/calculation rows for employee 7825787 / July 2026.
+- Browser still returned HTTP 500 on ta_recalculate_employee_month_v61136 and ta_get_attendance_shift_punch_meta_v61110.
+- Monthly rebuild writes attendance_workday rows; the certification-aware row trigger recalculates each changed day automatically, while the monthly RPC also recalculates the full range afterward. This creates redundant work and can exceed API request timeout.
+- Monthly Personal frontend also called the RAW punch metadata RPC for the entire month even when every day is a normal single-segment shift such as S135.
+
+Fix
+- Bulk monthly rebuild temporarily uses the existing certification overlay guard so row trigger does not recalculate each intermediate row.
+- Cross-midnight repair runs under the same guard.
+- Final canonical calculation runs once after the final rebuilt state exists.
+- RAW punch expression index added.
+- Monthly Personal calls punch metadata only for special / multi-segment days, using short ranges (max 3 days).
+
+Retained
+- Time Certification overlay remains canonical.
+- V6.14.72 explicit Shift Calendar authority retained.
+- Raw time_logs unchanged.
+- Late 1–29 / >=30 absence / Missing Punch / Early Leave / OT / Waiting / Leave / Day-off / Night Sequence unchanged.
+
+Static validation
+- node --check app.js: PASS
+- index.html parse: PASS
+- 404.html parse: PASS
+- duplicate HTML ids: 0

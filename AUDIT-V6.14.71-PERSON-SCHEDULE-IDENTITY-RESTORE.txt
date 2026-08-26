@@ -1,0 +1,13 @@
+AUDIT — TimeAttendance V6.14.71
+
+ROOT CAUSE
+- V6.14.68–V6.14.70 appended sticky/absolute-position overrides conflicted with the existing full-month responsive column system.
+- Result: blank band before employee names and clipped 5D/6D/calendar controls.
+
+FIX
+- Base restored to V6.14.67 CSS geometry.
+- Only name-column width and internal flex layout are adjusted.
+- No sticky left-offset override is added.
+- Controls stay in normal flow.
+
+Backend / SQL unchanged.

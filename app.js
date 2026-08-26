@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.71";
+window.__TIME_CLOCK_BUILD__ = "V6.14.73";
 document.documentElement.dataset.timeClockBuild = "6.14.71";
 
 
@@ -8769,6 +8769,72 @@ window.tcIsDayShiftCode = value =>
       };
     }
 
+
+    // V6.14.73 — Monthly Personal special-punch loader.
+    // The V6.11.10 resolver is intentionally expensive because it resolves raw
+    // punch ownership across midnight. Calling it for a whole month of normal
+    // shifts caused HTTP 500 / statement-timeout errors. We now call it only for
+    // special dates, in short contiguous ranges (max 3 days each).
+    async function fetchEmployeeMonthSpecialPunchMetaV61473(empCode, scheduleRows = []) {
+      const dates = [...new Set(
+        (scheduleRows || [])
+          .filter(attendanceNeedsPunchMetaV61463)
+          .map(row => String(row?.work_date || '').slice(0,10))
+          .filter(Boolean)
+      )].sort();
+
+      if (!dates.length) return { data: [], error: null, skipped: true };
+
+      const parseDay = value => {
+        const [y,m,d] = String(value).split('-').map(Number);
+        return new Date(Date.UTC(y,m-1,d));
+      };
+      const dayDiff = (a,b) => Math.round((parseDay(b)-parseDay(a))/86400000);
+
+      const ranges = [];
+      let start = dates[0];
+      let end = dates[0];
+      let count = 1;
+      for (let i=1;i<dates.length;i++) {
+        const date = dates[i];
+        if (dayDiff(end,date) === 1 && count < 3) {
+          end = date;
+          count += 1;
+        } else {
+          ranges.push({ start, end });
+          start = end = date;
+          count = 1;
+        }
+      }
+      ranges.push({ start, end });
+
+      const rows = [];
+      let firstError = null;
+      for (const range of ranges) {
+        const response = await state.client.rpc(
+          'ta_get_attendance_shift_punch_meta_v61110',
+          {
+            p_start_date: range.start,
+            p_end_date: range.end,
+            p_emp_codes: [empCode]
+          }
+        );
+        if (response.error) {
+          firstError ||= response.error;
+          console.warn(
+            'Monthly Personal special punch metadata V6.14.73 deferred:',
+            range.start,
+            range.end,
+            response.error
+          );
+          continue;
+        }
+        rows.push(...(Array.isArray(response.data) ? response.data : []));
+      }
+
+      return { data: rows, error: firstError, skipped: false };
+    }
+
     async function fetchEmployeeMonthBundleV61138(empCode, monthValue, forceFresh = false) {
       const bounds = employeeMonthBoundsV61121(monthValue);
       const cacheKey = employeeMonthCacheKeyV61138(empCode, bounds.value);
@@ -8796,14 +8862,11 @@ window.tcIsDayShiftCode = value =>
         const attendancePromise =
           fetchEmployeeMonthAttendanceDetailV61138(empCode, bounds);
 
-        const punchPromise = state.client.rpc(
-          'ta_get_attendance_shift_punch_meta_v61110',
-          {
-            p_start_date: bounds.start,
-            p_end_date: bounds.end,
-            p_emp_codes: [empCode]
-          }
-        );
+        // V6.14.73: Do not scan RAW punch metadata for every Monthly Personal
+        // load. Normal STD/S043/S134/S135 days already have canonical IN/OUT in
+        // Attendance Detail. Punch metadata is loaded later only for dates that
+        // are truly special / multi-segment.
+        const punchPromise = Promise.resolve({ data: [], error: null });
 
         const certificationPromise = state.client.rpc(
           'ta_get_time_certification_range_v61139',
@@ -8918,14 +8981,28 @@ window.tcIsDayShiftCode = value =>
           if (meta) Object.assign(row, meta);
         });
 
+        // V6.14.73: after Schedule + Work Mode enrichment we know exactly which
+        // dates need Shift-2/raw-punch metadata. Normal night shifts (S134/S135)
+        // do NOT need this RPC.
+        let punchResponseV61473 = punchResponse;
+        try {
+          punchResponseV61473 = await fetchEmployeeMonthSpecialPunchMetaV61473(
+            empCode,
+            scheduleRows
+          );
+        } catch (error) {
+          punchResponseV61473 = { data: [], error };
+          console.warn('Monthly Personal special punch metadata V6.14.73 unavailable:', error);
+        }
+
         const byDate = new Map();
         (attendanceData || []).forEach(row => {
           const date = String(row?.work_date || '').slice(0,10);
           if (date) byDate.set(date, { ...row });
         });
 
-        if (!punchResponse.error) {
-          (punchResponse.data || []).forEach(meta => {
+        if (!punchResponseV61473.error || (punchResponseV61473.data || []).length) {
+          (punchResponseV61473.data || []).forEach(meta => {
             const date = String(meta?.work_date || '').slice(0,10);
             if (!date) return;
             const row = byDate.get(date) || {
