@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.14.82";
+  const VERSION="6.14.89";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -21,7 +21,7 @@
   function config(){try{return {...DEFAULT,...JSON.parse(localStorage.getItem(CFG_KEY)||"{}")};}catch(_){return DEFAULT;}}
   function toast(msg,type="info"){const el=$("portalToast");el.textContent=msg;el.className=`portal-toast ${type}`;clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add("hidden"),3500);}
   function loading(on,text="กำลังโหลด..."){const el=$("portalLoading");$("portalLoadingText").textContent=text;el.classList.toggle("hidden",!on);}
-  function friendly(e){const m=String(e?.message||e||"");if(m.includes("PORTAL_LOGIN_INVALID"))return"รหัสพนักงานหรือ PIN ไม่ถูกต้อง";if(m.includes("PORTAL_LOCKED_15_MINUTES"))return"กรอก PIN ผิดเกินกำหนด ระบบล็อกชั่วคราว 15 นาที";if(m.includes("ACTIVATION_CODE_INVALID"))return"Activation Code ไม่ถูกต้อง";if(m.includes("ACTIVATION_CODE_EXPIRED"))return"Activation Code หมดอายุ กรุณาขอ Code ใหม่จาก Manager";if(m.includes("PORTAL_EMPLOYEE_NOT_IN_TEAM"))return"รหัสพนักงานไม่อยู่ในทีมของ Link นี้";if(m.includes("PORTAL_NOT_ENABLED"))return"HR ยังไม่ได้เปิดสิทธิ์ Employee Portal";if(m.includes("PIN_TOO_EASY"))return"PIN ง่ายเกินไป กรุณาตั้งเลขอื่น";if(m.includes("PIN_CANNOT_MATCH_EMPLOYEE_ID"))return"PIN ห้ามตรงกับเลขท้ายรหัสพนักงาน";if(m.includes("PIN_MUST_BE_6_DIGITS"))return"PIN ต้องเป็นตัวเลข 6 หลัก";if(m.includes("PORTAL_SESSION_INVALID_OR_EXPIRED"))return"Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";return m||"เกิดข้อผิดพลาด";}
+  function friendly(e){const m=String(e?.message||e||"");if(m.includes("PORTAL_LOGIN_INVALID"))return"รหัสพนักงานหรือ PIN ไม่ถูกต้อง";if(m.includes("PORTAL_LOCKED_15_MINUTES"))return"กรอก PIN ผิดเกินกำหนด ระบบล็อกชั่วคราว 15 นาที";if(m.includes("ACTIVATION_CODE_INVALID"))return"Activation Code ไม่ถูกต้อง";if(m.includes("ACTIVATION_CODE_EXPIRED"))return"Activation Code หมดอายุ กรุณาขอ Code ใหม่จาก Manager";if(m.includes("PORTAL_EMPLOYEE_NOT_IN_TEAM"))return"รหัสพนักงานไม่อยู่ในทีมของ Link นี้";if(m.includes("PORTAL_NOT_ENABLED"))return"HR ยังไม่ได้เปิดสิทธิ์ Employee Portal";if(m.includes("PIN_TOO_EASY"))return"PIN ง่ายเกินไป กรุณาตั้งเลขอื่น";if(m.includes("PIN_CANNOT_MATCH_EMPLOYEE_ID"))return"PIN ห้ามตรงกับเลขท้ายรหัสพนักงาน";if(m.includes("PIN_MUST_BE_6_DIGITS"))return"PIN ต้องเป็นตัวเลข 6 หลัก";if(m.includes("PORTAL_SESSION_INVALID_OR_EXPIRED"))return"Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";if(m.includes("PORTAL_DATE_RANGE_MAX_63_DAYS"))return"ช่วงวันที่ปฏิทินกว้างเกินกำหนด กรุณารีเฟรชหน้าเว็บ";return m||"เกิดข้อผิดพลาด";}
   async function rpc(name,args={}){const {data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   function setAuthTab(tab){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.classList.toggle("active",b.dataset.authTab===tab));$("portalActivateForm").classList.toggle("hidden",tab!=="activate");$("portalLoginForm").classList.toggle("hidden",tab!=="login");}
   function deviceLabel(){return `${navigator.platform||"Mobile"} • ${String(navigator.userAgent||"").slice(0,80)}`;}
@@ -46,7 +46,49 @@
   function subtype(r){return({MISSING_IN:"ไม่มีเวลาเข้า",MISSING_OUT:"ไม่มีเวลาออก",WRONG_TIME:"เวลาไม่ถูกต้อง",NORMAL_LATE_CUSTOMER:"กะปกติ + งานลูกค้าช่วงดึก",SPLIT_WAIT_NIGHT:"กะเช้า + รอเข้ากะดึก",HOUR_BASED:"กะนับชั่วโมง"})[r.request_subtype]||r.request_subtype||"-";}
   function renderRequests(){let rows=requests;if(requestFilter==="PENDING")rows=rows.filter(r=>["PENDING","IN_REVIEW"].includes(String(r.status).toUpperCase()));if(requestFilter==="DONE")rows=rows.filter(r=>["APPROVED","RESOLVED","REJECTED","CANCELLED"].includes(String(r.status).toUpperCase()));const box=$("portalRequestList");box.innerHTML=rows.length?rows.map(r=>{const [sl,sc]=requestStatus(r.status);return `<article class="portal-request-item"><div class="portal-request-head"><div><strong>${esc(r.request_no||"คำขอ")} • ${esc(fmtDate(r.work_date))}</strong><span>${esc(requestType(r))} • ${esc(subtype(r))}</span></div><span class="portal-request-status ${sc}">${esc(sl)}</span></div><p>${esc(r.reason||"-")}</p>${r.decision_note?`<p><b>Manager:</b> ${esc(r.decision_note)}</p>`:""}${String(r.status).toUpperCase()==="PENDING"?`<div class="portal-request-actions"><button data-cancel-request="${esc(r.request_id)}">ยกเลิกคำขอ</button></div>`:""}</article>`;}).join(""):'<div class="portal-empty">ยังไม่มีคำขอ / แจ้งข้อมูล</div>';}
   function renderNotifications(){const box=$("portalNotificationList");box.innerHTML=notifications.length?notifications.map(n=>`<article class="portal-notification-item ${n.is_read?"":"unread"}" data-read-notification="${esc(n.notification_id)}"><div class="portal-notification-head"><strong>${esc(n.title||"แจ้งเตือน")}</strong><span>${esc(fmtDateTime(n.created_at))}</span></div><p>${esc(n.message||"")}</p></article>`).join(""):'<div class="portal-empty">ยังไม่มีแจ้งเตือน</div>';const unread=notifications.filter(n=>!n.is_read).length;$("portalNotifBadge").textContent=unread;$("portalNotifBadge").classList.toggle("hidden",!unread);}
-  async function loadCalendar(){const b=monthBounds(scheduleMonth),start=[addDays(today(),-31),b.start].sort()[0],end=[addDays(today(),14),b.end].sort().reverse()[0];calendar=await rpc("ta_portal_get_my_calendar_v61482",{p_session_token:session(),p_start_date:start,p_end_date:end})||[];renderToday();renderWeek();renderCalendar();renderTime();}
+  async function loadCalendar(){
+    const b=monthBounds(scheduleMonth);
+    const homeRange={start:addDays(today(),-31),end:addDays(today(),14)};
+    const monthRange={start:b.start,end:b.end};
+
+    // V6.14.89:
+    // Backend intentionally limits one Portal calendar request to 63 days.
+    // The previous UI created one large continuous range between "today" and
+    // whichever month the user opened. When browsing an older/newer month that
+    // span could exceed 63 days and the whole Portal showed
+    // PORTAL_DATE_RANGE_MAX_63_DAYS.
+    //
+    // Load the home/time window and the selected calendar month independently,
+    // then merge by work_date. Each request stays well below the backend limit.
+    const overlaps=!(monthRange.end<homeRange.start || monthRange.start>homeRange.end);
+    const ranges=overlaps
+      ? [{
+          start:[homeRange.start,monthRange.start].sort()[0],
+          end:[homeRange.end,monthRange.end].sort().reverse()[0]
+        }]
+      : [homeRange,monthRange];
+
+    const pages=await Promise.all(ranges.map(r=>rpc(
+      "ta_portal_get_my_calendar_v61482",
+      {
+        p_session_token:session(),
+        p_start_date:r.start,
+        p_end_date:r.end
+      }
+    )));
+
+    const merged=new Map();
+    pages.flatMap(x=>Array.isArray(x)?x:[]).forEach(r=>{
+      const key=String(r?.work_date||"").slice(0,10);
+      if(key)merged.set(key,r);
+    });
+    calendar=[...merged.values()].sort((a,b)=>String(a.work_date).localeCompare(String(b.work_date)));
+
+    renderToday();
+    renderWeek();
+    renderCalendar();
+    renderTime();
+  }
   async function loadRequests(){requests=await rpc("ta_portal_get_my_requests_v61482",{p_session_token:session(),p_start_date:addDays(today(),-180),p_end_date:addDays(today(),180)})||[];renderRequests();}
   async function loadNotifications(){notifications=await rpc("ta_portal_get_notifications_v61482",{p_session_token:session(),p_limit:100})||[];renderNotifications();}
   async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{await Promise.all([loadCalendar(),loadRequests(),loadNotifications()]);}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);}}
