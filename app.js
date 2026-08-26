@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.90";
-document.documentElement.dataset.timeClockBuild = "6.14.90";
+window.__TIME_CLOCK_BUILD__ = "V6.14.91";
+document.documentElement.dataset.timeClockBuild = "6.14.91";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.90";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.90',
+  version: '6.14.91',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -20556,7 +20556,9 @@ ${names}${extra}
     return ({
       SHIFT_CHANGE:"ขอแก้ไขกะ",
       TIME_ISSUE:"แจ้งปัญหาเวลาทำงาน",
-      SPECIAL_WORK:"แจ้งทำงานกะพิเศษ"
+      SPECIAL_WORK:"แจ้งทำงานกะพิเศษ",
+      DAYOFF_SWAP:"ขอสลับวันหยุด",
+      LEAVE_REQUEST:"ขอลา"
     })[String(type || "").toUpperCase()] || type || "-";
   }
 
@@ -20575,6 +20577,12 @@ ${names}${extra}
         SPLIT_WAIT_NIGHT:"กะเช้า + รอเข้ากะดึก",
         HOUR_BASED:"กะนับชั่วโมง"
       })[key] || key || "-";
+    }
+    if (String(type || "").toUpperCase() === "DAYOFF_SWAP") {
+      return ({SWAP_DAYOFF:"สลับวันหยุด"})[key] || key || "-";
+    }
+    if (String(type || "").toUpperCase() === "LEAVE_REQUEST") {
+      return ({FULL_DAY:"ลาเต็มวัน",PARTIAL_DAY:"ลาบางส่วน"})[key] || key || "-";
     }
     return key || "-";
   }
@@ -20612,6 +20620,14 @@ ${names}${extra}
         times = ` • งานพิเศษ ${employeeRequestFormatTimeV61481(detail.special_start)}–${employeeRequestFormatTimeV61481(detail.special_end)}`;
       }
       return `${modeLabel}${times}${detail.work_location ? ` • ${detail.work_location}` : ""}`;
+    }
+    if (request.request_type === "DAYOFF_SWAP") {
+      return `สลับวันหยุด ${fmtDate(request.work_date)} → ${fmtDate(detail.target_date)}`;
+    }
+    if (request.request_type === "LEAVE_REQUEST") {
+      const endText = detail.end_date && String(detail.end_date).slice(0,10)!==String(request.work_date).slice(0,10)
+        ? ` – ${fmtDate(detail.end_date)}` : "";
+      return `${detail.leave_type || "ลา"} • ${fmtDate(request.work_date)}${endText}`;
     }
     return "-";
   }
@@ -21047,6 +21063,10 @@ ${names}${extra}
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-time-certify-v61481="${esc(request.request_id)}">รับรองเวลา</button>`);
             } else if (request.request_type === "SPECIAL_WORK") {
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-special-review-v61481="${esc(request.request_id)}">ตรวจและจัดกะ</button>`);
+            } else if (request.request_type === "DAYOFF_SWAP") {
+              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">ตรวจสลับวันหยุด</button>`);
+            } else if (request.request_type === "LEAVE_REQUEST") {
+              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">ตรวจและจัดลา</button>`);
             }
             actions.push(`<button class="btn btn-danger-soft btn-sm" data-employee-request-decision-v61481="${esc(request.request_id)}|REJECTED">ไม่อนุมัติ</button>`);
           }
@@ -21449,15 +21469,45 @@ ${names}${extra}
 
         const timeIssueButtonV61481 = event.target.closest("[data-employee-request-time-certify-v61481]");
         if (timeIssueButtonV61481) {
-          const request = employeeRequestsV61481.find(item => String(item.request_id) === String(timeIssueButtonV61481.dataset.employeeRequestTimeCertifyV61481));
-          reviewEmployeeTimeIssueV61481(request);
+          event.preventDefault();
+          const id=String(timeIssueButtonV61481.getAttribute("data-employee-request-time-certify-v61481")||"");
+          const request=shiftRequests.find(item=>String(item.request_id)===id);
+          if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
+          await reviewEmployeeTimeIssueV61481(request);
           return;
         }
 
         const specialButtonV61481 = event.target.closest("[data-employee-request-special-review-v61481]");
         if (specialButtonV61481) {
-          const request = employeeRequestsV61481.find(item => String(item.request_id) === String(specialButtonV61481.dataset.employeeRequestSpecialReviewV61481));
-          reviewEmployeeSpecialWorkV61481(request);
+          event.preventDefault();
+          const id=String(specialButtonV61481.getAttribute("data-employee-request-special-review-v61481")||"");
+          const request=shiftRequests.find(item=>String(item.request_id)===id);
+          if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
+          await reviewEmployeeSpecialWorkV61481(request);
+          return;
+        }
+
+        const dayoffButtonV61491=event.target.closest("[data-employee-request-dayoff-review-v61491]");
+        if(dayoffButtonV61491){
+          event.preventDefault();
+          const id=String(dayoffButtonV61491.getAttribute("data-employee-request-dayoff-review-v61491")||"");
+          const request=shiftRequests.find(item=>String(item.request_id)===id);
+          if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
+          await markEmployeeRequestInReviewV61481(request.request_id);
+          app()?.toast?.(`คำขอสลับวันหยุด ${fmtDate(request.work_date)} → ${fmtDate(request.detail?.target_date)} • กรุณาตรวจและปรับกะทั้ง 2 วัน`,"info");
+          await app()?.openAssignment?.(request.emp_code,String(request.work_date).slice(0,10));
+          return;
+        }
+
+        const leaveButtonV61491=event.target.closest("[data-employee-request-leave-review-v61491]");
+        if(leaveButtonV61491){
+          event.preventDefault();
+          const id=String(leaveButtonV61491.getAttribute("data-employee-request-leave-review-v61491")||"");
+          const request=shiftRequests.find(item=>String(item.request_id)===id);
+          if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
+          await markEmployeeRequestInReviewV61481(request.request_id);
+          app()?.toast?.(`คำขอลา ${request.detail?.leave_type||""} • กรุณาจัดกะ LV แล้วบันทึก`,"info");
+          await app()?.openAssignment?.(request.emp_code,String(request.work_date).slice(0,10));
           return;
         }
 

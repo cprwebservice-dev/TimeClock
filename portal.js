@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.14.89";
+  const VERSION="6.14.91";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -42,8 +42,8 @@
   function renderCalendar(){const b=monthBounds(scheduleMonth);$("portalScheduleMonthTitle").textContent=b.title;let html=["อา","จ","อ","พ","พฤ","ศ","ส"].map(x=>`<div class="portal-cal-head">${x}</div>`).join("");for(let i=0;i<b.first;i++)html+='<div class="portal-cal-day blank"></div>';for(let d=1;d<=b.days;d++){const date=`${b.start.slice(0,8)}${String(d).padStart(2,"0")}`,r=row(date),m=dayMeta(r||{});html+=`<div class="portal-cal-day ${m.tone} ${date===today()?"today":""}"><span>${d}</span><strong>${esc(r?.effective_shift_code||"-")}</strong><small>${esc(m.label)}</small><small>${esc(fmtTime(r?.shift_start_time))}–${esc(fmtTime(r?.shift_end_time))}</small></div>`;}$("portalCalendar").innerHTML=html;}
   function renderTime(){const rows=calendar.filter(r=>String(r.work_date)<=today()).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date))).slice(0,31),box=$("portalTimeList");box.innerHTML=rows.length?rows.map(r=>{const m=dayMeta(r);return `<article class="portal-time-item"><div class="portal-time-head"><strong>${esc(fmtDate(r.work_date))} • ${esc(r.effective_shift_code||"-")}</strong><span>${esc(m.label)}</span></div><div class="portal-time-grid"><div><span>เข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong></div><div><span>ออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong></div><div><span>สาย</span><strong>${Number(r.late_minutes||0).toLocaleString("th-TH")} นาที</strong></div><div><span>กลับก่อน</span><strong>${Number(r.early_leave_minutes||0).toLocaleString("th-TH")} นาที</strong></div></div></article>`;}).join(""):'<div class="portal-empty">ยังไม่มีข้อมูลเวลาทำงาน</div>';}
   function requestStatus(s){const x=String(s||"").toUpperCase();if(["APPROVED","RESOLVED"].includes(x))return["ดำเนินการแล้ว","done"];if(["REJECTED","CANCELLED"].includes(x))return[x==="REJECTED"?"ไม่อนุมัติ":"ยกเลิก","reject"];if(x==="IN_REVIEW")return["กำลังตรวจสอบ","pending"];return["รอดำเนินการ","pending"];}
-  function requestType(r){return r.request_type==="TIME_ISSUE"?"ปัญหาเวลาทำงาน":"งานกะพิเศษ";}
-  function subtype(r){return({MISSING_IN:"ไม่มีเวลาเข้า",MISSING_OUT:"ไม่มีเวลาออก",WRONG_TIME:"เวลาไม่ถูกต้อง",NORMAL_LATE_CUSTOMER:"กะปกติ + งานลูกค้าช่วงดึก",SPLIT_WAIT_NIGHT:"กะเช้า + รอเข้ากะดึก",HOUR_BASED:"กะนับชั่วโมง"})[r.request_subtype]||r.request_subtype||"-";}
+  function requestType(r){return({TIME_ISSUE:"ปัญหาเวลาทำงาน",SPECIAL_WORK:"งานกะพิเศษ",DAYOFF_SWAP:"สลับวันหยุด",LEAVE_REQUEST:"ลา"})[r.request_type]||r.request_type||"-";}
+  function subtype(r){return({MISSING_IN:"ไม่มีเวลาเข้า",MISSING_OUT:"ไม่มีเวลาออก",WRONG_TIME:"เวลาไม่ถูกต้อง",NORMAL_LATE_CUSTOMER:"กะปกติ + งานลูกค้าช่วงดึก",SPLIT_WAIT_NIGHT:"กะเช้า + รอเข้ากะดึก",HOUR_BASED:"กะนับชั่วโมง",SWAP_DAYOFF:"สลับวันหยุด",FULL_DAY:"ลาเต็มวัน",PARTIAL_DAY:"ลาบางส่วน"})[r.request_subtype]||r.request_subtype||"-";}
   function renderRequests(){let rows=requests;if(requestFilter==="PENDING")rows=rows.filter(r=>["PENDING","IN_REVIEW"].includes(String(r.status).toUpperCase()));if(requestFilter==="DONE")rows=rows.filter(r=>["APPROVED","RESOLVED","REJECTED","CANCELLED"].includes(String(r.status).toUpperCase()));const box=$("portalRequestList");box.innerHTML=rows.length?rows.map(r=>{const [sl,sc]=requestStatus(r.status);return `<article class="portal-request-item"><div class="portal-request-head"><div><strong>${esc(r.request_no||"คำขอ")} • ${esc(fmtDate(r.work_date))}</strong><span>${esc(requestType(r))} • ${esc(subtype(r))}</span></div><span class="portal-request-status ${sc}">${esc(sl)}</span></div><p>${esc(r.reason||"-")}</p>${r.decision_note?`<p><b>Manager:</b> ${esc(r.decision_note)}</p>`:""}${String(r.status).toUpperCase()==="PENDING"?`<div class="portal-request-actions"><button data-cancel-request="${esc(r.request_id)}">ยกเลิกคำขอ</button></div>`:""}</article>`;}).join(""):'<div class="portal-empty">ยังไม่มีคำขอ / แจ้งข้อมูล</div>';}
   function renderNotifications(){const box=$("portalNotificationList");box.innerHTML=notifications.length?notifications.map(n=>`<article class="portal-notification-item ${n.is_read?"":"unread"}" data-read-notification="${esc(n.notification_id)}"><div class="portal-notification-head"><strong>${esc(n.title||"แจ้งเตือน")}</strong><span>${esc(fmtDateTime(n.created_at))}</span></div><p>${esc(n.message||"")}</p></article>`).join(""):'<div class="portal-empty">ยังไม่มีแจ้งเตือน</div>';const unread=notifications.filter(n=>!n.is_read).length;$("portalNotifBadge").textContent=unread;$("portalNotifBadge").classList.toggle("hidden",!unread);}
   async function loadCalendar(){
@@ -97,7 +97,33 @@
   function renderEvidence(){const d=$("portalRequestDate").value,r=row(d),box=$("portalRequestEvidence");if(!d){box.textContent="เลือกวันที่เพื่อดูข้อมูลกะ/เวลาในระบบ";return;}if(!r){box.textContent=`${fmtDate(d)} • ยังไม่พบข้อมูลกะ/Attendance`;return;}box.innerHTML=`<b>${esc(fmtDate(d))}</b> • กะ ${esc(r.effective_shift_code||"-")} ${esc(fmtTime(r.shift_start_time))}–${esc(fmtTime(r.shift_end_time))}<br>ระบบพบเวลาเข้า <b>${esc(fmtTime(r.first_in||r.actual_in_at))}</b> • เวลาออก <b>${esc(fmtTime(r.last_out||r.actual_out_at))}</b><br><small>ข้อมูลนี้อ่านอย่างเดียว User ไม่สามารถแก้ Raw Punch จากหน้านี้</small>`;}
   function openRequest(type="TIME_ISSUE",date=today()){const m=$("portalRequestModal");$("portalRequestType").value=type;$("portalRequestDate").value=date;$("portalRequestReason").value="";$("portalSpecialStart").value="";$("portalSpecialEnd").value="";$("portalSpecialLocation").value="";fillSubtype();m.classList.remove("hidden");}
   function closeRequest(){$("portalRequestModal").classList.add("hidden");}
-  async function submitRequest(e){e.preventDefault();const type=$("portalRequestType").value,detail={source:"EMPLOYEE_PORTAL_V61482"};if(type==="SPECIAL_WORK"){detail.reported_start_time=$("portalSpecialStart").value||null;detail.reported_end_time=$("portalSpecialEnd").value||null;detail.customer_location=$("portalSpecialLocation").value.trim()||null;detail.reported_time_is_reference_only=true;}loading(true,"กำลังส่งให้ Manager...");try{await rpc("ta_portal_submit_request_v61482",{p_session_token:session(),p_work_date:$("portalRequestDate").value,p_request_type:type,p_request_subtype:$("portalRequestSubtype").value,p_reason:$("portalRequestReason").value.trim(),p_detail:detail});closeRequest();toast("ส่งให้ Manager แล้ว","success");await loadRequests();navigate("requests");}catch(err){toast(friendly(err),"error");}finally{loading(false);}}
+  async function submitRequest(e){
+    e.preventDefault();
+    const type=$("portalRequestType").value,detail={source:"EMPLOYEE_PORTAL_V61491"};
+    if(type==="SPECIAL_WORK"){
+      detail.reported_start_time=$("portalSpecialStart").value||null;
+      detail.reported_end_time=$("portalSpecialEnd").value||null;
+      detail.customer_location=$("portalSpecialLocation").value.trim()||null;
+      detail.reported_time_is_reference_only=true;
+    }
+    if(type==="DAYOFF_SWAP"){
+      detail.target_date=$("portalDayoffTargetV61491")?.value||null;
+      if(!detail.target_date)return toast("กรุณาเลือกวันที่ต้องการหยุดแทน","warning");
+    }
+    if(type==="LEAVE_REQUEST"){
+      detail.leave_type=$("portalLeaveTypeV61491")?.value.trim()||"";
+      detail.end_date=$("portalLeaveEndV61491")?.value||$("portalRequestDate").value;
+      detail.leave_start_time=$("portalLeaveStartV61491")?.value||null;
+      detail.leave_end_time=$("portalLeaveEndTimeV61491")?.value||null;
+      if(!detail.leave_type)return toast("กรุณาระบุประเภทการลา","warning");
+    }
+    loading(true,"กำลังส่งให้ Manager...");
+    try{
+      await rpc("ta_portal_submit_request_v61482",{p_session_token:session(),p_work_date:$("portalRequestDate").value,p_request_type:type,p_request_subtype:$("portalRequestSubtype").value,p_reason:$("portalRequestReason").value.trim(),p_detail:detail});
+      closeRequest();toast("ส่งให้ Manager แล้ว","success");await loadRequests();navigate("requests");
+    }catch(err){toast(friendly(err),"error");}
+    finally{loading(false);}
+  }
   async function cancelRequest(id){if(!confirm("ยืนยันยกเลิกคำขอนี้?"))return;try{await rpc("ta_portal_cancel_request_v61482",{p_session_token:session(),p_request_id:id});toast("ยกเลิกคำขอแล้ว","success");await loadRequests();}catch(e){toast(friendly(e),"error");}}
   async function markRead(id){try{await rpc("ta_portal_mark_notification_read_v61482",{p_session_token:session(),p_notification_id:id});const n=notifications.find(x=>x.notification_id===id);if(n)n.is_read=true;renderNotifications();}catch(_){}}
   function bind(){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.authTab)));$("portalActivateForm").addEventListener("submit",activate);$("portalLoginForm").addEventListener("submit",login);$("portalLogoutBtn").addEventListener("click",logout);$("portalRefreshBtn").addEventListener("click",refreshAll);document.addEventListener("click",e=>{const n=e.target.closest("[data-portal-nav]");if(n){navigate(n.dataset.portalNav);return;}const q=e.target.closest("[data-request-quick]");if(q){openRequest(q.dataset.requestQuick,today());return;}if(e.target.closest("[data-close-request]")){closeRequest();return;}const c=e.target.closest("[data-cancel-request]");if(c){cancelRequest(c.dataset.cancelRequest);return;}const r=e.target.closest("[data-read-notification]");if(r){markRead(r.dataset.readNotification);return;}});$("portalNewRequestBtn").addEventListener("click",()=>openRequest("TIME_ISSUE",today()));$("portalRequestType").addEventListener("change",fillSubtype);$("portalRequestDate").addEventListener("change",renderEvidence);$("portalRequestForm").addEventListener("submit",submitRequest);document.querySelectorAll("[data-request-filter]").forEach(b=>b.addEventListener("click",()=>{requestFilter=b.dataset.requestFilter;document.querySelectorAll("[data-request-filter]").forEach(x=>x.classList.toggle("active",x===b));renderRequests();}));$("portalPrevMonth").addEventListener("click",async()=>{scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()-1,1);await loadCalendar();});$("portalNextMonth").addEventListener("click",async()=>{scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()+1,1);await loadCalendar();});$("portalThisMonth").addEventListener("click",async()=>{scheduleMonth=new Date();await loadCalendar();});}
