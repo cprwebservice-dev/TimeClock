@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.92";
-document.documentElement.dataset.timeClockBuild = "6.14.92";
+window.__TIME_CLOCK_BUILD__ = "V6.14.93";
+document.documentElement.dataset.timeClockBuild = "6.14.93";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.92";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.92',
+  version: '6.14.93',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -21157,7 +21157,13 @@ ${names}${extra}
       if (!row) throw new Error("ไม่พบ Attendance ของวันที่แจ้ง กรุณาประมวลผล Attendance ก่อน");
       await markEmployeeRequestInReviewV61481(request.request_id);
       employeeRequestResolveContextV61481 = {requestId:request.request_id,type:"TIME_ISSUE",empCode:request.emp_code,workDate:String(request.work_date).slice(0,10)};
-      app()?.openTimeCertificationModalV61139?.({...row,emp_code:request.emp_code,work_date:String(request.work_date).slice(0,10)},"employee-request-v61481");
+      if (typeof app()?.openTimeCertificationModalV61139 !== "function") {
+        throw new Error("TIME_CERTIFICATION_UI_NOT_READY");
+      }
+      app().openTimeCertificationModalV61139(
+        {...row,emp_code:request.emp_code,work_date:String(request.work_date).slice(0,10)},
+        "employee-request-v61481"
+      );
     } catch (error) {
       app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally { app()?.hideLoading?.(); }
@@ -21170,7 +21176,10 @@ ${names}${extra}
       await ensureEmployeeRequestScheduleRowV61481(request.emp_code,String(request.work_date).slice(0,10));
       await markEmployeeRequestInReviewV61481(request.request_id);
       employeeRequestResolveContextV61481 = {requestId:request.request_id,type:"SPECIAL_WORK",empCode:request.emp_code,workDate:String(request.work_date).slice(0,10)};
-      await app()?.openAssignment?.(request.emp_code,String(request.work_date).slice(0,10));
+      if (typeof app()?.openAssignment !== "function") {
+        throw new Error("SCHEDULE_ASSIGNMENT_UI_NOT_READY");
+      }
+      await app().openAssignment(request.emp_code,String(request.work_date).slice(0,10));
       window.TimeClockSchedulingRulesV6120?.prefillEmployeeRequestV61481?.(request);
     } catch (error) {
       employeeRequestResolveContextV61481 = null;
@@ -21399,9 +21408,8 @@ ${names}${extra}
       // V6.14.90: Employee Portal can submit special-work notices in advance.
       // Default Request Center horizon includes the next 31 days so future
       // requests are visible to Manager without manually extending the filter.
-      const requestEndV61490 = new Date();
-      requestEndV61490.setDate(requestEndV61490.getDate()+31);
-      $("shiftRequestEnd").value = window.TimeClockCalendarV61448.dateKey(requestEndV61490);
+      $("shiftRequestEnd").value =
+        window.TimeClockCalendarV61448.addDays(today,31);
     }
 
     $("newShiftRequestBtn")?.addEventListener(
@@ -21583,6 +21591,14 @@ ${names}${extra}
     );
 
     applyRoleUI();
+
+    // V6.14.93:
+    // boot() may open shift-requests before this enhancement module has set
+    // the +31 day default. Refresh once after binding so advance requests are
+    // included immediately, without requiring the Manager to press Search.
+    if (app()?.state?.currentPage === "shift-requests") {
+      setTimeout(() => loadShiftRequests(),0);
+    }
   }
 
   window.TimeClockV680 = Object.freeze({
@@ -31037,22 +31053,25 @@ ${names}${extra}
     const mode=String(request?.request_subtype||detail?.work_mode_code||'NORMAL_LATE_CUSTOMER').toUpperCase();
     if(!['NORMAL_LATE_CUSTOMER','SPLIT_WAIT_NIGHT','HOUR_BASED'].includes(mode))return false;
     chooseMode(mode);
+    const portalStart=detail.reported_start_time||detail.special_start||detail.second_start||detail.hour_start||null;
+    const portalEnd=detail.reported_end_time||detail.special_end||detail.second_end||null;
+    const portalLocation=detail.customer_location||detail.work_location||null;
     if(mode==='NORMAL_LATE_CUSTOMER'){
-      if($('assignCustomerStart')&&detail.special_start)$('assignCustomerStart').value=String(detail.special_start).slice(0,5);
+      if($('assignCustomerStart')&&portalStart)$('assignCustomerStart').value=String(portalStart).slice(0,5);
       if($('assignCustomerEndMode'))$('assignCustomerEndMode').value='FIXED';
-      if($('assignCustomerEnd')&&detail.special_end)$('assignCustomerEnd').value=String(detail.special_end).slice(0,5);
+      if($('assignCustomerEnd')&&portalEnd)$('assignCustomerEnd').value=String(portalEnd).slice(0,5);
     }else if(mode==='SPLIT_WAIT_NIGHT'){
       if($('assignFirstEndV6120')&&detail.first_end)$('assignFirstEndV6120').value=String(detail.first_end).slice(0,5);
-      if($('assignSecondStartV6120')&&detail.second_start)$('assignSecondStartV6120').value=String(detail.second_start).slice(0,5);
-      if($('assignSecondEndV6120')&&detail.second_end)$('assignSecondEndV6120').value=String(detail.second_end).slice(0,5);
+      if($('assignSecondStartV6120')&&portalStart)$('assignSecondStartV6120').value=String(portalStart).slice(0,5);
+      if($('assignSecondEndV6120')&&portalEnd)$('assignSecondEndV6120').value=String(portalEnd).slice(0,5);
     }else if(mode==='HOUR_BASED'){
-      if($('assignHourStartV6120')&&detail.hour_start)$('assignHourStartV6120').value=String(detail.hour_start).slice(0,5);
+      if($('assignHourStartV6120')&&portalStart)$('assignHourStartV6120').value=String(portalStart).slice(0,5);
     }
     if($('assignNote')){
       const parts=[
         `คำขอ ${request?.request_no||request?.request_id||''}`.trim(),
         request?.reason||'',
-        detail?.work_location?`ลูกค้า/สถานที่: ${detail.work_location}`:''
+        portalLocation?`ลูกค้า/สถานที่: ${portalLocation}`:''
       ].filter(Boolean);
       $('assignNote').value=parts.join(' • ');
     }
