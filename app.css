@@ -22920,3 +22920,181 @@ body.theme-dark #employeeMonthScheduleModal .employee-month-day-v61149.is-filter
 .dark #employeeMonthScheduleModal .employee-month-day-v61149.is-filter-muted-v61479{
   opacity:.24;
 }
+
+/* ========================================================================== */
+/* V6.14.80 — Monthly Personal extended quick filters                        */
+/* ========================================================================== */
+#employeeMonthScheduleModal .employee-month-summary-v61121{
+  grid-template-columns:repeat(7,minmax(110px,1fr)) minmax(190px,1.35fr)!important;
+}
+
+#employeeMonthScheduleModal .employee-month-quick-filters-v61480{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:7px;
+  padding:7px 9px;
+  margin:-2px 0 9px;
+  border:1px solid #dbe6ef;
+  border-radius:12px;
+  background:#f8fbfe;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-label-v61480{
+  color:#7a8ea2;
+  font-size:8.5px;
+  font-weight:900;
+  letter-spacing:.04em;
+  white-space:nowrap;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480{
+  appearance:none;
+  -webkit-appearance:none;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:28px;
+  padding:5px 9px;
+  border:1px solid #d7e3ed;
+  border-radius:999px;
+  background:#fff;
+  color:#52697d;
+  font:inherit;
+  cursor:pointer;
+  transition:border-color .16s ease,background .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480:hover{
+  transform:translateY(-1px);
+  border-color:#aac8e4;
+  box-shadow:0 5px 12px rgba(15,23,42,.06);
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480:focus-visible{
+  outline:2px solid #60a5fa;
+  outline-offset:2px;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480 strong{
+  font-size:9px;
+  font-weight:900;
+  white-space:nowrap;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480 b{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:20px;
+  height:18px;
+  padding:0 5px;
+  border-radius:999px;
+  background:#edf4fa;
+  color:#355d7e;
+  font-size:9px;
+  font-weight:950;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-icon-v61480{
+  display:inline-grid;
+  place-items:center;
+  min-width:16px;
+  height:16px;
+  padding:0 3px;
+  border-radius:6px;
+  background:#eef4f8;
+  color:#60788d;
+  font-size:7px;
+  font-weight:950;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.tone-holiday{
+  border-color:#eadbc0;
+  background:#fffaf1;
+  color:#9b671d;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.tone-holiday .employee-month-quick-filter-icon-v61480{
+  background:#fff0d3;
+  color:#aa6d13;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.tone-certified{
+  border-color:#cde7da;
+  background:#f6fcf9;
+  color:#34785b;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.tone-certified .employee-month-quick-filter-icon-v61480{
+  background:#e8f7ef;
+  color:#2f8a61;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.tone-multi{
+  border-color:#c9dff6;
+  background:#f7fbff;
+  color:#286da6;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.tone-multi .employee-month-quick-filter-icon-v61480{
+  background:#e8f4ff;
+  color:#2878ba;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.tone-pending{
+  border-color:#d7dfe6;
+  background:#fafcfd;
+  color:#66798b;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.tone-pending .employee-month-quick-filter-icon-v61480{
+  background:#eef2f5;
+  color:#6d7e8d;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-v61480.is-active-filter-v61480{
+  border-color:#3b82f6!important;
+  background:#eef6ff!important;
+  color:#155c9c!important;
+  box-shadow:0 0 0 2px rgba(59,130,246,.12)!important;
+}
+#employeeMonthScheduleModal .employee-month-quick-filter-help-v61480{
+  margin-left:auto;
+  color:#9aa9b6;
+  font-size:7.5px;
+  white-space:nowrap;
+}
+
+body.theme-dark #employeeMonthScheduleModal .employee-month-quick-filters-v61480,
+.dark #employeeMonthScheduleModal .employee-month-quick-filters-v61480{
+  border-color:#2e4355;
+  background:#101e2b;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-quick-filter-label-v61480,
+.dark #employeeMonthScheduleModal .employee-month-quick-filter-label-v61480,
+body.theme-dark #employeeMonthScheduleModal .employee-month-quick-filter-help-v61480,
+.dark #employeeMonthScheduleModal .employee-month-quick-filter-help-v61480{
+  color:#8197aa;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-quick-filter-v61480,
+.dark #employeeMonthScheduleModal .employee-month-quick-filter-v61480{
+  border-color:#33495c;
+  background:#162737;
+  color:#bad0e1;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-quick-filter-v61480 b,
+.dark #employeeMonthScheduleModal .employee-month-quick-filter-v61480 b,
+body.theme-dark #employeeMonthScheduleModal .employee-month-quick-filter-icon-v61480,
+.dark #employeeMonthScheduleModal .employee-month-quick-filter-icon-v61480{
+  background:#21394c;
+  color:#c2dbed;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-quick-filter-v61480.is-active-filter-v61480,
+.dark #employeeMonthScheduleModal .employee-month-quick-filter-v61480.is-active-filter-v61480{
+  border-color:#60a5fa!important;
+  background:#183957!important;
+  color:#d6ebff!important;
+}
+
+@media(max-width:1450px){
+  #employeeMonthScheduleModal .employee-month-summary-v61121{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+  #employeeMonthScheduleModal .month-overview-insight-v61127{
+    grid-column:auto!important;
+  }
+}
+@media(max-width:900px){
+  #employeeMonthScheduleModal .employee-month-summary-v61121{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  #employeeMonthScheduleModal .employee-month-quick-filter-help-v61480{
+    width:100%;
+    margin-left:0;
+  }
+}

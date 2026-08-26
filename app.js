@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.73";
-document.documentElement.dataset.timeClockBuild = "6.14.71";
+window.__TIME_CLOCK_BUILD__ = "V6.14.80";
+document.documentElement.dataset.timeClockBuild = "6.14.80";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.71";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.63',
+  version: '6.14.80',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -9172,7 +9172,7 @@ window.tcIsDayShiftCode = value =>
     }
 
 
-    function employeeMonthFilterLabelV61479(filterKey = 'all') {
+    function employeeMonthFilterLabelV61480(filterKey = 'all') {
       return ({
         all: 'ทั้งหมด',
         work: 'วันทำงาน',
@@ -9182,19 +9182,45 @@ window.tcIsDayShiftCode = value =>
         late: 'มาสาย',
         early: 'กลับก่อน',
         split: 'งานลูกค้าช่วงดึก',
-        anomaly: 'เวลาผิดปกติ'
+        anomaly: 'เวลาผิดปกติ',
+        holiday: 'วันหยุดนักขัตฤกษ์',
+        certified: 'รับรองแล้ว',
+        multipunch: 'หลายรายการลงเวลา',
+        pending: 'รอทำงาน / ยังไม่ประมวลผล'
       })[String(filterKey || 'all')] || 'ทั้งหมด';
     }
 
-    function employeeMonthDayMatchesFilterV61479(filterKey, context = {}) {
+    function employeeMonthPublicHolidayV61480(scheduleRow, shift = null) {
+      const row = scheduleRow || {};
+      const dayType = String(row?.day_type || '').trim().toUpperCase();
+      const resolvedShift = shift || scheduleResolveShiftMeta(row);
+      const shiftCode = String(
+        row?.assigned_shift_code
+        || row?.effective_shift_code
+        || row?.shift_code
+        || ''
+      ).trim().toUpperCase();
+      return Boolean(
+        row?.is_public_holiday
+        || dayType === 'PUBLIC_HOLIDAY'
+        || resolvedShift?.tone === 'holiday'
+        || shiftCode === 'HOL'
+      );
+    }
+
+    function employeeMonthDayMatchesFilterV61480(filterKey, context = {}) {
       const key = String(filterKey || 'all').trim().toLowerCase();
       if (!key || key === 'all') return true;
       const scheduleRow = context.scheduleRow || null;
+      const attendanceRow = context.attendanceRow || null;
       const canonical = context.canonicalDay || null;
       const employmentState = String(context.employmentState || 'ACTIVE').trim().toUpperCase();
       const specialMode = context.specialMode || null;
       const shift = context.shift || { isWorking:false };
+      const rawPunchDay = context.rawPunchDay || null;
       const flags = canonical?.flags || null;
+      const statusMeta = canonical?.statusMeta || null;
+      const publicHoliday = employeeMonthPublicHolidayV61480(scheduleRow, shift);
 
       if (employmentState !== 'ACTIVE') return false;
 
@@ -9206,7 +9232,17 @@ window.tcIsDayShiftCode = value =>
         );
       }
       if (key === 'dayoff') {
-        return Boolean(flags?.dayOff || employeeMonthConsumesDayoffFallbackV61426(scheduleRow));
+        return Boolean(
+          !publicHoliday
+          && (
+            flags?.dayOff
+            || shift?.tone === 'off'
+            || scheduleRow?.is_weekly_off
+            || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(
+              String(scheduleRow?.day_type || '').trim().toUpperCase()
+            )
+          )
+        );
       }
       if (key === 'leave') return Boolean(flags?.leave);
       if (key === 'absence') return Boolean(flags?.absence);
@@ -9214,6 +9250,10 @@ window.tcIsDayShiftCode = value =>
       if (key === 'early') return Boolean(flags?.early);
       if (key === 'split') return Boolean(specialMode && ['customer','wait'].includes(String(specialMode.key || '')));
       if (key === 'anomaly') return Boolean(flags && (flags.absence || flags.late || flags.early));
+      if (key === 'holiday') return publicHoliday;
+      if (key === 'certified') return Boolean(timeCertificationActiveV61139(attendanceRow || canonical?.merged || {}));
+      if (key === 'multipunch') return Boolean(rawPunchDay?.multiple);
+      if (key === 'pending') return Boolean(flags?.upcoming || String(statusMeta?.status || '').toUpperCase() === 'UNPROCESSED');
       return true;
     }
 
@@ -9442,20 +9482,70 @@ window.tcIsDayShiftCode = value =>
         if (canonical.flags.leave) leaveDays += 1;
       });
 
-      const certifiedDays = attendanceRows.filter(row => timeCertificationActiveV61139(row)).length;
+      const certifiedDateSetV61480 = new Set(
+        attendanceRows
+          .filter(row => timeCertificationActiveV61139(row))
+          .map(row => String(row?.work_date || '').slice(0,10))
+          .filter(Boolean)
+      );
+      const certifiedDays = certifiedDateSetV61480.size;
       const anomalyDays = anomalyDateSetV61467.size;
-      const activeMonthFilterV61479 = String(employeeMonthCalendarStateV61121.activeFilter || 'all').trim().toLowerCase() || 'all';
-      const monthFilterKpiClassV61479 = (key, baseClass='') => `month-overview-kpi ${baseClass}`.trim() + (activeMonthFilterV61479===key ? ' is-active-filter-v61479' : '');
-      const monthFilterInsightClassV61479 = `month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}${activeMonthFilterV61479==='anomaly' ? ' is-active-filter-v61479' : ''}`;
+
+      let holidayDaysV61480 = 0;
+      let pendingDaysV61480 = 0;
+      for (let dayV61480 = 1; dayV61480 <= bounds.days; dayV61480 += 1) {
+        const workDateV61480 = `${bounds.value}-${String(dayV61480).padStart(2,'0')}`;
+        const scheduleRowV61480 = scheduleByDate.get(workDateV61480) || null;
+        const attendanceRowV61480 = attendanceByDate.get(workDateV61480) || null;
+        const employmentStateV61480 = employeeMonthEmploymentStateV61429(scheduleRows,workDateV61480);
+        if (employmentStateV61480 !== 'ACTIVE') continue;
+        const canonicalV61480 = employeeMonthCanonicalDayV61467(
+          scheduleRowV61480,
+          attendanceRowV61480,
+          workDateV61480,
+          employmentStateV61480
+        );
+        const shiftV61480 = scheduleRowV61480
+          ? scheduleResolveShiftMeta(scheduleRowV61480)
+          : (canonicalV61480?.merged ? scheduleResolveShiftMeta(canonicalV61480.merged) : { tone:'off', isWorking:false });
+        if (employeeMonthPublicHolidayV61480(scheduleRowV61480, shiftV61480)) holidayDaysV61480 += 1;
+        if (
+          canonicalV61480?.flags?.upcoming
+          || String(canonicalV61480?.statusMeta?.status || '').toUpperCase() === 'UNPROCESSED'
+        ) pendingDaysV61480 += 1;
+      }
+
+      const multiPunchDaysV61480 = Number(rawPunchStatsV61460?.multipleDays || 0);
+      const activeMonthFilterV61480 = String(employeeMonthCalendarStateV61121.activeFilter || 'all').trim().toLowerCase() || 'all';
+      const monthFilterKpiClassV61480 = (key, baseClass='') => `month-overview-kpi ${baseClass}`.trim() + (activeMonthFilterV61480===key ? ' is-active-filter-v61479' : '');
+      const monthFilterInsightClassV61480 = `month-overview-insight-v61127 ${anomalyDays ? 'has-alert' : 'all-good'}${activeMonthFilterV61480==='anomaly' ? ' is-active-filter-v61479' : ''}`;
       $('employeeMonthScheduleSummary').innerHTML = `
-        <button type="button" class="${safe(monthFilterKpiClassV61479('work','primary'))}" data-employee-month-filter="work" aria-pressed="${activeMonthFilterV61479==='work' ? 'true' : 'false'}" title="กดเพื่อกรองวันทำงาน"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></button>
-        <button type="button" class="${safe(monthFilterKpiClassV61479('dayoff','off'))}" data-employee-month-filter="dayoff" aria-pressed="${activeMonthFilterV61479==='dayoff' ? 'true' : 'false'}" title="กดเพื่อกรองวันหยุด"><div class="month-kpi-icon">หยุด</div><div><span>โควต้าวันหยุด</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(dayoffKpiValueV61478)}</strong></button>
-        <button type="button" class="${safe(monthFilterKpiClassV61479('leave','leave'))}" data-employee-month-filter="leave" aria-pressed="${activeMonthFilterV61479==='leave' ? 'true' : 'false'}" title="กดเพื่อกรองวันลา"><div class="month-kpi-icon">ลา</div><div><span>ลา</span><small>วันลาที่มีรายการอนุมัติ</small></div><strong>${safe(formatNumber(leaveDays))}</strong></button>
-        <button type="button" class="${safe(monthFilterKpiClassV61479('absence','danger'))}" data-employee-month-filter="absence" aria-pressed="${activeMonthFilterV61479==='absence' ? 'true' : 'false'}" title="กดเพื่อกรองวันขาดงาน"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>เวลาไม่ครบ หรือ เข้าช้า ≥ 30 นาที</small></div><strong>${safe(formatNumber(absenceDays))}</strong></button>
-        <button type="button" class="${safe(monthFilterKpiClassV61479('late','late'))}" data-employee-month-filter="late" aria-pressed="${activeMonthFilterV61479==='late' ? 'true' : 'false'}" title="กดเพื่อกรองวันมาสาย"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>เข้าหลังเริ่มกะ 1–29 นาที</small></div><strong>${safe(formatNumber(lateDays))}</strong></button>
-        <button type="button" class="${safe(monthFilterKpiClassV61479('early','early'))}" data-employee-month-filter="early" aria-pressed="${activeMonthFilterV61479==='early' ? 'true' : 'false'}" title="กดเพื่อกรองวันกลับก่อน"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></button>
-        <button type="button" class="${safe(monthFilterKpiClassV61479('split','split'))}" data-employee-month-filter="split" aria-pressed="${activeMonthFilterV61479==='split' ? 'true' : 'false'}" title="กดเพื่อกรองวันงานลูกค้าช่วงดึก"><div class="month-kpi-icon">ดึก</div><div><span>งานลูกค้าช่วงดึก</span><small>วันที่มีช่วงงานกะที่ 2</small></div><strong>${safe(formatNumber(splitDays))}</strong></button>
-        <button type="button" class="${safe(monthFilterInsightClassV61479)}" data-employee-month-filter="anomaly" aria-pressed="${activeMonthFilterV61479==='anomaly' ? 'true' : 'false'}" title="กดเพื่อกรองวันที่มีเวลาผิดปกติ"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>รับรองแล้ว ${safe(formatNumber(certifiedDays))} วัน • กดการ์ดซ้ำเพื่อกลับไปดูทั้งหมด</small></button>`;
+        <button type="button" class="${safe(monthFilterKpiClassV61480('work','primary'))}" data-employee-month-filter="work" aria-pressed="${activeMonthFilterV61480==='work' ? 'true' : 'false'}" title="กดเพื่อกรองวันทำงาน"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></button>
+        <button type="button" class="${safe(monthFilterKpiClassV61480('dayoff','off'))}" data-employee-month-filter="dayoff" aria-pressed="${activeMonthFilterV61480==='dayoff' ? 'true' : 'false'}" title="กดเพื่อกรองวันหยุด"><div class="month-kpi-icon">หยุด</div><div><span>โควต้าวันหยุด</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(dayoffKpiValueV61478)}</strong></button>
+        <button type="button" class="${safe(monthFilterKpiClassV61480('leave','leave'))}" data-employee-month-filter="leave" aria-pressed="${activeMonthFilterV61480==='leave' ? 'true' : 'false'}" title="กดเพื่อกรองวันลา"><div class="month-kpi-icon">ลา</div><div><span>ลา</span><small>วันลาที่มีรายการอนุมัติ</small></div><strong>${safe(formatNumber(leaveDays))}</strong></button>
+        <button type="button" class="${safe(monthFilterKpiClassV61480('absence','danger'))}" data-employee-month-filter="absence" aria-pressed="${activeMonthFilterV61480==='absence' ? 'true' : 'false'}" title="กดเพื่อกรองวันขาดงาน"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>เวลาไม่ครบ หรือ เข้าช้า ≥ 30 นาที</small></div><strong>${safe(formatNumber(absenceDays))}</strong></button>
+        <button type="button" class="${safe(monthFilterKpiClassV61480('late','late'))}" data-employee-month-filter="late" aria-pressed="${activeMonthFilterV61480==='late' ? 'true' : 'false'}" title="กดเพื่อกรองวันมาสาย"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>เข้าหลังเริ่มกะ 1–29 นาที</small></div><strong>${safe(formatNumber(lateDays))}</strong></button>
+        <button type="button" class="${safe(monthFilterKpiClassV61480('early','early'))}" data-employee-month-filter="early" aria-pressed="${activeMonthFilterV61480==='early' ? 'true' : 'false'}" title="กดเพื่อกรองวันกลับก่อน"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></button>
+        <button type="button" class="${safe(monthFilterKpiClassV61480('split','split'))}" data-employee-month-filter="split" aria-pressed="${activeMonthFilterV61480==='split' ? 'true' : 'false'}" title="กดเพื่อกรองวันงานลูกค้าช่วงดึก"><div class="month-kpi-icon">ดึก</div><div><span>งานลูกค้าช่วงดึก</span><small>วันที่มีช่วงงานกะที่ 2</small></div><strong>${safe(formatNumber(splitDays))}</strong></button>
+        <button type="button" class="${safe(monthFilterInsightClassV61480)}" data-employee-month-filter="anomaly" aria-pressed="${activeMonthFilterV61480==='anomaly' ? 'true' : 'false'}" title="กดเพื่อกรองวันที่มีเวลาผิดปกติ"><span>ภาพรวม</span><strong>${anomalyDays ? `พบเวลาผิดปกติ ${safe(formatNumber(anomalyDays))} วัน` : 'ไม่พบเวลาผิดปกติ'}</strong><small>รับรองแล้ว ${safe(formatNumber(certifiedDays))} วัน • กดการ์ดซ้ำเพื่อกลับไปดูทั้งหมด</small></button>`;
+
+      const quickFiltersV61480 = $('employeeMonthQuickFiltersV61480');
+      if (quickFiltersV61480) {
+        const chipV61480 = (key,label,count,tone='neutral',icon='') => `
+          <button type="button" class="employee-month-quick-filter-v61480 tone-${safe(tone)} ${activeMonthFilterV61480===key ? 'is-active-filter-v61480' : ''}" data-employee-month-filter="${safe(key)}" aria-pressed="${activeMonthFilterV61480===key ? 'true' : 'false'}" title="กรอง: ${safe(label)}">
+            <span class="employee-month-quick-filter-icon-v61480">${safe(icon)}</span>
+            <strong>${safe(label)}</strong>
+            <b>${safe(formatNumber(count))}</b>
+          </button>`;
+        quickFiltersV61480.innerHTML = `
+          <span class="employee-month-quick-filter-label-v61480">ตัวกรองเพิ่มเติม</span>
+          <button type="button" class="employee-month-quick-filter-v61480 tone-all ${activeMonthFilterV61480==='all' ? 'is-active-filter-v61480' : ''}" data-employee-month-filter="all" aria-pressed="${activeMonthFilterV61480==='all' ? 'true' : 'false'}" title="แสดงทุกวัน"><span class="employee-month-quick-filter-icon-v61480">●</span><strong>ทั้งหมด</strong></button>
+          ${chipV61480('holiday','นักขัตฤกษ์',holidayDaysV61480,'holiday','HOL')}
+          ${chipV61480('certified','รับรองแล้ว',certifiedDays,'certified','✓')}
+          ${chipV61480('multipunch','หลายรายการลงเวลา',multiPunchDaysV61480,'multi','≋')}
+          ${chipV61480('pending','รอทำงาน / ยังไม่ประมวลผล',pendingDaysV61480,'pending','◷')}
+          <small class="employee-month-quick-filter-help-v61480">เลือกได้ครั้งละ 1 เงื่อนไข • กดซ้ำหรือกด “ทั้งหมด” เพื่อยกเลิก</small>`;
+      }
 
       renderEmployeeMonthHolidayListV61153(scheduleRows);
 
@@ -9552,8 +9642,8 @@ window.tcIsDayShiftCode = value =>
                   ? 'month-day-kind-off-v61153'
                   : 'month-day-kind-work-v61153';
         const dayName = ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][dow];
-        const activeMonthFilterV61479 = String(employeeMonthCalendarStateV61121.activeFilter || 'all').trim().toLowerCase() || 'all';
-        const dayMatchesFilterV61479 = employeeMonthDayMatchesFilterV61479(activeMonthFilterV61479, {
+        const activeMonthFilterV61480 = String(employeeMonthCalendarStateV61121.activeFilter || 'all').trim().toLowerCase() || 'all';
+        const dayMatchesFilterV61480 = employeeMonthDayMatchesFilterV61480(activeMonthFilterV61480, {
           scheduleRow,
           attendanceRow,
           canonicalDay: canonicalDayV61467,
@@ -9564,7 +9654,7 @@ window.tcIsDayShiftCode = value =>
           rawPunchDay: rawPunchDayV61460
         });
 
-        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)} ${activeMonthFilterV61479!=='all' && !dayMatchesFilterV61479 ? 'is-filter-muted-v61479' : ''} ${activeMonthFilterV61479!=='all' && dayMatchesFilterV61479 ? 'is-filter-hit-v61479' : ''}" data-month-date="${safe(workDate)}" data-filter-match="${dayMatchesFilterV61479 ? '1' : '0'}">
+        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)} ${activeMonthFilterV61480!=='all' && !dayMatchesFilterV61480 ? 'is-filter-muted-v61479' : ''} ${activeMonthFilterV61480!=='all' && dayMatchesFilterV61480 ? 'is-filter-hit-v61479' : ''}" data-month-date="${safe(workDate)}" data-filter-match="${dayMatchesFilterV61480 ? '1' : '0'}">
           <div class="employee-month-day-head">
             <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
             <div class="employee-month-day-head-actions-v61460">${rawPunchIndicatorV61460}<span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span></div>
@@ -13137,7 +13227,9 @@ window.tcIsDayShiftCode = value =>
         const summaryFilter = event.target.closest('[data-employee-month-filter]');
         if (summaryFilter) {
           const filterKey = String(summaryFilter.dataset.employeeMonthFilter || 'all').trim().toLowerCase() || 'all';
-          employeeMonthCalendarStateV61121.activeFilter = employeeMonthCalendarStateV61121.activeFilter === filterKey ? 'all' : filterKey;
+          employeeMonthCalendarStateV61121.activeFilter = filterKey === 'all'
+            ? 'all'
+            : (employeeMonthCalendarStateV61121.activeFilter === filterKey ? 'all' : filterKey);
           renderEmployeeMonthCalendarV61121();
           return;
         }
