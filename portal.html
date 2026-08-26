@@ -8,7 +8,7 @@
   <title>TimeAttendance • Employee Portal</title>
   <link rel="manifest" href="./portal-manifest.webmanifest"/>
   <link rel="icon" href="./favicon.svg"/>
-  <link rel="stylesheet" href="./portal.css?v=6.14.94b"/>
+  <link rel="stylesheet" href="./portal.css?v=6.14.95a"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -37,20 +37,26 @@
         <button class="portal-primary" type="submit">เข้าสู่ระบบ</button>
         <small class="portal-help">ลืม PIN? ติดต่อ Manager ให้กด <b>Reset PIN</b> และออก Activation Code ใหม่</small>
       </form>
-      <div class="portal-auth-footer">V6.14.94 • Employee ID + PIN • Device Session</div>
+      <div class="portal-auth-footer">V6.14.95 • Employee ID + PIN • Device Session</div>
     </div>
   </section>
 
   <section id="portalApp" class="portal-app hidden">
     <header class="portal-topbar">
-      <div class="portal-top-brand"><div class="portal-brand-mark small">TC</div><div><strong>TimeAttendance</strong><span>Employee Portal</span></div></div>
-      <button class="portal-icon-btn" id="portalLogoutBtn" aria-label="ออกจากระบบ">↪</button>
+      <div class="portal-top-brand">
+        <div class="portal-brand-mark small">TC</div>
+        <div><strong>Time-Clock</strong><span>Employee Portal</span></div>
+      </div>
+      <div class="portal-top-actions">
+        <button class="portal-icon-btn portal-notif-shortcut" data-portal-nav="notifications" aria-label="แจ้งเตือน">♢</button>
+        <button class="portal-icon-btn" id="portalLogoutBtn" aria-label="ออกจากระบบ">↪</button>
+      </div>
     </header>
 
     <main class="portal-main">
       <section class="portal-profile-card">
         <div class="portal-avatar" id="portalAvatar">พน</div>
-        <div><span>สวัสดี</span><strong id="portalEmployeeName">-</strong><small id="portalEmployeeMeta">-</small></div>
+        <div class="portal-profile-copy"><span>สวัสดี</span><strong id="portalEmployeeName">-</strong><small id="portalEmployeeMeta">-</small></div>
         <span class="portal-user-badge">USER</span>
       </section>
 
@@ -59,27 +65,34 @@
         <article class="portal-today-card" id="portalTodayCard"><div class="portal-empty">กำลังโหลดกะวันนี้...</div></article>
         <div class="portal-section-title"><div><span>กะของฉัน</span><strong>7 วันข้างหน้า</strong></div><button class="portal-text-btn" data-portal-nav="schedule">ดูปฏิทิน</button></div>
         <div class="portal-week-strip" id="portalWeekStrip"></div>
+        <div class="portal-quick-title"><span>บริการสำหรับฉัน</span><strong>ทำรายการได้รวดเร็ว</strong></div>
         <div class="portal-quick-grid"><button data-request-quick="TIME_ISSUE"><i>◷</i><strong>แจ้งปัญหาเวลา</strong><small>ไม่มีเข้า / ไม่มีออก / เวลาไม่ถูกต้อง</small></button><button data-request-quick="SPECIAL_WORK"><i>☾</i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button><button data-request-quick="DAYOFF_SWAP"><i>⇄</i><strong>ขอสลับวันหยุด</strong><small>ย้ายวันหยุดภายในโควต้า</small></button><button data-request-quick="LEAVE_REQUEST"><i>▤</i><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></button></div>
       </section>
 
       <section id="portalViewSchedule" class="portal-view">
-        <div class="portal-section-title"><div><span>กะของฉัน</span><strong id="portalScheduleMonthTitle">-</strong></div><div class="portal-month-nav"><button id="portalPrevMonth">‹</button><button id="portalThisMonth">เดือนนี้</button><button id="portalNextMonth">›</button></div></div>
-        <div class="portal-calendar" id="portalCalendar"></div>
+        <div class="portal-view-hero portal-schedule-hero">
+          <div><span>MY SCHEDULE</span><strong>กะของฉัน</strong><small id="portalScheduleMonthTitle">-</small></div>
+          <div class="portal-month-nav"><button id="portalPrevMonth">‹</button><button id="portalThisMonth">เดือนนี้</button><button id="portalNextMonth">›</button></div>
+        </div>
+        <div class="portal-calendar-shell"><div class="portal-calendar" id="portalCalendar"></div></div>
       </section>
 
       <section id="portalViewTime" class="portal-view">
-        <div class="portal-section-title"><div><span>เวลาทำงาน</span><strong>รายการล่าสุด</strong></div></div>
+        <div class="portal-view-hero"><div><span>ATTENDANCE</span><strong>เวลาทำงาน</strong><small>ประวัติการลงเวลาและสถานะล่าสุด</small></div></div>
         <div class="portal-time-list" id="portalTimeList"></div>
       </section>
 
       <section id="portalViewRequests" class="portal-view">
-        <div class="portal-section-title"><div><span>คำขอ / แจ้งข้อมูล</span><strong>รายการของฉัน</strong></div><button class="portal-primary compact" id="portalNewRequestBtn">＋ แจ้งข้อมูล</button></div>
+        <div class="portal-view-hero portal-request-hero">
+          <div><span>SELF SERVICE</span><strong>คำขอ / แจ้งข้อมูล</strong><small>ติดตามสถานะ แก้ไข หรือยกเลิกคำขอที่ยังรอดำเนินการ</small></div>
+          <button class="portal-primary compact" id="portalNewRequestBtn">＋ สร้างคำขอ</button>
+        </div>
         <div class="portal-request-tabs"><button class="active" data-request-filter="">ทั้งหมด</button><button data-request-filter="PENDING">รอดำเนินการ</button><button data-request-filter="DONE">ดำเนินการแล้ว</button></div>
         <div class="portal-request-list" id="portalRequestList"></div>
       </section>
 
       <section id="portalViewNotifications" class="portal-view">
-        <div class="portal-section-title"><div><span>แจ้งเตือน</span><strong>Notification Center</strong></div></div>
+        <div class="portal-view-hero"><div><span>NOTIFICATION CENTER</span><strong>แจ้งเตือน</strong><small>ติดตามคำขอ การอนุมัติ และข้อมูลสำคัญจากระบบ</small></div></div>
         <div class="portal-notification-list" id="portalNotificationList"></div>
       </section>
     </main>
@@ -115,6 +128,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.14.94b"></script>
+  <script src="./portal.js?v=6.14.95a"></script>
 </body>
 </html>
