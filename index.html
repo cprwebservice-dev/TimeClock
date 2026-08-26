@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.14.80-20260826c" rel="stylesheet"/>
+<link href="./app.css?v=6.14.82-20260826a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -61,7 +61,7 @@
 </div>
 <button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
 <button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
-<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.80</span></div>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.82</span></div>
 </form>
 </div>
 </section>
@@ -82,6 +82,7 @@
 <button class="nav-item" data-page="attendance"><span class="nav-icon">◷</span><span class="nav-text">รายละเอียดเวลาทำงาน</span></button>
 <div class="nav-label nav-label-spaced">คำขอและตรวจสอบ</div>
 <button class="nav-item" data-page="shift-requests"><span class="nav-icon">⇄</span><span class="nav-text">คำขอ / แจ้งข้อมูล</span><span class="nav-count hidden" id="shiftRequestNavBadge">0</span></button>
+<button class="nav-item hidden" data-page="team-portal" id="teamPortalNavV61482"><span class="nav-icon">▤</span><span class="nav-text">สมาชิกทีม / Portal</span></button>
 <button class="nav-item" data-page="schedule"><span class="nav-icon">▣</span><span class="nav-text">ปฏิทินจัดกะ</span></button>
 <button class="nav-item" data-page="work-patterns"><span class="nav-icon">⌘</span><span class="nav-text">รูปแบบการทำงาน</span></button>
 
@@ -99,6 +100,7 @@
 <button class="nav-item" data-page="admin-holidays"><span class="nav-icon">◈</span><span class="nav-text">วันหยุดนักขัตฤกษ์</span></button>
 <button class="nav-item" data-page="admin-org"><span class="nav-icon">⌘</span><span class="nav-text">ผังโครงสร้างองค์กร</span></button>
 <button class="nav-item" data-page="admin-accounts"><span class="nav-icon">♜</span><span class="nav-text">จัดการบัญชีผู้ใช้งาน</span></button>
+<button class="nav-item" data-page="admin-employee-portal"><span class="nav-icon">⌁</span><span class="nav-text">Employee Portal</span></button>
 <button class="nav-item" data-page="admin-users"><span class="nav-icon">♙</span><span class="nav-text">User และ Scope</span></button>
 <button class="nav-item" data-page="admin-import"><span class="nav-icon">⇧</span><span class="nav-text">นำเข้าพนักงาน</span></button>
 <button class="nav-item" data-page="admin-time-import"><span class="nav-icon">⇩</span><span class="nav-text">นำเข้าข้อมูลลงเวลา</span></button>
@@ -359,7 +361,7 @@
 </div>
 <div class="settings-panel" data-settings-panel="about">
 <div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
-<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.80</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.80 Monthly Personal Extended Filters</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.82</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.82 Employee Portal Foundation</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
 </div>
 </div>
 </div>
@@ -1503,6 +1505,52 @@
 </div>
 </div>
 </section>
+
+<!-- V6.14.82 Manager Team Portal -->
+<section class="page portal-management-page-v61482" id="page-team-portal">
+  <div class="portal-hero-v61482">
+    <div><span class="eyebrow">TEAM EMPLOYEE PORTAL</span><h2>สมาชิกทีม / Portal</h2><p>สร้าง Link/QR ของทีม ออก Activation Code และ Reset PIN ให้เฉพาะลูกทีมใน Scope ของ Manager</p></div>
+    <button class="btn btn-light" id="teamPortalRefreshV61482">↻ รีเฟรช</button>
+  </div>
+  <div class="portal-team-grid-v61482 section-gap">
+    <article class="portal-link-card-v61482">
+      <div class="portal-card-head-v61482"><div><span>Team Access</span><strong>QR / Link เข้าระบบของทีม</strong></div><span class="portal-secure-badge-v61482">ไม่ใช่ Password</span></div>
+      <div class="portal-qr-wrap-v61482"><div id="teamPortalQrV61482" class="portal-qr-v61482"></div><div class="portal-link-copy-v61482"><code id="teamPortalLinkTextV61482">กำลังสร้าง Link...</code><div><button class="btn btn-primary btn-sm" id="teamPortalCopyLinkV61482">คัดลอก Link</button><button class="btn btn-light btn-sm" id="teamPortalShareLinkV61482">แชร์</button><button class="btn btn-danger-soft btn-sm" id="teamPortalRotateLinkV61482">เปลี่ยน Link</button></div></div></div>
+      <small>QR เดียวใช้ได้ทั้งทีม • Employee ยังต้องยืนยันรหัสพนักงาน + Activation Code/PIN ของตนเอง</small>
+    </article>
+    <div class="portal-team-kpis-v61482">
+      <article><span>ลูกทีมทั้งหมด</span><strong id="teamPortalKpiTotalV61482">0</strong><small>ตาม Manager Scope ปัจจุบัน</small></article>
+      <article class="success"><span>เปิดใช้แล้ว</span><strong id="teamPortalKpiActiveV61482">0</strong><small>ตั้ง PIN แล้ว</small></article>
+      <article class="warning"><span>รอ Activate</span><strong id="teamPortalKpiWaitingV61482">0</strong><small>HR เปิดสิทธิ์แล้ว</small></article>
+      <article class="neutral"><span>HR ยังไม่เปิด</span><strong id="teamPortalKpiDisabledV61482">0</strong><small>Manager ยังสร้าง Code ไม่ได้</small></article>
+    </div>
+  </div>
+  <div class="panel section-gap">
+    <div class="panel-header"><div><h3>สมาชิกทีม</h3><p id="teamPortalMetaV61482">กำลังโหลด...</p></div><div class="portal-filter-inline-v61482"><input class="input" id="teamPortalSearchV61482" placeholder="ค้นหารหัส ชื่อ หน่วยงาน"/><select class="select" id="teamPortalStatusV61482"><option value="">ทุกสถานะ</option><option value="ACTIVE">เปิดใช้แล้ว</option><option value="ACTIVATION_READY">มี Activation Code</option><option value="READY">รอสร้าง Code</option><option value="NOT_ENABLED">HR ยังไม่เปิด</option><option value="DISABLED">ระงับ</option></select></div></div>
+    <div class="panel-body"><div class="table-wrap"><table class="portal-table-v61482"><thead><tr><th>พนักงาน</th><th>ตำแหน่ง / หน่วยงาน</th><th>สถานะ Portal</th><th>เข้าใช้ล่าสุด</th><th>จัดการ</th></tr></thead><tbody id="teamPortalBodyV61482"><tr><td colspan="5" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
+  </div>
+</section>
+
+<!-- V6.14.82 HR Employee Portal Administration -->
+<section class="page admin-page portal-management-page-v61482" id="page-admin-employee-portal">
+  <div class="portal-hero-v61482 hr">
+    <div><span class="eyebrow">EMPLOYEE PORTAL ADMINISTRATION</span><h2>Employee Portal</h2><p>HR เปิด/ระงับสิทธิ์ Portal จาก Employee Master โดยตรง • ไม่ต้องมี Email และไม่ใช้ตัวกรอง PC ของหน้าบัญชีเดิม</p></div>
+    <button class="btn btn-light" id="portalAdminRefreshV61482">↻ รีเฟรช</button>
+  </div>
+  <div class="portal-admin-kpis-v61482 section-gap"><article><span>ผลค้นหา</span><strong id="portalAdminKpiTotalV61482">0</strong><small>พนักงาน</small></article><article class="success"><span>Activate แล้ว</span><strong id="portalAdminKpiActiveV61482">0</strong><small>ตั้ง PIN แล้ว</small></article><article class="warning"><span>รอ Activate</span><strong id="portalAdminKpiWaitingV61482">0</strong><small>เปิดสิทธิ์แล้ว</small></article><article class="neutral"><span>ยังไม่เปิด</span><strong id="portalAdminKpiOffV61482">0</strong><small>Employee Portal</small></article></div>
+  <div class="panel section-gap"><div class="panel-body"><div class="portal-admin-filter-v61482"><div class="field"><label>ค้นหา</label><input class="input" id="portalAdminSearchV61482" placeholder="รหัส ชื่อ ตำแหน่ง หน่วยงาน พื้นที่ หรือ PC"/></div><div class="field"><label>สถานะ Portal</label><select class="select" id="portalAdminStatusV61482"><option value="">ทุกสถานะ</option><option value="ACTIVE">เปิดใช้แล้ว</option><option value="ACTIVATION_READY">มี Activation Code</option><option value="READY">รอ Activate</option><option value="NOT_ENABLED">ยังไม่เปิด</option><option value="DISABLED">ระงับ</option></select></div><div class="portal-admin-actions-v61482"><button class="btn btn-light" id="portalAdminSelectTechniciansV61482">เลือกกลุ่มช่างเทคนิค</button><button class="btn btn-primary" id="portalAdminSearchBtnV61482">ค้นหา</button><button class="btn btn-success" id="portalAdminEnableBtnV61482">เปิดสิทธิ์ที่เลือก</button><button class="btn btn-danger-soft" id="portalAdminDisableBtnV61482">ระงับที่เลือก</button></div></div></div></div>
+  <div class="panel section-gap"><div class="panel-header"><div><h3>พนักงาน Employee Portal</h3><p id="portalAdminMetaV61482">เลือกพนักงานหลายคนแล้วเปิดสิทธิ์ได้พร้อมกัน</p></div><label class="portal-select-all-v61482"><input type="checkbox" id="portalAdminSelectAllV61482"/> เลือกทั้งหมดที่แสดง</label></div><div class="panel-body"><div class="table-wrap"><table class="portal-table-v61482"><thead><tr><th></th><th>พนักงาน</th><th>ตำแหน่ง</th><th>หน่วยงาน / พื้นที่</th><th>PC</th><th>สถานะ Portal</th><th>Activate / Login ล่าสุด</th></tr></thead><tbody id="portalAdminBodyV61482"><tr><td colspan="7" class="fc-empty">กดค้นหาเพื่อโหลดข้อมูล</td></tr></tbody></table></div></div></div>
+</section>
+
+<!-- V6.14.82 Activation Code modal -->
+<div class="modal-backdrop hidden" id="teamPortalActivationModalV61482" aria-hidden="true">
+  <div class="modal portal-activation-modal-v61482" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">EMPLOYEE ACTIVATION</span><h3 id="teamPortalActivationTitleV61482">Activation Code</h3></div><button class="btn btn-light btn-icon" data-close-team-portal-v61482>×</button></div>
+    <div class="modal-body"><div class="portal-activation-person-v61482" id="teamPortalActivationPersonV61482"></div><div class="portal-activation-code-v61482"><span>Activation Code ใช้ครั้งเดียว</span><strong id="teamPortalActivationCodeV61482">------</strong><small id="teamPortalActivationExpireV61482">หมดอายุภายใน 7 วัน</small></div><div class="portal-security-note-v61482">ส่งรหัสนี้ให้พนักงานเป็นการส่วนตัว • หลังเปิดใช้งานครั้งแรก พนักงานจะตั้ง PIN 6 หลักของตนเอง และ Manager จะไม่เห็น PIN</div></div>
+    <div class="modal-footer"><button class="btn btn-light" data-close-team-portal-v61482>ปิด</button><button class="btn btn-light" id="teamPortalCopyCodeV61482">คัดลอกรหัส</button><button class="btn btn-primary" id="teamPortalShareCodeV61482">แชร์ให้พนักงาน</button></div>
+  </div>
+</div>
+
 <!-- Leave & Certificates -->
 
 <!-- Time Correction -->
@@ -2672,6 +2720,7 @@
   </div>
 </div>
 
-<script src="./app.js?v=6.14.80-20260826c"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
+<script src="./app.js?v=6.14.82-20260826a"></script>
 </body>
 </html>

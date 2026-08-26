@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#0d3b66"/>
+  <meta name="description" content="TimeAttendance Employee Portal"/>
+  <title>TimeAttendance • Employee Portal</title>
+  <link rel="manifest" href="./portal-manifest.webmanifest"/>
+  <link rel="icon" href="./favicon.svg"/>
+  <link rel="stylesheet" href="./portal.css?v=6.14.82a"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="portalToast" class="portal-toast hidden"></div>
+  <div id="portalLoading" class="portal-loading hidden"><div class="portal-spinner"></div><strong id="portalLoadingText">กำลังโหลด...</strong></div>
+
+  <section id="portalAuth" class="portal-auth">
+    <div class="portal-auth-shell">
+      <div class="portal-brand"><div class="portal-brand-mark">TC</div><div><strong>TimeAttendance</strong><span>Employee Portal</span></div></div>
+      <div class="portal-team-card" id="portalTeamCard"><span>ช่องทางเข้าทีม</span><strong id="portalTeamName">กำลังตรวจสอบ Link...</strong><small>QR / Link ใช้ระบุทีมเท่านั้น ไม่ใช่รหัสผ่าน</small></div>
+      <div class="portal-auth-tabs"><button class="active" data-auth-tab="activate">เปิดใช้ครั้งแรก</button><button data-auth-tab="login">เข้าสู่ระบบ</button></div>
+
+      <form id="portalActivateForm" class="portal-auth-form">
+        <div class="portal-form-title"><strong>เปิดใช้ Employee Portal</strong><span>ใช้ Activation Code ที่ได้รับจาก Manager เพียงครั้งแรก</span></div>
+        <label>รหัสพนักงาน<input id="portalActivateEmp" inputmode="numeric" autocomplete="username" placeholder="เช่น 7825787" required/></label>
+        <label>Activation Code 6 หลัก<input id="portalActivationCode" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" required/></label>
+        <div class="portal-pin-grid"><label>ตั้ง PIN ส่วนตัว 6 หลัก<input id="portalNewPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="new-password" placeholder="••••••" required/></label><label>ยืนยัน PIN<input id="portalConfirmPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="new-password" placeholder="••••••" required/></label></div>
+        <div class="portal-security-hint">PIN เป็นของพนักงานเท่านั้น • Manager/HR จะไม่เห็น PIN • ห้ามใช้ 123456 หรือเลขซ้ำง่าย ๆ</div>
+        <button class="portal-primary" type="submit">เปิดใช้งานและเข้า Portal</button>
+      </form>
+
+      <form id="portalLoginForm" class="portal-auth-form hidden">
+        <div class="portal-form-title"><strong>เข้าสู่ Employee Portal</strong><span>ใช้รหัสพนักงานและ PIN 6 หลักที่ตั้งไว้</span></div>
+        <label>รหัสพนักงาน<input id="portalLoginEmp" inputmode="numeric" autocomplete="username" required/></label>
+        <label>PIN 6 หลัก<input id="portalLoginPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="current-password" required/></label>
+        <button class="portal-primary" type="submit">เข้าสู่ระบบ</button>
+        <small class="portal-help">ลืม PIN? ติดต่อ Manager ให้กด <b>Reset PIN</b> และออก Activation Code ใหม่</small>
+      </form>
+      <div class="portal-auth-footer">V6.14.82 • Employee ID + PIN • Device Session</div>
+    </div>
+  </section>
+
+  <section id="portalApp" class="portal-app hidden">
+    <header class="portal-topbar">
+      <div class="portal-top-brand"><div class="portal-brand-mark small">TC</div><div><strong>TimeAttendance</strong><span>Employee Portal</span></div></div>
+      <button class="portal-icon-btn" id="portalLogoutBtn" aria-label="ออกจากระบบ">↪</button>
+    </header>
+
+    <main class="portal-main">
+      <section class="portal-profile-card">
+        <div class="portal-avatar" id="portalAvatar">พน</div>
+        <div><span>สวัสดี</span><strong id="portalEmployeeName">-</strong><small id="portalEmployeeMeta">-</small></div>
+        <span class="portal-user-badge">USER</span>
+      </section>
+
+      <section id="portalViewHome" class="portal-view active">
+        <div class="portal-section-title"><div><span>วันนี้</span><strong id="portalTodayDate">-</strong></div><button class="portal-text-btn" id="portalRefreshBtn">↻ รีเฟรช</button></div>
+        <article class="portal-today-card" id="portalTodayCard"><div class="portal-empty">กำลังโหลดกะวันนี้...</div></article>
+        <div class="portal-section-title"><div><span>กะของฉัน</span><strong>7 วันข้างหน้า</strong></div><button class="portal-text-btn" data-portal-nav="schedule">ดูปฏิทิน</button></div>
+        <div class="portal-week-strip" id="portalWeekStrip"></div>
+        <div class="portal-quick-grid"><button data-request-quick="TIME_ISSUE"><i>◷</i><strong>แจ้งปัญหาเวลา</strong><small>ไม่มีเข้า / ไม่มีออก / เวลาไม่ถูกต้อง</small></button><button data-request-quick="SPECIAL_WORK"><i>☾</i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button></div>
+      </section>
+
+      <section id="portalViewSchedule" class="portal-view">
+        <div class="portal-section-title"><div><span>กะของฉัน</span><strong id="portalScheduleMonthTitle">-</strong></div><div class="portal-month-nav"><button id="portalPrevMonth">‹</button><button id="portalThisMonth">เดือนนี้</button><button id="portalNextMonth">›</button></div></div>
+        <div class="portal-calendar" id="portalCalendar"></div>
+      </section>
+
+      <section id="portalViewTime" class="portal-view">
+        <div class="portal-section-title"><div><span>เวลาทำงาน</span><strong>รายการล่าสุด</strong></div></div>
+        <div class="portal-time-list" id="portalTimeList"></div>
+      </section>
+
+      <section id="portalViewRequests" class="portal-view">
+        <div class="portal-section-title"><div><span>คำขอ / แจ้งข้อมูล</span><strong>รายการของฉัน</strong></div><button class="portal-primary compact" id="portalNewRequestBtn">＋ แจ้งข้อมูล</button></div>
+        <div class="portal-request-tabs"><button class="active" data-request-filter="">ทั้งหมด</button><button data-request-filter="PENDING">รอดำเนินการ</button><button data-request-filter="DONE">ดำเนินการแล้ว</button></div>
+        <div class="portal-request-list" id="portalRequestList"></div>
+      </section>
+
+      <section id="portalViewNotifications" class="portal-view">
+        <div class="portal-section-title"><div><span>แจ้งเตือน</span><strong>Notification Center</strong></div></div>
+        <div class="portal-notification-list" id="portalNotificationList"></div>
+      </section>
+    </main>
+
+    <nav class="portal-bottom-nav">
+      <button class="active" data-portal-nav="home"><i>⌂</i><span>วันนี้</span></button>
+      <button data-portal-nav="schedule"><i>▣</i><span>กะของฉัน</span></button>
+      <button data-portal-nav="time"><i>◷</i><span>เวลาทำงาน</span></button>
+      <button data-portal-nav="requests"><i>⇄</i><span>คำขอ</span></button>
+      <button data-portal-nav="notifications"><i>●</i><span>แจ้งเตือน</span><em id="portalNotifBadge" class="hidden">0</em></button>
+    </nav>
+  </section>
+
+  <div id="portalRequestModal" class="portal-modal-backdrop hidden">
+    <div class="portal-modal">
+      <div class="portal-modal-head"><div><span>คำขอ / แจ้งข้อมูล</span><strong id="portalRequestModalTitle">แจ้งข้อมูล</strong></div><button data-close-request>×</button></div>
+      <form id="portalRequestForm" class="portal-modal-body">
+        <label>ประเภท<select id="portalRequestType"><option value="TIME_ISSUE">แจ้งปัญหาเวลาทำงาน</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option></select></label>
+        <label>วันที่<input type="date" id="portalRequestDate" required/></label>
+        <div class="portal-day-evidence" id="portalRequestEvidence">เลือกวันที่เพื่อดูข้อมูลกะ/เวลาในระบบ</div>
+        <label>รายการ<select id="portalRequestSubtype"></select></label>
+        <div id="portalSpecialFields" class="portal-special-fields hidden"><div class="portal-pin-grid"><label>ช่วงงานที่แจ้ง เริ่ม<input type="time" id="portalSpecialStart"/></label><label>สิ้นสุด<input type="time" id="portalSpecialEnd"/></label></div><label>ลูกค้า / สถานที่ / งานที่ไปปฏิบัติ<input id="portalSpecialLocation" maxlength="200" placeholder="เช่น ลูกค้า ABC • เชียงใหม่"/></label><small>เวลาที่ระบุเป็นข้อมูลประกอบคำขอ ไม่ใช่ Raw Punch และไม่แก้ Attendance โดยตรง</small></div>
+        <label>เหตุผล / รายละเอียด<textarea id="portalRequestReason" rows="4" maxlength="1000" required placeholder="ระบุเหตุผลให้ Manager ใช้ประกอบการพิจารณา"></textarea></label>
+        <div class="portal-modal-actions"><button type="button" class="portal-secondary" data-close-request>ยกเลิก</button><button class="portal-primary" type="submit">ส่งให้ Manager</button></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="./portal.js?v=6.14.82a"></script>
+</body>
+</html>

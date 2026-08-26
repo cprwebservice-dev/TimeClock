@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.80";
-document.documentElement.dataset.timeClockBuild = "6.14.80";
+window.__TIME_CLOCK_BUILD__ = "V6.14.82";
+document.documentElement.dataset.timeClockBuild = "6.14.82";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.80";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.80',
+  version: '6.14.82',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -2489,6 +2489,7 @@ window.tcIsDayShiftCode = value =>
       $("adminNavGroup").classList.toggle("hidden", p.role !== "HR_ADMIN" && p._realRole !== "HR_ADMIN");
       qsa("#adminNavGroup .nav-item:not(#systemSettingsNav)").forEach(el => el.classList.toggle("hidden", p.role !== "HR_ADMIN"));
       $("systemSettingsNav")?.classList.toggle("hidden", p._realRole !== "HR_ADMIN");
+      $("teamPortalNavV61482")?.classList.toggle("hidden", String(p.role||"").toUpperCase()!=="MANAGER");
       window.TimeClockSettings?.syncProfile?.(p);
       document.dispatchEvent(new CustomEvent("timeclock:effective-role-changed", {
         detail: {
@@ -12666,7 +12667,8 @@ window.tcIsDayShiftCode = value =>
 
       const managerPages = new Set([
         "schedule",
-        "work-patterns"
+        "work-patterns",
+        "team-portal"
       ]);
 
       if (
@@ -12702,8 +12704,8 @@ window.tcIsDayShiftCode = value =>
       qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
-        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
-        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
+        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], "team-portal":["สมาชิกทีม / Portal","จัดการ QR/Link, Activation Code และ Reset PIN ของลูกทีม"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
+        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-employee-portal":["Employee Portal","เปิด/ระงับสิทธิ์ Portal ให้พนักงานแบบ Bulk โดยไม่ต้องมี Email"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page);
       setText("pageSubtitle", titles[page]?.[1] || "");
@@ -31008,4 +31010,189 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
+})();
+
+/* ===== V6.14.82 Employee Portal Management ===== */
+(function(){
+  "use strict";
+  const VERSION="6.14.82";
+  const app=()=>window.TimeClockApp;
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  const fmtDateTime=v=>{if(!v)return"-";const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"});};
+  const human=e=>app()?.humanError?.(e)||String(e?.message||e||"เกิดข้อผิดพลาด");
+  const rpc=async(name,args={})=>{const c=app()?.state?.client;if(!c)throw new Error("SUPABASE_CLIENT_NOT_READY");const {data,error}=await c.rpc(name,args);if(error)throw error;return data;};
+  const toast=(m,t="info")=>app()?.toast?.(m,t);
+  const role=()=>String(app()?.state?.profile?.role||"").toUpperCase();
+  const realRole=()=>String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||"").toUpperCase();
+
+  const team={rows:[],filtered:[],link:null,lastActivation:null};
+  const admin={rows:[],filtered:[],selected:new Set()};
+
+  function statusMeta(s){
+    const key=String(s||"NOT_ENABLED").toUpperCase();
+    return ({
+      ACTIVE:["เปิดใช้แล้ว","active"],
+      ACTIVATION_READY:["มี Activation Code","activation"],
+      READY:["รอสร้าง Code","ready"],
+      NOT_ENABLED:["HR ยังไม่เปิด","off"],
+      DISABLED:["ระงับ","disabled"]
+    })[key]||[key,"off"];
+  }
+  function statusBadge(s){const [label,css]=statusMeta(s);return `<span class="portal-status-v61482 ${css}"><i></i>${esc(label)}</span>`;}
+  function teamPortalUrl(token){const u=new URL("./portal.html",window.location.href);u.search="";u.hash="";u.searchParams.set("team",String(token||""));return u.toString();}
+  async function copyText(text){
+    try{await navigator.clipboard.writeText(String(text||""));return true;}catch(_){
+      const t=document.createElement("textarea");t.value=String(text||"");document.body.appendChild(t);t.select();const ok=document.execCommand("copy");t.remove();return ok;
+    }
+  }
+  async function shareText(title,text,url){
+    if(navigator.share){try{await navigator.share({title,text,url});return true;}catch(e){if(e?.name==="AbortError")return false;}}
+    await copyText([text,url].filter(Boolean).join("\n"));toast("คัดลอกข้อมูลแล้ว","success");return true;
+  }
+
+  function renderQr(){
+    const root=$("teamPortalQrV61482");if(!root)return;root.innerHTML="";
+    const token=team.link?.public_token;if(!token){root.innerHTML='<div class="portal-qr-fallback-v61482">QR</div>';return;}
+    const url=teamPortalUrl(token);
+    if(window.QRCode){
+      try{new window.QRCode(root,{text:url,width:168,height:168,correctLevel:window.QRCode.CorrectLevel?.M});return;}catch(e){console.warn("QR V6.14.82",e);}
+    }
+    root.innerHTML='<div class="portal-qr-fallback-v61482">QR<br><small>ใช้ปุ่มคัดลอก Link</small></div>';
+  }
+
+  async function loadTeamLink(rotate=false){
+    team.link=await rpc("ta_portal_get_team_link_v61482",{p_rotate:Boolean(rotate)});
+    const url=teamPortalUrl(team.link?.public_token);
+    if($("teamPortalLinkTextV61482"))$("teamPortalLinkTextV61482").textContent=url;
+    renderQr();
+  }
+
+  function applyTeamFilter(){
+    const q=String($("teamPortalSearchV61482")?.value||"").trim().toLowerCase();
+    const st=String($("teamPortalStatusV61482")?.value||"").toUpperCase();
+    team.filtered=team.rows.filter(r=>(!st||String(r.portal_status).toUpperCase()===st)&&(!q||`${r.emp_code||""} ${r.full_name||""} ${r.position_name||""} ${r.department||""} ${r.zone||""} ${r.area||""} ${r.sub_area||""}`.toLowerCase().includes(q)));
+    renderTeam();
+  }
+
+  function renderTeam(){
+    const rows=team.filtered.length||($("teamPortalSearchV61482")?.value||$("teamPortalStatusV61482")?.value)?team.filtered:team.rows;
+    const total=team.rows.length,active=team.rows.filter(r=>r.portal_status==="ACTIVE").length;
+    const waiting=team.rows.filter(r=>["READY","ACTIVATION_READY"].includes(String(r.portal_status))).length;
+    const disabled=team.rows.filter(r=>["NOT_ENABLED","DISABLED"].includes(String(r.portal_status))).length;
+    if($("teamPortalKpiTotalV61482"))$("teamPortalKpiTotalV61482").textContent=total.toLocaleString("th-TH");
+    if($("teamPortalKpiActiveV61482"))$("teamPortalKpiActiveV61482").textContent=active.toLocaleString("th-TH");
+    if($("teamPortalKpiWaitingV61482"))$("teamPortalKpiWaitingV61482").textContent=waiting.toLocaleString("th-TH");
+    if($("teamPortalKpiDisabledV61482"))$("teamPortalKpiDisabledV61482").textContent=disabled.toLocaleString("th-TH");
+    if($("teamPortalMetaV61482"))$("teamPortalMetaV61482").textContent=`แสดง ${rows.length.toLocaleString("th-TH")} จาก ${total.toLocaleString("th-TH")} คน`;
+    const body=$("teamPortalBodyV61482");if(!body)return;
+    body.innerHTML=rows.length?rows.map(r=>{
+      const status=String(r.portal_status||"").toUpperCase();
+      let action="";
+      if(status==="ACTIVE") action=`<button class="btn btn-light btn-sm" data-portal-reset-pin-v61482="${esc(r.emp_code)}">Reset PIN</button>`;
+      else if(["READY","ACTIVATION_READY"].includes(status)) action=`<button class="btn btn-primary btn-sm" data-portal-activation-v61482="${esc(r.emp_code)}">${status==="ACTIVATION_READY"?"สร้าง Code ใหม่":"สร้าง Activation Code"}</button>`;
+      else action='<span class="portal-action-hint-v61482">รอ HR เปิดสิทธิ์</span>';
+      return `<tr><td><strong>${esc(r.emp_code)}</strong><small>${esc(r.full_name||"-")}</small></td><td><strong>${esc(r.position_name||"-")}</strong><small>${esc(r.department||"-")} • ${esc(r.zone||r.area||"-")} ${r.sub_area?`/ ${esc(r.sub_area)}`:""}</small></td><td>${statusBadge(status)}${r.activation_expires_at&&status==="ACTIVATION_READY"?`<small>หมดอายุ ${esc(fmtDateTime(r.activation_expires_at))}</small>`:""}</td><td>${esc(fmtDateTime(r.last_login_at))}</td><td>${action}</td></tr>`;
+    }).join(""):'<tr><td colspan="5" class="fc-empty">ไม่พบสมาชิกทีม</td></tr>';
+  }
+
+  async function loadTeam(){
+    if(!["MANAGER","HR_ADMIN"].includes(role()))return;
+    app()?.showLoading?.("กำลังโหลด Employee Portal ของทีม...");
+    try{
+      const [rows]=await Promise.all([rpc("ta_portal_get_my_team_v61482"),loadTeamLink(false)]);
+      team.rows=Array.isArray(rows)?rows:[];team.filtered=[];renderTeam();
+    }catch(e){toast(human(e),"error");if($("teamPortalBodyV61482"))$("teamPortalBodyV61482").innerHTML=`<tr><td colspan="5" class="fc-empty">${esc(human(e))}</td></tr>`;}
+    finally{app()?.hideLoading?.();}
+  }
+
+  function openActivation(result){
+    team.lastActivation=result||null;
+    const modal=$("teamPortalActivationModalV61482");if(!modal)return;
+    $("teamPortalActivationTitleV61482").textContent=result?.reset_pin?"Reset PIN • Activation ใหม่":"Activation Code";
+    $("teamPortalActivationPersonV61482").innerHTML=`<strong>${esc(result?.emp_code||"-")} • ${esc(result?.full_name||"-")}</strong><small>${esc(result?.position_name||"")} ${result?.department?`• ${esc(result.department)}`:""}</small>`;
+    $("teamPortalActivationCodeV61482").textContent=result?.activation_code||"------";
+    $("teamPortalActivationExpireV61482").textContent=`หมดอายุ ${fmtDateTime(result?.activation_expires_at)}`;
+    modal.classList.remove("hidden");modal.setAttribute("aria-hidden","false");
+  }
+  function closeActivation(){const m=$("teamPortalActivationModalV61482");m?.classList.add("hidden");m?.setAttribute("aria-hidden","true");}
+  async function issueActivation(emp,reset=false){
+    if(reset){const ok=window.tcConfirm?await window.tcConfirm("Reset PIN จะออกจากระบบทุกอุปกรณ์ของพนักงานและต้อง Activate ใหม่ ยืนยันหรือไม่?"):window.confirm("Reset PIN และให้พนักงาน Activate ใหม่?");if(!ok)return;}
+    app()?.showLoading?.(reset?"กำลัง Reset PIN...":"กำลังสร้าง Activation Code...");
+    try{const r=await rpc("ta_portal_issue_activation_v61482",{p_emp_code:String(emp),p_reset_pin:Boolean(reset)});openActivation(r);await loadTeam();}
+    catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}
+  }
+
+  function renderAdmin(){
+    const rows=admin.filtered.length||($("portalAdminSearchV61482")?.value||$("portalAdminStatusV61482")?.value)?admin.filtered:admin.rows;
+    const active=admin.rows.filter(r=>r.portal_status==="ACTIVE").length;
+    const waiting=admin.rows.filter(r=>["READY","ACTIVATION_READY"].includes(String(r.portal_status))).length;
+    const off=admin.rows.filter(r=>["NOT_ENABLED","DISABLED"].includes(String(r.portal_status))).length;
+    $("portalAdminKpiTotalV61482")&&( $("portalAdminKpiTotalV61482").textContent=admin.rows.length.toLocaleString("th-TH") );
+    $("portalAdminKpiActiveV61482")&&( $("portalAdminKpiActiveV61482").textContent=active.toLocaleString("th-TH") );
+    $("portalAdminKpiWaitingV61482")&&( $("portalAdminKpiWaitingV61482").textContent=waiting.toLocaleString("th-TH") );
+    $("portalAdminKpiOffV61482")&&( $("portalAdminKpiOffV61482").textContent=off.toLocaleString("th-TH") );
+    $("portalAdminMetaV61482")&&( $("portalAdminMetaV61482").textContent=`${rows.length.toLocaleString("th-TH")} รายการ • เลือกแล้ว ${admin.selected.size.toLocaleString("th-TH")} คน` );
+    const body=$("portalAdminBodyV61482");if(!body)return;
+    body.innerHTML=rows.length?rows.map(r=>`<tr><td><input type="checkbox" data-portal-admin-select-v61482="${esc(r.emp_code)}" ${admin.selected.has(String(r.emp_code))?"checked":""}/></td><td><strong>${esc(r.emp_code)}</strong><small>${esc(r.full_name||"-")}</small></td><td><strong>${esc(r.position_name||"-")}</strong></td><td><strong>${esc(r.department||"-")}</strong><small>${esc(r.zone||r.area||"-")} ${r.sub_area?`/ ${esc(r.sub_area)}`:""}</small></td><td>${esc(r.pc||"-")}</td><td>${statusBadge(r.portal_status)}</td><td><small>Activate ${esc(fmtDateTime(r.activated_at))}</small><small>Login ${esc(fmtDateTime(r.last_login_at))}</small></td></tr>`).join(""):'<tr><td colspan="7" class="fc-empty">ไม่พบข้อมูลพนักงาน</td></tr>';
+  }
+
+  async function loadAdmin(){
+    if(realRole()!=="HR_ADMIN")return;
+    app()?.showLoading?.("กำลังโหลดพนักงาน Employee Portal...");
+    try{
+      const rows=await rpc("ta_portal_admin_search_employees_v61482",{p_search:String($("portalAdminSearchV61482")?.value||"").trim()||null,p_portal_status:String($("portalAdminStatusV61482")?.value||"")||null,p_limit:5000});
+      admin.rows=Array.isArray(rows)?rows:[];admin.filtered=[];
+      const visible=new Set(admin.rows.map(r=>String(r.emp_code)));admin.selected=new Set([...admin.selected].filter(x=>visible.has(x)));renderAdmin();
+    }catch(e){toast(human(e),"error");if($("portalAdminBodyV61482"))$("portalAdminBodyV61482").innerHTML=`<tr><td colspan="7" class="fc-empty">${esc(human(e))}</td></tr>`;}
+    finally{app()?.hideLoading?.();}
+  }
+
+  async function setAdminEnabled(enabled){
+    const codes=[...admin.selected];if(!codes.length)return toast("กรุณาเลือกพนักงานอย่างน้อย 1 คน","warning");
+    const label=enabled?"เปิดสิทธิ์ Employee Portal":"ระงับ Employee Portal";
+    const ok=window.tcConfirm?await window.tcConfirm(`${label} จำนวน ${codes.length.toLocaleString("th-TH")} คน?`):window.confirm(`${label} ${codes.length} คน?`);if(!ok)return;
+    app()?.showLoading?.(`กำลัง${label}...`);
+    try{await rpc("ta_portal_admin_set_enabled_v61482",{p_emp_codes:codes,p_enabled:Boolean(enabled),p_note:null});toast(`${label}เรียบร้อย`,"success");admin.selected.clear();await loadAdmin();}
+    catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}
+  }
+
+  function bind(){
+    $("teamPortalRefreshV61482")?.addEventListener("click",loadTeam);
+    $("teamPortalSearchV61482")?.addEventListener("input",applyTeamFilter);
+    $("teamPortalStatusV61482")?.addEventListener("change",applyTeamFilter);
+    $("teamPortalCopyLinkV61482")?.addEventListener("click",async()=>{const u=teamPortalUrl(team.link?.public_token);await copyText(u);toast("คัดลอก Link แล้ว","success");});
+    $("teamPortalShareLinkV61482")?.addEventListener("click",()=>shareText("TimeAttendance Employee Portal","เข้าระบบ TimeAttendance ของทีม",teamPortalUrl(team.link?.public_token)));
+    $("teamPortalRotateLinkV61482")?.addEventListener("click",async()=>{const ok=window.tcConfirm?await window.tcConfirm("เปลี่ยน Link ทีม? Link/QR เดิมจะใช้เปิดหน้า Activate ใหม่ไม่ได้"):window.confirm("เปลี่ยน Link ทีม?");if(!ok)return;app()?.showLoading?.("กำลังเปลี่ยน Link...");try{await loadTeamLink(true);toast("สร้าง Link ทีมใหม่แล้ว","success");}catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}});
+
+    $("portalAdminRefreshV61482")?.addEventListener("click",loadAdmin);
+    $("portalAdminSearchBtnV61482")?.addEventListener("click",loadAdmin);
+    $("portalAdminSelectTechniciansV61482")?.addEventListener("click",async()=>{
+      if($("portalAdminSearchV61482"))$("portalAdminSearchV61482").value="ช่างเทคนิค";
+      if($("portalAdminStatusV61482"))$("portalAdminStatusV61482").value="";
+      await loadAdmin();
+      admin.rows.filter(r=>String(r.position_name||"").includes("ช่างเทคนิค")).forEach(r=>admin.selected.add(String(r.emp_code)));
+      renderAdmin();
+      toast(`เลือกกลุ่มช่างเทคนิค ${admin.selected.size.toLocaleString("th-TH")} คนแล้ว`,"success");
+    });
+    $("portalAdminSearchV61482")?.addEventListener("keydown",e=>{if(e.key==="Enter")loadAdmin();});
+    $("portalAdminEnableBtnV61482")?.addEventListener("click",()=>setAdminEnabled(true));
+    $("portalAdminDisableBtnV61482")?.addEventListener("click",()=>setAdminEnabled(false));
+    $("portalAdminSelectAllV61482")?.addEventListener("change",e=>{const rows=admin.rows;if(e.target.checked)rows.forEach(r=>admin.selected.add(String(r.emp_code)));else rows.forEach(r=>admin.selected.delete(String(r.emp_code)));renderAdmin();});
+
+    document.addEventListener("click",async e=>{
+      const a=e.target.closest("[data-portal-activation-v61482]");if(a){await issueActivation(a.dataset.portalActivationV61482,false);return;}
+      const r=e.target.closest("[data-portal-reset-pin-v61482]");if(r){await issueActivation(r.dataset.portalResetPinV61482,true);return;}
+      const sel=e.target.closest("[data-portal-admin-select-v61482]");if(sel){const code=String(sel.dataset.portalAdminSelectV61482);sel.checked?admin.selected.add(code):admin.selected.delete(code);renderAdmin();return;}
+      if(e.target.closest("[data-close-team-portal-v61482]")){closeActivation();return;}
+      const nav=e.target.closest('.nav-item[data-page="team-portal"]');if(nav)setTimeout(loadTeam,0);
+      const adminNav=e.target.closest('.nav-item[data-page="admin-employee-portal"]');if(adminNav)setTimeout(loadAdmin,0);
+    });
+    $("teamPortalCopyCodeV61482")?.addEventListener("click",async()=>{const c=team.lastActivation?.activation_code;if(!c)return;await copyText(c);toast("คัดลอก Activation Code แล้ว","success");});
+    $("teamPortalShareCodeV61482")?.addEventListener("click",()=>{const r=team.lastActivation;if(!r)return;shareText("TimeAttendance Activation",`${r.emp_code} ${r.full_name||""}\nActivation Code: ${r.activation_code}\nใช้รหัสนี้ครั้งเดียว แล้วตั้ง PIN 6 หลักของตนเอง`,teamPortalUrl(team.link?.public_token));});
+    window.addEventListener("ta:session-ready",()=>{const rr=role();$("teamPortalNavV61482")?.classList.toggle("hidden",rr!=="MANAGER");});
+  }
+
+  window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,version:VERSION};
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();

@@ -1,0 +1,19 @@
+V6.14.82 Employee Portal Foundation Audit
+
+AUTH MODEL
+PASS - Existing HR_ADMIN / MANAGER / VIEWER auth untouched.
+PASS - Employee Portal does not require email/Supabase Auth user.
+PASS - Activation/PIN hashes use pgcrypto bcrypt.
+PASS - Portal session token stored hashed in DB; plaintext token returned only to device.
+PASS - PIN brute-force lock: 5 failures -> 15 minute lock.
+PASS - Team Link does not expose employee data and is validated against canonical Manager resolver during activation.
+
+SCOPE
+PASS - HR bulk enable is HR_ADMIN-only and reads Employee Master without PC restriction.
+PASS - Manager activation/reset validates current canonical manager relationship for the employee.
+PASS - Employee Portal self RPCs derive emp_code from opaque session token; employee code is not accepted as a data-scope argument after login.
+
+REQUESTS
+PASS - Portal requests reuse V6.14.81 table and Manager Request Center.
+PASS - User-entered special-work times are reference detail only; no Raw Punch write exists in Portal SQL/UI.
+PASS - Portal gets a separate notification record when Manager resolves/rejects a Portal request.
