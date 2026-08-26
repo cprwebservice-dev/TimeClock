@@ -22778,3 +22778,48 @@ body.theme-dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 .
 .dark #schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-emp-name>small{
   color:#91a4b8!important;
 }
+
+
+/* ========================================================================== */
+/* V6.14.70 — Personal Schedule sticky identity columns alignment fix         */
+/* Fix left frozen pane gap/cut text by aligning monthly sticky offsets       */
+/* with the actual compact column widths used in full-month person view.      */
+/* ========================================================================== */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-code-head,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-emp-code{
+  width:var(--schedule-code-col)!important;
+  min-width:var(--schedule-code-col)!important;
+  max-width:var(--schedule-code-col)!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-name-head,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-emp-name{
+  width:var(--schedule-name-col)!important;
+  min-width:var(--schedule-name-col)!important;
+  max-width:var(--schedule-name-col)!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .sticky-col-1{
+  left:0!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .sticky-col-2{
+  left:var(--schedule-code-col)!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .sticky-col-3{
+  left:calc(var(--schedule-code-col) + var(--schedule-name-col))!important;
+}
+
+/* Keep the name column text starting immediately after the code column, not
+   after an oversized frozen offset. */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-name-head,
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-position-head{
+  overflow:hidden!important;
+  white-space:nowrap!important;
+  text-overflow:ellipsis!important;
+}
+
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-emp-name{
+  box-sizing:border-box!important;
+}

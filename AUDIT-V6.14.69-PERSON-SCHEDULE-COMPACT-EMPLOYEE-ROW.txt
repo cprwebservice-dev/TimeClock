@@ -1,0 +1,24 @@
+AUDIT — TimeAttendance V6.14.69
+Personal Schedule Compact Employee Row UX
+
+ROOT CAUSE
+- Full-month employee name cell inherited flex-wrap from the general schedule table.
+- Manager-own row contains Name + 5D/6D badge + read-only eye icon + calendar button.
+- In compact full-month widths, the calendar button wrapped onto an extra line, making the Manager row much taller and leaving the department text visually clipped/awkward.
+
+FIX
+[PASS] Full-month employee name cell is now a stable two-line layout.
+[PASS] Calendar action is removed from flex flow and positioned at the right edge.
+[PASS] Manager read-only eye is positioned independently above the calendar action.
+[PASS] Employee name remains single-line with ellipsis.
+[PASS] Department remains single-line with ellipsis and full-text tooltip.
+[PASS] Position remains single-line with existing full-text tooltip.
+[PASS] Employee rows use a consistent 50px height.
+[PASS] V6.14.68 continuous-row hover/background behavior remains.
+
+UNCHANGED
+- Scheduling permissions / Manager self read-only behavior
+- Shift rules, Night Sequence, 6h rest, 48h warning
+- Work Pattern, Day-off, Leave, HOL
+- Attendance / Monthly Personal / Time Certification
+- Backend / SQL

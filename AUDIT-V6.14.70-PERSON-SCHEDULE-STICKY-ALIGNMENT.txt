@@ -1,0 +1,11 @@
+AUDIT V6.14.70
+
+Scope:
+- Frontend only
+- app.css: monthly person-schedule sticky width/left alignment
+- index.html: version + cache key
+
+Purpose:
+- Fix incomplete/cut appearance in the left frozen employee pane of the personal monthly schedule table.
+
+No backend / SQL changes.
