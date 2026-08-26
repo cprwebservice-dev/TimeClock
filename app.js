@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.83";
-document.documentElement.dataset.timeClockBuild = "6.14.83";
+window.__TIME_CLOCK_BUILD__ = "V6.14.84";
+document.documentElement.dataset.timeClockBuild = "6.14.84";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.83";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.83',
+  version: '6.14.84',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -31012,10 +31012,10 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();
 
-/* ===== V6.14.83 Employee Portal Search Render Hotfix ===== */
+/* ===== V6.14.84 Employee Portal >1000 Search + Crypto Fix ===== */
 (function(){
   "use strict";
-  const VERSION="6.14.83";
+  const VERSION="6.14.84";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -31124,8 +31124,8 @@ ${names}${extra}
   }
 
   function renderAdmin(){
-    // V6.14.83: ta_portal_admin_search_employees_v61482 already returns the
-    // server-filtered result. Do not switch to admin.filtered merely because
+    // V6.14.84: paged RPC results are combined into admin.rows before render.
+    // Do not switch to admin.filtered merely because
     // the search/status input has a value; admin.filtered is intentionally
     // empty after an RPC search and caused the KPI to show 1 while the table
     // rendered 0 rows.
@@ -31144,13 +31144,38 @@ ${names}${extra}
 
   async function loadAdmin(){
     if(realRole()!=="HR_ADMIN")return;
+    const searchValue=String($("portalAdminSearchV61482")?.value||"").trim()||null;
+    const statusValue=String($("portalAdminStatusV61482")?.value||"")||null;
+    const pageSizeV61484=800;
+    const maxRowsV61484=10000;
     app()?.showLoading?.("กำลังโหลดพนักงาน Employee Portal...");
     try{
-      const rows=await rpc("ta_portal_admin_search_employees_v61482",{p_search:String($("portalAdminSearchV61482")?.value||"").trim()||null,p_portal_status:String($("portalAdminStatusV61482")?.value||"")||null,p_limit:5000});
-      admin.rows=Array.isArray(rows)?rows:[];admin.filtered=[];
-      const visible=new Set(admin.rows.map(r=>String(r.emp_code)));admin.selected=new Set([...admin.selected].filter(x=>visible.has(x)));renderAdmin();
-    }catch(e){toast(human(e),"error");if($("portalAdminBodyV61482"))$("portalAdminBodyV61482").innerHTML=`<tr><td colspan="7" class="fc-empty">${esc(human(e))}</td></tr>`;}
-    finally{app()?.hideLoading?.();}
+      let allRowsV61484=[];
+      let offsetV61484=0;
+      while(offsetV61484<maxRowsV61484){
+        const pageV61484=await rpc("ta_portal_admin_search_employees_v61484",{
+          p_search:searchValue,
+          p_portal_status:statusValue,
+          p_limit:pageSizeV61484,
+          p_offset:offsetV61484
+        });
+        const normalizedPageV61484=Array.isArray(pageV61484)?pageV61484:[];
+        allRowsV61484.push(...normalizedPageV61484);
+        if(normalizedPageV61484.length<pageSizeV61484)break;
+        offsetV61484+=normalizedPageV61484.length;
+        app()?.showLoading?.(`กำลังโหลดพนักงาน Employee Portal... ${allRowsV61484.length.toLocaleString("th-TH")}+ คน`);
+      }
+      const uniqueRowsV61484=new Map();
+      allRowsV61484.forEach(r=>uniqueRowsV61484.set(String(r.emp_code||""),r));
+      admin.rows=[...uniqueRowsV61484.values()];
+      admin.filtered=[];
+      const visible=new Set(admin.rows.map(r=>String(r.emp_code)));
+      admin.selected=new Set([...admin.selected].filter(x=>visible.has(x)));
+      renderAdmin();
+    }catch(e){
+      toast(human(e),"error");
+      if($("portalAdminBodyV61482"))$("portalAdminBodyV61482").innerHTML=`<tr><td colspan="7" class="fc-empty">${esc(human(e))}</td></tr>`;
+    }finally{app()?.hideLoading?.();}
   }
 
   async function setAdminEnabled(enabled){
