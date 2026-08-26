@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.82";
-document.documentElement.dataset.timeClockBuild = "6.14.82";
+window.__TIME_CLOCK_BUILD__ = "V6.14.83";
+document.documentElement.dataset.timeClockBuild = "6.14.83";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.82";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.82',
+  version: '6.14.83',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -31012,10 +31012,10 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();
 
-/* ===== V6.14.82 Employee Portal Management ===== */
+/* ===== V6.14.83 Employee Portal Search Render Hotfix ===== */
 (function(){
   "use strict";
-  const VERSION="6.14.82";
+  const VERSION="6.14.83";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -31124,7 +31124,12 @@ ${names}${extra}
   }
 
   function renderAdmin(){
-    const rows=admin.filtered.length||($("portalAdminSearchV61482")?.value||$("portalAdminStatusV61482")?.value)?admin.filtered:admin.rows;
+    // V6.14.83: ta_portal_admin_search_employees_v61482 already returns the
+    // server-filtered result. Do not switch to admin.filtered merely because
+    // the search/status input has a value; admin.filtered is intentionally
+    // empty after an RPC search and caused the KPI to show 1 while the table
+    // rendered 0 rows.
+    const rows=admin.rows;
     const active=admin.rows.filter(r=>r.portal_status==="ACTIVE").length;
     const waiting=admin.rows.filter(r=>["READY","ACTIVATION_READY"].includes(String(r.portal_status))).length;
     const off=admin.rows.filter(r=>["NOT_ENABLED","DISABLED"].includes(String(r.portal_status))).length;
