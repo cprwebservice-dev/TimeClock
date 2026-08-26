@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.70";
-document.documentElement.dataset.timeClockBuild = "6.14.69";
+window.__TIME_CLOCK_BUILD__ = "V6.14.71";
+document.documentElement.dataset.timeClockBuild = "6.14.71";
 
 
 /* ===== js/config.js ===== */
@@ -9001,7 +9001,7 @@ window.tcIsDayShiftCode = value =>
       return { status: flags.primaryStatus || 'NORMAL', label: 'ปกติ', tone: 'normal' };
     }
 
-    // V6.14.68 — Monthly Personal must not label a past scheduled workday as
+    // V6.14.67 — Monthly Personal must not label a past scheduled workday as
     // “ยังไม่ประมวลผล” merely because the Attendance enrichment response has no
     // row for that date. The canonical schedule already contains enough evidence
     // (working shift / planned window / leave / day-off) to apply the same
@@ -9270,7 +9270,7 @@ window.tcIsDayShiftCode = value =>
             Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)}` : ''
           ].filter(Boolean).join(' • ')
         : 'นับจากตารางกะเดียวกับรายบุคคลเต็มเดือน';
-      // V6.14.68: KPI/anomaly counts use the same merged Calendar + Attendance
+      // V6.14.67: KPI/anomaly counts use the same merged Calendar + Attendance
       // policy as each day card. This includes past scheduled workdays whose
       // Attendance enrichment row is missing but whose missing punches are still
       // canonically an absence.
@@ -10264,13 +10264,6 @@ window.tcIsDayShiftCode = value =>
             || ""
           ).trim();
 
-        const employeeDepartment =
-          String(
-            obj.meta.department
-            || obj.meta.zone
-            || ""
-          ).trim();
-
         const managerOwnEmployee =
           scheduleManagerOwnEmployee(
             emp
@@ -10286,7 +10279,7 @@ window.tcIsDayShiftCode = value =>
             ? `<span class="schedule-self-readonly-badge" title="ตนเอง • ดูอย่างเดียว — Manager ดูกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง" aria-label="ตนเอง ดูอย่างเดียว"><svg class="schedule-self-readonly-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.75"></circle></svg></span>`
             : "";
 
-        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}" title="${safe(displayName)}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small title="${safe(employeeDepartment || "-")}">${safe(employeeDepartment)}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
