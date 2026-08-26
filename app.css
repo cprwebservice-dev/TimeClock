@@ -22654,3 +22654,197 @@ body.theme-dark .employee-month-punch-context-note-v61464,.dark .employee-month-
 #schedulePersonWorkspace .monthly-person-schedule-table-v61146 tbody tr > td{
   vertical-align:middle!important;
 }
+
+/* ======================================================================
+   V6.14.77 Team View / Time View Label Scale UX
+   - Increase label typography in Team view and Time view
+   - Keep card balance and avoid cramped chips
+   ====================================================================== */
+
+/* Shared daily summary card scale-up */
+.schedule-team-summary-card{
+  min-height:96px!important;
+  height:96px!important;
+  padding:8px 8px 7px!important;
+  gap:6px!important;
+}
+
+.schedule-team-summary-head{
+  min-height:19px!important;
+}
+
+.schedule-team-summary-head>div span{
+  font-size:8.5px!important;
+}
+
+.schedule-team-summary-head strong{
+  font-size:13px!important;
+  line-height:1.05!important;
+}
+
+.schedule-team-alert{
+  width:18px!important;
+  height:18px!important;
+  font-size:9px!important;
+}
+
+.schedule-team-summary-pills{
+  gap:4px!important;
+}
+
+.team-count-pill{
+  min-height:26px!important;
+  padding:4px 6px!important;
+  border-radius:7px!important;
+}
+
+.team-count-pill b{
+  font-size:8px!important;
+}
+
+.team-count-pill em{
+  font-size:11px!important;
+}
+
+.schedule-team-summary-foot{
+  font-size:7.5px!important;
+  line-height:1.1!important;
+}
+
+/* Unit label card */
+.schedule-team-unit-card.team-unit-card-v61115{
+  min-height:88px!important;
+  height:88px!important;
+  padding:10px 11px!important;
+}
+
+.team-unit-mark-v61115{
+  width:8px!important;
+  height:34px!important;
+}
+
+.schedule-team-unit-card strong{
+  font-size:11.5px!important;
+  line-height:1.2!important;
+}
+
+.schedule-team-unit-card small{
+  font-size:8.5px!important;
+  line-height:1.15!important;
+}
+
+.team-unit-open-v61115{
+  min-width:72px!important;
+  min-height:30px!important;
+  padding:4px 8px!important;
+  font-size:8.5px!important;
+}
+
+.team-unit-open-v61115 span{
+  font-size:13px!important;
+}
+
+/* Daily team / time-view summary card */
+.schedule-team-summary-card.team-day-card-v61115{
+  min-height:96px!important;
+  height:96px!important;
+  gap:6px!important;
+  padding:8px 8px 7px!important;
+}
+
+.team-day-top-v61115{
+  min-height:18px!important;
+  gap:6px!important;
+}
+
+.team-day-total-v61115{
+  gap:4px!important;
+}
+
+.team-day-total-v61115 small{
+  font-size:8px!important;
+}
+
+.team-day-total-v61115 strong{
+  font-size:13px!important;
+}
+
+.team-day-confirm-v61115{
+  gap:4px!important;
+  padding:3px 6px!important;
+  font-size:8px!important;
+}
+
+.team-day-confirm-v61115 i{
+  width:13px!important;
+  height:13px!important;
+  font-size:8px!important;
+}
+
+.team-day-counts-v61115{
+  gap:4px!important;
+}
+
+.team-day-count-v61115{
+  grid-template-columns:6px 1fr auto!important;
+  gap:4px!important;
+  height:28px!important;
+  padding:4px 6px!important;
+  border-radius:7px!important;
+}
+
+.team-day-count-v61115>i{
+  width:6px!important;
+  height:6px!important;
+}
+
+.team-day-count-v61115 small{
+  font-size:8px!important;
+  line-height:1.05!important;
+}
+
+.team-day-count-v61115 strong{
+  font-size:11px!important;
+  line-height:1!important;
+}
+
+.team-day-bottom-v61115{
+  min-height:14px!important;
+}
+
+.team-day-progress-text-v61115{
+  font-size:7px!important;
+}
+
+.team-day-extras-v61115{
+  gap:4px!important;
+}
+
+.team-day-extra{
+  max-width:84px!important;
+  padding:3px 5px!important;
+  font-size:7px!important;
+}
+
+.team-day-extra i{
+  width:5px!important;
+  height:5px!important;
+}
+
+/* Keep mobile/tablet readable without overflowing */
+@media (max-width: 1280px){
+  .schedule-team-summary-card,
+  .schedule-team-summary-card.team-day-card-v61115{
+    min-height:92px!important;
+    height:92px!important;
+  }
+
+  .schedule-team-unit-card.team-unit-card-v61115{
+    min-height:84px!important;
+    height:84px!important;
+  }
+
+  .team-day-count-v61115{
+    height:27px!important;
+  }
+}
