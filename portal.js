@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.14.95";
+  const VERSION="6.14.96";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -37,14 +37,32 @@
   function dayMeta(r){const day=String(r?.day_type||"").toUpperCase(),code=String(r?.effective_shift_code||"").toUpperCase();if(day==="LEAVE"||code==="LV")return{label:"ลา",tone:"leave"};if(r?.is_public_holiday||day==="PUBLIC_HOLIDAY"||code==="HOL")return{label:"นักขัตฤกษ์",tone:"holiday"};if(r?.is_weekly_off||day==="WEEKLY_OFF"||String(r?.is_workday)==="false")return{label:"วันหยุด",tone:"off"};const st=String(r?.calculation_status||"").toUpperCase();if(st.includes("ABSEN"))return{label:"ขาดงาน",tone:"danger"};if(Number(r?.late_minutes||0)>0)return{label:`สาย ${Number(r.late_minutes)} นาที`,tone:"late"};if(Number(r?.early_leave_minutes||0)>0)return{label:`กลับก่อน ${Number(r.early_leave_minutes)} นาที`,tone:"early"};return{label:"ปกติ",tone:"normal"};}
   function specialLabel(r){const m=String(r?.work_mode_code||"").toUpperCase();return({NORMAL_LATE_CUSTOMER:"กะปกติ + งานลูกค้าช่วงดึก",SPLIT_WAIT_NIGHT:"กะเช้า + รอเข้ากะดึก",HOUR_BASED:"กะนับชั่วโมง"})[m]||"";}
   function row(date){return calendar.find(x=>String(x.work_date).slice(0,10)===String(date).slice(0,10));}
-  function renderToday(){const r=row(today()),box=$("portalTodayCard");if(!r){box.innerHTML='<div class="portal-empty">ยังไม่พบข้อมูลกะวันนี้</div>';return;}const meta=dayMeta(r),special=specialLabel(r),v=shiftVisual(r),second=specialSecondLine(r);box.innerHTML=`<div class="portal-today-main"><div class="portal-today-shift"><span>${esc(meta.label)}</span><strong><i class="portal-today-shift-icon">${esc(v.icon)}</i>${esc(r.effective_shift_code||"-")}</strong><small>${esc(r.shift_name||special||"-")}</small></div><span class="portal-shift-pill">◷ ${esc(fmtTime(r.shift_start_time))}–${esc(fmtTime(r.shift_end_time))}</span></div><div class="portal-today-times"><div><span>เวลาเข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong><small>${(r.first_in||r.actual_in_at)?"บันทึกแล้ว":"ยังไม่เข้า"}</small></div><div><span>เวลาออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong><small>${(r.last_out||r.actual_out_at)?"บันทึกแล้ว":"ยังไม่ออก"}</small></div></div>${second?`<div class="portal-today-special"><i>☾</i><div><span>งานกะพิเศษ</span><strong>${esc(second.replace(/^☾\s*/,''))}</strong></div></div>`:""}<div class="portal-status-line"><span class="portal-status-dot"></span>${special?`รูปแบบงาน: ${esc(special)} • `:""}${esc(meta.label)}</div>`;}
+  function renderToday(){
+    const r=row(today()),box=$("portalTodayCard");
+    if(!r){box.innerHTML='<div class="portal-empty">ยังไม่พบข้อมูลกะวันนี้</div>';return;}
+    const meta=dayMeta(r),special=specialLabel(r),v=shiftVisual(r),second=specialSecondLine(r);
+    const topCaption = special || r.shift_name || ({"เช้า":"กะเช้า","ดึก":"กะดึก","หยุด":"วันหยุด","ลา":"วันลา","นักขัตฯ":"วันหยุดนักขัตฤกษ์","กะนับชม.":"กะนับชั่วโมง"})[v.display] || "-";
+    box.innerHTML=`<div class="portal-today-main"><div class="portal-today-shift"><span>${esc(meta.label)}</span><strong><i class="portal-today-shift-icon">${esc(v.icon)}</i>${esc(v.display||"-")}</strong><small>${esc(topCaption)}</small></div><span class="portal-shift-pill">${v.time?`◷ ${esc(v.time)}`:`รหัสกะ ${esc(v.code||"-")}`}</span></div><div class="portal-today-times"><div><span>เวลาเข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong><small>${(r.first_in||r.actual_in_at)?"บันทึกแล้ว":"ยังไม่เข้า"}</small></div><div><span>เวลาออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong><small>${(r.last_out||r.actual_out_at)?"บันทึกแล้ว":"ยังไม่ออก"}</small></div></div>${second?`<div class="portal-today-special"><i>☾</i><div><span>งานกะพิเศษ</span><strong>${esc(second.replace(/^☾\s*/,''))}</strong></div></div>`:""}<div class="portal-status-line"><span class="portal-status-dot"></span><b>${esc(v.display||"-")}</b> • ${special?`รูปแบบงาน: ${esc(special)} • `:""}${esc(meta.label)} • รหัสกะ ${esc(v.code||"-")}</div>`;
+  }
+  function isNightShiftCode(code=""){
+    const c=String(code||"").toUpperCase();
+    return ["S134","S135","N","NS","NIGHT","OS134","OS135"].includes(c) || /134|135/.test(c);
+  }
+  function primaryShiftLabel(r={}){
+    const m=dayMeta(r),mode=String(r.work_mode_code||"").toUpperCase(),code=String(r.effective_shift_code||"").toUpperCase();
+    if(m.tone==="leave")return"ลา";
+    if(m.tone==="holiday")return"นักขัตฯ";
+    if(m.tone==="off")return"หยุด";
+    if(mode==="HOUR_BASED")return"กะนับชม.";
+    return (r.is_night_shift||isNightShiftCode(code))?"ดึก":"เช้า";
+  }
   function shiftVisual(r={}){
-    const m=dayMeta(r),code=String(r.effective_shift_code||"-"),mode=String(r.work_mode_code||"").toUpperCase();
-    if(m.tone==="leave")return{icon:"LV",code,label:"ลา",time:""};
-    if(m.tone==="holiday")return{icon:"PH",code,label:"นักขัตฤกษ์",time:""};
-    if(m.tone==="off")return{icon:"○",code,label:"วันหยุด",time:`${fmtTime(r.shift_start_time)}–${fmtTime(r.shift_end_time)}`};
-    if(mode==="HOUR_BASED")return{icon:"◷",code,label:"กะนับชั่วโมง",time:`${fmtTime(r.custom_start_time||r.shift_start_time)}–${fmtTime(r.custom_end_time||r.shift_end_time)}`};
-    return{icon:r.is_night_shift?"☾":"☀",code,label:m.label,time:`${fmtTime(r.shift_start_time)}–${fmtTime(r.shift_end_time)}`};
+    const m=dayMeta(r),code=String(r.effective_shift_code||"-"),mode=String(r.work_mode_code||"").toUpperCase(),display=primaryShiftLabel(r);
+    if(m.tone==="leave")return{icon:"▤",display,code,label:"ลา",time:"",metaCode:code};
+    if(m.tone==="holiday")return{icon:"✦",display,code,label:"นักขัตฯ",time:"",metaCode:code};
+    if(m.tone==="off")return{icon:"○",display,code,label:"วันหยุด",time:"",metaCode:code};
+    if(mode==="HOUR_BASED")return{icon:"◷",display,code,label:"กะนับชั่วโมง",time:`${fmtTime(r.custom_start_time||r.shift_start_time)}–${fmtTime(r.custom_end_time||r.shift_end_time)}`,metaCode:code};
+    return{icon:(r.is_night_shift||isNightShiftCode(code))?"☾":"☀",display,code,label:m.label,time:`${fmtTime(r.shift_start_time)}–${fmtTime(r.shift_end_time)}`,metaCode:code};
   }
   function specialSecondLine(r={}){
     const mode=String(r.work_mode_code||"").toUpperCase();
@@ -59,10 +77,54 @@
     }
     return "";
   }
-  function renderWeek(){const box=$("portalWeekStrip"),days=[];for(let i=0;i<7;i++){const d=addDays(today(),i),r=row(d)||{},v=shiftVisual(r),dt=new Date(`${d}T00:00:00`),second=specialSecondLine(r);days.push(`<div class="portal-day-chip ${dayMeta(r).tone} ${d===today()?"today":""}"><span>${dt.toLocaleDateString("th-TH",{weekday:"short"})} ${dt.getDate()}</span><strong><i class="portal-shift-icon">${esc(v.icon)}</i>${esc(v.code)}</strong><small>${esc(v.time||v.label)}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}</div>`);}box.innerHTML=days.join("");}
+  function renderWeek(){
+    const box=$("portalWeekStrip"),days=[];
+    for(let i=0;i<7;i++){
+      const d=addDays(today(),i),r=row(d)||{},v=shiftVisual(r),dt=new Date(`${d}T00:00:00`),second=specialSecondLine(r);
+      days.push(`<div class="portal-day-chip ${dayMeta(r).tone} ${d===today()?"today":""}"><span>${dt.toLocaleDateString("th-TH",{weekday:"short"})} ${dt.getDate()}</span><strong><i class="portal-shift-icon">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small>${esc(v.time||v.label)}</small><small class="portal-shift-code">${esc(v.code||"-")}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}</div>`);
+    }
+    box.innerHTML=days.join("");
+  }
   function monthBounds(d){const y=d.getFullYear(),m=d.getMonth();return{start:`${y}-${String(m+1).padStart(2,"0")}-01`,end:iso(new Date(y,m+1,0)),days:new Date(y,m+1,0).getDate(),first:new Date(y,m,1).getDay(),title:new Date(y,m,1).toLocaleDateString("th-TH",{month:"long",year:"numeric"})};}
-  function renderCalendar(){const b=monthBounds(scheduleMonth);$("portalScheduleMonthTitle").textContent=b.title;let html=["อา","จ","อ","พ","พฤ","ศ","ส"].map(x=>`<div class="portal-cal-head">${x}</div>`).join("");for(let i=0;i<b.first;i++)html+='<div class="portal-cal-day blank"></div>';for(let d=1;d<=b.days;d++){const date=`${b.start.slice(0,8)}${String(d).padStart(2,"0")}`,r=row(date)||{},m=dayMeta(r),v=shiftVisual(r),second=specialSecondLine(r);html+=`<div class="portal-cal-day ${m.tone} ${date===today()?"today":""}"><span>${d}</span><strong><i class="portal-shift-icon">${esc(v.icon)}</i>${esc(v.code)}</strong><small>${esc(v.time||v.label)}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}</div>`;}$("portalCalendar").innerHTML=html;}
-  function renderTime(){const rows=calendar.filter(r=>String(r.work_date)<=today()).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date))).slice(0,31),box=$("portalTimeList");box.innerHTML=rows.length?rows.map(r=>{const m=dayMeta(r),v=shiftVisual(r);return `<article class="portal-time-item"><div class="portal-time-head"><div class="portal-time-title"><i>${esc(v.icon)}</i><div><strong>${esc(fmtDate(r.work_date))}</strong><small>${esc(r.effective_shift_code||"-")} • ${esc(v.time||m.label)}</small></div></div><span class="portal-time-status">${esc(m.label)}</span></div><div class="portal-time-grid"><div><span>เวลาเข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong></div><div><span>เวลาออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong></div><div><span>สาย</span><strong>${Number(r.late_minutes||0).toLocaleString("th-TH")} นาที</strong></div><div><span>กลับก่อน</span><strong>${Number(r.early_leave_minutes||0).toLocaleString("th-TH")} นาที</strong></div></div></article>`;}).join(""):'<div class="portal-empty portal-empty-card">ยังไม่มีข้อมูลเวลาทำงาน</div>';}
+  function renderScheduleSummary(){
+    const box=$("portalScheduleSummary");
+    if(!box)return;
+    const b=monthBounds(scheduleMonth);
+    const rows=calendar.filter(r=>String(r.work_date||"").slice(0,7)===b.start.slice(0,7));
+    const counts={work:0,night:0,off:0,leave:0,holiday:0,special:0};
+    rows.forEach(r=>{
+      const p=primaryShiftLabel(r),mode=String(r.work_mode_code||"").toUpperCase();
+      if(p==="เช้า")counts.work+=1;
+      else if(p==="ดึก")counts.night+=1;
+      else if(p==="หยุด")counts.off+=1;
+      else if(p==="ลา")counts.leave+=1;
+      else if(p==="นักขัตฯ")counts.holiday+=1;
+      if(["NORMAL_LATE_CUSTOMER","SPLIT_WAIT_NIGHT","HOUR_BASED"].includes(mode))counts.special+=1;
+    });
+    box.innerHTML=`
+      <div class="portal-summary-chip"><span>เช้า</span><strong>${counts.work}</strong></div>
+      <div class="portal-summary-chip"><span>ดึก</span><strong>${counts.night}</strong></div>
+      <div class="portal-summary-chip"><span>หยุด</span><strong>${counts.off}</strong></div>
+      <div class="portal-summary-chip"><span>ลา</span><strong>${counts.leave}</strong></div>
+      <div class="portal-summary-chip"><span>นักขัตฯ</span><strong>${counts.holiday}</strong></div>
+      <div class="portal-summary-chip accent"><span>กะพิเศษ</span><strong>${counts.special}</strong></div>`;
+  }
+  function renderCalendar(){
+    const b=monthBounds(scheduleMonth);
+    $("portalScheduleMonthTitle").textContent=b.title;
+    let html=["อา","จ","อ","พ","พฤ","ศ","ส"].map(x=>`<div class="portal-cal-head">${x}</div>`).join("");
+    for(let i=0;i<b.first;i++)html+='<div class="portal-cal-day blank"></div>';
+    for(let d=1;d<=b.days;d++){
+      const date=`${b.start.slice(0,8)}${String(d).padStart(2,"0")}`,r=row(date)||{},m=dayMeta(r),v=shiftVisual(r),second=specialSecondLine(r);
+      html+=`<div class="portal-cal-day ${m.tone} ${date===today()?"today":""}"><span>${d}</span><strong class="portal-cal-shift-label"><i class="portal-shift-icon">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small class="portal-cal-time">${esc(v.time||v.label)}</small><small class="portal-cal-code">รหัสกะ ${esc(v.code||"-")}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}</div>`;
+    }
+    $("portalCalendar").innerHTML=html;
+    renderScheduleSummary();
+  }
+  function renderTime(){
+    const rows=calendar.filter(r=>String(r.work_date)<=today()).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date))).slice(0,31),box=$("portalTimeList");
+    box.innerHTML=rows.length?rows.map(r=>{const m=dayMeta(r),v=shiftVisual(r);return `<article class="portal-time-item"><div class="portal-time-head"><div class="portal-time-title"><i>${esc(v.icon)}</i><div><strong>${esc(fmtDate(r.work_date))}</strong><small>${esc(v.display||v.code)} • ${esc(v.time||m.label)} • รหัสกะ ${esc(v.code||"-")}</small></div></div><span class="portal-time-status">${esc(m.label)}</span></div><div class="portal-time-grid"><div><span>เวลาเข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong></div><div><span>เวลาออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong></div><div><span>สาย</span><strong>${Number(r.late_minutes||0).toLocaleString("th-TH")} นาที</strong></div><div><span>กลับก่อน</span><strong>${Number(r.early_leave_minutes||0).toLocaleString("th-TH")} นาที</strong></div></div></article>`;}).join(""):'<div class="portal-empty portal-empty-card">ยังไม่มีข้อมูลเวลาทำงาน</div>';
+  }
   function requestStatus(s){const x=String(s||"").toUpperCase();if(["APPROVED","RESOLVED"].includes(x))return["ดำเนินการแล้ว","done"];if(["REJECTED","CANCELLED"].includes(x))return[x==="REJECTED"?"ไม่อนุมัติ":"ยกเลิก","reject"];if(x==="IN_REVIEW")return["กำลังตรวจสอบ","pending"];return["รอดำเนินการ","pending"];}
   function requestType(r){return({TIME_ISSUE:"ปัญหาเวลาทำงาน",SPECIAL_WORK:"งานกะพิเศษ",DAYOFF_SWAP:"สลับวันหยุด",LEAVE_REQUEST:"ลา"})[r.request_type]||r.request_type||"-";}
   function subtype(r){return({MISSING_IN:"ไม่มีเวลาเข้า",MISSING_OUT:"ไม่มีเวลาออก",WRONG_TIME:"เวลาไม่ถูกต้อง",NORMAL_LATE_CUSTOMER:"กะปกติ + งานลูกค้าช่วงดึก",SPLIT_WAIT_NIGHT:"กะเช้า + รอเข้ากะดึก",HOUR_BASED:"กะนับชั่วโมง",SWAP_DAYOFF:"สลับวันหยุด",FULL_DAY:"ลาเต็มวัน",PARTIAL_DAY:"ลาบางส่วน"})[r.request_subtype]||r.request_subtype||"-";}
