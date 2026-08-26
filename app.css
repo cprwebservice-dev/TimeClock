@@ -22848,3 +22848,75 @@ body.theme-dark .employee-month-punch-context-note-v61464,.dark .employee-month-
     height:27px!important;
   }
 }
+
+
+/* V6.14.79 — Monthly Personal clickable KPI filters */
+#employeeMonthScheduleModal .month-overview-kpi,
+#employeeMonthScheduleModal .month-overview-insight-v61127{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+#employeeMonthScheduleModal .month-overview-kpi:hover,
+#employeeMonthScheduleModal .month-overview-insight-v61127:hover{
+  transform:translateY(-1px);
+  box-shadow:0 10px 24px rgba(15,23,42,.08);
+}
+#employeeMonthScheduleModal .month-overview-kpi:focus-visible,
+#employeeMonthScheduleModal .month-overview-insight-v61127:focus-visible{
+  outline:2px solid #60a5fa;
+  outline-offset:2px;
+}
+#employeeMonthScheduleModal .month-overview-kpi.leave{
+  border-color:#e6d2ef;
+  background:#fcf9ff;
+}
+#employeeMonthScheduleModal .month-overview-kpi.leave .month-kpi-icon{
+  background:#f7edff;
+  color:#8b5fbf;
+}
+#employeeMonthScheduleModal .month-overview-kpi.leave strong{
+  color:#8b5fbf;
+}
+#employeeMonthScheduleModal .month-overview-kpi.is-active-filter-v61479,
+#employeeMonthScheduleModal .month-overview-insight-v61127.is-active-filter-v61479{
+  border-color:#3b82f6!important;
+  box-shadow:0 0 0 2px rgba(59,130,246,.14),0 12px 28px rgba(37,99,235,.12)!important;
+}
+#employeeMonthScheduleModal .employee-month-day-v61149.is-filter-muted-v61479{
+  opacity:.26;
+  filter:saturate(.55) grayscale(.12);
+  transform:scale(.985);
+  pointer-events:none;
+}
+#employeeMonthScheduleModal .employee-month-day-v61149.is-filter-hit-v61479{
+  box-shadow:0 0 0 2px rgba(59,130,246,.14),0 10px 26px rgba(15,23,42,.09)!important;
+}
+body.theme-dark #employeeMonthScheduleModal .month-overview-kpi.leave,
+.dark #employeeMonthScheduleModal .month-overview-kpi.leave{
+  background:#302740;
+  border-color:#564474;
+}
+body.theme-dark #employeeMonthScheduleModal .month-overview-kpi.leave .month-kpi-icon,
+.dark #employeeMonthScheduleModal .month-overview-kpi.leave .month-kpi-icon{
+  background:#3d3253;
+  color:#dec5ff;
+}
+body.theme-dark #employeeMonthScheduleModal .month-overview-kpi.leave strong,
+.dark #employeeMonthScheduleModal .month-overview-kpi.leave strong{
+  color:#e0cfff;
+}
+body.theme-dark #employeeMonthScheduleModal .month-overview-kpi.is-active-filter-v61479,
+.dark #employeeMonthScheduleModal .month-overview-kpi.is-active-filter-v61479,
+body.theme-dark #employeeMonthScheduleModal .month-overview-insight-v61127.is-active-filter-v61479,
+.dark #employeeMonthScheduleModal .month-overview-insight-v61127.is-active-filter-v61479{
+  border-color:#60a5fa!important;
+  box-shadow:0 0 0 2px rgba(96,165,250,.18),0 12px 30px rgba(2,6,23,.35)!important;
+}
+body.theme-dark #employeeMonthScheduleModal .employee-month-day-v61149.is-filter-muted-v61479,
+.dark #employeeMonthScheduleModal .employee-month-day-v61149.is-filter-muted-v61479{
+  opacity:.24;
+}
