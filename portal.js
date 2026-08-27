@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.13";
+  const VERSION="6.15.14";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -27,6 +27,10 @@
   let portalSyncBusyV61513=false;
   let portalSyncLastCheckV61513=0;
   const PORTAL_SYNC_INTERVAL_V61513=20000;
+
+  let portalHydratedV61514=false;
+  let attendanceLoadPromiseV61514=null;
+  let sameShiftLoadPromiseV61514=null;
   const urlTeam=new URLSearchParams(location.search).get("team")||"";
   let teamToken=urlTeam||localStorage.getItem(TEAM_KEY)||"";
   if(urlTeam)localStorage.setItem(TEAM_KEY,urlTeam);
@@ -45,8 +49,8 @@
   function setAuthTab(tab){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.classList.toggle("active",b.dataset.authTab===tab));$("portalActivateForm").classList.toggle("hidden",tab!=="activate");$("portalLoginForm").classList.toggle("hidden",tab!=="login");}
   function deviceLabel(){return `${navigator.platform||"Mobile"} • ${String(navigator.userAgent||"").slice(0,80)}`;}
   async function checkTeam(){if(!teamToken){$("portalTeamName").textContent="เปิดจาก Link/QR ของ Manager เพื่อ Activate ครั้งแรก";return false;}try{const d=await rpc("ta_portal_team_public_v61482",{p_team_token:teamToken});if(d?.valid){$("portalTeamName").textContent=`ทีมของ ${d.manager_display_name||"Manager"}`;return true;}$("portalTeamName").textContent="Link ทีมไม่ถูกต้องหรือถูกเปลี่ยนแล้ว";return false;}catch(e){$("portalTeamName").textContent="ตรวจสอบ Link ไม่สำเร็จ";return false;}}
-  function showAuth(){stopPortalSyncV61513();me=null;$("portalApp").classList.add("hidden");$("portalAuth").classList.remove("hidden");}
-  function showApp(){renderProfile();$("portalAuth").classList.add("hidden");$("portalApp").classList.remove("hidden");navigate("home");startPortalSyncV61513();}
+  function showAuth(){stopPortalSyncV61513();portalHydratedV61514=false;attendanceLoadPromiseV61514=null;sameShiftLoadPromiseV61514=null;me=null;$("portalApp").classList.add("hidden");$("portalAuth").classList.remove("hidden");}
+  function showApp(){renderProfile();$("portalAuth").classList.add("hidden");$("portalApp").classList.remove("hidden");navigate("home");}
   function renderProfile(){const name=me?.full_name||me?.emp_code||"พนักงาน";$("portalEmployeeName").textContent=name;$("portalEmployeeMeta").textContent=[me?.emp_code,me?.position_name,me?.department].filter(Boolean).join(" • ");$("portalAvatar").textContent=String(name).replace(/\s+/g,"").slice(0,2)||"พน";if(!homeFocusDateV61509)homeFocusDateV61509=today();renderHomeDateHeaderV61509();}
   async function restore(){const t=session();if(!t)return false;try{me=await rpc("ta_portal_me_v61482",{p_session_token:t});showApp();await refreshAll();return true;}catch(e){localStorage.removeItem(SESSION_KEY);showAuth();return false;}}
   async function activate(e){e.preventDefault();if(!teamToken)return toast("กรุณาเปิดจาก Link/QR ของ Manager","warning");const pin=$("portalNewPin").value,confirm=$("portalConfirmPin").value;if(pin!==confirm)return toast("PIN และยืนยัน PIN ไม่ตรงกัน","error");loading(true,"กำลังเปิดใช้งาน Employee Portal...");try{const r=await rpc("ta_portal_activate_v61482",{p_team_token:teamToken,p_emp_code:$("portalActivateEmp").value.trim(),p_activation_code:$("portalActivationCode").value.trim(),p_new_pin:pin,p_device_label:deviceLabel()});localStorage.setItem(SESSION_KEY,r.session_token);me=r;toast("เปิดใช้งานเรียบร้อย","success");showApp();await refreshAll();}catch(err){toast(friendly(err),"error");}finally{loading(false);}}
@@ -293,40 +297,47 @@
       return cached;
     }
 
+    if(sameShiftLoadPromiseV61514){
+      return sameShiftLoadPromiseV61514;
+    }
+
     sameShiftTeamLoadingV61509=true;
     if(key===homeFocusDateV61509)renderSameShiftTeamV61509(null,key);
 
-    try{
-      const data=await rpc(
-        "ta_portal_get_same_shift_team_v61509",
-        {
-          p_session_token:session(),
-          p_work_date:key
-        }
-      );
-      sameShiftTeamCacheV61509.set(key,data||null);
-      return data||null;
-    }catch(e){
-      console.warn("V6.15.09 same-shift team",e);
-      sameShiftTeamCacheV61509.set(
-        key,
-        {
+    sameShiftLoadPromiseV61514=(async()=>{
+      try{
+        const data=await rpc(
+          "ta_portal_get_same_shift_team_v61509",
+          {
+            p_session_token:session(),
+            p_work_date:key
+          }
+        );
+        sameShiftTeamCacheV61509.set(key,data||null);
+        return data||null;
+      }catch(e){
+        console.warn("V6.15.14 same-shift team",e);
+        const fallback={
           work_date:key,
           total_members:0,
           members:[],
           error:friendly(e)
+        };
+        sameShiftTeamCacheV61509.set(key,fallback);
+        return fallback;
+      }finally{
+        sameShiftTeamLoadingV61509=false;
+        sameShiftLoadPromiseV61514=null;
+        if(key===homeFocusDateV61509){
+          renderSameShiftTeamV61509(
+            sameShiftTeamCacheV61509.get(key)||null,
+            key
+          );
         }
-      );
-      return sameShiftTeamCacheV61509.get(key);
-    }finally{
-      sameShiftTeamLoadingV61509=false;
-      if(key===homeFocusDateV61509){
-        renderSameShiftTeamV61509(
-          sameShiftTeamCacheV61509.get(key)||null,
-          key
-        );
       }
-    }
+    })();
+
+    return sameShiftLoadPromiseV61514;
   }
 
   async function setHomeFocusDateV61509(offset){
@@ -836,30 +847,42 @@
     if(!force&&attendanceByDateV61503.size){
       attendanceLoadErrorV61504="";
       renderTime();
-      return;
+      return attendanceByDateV61503;
+    }
+
+    if(attendanceLoadPromiseV61514){
+      return attendanceLoadPromiseV61514;
     }
 
     attendanceLoadErrorV61504="";
     renderTime();
 
-    try{
-      const data=await rpc("ta_portal_get_my_attendance_range_v61503",{
-        p_session_token:session(),
-        p_start_date:startDate,
-        p_end_date:endDate
-      });
-      attendanceByDateV61503.clear();
-      (Array.isArray(data)?data:[]).forEach(r=>{
-        const key=String(r?.work_date||"").slice(0,10);
-        if(key)attendanceByDateV61503.set(key,r);
-      });
-      attendanceLoadErrorV61504="";
-      renderTime();
-    }catch(err){
-      console.warn("V6.15.04 attendance detail",err);
-      attendanceLoadErrorV61504=friendly(err);
-      renderTime();
-    }
+    attendanceLoadPromiseV61514=(async()=>{
+      try{
+        const data=await rpc("ta_portal_get_my_attendance_range_v61503",{
+          p_session_token:session(),
+          p_start_date:startDate,
+          p_end_date:endDate
+        });
+        attendanceByDateV61503.clear();
+        (Array.isArray(data)?data:[]).forEach(r=>{
+          const key=String(r?.work_date||"").slice(0,10);
+          if(key)attendanceByDateV61503.set(key,r);
+        });
+        attendanceLoadErrorV61504="";
+        renderTime();
+        return attendanceByDateV61503;
+      }catch(err){
+        console.warn("V6.15.14 attendance detail",err);
+        attendanceLoadErrorV61504=friendly(err);
+        renderTime();
+        return null;
+      }finally{
+        attendanceLoadPromiseV61514=null;
+      }
+    })();
+
+    return attendanceLoadPromiseV61514;
   }
 
   function requestStatus(s){const x=String(s||"").toUpperCase();if(["APPROVED","RESOLVED"].includes(x))return["ดำเนินการแล้ว","done"];if(["REJECTED","CANCELLED"].includes(x))return[x==="REJECTED"?"ไม่อนุมัติ":"ยกเลิก","reject"];if(x==="IN_REVIEW")return["กำลังตรวจสอบ","pending"];return["รอดำเนินการ","pending"];}
@@ -1335,7 +1358,7 @@
 
   async function loadRequests(){requests=await rpc("ta_portal_get_my_requests_v61482",{p_session_token:session(),p_start_date:addDays(today(),-180),p_end_date:addDays(today(),180)})||[];renderRequests();}
   async function loadNotifications(){notifications=await rpc("ta_portal_get_notifications_v61482",{p_session_token:session(),p_limit:100})||[];renderNotifications();}
-  async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{attendanceByDateV61503.clear();attendanceLoadErrorV61504="";sameShiftTeamCacheV61509.clear();certificationStateCacheV61509.clear();partialLeaveByDateV61511.clear();rawPunchCacheV61501.clear();if(!homeFocusDateV61509)homeFocusDateV61509=today();await Promise.all([loadCalendar(),loadAttendanceRangeV61503({force:true}),loadRequests(),loadNotifications(),loadSameShiftTeamV61509(homeFocusDateV61509,{force:true})]);await setPortalSyncBaselineV61513();}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);renderToday();renderSameShiftTeamV61509(sameShiftTeamCacheV61509.get(homeFocusDateV61509)||null,homeFocusDateV61509);}}
+  async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{attendanceByDateV61503.clear();attendanceLoadErrorV61504="";sameShiftTeamCacheV61509.clear();certificationStateCacheV61509.clear();partialLeaveByDateV61511.clear();rawPunchCacheV61501.clear();if(!homeFocusDateV61509)homeFocusDateV61509=today();await Promise.all([loadCalendar(),loadRequests(),loadNotifications()]);await loadSameShiftTeamV61509(homeFocusDateV61509,{force:true});portalHydratedV61514=true;await setPortalSyncBaselineV61513();startPortalSyncV61513();}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);renderToday();renderSameShiftTeamV61509(sameShiftTeamCacheV61509.get(homeFocusDateV61509)||null,homeFocusDateV61509);}}
   function navigate(name){
     document.querySelectorAll(".portal-view").forEach(v=>v.classList.toggle("active",v.id===`portalView${name.charAt(0).toUpperCase()+name.slice(1)}`));
     document.querySelectorAll("[data-portal-nav]").forEach(b=>b.classList.toggle("active",b.dataset.portalNav===name));
@@ -1344,9 +1367,11 @@
     if(name==="requests")loadRequests().catch(()=>{});
     if(name==="home"){
       renderToday();
-      loadSameShiftTeamV61509(
-        homeFocusDateV61509||today()
-      ).catch(()=>{});
+      if(portalHydratedV61514){
+        loadSameShiftTeamV61509(
+          homeFocusDateV61509||today()
+        ).catch(()=>{});
+      }
     }
     if(name==="schedule"){
       if(portalSyncSnapshotV61513){
@@ -1364,6 +1389,9 @@
     if(name==="time"){
       checkPortalSyncV61513(
         {force:true,quiet:true}
+      ).catch(()=>{});
+      loadAttendanceRangeV61503(
+        {force:false}
       ).catch(()=>{});
     }
   }
@@ -2257,7 +2285,7 @@
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.13a",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.14a",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }
