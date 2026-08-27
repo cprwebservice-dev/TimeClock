@@ -23159,3 +23159,60 @@ body.theme-dark .employee-request-context-grid-v61494>div,.dark .employee-reques
 body.theme-dark .employee-request-context-head-v61494 strong,.dark .employee-request-context-head-v61494 strong{color:#93c9f4}
 body.theme-dark .employee-request-context-grid-v61494 strong,.dark .employee-request-context-grid-v61494 strong{color:#e3edf5}
 @media(max-width:640px){.employee-request-context-grid-v61494{grid-template-columns:1fr}}
+
+
+/* ==========================================================================
+   V6.15.13 — Manager Request Center Auto Sync
+   ========================================================================== */
+.manager-request-live-row-v61513{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:3px;
+}
+.manager-request-live-row-v61513>p{
+  margin:0;
+}
+.manager-request-live-v61513{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  min-height:24px;
+  padding:4px 8px;
+  border:1px solid #d9e7f0;
+  border-radius:999px;
+  background:#f7fbfe;
+  color:#638097;
+  font-size:9px;
+  font-weight:800;
+}
+.manager-request-live-v61513>i{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#35ae74;
+  box-shadow:0 0 0 3px rgba(53,174,116,.10);
+}
+.manager-request-live-v61513>b{
+  color:#3c627e;
+  font-size:9px;
+}
+.manager-request-live-v61513>em{
+  font-style:normal;
+  font-size:8px;
+}
+.manager-request-live-v61513.syncing>i{
+  background:#eaa43a;
+  animation:managerRequestPulseV61513 1s ease-in-out infinite;
+}
+.manager-request-live-v61513.error>i{
+  background:#df6767;
+}
+.manager-request-live-v61513.legacy>i{
+  background:#94aabd;
+  box-shadow:none;
+}
+@keyframes managerRequestPulseV61513{
+  0%,100%{transform:scale(.85);opacity:.7}
+  50%{transform:scale(1.2);opacity:1}
+}

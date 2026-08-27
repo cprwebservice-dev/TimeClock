@@ -2174,3 +2174,67 @@ body{font-size:16px;color:var(--p99-ink)}
 .portal-today-partial-leave-v61511.stale,.portal-time-partial-v61511.stale,.portal-punch-partial-v61511.stale{border-color:rgba(217,119,6,.28);background:linear-gradient(135deg,#fffbeb,#fff);color:#92400e}
 .portal-cal-day .portal-special-line{white-space:normal}.portal-cal-day:has(.portal-special-line){min-height:96px}
 @media(max-width:430px){.portal-today-partial-leave-v61511{padding:10px 12px;border-radius:16px}.portal-partial-leave-line-v61511{font-size:9px!important}.portal-time-partial-v61511{margin-left:10px;margin-right:10px}}
+
+
+/* ==========================================================================
+   V6.15.13 — Lightweight Live Sync
+   ========================================================================== */
+.portal-live-sync-v61513{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  height:32px;
+  padding:0 9px;
+  border:1px solid rgba(255,255,255,.20);
+  border-radius:999px;
+  background:rgba(255,255,255,.10);
+  color:#dff1ff;
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+.portal-live-sync-v61513>i{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#49d68b;
+  box-shadow:0 0 0 4px rgba(73,214,139,.12);
+}
+.portal-live-sync-v61513>b{
+  font-size:9px;
+  letter-spacing:.05em;
+}
+.portal-live-sync-v61513>em{
+  font-size:8px;
+  font-style:normal;
+  opacity:.82;
+}
+.portal-live-sync-v61513.syncing>i{
+  background:#ffd06f;
+  box-shadow:0 0 0 4px rgba(255,208,111,.14);
+  animation:portalSyncPulseV61513 1s ease-in-out infinite;
+}
+.portal-live-sync-v61513.error>i{
+  background:#ff7b7b;
+  box-shadow:0 0 0 4px rgba(255,123,123,.12);
+}
+.portal-live-sync-v61513.offline>i{
+  background:#a9b6c2;
+  box-shadow:none;
+}
+.portal-live-sync-v61513.legacy>i{
+  background:#8fb7d5;
+  box-shadow:none;
+}
+@keyframes portalSyncPulseV61513{
+  0%,100%{transform:scale(.85);opacity:.7}
+  50%{transform:scale(1.2);opacity:1}
+}
+@media(max-width:560px){
+  .portal-live-sync-v61513{
+    height:30px;
+    padding:0 8px;
+  }
+  .portal-live-sync-v61513>em{
+    display:none;
+  }
+}

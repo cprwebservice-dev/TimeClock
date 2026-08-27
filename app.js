@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.11";
+window.__TIME_CLOCK_BUILD__ = "V6.15.13";
 document.documentElement.dataset.timeClockBuild = "6.15.10";
 
 
@@ -20684,6 +20684,11 @@ ${names}${extra}
   let employeeRequestsV61481 = [];
   let employeeRequestResolveContextV61481 = null;
 
+  let managerRequestRevisionV61513=null;
+  let managerRequestSyncBusyV61513=false;
+  let managerRequestSyncTimerV61513=null;
+  const MANAGER_REQUEST_SYNC_INTERVAL_V61513=20000;
+
   async function rpc(name,args={}) {
     const client = app()?.state?.client;
     if (!client) {
@@ -21138,8 +21143,9 @@ ${names}${extra}
     }
   }
 
-  async function loadShiftRequests() {
+  async function loadShiftRequests(options={}) {
     if (!$("shiftRequestBody")) return;
+    const silent=!!options.silent;
 
     const start = $("shiftRequestStart")?.value || window.TimeClockCalendarV61448.monthStart(new Date());
     const end = $("shiftRequestEnd")?.value || window.TimeClockCalendarV61448.today();
@@ -21147,7 +21153,7 @@ ${names}${extra}
     const typeFilter = String($("shiftRequestTypeFilter")?.value || "").toUpperCase();
     const search = $("shiftRequestSearch")?.value.trim();
 
-    app()?.showLoading?.("กำลังโหลดคำขอ / แจ้งข้อมูล...");
+    if(!silent)app()?.showLoading?.("กำลังโหลดคำขอ / แจ้งข้อมูล...");
     try {
       const legacyPromise = !typeFilter || typeFilter === "SHIFT_CHANGE"
         ? rpc("ta_get_shift_change_requests_v680", {
@@ -21197,12 +21203,172 @@ ${names}${extra}
         .sort((a,b) => String(b.requested_at || b.created_at || "").localeCompare(String(a.requested_at || a.created_at || "")));
 
       renderShiftRequests();
+      if(canManage()){
+        setManagerRequestSyncBaselineV61513()
+          .catch(()=>{});
+      }
     } catch (error) {
       app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally {
-      app()?.hideLoading?.();
+      if(!silent)app()?.hideLoading?.();
     }
   }
+
+  function managerRequestLiveStateV61513(state,text){
+    const el=$("managerRequestLiveV61513");
+    if(!el)return;
+    el.className=`manager-request-live-v61513 ${state||"ready"}`;
+    const label=el.querySelector("em");
+    if(label)label.textContent=text||"พร้อม";
+  }
+
+  async function getManagerRequestSyncStateV61513(){
+    return await rpc(
+      "ta_get_employee_request_sync_state_v61513",
+      {}
+    );
+  }
+
+  async function setManagerRequestSyncBaselineV61513(){
+    if(!canManage())return null;
+    try{
+      const state=await getManagerRequestSyncStateV61513();
+      managerRequestRevisionV61513=
+        Number(state?.request_revision||0)||0;
+      managerRequestLiveStateV61513(
+        "ready",
+        "พร้อม"
+      );
+      return state;
+    }catch(e){
+      const m=String(e?.message||e||"");
+      if(
+        m.includes("ta_get_employee_request_sync_state_v61513")
+        || m.includes("PGRST202")
+      ){
+        managerRequestLiveStateV61513(
+          "legacy",
+          "Manual"
+        );
+        return null;
+      }
+      managerRequestLiveStateV61513(
+        "error",
+        "รอตรวจใหม่"
+      );
+      return null;
+    }
+  }
+
+  async function checkManagerRequestSyncV61513(
+    {force=false}={}
+  ){
+    if(
+      managerRequestSyncBusyV61513
+      || !canManage()
+      || document.visibilityState==="hidden"
+      || app()?.state?.currentPage!=="shift-requests"
+    ){
+      return false;
+    }
+
+    managerRequestSyncBusyV61513=true;
+
+    try{
+      const state=await getManagerRequestSyncStateV61513();
+      const next=Number(state?.request_revision||0)||0;
+
+      if(managerRequestRevisionV61513===null){
+        managerRequestRevisionV61513=next;
+        managerRequestLiveStateV61513(
+          "ready",
+          "พร้อม"
+        );
+        return true;
+      }
+
+      if(next===managerRequestRevisionV61513){
+        managerRequestLiveStateV61513(
+          "ready",
+          "ล่าสุด"
+        );
+        return true;
+      }
+
+      managerRequestLiveStateV61513(
+        "syncing",
+        "อัปเดต"
+      );
+
+      await loadShiftRequests(
+        {silent:true}
+      );
+
+      managerRequestRevisionV61513=next;
+
+      managerRequestLiveStateV61513(
+        "ready",
+        "ล่าสุด"
+      );
+
+      if(force!==true){
+        app()?.toast?.(
+          "มีคำขอหรือสถานะใหม่ • อัปเดตรายการแล้ว",
+          "info"
+        );
+      }
+
+      return true;
+    }catch(e){
+      managerRequestLiveStateV61513(
+        "error",
+        "รอตรวจใหม่"
+      );
+      return false;
+    }finally{
+      managerRequestSyncBusyV61513=false;
+    }
+  }
+
+  function startManagerRequestSyncV61513(){
+    if(managerRequestSyncTimerV61513)return;
+
+    managerRequestSyncTimerV61513=setInterval(
+      ()=>{
+        checkManagerRequestSyncV61513()
+          .catch(()=>{});
+      },
+      MANAGER_REQUEST_SYNC_INTERVAL_V61513
+    );
+
+    window.addEventListener(
+      "focus",
+      ()=>{
+        if(
+          app()?.state?.currentPage==="shift-requests"
+        ){
+          checkManagerRequestSyncV61513(
+            {force:true}
+          ).catch(()=>{});
+        }
+      }
+    );
+
+    document.addEventListener(
+      "visibilitychange",
+      ()=>{
+        if(
+          document.visibilityState==="visible"
+          && app()?.state?.currentPage==="shift-requests"
+        ){
+          checkManagerRequestSyncV61513(
+            {force:true}
+          ).catch(()=>{});
+        }
+      }
+    );
+  }
+
 
   function renderShiftRequests() {
     const pending = shiftRequests.filter(request => ["PENDING","IN_REVIEW"].includes(String(request.status || "").toUpperCase())).length;
@@ -21930,7 +22096,15 @@ ${names}${extra}
           '.nav-item[data-page="shift-requests"]'
         );
         if (nav) {
-          setTimeout(loadShiftRequests,0);
+          setTimeout(
+            ()=>{
+              loadShiftRequests();
+              checkManagerRequestSyncV61513(
+                {force:true}
+              ).catch(()=>{});
+            },
+            0
+          );
         }
       }
     );
@@ -22024,6 +22198,7 @@ ${names}${extra}
     );
 
     applyRoleUI();
+    startManagerRequestSyncV61513();
 
     // V6.14.93:
     // boot() may open shift-requests before this enhancement module has set
