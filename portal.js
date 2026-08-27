@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.02";
+  const VERSION="6.15.03";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -8,7 +8,9 @@
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   let client=null,me=null,calendar=[],requests=[],notifications=[],scheduleMonth=new Date();let requestFilter="";
-  let editingRequestId=null,dayoffPickerMonth=new Date(),dayoffRows=[],dayoffBalance=null,dayoffSource="",dayoffTarget="",selectedCalendarDate="";const rawPunchCacheV61501=new Map();
+  let editingRequestId=null,dayoffPickerMonth=new Date(),dayoffRows=[],dayoffBalance=null,dayoffSource="",dayoffTarget="",selectedCalendarDate="";
+  const rawPunchCacheV61501=new Map();
+  const attendanceByDateV61503=new Map();
   const urlTeam=new URLSearchParams(location.search).get("team")||"";
   let teamToken=urlTeam||localStorage.getItem(TEAM_KEY)||"";
   if(urlTeam)localStorage.setItem(TEAM_KEY,urlTeam);
@@ -222,16 +224,14 @@
     const label=mode==="IN"?"เข้า":mode==="OUT"?"ออก":"ไม่ระบุ";
     const icon=mode==="IN"?"→":mode==="OUT"?"←":"•";
     const location=rawPunchRecordLocationV61501(row);
-    const source=[row.source_sheet,row.source_file]
-      .map(v=>String(v||"").trim())
-      .filter(Boolean)
-      .join(" • ");
+    const fallback=mode==="IN"?"บันทึกเวลาเข้า":mode==="OUT"?"บันทึกเวลาออก":"บันทึกเวลา";
+    const recordNo=row.record_no||row.punch_id||"-";
     return `<div class="portal-raw-record mode-${mode.toLowerCase()}">
       <div class="portal-raw-record-time"><i>${esc(icon)}</i><strong>${esc(rawPunchTimeLabelV61501(row))}</strong></div>
       <span class="portal-raw-record-mode">${esc(label)}</span>
       <div class="portal-raw-record-copy">
-        ${location?`<strong>${esc(location)}</strong>`:""}
-        <small>${esc(source||`Record #${row.punch_id||"-"}`)}</small>
+        <strong>${esc(location||fallback)}</strong>
+        <small>${esc(fmtDate(row.inout_date))} • Record ${esc(recordNo)}</small>
       </div>
     </div>`;
   }
@@ -347,10 +347,194 @@
     }
   }
 
-  function renderTime(){
-    const rows=calendar.filter(r=>String(r.work_date)<=today()).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date))).slice(0,31),box=$("portalTimeList");
-    box.innerHTML=rows.length?rows.map(r=>{const m=dayMeta(r),v=shiftVisual(r);return `<article class="portal-time-item"><div class="portal-time-head"><div class="portal-time-title"><i>${esc(v.icon)}</i><div><strong>${esc(fmtDate(r.work_date))}</strong><small>${esc(v.display||v.code)} • ${esc(v.time||m.label)} • รหัสกะ ${esc(v.code||"-")}</small></div></div><span class="portal-time-status">${esc(m.label)}</span></div><div class="portal-time-grid"><div><span>เวลาเข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong></div><div><span>เวลาออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong></div><div><span>สาย</span><strong>${Number(r.late_minutes||0).toLocaleString("th-TH")} นาที</strong></div><div><span>กลับก่อน</span><strong>${Number(r.early_leave_minutes||0).toLocaleString("th-TH")} นาที</strong></div></div></article>`;}).join(""):'<div class="portal-empty portal-empty-card">ยังไม่มีข้อมูลเวลาทำงาน</div>';
+  function attendanceStatusMetaV61503(status){
+    const s=String(status||"").toUpperCase();
+    if(s==="ABSENCE"||s==="ABSENT")return{label:"ขาดงาน",tone:"absence",icon:"!"};
+    if(s==="LATE_AND_EARLY_LEAVE")return{label:"สาย + กลับก่อน",tone:"mixed",icon:"!"};
+    if(s==="LATE")return{label:"สาย",tone:"late",icon:"◷"};
+    if(s==="EARLY_LEAVE")return{label:"กลับก่อน",tone:"early",icon:"↙"};
+    if(s==="NORMAL"||s==="OVERTIME")return{label:"ปกติ",tone:"normal",icon:"✓"};
+    return{label:"-",tone:"neutral",icon:"•"};
   }
+
+  function attendanceAbsenceReasonV61503(reason){
+    return({
+      MISSING_IN:"ไม่มีเวลาเข้า",
+      MISSING_OUT:"ไม่มีเวลาออก",
+      MISSING_BOTH:"ไม่มีเวลาเข้าและออก",
+      LATE_30_PLUS:"เข้าสายตั้งแต่ 30 นาที",
+      ABSENCE:"ขาดงาน"
+    })[String(reason||"").toUpperCase()]||"";
+  }
+
+  function timeMetricV61503(label,value,tone="neutral",suffix="นาที"){
+    const n=Math.max(0,Number(value||0)||0);
+    const active=n>0;
+    return `<div class="portal-att-metric ${tone} ${active?"active":""}">
+      <span>${esc(label)}</span>
+      <strong>${n.toLocaleString("th-TH")}</strong>
+      <small>${esc(suffix)}</small>
+    </div>`;
+  }
+
+  function timeShiftPanelV61503(shift,index,calendarRow={}){
+    if(!shift)return"";
+    const plannedStart=fmtTime(shift.planned_start_at);
+    const plannedEnd=fmtTime(shift.planned_end_at);
+    const actualIn=fmtTime(shift.actual_in_at);
+    const actualOut=fmtTime(shift.actual_out_at);
+    const status=attendanceStatusMetaV61503(shift.status);
+    const absenceReason=attendanceAbsenceReasonV61503(shift.absence_reason);
+    const isSecond=index===2;
+    const planText=
+      plannedStart!=="-" || plannedEnd!=="-"
+        ? `${plannedStart}–${plannedEnd}`
+        : "-";
+
+    return `<section class="portal-att-shift shift-${index}">
+      <div class="portal-att-shift-head">
+        <div>
+          <span>${isSecond?"SECOND SHIFT":"WORK SHIFT"}</span>
+          <strong>กะที่ ${index}</strong>
+          <small>ตามแผน ${esc(planText)}</small>
+        </div>
+        <span class="portal-att-status ${status.tone}">
+          <i>${esc(status.icon)}</i>${esc(status.label)}
+        </span>
+      </div>
+
+      <div class="portal-att-punch-grid">
+        <div>
+          <span>เวลาเข้า</span>
+          <strong>${esc(actualIn)}</strong>
+          <small>${shift.actual_in_at?"บันทึกแล้ว":"ไม่มีเวลาเข้า"}</small>
+        </div>
+        <div>
+          <span>เวลาออก</span>
+          <strong>${esc(actualOut)}</strong>
+          <small>${shift.actual_out_at?"บันทึกแล้ว":"ไม่มีเวลาออก"}</small>
+        </div>
+      </div>
+
+      <div class="portal-att-metrics">
+        ${timeMetricV61503("สาย",shift.late_minutes,"late")}
+        ${timeMetricV61503("ขาดงาน",shift.absence_minutes,"absence")}
+        ${timeMetricV61503("กลับก่อน",shift.early_leave_minutes,"early")}
+      </div>
+
+      ${absenceReason?`<div class="portal-att-reason absence"><i>!</i><span>${esc(absenceReason)}</span></div>`:""}
+      ${isSecond?`<div class="portal-att-second-note"><i>☾</i><span>กะที่ 2 ใช้เวลา Punch จริงของช่วงงานที่ 2</span></div>`:""}
+    </section>`;
+  }
+
+  function overallAttendanceMetaV61503(detail,calendarRow){
+    const nonwork=dayMeta(calendarRow||{});
+    if(["off","holiday","leave"].includes(nonwork.tone)){
+      return{label:nonwork.label,tone:nonwork.tone};
+    }
+    const statuses=[
+      detail?.shift_1?.status,
+      detail?.shift_2?.status
+    ].filter(Boolean).map(x=>String(x).toUpperCase());
+
+    if(statuses.includes("ABSENCE"))return{label:"ขาดงาน",tone:"absence"};
+    if(statuses.includes("LATE_AND_EARLY_LEAVE"))return{label:"สาย + กลับก่อน",tone:"mixed"};
+    if(statuses.includes("LATE"))return{label:"สาย",tone:"late"};
+    if(statuses.includes("EARLY_LEAVE"))return{label:"กลับก่อน",tone:"early"};
+    return{label:"ปกติ",tone:"normal"};
+  }
+
+  function renderTime(){
+    const rows=calendar
+      .filter(r=>String(r.work_date)<=today())
+      .sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date)))
+      .slice(0,31);
+    const box=$("portalTimeList");
+
+    box.innerHTML=rows.length?rows.map(r=>{
+      const key=String(r.work_date).slice(0,10);
+      const detail=attendanceByDateV61503.get(key);
+      const v=shiftVisual(r);
+      const meta=dayMeta(r);
+      const overall=overallAttendanceMetaV61503(detail,r);
+      const nonwork=["off","holiday","leave"].includes(meta.tone);
+
+      if(nonwork){
+        return `<article class="portal-time-item portal-att-day nonwork ${meta.tone}">
+          <div class="portal-time-head portal-att-day-head">
+            <div class="portal-time-title">
+              <i>${esc(v.icon)}</i>
+              <div>
+                <strong>${esc(fmtDate(r.work_date))}</strong>
+                <small>${esc(v.display||meta.label)} • รหัสกะ ${esc(v.code||"-")}</small>
+              </div>
+            </div>
+            <span class="portal-time-status ${meta.tone}">${esc(meta.label)}</span>
+          </div>
+          <div class="portal-att-nonwork">
+            <i>${esc(v.icon)}</i>
+            <div><strong>${esc(meta.label)}</strong><span>ไม่มีการคำนวณ สาย / ขาดงาน / กลับก่อน</span></div>
+          </div>
+        </article>`;
+      }
+
+      if(!detail){
+        return `<article class="portal-time-item portal-att-day">
+          <div class="portal-time-head portal-att-day-head">
+            <div class="portal-time-title"><i>${esc(v.icon)}</i><div><strong>${esc(fmtDate(r.work_date))}</strong><small>${esc(v.display||v.code)} • ${esc(v.time||meta.label)} • รหัสกะ ${esc(v.code||"-")}</small></div></div>
+            <span class="portal-time-status neutral">รอข้อมูล</span>
+          </div>
+          <div class="portal-att-loading-row"><span class="portal-mini-spinner"></span>กำลังโหลดผลเวลาทำงาน...</div>
+        </article>`;
+      }
+
+      return `<article class="portal-time-item portal-att-day">
+        <div class="portal-time-head portal-att-day-head">
+          <div class="portal-time-title">
+            <i>${esc(v.icon)}</i>
+            <div>
+              <strong>${esc(fmtDate(r.work_date))}</strong>
+              <small>${esc(v.display||v.code)} • ${esc(v.time||meta.label)} • รหัสกะ ${esc(v.code||"-")}</small>
+            </div>
+          </div>
+          <span class="portal-time-status ${overall.tone}">${esc(overall.label)}</span>
+        </div>
+
+        <div class="portal-att-shift-list">
+          ${timeShiftPanelV61503(detail.shift_1,1,r)}
+          ${detail.has_shift_2&&detail.shift_2?timeShiftPanelV61503(detail.shift_2,2,r):""}
+        </div>
+      </article>`;
+    }).join(""):'<div class="portal-empty portal-empty-card">ยังไม่มีข้อมูลเวลาทำงาน</div>';
+  }
+
+  async function loadAttendanceRangeV61503({force=false}={}){
+    const startDate=addDays(today(),-31);
+    const endDate=today();
+
+    if(!force&&attendanceByDateV61503.size){
+      renderTime();
+      return;
+    }
+
+    try{
+      const data=await rpc("ta_portal_get_my_attendance_range_v61503",{
+        p_session_token:session(),
+        p_start_date:startDate,
+        p_end_date:endDate
+      });
+      attendanceByDateV61503.clear();
+      (Array.isArray(data)?data:[]).forEach(r=>{
+        const key=String(r?.work_date||"").slice(0,10);
+        if(key)attendanceByDateV61503.set(key,r);
+      });
+      renderTime();
+    }catch(err){
+      console.warn("V6.15.03 attendance detail",err);
+      renderTime();
+    }
+  }
+
   function requestStatus(s){const x=String(s||"").toUpperCase();if(["APPROVED","RESOLVED"].includes(x))return["ดำเนินการแล้ว","done"];if(["REJECTED","CANCELLED"].includes(x))return[x==="REJECTED"?"ไม่อนุมัติ":"ยกเลิก","reject"];if(x==="IN_REVIEW")return["กำลังตรวจสอบ","pending"];return["รอดำเนินการ","pending"];}
   function requestType(r){return({TIME_ISSUE:"รับรองเวลา",SPECIAL_WORK:"งานกะพิเศษ",DAYOFF_SWAP:"สลับวันหยุด",LEAVE_REQUEST:"ลา"})[r.request_type]||r.request_type||"-";}
   function subtype(r){return({MISSING_IN:"รับรองเวลา-เข้า",MISSING_OUT:"รับรองเวลา-ออก",WRONG_TIME:"รับรอง-เต็มวัน",NORMAL_LATE_CUSTOMER:"กะปกติ + งานลูกค้าช่วงดึก",SPLIT_WAIT_NIGHT:"กะเช้า + รอเข้ากะดึก",HOUR_BASED:"กะนับชั่วโมง",SWAP_DAYOFF:"สลับวันหยุด",FULL_DAY:"ลาเต็มวัน",PARTIAL_DAY:"ลาบางส่วน"})[r.request_subtype]||r.request_subtype||"-";}
@@ -392,7 +576,7 @@
   }
   async function loadRequests(){requests=await rpc("ta_portal_get_my_requests_v61482",{p_session_token:session(),p_start_date:addDays(today(),-180),p_end_date:addDays(today(),180)})||[];renderRequests();}
   async function loadNotifications(){notifications=await rpc("ta_portal_get_notifications_v61482",{p_session_token:session(),p_limit:100})||[];renderNotifications();}
-  async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{await Promise.all([loadCalendar(),loadRequests(),loadNotifications()]);}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);}}
+  async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{attendanceByDateV61503.clear();await Promise.all([loadCalendar(),loadAttendanceRangeV61503({force:true}),loadRequests(),loadNotifications()]);}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);}}
   function navigate(name){document.querySelectorAll(".portal-view").forEach(v=>v.classList.toggle("active",v.id===`portalView${name.charAt(0).toUpperCase()+name.slice(1)}`));document.querySelectorAll("[data-portal-nav]").forEach(b=>b.classList.toggle("active",b.dataset.portalNav===name));if(name==="notifications")loadNotifications().catch(()=>{});if(name==="requests")loadRequests().catch(()=>{});}
   async function loadDayoffPickerV61494(monthDate){
     dayoffPickerMonth=new Date(`${String(monthDate).slice(0,7)}-01T00:00:00`);

@@ -1132,3 +1132,314 @@ body{font-size:16px;color:var(--p99-ink)}
   .portal-raw-record-mode{padding:4px 6px;font-size:8px}
   .portal-raw-shift-group>header strong{font-size:13px}
 }
+
+
+/* ==========================================================================
+   V6.15.03 — Modern Attendance tab / Shift 1 + Shift 2
+   ========================================================================== */
+.portal-att-day{
+  overflow:hidden;
+  padding:0!important;
+  border:1px solid #dce8f1!important;
+  border-radius:22px!important;
+  background:linear-gradient(180deg,#fff,#fbfdff)!important;
+  box-shadow:0 12px 28px rgba(17,59,91,.07)!important;
+}
+.portal-att-day-head{
+  padding:15px 16px;
+  border-bottom:1px solid #e8eef3;
+  background:linear-gradient(135deg,#ffffff,#f8fbfe);
+}
+.portal-att-day-head .portal-time-title>i{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:#eaf6ff;
+  color:#0876c9;
+  font-size:21px;
+}
+.portal-att-day-head .portal-time-title strong{
+  font-size:17px!important;
+  color:#123d62;
+}
+.portal-att-day-head .portal-time-title small{
+  margin-top:3px;
+  font-size:11px!important;
+  color:#71869a;
+}
+.portal-time-status{
+  padding:7px 10px!important;
+  border-radius:999px!important;
+  font-size:10px!important;
+  font-weight:900!important;
+}
+.portal-time-status.normal{background:#e7f7ef;color:#158052}
+.portal-time-status.late{background:#fff5df;color:#bb731f}
+.portal-time-status.early{background:#fff0e7;color:#c46725}
+.portal-time-status.absence{background:#ffebeb;color:#c84444}
+.portal-time-status.mixed{background:#fff0df;color:#b85f20}
+.portal-time-status.off{background:#eff3f6;color:#6b7f91}
+.portal-time-status.holiday{background:#fff5df;color:#a76c1b}
+.portal-time-status.leave{background:#f5edff;color:#7655b7}
+.portal-time-status.neutral{background:#eff4f8;color:#718495}
+
+.portal-att-shift-list{
+  display:grid;
+  gap:12px;
+  padding:13px;
+}
+.portal-att-shift{
+  overflow:hidden;
+  border:1px solid #dfe9f1;
+  border-radius:18px;
+  background:#fff;
+}
+.portal-att-shift.shift-1{
+  border-color:#cfe4f5;
+  box-shadow:inset 4px 0 0 #1681d2;
+}
+.portal-att-shift.shift-2{
+  border-color:#dfd9f5;
+  background:linear-gradient(180deg,#fff,#fbf9ff);
+  box-shadow:inset 4px 0 0 #7563c7;
+}
+.portal-att-shift-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px 13px;
+  border-bottom:1px solid #e8eef3;
+  background:#f9fcfe;
+}
+.portal-att-shift.shift-2 .portal-att-shift-head{
+  background:#f8f5ff;
+}
+.portal-att-shift-head>div>span{
+  display:block;
+  color:#8799a8;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.10em;
+}
+.portal-att-shift-head>div>strong{
+  display:block;
+  margin-top:2px;
+  color:#173f61;
+  font-size:16px;
+}
+.portal-att-shift-head>div>small{
+  display:block;
+  margin-top:3px;
+  color:#71879a;
+  font-size:10px;
+}
+.portal-att-status{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  flex:0 0 auto;
+  padding:6px 9px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:900;
+}
+.portal-att-status i{
+  font-style:normal;
+  font-weight:900;
+}
+.portal-att-status.normal{background:#e8f8f0;color:#147d50}
+.portal-att-status.late{background:#fff4df;color:#b66f1d}
+.portal-att-status.early{background:#ffefe6;color:#bd6122}
+.portal-att-status.absence{background:#ffebeb;color:#c74141}
+.portal-att-status.mixed{background:#fff0df;color:#b55c1e}
+.portal-att-status.neutral{background:#eff4f7;color:#718597}
+
+.portal-att-punch-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  padding:12px 13px 0;
+}
+.portal-att-punch-grid>div{
+  padding:11px 12px;
+  border:1px solid #e3ebf1;
+  border-radius:14px;
+  background:#f8fbfd;
+}
+.portal-att-shift.shift-2 .portal-att-punch-grid>div{
+  background:#faf8ff;
+}
+.portal-att-punch-grid span{
+  display:block;
+  color:#74899b;
+  font-size:10px;
+  font-weight:800;
+}
+.portal-att-punch-grid strong{
+  display:block;
+  margin-top:4px;
+  color:#103e64;
+  font-size:22px;
+  line-height:1;
+}
+.portal-att-punch-grid small{
+  display:block;
+  margin-top:5px;
+  color:#8b9aa7;
+  font-size:9px;
+}
+
+.portal-att-metrics{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  padding:10px 13px 13px;
+}
+.portal-att-metric{
+  padding:10px 8px;
+  border:1px solid #e5ecf2;
+  border-radius:13px;
+  background:#fbfcfd;
+  text-align:center;
+}
+.portal-att-metric span{
+  display:block;
+  color:#7b8f9f;
+  font-size:9px;
+  font-weight:800;
+}
+.portal-att-metric strong{
+  display:inline-block;
+  margin-top:4px;
+  color:#8495a3;
+  font-size:19px;
+  line-height:1;
+}
+.portal-att-metric small{
+  display:inline-block;
+  margin-left:2px;
+  color:#98a5af;
+  font-size:8px;
+}
+.portal-att-metric.active.late{
+  border-color:#f0d49e;
+  background:#fff8e9;
+}
+.portal-att-metric.active.late strong{color:#b87920}
+.portal-att-metric.active.absence{
+  border-color:#f1bcbc;
+  background:#fff2f2;
+}
+.portal-att-metric.active.absence strong{color:#c84545}
+.portal-att-metric.active.early{
+  border-color:#f1c8ac;
+  background:#fff5ee;
+}
+.portal-att-metric.active.early strong{color:#c26929}
+
+.portal-att-reason{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:0 13px 13px;
+  padding:9px 11px;
+  border-radius:12px;
+  font-size:10px;
+  font-weight:800;
+}
+.portal-att-reason.absence{
+  background:#fff0f0;
+  color:#b74747;
+}
+.portal-att-reason i{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#ffdede;
+  font-style:normal;
+  font-weight:900;
+}
+.portal-att-second-note{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  margin:0 13px 13px;
+  padding:8px 10px;
+  border-radius:11px;
+  background:#f3efff;
+  color:#6755a3;
+  font-size:9px;
+  font-weight:800;
+}
+.portal-att-second-note i{font-style:normal;font-size:13px}
+
+.portal-att-nonwork{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:13px;
+  padding:14px;
+  border:1px solid #e3eaf0;
+  border-radius:15px;
+  background:#f8fafc;
+}
+.portal-att-nonwork>i{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:44px;
+  height:44px;
+  border-radius:14px;
+  background:#eef3f7;
+  font-style:normal;
+  font-size:21px;
+}
+.portal-att-nonwork strong{
+  display:block;
+  color:#37546b;
+  font-size:14px;
+}
+.portal-att-nonwork span{
+  display:block;
+  margin-top:3px;
+  color:#8293a1;
+  font-size:10px;
+}
+.portal-att-loading-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  min-height:82px;
+  color:#6f8497;
+  font-size:11px;
+}
+
+/* My Schedule: keep record identity but hide raw source filenames completely. */
+.portal-raw-record-copy strong{
+  color:#405f78;
+}
+.portal-raw-record-copy small{
+  color:#93a2ae;
+}
+
+@media(max-width:560px){
+  .portal-att-day-head{padding:13px}
+  .portal-att-day-head .portal-time-title>i{width:38px;height:38px;font-size:19px}
+  .portal-att-day-head .portal-time-title strong{font-size:15px!important}
+  .portal-att-day-head .portal-time-title small{font-size:10px!important}
+  .portal-att-shift-list{padding:10px;gap:10px}
+  .portal-att-shift-head{padding:11px}
+  .portal-att-shift-head>div>strong{font-size:15px}
+  .portal-att-punch-grid{padding:10px 11px 0;gap:7px}
+  .portal-att-punch-grid>div{padding:10px}
+  .portal-att-punch-grid strong{font-size:20px}
+  .portal-att-metrics{padding:9px 11px 11px;gap:6px}
+  .portal-att-metric{padding:9px 5px}
+  .portal-att-metric strong{font-size:17px}
+  .portal-att-reason,.portal-att-second-note{margin-left:11px;margin-right:11px;margin-bottom:11px}
+}
