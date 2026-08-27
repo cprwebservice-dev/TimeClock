@@ -1908,3 +1908,252 @@ body{font-size:16px;color:var(--p99-ink)}
     font-size:9px;
   }
 }
+
+
+/* ==========================================================================
+   V6.15.09 — Home Yesterday Toggle / Same-shift Team / Certification Period
+   ========================================================================== */
+.portal-home-date-title-v61509{
+  align-items:flex-start!important;
+}
+.portal-home-date-actions-v61509{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+}
+.portal-home-date-toggle-v61509{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:3px;
+  padding:3px;
+  border:1px solid #dce7f1;
+  border-radius:13px;
+  background:#f2f6fa;
+}
+.portal-home-date-toggle-v61509 button{
+  border:0;
+  border-radius:9px;
+  padding:7px 10px;
+  background:transparent;
+  color:#71859a;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.portal-home-date-toggle-v61509 button.active{
+  background:#fff;
+  color:#0c65c5;
+  box-shadow:0 3px 10px rgba(18,70,110,.08);
+}
+.portal-home-empty-v61509{
+  color:#d8e8ff;
+  font-size:13px;
+}
+
+.portal-same-shift-team-v61509{
+  margin:14px 0 20px;
+  padding:14px;
+  border:1px solid #dbe8f2;
+  border-radius:20px;
+  background:
+    radial-gradient(circle at 100% 0,rgba(25,118,201,.07),transparent 34%),
+    linear-gradient(180deg,#fbfdff,#f7fbff);
+  box-shadow:0 9px 24px rgba(18,65,101,.06);
+}
+.portal-same-shift-head-v61509{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.portal-same-shift-head-v61509>div>span{
+  display:block;
+  color:#6f89a1;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.10em;
+}
+.portal-same-shift-head-v61509>div>strong{
+  display:block;
+  margin-top:3px;
+  color:#103b63;
+  font-size:16px;
+}
+.portal-same-shift-head-v61509>div>small{
+  display:block;
+  margin-top:4px;
+  color:#738a9f;
+  font-size:10px;
+}
+.portal-same-shift-head-v61509>b{
+  flex:0 0 auto;
+  min-width:54px;
+  padding:8px 10px;
+  border-radius:999px;
+  background:#eaf5ff;
+  color:#116cb4;
+  text-align:center;
+  font-size:11px;
+}
+.portal-same-shift-grid-v61509{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin-top:12px;
+}
+.portal-same-shift-member-v61509{
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr) auto;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+  padding:10px;
+  border:1px solid #e1eaf2;
+  border-radius:14px;
+  background:#fff;
+}
+.portal-same-shift-avatar-v61509{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#dff0ff,#eef7ff);
+  color:#0b68b6;
+  font-size:11px;
+  font-weight:900;
+}
+.portal-same-shift-member-v61509>div{
+  min-width:0;
+}
+.portal-same-shift-member-v61509 strong{
+  display:block;
+  overflow:hidden;
+  color:#173f61;
+  font-size:11px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.portal-same-shift-member-v61509 small{
+  display:block;
+  margin-top:2px;
+  overflow:hidden;
+  color:#7a8fa1;
+  font-size:8.5px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.portal-same-shift-badge-v61509{
+  padding:5px 7px;
+  border-radius:999px;
+  background:#eef7ff;
+  color:#176eae;
+  font-size:8px;
+  font-weight:900;
+}
+.portal-same-shift-foot-v61509{
+  margin-top:10px;
+  color:#8797a5;
+  font-size:8.5px;
+  line-height:1.45;
+}
+.portal-same-shift-none-v61509{
+  margin-top:12px;
+  padding:14px;
+  border:1px dashed #d4e2ed;
+  border-radius:13px;
+  background:#fff;
+  color:#70869a;
+  text-align:center;
+  font-size:10px;
+}
+.portal-same-shift-loading-v61509,
+.portal-same-shift-empty-v61509{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:64px;
+  color:#687f93;
+  font-size:10px;
+}
+.portal-same-shift-loading-v61509 strong{
+  font-size:10px;
+}
+.portal-same-shift-empty-v61509{
+  justify-content:flex-start;
+}
+.portal-same-shift-empty-v61509>i{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:40px;
+  height:40px;
+  border-radius:13px;
+  background:#edf6fd;
+  color:#176fb1;
+  font-style:normal;
+  font-size:20px;
+}
+.portal-same-shift-empty-v61509 strong,
+.portal-same-shift-empty-v61509 span{
+  display:block;
+}
+.portal-same-shift-empty-v61509 strong{
+  color:#173f61;
+  font-size:11px;
+}
+.portal-same-shift-empty-v61509 span{
+  margin-top:2px;
+  color:#7e91a2;
+  font-size:9px;
+}
+.portal-same-shift-empty-v61509.nonwork>i{
+  background:#fff3e6;
+  color:#d07a20;
+}
+
+.portal-cert-period-note-v61509{
+  display:inline-block;
+  margin-top:5px;
+  padding:5px 8px;
+  border-radius:999px;
+  background:#eaf7ef;
+  color:#237b50;
+  font-size:8.5px;
+  font-weight:900;
+}
+
+@media(max-width:560px){
+  .portal-home-date-title-v61509{
+    gap:9px!important;
+  }
+  .portal-home-date-actions-v61509{
+    flex-direction:column;
+    align-items:flex-end;
+    gap:4px;
+  }
+  .portal-home-date-toggle-v61509 button{
+    padding:6px 8px;
+    font-size:9px;
+  }
+  .portal-same-shift-team-v61509{
+    padding:12px;
+    border-radius:18px;
+  }
+  .portal-same-shift-head-v61509>div>strong{
+    font-size:14px;
+  }
+  .portal-same-shift-grid-v61509{
+    grid-template-columns:1fr;
+  }
+  .portal-same-shift-member-v61509{
+    grid-template-columns:36px minmax(0,1fr) auto;
+  }
+  .portal-same-shift-avatar-v61509{
+    width:36px;
+    height:36px;
+  }
+}

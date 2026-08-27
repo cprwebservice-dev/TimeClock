@@ -11,7 +11,7 @@
   <title>TimeAttendance • Employee Portal</title>
   <link rel="manifest" href="./portal-manifest.webmanifest"/>
   <link rel="icon" href="./favicon.svg"/>
-  <link rel="stylesheet" href="./portal.css?v=6.15.08a"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.09a"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -64,8 +64,28 @@
       </section>
 
       <section id="portalViewHome" class="portal-view active">
-        <div class="portal-section-title"><div><span>วันนี้</span><strong id="portalTodayDate">-</strong></div><button class="portal-text-btn" id="portalRefreshBtn">↻ รีเฟรช</button></div>
-        <article class="portal-today-card" id="portalTodayCard"><div class="portal-empty">กำลังโหลดกะวันนี้...</div></article>
+        <div class="portal-section-title portal-home-date-title-v61509">
+          <div>
+            <span id="portalHomeDateKickerV61509">วันนี้</span>
+            <strong id="portalTodayDate">-</strong>
+          </div>
+          <div class="portal-home-date-actions-v61509">
+            <div class="portal-home-date-toggle-v61509" aria-label="เลือกวันที่หน้าแรก">
+              <button type="button" data-home-day-v61509="-1">เมื่อวาน</button>
+              <button type="button" class="active" data-home-day-v61509="0">วันนี้</button>
+            </div>
+            <button class="portal-text-btn" id="portalRefreshBtn">↻ รีเฟรช</button>
+          </div>
+        </div>
+
+        <article class="portal-today-card" id="portalTodayCard">
+          <div class="portal-empty">กำลังโหลดข้อมูลกะ...</div>
+        </article>
+
+        <section class="portal-same-shift-team-v61509" id="portalSameShiftTeamV61509">
+          <div class="portal-same-shift-loading-v61509">กำลังตรวจสอบเพื่อนร่วมกะ...</div>
+        </section>
+
         <div class="portal-section-title"><div><span>กะของฉัน</span><strong>7 วันข้างหน้า</strong></div><button class="portal-text-btn" data-portal-nav="schedule">ดูปฏิทิน</button></div>
         <div class="portal-week-strip" id="portalWeekStrip"></div>
         <div class="portal-quick-title"><span>บริการสำหรับฉัน</span><strong>ทำรายการได้รวดเร็ว</strong></div>
@@ -179,6 +199,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.15.08a"></script>
+  <script src="./portal.js?v=6.15.09a"></script>
 </body>
 </html>

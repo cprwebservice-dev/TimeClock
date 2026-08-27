@@ -1,5 +1,5 @@
-const CACHE='timeattendance-portal-v61508a';
-const SHELL=['./portal.html','./portal.css?v=6.15.08a','./portal.js?v=6.15.08a','./favicon.svg'];
+const CACHE='timeattendance-portal-v61509a';
+const SHELL=['./portal.html','./portal.css?v=6.15.09a','./portal.js?v=6.15.09a','./favicon.svg'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(
@@ -26,11 +26,14 @@ self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
   const u=new URL(e.request.url);
   if(u.origin!==location.origin)return;
+
   e.respondWith(
     fetch(e.request)
       .then(r=>{
         const copy=r.clone();
-        caches.open(CACHE).then(c=>c.put(e.request,copy)).catch(()=>{});
+        caches.open(CACHE)
+          .then(c=>c.put(e.request,copy))
+          .catch(()=>{});
         return r;
       })
       .catch(()=>caches.match(e.request))
