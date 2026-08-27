@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.03";
+  const VERSION="6.15.04";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -11,6 +11,7 @@
   let editingRequestId=null,dayoffPickerMonth=new Date(),dayoffRows=[],dayoffBalance=null,dayoffSource="",dayoffTarget="",selectedCalendarDate="";
   const rawPunchCacheV61501=new Map();
   const attendanceByDateV61503=new Map();
+  let attendanceLoadErrorV61504="";
   const urlTeam=new URLSearchParams(location.search).get("team")||"";
   let teamToken=urlTeam||localStorage.getItem(TEAM_KEY)||"";
   if(urlTeam)localStorage.setItem(TEAM_KEY,urlTeam);
@@ -479,6 +480,18 @@
       }
 
       if(!detail){
+        if(attendanceLoadErrorV61504){
+          return `<article class="portal-time-item portal-att-day portal-att-load-error">
+            <div class="portal-time-head portal-att-day-head">
+              <div class="portal-time-title"><i>${esc(v.icon)}</i><div><strong>${esc(fmtDate(r.work_date))}</strong><small>${esc(v.display||v.code)} • ${esc(v.time||meta.label)} • รหัสกะ ${esc(v.code||"-")}</small></div></div>
+              <span class="portal-time-status absence">โหลดไม่สำเร็จ</span>
+            </div>
+            <div class="portal-att-error-row">
+              <div><strong>ไม่สามารถโหลดผลเวลาทำงาน</strong><span>${esc(attendanceLoadErrorV61504)}</span></div>
+              <button type="button" data-retry-attendance-v61504>ลองใหม่</button>
+            </div>
+          </article>`;
+        }
         return `<article class="portal-time-item portal-att-day">
           <div class="portal-time-head portal-att-day-head">
             <div class="portal-time-title"><i>${esc(v.icon)}</i><div><strong>${esc(fmtDate(r.work_date))}</strong><small>${esc(v.display||v.code)} • ${esc(v.time||meta.label)} • รหัสกะ ${esc(v.code||"-")}</small></div></div>
@@ -513,9 +526,13 @@
     const endDate=today();
 
     if(!force&&attendanceByDateV61503.size){
+      attendanceLoadErrorV61504="";
       renderTime();
       return;
     }
+
+    attendanceLoadErrorV61504="";
+    renderTime();
 
     try{
       const data=await rpc("ta_portal_get_my_attendance_range_v61503",{
@@ -528,9 +545,11 @@
         const key=String(r?.work_date||"").slice(0,10);
         if(key)attendanceByDateV61503.set(key,r);
       });
+      attendanceLoadErrorV61504="";
       renderTime();
     }catch(err){
-      console.warn("V6.15.03 attendance detail",err);
+      console.warn("V6.15.04 attendance detail",err);
+      attendanceLoadErrorV61504=friendly(err);
       renderTime();
     }
   }
@@ -576,7 +595,7 @@
   }
   async function loadRequests(){requests=await rpc("ta_portal_get_my_requests_v61482",{p_session_token:session(),p_start_date:addDays(today(),-180),p_end_date:addDays(today(),180)})||[];renderRequests();}
   async function loadNotifications(){notifications=await rpc("ta_portal_get_notifications_v61482",{p_session_token:session(),p_limit:100})||[];renderNotifications();}
-  async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{attendanceByDateV61503.clear();await Promise.all([loadCalendar(),loadAttendanceRangeV61503({force:true}),loadRequests(),loadNotifications()]);}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);}}
+  async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{attendanceByDateV61503.clear();attendanceLoadErrorV61504="";await Promise.all([loadCalendar(),loadAttendanceRangeV61503({force:true}),loadRequests(),loadNotifications()]);}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);}}
   function navigate(name){document.querySelectorAll(".portal-view").forEach(v=>v.classList.toggle("active",v.id===`portalView${name.charAt(0).toUpperCase()+name.slice(1)}`));document.querySelectorAll("[data-portal-nav]").forEach(b=>b.classList.toggle("active",b.dataset.portalNav===name));if(name==="notifications")loadNotifications().catch(()=>{});if(name==="requests")loadRequests().catch(()=>{});}
   async function loadDayoffPickerV61494(monthDate){
     dayoffPickerMonth=new Date(`${String(monthDate).slice(0,7)}-01T00:00:00`);
@@ -846,7 +865,7 @@
   }
   async function cancelRequest(id){if(!confirm("ยืนยันยกเลิกคำขอนี้?"))return;try{await rpc("ta_portal_cancel_request_v61482",{p_session_token:session(),p_request_id:id});toast("ยกเลิกคำขอแล้ว","success");await loadRequests();}catch(e){toast(friendly(e),"error");}}
   async function markRead(id){try{await rpc("ta_portal_mark_notification_read_v61482",{p_session_token:session(),p_notification_id:id});const n=notifications.find(x=>x.notification_id===id);if(n)n.is_read=true;renderNotifications();}catch(_){}}
-  function bind(){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.authTab)));$("portalActivateForm").addEventListener("submit",activate);$("portalLoginForm").addEventListener("submit",login);$("portalLogoutBtn").addEventListener("click",logout);$("portalRefreshBtn").addEventListener("click",refreshAll);document.addEventListener("click",async e=>{const n=e.target.closest("[data-portal-nav]");if(n){navigate(n.dataset.portalNav);return;}const q=e.target.closest("[data-request-quick]");if(q){openRequest(q.dataset.requestQuick,today());return;}const cal=e.target.closest("[data-calendar-date]");if(cal){selectedCalendarDate=cal.dataset.calendarDate;renderCalendar();await loadCalendarPunchDetailV61501(selectedCalendarDate);return;}if(e.target.closest("[data-close-request]")){closeRequest();return;}const ed=e.target.closest("[data-edit-request]");if(ed){const req=requests.find(x=>String(x.request_id)===String(ed.dataset.editRequest));if(req)await openRequest(req.request_type,String(req.work_date).slice(0,10),req);return;}const dd=e.target.closest("[data-dayoff-date]");if(dd){selectDayoffDateV61494(dd.dataset.dayoffDate);return;}const dm=e.target.closest("[data-dayoff-month-nav]");if(dm){dayoffPickerMonth=new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth()+Number(dm.dataset.dayoffMonthNav||0),1);dayoffSource="";dayoffTarget="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));return;}const c=e.target.closest("[data-cancel-request]");if(c){cancelRequest(c.dataset.cancelRequest);return;}const r=e.target.closest("[data-read-notification]");if(r){markRead(r.dataset.readNotification);return;}});$("portalNewRequestBtn").addEventListener("click",()=>openRequest("TIME_ISSUE",today()));$("portalRequestType").addEventListener("change",fillSubtype);$("portalRequestSubtype").addEventListener("change",()=>{updateLeavePartialFieldsV61493();renderEvidence();});$("portalRequestDate").addEventListener("change",()=>{if($("portalRequestType").value==="LEAVE_REQUEST"&&!$("portalLeaveEndV61491").value)$("portalLeaveEndV61491").value=$("portalRequestDate").value;renderEvidence();});$("portalDayoffTargetV61491")?.addEventListener("change",renderEvidence);$("portalRequestForm").addEventListener("submit",submitRequest);document.querySelectorAll("[data-request-filter]").forEach(b=>b.addEventListener("click",()=>{requestFilter=b.dataset.requestFilter;document.querySelectorAll("[data-request-filter]").forEach(x=>x.classList.toggle("active",x===b));renderRequests();}));$("portalPrevMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()-1,1);await loadCalendar();});$("portalNextMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()+1,1);await loadCalendar();});$("portalThisMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date();await loadCalendar();});}
+  function bind(){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.authTab)));$("portalActivateForm").addEventListener("submit",activate);$("portalLoginForm").addEventListener("submit",login);$("portalLogoutBtn").addEventListener("click",logout);$("portalRefreshBtn").addEventListener("click",refreshAll);document.addEventListener("click",async e=>{const n=e.target.closest("[data-portal-nav]");if(n){navigate(n.dataset.portalNav);return;}const q=e.target.closest("[data-request-quick]");if(q){openRequest(q.dataset.requestQuick,today());return;}const cal=e.target.closest("[data-calendar-date]");if(cal){selectedCalendarDate=cal.dataset.calendarDate;renderCalendar();await loadCalendarPunchDetailV61501(selectedCalendarDate);return;}const retryAtt=e.target.closest("[data-retry-attendance-v61504]");if(retryAtt){attendanceByDateV61503.clear();attendanceLoadErrorV61504="";renderTime();await loadAttendanceRangeV61503({force:true});return;}if(e.target.closest("[data-close-request]")){closeRequest();return;}const ed=e.target.closest("[data-edit-request]");if(ed){const req=requests.find(x=>String(x.request_id)===String(ed.dataset.editRequest));if(req)await openRequest(req.request_type,String(req.work_date).slice(0,10),req);return;}const dd=e.target.closest("[data-dayoff-date]");if(dd){selectDayoffDateV61494(dd.dataset.dayoffDate);return;}const dm=e.target.closest("[data-dayoff-month-nav]");if(dm){dayoffPickerMonth=new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth()+Number(dm.dataset.dayoffMonthNav||0),1);dayoffSource="";dayoffTarget="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));return;}const c=e.target.closest("[data-cancel-request]");if(c){cancelRequest(c.dataset.cancelRequest);return;}const r=e.target.closest("[data-read-notification]");if(r){markRead(r.dataset.readNotification);return;}});$("portalNewRequestBtn").addEventListener("click",()=>openRequest("TIME_ISSUE",today()));$("portalRequestType").addEventListener("change",fillSubtype);$("portalRequestSubtype").addEventListener("change",()=>{updateLeavePartialFieldsV61493();renderEvidence();});$("portalRequestDate").addEventListener("change",()=>{if($("portalRequestType").value==="LEAVE_REQUEST"&&!$("portalLeaveEndV61491").value)$("portalLeaveEndV61491").value=$("portalRequestDate").value;renderEvidence();});$("portalDayoffTargetV61491")?.addEventListener("change",renderEvidence);$("portalRequestForm").addEventListener("submit",submitRequest);document.querySelectorAll("[data-request-filter]").forEach(b=>b.addEventListener("click",()=>{requestFilter=b.dataset.requestFilter;document.querySelectorAll("[data-request-filter]").forEach(x=>x.classList.toggle("active",x===b));renderRequests();}));$("portalPrevMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()-1,1);await loadCalendar();});$("portalNextMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()+1,1);await loadCalendar();});$("portalThisMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date();await loadCalendar();});}
   async function init(){
     const c=config();
     client=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
@@ -855,7 +874,7 @@
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.02a",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.04a",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }

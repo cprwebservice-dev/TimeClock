@@ -1443,3 +1443,52 @@ body{font-size:16px;color:var(--p99-ink)}
   .portal-att-metric strong{font-size:17px}
   .portal-att-reason,.portal-att-second-note{margin-left:11px;margin-right:11px;margin-bottom:11px}
 }
+
+
+/* V6.15.04 — Attendance load failure must never look like endless loading */
+.portal-att-load-error{
+  border-color:#efc6c6!important;
+}
+.portal-att-error-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:13px;
+  padding:14px;
+  border:1px solid #f0c5c5;
+  border-radius:15px;
+  background:linear-gradient(135deg,#fff7f7,#fffdfd);
+}
+.portal-att-error-row>div{
+  min-width:0;
+}
+.portal-att-error-row strong{
+  display:block;
+  color:#a83f3f;
+  font-size:13px;
+}
+.portal-att-error-row span{
+  display:block;
+  margin-top:4px;
+  color:#986262;
+  font-size:10px;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+.portal-att-error-row button{
+  flex:0 0 auto;
+  padding:9px 12px;
+  border:1px solid #d8e7f2;
+  border-radius:11px;
+  background:#fff;
+  color:#126daf;
+  font-weight:900;
+  font-size:11px;
+  cursor:pointer;
+}
+@media(max-width:560px){
+  .portal-att-error-row{
+    align-items:flex-start;
+  }
+}
