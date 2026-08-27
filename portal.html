@@ -8,7 +8,7 @@
   <title>TimeAttendance • Employee Portal</title>
   <link rel="manifest" href="./portal-manifest.webmanifest"/>
   <link rel="icon" href="./favicon.svg"/>
-  <link rel="stylesheet" href="./portal.css?v=6.14.99b"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.00a"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -66,7 +66,7 @@
         <div class="portal-section-title"><div><span>กะของฉัน</span><strong>7 วันข้างหน้า</strong></div><button class="portal-text-btn" data-portal-nav="schedule">ดูปฏิทิน</button></div>
         <div class="portal-week-strip" id="portalWeekStrip"></div>
         <div class="portal-quick-title"><span>บริการสำหรับฉัน</span><strong>ทำรายการได้รวดเร็ว</strong></div>
-        <div class="portal-quick-grid"><button data-request-quick="TIME_ISSUE"><i>◷</i><strong>แจ้งปัญหาเวลา</strong><small>ไม่มีเข้า / ไม่มีออก / เวลาไม่ถูกต้อง</small></button><button data-request-quick="SPECIAL_WORK"><i>☾</i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button><button data-request-quick="DAYOFF_SWAP"><i>⇄</i><strong>ขอสลับวันหยุด</strong><small>ย้ายวันหยุดภายในโควต้า</small></button><button data-request-quick="LEAVE_REQUEST"><i>▤</i><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></button></div>
+        <div class="portal-quick-grid"><button data-request-quick="TIME_ISSUE"><i>◷</i><strong>ขอรับรองเวลา</strong><small>รับรองเวลาเข้า / ออก / เต็มวัน</small></button><button data-request-quick="SPECIAL_WORK"><i>☾</i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button><button data-request-quick="DAYOFF_SWAP"><i>⇄</i><strong>ขอสลับวันหยุด</strong><small>ย้ายวันหยุดภายในโควต้า</small></button><button data-request-quick="LEAVE_REQUEST"><i>▤</i><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></button></div>
       </section>
 
       <section id="portalViewSchedule" class="portal-view">
@@ -82,6 +82,7 @@
           </div>
           <div class="portal-schedule-summary" id="portalScheduleSummary"></div>
           <div class="portal-calendar-shell"><div class="portal-calendar" id="portalCalendar"></div></div>
+          <div class="portal-calendar-punch-detail hidden" id="portalCalendarPunchDetail"></div>
         </div>
       </section>
 
@@ -118,7 +119,7 @@
     <div class="portal-modal">
       <div class="portal-modal-head"><div><span>คำขอ / แจ้งข้อมูล</span><strong id="portalRequestModalTitle">แจ้งข้อมูล</strong></div><button data-close-request>×</button></div>
       <form id="portalRequestForm" class="portal-modal-body">
-        <label>ประเภท<select id="portalRequestType"><option value="TIME_ISSUE">แจ้งปัญหาเวลาทำงาน</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></label>
+        <label>ประเภท<select id="portalRequestType"><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></label>
         <label id="portalRequestDateLabel">วันที่<input type="date" id="portalRequestDate" required/></label>
         <div class="portal-day-evidence" id="portalRequestEvidence">เลือกวันที่เพื่อดูข้อมูลกะ/เวลาในระบบ</div>
         <label>รายการ<select id="portalRequestSubtype"></select></label>
@@ -136,6 +137,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.14.99b"></script>
+  <script src="./portal.js?v=6.15.00a"></script>
 </body>
 </html>

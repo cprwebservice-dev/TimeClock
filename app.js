@@ -20555,7 +20555,7 @@ ${names}${extra}
   function employeeRequestTypeLabelV61481(type) {
     return ({
       SHIFT_CHANGE:"ขอแก้ไขกะ",
-      TIME_ISSUE:"แจ้งปัญหาเวลาทำงาน",
+      TIME_ISSUE:"ขอรับรองเวลา",
       SPECIAL_WORK:"แจ้งทำงานกะพิเศษ",
       DAYOFF_SWAP:"ขอสลับวันหยุด",
       LEAVE_REQUEST:"ขอลา"
@@ -20566,9 +20566,9 @@ ${names}${extra}
     const key = String(subtype || "").toUpperCase();
     if (String(type || "").toUpperCase() === "TIME_ISSUE") {
       return ({
-        MISSING_IN:"ไม่มีเวลาเข้า",
-        MISSING_OUT:"ไม่มีเวลาออก",
-        WRONG_TIME:"เวลาไม่ถูกต้อง"
+        MISSING_IN:"รับรองเวลา-เข้า",
+        MISSING_OUT:"รับรองเวลา-ออก",
+        WRONG_TIME:"รับรอง-เต็มวัน"
       })[key] || key || "-";
     }
     if (String(type || "").toUpperCase() === "SPECIAL_WORK") {
@@ -20731,7 +20731,7 @@ ${names}${extra}
     if ($("shiftRequestSubtitle")) {
       $("shiftRequestSubtitle").textContent =
         isViewer()
-          ? "ตรวจสอบคำขอของตนเอง • แจ้งปัญหาเวลา / งานกะพิเศษ / ขอแก้ไขกะให้ Manager"
+          ? "ตรวจสอบคำขอของตนเอง • ขอรับรองเวลา / งานกะพิเศษ / ขอแก้ไขกะให้ Manager"
           : isManager()
             ? `พิจารณาคำขอและแจ้งข้อมูลของพนักงานในขอบเขต ${
                 roleLevelText(profile)

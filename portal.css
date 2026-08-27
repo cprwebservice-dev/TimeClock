@@ -795,3 +795,125 @@ body{font-size:16px;color:var(--p99-ink)}
   .portal-quick-grid button strong{font-size:12px}
   .portal-quick-grid button small{font-size:9.5px}
 }
+
+
+/* ==========================================================================
+   V6.15.00 — Time Certification Request + Calendar Raw Punch Detail
+   ========================================================================== */
+.portal-primary:disabled,
+.portal-primary.disabled{
+  cursor:not-allowed;
+  opacity:.48;
+  filter:grayscale(.18);
+  box-shadow:none!important;
+}
+.portal-day-evidence.blocked{
+  border-color:#f2b6b6;
+  background:#fff4f4;
+  color:#9d3f3f;
+}
+.portal-day-evidence.blocked strong{
+  color:#b63f3f;
+}
+.portal-cal-day{
+  appearance:none;
+  -webkit-appearance:none;
+  width:100%;
+  color:inherit;
+  font:inherit;
+  cursor:pointer;
+}
+.portal-cal-day.selected{
+  border-color:#1479d0!important;
+  background:linear-gradient(180deg,#f1f8ff,#eaf5ff)!important;
+  box-shadow:0 0 0 3px rgba(20,121,208,.12),0 12px 25px rgba(16,75,125,.10)!important;
+}
+.portal-calendar-punch-detail{
+  margin-top:14px;
+  padding:16px;
+  border:1px solid #d9e7f1;
+  border-radius:20px;
+  background:linear-gradient(135deg,#ffffff,#f5faff);
+  box-shadow:0 10px 26px rgba(20,62,94,.07);
+}
+.portal-punch-detail-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.portal-punch-detail-head span{
+  display:block;
+  color:#7590a7;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.12em;
+}
+.portal-punch-detail-head strong{
+  display:block;
+  margin-top:3px;
+  color:#173e60;
+  font-size:19px;
+}
+.portal-punch-detail-head small{
+  display:block;
+  margin-top:3px;
+  color:#6b8296;
+  font-size:11px;
+}
+.portal-punch-shift{
+  flex:0 0 auto;
+  padding:7px 10px;
+  border-radius:999px;
+  background:#eaf5ff;
+  color:#1269ad!important;
+  font-size:12px!important;
+  font-weight:900;
+  letter-spacing:0!important;
+}
+.portal-punch-detail-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:13px;
+}
+.portal-punch-detail-grid>div{
+  padding:13px 14px;
+  border:1px solid #e1eaf1;
+  border-radius:14px;
+  background:#fff;
+}
+.portal-punch-detail-grid span{
+  display:block;
+  color:#71869a;
+  font-size:11px;
+  font-weight:800;
+}
+.portal-punch-detail-grid strong{
+  display:block;
+  margin-top:5px;
+  color:#123e63;
+  font-size:22px;
+}
+.portal-punch-special{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#f2efff;
+  color:#6650a4;
+  font-size:12px;
+  font-weight:800;
+}
+.portal-punch-note{
+  display:block;
+  margin-top:10px;
+  color:#8092a3;
+  font-size:10px;
+}
+@media(max-width:560px){
+  .portal-calendar-punch-detail{padding:14px;border-radius:18px}
+  .portal-punch-detail-head strong{font-size:17px}
+  .portal-punch-detail-grid{grid-template-columns:1fr 1fr;gap:8px}
+  .portal-punch-detail-grid>div{padding:11px 12px}
+  .portal-punch-detail-grid strong{font-size:20px}
+}

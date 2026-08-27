@@ -498,7 +498,7 @@
 <div>
 <span class="eyebrow">EMPLOYEE REQUEST CENTER</span>
 <h2>คำขอ / แจ้งข้อมูล</h2>
-<p id="shiftRequestSubtitle">พนักงานส่งคำขอแก้ไขกะ แจ้งปัญหาเวลา และแจ้งงานกะพิเศษ • Manager พิจารณาภายในขอบเขตทีม</p>
+<p id="shiftRequestSubtitle">พนักงานส่งคำขอแก้ไขกะ ขอรับรองเวลา และแจ้งงานกะพิเศษ • Manager พิจารณาภายในขอบเขตทีม</p>
 </div>
 <button class="btn btn-primary" id="newShiftRequestBtn">+ ส่งคำขอ / แจ้งข้อมูล</button>
 </div>
@@ -514,7 +514,7 @@
 <div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="shiftRequestStart" type="date"/></div>
 <div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="shiftRequestEnd" type="date"/></div>
 <div class="field"><label>สถานะ</label><select class="select" id="shiftRequestStatus"><option value="">ทุกสถานะ</option><option value="PENDING">รอพิจารณา</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
-<div class="field"><label>ประเภทคำขอ</label><select class="select" id="shiftRequestTypeFilter"><option value="">ทุกประเภท</option><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">แจ้งปัญหาเวลาทำงาน</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></div>
+<div class="field"><label>ประเภทคำขอ</label><select class="select" id="shiftRequestTypeFilter"><option value="">ทุกประเภท</option><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></div>
 <div class="field"><label>ค้นหา</label><input class="input" id="shiftRequestSearch" placeholder="เลขที่คำขอ รหัส หรือชื่อพนักงาน"/></div>
 <div class="toolbar-actions"><button class="btn btn-primary" id="loadShiftRequestsBtn">ค้นหา</button></div>
 </div>
@@ -1592,7 +1592,7 @@
 <input id="shiftRequestEmpCode" type="hidden"/>
 <div class="shift-request-employee-card" id="shiftRequestEmployeeDisplay">-</div>
 <div class="form-row-3 employee-request-top-grid-v61481">
-  <div class="field"><label>ประเภทคำขอ <span class="required-mark">*</span></label><select class="select" id="shiftRequestRequestType"><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">แจ้งปัญหาเวลาทำงาน</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option></select></div>
+  <div class="field"><label>ประเภทคำขอ <span class="required-mark">*</span></label><select class="select" id="shiftRequestRequestType"><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option></select></div>
   <div class="field"><label>วันที่ <span class="required-mark">*</span></label><input class="input" id="shiftRequestWorkDate" type="date"/></div>
   <div class="field"><label>กะปัจจุบัน</label><input class="input" disabled="" id="shiftRequestCurrentShift"/></div>
 </div>
@@ -1603,7 +1603,7 @@
 
 <div class="employee-request-section-v61481 hidden" id="shiftRequestTimeIssueSectionV61481">
   <div class="form-row-2">
-    <div class="field"><label>ปัญหาที่พบ <span class="required-mark">*</span></label><select class="select" id="shiftRequestTimeIssueTypeV61481"><option value="MISSING_IN">ไม่มีเวลาเข้า</option><option value="MISSING_OUT">ไม่มีเวลาออก</option><option value="WRONG_TIME">เวลาไม่ถูกต้อง</option></select></div>
+    <div class="field"><label>รายการรับรอง <span class="required-mark">*</span></label><select class="select" id="shiftRequestTimeIssueTypeV61481"><option value="MISSING_IN">รับรองเวลา-เข้า</option><option value="MISSING_OUT">รับรองเวลา-ออก</option><option value="WRONG_TIME">รับรอง-เต็มวัน</option></select></div>
     <div class="employee-request-readonly-v61481"><span>เวลาที่ระบบพบ</span><strong id="shiftRequestPunchSnapshotV61481">เข้า - • ออก -</strong><small>ข้อมูลนี้เป็นข้อมูลอ้างอิงเท่านั้น • User แก้เวลาเองไม่ได้</small></div>
   </div>
 </div>
