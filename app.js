@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.10";
+window.__TIME_CLOCK_BUILD__ = "V6.15.11";
 document.documentElement.dataset.timeClockBuild = "6.15.10";
 
 
@@ -11269,7 +11269,7 @@ window.tcIsDayShiftCode = value =>
               ui_guard: rulePreparationV6120?.guard || null,
               server_guard: rulePreparationV6120?.server || null,
               request_id: atomicCtxV61510.requestId,
-              version: 'V6.15.10'
+              version: 'V6.15.11'
             }
           };
 
@@ -13681,6 +13681,14 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("WORK_PATTERN_MONTH_START_REQUIRED")) return "รูปแบบการทำงานเป็น Monthly Baseline กรุณาเลือกเดือนเริ่มใช้ ระบบจะมีผลตั้งแต่วันที่ 1 ของเดือนเท่านั้น";
       if (msg.includes("WORK_PATTERN_MONTH_END_REQUIRED")) return "เดือนสิ้นสุดของรูปแบบการทำงานต้องมีผลถึงวันสุดท้ายของเดือน";
       if (msg.includes("WORK_PATTERN_NOT_FOUND")) return "ไม่พบรูปแบบการทำงานของพนักงานในวันที่เลือก";
+      if (msg.includes("PARTIAL_LEAVE_SHIFT_REQUIRED")) return "ไม่พบเวลาเริ่ม/สิ้นสุดกะสำหรับลาบางส่วน กรุณาตรวจตารางกะก่อนอนุมัติ";
+      if (msg.includes("PARTIAL_LEAVE_OUTSIDE_SHIFT")) return "ช่วงลาบางส่วนต้องอยู่ภายในช่วงกะทำงานของ Work Date ที่เลือก";
+      if (msg.includes("PARTIAL_LEAVE_MUST_NOT_COVER_FULL_SHIFT")) return "ช่วงลาครอบคลุมทั้งกะ กรุณาใช้ลาเต็มวันแทน";
+      if (msg.includes("PARTIAL_LEAVE_ACTIVE_OVERLAY_EXISTS")) return "วันที่นี้มีลาบางส่วนที่ Manager อนุมัติไว้แล้ว หากต้องการเปลี่ยนช่วงเวลาให้ตรวจรายการเดิมก่อน";
+      if (msg.includes("LEAVE_PARTIAL_NOT_ALLOWED_FOR_TYPE")) return "ประเภทการลานี้กำหนดให้ลาเต็มวันเท่านั้น";
+      if (msg.includes("PERSONAL_LEAVE_PARTIAL_MIN_60_MINUTES")) return "ลากิจบางส่วนกำหนดขั้นต่ำ 1 ชั่วโมง";
+      if (msg.includes("VACATION_LEAVE_PARTIAL_MIN_180_MINUTES")) return "ลาพักร้อนบางส่วนกำหนดขั้นต่ำ 3 ชั่วโมง";
+      if (msg.includes("LEAVE_NOT_ALLOWED_NON_WORKDAY")) return "ไม่สามารถอนุมัติลาในวันหยุด วันหยุดนักขัตฤกษ์ หรือวันที่ไม่ใช่วันทำงานได้";
       return msg;
     }
 
@@ -21234,7 +21242,10 @@ ${names}${extra}
                 : "ยืนยันสลับวันหยุด";
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">${dayoffAction}</button>`);
             } else if (request.request_type === "LEAVE_REQUEST") {
-              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">ปรับตารางลา</button>`);
+              const leaveAction=String(request.request_subtype||"").toUpperCase()==="PARTIAL_DAY"
+                ? "อนุมัติลาบางส่วน"
+                : "ปรับตารางลาเต็มวัน";
+              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">${leaveAction}</button>`);
             }
             actions.push(`<button class="btn btn-danger-soft btn-sm" data-employee-request-decision-v61481="${esc(request.request_id)}|REJECTED">ไม่อนุมัติ</button>`);
           }
@@ -21489,15 +21500,52 @@ ${names}${extra}
   async function reviewEmployeeLeaveV61494(request){
     if(!request)return;
     const subtype=String(request.request_subtype||"").toUpperCase();
+    const d=request.detail||{};
+
     if(subtype==="PARTIAL_DAY"){
-      app()?.toast?.("ลาบางส่วนจะไม่ถูกเปลี่ยนเป็น LV เต็มวัน • ขั้นถัดไป V6.15.11 จะบันทึกเป็น Partial Leave Overlay โดยคงกะเดิมไว้","info");
+      const typeLabel=employeeLeaveTypeLabelV61508(d.leave_type_label||d.leave_type);
+      const start=employeeRequestFormatTimeV61481(d.leave_start_time);
+      const end=employeeRequestFormatTimeV61481(d.leave_end_time);
+      const mins=Number(d.partial_minutes||0);
+      const duration=mins>0?`${Math.floor(mins/60)} ชม.${mins%60?` ${mins%60} นาที`:""}`:"ตามช่วงเวลาที่แจ้ง";
+      const ok=await window.TimeClockModal?.confirm?.({
+        title:"อนุมัติลาบางส่วน",
+        message:`${typeLabel} • ${fmtDate(request.work_date)}
+ช่วงลา ${start}–${end} • ${duration}
+เหตุผลจากพนักงาน: ${request.reason||"-"}
+
+ระบบจะคงกะเดิมไว้ และเพิ่ม Partial Leave Overlay เฉพาะช่วงเวลาที่อนุมัติ ไม่เปลี่ยนทั้งวันเป็น LV
+
+หากช่วงลาครอบต้น/ท้ายกะ ระบบจะใช้ Overlay ปรับเกณฑ์ สาย/กลับก่อน โดยยังคงเงื่อนไขขาดงานกรณี Punch ไม่ครบ
+
+การลาจริงยังต้องคีย์ผ่าน HR Connect และอนุมัติโดยหัวหน้างานระดับฝ่าย`,
+        confirmText:"อนุมัติและปรับตาราง",
+        tone:"primary"
+      });
+      if(!ok)return;
+
+      try{
+        app()?.showLoading?.("กำลังบันทึกลาบางส่วนและประมวลผลเวลา...");
+        const result=await applyEmployeeRequestAtomicV61510(request,{},request.reason||null);
+        if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
+        employeeRequestResolveContextV61481=null;
+        clearEmployeeRequestContextV61494();
+        const overlay=result?.action_result?.overlay||{};
+        const finalStart=employeeRequestFormatTimeV61481(overlay.leave_start_time||d.leave_start_time);
+        const finalEnd=employeeRequestFormatTimeV61481(overlay.leave_end_time||d.leave_end_time);
+        app()?.toast?.(`อนุมัติลาบางส่วน ${finalStart}–${finalEnd} และปิดคำขอเรียบร้อย • กะเดิมยังคงอยู่`,`success`);
+        await loadShiftRequests();
+      }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
+      finally{app()?.hideLoading?.();}
       return;
     }
 
-    const dates=dateRangeV61494(request.work_date,request.detail?.end_date||request.work_date);
+    const dates=dateRangeV61494(request.work_date,d.end_date||request.work_date);
     const ok=await window.TimeClockModal?.confirm?.({
       title:"ปรับตารางลาเต็มวัน",
-      message:`ระบบจะกำหนด LV จำนวน ${dates.length} วัน (${fmtDate(dates[0])}${dates.length>1?` – ${fmtDate(dates[dates.length-1])}`:""}) และปิดคำขอใน Transaction เดียว\n\nระบบจะตรวจซ้ำว่าทุกวันยังเป็นวันทำงาน ไม่ใช่วันหยุด/นักขัตฤกษ์`,
+      message:`ระบบจะกำหนด LV จำนวน ${dates.length} วัน (${fmtDate(dates[0])}${dates.length>1?` – ${fmtDate(dates[dates.length-1])}`:""}) และปิดคำขอใน Transaction เดียว
+
+ระบบจะตรวจซ้ำว่าทุกวันยังเป็นวันทำงาน ไม่ใช่วันหยุด/นักขัตฤกษ์`,
       confirmText:"ปรับตารางลาและปิดคำขอ",
       tone:"primary"
     });
@@ -21506,7 +21554,6 @@ ${names}${extra}
     try{
       app()?.showLoading?.("กำลังปรับตารางลาแบบ Atomic...");
       const result=await applyEmployeeRequestAtomicV61510(request,{},request.reason||null);
-      if(result?.requires_partial_leave_overlay)throw new Error("PARTIAL_LEAVE_REQUIRES_V6.15.11");
       if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
       employeeRequestResolveContextV61481=null;
       clearEmployeeRequestContextV61494();

@@ -2157,3 +2157,20 @@ body{font-size:16px;color:var(--p99-ink)}
     height:36px;
   }
 }
+
+
+/* ==========================================================================
+   V6.15.11 — Partial Leave Schedule Overlay
+   ========================================================================= */
+.portal-today-partial-leave-v61511,.portal-time-partial-v61511,.portal-punch-partial-v61511{
+  display:flex;align-items:center;gap:12px;border:1px solid rgba(124,58,237,.18);
+  background:linear-gradient(135deg,rgba(245,243,255,.98),rgba(255,255,255,.96));
+  color:#4338ca;border-radius:18px;padding:12px 14px;margin-top:12px;box-shadow:0 8px 22px rgba(76,29,149,.06)
+}
+.portal-today-partial-leave-v61511>i,.portal-time-partial-v61511>i{width:38px;height:38px;display:grid;place-items:center;border-radius:13px;background:#ede9fe;color:#6d28d9;font-style:normal;font-size:20px;font-weight:900;flex:0 0 auto}
+.portal-today-partial-leave-v61511 div{display:flex;flex-direction:column;gap:2px}.portal-today-partial-leave-v61511 span{font-size:12px;color:#7c3aed;font-weight:800}.portal-today-partial-leave-v61511 strong{font-size:15px;color:#312e81}
+.portal-partial-leave-line-v61511{display:block!important;color:#6d28d9!important;font-weight:800!important;line-height:1.25!important;margin-top:4px!important;white-space:normal!important}
+.portal-punch-partial-v61511{font-weight:800;font-size:13px}.portal-time-partial-v61511{margin:0 14px 12px;font-size:13px;font-weight:800}
+.portal-today-partial-leave-v61511.stale,.portal-time-partial-v61511.stale,.portal-punch-partial-v61511.stale{border-color:rgba(217,119,6,.28);background:linear-gradient(135deg,#fffbeb,#fff);color:#92400e}
+.portal-cal-day .portal-special-line{white-space:normal}.portal-cal-day:has(.portal-special-line){min-height:96px}
+@media(max-width:430px){.portal-today-partial-leave-v61511{padding:10px 12px;border-radius:16px}.portal-partial-leave-line-v61511{font-size:9px!important}.portal-time-partial-v61511{margin-left:10px;margin-right:10px}}
