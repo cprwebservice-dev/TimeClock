@@ -8,7 +8,7 @@
   <title>TimeAttendance • Employee Portal</title>
   <link rel="manifest" href="./portal-manifest.webmanifest"/>
   <link rel="icon" href="./favicon.svg"/>
-  <link rel="stylesheet" href="./portal.css?v=6.14.97a"/>
+  <link rel="stylesheet" href="./portal.css?v=6.14.99a"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -37,7 +37,7 @@
         <button class="portal-primary" type="submit">เข้าสู่ระบบ</button>
         <small class="portal-help">ลืม PIN? ติดต่อ Manager ให้กด <b>Reset PIN</b> และออก Activation Code ใหม่</small>
       </form>
-      <div class="portal-auth-footer">V6.14.95 • Employee ID + PIN • Device Session</div>
+      <div class="portal-auth-footer">V6.14.99 • Employee ID + PIN • Device Session</div>
     </div>
   </section>
 
@@ -48,7 +48,7 @@
         <div><strong>Time-Clock</strong><span>Employee Portal</span></div>
       </div>
       <div class="portal-top-actions">
-        <button class="portal-icon-btn portal-notif-shortcut" data-portal-nav="notifications" aria-label="แจ้งเตือน">♢</button>
+        <button class="portal-icon-btn portal-notif-shortcut" data-portal-nav="notifications" aria-label="แจ้งเตือน">♧</button>
         <button class="portal-icon-btn" id="portalLogoutBtn" aria-label="ออกจากระบบ">↪</button>
       </div>
     </header>
@@ -70,12 +70,19 @@
       </section>
 
       <section id="portalViewSchedule" class="portal-view">
-        <div class="portal-view-hero portal-schedule-hero">
-          <div><span>MY SCHEDULE</span><strong>กะของฉัน</strong><small id="portalScheduleMonthTitle">-</small></div>
-          <div class="portal-month-nav"><button id="portalPrevMonth">‹</button><button id="portalThisMonth">เดือนนี้</button><button id="portalNextMonth">›</button></div>
+        <div class="portal-schedule-titlebar">
+          <div><span>MY SCHEDULE</span><strong>กะของฉัน</strong><small>ดูตารางกะประจำเดือนของคุณ</small></div>
+          <button class="portal-schedule-today-btn" id="portalThisMonth">▣ เดือนนี้</button>
         </div>
-        <div class="portal-schedule-summary" id="portalScheduleSummary"></div>
-        <div class="portal-calendar-shell"><div class="portal-calendar" id="portalCalendar"></div></div>
+        <div class="portal-schedule-panel">
+          <div class="portal-schedule-month-head">
+            <button id="portalPrevMonth" aria-label="เดือนก่อน">‹</button>
+            <strong id="portalScheduleMonthTitle">-</strong>
+            <button id="portalNextMonth" aria-label="เดือนถัดไป">›</button>
+          </div>
+          <div class="portal-schedule-summary" id="portalScheduleSummary"></div>
+          <div class="portal-calendar-shell"><div class="portal-calendar" id="portalCalendar"></div></div>
+        </div>
       </section>
 
       <section id="portalViewTime" class="portal-view">
@@ -99,11 +106,11 @@
     </main>
 
     <nav class="portal-bottom-nav">
-      <button class="active" data-portal-nav="home"><i>⌂</i><span>วันนี้</span></button>
-      <button data-portal-nav="schedule"><i>▣</i><span>กะของฉัน</span></button>
+      <button class="active" data-portal-nav="home"><i>⌂</i><span>หน้าแรก</span></button>
+      <button data-portal-nav="schedule"><i>▦</i><span>กะของฉัน</span></button>
       <button data-portal-nav="time"><i>◷</i><span>เวลาทำงาน</span></button>
       <button data-portal-nav="requests"><i>⇄</i><span>คำขอ</span></button>
-      <button data-portal-nav="notifications"><i>●</i><span>แจ้งเตือน</span><em id="portalNotifBadge" class="hidden">0</em></button>
+      <button data-portal-nav="notifications"><i>♢</i><span>แจ้งเตือน</span><em id="portalNotifBadge" class="hidden">0</em></button>
     </nav>
   </section>
 
@@ -129,6 +136,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.14.97a"></script>
+  <script src="./portal.js?v=6.14.99a"></script>
 </body>
 </html>

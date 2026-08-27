@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.14.97";
+  const VERSION="6.14.99";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -42,7 +42,7 @@
     if(!r){box.innerHTML='<div class="portal-empty">ยังไม่พบข้อมูลกะวันนี้</div>';return;}
     const meta=dayMeta(r),special=specialLabel(r),v=shiftVisual(r),second=specialSecondLine(r);
     const topCaption = special || r.shift_name || ({"เช้า":"กะเช้า","ดึก":"กะดึก","หยุด":"วันหยุด","ลา":"วันลา","นักขัตฯ":"วันหยุดนักขัตฤกษ์","กะนับชม.":"กะนับชั่วโมง"})[v.display] || "-";
-    box.innerHTML=`<div class="portal-today-main"><div class="portal-today-shift"><span>${esc(meta.label)}</span><strong><i class="portal-today-shift-icon">${esc(v.icon)}</i>${esc(v.display||"-")}</strong><small>${esc(topCaption)}</small></div><span class="portal-shift-pill">${v.time?`◷ ${esc(v.time)}`:`รหัสกะ ${esc(v.code||"-")}`}</span></div><div class="portal-today-times"><div><span>เวลาเข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong><small>${(r.first_in||r.actual_in_at)?"บันทึกแล้ว":"ยังไม่เข้า"}</small></div><div><span>เวลาออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong><small>${(r.last_out||r.actual_out_at)?"บันทึกแล้ว":"ยังไม่ออก"}</small></div></div>${second?`<div class="portal-today-special"><i>☾</i><div><span>งานกะพิเศษ</span><strong>${esc(second.replace(/^☾\s*/,''))}</strong></div></div>`:""}<div class="portal-status-line"><span class="portal-status-dot"></span><b>${esc(v.display||"-")}</b> • ${special?`รูปแบบงาน: ${esc(special)} • `:""}${esc(meta.label)} • รหัสกะ ${esc(v.code||"-")}</div>`;
+    box.innerHTML=`<div class="portal-today-main"><div class="portal-today-shift"><span>${esc(meta.label)}</span><strong><i class="portal-today-shift-icon">${esc(v.icon)}</i>${esc(v.display||"-")}</strong><small>${esc(topCaption)}</small></div><span class="portal-shift-pill">${v.time?`◷ ${esc(v.time)}`:`รหัสกะ ${esc(v.code||"-")}`}</span></div><div class="portal-today-times"><div><span>เวลาเข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong><small>${(r.first_in||r.actual_in_at)?"บันทึกแล้ว":"ยังไม่เข้า"}</small></div><div><span>เวลาออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong><small>${(r.last_out||r.actual_out_at)?"บันทึกแล้ว":"ยังไม่ออก"}</small></div></div>${second?`<div class="portal-today-special"><i>☾</i><div><span>งานกะพิเศษ</span><strong>${esc(second.replace(/^☾\s*/,''))}</strong></div></div>`:""}<div class="portal-status-line"><span class="portal-status-dot"></span><b>${esc(v.display||"-")}</b> • ${special?`รูปแบบงาน: ${esc(special)} • `:""}${esc(meta.label)}</div>`;
   }
   function isNightShiftCode(code=""){
     const c=String(code||"").toUpperCase();
@@ -59,8 +59,8 @@
   function shiftVisual(r={}){
     const m=dayMeta(r),code=String(r.effective_shift_code||"-"),mode=String(r.work_mode_code||"").toUpperCase(),display=primaryShiftLabel(r);
     if(m.tone==="leave")return{icon:"▤",display,code,label:"ลา",time:"",metaCode:code};
-    if(m.tone==="holiday")return{icon:"✦",display,code,label:"นักขัตฯ",time:"",metaCode:code};
-    if(m.tone==="off")return{icon:"○",display,code,label:"วันหยุด",time:"",metaCode:code};
+    if(m.tone==="holiday")return{icon:"⌂",display,code,label:"นักขัตฯ",time:"",metaCode:code};
+    if(m.tone==="off")return{icon:"☂",display,code,label:"วันหยุด",time:"",metaCode:code};
     if(mode==="HOUR_BASED")return{icon:"◷",display,code,label:"กะนับชั่วโมง",time:`${fmtTime(r.custom_start_time||r.shift_start_time)}–${fmtTime(r.custom_end_time||r.shift_end_time)}`,metaCode:code};
     return{icon:(r.is_night_shift||isNightShiftCode(code))?"☾":"☀",display,code,label:m.label,time:`${fmtTime(r.shift_start_time)}–${fmtTime(r.shift_end_time)}`,metaCode:code};
   }
@@ -81,7 +81,7 @@
     const box=$("portalWeekStrip"),days=[];
     for(let i=0;i<7;i++){
       const d=addDays(today(),i),r=row(d)||{},v=shiftVisual(r),dt=new Date(`${d}T00:00:00`),second=specialSecondLine(r);
-      days.push(`<div class="portal-day-chip ${dayMeta(r).tone} ${d===today()?"today":""}"><span>${dt.toLocaleDateString("th-TH",{weekday:"short"})} ${dt.getDate()}</span><strong><i class="portal-shift-icon">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small>${esc(v.time||v.label)}</small><small class="portal-shift-code">${esc(v.code||"-")}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}</div>`);
+      days.push(`<div class="portal-day-chip ${dayMeta(r).tone} ${d===today()?"today":""}"><span>${dt.toLocaleDateString("th-TH",{weekday:"short"})} ${dt.getDate()}</span><strong><i class="portal-shift-icon">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small>${esc(v.time||v.label)}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}</div>`);
     }
     box.innerHTML=days.join("");
   }
@@ -89,38 +89,44 @@
   function renderScheduleSummary(){
     const box=$("portalScheduleSummary");
     if(!box)return;
-    const b=monthBounds(scheduleMonth);
-    const rows=calendar.filter(r=>String(r.work_date||"").slice(0,7)===b.start.slice(0,7));
-    const counts={work:0,night:0,off:0,leave:0,holiday:0,special:0};
-    rows.forEach(r=>{
-      const p=primaryShiftLabel(r),mode=String(r.work_mode_code||"").toUpperCase();
-      if(p==="เช้า")counts.work+=1;
-      else if(p==="ดึก")counts.night+=1;
-      else if(p==="หยุด")counts.off+=1;
-      else if(p==="ลา")counts.leave+=1;
-      else if(p==="นักขัตฯ")counts.holiday+=1;
-      if(["NORMAL_LATE_CUSTOMER","SPLIT_WAIT_NIGHT","HOUR_BASED"].includes(mode))counts.special+=1;
-    });
     box.innerHTML=`
-      <div class="portal-summary-chip"><span>เช้า</span><strong>${counts.work}</strong></div>
-      <div class="portal-summary-chip"><span>ดึก</span><strong>${counts.night}</strong></div>
-      <div class="portal-summary-chip"><span>หยุด</span><strong>${counts.off}</strong></div>
-      <div class="portal-summary-chip"><span>ลา</span><strong>${counts.leave}</strong></div>
-      <div class="portal-summary-chip"><span>นักขัตฯ</span><strong>${counts.holiday}</strong></div>
-      <div class="portal-summary-chip accent"><span>กะพิเศษ</span><strong>${counts.special}</strong></div>`;
+      <div class="portal-shift-legend morning"><i>☀</i><span>เช้า</span></div>
+      <div class="portal-shift-legend night"><i>☾</i><span>ดึก</span></div>
+      <div class="portal-shift-legend off"><i>☂</i><span>หยุด</span></div>
+      <div class="portal-shift-legend leave"><i>▤</i><span>ลา</span></div>
+      <div class="portal-shift-legend holiday"><i>⌂</i><span>นักขัตฯ</span></div>`;
   }
+
+  function calendarSpecialCompact(r={}){
+    const mode=String(r.work_mode_code||"").toUpperCase();
+    if(mode==="NORMAL_LATE_CUSTOMER"){
+      const s=r.customer_window_start||r.schedule?.customer_window_start;
+      const e=r.customer_window_end||r.schedule?.customer_window_end;
+      if(s)return `กะพิเศษ ${fmtTime(s)}–${e?fmtTime(e):"ตาม OUT"}`;
+      return "กะพิเศษ";
+    }
+    if(mode==="SPLIT_WAIT_NIGHT")return `กะพิเศษ ${fmtTime(r.second_segment_start)}–${fmtTime(r.second_segment_planned_end)}`;
+    if(mode==="HOUR_BASED")return "กะพิเศษ • นับชั่วโมง";
+    return "";
+  }
+
   function renderCalendar(){
     const b=monthBounds(scheduleMonth);
     $("portalScheduleMonthTitle").textContent=b.title;
-    let html=["อา","จ","อ","พ","พฤ","ศ","ส"].map(x=>`<div class="portal-cal-head">${x}</div>`).join("");
-    for(let i=0;i<b.first;i++)html+='<div class="portal-cal-day blank"></div>';
-    for(let d=1;d<=b.days;d++){
-      const date=`${b.start.slice(0,8)}${String(d).padStart(2,"0")}`,r=row(date)||{},m=dayMeta(r),v=shiftVisual(r),second=specialSecondLine(r);
-      html+=`<div class="portal-cal-day ${m.tone} ${date===today()?"today":""}"><span>${d}</span><strong class="portal-cal-shift-label"><i class="portal-shift-icon">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small class="portal-cal-time">${esc(v.time||v.label)}</small><small class="portal-cal-code">รหัสกะ ${esc(v.code||"-")}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}</div>`;
+    let html=["อา.","จ.","อ.","พ.","พฤ.","ศ.","ส."].map(x=>`<div class="portal-cal-head">${x}</div>`).join("");
+    const totalCells=Math.ceil((b.first+b.days)/7)*7;
+    const firstDate=new Date(`${b.start}T00:00:00`);
+    firstDate.setDate(firstDate.getDate()-b.first);
+    for(let i=0;i<totalCells;i++){
+      const dt=new Date(firstDate);dt.setDate(firstDate.getDate()+i);
+      const date=iso(dt),r=row(date)||{},m=dayMeta(r),v=shiftVisual(r),special=calendarSpecialCompact(r);
+      const inMonth=date.slice(0,7)===b.start.slice(0,7);
+      html+=`<div class="portal-cal-day ${m.tone} ${inMonth?"":"outside"} ${date===today()?"today":""}"><span>${dt.getDate()}</span><strong class="portal-cal-shift-label"><i class="portal-shift-icon">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small class="portal-cal-time">${esc(v.time||v.label)}</small>${special?`<small class="portal-special-line">${esc(special)}</small>`:""}</div>`;
     }
     $("portalCalendar").innerHTML=html;
     renderScheduleSummary();
   }
+
   function renderTime(){
     const rows=calendar.filter(r=>String(r.work_date)<=today()).sort((a,b)=>String(b.work_date).localeCompare(String(a.work_date))).slice(0,31),box=$("portalTimeList");
     box.innerHTML=rows.length?rows.map(r=>{const m=dayMeta(r),v=shiftVisual(r);return `<article class="portal-time-item"><div class="portal-time-head"><div class="portal-time-title"><i>${esc(v.icon)}</i><div><strong>${esc(fmtDate(r.work_date))}</strong><small>${esc(v.display||v.code)} • ${esc(v.time||m.label)} • รหัสกะ ${esc(v.code||"-")}</small></div></div><span class="portal-time-status">${esc(m.label)}</span></div><div class="portal-time-grid"><div><span>เวลาเข้า</span><strong>${esc(fmtTime(r.first_in||r.actual_in_at))}</strong></div><div><span>เวลาออก</span><strong>${esc(fmtTime(r.last_out||r.actual_out_at))}</strong></div><div><span>สาย</span><strong>${Number(r.late_minutes||0).toLocaleString("th-TH")} นาที</strong></div><div><span>กลับก่อน</span><strong>${Number(r.early_leave_minutes||0).toLocaleString("th-TH")} นาที</strong></div></div></article>`;}).join(""):'<div class="portal-empty portal-empty-card">ยังไม่มีข้อมูลเวลาทำงาน</div>';
@@ -134,7 +140,7 @@
   async function loadCalendar(){
     const b=monthBounds(scheduleMonth);
     const homeRange={start:addDays(today(),-31),end:addDays(today(),14)};
-    const monthRange={start:b.start,end:b.end};
+    const monthRange={start:addDays(b.start,-6),end:addDays(b.end,12)};
 
     // V6.14.89:
     // Backend intentionally limits one Portal calendar request to 63 days.
