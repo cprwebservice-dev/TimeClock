@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.09";
-document.documentElement.dataset.timeClockBuild = "6.14.94";
+window.__TIME_CLOCK_BUILD__ = "V6.15.10";
+document.documentElement.dataset.timeClockBuild = "6.15.10";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.94";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.15.09',
+  version: '6.15.10',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -7568,6 +7568,10 @@ window.tcIsDayShiftCode = value =>
       timeCertificationStateV61139.source = '';
       timeCertificationStateV61139.actualOutLimit = null;
       timeCertificationStateV61139.shift1Only = false;
+      const atomicCtxV61510 = window.TimeClockEmployeeRequestAtomicV61510;
+      if (atomicCtxV61510?.type === 'TIME_ISSUE') {
+        window.TimeClockEmployeeRequestAtomicV61510 = null;
+      }
     }
 
     async function refreshTimeCertificationSourceV61139(empCode, workDate, source) {
@@ -7613,20 +7617,60 @@ window.tcIsDayShiftCode = value =>
       const source = timeCertificationStateV61139.source;
       try {
         showLoading('กำลังบันทึกและประมวลผล Attendance...');
-        const { error } = await state.client.rpc('ta_save_time_certification_v61139', {
-          p_emp_code: empCode,
-          p_work_date: workDate,
-          p_certified_start_at: timeCertificationDateTimeLocalV61139(startDate,startTime),
-          p_certified_end_at: timeCertificationDateTimeLocalV61139(endDate,endTime),
-          p_reason_code: reasonCode,
-          p_note: note || null
-        });
-        if (error) throw error;
+        const atomicCtxV61510 = window.TimeClockEmployeeRequestAtomicV61510;
+        const atomicRequestV61510 = Boolean(
+          atomicCtxV61510
+          && atomicCtxV61510.type === 'TIME_ISSUE'
+          && String(atomicCtxV61510.empCode || '') === String(empCode || '')
+          && String(atomicCtxV61510.workDate || '').slice(0,10) === String(workDate || '').slice(0,10)
+        );
+
+        let rpcResultV61510 = null;
+        if (atomicRequestV61510) {
+          const { data, error } = await state.client.rpc('ta_apply_employee_request_v61510', {
+            p_request_id: atomicCtxV61510.requestId,
+            p_action: {
+              certified_start_at: timeCertificationDateTimeLocalV61139(startDate,startTime),
+              certified_end_at: timeCertificationDateTimeLocalV61139(endDate,endTime),
+              reason_code: reasonCode,
+              note: note || null
+            },
+            p_note: note || atomicCtxV61510.requestReason || null
+          });
+          if (error) throw error;
+          rpcResultV61510 = data;
+          if (data?.applied === false) {
+            throw new Error(data?.message || 'EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED');
+          }
+        } else {
+          const { data, error } = await state.client.rpc('ta_save_time_certification_v61139', {
+            p_emp_code: empCode,
+            p_work_date: workDate,
+            p_certified_start_at: timeCertificationDateTimeLocalV61139(startDate,startTime),
+            p_certified_end_at: timeCertificationDateTimeLocalV61139(endDate,endTime),
+            p_reason_code: reasonCode,
+            p_note: note || null
+          });
+          if (error) throw error;
+          rpcResultV61510 = data;
+        }
+
+        const atomicRequestIdV61510 = atomicRequestV61510 ? atomicCtxV61510.requestId : null;
         closeTimeCertificationModalV61139();
-        toast('บันทึกรับรองเวลาและประมวลผล Attendance เรียบร้อย','success');
+        toast(
+          atomicRequestV61510
+            ? 'รับรองเวลาและปิดคำขอเรียบร้อย • ทำรายการใน Transaction เดียว'
+            : 'บันทึกรับรองเวลาและประมวลผล Attendance เรียบร้อย',
+          'success'
+        );
         await refreshTimeCertificationSourceV61139(empCode,workDate,source);
         document.dispatchEvent(new CustomEvent('timeclock:time-certification-saved-v61481', {
-          detail: { empCode, workDate, source }
+          detail: {
+            empCode, workDate, source,
+            atomicRequestApplied: atomicRequestV61510,
+            requestId: atomicRequestIdV61510,
+            atomicResult: rpcResultV61510
+          }
         }));
       } catch (error) {
         toast(humanError(error),'error');
@@ -11173,6 +11217,109 @@ window.tcIsDayShiftCode = value =>
       );
 
       try {
+        const atomicCtxV61510 = window.TimeClockEmployeeRequestAtomicV61510;
+        const atomicSpecialV61510 = Boolean(
+          atomicCtxV61510
+          && atomicCtxV61510.type === 'SPECIAL_WORK'
+          && String(atomicCtxV61510.empCode || '') === String(val("assignEmpCode") || '')
+          && String(atomicCtxV61510.workDate || '').slice(0,10) === String(val("assignWorkDate") || '').slice(0,10)
+        );
+
+        if (atomicSpecialV61510) {
+          const workModeV61510 = String(
+            rulePreparationV6120?.mode
+            || atomicCtxV61510.requestSubtype
+            || ''
+          ).trim().toUpperCase();
+          const selectedShiftV61510 = String(val("assignShiftCode") || '').trim().toUpperCase();
+          const warning48AcknowledgedV61510 = Boolean(
+            rulePreparationV6120?.server?.warning_48h === true
+            || rulePreparationV6120?.guard?.warning48 === true
+          );
+          const generatedShiftV61510 = ['HOUR_BASED','SPLIT_WAIT_NIGHT'].includes(workModeV61510)
+            ? selectedShiftV61510
+            : null;
+          const baseShiftV61510 = workModeV61510 === 'SPLIT_WAIT_NIGHT'
+            ? (rulePreparationV6120?.baseShiftCode || null)
+            : workModeV61510 === 'NORMAL_LATE_CUSTOMER'
+              ? selectedShiftV61510
+              : null;
+
+          const atomicActionV61510 = {
+            shift_code: selectedShiftV61510,
+            template_code: selectedTemplate,
+            customer_window_start: customerStart || null,
+            customer_window_end: customerEnd || null,
+            customer_end_mode: customerEndMode,
+            work_mode_code: workModeV61510,
+            proposed_start_time: rulePreparationV6120?.start || null,
+            proposed_end_time: rulePreparationV6120?.end || null,
+            planned_minutes: Number(rulePreparationV6120?.planned || 0),
+            is_off: Boolean(rulePreparationV6120?.off),
+            acknowledge_48h: warning48AcknowledgedV61510,
+            base_shift_code: baseShiftV61510,
+            generated_shift_code: generatedShiftV61510,
+            first_segment_end: workModeV61510 === 'SPLIT_WAIT_NIGHT' ? (rulePreparationV6120?.firstEnd || null) : null,
+            second_segment_start: workModeV61510 === 'SPLIT_WAIT_NIGHT' ? (rulePreparationV6120?.secondStart || null) : null,
+            second_segment_planned_end: workModeV61510 === 'SPLIT_WAIT_NIGHT' ? (rulePreparationV6120?.end || null) : null,
+            custom_start_time: workModeV61510 === 'HOUR_BASED' ? (rulePreparationV6120?.start || null) : null,
+            custom_end_time: workModeV61510 === 'HOUR_BASED' ? (rulePreparationV6120?.end || null) : null,
+            planned_validation_source: rulePreparationV6120?.source || null,
+            validation_snapshot: {
+              ui_guard: rulePreparationV6120?.guard || null,
+              server_guard: rulePreparationV6120?.server || null,
+              request_id: atomicCtxV61510.requestId,
+              version: 'V6.15.10'
+            }
+          };
+
+          const callAtomicSpecialV61510 = async acknowledge48h => {
+            const payload = {
+              ...atomicActionV61510,
+              acknowledge_48h: Boolean(acknowledge48h)
+            };
+            const { data, error } = await state.client.rpc('ta_apply_employee_request_v61510', {
+              p_request_id: atomicCtxV61510.requestId,
+              p_action: payload,
+              p_note: val("assignNote") || atomicCtxV61510.requestReason || null
+            });
+            if (error) throw error;
+            return data;
+          };
+
+          let atomicResultV61510 = await callAtomicSpecialV61510(warning48AcknowledgedV61510);
+          if (atomicResultV61510?.requires_48h_confirmation === true) {
+            const continuous = Number(atomicResultV61510?.schedule_guard?.continuous_minutes_after || 0);
+            const ok = await window.tcConfirm(
+              `พนักงานจะมีชั่วโมงทำงานต่อเนื่องประมาณ ${(continuous/60).toLocaleString('th-TH',{maximumFractionDigits:1})} ชั่วโมง\n\nระบบแนะนำให้กำหนดวันหยุด แต่ยังสามารถจัดกะต่อได้\n\nต้องการยืนยันและปิดคำขอนี้หรือไม่?`
+            );
+            if (!ok) return;
+            atomicResultV61510 = await callAtomicSpecialV61510(true);
+          }
+          if (atomicResultV61510?.applied === false) {
+            throw new Error(atomicResultV61510?.message || 'EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED');
+          }
+
+          const savedEmpV61510 = val("assignEmpCode");
+          const savedDateV61510 = val("assignWorkDate");
+          const savedShiftV61510 = val("assignShiftCode");
+          closeModal("assignModal");
+          window.TimeClockEmployeeRequestAtomicV61510 = null;
+          toast('จัดกะพิเศษและปิดคำขอเรียบร้อย • ทำรายการใน Transaction เดียว','success');
+          document.dispatchEvent(new CustomEvent('timeclock:schedule-assignment-saved-v61481', {
+            detail: {
+              empCode: savedEmpV61510,
+              workDate: savedDateV61510,
+              shiftCode: savedShiftV61510,
+              workMode: workModeV61510,
+              atomicRequestApplied: true,
+              requestId: atomicCtxV61510.requestId,
+              atomicResult: atomicResultV61510
+            }
+          }));
+          return;
+        }
+
         const {
           data:
             saveResult,
@@ -21080,14 +21227,14 @@ ${names}${extra}
             if (request.request_type === "TIME_ISSUE") {
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-time-certify-v61481="${esc(request.request_id)}">รับรองเวลา</button>`);
             } else if (request.request_type === "SPECIAL_WORK") {
-              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-special-review-v61481="${esc(request.request_id)}">ตรวจและจัดกะ</button>`);
+              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-special-review-v61481="${esc(request.request_id)}">ตรวจรายละเอียดและจัดกะ</button>`);
             } else if (request.request_type === "DAYOFF_SWAP") {
               const dayoffAction=String(request.request_subtype||"").toUpperCase()==="ADD_DAYOFF"
-                ? "ตรวจและจัดวันหยุด"
-                : "ตรวจสลับวันหยุด";
+                ? "เพิ่มวันหยุดจากโควต้า"
+                : "ยืนยันสลับวันหยุด";
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">${dayoffAction}</button>`);
             } else if (request.request_type === "LEAVE_REQUEST") {
-              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">ตรวจและจัดลา</button>`);
+              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">ปรับตารางลา</button>`);
             }
             actions.push(`<button class="btn btn-danger-soft btn-sm" data-employee-request-decision-v61481="${esc(request.request_id)}|REJECTED">ไม่อนุมัติ</button>`);
           }
@@ -21170,6 +21317,17 @@ ${names}${extra}
     }
   }
 
+  async function applyEmployeeRequestAtomicV61510(request,action={},note=null){
+    if(!request?.request_id)throw new Error('REQUEST_ID_REQUIRED');
+    const result=await rpc('ta_apply_employee_request_v61510',{
+      p_request_id:request.request_id,
+      p_action:action||{},
+      p_note:note||null
+    });
+    if(result?.applied===false)return result;
+    return result;
+  }
+
   function clearEmployeeRequestContextV61494(){
     ["employeeRequestAssignContextV61494","employeeRequestTimeCertContextV61494"].forEach(id=>{
       const el=$(id);if(el){el.classList.add("hidden");el.innerHTML="";}
@@ -21231,16 +21389,29 @@ ${names}${extra}
       const row = await fetchEmployeeRequestAttendanceV61481(request.emp_code,String(request.work_date).slice(0,10));
       if (!row) throw new Error("ไม่พบ Attendance ของวันที่แจ้ง กรุณาประมวลผล Attendance ก่อน");
       await markEmployeeRequestInReviewV61481(request.request_id);
-      employeeRequestResolveContextV61481 = {requestId:request.request_id,type:"TIME_ISSUE",empCode:request.emp_code,workDate:String(request.work_date).slice(0,10)};
+      employeeRequestResolveContextV61481 = null;
       if (typeof app()?.openTimeCertificationModalV61139 !== "function") {
         throw new Error("TIME_CERTIFICATION_UI_NOT_READY");
       }
       app().openTimeCertificationModalV61139(
         {...row,emp_code:request.emp_code,work_date:String(request.work_date).slice(0,10)},
-        "employee-request-v61481"
+        "employee-request-v61510"
       );
+      window.TimeClockEmployeeRequestAtomicV61510 = {
+        requestId:request.request_id,
+        requestNo:request.request_no,
+        type:"TIME_ISSUE",
+        requestSubtype:request.request_subtype,
+        empCode:request.emp_code,
+        workDate:String(request.work_date).slice(0,10),
+        requestReason:request.reason||null
+      };
+      if ($("timeCertificationNote") && !String($("timeCertificationNote").value||'').trim() && request.reason) {
+        $("timeCertificationNote").value=request.reason;
+      }
       showEmployeeRequestContextV61494(request,"time");
     } catch (error) {
+      window.TimeClockEmployeeRequestAtomicV61510 = null;
       app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally { app()?.hideLoading?.(); }
   }
@@ -21251,15 +21422,26 @@ ${names}${extra}
     try {
       await ensureEmployeeRequestScheduleRowV61481(request.emp_code,String(request.work_date).slice(0,10));
       await markEmployeeRequestInReviewV61481(request.request_id);
-      employeeRequestResolveContextV61481 = {requestId:request.request_id,type:"SPECIAL_WORK",empCode:request.emp_code,workDate:String(request.work_date).slice(0,10)};
+      employeeRequestResolveContextV61481 = null;
+      window.TimeClockEmployeeRequestAtomicV61510 = null;
       if (typeof app()?.openAssignment !== "function") {
         throw new Error("SCHEDULE_ASSIGNMENT_UI_NOT_READY");
       }
       await app().openAssignment(request.emp_code,String(request.work_date).slice(0,10));
       window.TimeClockSchedulingRulesV6120?.prefillEmployeeRequestV61481?.(request);
+      window.TimeClockEmployeeRequestAtomicV61510 = {
+        requestId:request.request_id,
+        requestNo:request.request_no,
+        type:"SPECIAL_WORK",
+        requestSubtype:request.request_subtype,
+        empCode:request.emp_code,
+        workDate:String(request.work_date).slice(0,10),
+        requestReason:request.reason||null
+      };
       showEmployeeRequestContextV61494(request,"assign");
+      app()?.toast?.("ตรวจรายละเอียดจากช่างแล้ว • เมื่อบันทึก ระบบจะจัดกะและปิดคำขอใน Transaction เดียว","info");
     } catch (error) {
-      employeeRequestResolveContextV61481 = null;
+      window.TimeClockEmployeeRequestAtomicV61510 = null;
       app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally { app()?.hideLoading?.(); }
   }
@@ -21273,54 +21455,65 @@ ${names}${extra}
   async function reviewEmployeeDayoffSwapV61494(request){
     if(!request)return;
     const subtype=String(request.request_subtype||"").toUpperCase();
+    const target=String(subtype==="ADD_DAYOFF"?(request.work_date||request.detail?.target_date||""):(request.detail?.target_date||"")).slice(0,10);
+    if(!target){app()?.toast?.("คำขอไม่มีวันที่สำหรับดำเนินการ","error");return;}
 
-    if(subtype==="ADD_DAYOFF"){
-      const target=String(request.work_date||request.detail?.target_date||"").slice(0,10);
-      if(!target){app()?.toast?.("คำขอไม่มีวันที่ต้องการหยุด","error");return;}
-      try{
-        await markEmployeeRequestInReviewV61481(request.request_id);
-        employeeRequestResolveContextV61481={
-          requestId:request.request_id,
-          type:"DAYOFF_ADD",
-          empCode:request.emp_code,
-          targetDate:target,
-          stage:"TARGET",
-          request
-        };
-        await app().openAssignment(request.emp_code,target);
-        window.TimeClockSchedulingRulesV6120?.prefillDayoffAddV61505?.(request);
-        showEmployeeRequestContextV61494(request,"assign");
-        app()?.toast?.("ตรวจโควต้าแล้ว • จัดวันที่ขอเป็นวันหยุดและบันทึก","info");
-      }catch(e){
-        employeeRequestResolveContextV61481=null;
-        app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
-      }
-      return;
-    }
+    const sourceDate=String(request.work_date||"").slice(0,10);
+    const title=subtype==="ADD_DAYOFF"?"เพิ่มวันหยุดจากโควต้า":"ยืนยันสลับวันหยุด";
+    const message=subtype==="ADD_DAYOFF"
+      ? `ระบบจะเปลี่ยนวันที่ ${fmtDate(target)} จากวันทำงานเป็นวันหยุด โดยตรวจโควต้าอีกครั้งที่ Backend และบันทึกพร้อมปิดคำขอใน Transaction เดียว`
+      : `ระบบจะสลับ ${fmtDate(sourceDate)} จากวันหยุดเป็นวันทำงาน และ ${fmtDate(target)} จากวันทำงานเป็นวันหยุดพร้อมกัน\n\nหากวันใดวันหนึ่งไม่ผ่านเงื่อนไข ระบบจะ Rollback ทั้ง 2 วัน`;
+    const ok=await window.TimeClockModal?.confirm?.({
+      title,message,confirmText:subtype==="ADD_DAYOFF"?"เพิ่มวันหยุด":"ยืนยันสลับวันหยุด",tone:"primary"
+    });
+    if(!ok)return;
 
-    const target=String(request.detail?.target_date||"").slice(0,10);
-    if(!target){app()?.toast?.("คำขอไม่มีวันที่ต้องการหยุดแทน","error");return;}
     try{
-      await markEmployeeRequestInReviewV61481(request.request_id);
-      employeeRequestResolveContextV61481={requestId:request.request_id,type:"DAYOFF_SWAP",empCode:request.emp_code,sourceDate:String(request.work_date).slice(0,10),targetDate:target,stage:"SOURCE",request};
-      await app().openAssignment(request.emp_code,String(request.work_date).slice(0,10));
-      window.TimeClockSchedulingRulesV6120?.prefillDayoffSwapV61494?.(request,"SOURCE");
-      showEmployeeRequestContextV61494(request,"assign");
-      app()?.toast?.("ขั้นที่ 1/2: เปลี่ยนวันหยุดเดิมให้เป็นกะทำงาน แล้วบันทึก","info");
-    }catch(e){employeeRequestResolveContextV61481=null;app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
+      app()?.showLoading?.(subtype==="ADD_DAYOFF"?"กำลังตรวจโควต้าและเพิ่มวันหยุด...":"กำลังสลับวันหยุดแบบ Atomic...");
+      const result=await applyEmployeeRequestAtomicV61510(request,{},request.reason||null);
+      if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
+      employeeRequestResolveContextV61481=null;
+      clearEmployeeRequestContextV61494();
+      const actionResult=result?.action_result||{};
+      app()?.toast?.(
+        subtype==="ADD_DAYOFF"
+          ? `เพิ่มวันหยุดเรียบร้อย${actionResult.target_off_shift?` • ${actionResult.target_off_shift}`:""}`
+          : `สลับวันหยุดเรียบร้อย • ${fmtDate(sourceDate)} → ทำงาน / ${fmtDate(target)} → หยุด`,
+        "success"
+      );
+      await loadShiftRequests();
+    }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
+    finally{app()?.hideLoading?.();}
   }
 
   async function reviewEmployeeLeaveV61494(request){
     if(!request)return;
+    const subtype=String(request.request_subtype||"").toUpperCase();
+    if(subtype==="PARTIAL_DAY"){
+      app()?.toast?.("ลาบางส่วนจะไม่ถูกเปลี่ยนเป็น LV เต็มวัน • ขั้นถัดไป V6.15.11 จะบันทึกเป็น Partial Leave Overlay โดยคงกะเดิมไว้","info");
+      return;
+    }
+
     const dates=dateRangeV61494(request.work_date,request.detail?.end_date||request.work_date);
+    const ok=await window.TimeClockModal?.confirm?.({
+      title:"ปรับตารางลาเต็มวัน",
+      message:`ระบบจะกำหนด LV จำนวน ${dates.length} วัน (${fmtDate(dates[0])}${dates.length>1?` – ${fmtDate(dates[dates.length-1])}`:""}) และปิดคำขอใน Transaction เดียว\n\nระบบจะตรวจซ้ำว่าทุกวันยังเป็นวันทำงาน ไม่ใช่วันหยุด/นักขัตฤกษ์`,
+      confirmText:"ปรับตารางลาและปิดคำขอ",
+      tone:"primary"
+    });
+    if(!ok)return;
+
     try{
-      await markEmployeeRequestInReviewV61481(request.request_id);
-      employeeRequestResolveContextV61481={requestId:request.request_id,type:"LEAVE_REQUEST",empCode:request.emp_code,dates,index:0,request};
-      await app().openAssignment(request.emp_code,dates[0]);
-      window.TimeClockSchedulingRulesV6120?.prefillLeaveRequestV61494?.(request);
-      showEmployeeRequestContextV61494(request,"assign");
-      app()?.toast?.(`จัดลา ${dates.length} วัน • บันทึก LV วันที่ 1/${dates.length}`,"info");
-    }catch(e){employeeRequestResolveContextV61481=null;app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
+      app()?.showLoading?.("กำลังปรับตารางลาแบบ Atomic...");
+      const result=await applyEmployeeRequestAtomicV61510(request,{},request.reason||null);
+      if(result?.requires_partial_leave_overlay)throw new Error("PARTIAL_LEAVE_REQUIRES_V6.15.11");
+      if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
+      employeeRequestResolveContextV61481=null;
+      clearEmployeeRequestContextV61494();
+      app()?.toast?.(`ปรับตารางลา ${dates.length} วันและปิดคำขอเรียบร้อย`,`success`);
+      await loadShiftRequests();
+    }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
+    finally{app()?.hideLoading?.();}
   }
 
   async function decideEmployeeRequestV61481(requestId,decision) {
@@ -21696,6 +21889,13 @@ ${names}${extra}
     );
 
     document.addEventListener('timeclock:time-certification-saved-v61481', async event => {
+      if (event?.detail?.atomicRequestApplied === true) {
+        employeeRequestResolveContextV61481 = null;
+        window.TimeClockEmployeeRequestAtomicV61510 = null;
+        clearEmployeeRequestContextV61494();
+        await loadShiftRequests();
+        return;
+      }
       const ctx = employeeRequestResolveContextV61481;
       if (!ctx || ctx.type !== 'TIME_ISSUE') return;
       const empCode = String(event?.detail?.empCode || '');
@@ -21707,6 +21907,13 @@ ${names}${extra}
     });
 
     document.addEventListener('timeclock:schedule-assignment-saved-v61481', async event => {
+      if (event?.detail?.atomicRequestApplied === true) {
+        employeeRequestResolveContextV61481 = null;
+        window.TimeClockEmployeeRequestAtomicV61510 = null;
+        clearEmployeeRequestContextV61494();
+        await loadShiftRequests();
+        return;
+      }
       const ctx=employeeRequestResolveContextV61481;if(!ctx)return;
       const empCode=String(event?.detail?.empCode||''),workDate=String(event?.detail?.workDate||'').slice(0,10),shiftCode=String(event?.detail?.shiftCode||'').toUpperCase();
       if(empCode!==String(ctx.empCode))return;
