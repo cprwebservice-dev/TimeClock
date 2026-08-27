@@ -1,5 +1,5 @@
-const CACHE='timeattendance-portal-v61505a';
-const SHELL=['./portal.html','./portal.css?v=6.15.05a','./portal.js?v=6.15.05a','./favicon.svg'];
+const CACHE='timeattendance-portal-v61506a';
+const SHELL=['./portal.html','./portal.css?v=6.15.06a','./portal.js?v=6.15.06a','./favicon.svg'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(

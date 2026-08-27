@@ -1703,3 +1703,56 @@ body{font-size:16px;color:var(--p99-ink)}
     font-size:19px!important;
   }
 }
+
+
+/* ==========================================================================
+   V6.15.06 — Future-only / same-month day-off UX
+   ========================================================================== */
+.portal-dayoff-mode-guide small{
+  display:block;
+  margin-top:5px;
+  color:#8a704c;
+  font-size:9px;
+  font-weight:800;
+  line-height:1.4;
+}
+.portal-dayoff-request-v61505 .portal-swap-toolbar button:disabled{
+  cursor:not-allowed;
+  opacity:.34;
+  background:#eef2f5;
+  color:#8495a4;
+  box-shadow:none;
+}
+.portal-dayoff-request-v61505 .portal-swap-day.past-locked{
+  opacity:.46;
+  filter:saturate(.55);
+  background:#f4f6f8;
+  border-style:dashed;
+}
+.portal-dayoff-request-v61505 .portal-swap-day.past-locked strong{
+  color:#8495a3;
+}
+.portal-dayoff-request-v61505 .portal-swap-day.past-locked small{
+  color:#9b8790;
+}
+.portal-dayoff-request-v61505 .portal-swap-day.future.selectable{
+  position:relative;
+}
+.portal-dayoff-request-v61505 .portal-swap-day.future.selectable:after{
+  content:"";
+  position:absolute;
+  top:5px;
+  right:5px;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#35a571;
+  box-shadow:0 0 0 3px rgba(53,165,113,.10);
+}
+.portal-dayoff-request-v61505 .portal-dayoff-mode-guide.swap{
+  border-color:#cddff0;
+  background:linear-gradient(135deg,#f0f8ff,#f8fbff);
+}
+.portal-dayoff-request-v61505 .portal-dayoff-mode-guide.add{
+  background:linear-gradient(135deg,#eefaf4,#f8fffb);
+}

@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.05";
+  const VERSION="6.15.06";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -25,7 +25,7 @@
   function config(){try{return {...DEFAULT,...JSON.parse(localStorage.getItem(CFG_KEY)||"{}")};}catch(_){return DEFAULT;}}
   function toast(msg,type="info"){const el=$("portalToast");el.textContent=msg;el.className=`portal-toast ${type}`;clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add("hidden"),3500);}
   function loading(on,text="กำลังโหลด..."){const el=$("portalLoading");$("portalLoadingText").textContent=text;el.classList.toggle("hidden",!on);}
-  function friendly(e){const m=String(e?.message||e||"");if(m.includes("PORTAL_LOGIN_INVALID"))return"รหัสพนักงานหรือ PIN ไม่ถูกต้อง";if(m.includes("PORTAL_LOCKED_15_MINUTES"))return"กรอก PIN ผิดเกินกำหนด ระบบล็อกชั่วคราว 15 นาที";if(m.includes("ACTIVATION_CODE_INVALID"))return"Activation Code ไม่ถูกต้อง";if(m.includes("ACTIVATION_CODE_EXPIRED"))return"Activation Code หมดอายุ กรุณาขอ Code ใหม่จาก Manager";if(m.includes("PORTAL_EMPLOYEE_NOT_IN_TEAM"))return"รหัสพนักงานไม่อยู่ในทีมของ Link นี้";if(m.includes("PORTAL_NOT_ENABLED"))return"HR ยังไม่ได้เปิดสิทธิ์ Employee Portal";if(m.includes("PIN_TOO_EASY"))return"PIN ง่ายเกินไป กรุณาตั้งเลขอื่น";if(m.includes("PIN_CANNOT_MATCH_EMPLOYEE_ID"))return"PIN ห้ามตรงกับเลขท้ายรหัสพนักงาน";if(m.includes("PIN_MUST_BE_6_DIGITS"))return"PIN ต้องเป็นตัวเลข 6 หลัก";if(m.includes("PORTAL_SESSION_INVALID_OR_EXPIRED"))return"Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";if(m.includes("PORTAL_DATE_RANGE_MAX_63_DAYS"))return"ช่วงวันที่ปฏิทินกว้างเกินกำหนด กรุณารีเฟรชหน้าเว็บ";if(m.includes("DUPLICATE_TIME_CERTIFICATION_REQUEST"))return"วันที่นี้มีคำขอรับรองเวลาที่ยังรอดำเนินการอยู่แล้ว";if(m.includes("DUPLICATE_TIME_ISSUE_REQUEST"))return"วันที่นี้มีคำขอรับรองเวลาที่ยังรอดำเนินการอยู่แล้ว";if(m.includes("TIME_CERTIFICATION_NOT_ALLOWED_NON_WORKDAY"))return"วันหยุด วันหยุดนักขัตฤกษ์ และวันลา ไม่สามารถขอรับรองเวลาได้";if(m.includes("TIME_CERTIFICATION_SCHEDULE_NOT_FOUND"))return"ไม่พบข้อมูลกะของวันที่เลือก กรุณาตรวจสอบตารางกะก่อน";if(m.includes("WORK_DATE_REQUIRED"))return"กรุณาเลือกวันที่ก่อนดูข้อมูลการลงเวลา";if(m.includes("REQUEST_DATE_CONFLICT"))return"วันที่เลือกมีคำขออื่นที่กำลังดำเนินการและมีผลต่อกะ/วันหยุด/ลาอยู่แล้ว";if(m.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF"))return"วันที่ต้นทางไม่ใช่วันหยุดที่ใช้โควต้า";if(m.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY"))return"วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน";if(m.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"วันหยุดนักขัตฤกษ์ไม่สามารถนำมาสลับวันหยุดได้";if(m.includes("DAYOFF_SWAP_SAME_MONTH_REQUIRED"))return"การสลับวันหยุดต้องอยู่ภายในเดือนเดียวกัน";if(m.includes("REQUEST_EDIT_NOT_ALLOWED"))return"แก้ไขไม่ได้ เพราะ Manager เริ่มพิจารณาหรือคำขอนี้ปิดแล้ว";if(m.includes("DAYOFF_ADD_NO_REQUESTABLE_BALANCE"))return"โควต้าวันหยุดที่สามารถขอเพิ่มได้หมดแล้ว";if(m.includes("DAYOFF_ADD_TARGET_MUST_BE_WORKDAY"))return"ขอหยุดเพิ่มได้เฉพาะวันที่เป็นวันทำงาน";if(m.includes("DAYOFF_ADD_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"วันหยุดนักขัตฤกษ์ไม่สามารถใช้คำขอหยุดเพิ่มได้";if(m.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF"))return"กรุณาเลือกวันหยุดเดิมก่อน";if(m.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY"))return"วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน";if(m.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"ไม่สามารถสลับกับวันหยุดนักขัตฤกษ์ได้";return m||"เกิดข้อผิดพลาด";}
+  function friendly(e){const m=String(e?.message||e||"");if(m.includes("PORTAL_LOGIN_INVALID"))return"รหัสพนักงานหรือ PIN ไม่ถูกต้อง";if(m.includes("PORTAL_LOCKED_15_MINUTES"))return"กรอก PIN ผิดเกินกำหนด ระบบล็อกชั่วคราว 15 นาที";if(m.includes("ACTIVATION_CODE_INVALID"))return"Activation Code ไม่ถูกต้อง";if(m.includes("ACTIVATION_CODE_EXPIRED"))return"Activation Code หมดอายุ กรุณาขอ Code ใหม่จาก Manager";if(m.includes("PORTAL_EMPLOYEE_NOT_IN_TEAM"))return"รหัสพนักงานไม่อยู่ในทีมของ Link นี้";if(m.includes("PORTAL_NOT_ENABLED"))return"HR ยังไม่ได้เปิดสิทธิ์ Employee Portal";if(m.includes("PIN_TOO_EASY"))return"PIN ง่ายเกินไป กรุณาตั้งเลขอื่น";if(m.includes("PIN_CANNOT_MATCH_EMPLOYEE_ID"))return"PIN ห้ามตรงกับเลขท้ายรหัสพนักงาน";if(m.includes("PIN_MUST_BE_6_DIGITS"))return"PIN ต้องเป็นตัวเลข 6 หลัก";if(m.includes("PORTAL_SESSION_INVALID_OR_EXPIRED"))return"Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";if(m.includes("PORTAL_DATE_RANGE_MAX_63_DAYS"))return"ช่วงวันที่ปฏิทินกว้างเกินกำหนด กรุณารีเฟรชหน้าเว็บ";if(m.includes("DUPLICATE_TIME_CERTIFICATION_REQUEST"))return"วันที่นี้มีคำขอรับรองเวลาที่ยังรอดำเนินการอยู่แล้ว";if(m.includes("DUPLICATE_TIME_ISSUE_REQUEST"))return"วันที่นี้มีคำขอรับรองเวลาที่ยังรอดำเนินการอยู่แล้ว";if(m.includes("TIME_CERTIFICATION_NOT_ALLOWED_NON_WORKDAY"))return"วันหยุด วันหยุดนักขัตฤกษ์ และวันลา ไม่สามารถขอรับรองเวลาได้";if(m.includes("TIME_CERTIFICATION_SCHEDULE_NOT_FOUND"))return"ไม่พบข้อมูลกะของวันที่เลือก กรุณาตรวจสอบตารางกะก่อน";if(m.includes("WORK_DATE_REQUIRED"))return"กรุณาเลือกวันที่ก่อนดูข้อมูลการลงเวลา";if(m.includes("REQUEST_DATE_CONFLICT"))return"วันที่เลือกมีคำขออื่นที่กำลังดำเนินการและมีผลต่อกะ/วันหยุด/ลาอยู่แล้ว";if(m.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF"))return"วันที่ต้นทางไม่ใช่วันหยุดที่ใช้โควต้า";if(m.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY"))return"วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน";if(m.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"วันหยุดนักขัตฤกษ์ไม่สามารถนำมาสลับวันหยุดได้";if(m.includes("DAYOFF_SWAP_SAME_MONTH_REQUIRED"))return"การสลับวันหยุดต้องอยู่ภายในเดือนเดียวกัน";if(m.includes("REQUEST_EDIT_NOT_ALLOWED"))return"แก้ไขไม่ได้ เพราะ Manager เริ่มพิจารณาหรือคำขอนี้ปิดแล้ว";if(m.includes("DAYOFF_ADD_NO_REQUESTABLE_BALANCE"))return"โควต้าวันหยุดที่สามารถขอเพิ่มได้หมดแล้ว";if(m.includes("DAYOFF_ADD_TARGET_MUST_BE_WORKDAY"))return"ขอหยุดเพิ่มได้เฉพาะวันที่เป็นวันทำงาน";if(m.includes("DAYOFF_ADD_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"วันหยุดนักขัตฤกษ์ไม่สามารถใช้คำขอหยุดเพิ่มได้";if(m.includes("DAYOFF_EMPLOYEE_PORTAL_FUTURE_ONLY"))return"Employee Portal ขอวันหยุดได้เฉพาะวันที่หลังวันปัจจุบัน หากต้องการดำเนินการย้อนหลังให้แจ้ง Manager";if(m.includes("DAYOFF_REQUEST_SAME_MONTH_REQUIRED"))return"ขอสลับวันหยุดได้เฉพาะภายในเดือนเดียวกัน";if(m.includes("DAYOFF_ADD_TARGET_MUST_MATCH_REQUEST_DATE"))return"วันที่ขอหยุดเพิ่มไม่สอดคล้องกับเดือนที่เลือก กรุณาเลือกใหม่";if(m.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF"))return"กรุณาเลือกวันหยุดเดิมก่อน";if(m.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY"))return"วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน";if(m.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"ไม่สามารถสลับกับวันหยุดนักขัตฤกษ์ได้";return m||"เกิดข้อผิดพลาด";}
   async function rpc(name,args={}){const {data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   function setAuthTab(tab){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.classList.toggle("active",b.dataset.authTab===tab));$("portalActivateForm").classList.toggle("hidden",tab!=="activate");$("portalLoginForm").classList.toggle("hidden",tab!=="login");}
   function deviceLabel(){return `${navigator.platform||"Mobile"} • ${String(navigator.userAgent||"").slice(0,80)}`;}
@@ -624,6 +624,37 @@
     return Math.max(0,Number(value)||0);
   }
 
+  function dayoffFutureOnlyV61506(date){
+    const d=String(date||"").slice(0,10);
+    return !!d && d>today();
+  }
+
+  function sameMonthV61506(a,b){
+    const x=String(a||"").slice(0,7);
+    const y=String(b||"").slice(0,7);
+    return !!x && !!y && x===y;
+  }
+
+  function dayoffCurrentMonthStartV61506(){
+    return `${today().slice(0,7)}-01`;
+  }
+
+  function dayoffPickerIsPastMonthV61506(){
+    return iso(new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth(),1))
+      < dayoffCurrentMonthStartV61506();
+  }
+
+  function dayoffRequestDateBlockedV61506(){
+    const mode=dayoffRequestModeV61505();
+    if(mode==="ADD_DAYOFF"){
+      return !!dayoffTarget && !dayoffFutureOnlyV61506(dayoffTarget);
+    }
+    if(dayoffSource && !dayoffFutureOnlyV61506(dayoffSource))return true;
+    if(dayoffTarget && !dayoffFutureOnlyV61506(dayoffTarget))return true;
+    if(dayoffSource && dayoffTarget && !sameMonthV61506(dayoffSource,dayoffTarget))return true;
+    return false;
+  }
+
   function renderDayoffPickerV61494(){
     const box=$("portalDayoffCalendarV61494");
     if(!box)return;
@@ -649,9 +680,28 @@
       guide.className=`portal-dayoff-mode-guide ${isAdd?"add":"swap"} ${isAdd&&requestable<=0?"blocked":""}`;
       guide.innerHTML=isAdd
         ? requestable>0
-          ? `<i>＋</i><div><strong>ขอหยุดเพิ่มจากโควต้าคงเหลือ</strong><span>เลือกวันทำงาน 1 วันที่ต้องการหยุด • ขอได้อีก ${requestable} วัน${pending?` • รออนุมัติ ${pending} วัน`:""}</span></div>`
+          ? `<i>＋</i><div><strong>ขอหยุดเพิ่มจากโควต้าคงเหลือ</strong><span>เลือกวันทำงานที่อยู่หลังวันปัจจุบัน • ขอได้อีก ${requestable} วัน${pending?` • รออนุมัติ ${pending} วัน`:""}</span><small>ย้อนหลังให้แจ้ง Manager เป็นผู้ดำเนินการ</small></div>`
           : `<i>!</i><div><strong>ยังขอหยุดเพิ่มไม่ได้</strong><span>โควต้าที่ขอได้อีกเป็น 0${pending?` • มีคำขอรออนุมัติ ${pending} วัน`:""} • ยังสามารถเลือก “สลับวันหยุด” ได้</span></div>`
-        : `<i>⇄</i><div><strong>สลับวันหยุด</strong><span>ขั้นที่ 1 เลือกวันหยุดเดิม • ขั้นที่ 2 เลือกวันทำงานที่จะหยุดแทน • ไม่เพิ่มจำนวนวันหยุดที่ใช้</span></div>`;
+        : `<i>⇄</i><div><strong>สลับวันหยุด</strong><span>เลือกวันหยุดเดิมและวันทำงานใหม่ที่อยู่หลังวันปัจจุบัน และต้องอยู่ในเดือนเดียวกัน</span><small>ย้อนหลังหรือข้ามเดือน ให้แจ้ง Manager เป็นผู้ดำเนินการ</small></div>`;
+    }
+
+    const monthStart=iso(new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth(),1));
+    const currentMonthStart=dayoffCurrentMonthStartV61506();
+    const prevBtn=document.querySelector('[data-dayoff-month-nav="-1"]');
+    const nextBtn=document.querySelector('[data-dayoff-month-nav="1"]');
+    if(prevBtn){
+      prevBtn.disabled=monthStart<=currentMonthStart || (!!dayoffSource && !isAdd);
+      prevBtn.title=dayoffSource&&!isAdd
+        ?"เลือกวันหยุดแทนภายในเดือนเดียวกันก่อน หรือยกเลิกวันหยุดเดิม"
+        :monthStart<=currentMonthStart
+          ?"Employee Portal ไม่รองรับการขอย้อนหลัง"
+          :"";
+    }
+    if(nextBtn){
+      nextBtn.disabled=!!dayoffSource && !isAdd;
+      nextBtn.title=dayoffSource&&!isAdd
+        ?"วันที่หยุดแทนต้องอยู่ในเดือนเดียวกับวันหยุดเดิม"
+        :"";
     }
 
     let html=["อา","จ","อ","พ","พฤ","ศ","ส"]
@@ -668,13 +718,20 @@
       const kind=dayoffKindV61494(r);
       const v=shiftVisual(r||{});
 
+      const isFuture=dayoffFutureOnlyV61506(date);
       let selectable=false;
       if(isAdd){
-        selectable=requestable>0 && kind==="work";
+        selectable=requestable>0
+          && kind==="work"
+          && isFuture;
       }else{
-        selectable=dayoffSource
-          ? kind==="work"
-          : kind==="off";
+        selectable=isFuture
+          && (
+            dayoffSource
+              ? kind==="work"
+                && sameMonthV61506(dayoffSource,date)
+              : kind==="off"
+          );
       }
 
       const selected=isAdd
@@ -689,7 +746,7 @@
             ? "target"
             : "";
 
-      const sub=
+      const baseSub=
         kind==="off"
           ? "วันหยุด"
           : kind==="work"
@@ -699,9 +756,12 @@
               : kind==="leave"
                 ? "ลา"
                 : "-";
+      const sub=isFuture
+        ? baseSub
+        : `${baseSub} • Manager`;
 
       html+=`<button type="button"
-        class="portal-swap-day ${kind} ${selectable?"selectable":""} ${stateClass}"
+        class="portal-swap-day ${kind} ${isFuture?"future":"past-locked"} ${selectable?"selectable":""} ${stateClass}"
         data-dayoff-date="${date}"
         ${selectable||selected?"":"disabled"}>
         <span>${n}</span>
@@ -717,7 +777,7 @@
       preview.innerHTML=dayoffTarget
         ? `<b>คำขอหยุดเพิ่ม</b><span>${fmtDate(dayoffTarget)} • ${esc(dayoffRowV61494(dayoffTarget)?.effective_shift_code||"กะทำงาน")} → วันหยุด</span><small>เมื่อ Manager อนุมัติ จะใช้โควต้า 1 วัน • คงเหลือโดยประมาณหลังอนุมัติ ${Math.max(0,requestable-1)} วัน</small>`
         : requestable>0
-          ? `<b>เลือกวันที่ต้องการหยุดเพิ่ม</b><span>แตะวันที่เป็น “วันทำงาน” ในปฏิทิน</span><small>ระบบจะตรวจโควต้าอีกครั้งตอน Manager จัดวันหยุด</small>`
+          ? `<b>เลือกวันที่ต้องการหยุดเพิ่ม</b><span>แตะวันที่เป็น “วันทำงาน” และอยู่หลังวันปัจจุบัน</span><small>ระบบจะตรวจโควต้าอีกครั้งตอน Manager จัดวันหยุด</small>`
           : `<b>โควต้าที่ขอได้อีก 0 วัน</b><span>ไม่สามารถเลือกวันทำงานเพื่อขอหยุดเพิ่มได้</span><small>เปลี่ยนรายการเป็น “สลับวันหยุด” ได้โดยไม่ใช้โควต้าเพิ่ม</small>`;
     }else{
       preview.innerHTML=dayoffSource
@@ -730,8 +790,8 @@
     const foot=$("portalDayoffFootnoteV61505");
     if(foot){
       foot.textContent=isAdd
-        ? "ขอหยุดเพิ่มได้เฉพาะวันทำงาน • PH/วันลา/วันหยุดเลือกไม่ได้ • คำขอรออนุมัติจะถูกกันออกจากจำนวนที่ขอได้อีก"
-        : "สลับวันหยุดต้องอยู่ภายในเดือนเดียวกัน • PH/วันลาเลือกไม่ได้ • Manager เป็นผู้จัดกะจริง";
+        ? "ขอหยุดเพิ่มได้เฉพาะวันทำงานในเดือนที่เลือกและต้องเป็นวันถัดจากวันปัจจุบัน • หากย้อนหลังให้ Manager ดำเนินการ"
+        : "สลับวันหยุด: วันหยุดเดิมและวันหยุดแทนต้องอยู่หลังวันปัจจุบันและภายในเดือนเดียวกัน • ย้อนหลังให้ Manager ดำเนินการ";
     }
 
     refreshTimeCertificationSubmitStateV61500();
@@ -741,6 +801,11 @@
     const mode=dayoffRequestModeV61505();
     const isAdd=mode==="ADD_DAYOFF";
     const kind=dayoffKindV61494(dayoffRowV61494(date));
+
+    if(!dayoffFutureOnlyV61506(date)){
+      toast("Employee Portal ไม่รองรับการขอวันหยุดย้อนหลังหรือวันปัจจุบัน กรุณาแจ้ง Manager","warning");
+      return;
+    }
 
     if(isAdd){
       if(dayoffRequestableV61505()<=0){
@@ -771,6 +836,10 @@
       dayoffSource="";
       dayoffTarget="";
     }else{
+      if(!sameMonthV61506(dayoffSource,date)){
+        toast("วันหยุดเดิมและวันที่หยุดแทนต้องอยู่ภายในเดือนเดียวกัน","warning");
+        return;
+      }
       if(kind!=="work"){
         toast("วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน","warning");
         return;
@@ -863,7 +932,10 @@
       && dayoffRequestModeV61505()==="ADD_DAYOFF"
       && dayoffBalance
       && dayoffRequestableV61505()<=0;
-    const blocked=timeBlocked||addDayoffBlocked;
+    const dayoffDateBlocked=
+      type==="DAYOFF_SWAP"
+      && dayoffRequestDateBlockedV61506();
+    const blocked=timeBlocked||addDayoffBlocked||dayoffDateBlocked;
     if(btn){
       btn.disabled=!!blocked;
       btn.classList.toggle("disabled",!!blocked);
@@ -871,7 +943,9 @@
         ?"วันหยุด วันนักขัตฤกษ์ และวันลา ไม่สามารถขอรับรองเวลาได้"
         :addDayoffBlocked
           ?"โควต้าวันหยุดที่สามารถขอเพิ่มได้เป็น 0"
-          :"";
+          :dayoffDateBlocked
+            ?"Employee Portal ขอวันหยุดได้เฉพาะวันที่หลังวันปัจจุบัน และสลับได้ภายในเดือนเดียวกัน"
+            :"";
     }
   }
 
@@ -1022,10 +1096,13 @@
       if(mode==="ADD_DAYOFF"){
         if(dayoffRequestableV61505()<=0)return toast("โควต้าวันหยุดที่สามารถขอเพิ่มได้เป็น 0","warning");
         if(!detail.target_date)return toast("กรุณาเลือกวันที่ต้องการหยุดเพิ่ม","warning");
+        if(!dayoffFutureOnlyV61506(detail.target_date))return toast("ขอหยุดเพิ่มได้เฉพาะวันที่หลังวันปัจจุบัน หากย้อนหลังให้แจ้ง Manager","warning");
         if(dayoffKindV61494(dayoffRowV61494(detail.target_date))!=="work")return toast("ขอหยุดเพิ่มได้เฉพาะวันที่เป็นวันทำงาน","warning");
         detail.target_work_shift_code=dayoffRowV61494(detail.target_date)?.effective_shift_code||null;
       }else{
         if(!dayoffSource||!detail.target_date)return toast("กรุณาเลือกวันหยุดเดิมและวันที่ต้องการหยุดแทน","warning");
+        if(!dayoffFutureOnlyV61506(dayoffSource)||!dayoffFutureOnlyV61506(detail.target_date))return toast("สลับวันหยุดได้เฉพาะวันที่หลังวันปัจจุบัน หากย้อนหลังให้แจ้ง Manager","warning");
+        if(!sameMonthV61506(dayoffSource,detail.target_date))return toast("วันหยุดเดิมและวันที่หยุดแทนต้องอยู่ภายในเดือนเดียวกัน","warning");
         detail.source_shift_code=dayoffRowV61494(dayoffSource)?.effective_shift_code||null;
         detail.source_replacement_shift_code=dayoffRowV61494(dayoffSource)?.default_shift_code||null;
         detail.target_work_shift_code=dayoffRowV61494(detail.target_date)?.effective_shift_code||null;
@@ -1049,7 +1126,7 @@
   }
   async function cancelRequest(id){if(!confirm("ยืนยันยกเลิกคำขอนี้?"))return;try{await rpc("ta_portal_cancel_request_v61482",{p_session_token:session(),p_request_id:id});toast("ยกเลิกคำขอแล้ว","success");await loadRequests();}catch(e){toast(friendly(e),"error");}}
   async function markRead(id){try{await rpc("ta_portal_mark_notification_read_v61482",{p_session_token:session(),p_notification_id:id});const n=notifications.find(x=>x.notification_id===id);if(n)n.is_read=true;renderNotifications();}catch(_){}}
-  function bind(){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.authTab)));$("portalActivateForm").addEventListener("submit",activate);$("portalLoginForm").addEventListener("submit",login);$("portalLogoutBtn").addEventListener("click",logout);$("portalRefreshBtn").addEventListener("click",refreshAll);document.addEventListener("click",async e=>{const n=e.target.closest("[data-portal-nav]");if(n){navigate(n.dataset.portalNav);return;}const q=e.target.closest("[data-request-quick]");if(q){openRequest(q.dataset.requestQuick,today());return;}const cal=e.target.closest("[data-calendar-date]");if(cal){selectedCalendarDate=cal.dataset.calendarDate;renderCalendar();await loadCalendarPunchDetailV61501(selectedCalendarDate);return;}const retryAtt=e.target.closest("[data-retry-attendance-v61504]");if(retryAtt){attendanceByDateV61503.clear();attendanceLoadErrorV61504="";renderTime();await loadAttendanceRangeV61503({force:true});return;}if(e.target.closest("[data-close-request]")){closeRequest();return;}const ed=e.target.closest("[data-edit-request]");if(ed){const req=requests.find(x=>String(x.request_id)===String(ed.dataset.editRequest));if(req)await openRequest(req.request_type,String(req.work_date).slice(0,10),req);return;}const dd=e.target.closest("[data-dayoff-date]");if(dd){selectDayoffDateV61494(dd.dataset.dayoffDate);return;}const dm=e.target.closest("[data-dayoff-month-nav]");if(dm){dayoffPickerMonth=new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth()+Number(dm.dataset.dayoffMonthNav||0),1);dayoffSource="";dayoffTarget="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));return;}const c=e.target.closest("[data-cancel-request]");if(c){cancelRequest(c.dataset.cancelRequest);return;}const r=e.target.closest("[data-read-notification]");if(r){markRead(r.dataset.readNotification);return;}});$("portalNewRequestBtn").addEventListener("click",()=>openRequest("TIME_ISSUE",today()));$("portalRequestType").addEventListener("change",fillSubtype);$("portalRequestSubtype").addEventListener("change",async()=>{updateLeavePartialFieldsV61493();if($("portalRequestType").value==="DAYOFF_SWAP"){dayoffSource="";dayoffTarget="";$("portalRequestDate").value="";$("portalDayoffTargetV61491").value="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));renderDayoffPickerV61494();}renderEvidence();});$("portalRequestDate").addEventListener("change",()=>{if($("portalRequestType").value==="LEAVE_REQUEST"&&!$("portalLeaveEndV61491").value)$("portalLeaveEndV61491").value=$("portalRequestDate").value;renderEvidence();});$("portalDayoffTargetV61491")?.addEventListener("change",renderEvidence);$("portalRequestForm").addEventListener("submit",submitRequest);document.querySelectorAll("[data-request-filter]").forEach(b=>b.addEventListener("click",()=>{requestFilter=b.dataset.requestFilter;document.querySelectorAll("[data-request-filter]").forEach(x=>x.classList.toggle("active",x===b));renderRequests();}));$("portalPrevMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()-1,1);await loadCalendar();});$("portalNextMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()+1,1);await loadCalendar();});$("portalThisMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date();await loadCalendar();});}
+  function bind(){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.authTab)));$("portalActivateForm").addEventListener("submit",activate);$("portalLoginForm").addEventListener("submit",login);$("portalLogoutBtn").addEventListener("click",logout);$("portalRefreshBtn").addEventListener("click",refreshAll);document.addEventListener("click",async e=>{const n=e.target.closest("[data-portal-nav]");if(n){navigate(n.dataset.portalNav);return;}const q=e.target.closest("[data-request-quick]");if(q){openRequest(q.dataset.requestQuick,today());return;}const cal=e.target.closest("[data-calendar-date]");if(cal){selectedCalendarDate=cal.dataset.calendarDate;renderCalendar();await loadCalendarPunchDetailV61501(selectedCalendarDate);return;}const retryAtt=e.target.closest("[data-retry-attendance-v61504]");if(retryAtt){attendanceByDateV61503.clear();attendanceLoadErrorV61504="";renderTime();await loadAttendanceRangeV61503({force:true});return;}if(e.target.closest("[data-close-request]")){closeRequest();return;}const ed=e.target.closest("[data-edit-request]");if(ed){const req=requests.find(x=>String(x.request_id)===String(ed.dataset.editRequest));if(req)await openRequest(req.request_type,String(req.work_date).slice(0,10),req);return;}const dd=e.target.closest("[data-dayoff-date]");if(dd){selectDayoffDateV61494(dd.dataset.dayoffDate);return;}const dm=e.target.closest("[data-dayoff-month-nav]");if(dm){const delta=Number(dm.dataset.dayoffMonthNav||0);if(dayoffSource&&dayoffRequestModeV61505()==="SWAP_DAYOFF"){toast("วันที่หยุดแทนต้องอยู่ในเดือนเดียวกับวันหยุดเดิม กรุณาเลือกวันหยุดแทนหรือยกเลิกวันเดิมก่อน","info");return;}const candidate=new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth()+delta,1);if(iso(candidate)<dayoffCurrentMonthStartV61506()){toast("Employee Portal ไม่รองรับการขอย้อนหลัง กรุณาแจ้ง Manager","warning");return;}dayoffPickerMonth=candidate;dayoffSource="";dayoffTarget="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));return;}const c=e.target.closest("[data-cancel-request]");if(c){cancelRequest(c.dataset.cancelRequest);return;}const r=e.target.closest("[data-read-notification]");if(r){markRead(r.dataset.readNotification);return;}});$("portalNewRequestBtn").addEventListener("click",()=>openRequest("TIME_ISSUE",today()));$("portalRequestType").addEventListener("change",fillSubtype);$("portalRequestSubtype").addEventListener("change",async()=>{updateLeavePartialFieldsV61493();if($("portalRequestType").value==="DAYOFF_SWAP"){dayoffSource="";dayoffTarget="";$("portalRequestDate").value="";$("portalDayoffTargetV61491").value="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));renderDayoffPickerV61494();}renderEvidence();});$("portalRequestDate").addEventListener("change",()=>{if($("portalRequestType").value==="LEAVE_REQUEST"&&!$("portalLeaveEndV61491").value)$("portalLeaveEndV61491").value=$("portalRequestDate").value;renderEvidence();});$("portalDayoffTargetV61491")?.addEventListener("change",renderEvidence);$("portalRequestForm").addEventListener("submit",submitRequest);document.querySelectorAll("[data-request-filter]").forEach(b=>b.addEventListener("click",()=>{requestFilter=b.dataset.requestFilter;document.querySelectorAll("[data-request-filter]").forEach(x=>x.classList.toggle("active",x===b));renderRequests();}));$("portalPrevMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()-1,1);await loadCalendar();});$("portalNextMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()+1,1);await loadCalendar();});$("portalThisMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date();await loadCalendar();});}
   async function init(){
     const c=config();
     client=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
@@ -1058,7 +1135,7 @@
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.05a",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.06a",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }
