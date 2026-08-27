@@ -11,7 +11,7 @@
   <title>TimeAttendance • Employee Portal</title>
   <link rel="manifest" href="./portal-manifest.webmanifest"/>
   <link rel="icon" href="./favicon.svg"/>
-  <link rel="stylesheet" href="./portal.css?v=6.15.04a"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.05a"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -69,7 +69,7 @@
         <div class="portal-section-title"><div><span>กะของฉัน</span><strong>7 วันข้างหน้า</strong></div><button class="portal-text-btn" data-portal-nav="schedule">ดูปฏิทิน</button></div>
         <div class="portal-week-strip" id="portalWeekStrip"></div>
         <div class="portal-quick-title"><span>บริการสำหรับฉัน</span><strong>ทำรายการได้รวดเร็ว</strong></div>
-        <div class="portal-quick-grid"><button data-request-quick="TIME_ISSUE"><i>◷</i><strong>ขอรับรองเวลา</strong><small>รับรองเวลาเข้า / ออก / เต็มวัน</small></button><button data-request-quick="SPECIAL_WORK"><i>☾</i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button><button data-request-quick="DAYOFF_SWAP"><i>⇄</i><strong>ขอสลับวันหยุด</strong><small>ย้ายวันหยุดภายในโควต้า</small></button><button data-request-quick="LEAVE_REQUEST"><i>▤</i><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></button></div>
+        <div class="portal-quick-grid"><button data-request-quick="TIME_ISSUE"><i>◷</i><strong>ขอรับรองเวลา</strong><small>รับรองเวลาเข้า / ออก / เต็มวัน</small></button><button data-request-quick="SPECIAL_WORK"><i>☾</i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button><button data-request-quick="DAYOFF_SWAP"><i>⇄</i><strong>วันหยุด</strong><small>สลับวันหยุด / ขอหยุดเพิ่ม</small></button><button data-request-quick="LEAVE_REQUEST"><i>▤</i><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></button></div>
       </section>
 
       <section id="portalViewSchedule" class="portal-view">
@@ -122,17 +122,19 @@
     <div class="portal-modal">
       <div class="portal-modal-head"><div><span>คำขอ / แจ้งข้อมูล</span><strong id="portalRequestModalTitle">แจ้งข้อมูล</strong></div><button data-close-request>×</button></div>
       <form id="portalRequestForm" class="portal-modal-body">
-        <label>ประเภท<select id="portalRequestType"><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></label>
+        <label>ประเภท<select id="portalRequestType"><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">วันหยุด / สลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></label>
         <label id="portalRequestDateLabel">วันที่<input type="date" id="portalRequestDate" required/></label>
         <div class="portal-day-evidence" id="portalRequestEvidence">เลือกวันที่เพื่อดูข้อมูลกะ/เวลาในระบบ</div>
         <label>รายการ<select id="portalRequestSubtype"></select></label>
-        <div id="portalSpecialFields" class="portal-special-fields hidden"><div class="portal-pin-grid"><label>ช่วงงานที่แจ้ง เริ่ม<input type="time" id="portalSpecialStart"/></label><label>สิ้นสุด<input type="time" id="portalSpecialEnd"/></label></div><label>ลูกค้า / สถานที่ / งานที่ไปปฏิบัติ<input id="portalSpecialLocation" maxlength="200" placeholder="เช่น ลูกค้า ABC • เชียงใหม่"/></label><small>เวลาที่ระบุเป็นข้อมูลประกอบคำขอ ไม่ใช่ Raw Punch และไม่แก้ Attendance โดยตรง</small></div><div id="portalDayoffFieldsV61491" class="portal-special-fields hidden">
+        <div id="portalSpecialFields" class="portal-special-fields hidden"><div class="portal-pin-grid"><label>ช่วงงานที่แจ้ง เริ่ม<input type="time" id="portalSpecialStart"/></label><label>สิ้นสุด<input type="time" id="portalSpecialEnd"/></label></div><label>ลูกค้า / สถานที่ / งานที่ไปปฏิบัติ<input id="portalSpecialLocation" maxlength="200" placeholder="เช่น ลูกค้า ABC • เชียงใหม่"/></label><small>เวลาที่ระบุเป็นข้อมูลประกอบคำขอ ไม่ใช่ Raw Punch และไม่แก้ Attendance โดยตรง</small></div><div id="portalDayoffFieldsV61491" class="portal-special-fields portal-dayoff-request-v61505 hidden">
           <input type="hidden" id="portalDayoffTargetV61491"/>
+          <div class="portal-dayoff-mode-guide" id="portalDayoffModeGuideV61505"></div>
           <div class="portal-swap-toolbar"><button type="button" data-dayoff-month-nav="-1">‹</button><strong id="portalDayoffMonthV61494">-</strong><button type="button" data-dayoff-month-nav="1">›</button></div>
-          <div class="portal-swap-quota" id="portalDayoffQuotaV61494"></div>
+          <div class="portal-swap-quota portal-dayoff-quota-v61505" id="portalDayoffQuotaV61494"></div>
+          <div class="portal-dayoff-legend-v61505"><span class="work">● วันทำงาน</span><span class="off">● วันหยุด</span><span class="disabled">● PH / ลา</span></div>
           <div class="portal-swap-calendar" id="portalDayoffCalendarV61494"></div>
           <div class="portal-swap-preview" id="portalDayoffPreviewV61494"></div>
-          <small>เลือกวันหยุดเดิมก่อน แล้วเลือกวันทำงานที่จะเปลี่ยนเป็นวันหยุด ระบบไม่อนุญาต PH/วันลา และตรวจคำขอซ้ำก่อนส่ง</small>
+          <small id="portalDayoffFootnoteV61505">ระบบตรวจโควต้า คำขอที่รออนุมัติ และเงื่อนไขกะก่อนส่งให้ Manager</small>
         </div><div id="portalLeaveFieldsV61491" class="portal-special-fields hidden"><label>ประเภทการลา<input id="portalLeaveTypeV61491" maxlength="100" placeholder="เช่น ลาป่วย / ลากิจ / ลาพักร้อน"/></label><label>วันสิ้นสุด<input type="date" id="portalLeaveEndV61491"/></label><div id="portalLeavePartialFieldsV61493" class="portal-pin-grid hidden"><label>เวลาเริ่ม (ลาบางส่วน)<input type="time" id="portalLeaveStartV61491"/></label><label>เวลาสิ้นสุด<input type="time" id="portalLeaveEndTimeV61491"/></label></div></div>
         <label>เหตุผล / รายละเอียด<textarea id="portalRequestReason" rows="4" maxlength="1000" required placeholder="ระบุเหตุผลให้ Manager ใช้ประกอบการพิจารณา"></textarea></label>
         <div class="portal-modal-actions"><button type="button" class="portal-secondary" data-close-request>ยกเลิก</button><button class="portal-primary" id="portalRequestSubmitBtnV61494" type="submit">ส่งให้ Manager</button></div>
@@ -140,6 +142,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.15.04a"></script>
+  <script src="./portal.js?v=6.15.05a"></script>
 </body>
 </html>

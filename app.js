@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.14.94";
+window.__TIME_CLOCK_BUILD__ = "V6.15.05";
 document.documentElement.dataset.timeClockBuild = "6.14.94";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.94";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.14.94',
+  version: '6.15.05',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -20557,7 +20557,7 @@ ${names}${extra}
       SHIFT_CHANGE:"ขอแก้ไขกะ",
       TIME_ISSUE:"ขอรับรองเวลา",
       SPECIAL_WORK:"แจ้งทำงานกะพิเศษ",
-      DAYOFF_SWAP:"ขอสลับวันหยุด",
+      DAYOFF_SWAP:"คำขอวันหยุด",
       LEAVE_REQUEST:"ขอลา"
     })[String(type || "").toUpperCase()] || type || "-";
   }
@@ -20579,7 +20579,7 @@ ${names}${extra}
       })[key] || key || "-";
     }
     if (String(type || "").toUpperCase() === "DAYOFF_SWAP") {
-      return ({SWAP_DAYOFF:"สลับวันหยุด"})[key] || key || "-";
+      return ({SWAP_DAYOFF:"สลับวันหยุด",ADD_DAYOFF:"ขอหยุดเพิ่ม"})[key] || key || "-";
     }
     if (String(type || "").toUpperCase() === "LEAVE_REQUEST") {
       return ({FULL_DAY:"ลาเต็มวัน",PARTIAL_DAY:"ลาบางส่วน"})[key] || key || "-";
@@ -20625,6 +20625,10 @@ ${names}${extra}
       return `${modeLabel}${times}${location ? ` • ${location}` : ""}`;
     }
     if (request.request_type === "DAYOFF_SWAP") {
+      if (String(request.request_subtype || "").toUpperCase() === "ADD_DAYOFF") {
+        const q=detail.quota_snapshot||{};
+        return `ขอหยุดเพิ่ม ${fmtDate(request.work_date)}${q.balance_days!=null ? ` • คงเหลือ ${q.balance_days} วัน` : ""}`;
+      }
       return `สลับวันหยุด ${fmtDate(request.work_date)} → ${fmtDate(detail.target_date)}`;
     }
     if (request.request_type === "LEAVE_REQUEST") {
@@ -21067,7 +21071,10 @@ ${names}${extra}
             } else if (request.request_type === "SPECIAL_WORK") {
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-special-review-v61481="${esc(request.request_id)}">ตรวจและจัดกะ</button>`);
             } else if (request.request_type === "DAYOFF_SWAP") {
-              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">ตรวจสลับวันหยุด</button>`);
+              const dayoffAction=String(request.request_subtype||"").toUpperCase()==="ADD_DAYOFF"
+                ? "ตรวจและจัดวันหยุด"
+                : "ตรวจสลับวันหยุด";
+              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">${dayoffAction}</button>`);
             } else if (request.request_type === "LEAVE_REQUEST") {
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">ตรวจและจัดลา</button>`);
             }
@@ -21178,8 +21185,13 @@ ${names}${extra}
       const p=d.punch_snapshot||{};
       rows.push(["เวลาที่ระบบพบ",`เข้า ${employeeRequestFormatTimeV61481(p.in)} • ออก ${employeeRequestFormatTimeV61481(p.out)}`]);
     }else if(type==="DAYOFF_SWAP"){
-      rows.push(["วันหยุดเดิม",fmtDate(request?.work_date)]);
-      rows.push(["หยุดแทน",fmtDate(d.target_date)]);
+      if(String(request?.request_subtype||"").toUpperCase()==="ADD_DAYOFF"){
+        rows.push(["วันที่ขอหยุดเพิ่ม",fmtDate(request?.work_date)]);
+        if(d.target_work_shift_code)rows.push(["กะเดิม",d.target_work_shift_code]);
+      }else{
+        rows.push(["วันหยุดเดิม",fmtDate(request?.work_date)]);
+        rows.push(["หยุดแทน",fmtDate(d.target_date)]);
+      }
       if(d.quota_snapshot)rows.push(["โควต้า",`${d.quota_snapshot.month_quota_days??0} / ใช้ไป ${d.quota_snapshot.used_days??0} / คงเหลือ ${d.quota_snapshot.balance_days??0}`]);
     }else if(type==="LEAVE_REQUEST"){
       rows.push(["ประเภทลา",d.leave_type||"-"]);
@@ -21244,7 +21256,34 @@ ${names}${extra}
   }
 
   async function reviewEmployeeDayoffSwapV61494(request){
-    if(!request)return;const target=String(request.detail?.target_date||"").slice(0,10);
+    if(!request)return;
+    const subtype=String(request.request_subtype||"").toUpperCase();
+
+    if(subtype==="ADD_DAYOFF"){
+      const target=String(request.work_date||request.detail?.target_date||"").slice(0,10);
+      if(!target){app()?.toast?.("คำขอไม่มีวันที่ต้องการหยุด","error");return;}
+      try{
+        await markEmployeeRequestInReviewV61481(request.request_id);
+        employeeRequestResolveContextV61481={
+          requestId:request.request_id,
+          type:"DAYOFF_ADD",
+          empCode:request.emp_code,
+          targetDate:target,
+          stage:"TARGET",
+          request
+        };
+        await app().openAssignment(request.emp_code,target);
+        window.TimeClockSchedulingRulesV6120?.prefillDayoffAddV61505?.(request);
+        showEmployeeRequestContextV61494(request,"assign");
+        app()?.toast?.("ตรวจโควต้าแล้ว • จัดวันที่ขอเป็นวันหยุดและบันทึก","info");
+      }catch(e){
+        employeeRequestResolveContextV61481=null;
+        app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+      }
+      return;
+    }
+
+    const target=String(request.detail?.target_date||"").slice(0,10);
     if(!target){app()?.toast?.("คำขอไม่มีวันที่ต้องการหยุดแทน","error");return;}
     try{
       await markEmployeeRequestInReviewV61481(request.request_id);
@@ -21661,6 +21700,20 @@ ${names}${extra}
         if(workDate!==String(ctx.workDate).slice(0,10))return;
         const id=ctx.requestId;employeeRequestResolveContextV61481=null;clearEmployeeRequestContextV61494();
         await resolveEmployeeRequestV61481(id,`ปรับกะ/รูปแบบงานพิเศษ ${event?.detail?.workMode||''} เรียบร้อย`);return;
+      }
+
+      if(ctx.type==='DAYOFF_ADD'){
+        if(workDate!==ctx.targetDate)return;
+        const sm=(app()?.state?.filters?.shifts||[]).find(x=>String(x.shift_code||'').toUpperCase()===shiftCode);
+        if(sm?.is_workday!==false&&!/^O/.test(shiftCode)&&!['OFF'].includes(shiftCode)){
+          app()?.toast?.("คำขอหยุดเพิ่มต้องบันทึกเป็นกะวันหยุด","warning");
+          return;
+        }
+        const id=ctx.requestId;
+        employeeRequestResolveContextV61481=null;
+        clearEmployeeRequestContextV61494();
+        await resolveEmployeeRequestV61481(id,"จัดวันหยุดเพิ่มจากโควต้าคงเหลือเรียบร้อย");
+        return;
       }
 
       if(ctx.type==='DAYOFF_SWAP'){
@@ -31203,6 +31256,16 @@ ${names}${extra}
     if($("assignReason"))$("assignReason").value="ดำเนินการคำขอสลับวันหยุดจาก Employee Portal V6.14.94";
     refreshAssignmentPreview();return true;
   }
+  function prefillDayoffAddV61505(request={}){
+    if(!st.current)return false;
+    chooseMode("DYNAMIC_OFF");
+    const q=request.detail?.quota_snapshot||{};
+    if($("assignNote"))$("assignNote").value=`คำขอ ${request.request_no||""} • ขอหยุดเพิ่ม ${request.work_date} • คงเหลือ ${q.balance_days??"-"} วัน • ${request.reason||""}`;
+    if($("assignReason"))$("assignReason").value="ดำเนินการคำขอหยุดเพิ่มจาก Employee Portal V6.15.05";
+    refreshAssignmentPreview();
+    return true;
+  }
+
   function prefillLeaveRequestV61494(request={}){
     if(!st.current)return false;chooseMode("LEAVE");
     if($("assignNote"))$("assignNote").value=`คำขอ ${request.request_no||""} • ${request.detail?.leave_type||"ลา"} • ${request.reason||""}`;
@@ -31210,7 +31273,7 @@ ${names}${extra}
     refreshAssignmentPreview();return true;
   }
 
-  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,sequenceBlockMessage:sequenceBlockMessageV61435,ensureRuntimeRules:loadRuntimeShiftRules,prefillEmployeeRequestV61481,prefillDayoffSwapV61494,prefillLeaveRequestV61494};
+  window.TimeClockSchedulingRulesV6120={version:VERSION,openAssignment,prepareSave,saveExtension,deleteExtension,enrichScheduleRows,rowDisplay,loadAdminPanel,refreshAssignmentPreview,refreshWorkingShiftOptions,validateBulk,precheckMinimumRestBulk,saveBulkExtensions,isShiftAllowedForRow,resolveWorkingShift,pairedOffForBasis,resolveDayoffBasis:fetchOffBasisV6135,sequenceBlockMessage:sequenceBlockMessageV61435,ensureRuntimeRules:loadRuntimeShiftRules,prefillEmployeeRequestV61481,prefillDayoffSwapV61494,prefillDayoffAddV61505,prefillLeaveRequestV61494};
   window.TimeClockSchedulingRulesV6121=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6122=window.TimeClockSchedulingRulesV6120;
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
