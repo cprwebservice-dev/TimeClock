@@ -917,3 +917,218 @@ body{font-size:16px;color:var(--p99-ink)}
   .portal-punch-detail-grid>div{padding:11px 12px}
   .portal-punch-detail-grid strong{font-size:20px}
 }
+
+
+/* ==========================================================================
+   V6.15.01 — All Raw Punch Records / 2-Shift visual grouping
+   ========================================================================== */
+.portal-raw-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+  margin-top:13px;
+}
+.portal-raw-summary>div{
+  padding:11px 12px;
+  border:1px solid #e0eaf2;
+  border-radius:14px;
+  background:#fff;
+  text-align:center;
+}
+.portal-raw-summary span{
+  display:block;
+  color:#75899c;
+  font-size:10px;
+  font-weight:800;
+}
+.portal-raw-summary strong{
+  display:block;
+  margin-top:3px;
+  color:#133f64;
+  font-size:23px;
+  line-height:1;
+}
+.portal-raw-summary small{
+  display:block;
+  margin-top:3px;
+  color:#92a0ad;
+  font-size:9px;
+}
+.portal-raw-groups{
+  display:grid;
+  gap:11px;
+  margin-top:13px;
+}
+.portal-raw-shift-group{
+  overflow:hidden;
+  border:1px solid #dfe9f1;
+  border-radius:16px;
+  background:#fff;
+}
+.portal-raw-shift-group>header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border-bottom:1px solid #e7edf3;
+  background:#f8fbfd;
+}
+.portal-raw-shift-group>header span{
+  display:block;
+  color:#8395a5;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.portal-raw-shift-group>header strong{
+  display:block;
+  margin-top:2px;
+  color:#173f60;
+  font-size:14px;
+}
+.portal-raw-shift-group>header>b{
+  flex:0 0 auto;
+  padding:5px 8px;
+  border-radius:999px;
+  background:#edf4f9;
+  color:#5e778c;
+  font-size:9px;
+}
+.portal-raw-shift-group.shift1>header{
+  border-left:4px solid #1682d4;
+  background:#f3f9ff;
+}
+.portal-raw-shift-group.shift2>header{
+  border-left:4px solid #7561c8;
+  background:#f7f4ff;
+}
+.portal-raw-shift-group.previous>header{
+  border-left:4px solid #93a5b3;
+  background:#f7f9fb;
+}
+.portal-raw-shift-group.extra>header{
+  border-left:4px solid #e19539;
+  background:#fff9ef;
+}
+.portal-raw-record-list{
+  display:grid;
+}
+.portal-raw-record{
+  display:grid;
+  grid-template-columns:minmax(86px,auto) 48px minmax(0,1fr);
+  align-items:center;
+  gap:9px;
+  padding:10px 12px;
+  border-bottom:1px solid #edf2f5;
+}
+.portal-raw-record:last-child{
+  border-bottom:0;
+}
+.portal-raw-record-time{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.portal-raw-record-time i{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:25px;
+  height:25px;
+  border-radius:8px;
+  background:#eef5fa;
+  color:#486b85;
+  font-style:normal;
+  font-size:14px;
+  font-weight:900;
+}
+.portal-raw-record-time strong{
+  color:#143f62;
+  font-size:14px;
+  white-space:nowrap;
+}
+.portal-raw-record-mode{
+  justify-self:start;
+  padding:5px 7px;
+  border-radius:999px;
+  background:#f0f4f7;
+  color:#627a8e;
+  font-size:9px;
+  font-weight:900;
+}
+.portal-raw-record.mode-in .portal-raw-record-time i,
+.portal-raw-record.mode-in .portal-raw-record-mode{
+  background:#e8f7ef;
+  color:#167c51;
+}
+.portal-raw-record.mode-out .portal-raw-record-time i,
+.portal-raw-record.mode-out .portal-raw-record-mode{
+  background:#fff0e7;
+  color:#bd641e;
+}
+.portal-raw-record-copy{
+  min-width:0;
+}
+.portal-raw-record-copy strong,
+.portal-raw-record-copy small{
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.portal-raw-record-copy strong{
+  color:#456178;
+  font-size:10px;
+}
+.portal-raw-record-copy small{
+  margin-top:2px;
+  color:#93a1ad;
+  font-size:8.5px;
+}
+.portal-raw-loading{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:100px;
+  margin-top:12px;
+  border:1px dashed #d5e2ec;
+  border-radius:15px;
+  color:#61798e;
+}
+.portal-mini-spinner{
+  width:21px;
+  height:21px;
+  border:3px solid #dce8f1;
+  border-top-color:#1679c6;
+  border-radius:50%;
+  animation:spin .75s linear infinite;
+}
+.portal-raw-empty,
+.portal-raw-error{
+  margin-top:12px;
+  border:1px dashed #d7e3ec;
+  border-radius:14px;
+  background:#fff;
+}
+.portal-raw-error{
+  color:#ad4141;
+  background:#fff7f7;
+  border-color:#efc5c5;
+}
+@media(max-width:560px){
+  .portal-raw-summary{gap:7px}
+  .portal-raw-summary>div{padding:10px 8px}
+  .portal-raw-summary strong{font-size:20px}
+  .portal-raw-record{
+    grid-template-columns:minmax(78px,auto) 42px minmax(0,1fr);
+    gap:7px;
+    padding:9px 10px;
+  }
+  .portal-raw-record-time{gap:5px}
+  .portal-raw-record-time i{width:22px;height:22px;font-size:12px}
+  .portal-raw-record-time strong{font-size:12px}
+  .portal-raw-record-mode{padding:4px 6px;font-size:8px}
+  .portal-raw-shift-group>header strong{font-size:13px}
+}
