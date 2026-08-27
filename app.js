@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.06";
+window.__TIME_CLOCK_BUILD__ = "V6.15.07";
 document.documentElement.dataset.timeClockBuild = "6.14.94";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.94";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.15.06',
+  version: '6.15.07',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });

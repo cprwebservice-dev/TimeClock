@@ -1756,3 +1756,33 @@ body{font-size:16px;color:var(--p99-ink)}
 .portal-dayoff-request-v61505 .portal-dayoff-mode-guide.add{
   background:linear-gradient(135deg,#eefaf4,#f8fffb);
 }
+
+
+/* V6.15.07 — Schedule backend sync */
+.portal-schedule-sync-v61507{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  margin-top:7px;
+  padding:6px 9px;
+  border:1px solid #cee2f1;
+  border-radius:999px;
+  background:#fff;
+  color:#39718f;
+  font-size:9px;
+  font-weight:900;
+  cursor:pointer;
+  box-shadow:0 3px 10px rgba(20,70,105,.04);
+}
+.portal-schedule-sync-v61507:before{
+  content:"↻";
+  color:#1378c4;
+  font-size:12px;
+  line-height:1;
+}
+.portal-schedule-sync-v61507.syncing:before{
+  animation:spin .8s linear infinite;
+}
+.portal-schedule-sync-v61507:active{
+  transform:scale(.97);
+}
