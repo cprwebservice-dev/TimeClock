@@ -1786,3 +1786,125 @@ body{font-size:16px;color:var(--p99-ink)}
 .portal-schedule-sync-v61507:active{
   transform:scale(.97);
 }
+
+
+/* ==========================================================================
+   V6.15.08 — Leave Request UX / HR Connect notice / App credit
+   ========================================================================== */
+.portal-leave-fields-v61508{
+  border-color:#d9e6ef!important;
+  background:
+    radial-gradient(circle at 100% 0,rgba(25,118,201,.06),transparent 35%),
+    linear-gradient(180deg,#fbfdff,#f8fbfd)!important;
+}
+.portal-leave-important-v61508{
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  gap:11px;
+  align-items:start;
+  padding:13px;
+  border:1px solid #efd09c;
+  border-radius:15px;
+  background:linear-gradient(135deg,#fff8e9,#fffdf7);
+}
+.portal-leave-important-v61508>i{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:42px;
+  height:42px;
+  border-radius:13px;
+  background:#fff0ca;
+  color:#b87515;
+  font-style:normal;
+  font-size:22px;
+  font-weight:900;
+}
+.portal-leave-important-v61508 strong{
+  display:block;
+  color:#8c5e18;
+  font-size:12px;
+  line-height:1.35;
+}
+.portal-leave-important-v61508 span{
+  display:block;
+  margin-top:5px;
+  color:#765f3b;
+  font-size:10px;
+  line-height:1.55;
+}
+.portal-leave-important-v61508 b{
+  color:#5e491f;
+}
+.portal-leave-rule-v61508{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 11px;
+  border:1px solid #dbe7ef;
+  border-radius:12px;
+  background:#fff;
+}
+.portal-leave-rule-v61508 strong{
+  color:#153f60;
+  font-size:11px;
+}
+.portal-leave-rule-v61508 span{
+  color:#6e8497;
+  font-size:9px;
+  text-align:right;
+}
+.portal-leave-rule-v61508.partial{
+  border-color:#cfe4f3;
+  background:#f5faff;
+}
+.portal-leave-rule-v61508.full-only{
+  border-color:#dfd5ef;
+  background:#faf7ff;
+}
+.portal-leave-fields-v61508 select:disabled,
+.portal-leave-fields-v61508 input:disabled{
+  opacity:.62;
+  background:#eef3f6!important;
+  cursor:not-allowed;
+}
+.portal-app-credit-v61508{
+  width:min(100%,980px);
+  margin:18px auto 96px;
+  padding:0 16px;
+  text-align:center;
+  color:#8b9baa;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.01em;
+}
+@media(max-width:560px){
+  .portal-leave-important-v61508{
+    grid-template-columns:38px minmax(0,1fr);
+    padding:11px;
+  }
+  .portal-leave-important-v61508>i{
+    width:38px;
+    height:38px;
+    font-size:20px;
+  }
+  .portal-leave-important-v61508 strong{
+    font-size:11px;
+  }
+  .portal-leave-important-v61508 span{
+    font-size:9.5px;
+  }
+  .portal-leave-rule-v61508{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:3px;
+  }
+  .portal-leave-rule-v61508 span{
+    text-align:left;
+  }
+  .portal-app-credit-v61508{
+    margin-bottom:92px;
+    font-size:9px;
+  }
+}

@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.07";
+window.__TIME_CLOCK_BUILD__ = "V6.15.08";
 document.documentElement.dataset.timeClockBuild = "6.14.94";
 
 
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.14.94";
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.15.07',
+  version: '6.15.08',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -20600,6 +20600,17 @@ ${names}${extra}
     return match ? `${match[1].padStart(2,"0")}:${match[2]}` : raw;
   }
 
+  function employeeLeaveTypeLabelV61508(value) {
+    const raw=String(value||"").trim();
+    const key=raw.toUpperCase();
+    return ({
+      PERSONAL:"ลากิจ",
+      VACATION:"ลาพักร้อน",
+      ORDINATION:"ลาอุปสมบท",
+      NEWBORN_CARE:"ลาดูแลบุตรที่คลอดใหม่"
+    })[key] || raw || "ลา";
+  }
+
   function employeeRequestDetailTextV61481(request) {
     if (request.request_type === "SHIFT_CHANGE") {
       return `${request.current_shift_code || "-"} → ${request.requested_shift_code || "-"}`;
@@ -20634,7 +20645,7 @@ ${names}${extra}
     if (request.request_type === "LEAVE_REQUEST") {
       const endText = detail.end_date && String(detail.end_date).slice(0,10)!==String(request.work_date).slice(0,10)
         ? ` – ${fmtDate(detail.end_date)}` : "";
-      return `${detail.leave_type || "ลา"} • ${fmtDate(request.work_date)}${endText}`;
+      return `${employeeLeaveTypeLabelV61508(detail.leave_type_label||detail.leave_type)} • ${fmtDate(request.work_date)}${endText}`;
     }
     return "-";
   }
@@ -21194,9 +21205,13 @@ ${names}${extra}
       }
       if(d.quota_snapshot)rows.push(["โควต้า",`${d.quota_snapshot.month_quota_days??0} / ใช้ไป ${d.quota_snapshot.used_days??0} / คงเหลือ ${d.quota_snapshot.balance_days??0}`]);
     }else if(type==="LEAVE_REQUEST"){
-      rows.push(["ประเภทลา",d.leave_type||"-"]);
+      rows.push(["ประเภทลา",employeeLeaveTypeLabelV61508(d.leave_type_label||d.leave_type)]);
       rows.push(["ช่วงลา",`${fmtDate(request?.work_date)}${d.end_date&&String(d.end_date)!==String(request?.work_date)?` – ${fmtDate(d.end_date)}`:""}`]);
-      if(request?.request_subtype==="PARTIAL_DAY")rows.push(["เวลา",`${employeeRequestFormatTimeV61481(d.leave_start_time)}–${employeeRequestFormatTimeV61481(d.leave_end_time)}`]);
+      if(request?.request_subtype==="PARTIAL_DAY"){
+        rows.push(["เวลา",`${employeeRequestFormatTimeV61481(d.leave_start_time)}–${employeeRequestFormatTimeV61481(d.leave_end_time)}`]);
+        if(d.partial_minutes!=null)rows.push(["ระยะเวลา",`${d.partial_minutes} นาที`]);
+      }
+      rows.push(["หมายเหตุสำคัญ","คำขอนี้ใช้ปรับตารางกะเท่านั้น • พนักงานต้องคีย์ลาใน HR Connect และอนุมัติโดยหัวหน้างานระดับฝ่าย"]);
     }
     rows.push(["เหตุผลจากพนักงาน",request?.reason||"-"]);
     return `<div class="employee-request-context-head-v61494"><span>${kind==="time"?"ข้อมูลคำขอประกอบการรับรองเวลา":"ข้อมูลจากพนักงาน"}</span><strong>${esc(employeeRequestTypeLabelV61481(type))}</strong></div><div class="employee-request-context-grid-v61494">${rows.map(([a,b])=>`<div><span>${esc(a)}</span><strong>${esc(b)}</strong></div>`).join("")}</div>`;
@@ -31268,7 +31283,7 @@ ${names}${extra}
 
   function prefillLeaveRequestV61494(request={}){
     if(!st.current)return false;chooseMode("LEAVE");
-    if($("assignNote"))$("assignNote").value=`คำขอ ${request.request_no||""} • ${request.detail?.leave_type||"ลา"} • ${request.reason||""}`;
+    if($("assignNote"))$("assignNote").value=`คำขอ ${request.request_no||""} • ${employeeLeaveTypeLabelV61508(request.detail?.leave_type_label||request.detail?.leave_type)} • แจ้งปรับตารางกะเท่านั้น / HR Connect เป็นระบบลาอย่างเป็นทางการ • ${request.reason||""}`;
     if($("assignReason"))$("assignReason").value="ดำเนินการคำขอลาจาก Employee Portal V6.14.94";
     refreshAssignmentPreview();return true;
   }
