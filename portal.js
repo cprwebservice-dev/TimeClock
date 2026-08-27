@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.01";
+  const VERSION="6.15.02";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -362,22 +362,12 @@
     const homeRange={start:addDays(today(),-31),end:addDays(today(),14)};
     const monthRange={start:addDays(b.start,-6),end:addDays(b.end,12)};
 
-    // V6.14.89:
-    // Backend intentionally limits one Portal calendar request to 63 days.
-    // The previous UI created one large continuous range between "today" and
-    // whichever month the user opened. When browsing an older/newer month that
-    // span could exceed 63 days and the whole Portal showed
-    // PORTAL_DATE_RANGE_MAX_63_DAYS.
-    //
-    // Load the home/time window and the selected calendar month independently,
-    // then merge by work_date. Each request stays well below the backend limit.
-    const overlaps=!(monthRange.end<homeRange.start || monthRange.start>homeRange.end);
-    const ranges=overlaps
-      ? [{
-          start:[homeRange.start,monthRange.start].sort()[0],
-          end:[homeRange.end,monthRange.end].sort().reverse()[0]
-        }]
-      : [homeRange,monthRange];
+    // V6.15.02
+    // NEVER merge the Home range with the selected-month range.
+    // Both individual calls are < 63 days, while the union can exceed 63 days
+    // when Manager/User browses the adjacent month (e.g. Aug -> Sep).
+    // That union was the remaining source of PORTAL_DATE_RANGE_MAX_63_DAYS.
+    const ranges=[homeRange,monthRange];
 
     const pages=await Promise.all(ranges.map(r=>rpc(
       "ta_portal_get_my_calendar_v61482",
@@ -673,6 +663,27 @@
   async function cancelRequest(id){if(!confirm("ยืนยันยกเลิกคำขอนี้?"))return;try{await rpc("ta_portal_cancel_request_v61482",{p_session_token:session(),p_request_id:id});toast("ยกเลิกคำขอแล้ว","success");await loadRequests();}catch(e){toast(friendly(e),"error");}}
   async function markRead(id){try{await rpc("ta_portal_mark_notification_read_v61482",{p_session_token:session(),p_notification_id:id});const n=notifications.find(x=>x.notification_id===id);if(n)n.is_read=true;renderNotifications();}catch(_){}}
   function bind(){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.authTab)));$("portalActivateForm").addEventListener("submit",activate);$("portalLoginForm").addEventListener("submit",login);$("portalLogoutBtn").addEventListener("click",logout);$("portalRefreshBtn").addEventListener("click",refreshAll);document.addEventListener("click",async e=>{const n=e.target.closest("[data-portal-nav]");if(n){navigate(n.dataset.portalNav);return;}const q=e.target.closest("[data-request-quick]");if(q){openRequest(q.dataset.requestQuick,today());return;}const cal=e.target.closest("[data-calendar-date]");if(cal){selectedCalendarDate=cal.dataset.calendarDate;renderCalendar();await loadCalendarPunchDetailV61501(selectedCalendarDate);return;}if(e.target.closest("[data-close-request]")){closeRequest();return;}const ed=e.target.closest("[data-edit-request]");if(ed){const req=requests.find(x=>String(x.request_id)===String(ed.dataset.editRequest));if(req)await openRequest(req.request_type,String(req.work_date).slice(0,10),req);return;}const dd=e.target.closest("[data-dayoff-date]");if(dd){selectDayoffDateV61494(dd.dataset.dayoffDate);return;}const dm=e.target.closest("[data-dayoff-month-nav]");if(dm){dayoffPickerMonth=new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth()+Number(dm.dataset.dayoffMonthNav||0),1);dayoffSource="";dayoffTarget="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));return;}const c=e.target.closest("[data-cancel-request]");if(c){cancelRequest(c.dataset.cancelRequest);return;}const r=e.target.closest("[data-read-notification]");if(r){markRead(r.dataset.readNotification);return;}});$("portalNewRequestBtn").addEventListener("click",()=>openRequest("TIME_ISSUE",today()));$("portalRequestType").addEventListener("change",fillSubtype);$("portalRequestSubtype").addEventListener("change",()=>{updateLeavePartialFieldsV61493();renderEvidence();});$("portalRequestDate").addEventListener("change",()=>{if($("portalRequestType").value==="LEAVE_REQUEST"&&!$("portalLeaveEndV61491").value)$("portalLeaveEndV61491").value=$("portalRequestDate").value;renderEvidence();});$("portalDayoffTargetV61491")?.addEventListener("change",renderEvidence);$("portalRequestForm").addEventListener("submit",submitRequest);document.querySelectorAll("[data-request-filter]").forEach(b=>b.addEventListener("click",()=>{requestFilter=b.dataset.requestFilter;document.querySelectorAll("[data-request-filter]").forEach(x=>x.classList.toggle("active",x===b));renderRequests();}));$("portalPrevMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()-1,1);await loadCalendar();});$("portalNextMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()+1,1);await loadCalendar();});$("portalThisMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date();await loadCalendar();});}
-  async function init(){const c=config();client=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});bind();await checkTeam();if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}if("serviceWorker" in navigator)navigator.serviceWorker.register("./portal-sw.js").catch(()=>{});}
-  document.readyState==="loading"?document.addEventListener("DOMContentLoaded",init):init();
+  async function init(){
+    const c=config();
+    client=window.supabase.createClient(c.url,c.key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
+    bind();
+    await checkTeam();
+    if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
+    if("serviceWorker" in navigator){
+      try{
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.02a",{updateViaCache:"none"});
+        await reg.update();
+      }catch(_){}
+    }
+  }
+
+  window.addEventListener("unhandledrejection",event=>{
+    const m=String(event?.reason?.message||event?.reason||"");
+    if(m.includes("PORTAL_DATE_RANGE_MAX_63_DAYS")){
+      event.preventDefault();
+      toast("ช่วงวันที่ปฏิทินเกินกำหนด กรุณารีเฟรชหน้าเว็บ","warning");
+    }
+  });
+
+  document.readyState==="loading"?document.addEventListener("DOMContentLoaded",()=>init().catch(e=>toast(friendly(e),"error"))):init().catch(e=>toast(friendly(e),"error"));
 })();
