@@ -1,3 +1,9 @@
+TimeClock Enterprise V6.15.26 FIX2
+GitHub Deploy Slim
+
+Fix: HR_ADMIN Team Org Scope uses active Organization Master without stale effective-date blocking.
+Manager scope and schedule authority remain enforced.
+
 TimeClock Enterprise V6.15.26 FIX1 — Team Runtime Session / Loading Error State
 
 GitHub Deploy Slim — 13 files

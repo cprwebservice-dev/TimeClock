@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.26 FIX1";
+window.__TIME_CLOCK_BUILD__ = "V6.15.26 FIX2";
 document.documentElement.dataset.timeClockBuild = "6.15.25";
 
 
@@ -32809,7 +32809,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.26 FIX1';
+  const VERSION='6.15.26 FIX2';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const state={orgs:[],teams:[],audit:[],members:[],selected:new Set(),activeTeam:null,enforcement:null,runtime:null,lastError:null,loaded:false,loading:false};
@@ -32833,7 +32833,7 @@ ${names}${extra}
     if(msg.includes('TEAM_RUNTIME_ACTOR_NOT_FOUND'))return 'Backend ไม่พบ Session ผู้ใช้งานปัจจุบัน กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่';
     if(msg.includes('TEAM_RUNTIME_ROLE_DENIED'))return 'บัญชีปัจจุบันไม่มีสิทธิ์ Manager / HR Admin สำหรับ Team Module';
     if(msg.includes('JWT')||msg.includes('auth.uid'))return 'Session Supabase ไม่สมบูรณ์ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่';
-    if(msg.includes('PGRST202')||msg.includes('Could not find the function'))return 'กรุณารัน SQL V6.15.26 FIX1 แล้ว Hard Refresh Web App';
+    if(msg.includes('PGRST202')||msg.includes('Could not find the function'))return 'กรุณารัน SQL V6.15.26 FIX2 แล้ว Hard Refresh Web App';
     return msg;
   }
   async function rpc(name,args={}){const c=app()?.state?.client;if(!c)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');const {data,error}=await c.rpc(name,args);if(error)throw error;return data;}
@@ -32929,7 +32929,7 @@ ${names}${extra}
       state.enforcement=await rpc('ta_get_team_enforcement_state_v61525',{});
       renderEnforcement();
     }catch(e){
-      console.warn('Team Enforcement V6.15.26 FIX1',e);
+      console.warn('Team Enforcement V6.15.26 FIX2',e);
       const st=$('teamEnforcementStatusV61525');if(st){st.textContent='โหลดไม่สำเร็จ';st.className='badge badge-red';}
       const d=$('teamEnforcementDetailV61525');if(d)d.textContent=human(e);
       const note=$('teamEnforcementReadyV61525');if(note)note.textContent='ตรวจ SQL / Session แล้วลองใหม่';
@@ -32953,9 +32953,9 @@ ${names}${extra}
     const x=state.enforcement||{};const enable=x.enforcement_enabled!==true;
     if(enable&&Number(x.car_without_team||0)>0)return toast('ยังมีช่างรถยนต์ที่ไม่ได้กำหนดทีม ไม่สามารถเปิด Enforcement ได้','warning');
     const ok=await window.tcConfirm?.({title:enable?'เปิด Team Enforcement':'ปิด Team Enforcement',message:enable?'หลังเปิด ช่างรถยนต์ทุกคนต้องมี Effective Team ก่อนจัดกะทุกช่องทาง รวมคำขอที่แก้ Schedule':'การปิดจะใช้สำหรับช่วง Migration/แก้ข้อมูลเท่านั้น และมี Audit เก็บประวัติ',confirmText:enable?'เปิดใช้งาน':'ปิดชั่วคราว',tone:enable?'primary':'danger'});if(!ok)return;
-    try{app()?.showLoading?.('กำลังปรับ Team Enforcement...');state.enforcement=await rpc('ta_set_team_enforcement_v61525',{p_enabled:enable,p_note:enable?'Enable from Team Master V6.15.26 FIX1':'Disable from Team Master V6.15.26 FIX1'});renderEnforcement();toast(enable?'เปิด Team Enforcement แล้ว':'ปิด Team Enforcement แล้ว','success');}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+    try{app()?.showLoading?.('กำลังปรับ Team Enforcement...');state.enforcement=await rpc('ta_set_team_enforcement_v61525',{p_enabled:enable,p_note:enable?'Enable from Team Master V6.15.26 FIX2':'Disable from Team Master V6.15.26 FIX2'});renderEnforcement();toast(enable?'เปิด Team Enforcement แล้ว':'ปิด Team Enforcement แล้ว','success');}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
   }
-  async function loadAudit(){try{state.audit=await rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:100})||[];renderAudit();}catch(e){console.warn('Team audit V6.15.26 FIX1',e);const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=`<tr><td colspan="5" class="fc-empty">โหลดประวัติไม่สำเร็จ: ${esc(human(e))}</td></tr>`;}}
+  async function loadAudit(){try{state.audit=await rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:100})||[];renderAudit();}catch(e){console.warn('Team audit V6.15.26 FIX2',e);const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=`<tr><td colspan="5" class="fc-empty">โหลดประวัติไม่สำเร็จ: ${esc(human(e))}</td></tr>`;}}
   async function load(){
     if(!allowedRole()){syncNav();return;}
     if(state.loading)return;
@@ -32980,7 +32980,7 @@ ${names}${extra}
       await Promise.allSettled([loadAudit(),loadEnforcement()]);
       state.loaded=true;
     }catch(e){
-      console.error('Team Runtime V6.15.26 FIX1',e);
+      console.error('Team Runtime V6.15.26 FIX2',e);
       setTeamError(e,e?.code||e?.details||'TEAM_LOAD');
       toast(human(e),'error');
     }finally{state.loading=false;app()?.hideLoading?.();}
