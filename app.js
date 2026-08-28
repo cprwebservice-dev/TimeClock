@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.15";
+window.__TIME_CLOCK_BUILD__ = "V6.15.17";
 document.documentElement.dataset.timeClockBuild = "6.15.10";
 
 
@@ -13629,6 +13629,21 @@ window.tcIsDayShiftCode = value =>
         const count = msg.match(/SCHEDULE_HAS_UNCONFIRMED_SHIFTS:\s*(\d+)/)?.[1];
         return `พบรายการจัดกะเดิมที่สถานะยังไม่สมบูรณ์${count ? ` ${Number(count).toLocaleString("th-TH")} รายการ` : ""} กรุณาเปิดรายการและกดบันทึกใหม่ก่อนประกาศหรือล็อกเดือน`;
       }
+      if (msg.includes("DAYOFF_REQUEST_PERIOD_CLOSED")) return "รอบระบบของวันที่เลือกปิดการจัดกะแล้ว ไม่สามารถส่งคำขอวันหยุดจาก Employee Portal ได้";
+      if (msg.includes("DAYOFF_REQUEST_DATE_NO_LONGER_FUTURE")) return "วันที่ในคำขอไม่ใช่วันอนาคตแล้ว กรุณาให้ Manager ดำเนินการจากตารางกะโดยตรง";
+      if (msg.includes("DAYOFF_EMPLOYEE_PORTAL_FUTURE_ONLY")) return "Employee Portal ขอหรือสลับวันหยุดได้เฉพาะวันที่หลังวันปัจจุบัน";
+      if (msg.includes("REQUEST_DATE_CONFLICT")) return "วันที่เลือกมีคำขออื่นที่กำลังดำเนินการและมีผลต่อกะ วันหยุด หรือลาอยู่แล้ว";
+      if (msg.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF")) return "วันหยุดเดิมไม่ใช่วันหยุดตามข้อมูลตารางกะล่าสุด";
+      if (msg.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY")) return "วันที่ต้องการหยุดแทนต้องเป็นวันทำงานตามข้อมูลล่าสุด";
+      if (msg.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED")) return "วันหยุดนักขัตฤกษ์ไม่สามารถนำมาสลับวันหยุดได้";
+      if (msg.includes("DAYOFF_SWAP_SAME_MONTH_REQUIRED")) return "วันหยุดเดิมและวันที่หยุดแทนต้องอยู่ภายในเดือนเดียวกัน";
+      if (msg.includes("DAYOFF_SWAP_DATE_MUST_DIFFER")) return "วันหยุดเดิมและวันที่หยุดแทนต้องเป็นคนละวัน";
+      if (msg.includes("DAYOFF_ADD_NO_REQUESTABLE_BALANCE")) return "โควต้าวันหยุดที่สามารถขอเพิ่มได้หมดแล้ว หรือมีคำขออื่นจองโควต้าไว้";
+      if (msg.includes("DAYOFF_ADD_TARGET_MUST_BE_WORKDAY")) return "ขอหยุดเพิ่มได้เฉพาะวันที่เป็นวันทำงาน";
+      if (msg.includes("DAYOFF_ADD_PUBLIC_HOLIDAY_NOT_ALLOWED")) return "วันหยุดนักขัตฤกษ์ไม่สามารถใช้คำขอหยุดเพิ่มได้";
+      if (msg.includes("DAYOFF_PAIRED_SHIFT_NOT_FOUND")) return "กะทำงานของวันที่เลือกยังไม่ได้จับคู่กับกะวันหยุด กรุณาตรวจ Shift Master / กฎจับคู่กะ";
+      if (msg.includes("DAYOFF_SWAP_SOURCE_WORK_SHIFT_NOT_FOUND")) return "ระบบไม่พบกะทำงานที่จะใช้คืนให้วันหยุดเดิม กรุณาตรวจการจับคู่กะวันหยุด";
+      if (msg.includes("NIGHT_SEQUENCE_BLOCKED")) return "คำขอนี้ไม่ผ่านเงื่อนไขกะดึกหรือเวลาพักระหว่างกะ";
       if (msg.includes("DAYOFF_QUOTA_EXHAUSTED")) return "วันหยุดคงเหลือไม่เพียงพอ ไม่สามารถกำหนดกะวันหยุดเพิ่มได้ กรุณาตรวจวันหยุดที่ใช้ไปหรือเปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน";
       if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณาติดตั้ง Day-off Quota Guard V6.14.3 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
@@ -21464,10 +21479,7 @@ ${names}${extra}
             } else if (request.request_type === "SPECIAL_WORK") {
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-special-review-v61481="${esc(request.request_id)}">ตรวจรายละเอียดและจัดกะ</button>`);
             } else if (request.request_type === "DAYOFF_SWAP") {
-              const dayoffAction=String(request.request_subtype||"").toUpperCase()==="ADD_DAYOFF"
-                ? "เพิ่มวันหยุดจากโควต้า"
-                : "ยืนยันสลับวันหยุด";
-              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">${dayoffAction}</button>`);
+              actions.push(`<button class="btn btn-success btn-sm manager-dayoff-review-btn-v61517" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">ตรวจและจัดวันหยุด</button>`);
             } else if (request.request_type === "LEAVE_REQUEST") {
               const leaveAction=String(request.request_subtype||"").toUpperCase()==="PARTIAL_DAY"
                 ? "อนุมัติลาบางส่วน"
@@ -21690,38 +21702,258 @@ ${names}${extra}
     return out;
   }
 
+  async function loadEmployeeDayoffReviewV61517(requestId){
+    return await rpc("ta_get_employee_request_dayoff_review_v61517",{
+      p_request_id:requestId
+    });
+  }
+
+  function dayoffReviewSignatureV61517(review){
+    const s=review?.source||{},t=review?.target||{},q=review?.quota||{};
+    return [
+      review?.allowed===true?"1":"0",
+      s.work_date||"",s.current_shift_code||"",s.proposed_shift_code||"",
+      t.work_date||"",t.current_shift_code||"",t.proposed_shift_code||"",
+      q.balance_days??"",q.pending_add_requests_other??"",q.requestable_for_this_request??""
+    ].join("|");
+  }
+
+  function dayoffReviewIssueTextV61517(issue){
+    const raw=String(issue?.message||issue?.code||"");
+    if(!raw)return"-";
+    try{return app()?.humanError?.({message:raw})||raw;}catch(_){return raw;}
+  }
+
+  function dayoffReviewShiftLineV61517(value){
+    const code=String(value?.current_shift_code||"-");
+    const proposed=String(value?.proposed_shift_code||"-");
+    return `${code} → ${proposed}`;
+  }
+
+  function ensureManagerDayoffReviewModalV61517(){
+    let modal=$("managerDayoffReviewModalV61517");
+    if(modal)return modal;
+    document.body.insertAdjacentHTML("beforeend",`
+      <div class="modal-backdrop hidden manager-dayoff-review-modal-v61517" id="managerDayoffReviewModalV61517">
+        <div class="manager-dayoff-review-dialog-v61517" role="dialog" aria-modal="true" aria-labelledby="managerDayoffReviewTitleV61517">
+          <div class="manager-dayoff-review-head-v61517">
+            <div>
+              <span>MANAGER REVIEW</span>
+              <h3 id="managerDayoffReviewTitleV61517">ตรวจและจัดวันหยุด</h3>
+              <p id="managerDayoffReviewSubtitleV61517">ตรวจข้อมูล Backend ล่าสุดก่อนดำเนินการ</p>
+            </div>
+            <button type="button" class="btn btn-light btn-icon" data-dayoff-review-close-v61517 aria-label="ปิด">×</button>
+          </div>
+          <div class="manager-dayoff-review-body-v61517" id="managerDayoffReviewBodyV61517"></div>
+          <div class="manager-dayoff-review-foot-v61517">
+            <button type="button" class="btn btn-light" data-dayoff-review-refresh-v61517>↻ ตรวจข้อมูลล่าสุด</button>
+            <div>
+              <button type="button" class="btn btn-light" data-dayoff-review-close-v61517>ปิด</button>
+              <button type="button" class="btn btn-success" id="managerDayoffReviewConfirmV61517">ยืนยันและดำเนินการ</button>
+            </div>
+          </div>
+        </div>
+      </div>`);
+    return $("managerDayoffReviewModalV61517");
+  }
+
+  function renderManagerDayoffReviewV61517(request,review){
+    const modal=ensureManagerDayoffReviewModalV61517();
+    const body=$("managerDayoffReviewBodyV61517");
+    const confirm=$("managerDayoffReviewConfirmV61517");
+    const subtype=String(request?.request_subtype||review?.request_subtype||"").toUpperCase();
+    const isAdd=subtype==="ADD_DAYOFF";
+    const source=review?.source||{};
+    const target=review?.target||{};
+    const quota=review?.quota||{};
+    const blockers=Array.isArray(review?.blockers)?review.blockers:[];
+    const warnings=Array.isArray(review?.warnings)?review.warnings:[];
+    const allowed=review?.allowed===true;
+    const submitSnapshot=request?.detail?.server_submit_validation_v61517||{};
+
+    if($("managerDayoffReviewTitleV61517")){
+      $("managerDayoffReviewTitleV61517").textContent=isAdd?"ตรวจคำขอหยุดเพิ่ม":"ตรวจคำขอสลับวันหยุด";
+    }
+    if($("managerDayoffReviewSubtitleV61517")){
+      $("managerDayoffReviewSubtitleV61517").textContent=`${request?.request_no||"-"} • ${review?.employee?.emp_code||request?.emp_code||"-"} ${review?.employee?.full_name||request?.full_name||""}`.trim();
+    }
+
+    const transitionHtml=isAdd
+      ? `<div class="manager-dayoff-transition-grid-v61517 single">
+          <article class="manager-dayoff-transition-card-v61517 target">
+            <span>วันที่ขอหยุดเพิ่ม</span>
+            <strong>${esc(fmtDate(target.work_date||request?.work_date))}</strong>
+            <b>${esc(dayoffReviewShiftLineV61517(target))}</b>
+            <small>วันทำงาน → วันหยุดจากกะคู่</small>
+          </article>
+        </div>`
+      : `<div class="manager-dayoff-transition-grid-v61517">
+          <article class="manager-dayoff-transition-card-v61517 source">
+            <span>วันหยุดเดิม</span>
+            <strong>${esc(fmtDate(source.work_date||request?.work_date))}</strong>
+            <b>${esc(dayoffReviewShiftLineV61517(source))}</b>
+            <small>คืนวันเดิมเป็นวันทำงาน</small>
+          </article>
+          <div class="manager-dayoff-transition-arrow-v61517">⇄</div>
+          <article class="manager-dayoff-transition-card-v61517 target">
+            <span>วันที่หยุดแทน</span>
+            <strong>${esc(fmtDate(target.work_date||request?.detail?.target_date))}</strong>
+            <b>${esc(dayoffReviewShiftLineV61517(target))}</b>
+            <small>วันทำงาน → วันหยุด</small>
+          </article>
+        </div>`;
+
+    const checks=[
+      ["ตารางกะปัจจุบัน",blockers.some(x=>/SOURCE_|TARGET_|DAYOFF_SWAP_SOURCE|DAYOFF_SWAP_TARGET|DAYOFF_ADD_TARGET/.test(String(x?.code||"")))?"block":"pass"],
+      ["รอบระบบ",blockers.some(x=>String(x?.code||"").includes("PERIOD"))?"block":"pass"],
+      ["คำขอซ้ำ / Conflict",review?.canonical_conflict_ok===false?"block":"pass"],
+      ["โควต้า",blockers.some(x=>String(x?.code||"").includes("QUOTA")||String(x?.code||"").includes("BALANCE"))?"block":"pass"],
+      ["กะดึก / เวลาพัก",blockers.some(x=>String(x?.code||"").includes("NIGHT")||String(x?.code||"").includes("SCHEDULE_GUARD"))?"block":warnings.some(x=>String(x?.code||"").includes("NIGHT")||String(x?.code||"").includes("SCHEDULE_GUARD")||String(x?.code||"").includes("GUARD"))?"warn":"pass"]
+    ];
+
+    const issueHtml=blockers.length||warnings.length
+      ? `<div class="manager-dayoff-review-issues-v61517">
+          ${blockers.map(x=>`<div class="block"><i>!</i><span><strong>ไม่ผ่าน</strong>${esc(dayoffReviewIssueTextV61517(x))}</span></div>`).join("")}
+          ${warnings.map(x=>`<div class="warn"><i>△</i><span><strong>คำเตือน</strong>${esc(dayoffReviewIssueTextV61517(x))}</span></div>`).join("")}
+        </div>`
+      : `<div class="manager-dayoff-review-ok-v61517"><i>✓</i><div><strong>Backend ตรวจครบ</strong><span>ข้อมูลปัจจุบันพร้อมสำหรับขั้นตอนดำเนินการ</span></div></div>`;
+
+    const snapshotText=submitSnapshot?.validated_at
+      ? `ตรวจตอนส่ง ${fmtDateTime(submitSnapshot.validated_at)} • Manager ตรวจล่าสุด ${fmtDateTime(review?.checked_at)}`
+      : `Manager ตรวจล่าสุด ${fmtDateTime(review?.checked_at)}`;
+
+    body.innerHTML=`
+      <div class="manager-dayoff-review-status-v61517 ${allowed?"pass":"block"}">
+        <div><span>${allowed?"✓ ผ่าน Preflight":"! พบเงื่อนไขที่ต้องแก้"}</span><strong>${allowed?"สามารถดำเนินการต่อได้":"ยังไม่ควรแก้ตารางกะ"}</strong></div>
+        <small>${esc(snapshotText)}</small>
+      </div>
+      <div class="manager-dayoff-review-meta-v61517">
+        <div><span>พนักงาน</span><strong>${esc(review?.employee?.emp_code||request?.emp_code||"-")} • ${esc(review?.employee?.full_name||request?.full_name||"-")}</strong></div>
+        <div><span>ประเภท</span><strong>${esc(isAdd?"ขอหยุดเพิ่มจากโควต้า":"สลับวันหยุด")}</strong></div>
+        <div><span>เหตุผล</span><strong>${esc(review?.reason||request?.reason||"-")}</strong></div>
+      </div>
+      ${transitionHtml}
+      <div class="manager-dayoff-quota-card-v61517">
+        <div><span>โควต้าเดือนนี้</span><strong>${esc(quota.month_quota_days??"-")}</strong></div>
+        <div><span>ใช้ไป</span><strong>${esc(quota.used_days??"-")}</strong></div>
+        <div><span>คงเหลือจริง</span><strong>${esc(quota.balance_days??"-")}</strong></div>
+        <div><span>คำขออื่นที่รอ</span><strong>${esc(quota.pending_add_requests_other??0)}</strong></div>
+        <div><span>ใช้ได้กับคำขอนี้</span><strong>${esc(quota.requestable_for_this_request??"-")}</strong></div>
+      </div>
+      <div class="manager-dayoff-checks-v61517">
+        ${checks.map(([label,state])=>`<span class="${state}"><i>${state==="pass"?"✓":state==="warn"?"△":"!"}</i>${esc(label)}</span>`).join("")}
+      </div>
+      ${issueHtml}
+      <div class="manager-dayoff-review-note-v61517">
+        <strong>การทำงานของระบบ</strong>
+        <span>หน้าต่างนี้เป็น Review/Preflight จาก Backend ล่าสุด • เมื่อกดยืนยัน ระบบเดิมจะยังใช้ Atomic Workflow และตรวจเงื่อนไขซ้ำก่อนเขียน Schedule</span>
+      </div>`;
+
+    if(confirm){
+      confirm.disabled=!allowed;
+      confirm.textContent=allowed?(isAdd?"ยืนยันเพิ่มวันหยุด":"ยืนยันสลับวันหยุด"):"ยังดำเนินการไม่ได้";
+    }
+    modal.classList.remove("hidden");
+  }
+
+  function openManagerDayoffReviewModalV61517(request,review){
+    const modal=ensureManagerDayoffReviewModalV61517();
+    renderManagerDayoffReviewV61517(request,review);
+    return new Promise(resolve=>{
+      let done=false;
+      const finish=value=>{
+        if(done)return;done=true;
+        modal.classList.add("hidden");
+        modal.querySelectorAll("[data-dayoff-review-close-v61517]").forEach(x=>x.onclick=null);
+        const refresh=modal.querySelector("[data-dayoff-review-refresh-v61517]");
+        const confirm=$("managerDayoffReviewConfirmV61517");
+        if(refresh)refresh.onclick=null;
+        if(confirm)confirm.onclick=null;
+        modal.onclick=null;
+        resolve(value);
+      };
+      modal.querySelectorAll("[data-dayoff-review-close-v61517]").forEach(x=>x.onclick=()=>finish("close"));
+      const refresh=modal.querySelector("[data-dayoff-review-refresh-v61517]");
+      if(refresh)refresh.onclick=()=>finish("refresh");
+      const confirm=$("managerDayoffReviewConfirmV61517");
+      if(confirm)confirm.onclick=()=>{if(!confirm.disabled)finish("confirm");};
+      modal.onclick=e=>{if(e.target===modal)finish("close");};
+    });
+  }
+
   async function reviewEmployeeDayoffSwapV61494(request){
     if(!request)return;
-    const subtype=String(request.request_subtype||"").toUpperCase();
-    const target=String(subtype==="ADD_DAYOFF"?(request.work_date||request.detail?.target_date||""):(request.detail?.target_date||"")).slice(0,10);
-    if(!target){app()?.toast?.("คำขอไม่มีวันที่สำหรับดำเนินการ","error");return;}
-
-    const sourceDate=String(request.work_date||"").slice(0,10);
-    const title=subtype==="ADD_DAYOFF"?"เพิ่มวันหยุดจากโควต้า":"ยืนยันสลับวันหยุด";
-    const message=subtype==="ADD_DAYOFF"
-      ? `ระบบจะเปลี่ยนวันที่ ${fmtDate(target)} จากวันทำงานเป็นวันหยุด โดยตรวจโควต้าอีกครั้งที่ Backend และบันทึกพร้อมปิดคำขอใน Transaction เดียว`
-      : `ระบบจะสลับ ${fmtDate(sourceDate)} จากวันหยุดเป็นวันทำงาน และ ${fmtDate(target)} จากวันทำงานเป็นวันหยุดพร้อมกัน\n\nหากวันใดวันหนึ่งไม่ผ่านเงื่อนไข ระบบจะ Rollback ทั้ง 2 วัน`;
-    const ok=await window.TimeClockModal?.confirm?.({
-      title,message,confirmText:subtype==="ADD_DAYOFF"?"เพิ่มวันหยุด":"ยืนยันสลับวันหยุด",tone:"primary"
-    });
-    if(!ok)return;
+    let review=null;
 
     try{
-      app()?.showLoading?.(subtype==="ADD_DAYOFF"?"กำลังตรวจโควต้าและเพิ่มวันหยุด...":"กำลังสลับวันหยุดแบบ Atomic...");
-      const result=await applyEmployeeRequestAtomicV61510(request,{},request.reason||null);
-      if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
-      employeeRequestResolveContextV61481=null;
-      clearEmployeeRequestContextV61494();
-      const actionResult=result?.action_result||{};
-      app()?.toast?.(
-        subtype==="ADD_DAYOFF"
-          ? `เพิ่มวันหยุดเรียบร้อย${actionResult.target_off_shift?` • ${actionResult.target_off_shift}`:""}`
-          : `สลับวันหยุดเรียบร้อย • ${fmtDate(sourceDate)} → ทำงาน / ${fmtDate(target)} → หยุด`,
-        "success"
-      );
-      await loadShiftRequests();
-    }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
-    finally{app()?.hideLoading?.();}
+      app()?.showLoading?.("กำลังตรวจคำขอวันหยุดกับ Backend ล่าสุด...");
+      review=await loadEmployeeDayoffReviewV61517(request.request_id);
+      await markEmployeeRequestInReviewV61481(request.request_id);
+    }catch(e){
+      const msg=String(e?.message||e||"");
+      if(msg.includes("ta_get_employee_request_dayoff_review_v61517")||msg.includes("PGRST202")){
+        app()?.toast?.("กรุณารัน SQL V6.15.17 ก่อนใช้ Manager Review วันหยุด","error");
+      }else{
+        app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+      }
+      return;
+    }finally{
+      app()?.hideLoading?.();
+    }
+
+    while(review){
+      const beforeSignature=dayoffReviewSignatureV61517(review);
+      const action=await openManagerDayoffReviewModalV61517(request,review);
+      if(action==="close")return;
+
+      try{
+        app()?.showLoading?.("กำลังตรวจข้อมูลล่าสุดอีกครั้ง...");
+        const fresh=await loadEmployeeDayoffReviewV61517(request.request_id);
+        const freshSignature=dayoffReviewSignatureV61517(fresh);
+
+        if(action==="refresh"){
+          review=fresh;
+          continue;
+        }
+
+        if(freshSignature!==beforeSignature){
+          review=fresh;
+          app()?.toast?.("ข้อมูลกะหรือโควต้ามีการเปลี่ยนแปลง • ระบบอัปเดต Review ล่าสุดให้แล้ว","warning");
+          continue;
+        }
+
+        if(fresh?.allowed!==true){
+          review=fresh;
+          app()?.toast?.("คำขอไม่ผ่านเงื่อนไขล่าสุด จึงยังไม่แก้ตารางกะ","warning");
+          continue;
+        }
+
+        const subtype=String(request.request_subtype||"").toUpperCase();
+        const sourceDate=String(request.work_date||"").slice(0,10);
+        const target=String(subtype==="ADD_DAYOFF"?(request.work_date||request.detail?.target_date||""):(request.detail?.target_date||"")).slice(0,10);
+        app()?.showLoading?.(subtype==="ADD_DAYOFF"?"กำลังตรวจและเพิ่มวันหยุดแบบ Atomic...":"กำลังสลับวันหยุดแบบ Atomic...");
+
+        const result=await applyEmployeeRequestAtomicV61510(request,{},request.reason||null);
+        if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
+
+        employeeRequestResolveContextV61481=null;
+        clearEmployeeRequestContextV61494();
+        const actionResult=result?.action_result||{};
+        app()?.toast?.(
+          subtype==="ADD_DAYOFF"
+            ? `เพิ่มวันหยุดเรียบร้อย${actionResult.target_off_shift?` • ${actionResult.target_off_shift}`:""}`
+            : `สลับวันหยุดเรียบร้อย • ${fmtDate(sourceDate)} → ทำงาน / ${fmtDate(target)} → หยุด`,
+          "success"
+        );
+        await loadShiftRequests();
+        return;
+      }catch(e){
+        app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+        return;
+      }finally{
+        app()?.hideLoading?.();
+      }
+    }
   }
 
   async function reviewEmployeeLeaveV61494(request){

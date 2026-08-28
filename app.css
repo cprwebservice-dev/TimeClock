@@ -23245,3 +23245,225 @@ body.theme-dark .employee-request-context-grid-v61494 strong,.dark .employee-req
 .request-consistency-v61515.fail{
   background:#fff0f0;color:#bb3e3e;border:1px solid #f1c5c5;
 }
+
+/* ========================================================================== */
+/* V6.15.17 — 4B.2B Manager Day-off Request Review                            */
+/* ========================================================================== */
+.manager-dayoff-review-modal-v61517{
+  z-index:1700;
+  padding:24px;
+  align-items:center;
+  justify-content:center;
+}
+.manager-dayoff-review-modal-v61517:not(.hidden){display:flex;}
+.manager-dayoff-review-dialog-v61517{
+  width:min(920px,96vw);
+  max-height:min(880px,92vh);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  border:1px solid var(--slate-200);
+  border-radius:22px;
+  background:var(--surface,#fff);
+  box-shadow:0 30px 80px rgba(11,31,58,.24);
+}
+.manager-dayoff-review-head-v61517{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding:22px 24px 18px;
+  border-bottom:1px solid var(--slate-200);
+  background:linear-gradient(135deg,#f7fbff,#fffaf5);
+}
+.manager-dayoff-review-head-v61517>div>span{
+  display:block;
+  margin-bottom:4px;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.14em;
+  color:var(--blue-600);
+}
+.manager-dayoff-review-head-v61517 h3{margin:0;font-size:23px;color:var(--navy-900);}
+.manager-dayoff-review-head-v61517 p{margin:4px 0 0;color:var(--slate-500);font-size:12px;}
+.manager-dayoff-review-body-v61517{padding:20px 24px 24px;overflow:auto;}
+.manager-dayoff-review-status-v61517{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  align-items:center;
+  padding:14px 16px;
+  border-radius:14px;
+  border:1px solid var(--slate-200);
+  margin-bottom:14px;
+}
+.manager-dayoff-review-status-v61517>div span,
+.manager-dayoff-review-status-v61517>div strong{display:block;}
+.manager-dayoff-review-status-v61517>div span{font-size:11px;font-weight:900;margin-bottom:3px;}
+.manager-dayoff-review-status-v61517>div strong{font-size:15px;}
+.manager-dayoff-review-status-v61517 small{color:var(--slate-500);text-align:right;}
+.manager-dayoff-review-status-v61517.pass{background:var(--green-100);border-color:#b8e6d2;}
+.manager-dayoff-review-status-v61517.pass span,.manager-dayoff-review-status-v61517.pass strong{color:var(--green-600);}
+.manager-dayoff-review-status-v61517.block{background:var(--red-100);border-color:#f5c7ce;}
+.manager-dayoff-review-status-v61517.block span,.manager-dayoff-review-status-v61517.block strong{color:var(--red-600);}
+.manager-dayoff-review-meta-v61517{
+  display:grid;
+  grid-template-columns:1.15fr .9fr 1.4fr;
+  gap:10px;
+  margin-bottom:15px;
+}
+.manager-dayoff-review-meta-v61517>div{
+  padding:12px 13px;
+  border:1px solid var(--slate-200);
+  border-radius:12px;
+  background:var(--slate-50,#f8fafc);
+}
+.manager-dayoff-review-meta-v61517 span,
+.manager-dayoff-review-meta-v61517 strong{display:block;}
+.manager-dayoff-review-meta-v61517 span{font-size:10px;color:var(--slate-500);margin-bottom:4px;}
+.manager-dayoff-review-meta-v61517 strong{font-size:12px;line-height:1.5;}
+.manager-dayoff-transition-grid-v61517{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);
+  gap:10px;
+  align-items:stretch;
+  margin:15px 0;
+}
+.manager-dayoff-transition-grid-v61517.single{grid-template-columns:1fr;}
+.manager-dayoff-transition-card-v61517{
+  padding:16px;
+  border-radius:15px;
+  border:1px solid var(--slate-200);
+  background:#fff;
+  min-width:0;
+}
+.manager-dayoff-transition-card-v61517.source{border-left:4px solid var(--orange-500);}
+.manager-dayoff-transition-card-v61517.target{border-left:4px solid var(--blue-600);}
+.manager-dayoff-transition-card-v61517 span,
+.manager-dayoff-transition-card-v61517 strong,
+.manager-dayoff-transition-card-v61517 b,
+.manager-dayoff-transition-card-v61517 small{display:block;}
+.manager-dayoff-transition-card-v61517 span{font-size:10px;font-weight:800;color:var(--slate-500);}
+.manager-dayoff-transition-card-v61517 strong{font-size:18px;margin:5px 0;color:var(--navy-900);}
+.manager-dayoff-transition-card-v61517 b{font-size:14px;color:var(--blue-700);}
+.manager-dayoff-transition-card-v61517 small{margin-top:5px;color:var(--slate-500);}
+.manager-dayoff-transition-arrow-v61517{
+  display:grid;
+  place-items:center;
+  font-size:22px;
+  font-weight:900;
+  color:var(--blue-600);
+}
+.manager-dayoff-quota-card-v61517{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+  padding:12px;
+  border-radius:14px;
+  background:var(--blue-100);
+  border:1px solid #cfe1fb;
+  margin-bottom:13px;
+}
+.manager-dayoff-quota-card-v61517>div{
+  padding:8px 10px;
+  border-right:1px solid rgba(31,111,235,.14);
+}
+.manager-dayoff-quota-card-v61517>div:last-child{border-right:0;}
+.manager-dayoff-quota-card-v61517 span,
+.manager-dayoff-quota-card-v61517 strong{display:block;}
+.manager-dayoff-quota-card-v61517 span{font-size:9px;color:var(--slate-600);}
+.manager-dayoff-quota-card-v61517 strong{font-size:18px;color:var(--blue-700);margin-top:2px;}
+.manager-dayoff-checks-v61517{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0;}
+.manager-dayoff-checks-v61517>span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 10px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  border:1px solid var(--slate-200);
+}
+.manager-dayoff-checks-v61517>span.pass{background:var(--green-100);color:var(--green-600);border-color:#b8e6d2;}
+.manager-dayoff-checks-v61517>span.block{background:var(--red-100);color:var(--red-600);border-color:#f5c7ce;}
+.manager-dayoff-checks-v61517>span.warn{background:var(--amber-100);color:var(--amber-600);border-color:#f4deb1;}
+.manager-dayoff-review-issues-v61517{display:grid;gap:7px;margin:12px 0;}
+.manager-dayoff-review-issues-v61517>div{
+  display:grid;
+  grid-template-columns:30px 1fr;
+  gap:9px;
+  align-items:start;
+  padding:10px 12px;
+  border-radius:11px;
+}
+.manager-dayoff-review-issues-v61517>div>i{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:900;
+}
+.manager-dayoff-review-issues-v61517>div span strong{display:block;margin-bottom:2px;}
+.manager-dayoff-review-issues-v61517>div.block{background:var(--red-100);color:#8f2731;}
+.manager-dayoff-review-issues-v61517>div.block>i{background:#fff;color:var(--red-600);}
+.manager-dayoff-review-issues-v61517>div.warn{background:var(--amber-100);color:#82520b;}
+.manager-dayoff-review-issues-v61517>div.warn>i{background:#fff;color:var(--amber-600);}
+.manager-dayoff-review-ok-v61517{
+  display:flex;gap:11px;align-items:center;padding:12px 13px;border-radius:12px;background:var(--green-100);color:var(--green-600);margin:12px 0;
+}
+.manager-dayoff-review-ok-v61517>i{width:30px;height:30px;border-radius:50%;background:#fff;display:grid;place-items:center;font-style:normal;font-weight:900;}
+.manager-dayoff-review-ok-v61517 strong,.manager-dayoff-review-ok-v61517 span{display:block;}
+.manager-dayoff-review-ok-v61517 span{font-size:11px;margin-top:2px;}
+.manager-dayoff-review-note-v61517{
+  margin-top:14px;
+  padding:12px 13px;
+  border-radius:12px;
+  background:var(--slate-100);
+  color:var(--slate-600);
+}
+.manager-dayoff-review-note-v61517 strong,.manager-dayoff-review-note-v61517 span{display:block;}
+.manager-dayoff-review-note-v61517 strong{color:var(--slate-900);font-size:11px;margin-bottom:3px;}
+.manager-dayoff-review-note-v61517 span{font-size:10px;line-height:1.55;}
+.manager-dayoff-review-foot-v61517{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:14px 20px;
+  border-top:1px solid var(--slate-200);
+  background:var(--slate-50,#f8fafc);
+}
+.manager-dayoff-review-foot-v61517>div{display:flex;gap:8px;}
+.manager-dayoff-review-btn-v61517{white-space:nowrap;}
+
+body.theme-dark .manager-dayoff-review-dialog-v61517,
+html[data-theme="dark"] .manager-dayoff-review-dialog-v61517{background:#101a2a;border-color:#283850;color:#eef4ff;}
+body.theme-dark .manager-dayoff-review-head-v61517,
+html[data-theme="dark"] .manager-dayoff-review-head-v61517{background:#111d2f;border-color:#283850;}
+body.theme-dark .manager-dayoff-review-head-v61517 h3,
+body.theme-dark .manager-dayoff-transition-card-v61517 strong,
+html[data-theme="dark"] .manager-dayoff-review-head-v61517 h3,
+html[data-theme="dark"] .manager-dayoff-transition-card-v61517 strong{color:#eef4ff;}
+body.theme-dark .manager-dayoff-review-meta-v61517>div,
+body.theme-dark .manager-dayoff-transition-card-v61517,
+html[data-theme="dark"] .manager-dayoff-review-meta-v61517>div,
+html[data-theme="dark"] .manager-dayoff-transition-card-v61517{background:#0d1726;border-color:#2a3952;}
+body.theme-dark .manager-dayoff-quota-card-v61517,
+html[data-theme="dark"] .manager-dayoff-quota-card-v61517{background:#10294a;border-color:#285485;}
+body.theme-dark .manager-dayoff-review-note-v61517,
+body.theme-dark .manager-dayoff-review-foot-v61517,
+html[data-theme="dark"] .manager-dayoff-review-note-v61517,
+html[data-theme="dark"] .manager-dayoff-review-foot-v61517{background:#0d1726;border-color:#283850;color:#b7c2d3;}
+body.theme-dark .manager-dayoff-review-note-v61517 strong,
+html[data-theme="dark"] .manager-dayoff-review-note-v61517 strong{color:#eef4ff;}
+
+@media(max-width:760px){
+  .manager-dayoff-review-modal-v61517{padding:10px;align-items:flex-end;}
+  .manager-dayoff-review-dialog-v61517{width:100%;max-height:94vh;border-radius:20px 20px 0 0;}
+  .manager-dayoff-review-head-v61517,.manager-dayoff-review-body-v61517{padding-left:16px;padding-right:16px;}
+  .manager-dayoff-review-meta-v61517{grid-template-columns:1fr;}
+  .manager-dayoff-transition-grid-v61517{grid-template-columns:1fr;}
+  .manager-dayoff-transition-arrow-v61517{height:28px;transform:rotate(90deg);}
+  .manager-dayoff-quota-card-v61517{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .manager-dayoff-quota-card-v61517>div{border-right:0;}
+  .manager-dayoff-review-status-v61517{align-items:flex-start;flex-direction:column;}
+  .manager-dayoff-review-status-v61517 small{text-align:left;}
+  .manager-dayoff-review-foot-v61517{align-items:stretch;flex-direction:column;}
+  .manager-dayoff-review-foot-v61517>div{display:grid;grid-template-columns:1fr 1.3fr;}
+}
