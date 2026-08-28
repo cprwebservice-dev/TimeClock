@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.20";
+  const VERSION="6.15.21";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -2226,7 +2226,7 @@
       return leavePreviewV61520;
     }catch(e){
       if(seq!==leavePreviewSeqV61520)return leavePreviewV61520;
-      leavePreviewV61520={allowed:false,blockers:[{code:"LEAVE_PREVIEW_LOAD_ERROR",message:friendly(e)}],warnings:[],request_subtype:args.p_request_subtype,leave_type_label:leaveTypeLabelV61508(args.p_leave_type),checked_at:new Date().toISOString(),version:"V6.15.20"};
+      leavePreviewV61520={allowed:false,blockers:[{code:"LEAVE_PREVIEW_LOAD_ERROR",message:friendly(e)}],warnings:[],request_subtype:args.p_request_subtype,leave_type_label:leaveTypeLabelV61508(args.p_leave_type),checked_at:new Date().toISOString(),version:"V6.15.21"};
       if(!quiet)toast("ตรวจเงื่อนไขการลากับ Backend ไม่สำเร็จ • "+friendly(e),"error");
       return leavePreviewV61520;
     }finally{
@@ -2651,7 +2651,7 @@
         skipped_nonworkday_count:leavePreview.skipped_nonworkday_count||0,
         canonical_conflict_ok:leavePreview.canonical_conflict_ok!==false,
         checked_at:leavePreview.checked_at||null,
-        version:leavePreview.version||"V6.15.20"
+        version:leavePreview.version||"V6.15.21"
       };
       detail.leave_schedule_notice_only=true;
       detail.leave_hr_system="HR Connect";
@@ -2749,7 +2749,7 @@
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.20a",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.21a",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }

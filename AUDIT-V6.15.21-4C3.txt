@@ -1,0 +1,51 @@
+AUDIT — TimeAttendance V6.15.21
+4C.3 Affected-date Atomic Leave Apply
+=====================================
+
+Backend design
+[PASS] Manager Apply มี Request row lock
+[PASS] Employee-level advisory lock รองรับ Leave range ข้ามเดือน
+[PASS] Fresh Review หลัง Lock
+[PASS] Pre-write state compare กับ Review snapshot
+[PASS] FULL_DAY payload รับเฉพาะ action=SET_LV
+[PASS] OFF / PH / ลาเดิมถูกแยกเป็น skipped_nonworkdays
+[PASS] System Period guard ต่อ affected date
+[PASS] Work Pattern validation ก่อน LV write
+[PASS] Night Sequence whole-payload validator
+[PASS] Canonical ta_assign_shifts_bulk_v61424 retained
+[PASS] Smart Schedule Rule sync retained
+[PASS] Certification-aware finalizer retained
+[PASS] Affected final-state mismatch raises exception
+[PASS] Skipped final-state mismatch raises exception
+[PASS] Request RESOLVED หลัง final verification
+[PASS] Portal audit MANAGER_LEAVE_APPLIED_V61521
+
+Partial Leave
+[PASS] Delegates to canonical V6.15.11/V6.15.10 atomic overlay writer
+[PASS] Active overlay verified
+[PASS] Original shift code verified unchanged
+[PASS] Request final status verified RESOLVED
+
+Consistency Guard
+[PASS] V6.15.15 checker signature retained
+[PASS] New FULL_DAY semantics use applied_affected_work_dates
+[PASS] skipped_nonworkdays verified by canonical Leave Day State
+[PASS] Legacy requests keep legacy full-range behavior
+[PASS] Consistency audit version can store V6.15.21
+
+Frontend
+[PASS] Manager action uses V6.15.21 Review RPC
+[PASS] Manager apply uses ta_apply_employee_request_leave_v61521
+[PASS] Removed V6.15.20 legacy_apply_compatible blocker
+[PASS] Review explains Affected-date Atomic Apply
+[PASS] Success message distinguishes changed LV vs skipped OFF/PH
+[PASS] Schedule/Attendance/Request Sync refresh retained
+
+Static validation
+[PASS] node --check app.js
+[PASS] node --check portal.js
+[PASS] duplicate HTML IDs = 0
+[PASS] app.css brace balance = 0
+[PASS] portal.css brace balance = 0
+[PASS] SQL dollar-quote pairs balanced
+[PASS] version/cache scan V6.15.21 / V6.15.21a
