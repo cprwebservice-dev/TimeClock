@@ -23827,3 +23827,22 @@ body.dark-mode .team-master-create-note-v61523,
 .team-runtime-table-error-v61526f1 strong{color:var(--text,#102033)}
 .team-runtime-table-error-v61526f1 span{font-size:12px;color:var(--muted,#66758a)}
 @media(max-width:720px){.team-runtime-diagnostic-v61526f1{align-items:flex-start;flex-direction:column}.team-runtime-diagnostic-v61526f1 .btn{width:100%}}
+
+/* V6.15.27 — 4D.1E Manager-owned Operational Profile */
+.operational-profile-panel-v61527{overflow:hidden}
+.operational-profile-overview-v61527{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.operational-profile-overview-v61527 article{padding:15px 16px;border:1px solid var(--border,#dfe5ec);border-radius:14px;background:var(--surface-soft,#f8fafc)}
+.operational-profile-overview-v61527 span,.operational-profile-overview-v61527 small{display:block;color:var(--text-muted,#64748b);font-size:12px}
+.operational-profile-overview-v61527 strong{display:block;margin:5px 0;color:var(--text,#102033);font-size:17px}
+.operational-profile-modal-v61527{width:min(920px,95vw);max-height:92vh;display:flex;flex-direction:column}
+.operational-profile-modal-v61527 .modal-body{overflow:auto}
+.operational-profile-form-v61527{display:grid;grid-template-columns:1.2fr .8fr 1fr 1fr;gap:12px}
+.operational-profile-team-box-v61527{margin:12px 0;padding:12px 14px;border:1px solid var(--border,#dfe5ec);border-radius:14px;background:var(--surface-soft,#f8fafc)}
+.operational-profile-team-box-v61527 small{display:block;margin-top:6px;color:var(--text-muted,#64748b);font-size:12px}
+.operational-profile-search-v61527{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:end;margin-top:12px}
+.operational-profile-search-v61527 strong{padding:10px 12px;border-radius:10px;background:var(--surface-soft,#f8fafc);font-size:12px;white-space:nowrap}
+.operational-profile-row-v61527 small{line-height:1.45}
+.team-enforcement-secondary-v61527{display:block;margin-top:4px;color:var(--text-muted,#64748b);font-size:12px}
+.team-enforcement-secondary-v61527 b{font-size:13px}
+@media(max-width:900px){.operational-profile-form-v61527{grid-template-columns:1fr 1fr}.operational-profile-overview-v61527{grid-template-columns:1fr}.operational-profile-search-v61527{grid-template-columns:1fr}.operational-profile-search-v61527 .btn{width:100%}}
+@media(max-width:620px){.operational-profile-form-v61527{grid-template-columns:1fr}.operational-profile-modal-v61527{width:97vw}}

@@ -1,10 +1,12 @@
-TimeClock Enterprise V6.15.26 FIX6 — GitHub Deploy Slim
+TimeClock Enterprise V6.15.27 — 4D.1E Operational Profile Ownership
 
-Scope: Team Draft Visibility / Manager Scope UX
-- New Team starts as DRAFT (รอสมาชิก) and is visible immediately.
-- Default status filter = พร้อมจัดการ (ACTIVE + DRAFT).
-- After Create Team, filter automatically switches to พร้อมจัดการ.
-- ACTIVE-only filter is still available for operational views.
-- No database migration is required; use existing V6.15.26 FIX5 backend.
+GitHub Deploy Slim
+- Main Web App: Manager-owned CAR / MOTORCYCLE Operational Profile
+- Existing Employee.car_team is migration-only; future HR uploads do not own this field
+- CAR assignment requires Effective Team in same transaction
+- MOTORCYCLE may be assigned without Team
+- UNCLASSIFIED employees stay in Manager work queue
+- Team Enforcement uses Operational Profile as Source of Truth
 
-Upload these files to GitHub and hard refresh the web app.
+Deploy: upload these files to the existing GitHub Pages repository root, replacing files with the same names.
+Run the V6.15.27 SQL migration in Supabase before using the new Manager classification UI.

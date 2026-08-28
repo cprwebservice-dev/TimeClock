@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.26-fix6-20260828f" rel="stylesheet"/>
+<link href="./app.css?v=6.15.27-20260828a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1494,7 +1494,7 @@
 <div class="employee-import-guide section-gap">
 <div>
 <strong>คอลัมน์ Employee Template V6.11.15</strong>
-<p>employee_id, full_name, email, position_name, department, org_code, pc, car_team, start_date, resign_date</p>
+<p>employee_id, full_name, email, position_name, department, org_code, pc, start_date, resign_date</p>
 </div>
 <div class="employee-import-guide-note">
 <span>ผังองค์กร</span>
@@ -1532,14 +1532,14 @@
   </div>
 </section>
 
-<!-- V6.15.26 FIX6 Team Draft Visibility -->
+<!-- V6.15.27 4D.1E Operational Profile Ownership -->
 <section class="page team-master-page-v61523" id="page-team-master">
   <div class="team-master-hero-v61523">
     <div>
       <span class="eyebrow">4D · OPERATIONAL TEAM FOUNDATION</span>
       <h2>ทีมช่างเทคนิค</h2>
-      <p>สร้างทีมรถยนต์/มอเตอร์ไซค์แบบ Auto Generate และกำหนดสมาชิกแบบ Effective Date</p>
-      <div class="team-master-hero-badges-v61523"><span>Auto Generate</span><span>CAR / MOTORCYCLE</span><span>สมาชิกขั้นต่ำ 3 คน</span><span>Effective Date</span></div>
+      <p>Manager กำหนดประเภทการปฏิบัติงาน รถยนต์/มอเตอร์ไซค์ และ Team Membership แบบ Effective Date</p>
+      <div class="team-master-hero-badges-v61523"><span>Manager-owned Profile</span><span>CAR / MOTORCYCLE</span><span>Auto Generate Team</span><span>Effective Date</span></div>
     </div>
     <div class="team-master-hero-actions-v61523">
       <button class="btn btn-light" id="teamMasterRefreshV61523">↻ รีเฟรช</button>
@@ -1550,8 +1550,8 @@
   <div id="teamRuntimeDiagnosticV61526Fix1" class="team-runtime-diagnostic-v61526f1 hidden" role="status" aria-live="polite"></div>
 
   <div class="team-master-foundation-note-v61523 section-gap">
-    <i>4D.1A.1 + 4D.1B</i>
-    <div><strong>เปิดใช้ Team Enforcement แบบควบคุมจาก Backend</strong><span>รถยนต์ต้องมี Effective Team ก่อนจัดกะเมื่อเปิดใช้งาน • มอเตอร์ไซค์ไม่บังคับ Team • กลุ่มไม่ระบุ car_team เป็น Warning only</span></div>
+    <i>4D.1E</i>
+    <div><strong>Operational Profile เป็นข้อมูลที่ Manager ดูแล</strong><span>HR Upload Employee ไม่ต้องส่ง car_team อีกต่อไป • รถยนต์ต้องมี Effective Team • มอเตอร์ไซค์ไม่บังคับ Team • พนักงานใหม่จะอยู่ในกลุ่มรอ Manager กำหนดประเภท</span></div>
   </div>
 
   <div class="team-master-kpis-v61523 section-gap">
@@ -1575,8 +1575,20 @@
   <div class="team-membership-readiness-v61524 section-gap">
     <article><span>รถยนต์ยังไม่มีทีม</span><strong id="teamReadinessCarV61524">0</strong><small>ต้องจัดทีมก่อนเปิด 4D.1C Enforcement</small></article>
     <article><span>มอเตอร์ไซค์ไม่มีทีม</span><strong id="teamReadinessMotorcycleV61524">0</strong><small>จัดกะได้แม้ไม่มีทีม</small></article>
-    <article><span>ไม่ระบุ car_team</span><strong id="teamReadinessUnspecifiedV61524">0</strong><small>ควรตรวจ Employee Master</small></article>
+    <article><span>รอ Manager กำหนดประเภท</span><strong id="teamReadinessUnspecifiedV61524">0</strong><small>ต้องกำหนดเป็นรถยนต์หรือมอเตอร์ไซค์</small></article>
   </div>
+
+  <section class="panel operational-profile-panel-v61527 section-gap">
+    <div class="panel-header">
+      <div><h3>ประเภทการปฏิบัติงานของช่าง</h3><p>Source of Truth ใหม่ • Manager เป็นผู้กำหนด รถยนต์ / มอเตอร์ไซค์ ตามวันที่มีผล</p></div>
+      <button class="btn btn-primary" id="teamOperationalProfileOpenV61527">จัดประเภทพนักงาน</button>
+    </div>
+    <div class="panel-body operational-profile-overview-v61527">
+      <article><span>รอ Manager กำหนด</span><strong id="teamOperationalUnclassifiedV61527">0</strong><small>พนักงานใหม่หรือข้อมูลเดิมที่ไม่ทราบประเภท</small></article>
+      <article><span>รถยนต์</span><strong>ต้องเลือก Team</strong><small>บันทึก Operational Profile + Team Membership ในขั้นตอนเดียว</small></article>
+      <article><span>มอเตอร์ไซค์</span><strong>Team เป็นทางเลือก</strong><small>Manager เลือกทีมได้ หรือไม่ผูกทีมก็จัดกะได้</small></article>
+    </div>
+  </section>
 
   <section class="panel team-enforcement-panel-v61525 section-gap">
     <div class="panel-header">
@@ -1584,8 +1596,8 @@
       <div class="team-enforcement-actions-v61525"><span class="badge badge-gray" id="teamEnforcementStatusV61525">กำลังโหลด</span><button class="btn btn-light btn-sm" id="teamEnforcementRefreshV61525">รีเฟรช</button></div>
     </div>
     <div class="panel-body team-enforcement-body-v61525">
-      <div class="team-enforcement-policy-v61525"><div><span>รถยนต์</span><strong>ต้องมี Effective Team</strong></div><div><span>มอเตอร์ไซค์</span><strong>ไม่บังคับ Team</strong></div><div><span>ไม่ระบุ car_team</span><strong>Warning only</strong></div></div>
-      <div class="team-enforcement-go-v61525"><div><span>รถยนต์ยังไม่มีทีม</span><strong><b id="teamEnforcementMissingV61525">0</b> คน</strong><small id="teamEnforcementReadyV61525">กำลังตรวจสอบ</small></div><button class="btn btn-primary hidden" id="teamEnforcementToggleV61525">เปิด Team Enforcement</button></div>
+      <div class="team-enforcement-policy-v61525"><div><span>รถยนต์</span><strong>ต้องมี Effective Team</strong></div><div><span>มอเตอร์ไซค์</span><strong>ไม่บังคับ Team</strong></div><div><span>รอกำหนดประเภท</span><strong>ต้องให้ Manager กำหนดก่อน</strong></div></div>
+      <div class="team-enforcement-go-v61525"><div><span>รถยนต์ยังไม่มีทีม</span><strong><b id="teamEnforcementMissingV61525">0</b> คน</strong><span class="team-enforcement-secondary-v61527">รอกำหนดประเภท <b id="teamEnforcementUnclassifiedV61527">0</b> คน</span><small id="teamEnforcementReadyV61525">กำลังตรวจสอบ</small></div><button class="btn btn-primary hidden" id="teamEnforcementToggleV61525">เปิด Team Enforcement</button></div>
       <p class="team-enforcement-note-v61525">เมื่อเปิดแล้ว Backend จะตรวจทุก Schedule mutation รวม Calendar, Quick Shift, Bulk, Copy/Paste และ Request Apply ก่อนบันทึกจริง</p>
     </div>
   </section>
@@ -1632,11 +1644,32 @@
     <div class="modal-body">
       <div class="team-membership-summary-v61524"><div><span>ประเภททีม</span><strong id="teamMembershipCategoryV61524">-</strong></div><div><span>วันที่มีผล</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/></div><div><span>เลือกแล้ว</span><strong id="teamMembershipSelectedV61524">0 คน</strong></div></div>
       <div class="team-membership-warning-v61524" id="teamMembershipPolicyV61524"></div>
-      <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamMembershipSearchV61524" placeholder="รหัส / ชื่อ / หน่วยงาน / car_team"/></div>
+      <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamMembershipSearchV61524" placeholder="รหัส / ชื่อ / หน่วยงาน / ประเภทการปฏิบัติงาน"/></div>
       <div class="team-membership-list-v61524" id="teamMembershipListV61524"><div class="fc-empty">กำลังโหลด...</div></div>
       <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMembershipNoteV61524" rows="2" maxlength="500" placeholder="ไม่บังคับ"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-light" data-team-membership-close-v61524>ยกเลิก</button><button class="btn btn-primary" id="teamMembershipSaveV61524">บันทึกสมาชิกทีม</button></div>
+  </div>
+</div>
+
+
+<!-- V6.15.27 Manager-owned Operational Profile modal -->
+<div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true">
+  <div class="modal operational-profile-modal-v61527" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">4D.1E · OPERATIONAL PROFILE</span><h3>กำหนดประเภทการปฏิบัติงาน</h3><p id="teamOperationalProfileMetaV61527">Manager กำหนด CAR / MOTORCYCLE และ Team ตามวันที่มีผล</p></div><button class="btn btn-light btn-icon" data-operational-profile-close-v61527>×</button></div>
+    <div class="modal-body">
+      <div class="operational-profile-form-v61527">
+        <div class="field"><label>หน่วยงาน</label><select class="select" id="teamOperationalProfileOrgV61527"></select></div>
+        <div class="field"><label>วันที่มีผล</label><input class="input" type="date" id="teamOperationalProfileEffectiveV61527"/></div>
+        <div class="field"><label>แสดงพนักงาน</label><select class="select" id="teamOperationalProfileShowV61527"><option value="UNCLASSIFIED">รอกำหนดประเภท</option><option value="CAR">รถยนต์</option><option value="MOTORCYCLE">มอเตอร์ไซค์</option><option value="ALL">ทั้งหมด</option></select></div>
+        <div class="field"><label>กำหนดเป็น</label><select class="select" id="teamOperationalProfileTargetV61527"><option value="CAR">รถยนต์</option><option value="MOTORCYCLE">มอเตอร์ไซค์</option></select></div>
+      </div>
+      <div class="operational-profile-team-box-v61527"><div class="field"><label>Effective Team</label><select class="select" id="teamOperationalProfileTeamV61527"></select><small id="teamOperationalProfileTeamHintV61527">รถยนต์ต้องเลือกทีม</small></div></div>
+      <div class="operational-profile-search-v61527"><div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamOperationalProfileSearchV61527" placeholder="รหัส / ชื่อ / ตำแหน่ง"/></div><button class="btn btn-light" id="teamOperationalProfileSearchBtnV61527">ค้นหา</button><strong id="teamOperationalProfileSelectedV61527">เลือกแล้ว 0 คน</strong></div>
+      <div class="team-membership-list-v61524" id="teamOperationalProfileListV61527"><div class="fc-empty">กำลังโหลด...</div></div>
+      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamOperationalProfileNoteV61527" rows="2" maxlength="500" placeholder="เช่น เปลี่ยนประเภทการปฏิบัติงาน / จัดกลุ่มเริ่มต้น"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-operational-profile-close-v61527>ยกเลิก</button><button class="btn btn-primary" id="teamOperationalProfileSaveV61527">บันทึกประเภทและทีม</button></div>
   </div>
 </div>
 
@@ -2832,6 +2865,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.26-fix6-20260828f"></script>
+<script src="./app.js?v=6.15.27-20260828a"></script>
 </body>
 </html>
