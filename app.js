@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.26 FIX3";
-document.documentElement.dataset.timeClockBuild = "6.15.25";
+window.__TIME_CLOCK_BUILD__ = "V6.15.26 FIX4";
+document.documentElement.dataset.timeClockBuild = "6.15.26-fix4";
 
 
 /* ===== js/config.js ===== */
@@ -32809,10 +32809,11 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.26 FIX3';
+  const VERSION='6.15.26 FIX4';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
-  const state={orgs:[],teams:[],audit:[],members:[],selected:new Set(),activeTeam:null,enforcement:null,runtime:null,lastError:null,loaded:false,loading:false};
+  const state={orgs:[],teams:[],audit:[],members:[],selected:new Set(),activeTeam:null,enforcement:null,runtime:null,runtimeCheckedAt:0,runtimePromise:null,lastError:null,loaded:false,loading:false};
+  const RUNTIME_DIAGNOSTIC_TTL_MS=5*60*1000;
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const role=()=>String(app()?.state?.profile?.role||app()?.state?.profile?._realRole||'VIEWER').toUpperCase();
   const allowedRole=()=>['MANAGER','HR_ADMIN'].includes(role());
@@ -32833,7 +32834,7 @@ ${names}${extra}
     if(msg.includes('TEAM_RUNTIME_ACTOR_NOT_FOUND'))return 'Backend ไม่พบ Session ผู้ใช้งานปัจจุบัน กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่';
     if(msg.includes('TEAM_RUNTIME_ROLE_DENIED'))return 'บัญชีปัจจุบันไม่มีสิทธิ์ Manager / HR Admin สำหรับ Team Module';
     if(msg.includes('JWT')||msg.includes('auth.uid'))return 'Session Supabase ไม่สมบูรณ์ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่';
-    if(msg.includes('PGRST202')||msg.includes('Could not find the function'))return 'กรุณารัน SQL V6.15.26 FIX3 แล้ว Hard Refresh Web App';
+    if(msg.includes('PGRST202')||msg.includes('Could not find the function'))return 'กรุณาตรวจสอบ SQL V6.15.26 FIX3 และ Hard Refresh Web App';
     return msg;
   }
   async function rpc(name,args={}){const c=app()?.state?.client;if(!c)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');const {data,error}=await c.rpc(name,args);if(error)throw error;return data;}
@@ -32843,7 +32844,7 @@ ${names}${extra}
     box.className=`team-runtime-diagnostic-v61526f1 ${kind||'info'}`;
     box.innerHTML=`<div><strong>${esc(title||'สถานะ Team Runtime')}</strong><span>${esc(detail||'')}</span></div><button type="button" class="btn btn-light btn-sm" id="teamRuntimeRetryV61526Fix1">ลองใหม่</button>`;
     box.classList.remove('hidden');
-    $('teamRuntimeRetryV61526Fix1')?.addEventListener('click',()=>load());
+    $('teamRuntimeRetryV61526Fix1')?.addEventListener('click',()=>load({forceRuntime:true}));
   }
   function clearRuntimeBanner(){const box=$('teamRuntimeDiagnosticV61526Fix1');if(box){box.className='team-runtime-diagnostic-v61526f1 hidden';box.innerHTML='';}}
   function setTeamLoading(message='กำลังโหลด...'){
@@ -32860,23 +32861,42 @@ ${names}${extra}
     const det=$('teamEnforcementDetailV61525');if(det)det.textContent=message;
     setRuntimeBanner('error','เชื่อม Team Module ไม่สำเร็จ',`${message} • ${stage}`);
   }
-  async function loadRuntimeDiagnostic(){
-    const c=app()?.state?.client;
-    if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');
-    const sessionResult=await c.auth.getSession();
-    if(sessionResult.error)throw sessionResult.error;
-    const session=sessionResult.data?.session||null;
-    if(!session?.user?.id)throw new Error('TEAM_RUNTIME_ACTOR_NOT_FOUND: NO_AUTH_SESSION');
-    const data=await rpc('ta_get_team_runtime_diagnostic_v61526_fix1',{});
-    state.runtime=data||{};
-    const actorFound=state.runtime.actor_found===true;
-    const actorRole=String(state.runtime.actor_role||'').toUpperCase();
-    if(!actorFound)throw new Error(`TEAM_RUNTIME_ACTOR_NOT_FOUND: uid=${session.user.id}`);
-    if(!['MANAGER','HR_ADMIN'].includes(actorRole))throw new Error(`TEAM_RUNTIME_ROLE_DENIED: ${actorRole||'-'}`);
-    const allowed=Number(state.runtime.allowed_org_count||0);
-    const emp=Number(state.runtime.employee_in_allowed_org||0);
-    setRuntimeBanner('success','Supabase Team Runtime พร้อมใช้งาน',`${actorRole} • ${state.runtime.actor_email||session.user.email||'-'} • Scope ${allowed.toLocaleString('th-TH')} หน่วยงาน • พนักงาน ${emp.toLocaleString('th-TH')} คน`);
-    return state.runtime;
+  async function loadRuntimeDiagnostic(options={}){
+    const force=options?.force===true;
+    const silent=options?.silent===true;
+    const now=Date.now();
+    if(!force&&state.runtime&&(now-Number(state.runtimeCheckedAt||0))<RUNTIME_DIAGNOSTIC_TTL_MS)return state.runtime;
+    if(state.runtimePromise)return state.runtimePromise;
+    const task=(async()=>{
+      const c=app()?.state?.client;
+      if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');
+      const sessionResult=await c.auth.getSession();
+      if(sessionResult.error)throw sessionResult.error;
+      const session=sessionResult.data?.session||null;
+      if(!session?.user?.id)throw new Error('TEAM_RUNTIME_ACTOR_NOT_FOUND: NO_AUTH_SESSION');
+      const data=await rpc('ta_get_team_runtime_diagnostic_v61526_fix1',{});
+      state.runtime=data||{};
+      state.runtimeCheckedAt=Date.now();
+      const actorFound=state.runtime.actor_found===true;
+      const actorRole=String(state.runtime.actor_role||'').toUpperCase();
+      if(!actorFound)throw new Error(`TEAM_RUNTIME_ACTOR_NOT_FOUND: uid=${session.user.id}`);
+      if(!['MANAGER','HR_ADMIN'].includes(actorRole))throw new Error(`TEAM_RUNTIME_ROLE_DENIED: ${actorRole||'-'}`);
+      const allowed=Number(state.runtime.allowed_org_count||0);
+      const emp=Number(state.runtime.employee_in_allowed_org||0);
+      setRuntimeBanner('success','Supabase Team Runtime พร้อมใช้งาน',`${actorRole} • ${state.runtime.actor_email||session.user.email||'-'} • Scope ${allowed.toLocaleString('th-TH')} หน่วยงาน • พนักงาน ${emp.toLocaleString('th-TH')} คน`);
+      return state.runtime;
+    })();
+    state.runtimePromise=task;
+    try{return await task;}
+    catch(error){
+      if(!silent)throw error;
+      console.warn('Background Team Runtime V6.15.26 FIX4',error);
+      setRuntimeBanner('warning','ข้อมูลทีมโหลดได้ แต่ตรวจ Runtime เพิ่มเติมไม่สำเร็จ',human(error));
+      return null;
+    }finally{state.runtimePromise=null;}
+  }
+  function scheduleRuntimeDiagnostic(force=false){
+    window.setTimeout(()=>{loadRuntimeDiagnostic({force,silent:true});},0);
   }
   function fmtDateTime(v){if(!v)return '-';try{return app()?.formatDateTime?.(v)||new Date(v).toLocaleString('th-TH');}catch(_){return String(v);}}
   function today(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
@@ -32929,7 +32949,7 @@ ${names}${extra}
       state.enforcement=await rpc('ta_get_team_enforcement_state_v61525',{});
       renderEnforcement();
     }catch(e){
-      console.warn('Team Enforcement V6.15.26 FIX3',e);
+      console.warn('Team Enforcement V6.15.26 FIX4',e);
       const st=$('teamEnforcementStatusV61525');if(st){st.textContent='โหลดไม่สำเร็จ';st.className='badge badge-red';}
       const d=$('teamEnforcementDetailV61525');if(d)d.textContent=human(e);
       const note=$('teamEnforcementReadyV61525');if(note)note.textContent='ตรวจ SQL / Session แล้วลองใหม่';
@@ -32953,37 +32973,42 @@ ${names}${extra}
     const x=state.enforcement||{};const enable=x.enforcement_enabled!==true;
     if(enable&&Number(x.car_without_team||0)>0)return toast('ยังมีช่างรถยนต์ที่ไม่ได้กำหนดทีม ไม่สามารถเปิด Enforcement ได้','warning');
     const ok=await window.tcConfirm?.({title:enable?'เปิด Team Enforcement':'ปิด Team Enforcement',message:enable?'หลังเปิด ช่างรถยนต์ทุกคนต้องมี Effective Team ก่อนจัดกะทุกช่องทาง รวมคำขอที่แก้ Schedule':'การปิดจะใช้สำหรับช่วง Migration/แก้ข้อมูลเท่านั้น และมี Audit เก็บประวัติ',confirmText:enable?'เปิดใช้งาน':'ปิดชั่วคราว',tone:enable?'primary':'danger'});if(!ok)return;
-    try{app()?.showLoading?.('กำลังปรับ Team Enforcement...');state.enforcement=await rpc('ta_set_team_enforcement_v61525',{p_enabled:enable,p_note:enable?'Enable from Team Master V6.15.26 FIX3':'Disable from Team Master V6.15.26 FIX3'});renderEnforcement();toast(enable?'เปิด Team Enforcement แล้ว':'ปิด Team Enforcement แล้ว','success');}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+    try{app()?.showLoading?.('กำลังปรับ Team Enforcement...');state.enforcement=await rpc('ta_set_team_enforcement_v61525',{p_enabled:enable,p_note:enable?'Enable from Team Master V6.15.26 FIX4':'Disable from Team Master V6.15.26 FIX4'});renderEnforcement();toast(enable?'เปิด Team Enforcement แล้ว':'ปิด Team Enforcement แล้ว','success');}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
   }
-  async function loadAudit(){try{state.audit=await rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:100})||[];renderAudit();}catch(e){console.warn('Team audit V6.15.26 FIX3',e);const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=`<tr><td colspan="5" class="fc-empty">โหลดประวัติไม่สำเร็จ: ${esc(human(e))}</td></tr>`;}}
-  async function load(){
+  async function loadAudit(){try{state.audit=await rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:100})||[];renderAudit();}catch(e){console.warn('Team audit V6.15.26 FIX4',e);const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=`<tr><td colspan="5" class="fc-empty">โหลดประวัติไม่สำเร็จ: ${esc(human(e))}</td></tr>`;}}
+  async function load(options={}){
     if(!allowedRole()){syncNav();return;}
     if(state.loading)return;
-    state.loading=true;state.lastError=null;setTeamLoading('กำลังตรวจ Supabase Session...');
+    const forceRuntime=options?.forceRuntime===true;
+    state.loading=true;state.lastError=null;setTeamLoading('กำลังโหลดข้อมูลทีม...');
     try{
-      app()?.showLoading?.('กำลังตรวจ Supabase Team Runtime...');
-      await loadRuntimeDiagnostic();
       const current=selectedOrgId();
-      setTeamLoading('กำลังโหลดหน่วยงานใน Scope...');
+      // FIX4: โหลดข้อมูลที่ผู้ใช้ต้องเห็นก่อน และตรวจ Runtime แบบ background/cached
+      // เพื่อลดเวลารอหน้า Team Master โดยไม่เสีย Backend authorization จริงของแต่ละ RPC.
+      const sideLoads=Promise.allSettled([loadAudit(),loadEnforcement()]);
       state.orgs=await rpc('ta_get_team_org_options_v61524',{p_include_inactive:false})||[];
       renderOrgOptions();
       if(current&&state.orgs.some(o=>String(o.org_id)===String(current)))$('teamMasterOrgFilterV61523').value=current;
       if(!state.orgs.length){
         state.teams=[];renderOrgList();renderTeams();
-        const rt=state.runtime||{};
-        setRuntimeBanner('warning','เชื่อม Supabase สำเร็จ แต่ไม่พบหน่วยงานใน Team Scope',`Role ${rt.actor_role||role()} • allowed_org_count=${Number(rt.allowed_org_count||0)} • employee_in_allowed_org=${Number(rt.employee_in_allowed_org||0)}`);
-        await Promise.allSettled([loadAudit(),loadEnforcement()]);state.loaded=true;return;
+        setRuntimeBanner('warning','เชื่อม Supabase สำเร็จ แต่ไม่พบหน่วยงานใน Team Scope',`Role ${state.runtime?.actor_role||role()} • กรุณาตรวจ Manager Scope / Organization`);
+        state.loaded=true;
+        scheduleRuntimeDiagnostic(forceRuntime);
+        sideLoads.catch(()=>{});
+        return;
       }
       const orgId=selectedOrgId()||null;
       state.teams=await rpc('ta_get_team_master_v61524',{p_org_id:orgId,p_include_inactive:statusFilter()!=='ACTIVE',p_search:$('teamMasterSearchV61523')?.value?.trim()||null})||[];
       renderOrgList();renderTeams();
-      await Promise.allSettled([loadAudit(),loadEnforcement()]);
       state.loaded=true;
+      scheduleRuntimeDiagnostic(forceRuntime);
+      sideLoads.catch(()=>{});
     }catch(e){
-      console.error('Team Runtime V6.15.26 FIX3',e);
+      console.error('Team Runtime V6.15.26 FIX4',e);
       setTeamError(e,e?.code||e?.details||'TEAM_LOAD');
       toast(human(e),'error');
-    }finally{state.loading=false;app()?.hideLoading?.();}
+      if(forceRuntime)scheduleRuntimeDiagnostic(true);
+    }finally{state.loading=false;}
   }
   async function createTeam(){
     const org=orgById($('teamMasterCreateOrgV61523')?.value||''),cat=$('teamMasterCreateCategoryV61524')?.value||'';
@@ -33023,7 +33048,8 @@ ${names}${extra}
   }
   function closeMembership(){$('teamMembershipModalV61524')?.classList.add('hidden');state.activeTeam=null;state.members=[];state.selected.clear();}
   async function loadMembershipCandidates(){if(!state.activeTeam)return;try{app()?.showLoading?.('กำลังโหลดสมาชิก...');const d=$('teamMembershipEffectiveV61524')?.value||today();state.members=await rpc('ta_get_team_membership_candidates_v61524',{p_team_id:state.activeTeam.team_id,p_effective_date:d})||[];state.selected=new Set(state.members.filter(r=>r.is_current_member).map(r=>String(r.emp_code)));renderMemberList();$('teamMembershipMetaV61524').textContent=`เลือกสมาชิก ${catLabel(state.activeTeam.team_category)} ใน ${state.activeTeam.org_code} อย่างน้อย 3 คน`;}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
-  async function saveMembership(){if(!state.activeTeam||state.selected.size<3)return toast('กรุณาเลือกสมาชิกอย่างน้อย 3 คน','warning');const d=$('teamMembershipEffectiveV61524')?.value;if(!d)return toast('กรุณาระบุวันที่มีผล','warning');const ok=await window.tcConfirm?.({title:'ยืนยันสมาชิกทีม',message:`${esc(state.activeTeam.team_name)}<br>สมาชิก ${state.selected.size} คน<br>มีผล ${esc(d)}`,confirmText:'บันทึก',tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังบันทึกสมาชิกทีม...');await rpc('ta_set_team_members_v61524',{p_team_id:state.activeTeam.team_id,p_emp_codes:[...state.selected],p_effective_from:d,p_note:$('teamMembershipNoteV61524')?.value?.trim()||null});toast('บันทึกสมาชิกทีมเรียบร้อย','success');closeMembership();await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+  function fmtMembershipDate(v){const m=String(v||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v||'-');}
+  async function saveMembership(){if(!state.activeTeam||state.selected.size<3)return toast('กรุณาเลือกสมาชิกอย่างน้อย 3 คน','warning');const d=$('teamMembershipEffectiveV61524')?.value;if(!d)return toast('กรุณาระบุวันที่มีผล','warning');const ok=await window.tcConfirm?.({title:'ยืนยันสมาชิกทีม',eyebrow:'ตรวจสอบรายการ',message:[`ทีม: ${state.activeTeam.team_name||'-'}`,`Team Code: ${state.activeTeam.team_code||'-'}`,`สมาชิก: ${state.selected.size} คน`,`วันที่มีผล: ${fmtMembershipDate(d)}`].join('\n'),confirmText:'บันทึก',tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังบันทึกสมาชิกทีม...');await rpc('ta_set_team_members_v61524',{p_team_id:state.activeTeam.team_id,p_emp_codes:[...state.selected],p_effective_from:d,p_note:$('teamMembershipNoteV61524')?.value?.trim()||null});toast('บันทึกสมาชิกทีมเรียบร้อย','success');closeMembership();await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
 
   function bind(){
     syncNav();
