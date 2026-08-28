@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.26 FIX4";
-document.documentElement.dataset.timeClockBuild = "6.15.26-fix4";
+window.__TIME_CLOCK_BUILD__ = "V6.15.26 FIX5";
+document.documentElement.dataset.timeClockBuild = "6.15.26-fix5";
 
 
 /* ===== js/config.js ===== */
@@ -32809,7 +32809,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.26 FIX4';
+  const VERSION='6.15.26 FIX5';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const state={orgs:[],teams:[],audit:[],members:[],selected:new Set(),activeTeam:null,enforcement:null,runtime:null,runtimeCheckedAt:0,runtimePromise:null,lastError:null,loaded:false,loading:false};
@@ -32825,7 +32825,8 @@ ${names}${extra}
     if(msg.includes('TEAM_MANAGER_ROLE_REQUIRED'))return 'เมนูทีมช่างเทคนิคสำหรับ Manager และ HR Admin เท่านั้น';
     if(msg.includes('TEAM_ORG_PERMISSION_DENIED'))return 'ไม่มีสิทธิ์สร้างหรือจัดการทีมในหน่วยงานนี้';
     if(msg.includes('TEAM_CATEGORY_REQUIRED'))return 'กรุณาเลือกประเภทรถยนต์หรือมอเตอร์ไซค์';
-    if(msg.includes('TEAM_MEMBERS_MIN_3'))return 'ทีมต้องมีสมาชิกอย่างน้อย 3 คน';
+    if(msg.includes('TEAM_MEMBERS_MIN_3')||msg.includes('TEAM_FINAL_MEMBERS_MIN_3'))return 'ทีมต้องมีสมาชิก Effective อย่างน้อย 3 คน';
+    if(msg.includes('SOURCE_TEAM_MEMBERS_MIN_3'))return 'ไม่สามารถย้ายสมาชิกได้ เพราะทีมต้นทางที่ใช้งานจะเหลือต่ำกว่า 3 คน';
     if(msg.includes('TEAM_MEMBER_CATEGORY_MISMATCH'))return 'พบพนักงานที่ car_team ไม่ตรงกับประเภททีม';
     if(msg.includes('TEAM_MEMBER_ORG_MISMATCH'))return 'สมาชิกทีมต้องอยู่ในหน่วยงานเดียวกับ Team Master';
     if(msg.includes('TEAM_MEMBER_OVERLAP'))return 'พนักงานบางคนมี Team Membership ซ้อนกันในวันที่มีผล';
@@ -32834,7 +32835,7 @@ ${names}${extra}
     if(msg.includes('TEAM_RUNTIME_ACTOR_NOT_FOUND'))return 'Backend ไม่พบ Session ผู้ใช้งานปัจจุบัน กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่';
     if(msg.includes('TEAM_RUNTIME_ROLE_DENIED'))return 'บัญชีปัจจุบันไม่มีสิทธิ์ Manager / HR Admin สำหรับ Team Module';
     if(msg.includes('JWT')||msg.includes('auth.uid'))return 'Session Supabase ไม่สมบูรณ์ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่';
-    if(msg.includes('PGRST202')||msg.includes('Could not find the function'))return 'กรุณาตรวจสอบ SQL V6.15.26 FIX3 และ Hard Refresh Web App';
+    if(msg.includes('PGRST202')||msg.includes('Could not find the function'))return 'กรุณาตรวจสอบ SQL V6.15.26 FIX5 และ Hard Refresh Web App';
     return msg;
   }
   async function rpc(name,args={}){const c=app()?.state?.client;if(!c)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');const {data,error}=await c.rpc(name,args);if(error)throw error;return data;}
@@ -32890,7 +32891,7 @@ ${names}${extra}
     try{return await task;}
     catch(error){
       if(!silent)throw error;
-      console.warn('Background Team Runtime V6.15.26 FIX4',error);
+      console.warn('Background Team Runtime V6.15.26 FIX5',error);
       setRuntimeBanner('warning','ข้อมูลทีมโหลดได้ แต่ตรวจ Runtime เพิ่มเติมไม่สำเร็จ',human(error));
       return null;
     }finally{state.runtimePromise=null;}
@@ -32920,14 +32921,27 @@ ${names}${extra}
     const current=selectedOrgId();
     host.innerHTML=state.orgs.map(o=>`<button type="button" class="team-master-org-card-v61523 ${String(current)===String(o.org_id)?'active':''}" data-team-master-org-v61523="${esc(o.org_id)}"><div class="team-master-org-main-v61523"><span>${esc(o.org_code)}</span><strong>${esc(o.org_name)}</strong><small>${Number(o.car_employee_count||0)} รถยนต์ · ${Number(o.motorcycle_employee_count||0)} มอเตอร์ไซค์ · ${Number(o.unspecified_employee_count||0)} ไม่ระบุ</small></div><div class="team-master-org-stats-v61523"><b>${Number(o.active_team_count||0)}</b><small>ทีม</small></div><div class="team-master-next-v61523"><span>ทีมรถยนต์ถัดไป</span><code>${esc(o.next_car_team_code||'-')}</code></div></button>`).join('');
   }
-  function visibleTeams(){const st=statusFilter(),cat=categoryFilter();return state.teams.filter(t=>(!cat||t.team_category===cat)&&(st==='ALL'||(st==='ACTIVE'&&t.is_active===true)||(st==='INACTIVE'&&t.is_active===false)));}
+  function teamLifecycle(t){
+    const explicit=String(t?.team_status||'').toUpperCase();
+    if(['DRAFT','ACTIVE','INACTIVE'].includes(explicit))return explicit;
+    if(t?.is_active===false)return 'INACTIVE';
+    return Number(t?.active_member_count||0)>=3?'ACTIVE':'DRAFT';
+  }
+  function teamStatusBadge(t){
+    const st=teamLifecycle(t);
+    if(st==='ACTIVE')return '<span class="badge badge-green">ใช้งาน</span>';
+    if(st==='DRAFT')return '<span class="badge badge-amber">รอสมาชิก</span>';
+    return '<span class="badge badge-gray">ปิดใช้งาน</span>';
+  }
+  function visibleTeams(){const st=statusFilter(),cat=categoryFilter();return state.teams.filter(t=>{const lifecycle=teamLifecycle(t);return(!cat||t.team_category===cat)&&(st==='ALL'||st===lifecycle);});}
   function renderTeams(){
     const rows=visibleTeams(),body=$('teamMasterBodyV61523');
-    if(body)body.innerHTML=rows.length?rows.map(t=>`<tr class="${t.is_active?'':'team-master-row-inactive-v61523'}"><td><div class="team-master-team-cell-v61523"><span class="team-master-team-icon-v61523">${String(t.team_no||'').padStart(2,'0')}</span><div><strong>${esc(t.team_name)}</strong><code>${esc(t.team_code)}</code></div></div></td><td>${catChip(t.team_category)}</td><td><strong>${esc(t.org_code)}</strong><small class="team-master-sub-v61523">${esc(t.org_name)}</small></td><td><strong>${Number(t.active_member_count||0)} คน</strong><small class="team-master-sub-v61523">${Number(t.active_member_count||0)>=3?'พร้อม':'ต้องมีอย่างน้อย 3 คน'}</small></td><td>${t.is_active?'<span class="badge badge-green">ใช้งาน</span>':'<span class="badge badge-gray">ปิดใช้งาน</span>'}</td><td class="nowrap">${esc(fmtDateTime(t.created_at))}</td><td><div class="org-row-actions">${t.is_active?`<button class="btn btn-soft btn-sm" data-team-membership-v61524="${esc(t.team_id)}">จัดสมาชิก</button><button class="btn btn-danger-soft btn-sm" data-team-master-deactivate-v61523="${esc(t.team_id)}">ปิด</button>`:'<span class="team-master-locked-v61523">เก็บประวัติ</span>'}</div></td></tr>`).join(''):'<tr><td colspan="7" class="fc-empty">ไม่พบ Team Master ตามเงื่อนไข</td></tr>';
-    const all=state.teams.length,active=state.teams.filter(t=>t.is_active).length;
+    if(body)body.innerHTML=rows.length?rows.map(t=>{const lifecycle=teamLifecycle(t),members=Number(t.active_member_count||0);return `<tr class="${lifecycle==='INACTIVE'?'team-master-row-inactive-v61523':''}"><td><div class="team-master-team-cell-v61523"><span class="team-master-team-icon-v61523">${String(t.team_no||'').padStart(2,'0')}</span><div><strong>${esc(t.team_name)}</strong><code>${esc(t.team_code)}</code></div></div></td><td>${catChip(t.team_category)}</td><td><strong>${esc(t.org_code)}</strong><small class="team-master-sub-v61523">${esc(t.org_name)}</small></td><td><strong>${members} คน</strong><small class="team-master-sub-v61523">${lifecycle==='ACTIVE'?'พร้อมใช้งาน':lifecycle==='DRAFT'?`รอสมาชิกอีก ${Math.max(0,3-members)} คน`:'เก็บประวัติ'}</small></td><td>${teamStatusBadge(t)}</td><td class="nowrap">${esc(fmtDateTime(t.created_at))}</td><td><div class="org-row-actions">${lifecycle!=='INACTIVE'?`<button class="btn btn-soft btn-sm" data-team-membership-v61524="${esc(t.team_id)}">จัดสมาชิก</button><button class="btn btn-danger-soft btn-sm" data-team-master-deactivate-v61523="${esc(t.team_id)}">ปิด</button>`:'<span class="team-master-locked-v61523">เก็บประวัติ</span>'}</div></td></tr>`;}).join(''):'<tr><td colspan="7" class="fc-empty">ไม่พบ Team Master ตามเงื่อนไข</td></tr>';
+    const all=state.teams.length,active=state.teams.filter(t=>teamLifecycle(t)==='ACTIVE').length,draft=state.teams.filter(t=>teamLifecycle(t)==='DRAFT').length,inactive=state.teams.filter(t=>teamLifecycle(t)==='INACTIVE').length;
     $('teamMasterKpiAllV61523')&&($('teamMasterKpiAllV61523').textContent=all.toLocaleString('th-TH'));
     $('teamMasterKpiActiveV61523')&&($('teamMasterKpiActiveV61523').textContent=active.toLocaleString('th-TH'));
-    $('teamMasterKpiInactiveV61523')&&($('teamMasterKpiInactiveV61523').textContent=(all-active).toLocaleString('th-TH'));
+    $('teamMasterKpiInactiveV61523')&&($('teamMasterKpiInactiveV61523').textContent=inactive.toLocaleString('th-TH'));
+    const activeCard=$('teamMasterKpiActiveV61523')?.closest('article')?.querySelector('small');if(activeCard)activeCard.textContent=draft?`พร้อมใช้งาน • รอสมาชิก ${draft.toLocaleString('th-TH')} ทีม`:'มีสมาชิก Effective อย่างน้อย 3 คน';
     $('teamMasterKpiOrgV61523')&&($('teamMasterKpiOrgV61523').textContent=state.orgs.length.toLocaleString('th-TH'));
     const org=selectedOrg();$('teamMasterMetaV61523')&&($('teamMasterMetaV61523').textContent=`${org?`${org.org_code} · ${org.org_name}`:'ทุกหน่วยงานใน Scope'} • ${rows.length} ทีม • สมาชิกขั้นต่ำ 3 คน`);
     const scopeOrgs=selectedOrg()?[selectedOrg()]:state.orgs; const sum=k=>scopeOrgs.reduce((a,o)=>a+Number(o[k]||0),0); $('teamReadinessCarV61524')&&($('teamReadinessCarV61524').textContent=sum('car_unassigned_count').toLocaleString('th-TH')); $('teamReadinessMotorcycleV61524')&&($('teamReadinessMotorcycleV61524').textContent=sum('motorcycle_unassigned_count').toLocaleString('th-TH')); $('teamReadinessUnspecifiedV61524')&&($('teamReadinessUnspecifiedV61524').textContent=sum('unspecified_employee_count').toLocaleString('th-TH'));
@@ -32949,7 +32963,7 @@ ${names}${extra}
       state.enforcement=await rpc('ta_get_team_enforcement_state_v61525',{});
       renderEnforcement();
     }catch(e){
-      console.warn('Team Enforcement V6.15.26 FIX4',e);
+      console.warn('Team Enforcement V6.15.26 FIX5',e);
       const st=$('teamEnforcementStatusV61525');if(st){st.textContent='โหลดไม่สำเร็จ';st.className='badge badge-red';}
       const d=$('teamEnforcementDetailV61525');if(d)d.textContent=human(e);
       const note=$('teamEnforcementReadyV61525');if(note)note.textContent='ตรวจ SQL / Session แล้วลองใหม่';
@@ -32973,9 +32987,9 @@ ${names}${extra}
     const x=state.enforcement||{};const enable=x.enforcement_enabled!==true;
     if(enable&&Number(x.car_without_team||0)>0)return toast('ยังมีช่างรถยนต์ที่ไม่ได้กำหนดทีม ไม่สามารถเปิด Enforcement ได้','warning');
     const ok=await window.tcConfirm?.({title:enable?'เปิด Team Enforcement':'ปิด Team Enforcement',message:enable?'หลังเปิด ช่างรถยนต์ทุกคนต้องมี Effective Team ก่อนจัดกะทุกช่องทาง รวมคำขอที่แก้ Schedule':'การปิดจะใช้สำหรับช่วง Migration/แก้ข้อมูลเท่านั้น และมี Audit เก็บประวัติ',confirmText:enable?'เปิดใช้งาน':'ปิดชั่วคราว',tone:enable?'primary':'danger'});if(!ok)return;
-    try{app()?.showLoading?.('กำลังปรับ Team Enforcement...');state.enforcement=await rpc('ta_set_team_enforcement_v61525',{p_enabled:enable,p_note:enable?'Enable from Team Master V6.15.26 FIX4':'Disable from Team Master V6.15.26 FIX4'});renderEnforcement();toast(enable?'เปิด Team Enforcement แล้ว':'ปิด Team Enforcement แล้ว','success');}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+    try{app()?.showLoading?.('กำลังปรับ Team Enforcement...');state.enforcement=await rpc('ta_set_team_enforcement_v61525',{p_enabled:enable,p_note:enable?'Enable from Team Master V6.15.26 FIX5':'Disable from Team Master V6.15.26 FIX5'});renderEnforcement();toast(enable?'เปิด Team Enforcement แล้ว':'ปิด Team Enforcement แล้ว','success');}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
   }
-  async function loadAudit(){try{state.audit=await rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:100})||[];renderAudit();}catch(e){console.warn('Team audit V6.15.26 FIX4',e);const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=`<tr><td colspan="5" class="fc-empty">โหลดประวัติไม่สำเร็จ: ${esc(human(e))}</td></tr>`;}}
+  async function loadAudit(){try{state.audit=await rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:100})||[];renderAudit();}catch(e){console.warn('Team audit V6.15.26 FIX5',e);const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=`<tr><td colspan="5" class="fc-empty">โหลดประวัติไม่สำเร็จ: ${esc(human(e))}</td></tr>`;}}
   async function load(options={}){
     if(!allowedRole()){syncNav();return;}
     if(state.loading)return;
@@ -32983,7 +32997,7 @@ ${names}${extra}
     state.loading=true;state.lastError=null;setTeamLoading('กำลังโหลดข้อมูลทีม...');
     try{
       const current=selectedOrgId();
-      // FIX4: โหลดข้อมูลที่ผู้ใช้ต้องเห็นก่อน และตรวจ Runtime แบบ background/cached
+      // FIX5: โหลด Team lifecycle แบบ date-aware โดยไม่เพิ่ม Runtime blocking
       // เพื่อลดเวลารอหน้า Team Master โดยไม่เสีย Backend authorization จริงของแต่ละ RPC.
       const sideLoads=Promise.allSettled([loadAudit(),loadEnforcement()]);
       state.orgs=await rpc('ta_get_team_org_options_v61524',{p_include_inactive:false})||[];
@@ -32998,13 +33012,13 @@ ${names}${extra}
         return;
       }
       const orgId=selectedOrgId()||null;
-      state.teams=await rpc('ta_get_team_master_v61524',{p_org_id:orgId,p_include_inactive:statusFilter()!=='ACTIVE',p_search:$('teamMasterSearchV61523')?.value?.trim()||null})||[];
+      try{state.teams=await rpc('ta_get_team_master_v61526',{p_org_id:orgId,p_include_inactive:['ALL','INACTIVE'].includes(statusFilter()),p_search:$('teamMasterSearchV61523')?.value?.trim()||null,p_work_date:today()})||[];}catch(readerError){if(!/PGRST202|42883|Could not find the function|does not exist/i.test(String(readerError?.code||'')+' '+String(readerError?.message||readerError||'')))throw readerError;state.teams=await rpc('ta_get_team_master_v61524',{p_org_id:orgId,p_include_inactive:['ALL','INACTIVE'].includes(statusFilter()),p_search:$('teamMasterSearchV61523')?.value?.trim()||null})||[];}
       renderOrgList();renderTeams();
       state.loaded=true;
       scheduleRuntimeDiagnostic(forceRuntime);
       sideLoads.catch(()=>{});
     }catch(e){
-      console.error('Team Runtime V6.15.26 FIX4',e);
+      console.error('Team Runtime V6.15.26 FIX5',e);
       setTeamError(e,e?.code||e?.details||'TEAM_LOAD');
       toast(human(e),'error');
       if(forceRuntime)scheduleRuntimeDiagnostic(true);

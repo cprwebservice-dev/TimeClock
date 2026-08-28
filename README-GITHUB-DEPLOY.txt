@@ -1,6 +1,12 @@
-TimeClock Enterprise V6.15.26 FIX3
-Team Create UX + Friendly Team Code
+TimeClock Enterprise V6.15.26 FIX5 — GitHub Deploy Slim
+Team Draft / Active Lifecycle + Minimum 3 Guard
 
-Deploy: upload all files in this folder to GitHub Pages repository.
-Run the separate V6.15.26 FIX3 SQL before using Team Create.
-Hard refresh after deployment.
+Upload all files in this folder to the same GitHub Pages root.
+Run the separate V6.15.26 FIX5 SQL before testing Team lifecycle.
+
+Lifecycle:
+- DRAFT: Team Master open, effective members < 3
+- ACTIVE: effective members >= 3
+- INACTIVE: team closed
+
+CAR Team Enforcement policy remains unchanged.
