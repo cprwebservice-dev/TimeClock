@@ -1,8 +1,2823 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><link rel="icon" href="./favicon.svg" type="image/svg+xml"><title>Time-Clock Enterprise V6.15.23</title><script>
-(function(){
-  var repo='/TimeClock/';
-  var path=location.pathname.replace(repo,'');
-  var target=location.origin+repo+'?route='+encodeURIComponent(path)+location.search.replace(/^\?/,'&')+location.hash;
-  location.replace(target);
-})();
-</script></head><body></body></html>
+<!DOCTYPE html>
+
+<!-- DEPLOYMENT_OK: Time-Clock Enterprise V6.14.73 | index.html must begin with DOCTYPE -->
+<html lang="th">
+<head>
+<meta charset="utf-8"/>
+<link rel="icon" href="./favicon.svg" type="image/svg+xml"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta content="#0b1f3a" name="theme-color"/>
+<title>Time-Clock Enterprise V6.14.73 | CP Retailink</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="./app.css?v=6.15.24-20260828a" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="toast-stack" id="toastStack"></div>
+<div class="loading-overlay hidden" id="loadingOverlay">
+<div class="loading-box"><div class="spinner"></div><span id="loadingText">กำลังประมวลผล...</span></div>
+</div>
+<!-- Login -->
+<section class="login-screen" id="loginScreen">
+<div class="login-hero">
+<div class="brand-lockup">
+<div class="brand-mark">TC</div>
+<div><div class="brand-title">Time-Clock Management</div><div class="brand-subtitle">CP Retailink Workforce Operations</div></div>
+</div>
+<h1>บริหารกะและเวลา<br/><span>ช่างเทคนิค</span>ในที่เดียว</h1>
+<p>ตรวจสอบเวลาเข้า–ออก จัดกะรายเดือน ติดตามรายการผิดปกติ และดู Dashboard ตามสิทธิ์พื้นที่แบบเรียลไทม์</p>
+<div class="feature-pills">
+<div class="feature-pill">✓ Dashboard ภาพรวม</div>
+<div class="feature-pill">✓ ปฏิทินจัดกะ</div>
+<div class="feature-pill">✓ ตรวจเวลาไม่ครบ</div>
+<div class="feature-pill">✓ Role &amp; Scope</div>
+</div>
+</div>
+<div class="login-panel-wrap">
+<form class="login-card" id="loginForm">
+<div class="brand-lockup" style="margin-bottom:22px;color:var(--navy-900)">
+<div class="brand-mark">TC</div>
+<div><div class="brand-title">ระบบ Time-Clock</div><div class="brand-subtitle" style="color:var(--slate-500)">เข้าสู่ระบบด้วยบัญชี Supabase</div></div>
+</div>
+<h2>ยินดีต้อนรับ</h2>
+<p>กรอกอีเมลและรหัสผ่านเพื่อเข้าสู่ระบบ</p>
+<div class="field"><label for="loginEmail">อีเมล</label><input autocomplete="username" class="input" id="loginEmail" placeholder="name@company.com" required="" type="email"/></div>
+<div class="field">
+<label for="loginPassword">รหัสผ่าน</label>
+<div class="account-password-input-wrap login-password-input-wrap">
+<input autocomplete="current-password" class="input account-password-input login-password-input" id="loginPassword" placeholder="••••••••" required="" type="password"/>
+<button aria-label="แสดงรหัสผ่าน" aria-pressed="false" class="account-password-toggle login-password-toggle" id="loginPasswordToggle" type="button">
+<span class="account-password-toggle-icon">◉</span>
+<span class="account-password-toggle-text">แสดง</span>
+</button>
+</div>
+</div>
+<div class="login-password-help">
+<button class="login-link-button" id="forgotPasswordBtn" type="button">
+            ลืมรหัสผ่าน?
+          </button>
+</div>
+<button class="btn btn-primary btn-block" type="submit">เข้าสู่ระบบ</button>
+<button class="btn btn-light btn-block" id="openConfigFromLogin" style="margin-top:10px" type="button">ตั้งค่าการเชื่อมต่อ Supabase</button>
+<div style="margin-top:18px;text-align:center;color:var(--slate-500);font-size:10px">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์ • <span id="appBuildVersion">V6.14.94</span></div>
+</form>
+</div>
+</section>
+<!-- App -->
+<div class="app-shell hidden" id="appShell">
+<aside class="sidebar" id="sidebar">
+<div class="sidebar-brand">
+<div class="brand-mark">TC</div>
+<div class="sidebar-brand-text"><strong>Time-Clock</strong><span>Technician Management</span></div>
+</div>
+<button aria-label="ย่อเมนู" aria-pressed="false" class="sidebar-collapse-btn desktop-only" id="sidebarCollapseBtn" title="ย่อเมนู">
+<span class="sidebar-collapse-icon">‹</span>
+</button>
+<nav class="sidebar-nav">
+<div class="nav-label">ภาพรวม</div>
+<button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span><span class="nav-text">Dashboard</span></button>
+<div class="nav-label nav-label-spaced">เวลาทำงาน</div>
+<button class="nav-item" data-page="attendance"><span class="nav-icon">◷</span><span class="nav-text">รายละเอียดเวลาทำงาน</span></button>
+<div class="nav-label nav-label-spaced">คำขอและตรวจสอบ</div>
+<button class="nav-item" data-page="shift-requests"><span class="nav-icon">⇄</span><span class="nav-text">คำขอ / แจ้งข้อมูล</span><span class="nav-count hidden" id="shiftRequestNavBadge">0</span></button>
+<button class="nav-item hidden" data-page="team-master" id="teamMasterNavV61523"><span class="nav-icon">◉</span><span class="nav-text">ทีมช่างเทคนิค</span></button>
+<button class="nav-item hidden" data-page="team-portal" id="teamPortalNavV61482"><span class="nav-icon">▤</span><span class="nav-text">สมาชิกทีม / Portal</span></button>
+<button class="nav-item" data-page="schedule"><span class="nav-icon">▣</span><span class="nav-text">ปฏิทินจัดกะ</span></button>
+<button class="nav-item" data-page="work-patterns"><span class="nav-icon">⌘</span><span class="nav-text">รูปแบบการทำงาน</span></button>
+
+
+
+
+<div class="nav-label nav-label-spaced">รายงาน</div>
+<button class="nav-item" data-page="report"><span class="nav-icon">▤</span><span class="nav-text">ศูนย์รายงาน</span></button>
+<div class="hidden" id="adminNavGroup">
+<div class="nav-label">HR ADMIN</div>
+<button class="nav-item" data-page="admin-center"><span class="nav-icon">◆</span><span class="nav-text">HR Admin Center</span></button>
+<button class="nav-item" data-page="admin-periods"><span class="nav-icon">◷</span><span class="nav-text">จัดการรอบระบบ</span></button>
+<button class="nav-item" data-page="admin-certification-reasons" id="certificationReasonsNav"><span class="nav-icon">✓</span><span class="nav-text">เหตุผลรับรองเวลา</span></button>
+<button class="nav-item" data-page="admin-shifts"><span class="nav-icon">◫</span><span class="nav-text">ตั้งค่ากะทำงาน</span></button>
+<button class="nav-item" data-page="admin-holidays"><span class="nav-icon">◈</span><span class="nav-text">วันหยุดนักขัตฤกษ์</span></button>
+<button class="nav-item" data-page="admin-org"><span class="nav-icon">⌘</span><span class="nav-text">ผังโครงสร้างองค์กร</span></button>
+<button class="nav-item" data-page="admin-accounts"><span class="nav-icon">♜</span><span class="nav-text">จัดการบัญชีผู้ใช้งาน</span></button>
+<button class="nav-item" data-page="admin-employee-portal"><span class="nav-icon">⌁</span><span class="nav-text">Employee Portal</span></button>
+<button class="nav-item" data-page="admin-users"><span class="nav-icon">♙</span><span class="nav-text">User และ Scope</span></button>
+<button class="nav-item" data-page="admin-import"><span class="nav-icon">⇧</span><span class="nav-text">นำเข้าพนักงาน</span></button>
+<button class="nav-item" data-page="admin-time-import"><span class="nav-icon">⇩</span><span class="nav-text">นำเข้าข้อมูลลงเวลา</span></button>
+<button class="nav-item" data-page="admin-attendance-rebuild"><span class="nav-icon">↻</span><span class="nav-text">ประมวลผล Attendance</span></button>
+<button class="nav-item hidden" data-page="system-settings" id="systemSettingsNav"><span class="nav-icon">⚙</span><span class="nav-text">System Settings</span></button>
+</div>
+</nav>
+<div class="sidebar-footer">
+<div class="sidebar-user">
+<div aria-hidden="true" class="sidebar-user-avatar" id="sidebarUserAvatar">U</div>
+<div class="sidebar-user-meta">
+<strong id="sidebarUserName">-</strong>
+<span id="sidebarUserEmail">-</span>
+</div>
+</div>
+</div>
+</aside>
+<button aria-label="ปิดเมนู" class="sidebar-scrim" id="sidebarScrim" type="button"></button>
+<main class="main-shell">
+<header class="topbar">
+<div class="topbar-left">
+<button aria-label="เปิดเมนู" class="btn btn-light btn-icon mobile-only" id="mobileMenuBtn">☰</button>
+<div class="page-heading"><strong id="pageTitle">Dashboard</strong><span id="pageSubtitle">ภาพรวมการลงเวลาและการจัดกะ</span></div>
+</div>
+<div class="topbar-right enterprise-actions">
+<div class="global-search desktop-only">
+<span>⌕</span><input aria-label="ค้นหา" id="globalSearch" placeholder="ค้นหาเมนูหรือพนักงาน" type="search"/>
+</div>
+<button aria-label="เปลี่ยนธีม" class="btn btn-light btn-icon" id="themeToggleBtn" title="เปลี่ยนธีม">☾</button>
+<button aria-label="การแจ้งเตือน" class="btn btn-light btn-icon notification-btn" id="notificationBtn" title="การแจ้งเตือน">♢<span class="notification-count" id="notificationCount">0</span></button>
+<span class="role-badge" id="roleBadge">VIEWER</span>
+<button class="btn btn-light btn-icon" id="configBtn" title="ตั้งค่า Supabase">⚙</button>
+<button class="btn btn-danger" id="logoutBtn">ออกจากระบบ</button>
+</div>
+</header>
+<div class="content">
+<!-- Dashboard -->
+<section class="page active enterprise-dashboard" id="page-dashboard">
+<div class="dashboard-welcome">
+<div>
+<span class="eyebrow">WORKFORCE OPERATIONS</span>
+<h2>ภาพรวมการบริหารเวลาและกะทำงาน</h2>
+<p>ติดตามสถานะสำคัญ ตรวจรายการผิดปกติ และดำเนินการได้จากหน้าจอเดียว</p>
+</div>
+<div class="dashboard-welcome-actions">
+<span class="updated-chip" id="dashboardUpdatedAt">อัปเดตล่าสุด --:--</span>
+<button class="btn btn-soft" data-go-page="schedule">จัดกะรายเดือน</button>
+<button class="btn btn-primary" data-go-page="attendance">เปิดรายละเอียดเวลา</button>
+</div>
+</div>
+<div class="panel filter-panel">
+<div class="panel-body">
+<div class="toolbar enterprise-filterbar">
+<div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="dashStart" type="date"/></div>
+<div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="dashEnd" type="date"/></div>
+<div class="field"><label>พื้นที่</label><select class="select" id="dashZone"><option value="">ทุกพื้นที่</option></select></div>
+<div class="field"><label>หน่วยงาน</label><select class="select" id="dashDepartment"><option value="">ทุกหน่วยงาน</option></select></div>
+<div class="toolbar-actions">
+<button class="btn btn-light" id="clearDashboardFilterBtn">ล้างตัวกรอง</button>
+<button class="btn btn-primary" id="loadDashboardBtn">แสดงผล</button>
+</div>
+</div>
+</div>
+</div>
+<div class="kpi-grid section-gap enterprise-kpis" id="dashboardKpis"></div>
+<div class="executive-strip section-gap">
+<article class="executive-score-card">
+<div class="executive-score-head"><div><span class="eyebrow">ATTENDANCE HEALTH</span><h3>คะแนนสุขภาพการลงเวลา</h3></div><span class="health-status" id="executiveScoreStatus">กำลังประเมิน</span></div>
+<div class="executive-score-body">
+<div class="score-ring" id="executiveScoreRing"><div><strong id="executiveScore">0</strong><span>/100</span></div></div>
+<div class="score-copy"><strong id="executiveScoreTitle">รอข้อมูล Dashboard</strong><p id="executiveScoreText">ระบบจะประเมินจากความครบถ้วนของเวลาและรายการที่ต้องตรวจสอบ</p><div class="score-scale"><span>ต้องปรับปรุง</span><span>ดีมาก</span></div></div>
+</div>
+</article>
+<article class="executive-attention-card">
+<div class="executive-card-head"><div><span class="eyebrow">NEED ATTENTION</span><h3>ประเด็นที่ควรดำเนินการ</h3></div><button class="btn btn-light btn-sm" data-go-page="attendance">เปิดรายละเอียดเวลา</button></div>
+<div class="attention-matrix" id="executiveAttention"></div>
+</article>
+<article class="executive-confirm-card">
+<div class="executive-card-head"><div><span class="eyebrow">SCHEDULE CONTROL</span><h3>ความพร้อมของแผนกะ</h3></div><button class="btn btn-light btn-sm" data-go-page="schedule">เปิดปฏิทิน</button></div>
+<div class="schedule-readiness" id="scheduleReadiness"></div>
+</article>
+</div>
+<div class="dashboard-main-grid section-gap">
+<div class="panel overview-card">
+<div class="panel-header"><div><h3>คุณภาพการลงเวลา</h3><p>สัดส่วนรายการลงเวลาครบเทียบกับรายการทั้งหมด</p></div><span class="panel-chip">Realtime</span></div>
+<div class="panel-body overview-body">
+<div aria-label="กราฟสัดส่วนการลงเวลา" class="attendance-donut" id="attendanceDonut"><div class="donut-center"><strong id="donutPercent">0%</strong><span>ลงเวลาครบ</span></div></div>
+<div class="metric-legend" id="dashboardLegend"></div>
+</div>
+</div>
+<div class="panel action-center">
+<div class="panel-header"><div><h3>ศูนย์ดำเนินการ</h3><p>รายการที่ควรได้รับการตรวจสอบก่อน</p></div><button class="btn btn-light btn-icon" data-go-page="attendance" title="เปิดรายการทั้งหมด">→</button></div>
+<div class="panel-body quick-list enterprise-quick-list" id="dashboardQuick"></div>
+</div>
+</div>
+<div class="dashboard-secondary-grid section-gap">
+<div class="panel">
+<div class="panel-header"><div><h3>สถานะการลงเวลา</h3><p>เปรียบเทียบรายการสำคัญตามช่วงวันที่</p></div></div>
+<div class="panel-body status-bars" id="dashboardBars"></div>
+</div>
+<div class="panel">
+<div class="panel-header"><div><h3>สรุปเชิงปฏิบัติการ</h3><p>ตัวชี้วัดสำหรับติดตามการดำเนินงาน</p></div></div>
+<div class="panel-body operational-summary" id="operationalSummary"></div>
+</div>
+<div class="panel">
+<div class="panel-header"><div><h3>กิจกรรมล่าสุด</h3><p>สรุปจากข้อมูลที่โหลดล่าสุด</p></div></div>
+<div class="panel-body activity-list" id="recentActivity"></div>
+</div>
+</div>
+<div class="executive-insights-grid section-gap">
+<div class="panel executive-insight-panel">
+<div class="panel-header"><div><h3>Executive Insights</h3><p>ข้อสังเกตที่คำนวณจากข้อมูลชุดล่าสุดโดยไม่สร้างข้อมูลสมมติ</p></div><span class="panel-chip">Auto analysis</span></div>
+<div class="panel-body executive-insights" id="executiveInsights"></div>
+</div>
+<div class="panel executive-distribution-panel">
+<div class="panel-header"><div><h3>Workforce Distribution</h3><p>สัดส่วนสถานะหลักจากรายการทั้งหมด</p></div></div>
+<div class="panel-body distribution-list" id="workforceDistribution"></div>
+</div>
+</div>
+</section>
+
+<!-- HR Admin · Time Certification Reasons V6.11.48 -->
+<section class="page certification-reasons-admin-page-v61148" id="page-admin-certification-reasons">
+  <div class="cert-reason-admin-hero-v61148">
+    <div>
+      <span class="eyebrow">TIME CERTIFICATION MASTER</span>
+      <h2>เหตุผลรับรองเวลา</h2>
+      <p>จัดการรายการเหตุผลที่ Manager และ HR Admin เลือกใช้ตอนรับรองเวลาทำงานรายวัน</p>
+    </div>
+    <div class="cert-reason-admin-hero-actions-v61148">
+      <span class="cert-reason-admin-role-v61148">HR ADMIN ONLY</span>
+      <button class="btn btn-primary" id="certReasonAddBtn" type="button">＋ เพิ่มเหตุผล</button>
+    </div>
+  </div>
+
+  <div class="cert-reason-admin-summary-v61148">
+    <article><span>เหตุผลทั้งหมด</span><strong id="certReasonTotalCount">0</strong><small>รวม Active / Inactive</small></article>
+    <article><span>เปิดใช้งาน</span><strong id="certReasonActiveCount">0</strong><small>แสดงให้เลือกใน Time Certification</small></article>
+    <article><span>ปิดใช้งาน</span><strong id="certReasonInactiveCount">0</strong><small>เก็บประวัติ แต่ไม่แสดงให้เลือก</small></article>
+  </div>
+
+  <div class="panel certification-reasons-admin-panel-v61148">
+    <div class="panel-header cert-reason-admin-panel-head-v61148">
+      <div>
+        <h3>รายการเหตุผลรับรองเวลา</h3>
+        <p>ค้นหา แก้ไข เปิด/ปิดสถานะ และกำหนดว่าต้องบังคับหมายเหตุหรือไม่</p>
+      </div>
+      <button class="btn btn-light" id="certReasonRefreshBtn" type="button">↻ รีเฟรช</button>
+    </div>
+    <div class="panel-body">
+      <div class="cert-reason-toolbar-v61139 cert-reason-toolbar-v61148">
+        <label class="cert-reason-search-v61139">
+          <span>⌕</span>
+          <input class="input" id="certReasonSearch" placeholder="ค้นหารหัส หรือรายละเอียดเหตุผล"/>
+        </label>
+      </div>
+
+      <div class="table-wrap cert-reason-table-wrap-v61139">
+        <table class="data-table cert-reason-table-v61139">
+          <thead>
+            <tr>
+              <th>รหัสเหตุผล</th>
+              <th>รายละเอียด</th>
+              <th>หมายเหตุ</th>
+              <th>สถานะ</th>
+              <th>ลำดับ</th>
+              <th>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="certReasonTableBody">
+            <tr><td colspan="6" class="empty-cell">กดรีเฟรชเพื่อโหลดเหตุผล</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="cert-reason-footnote-v61139">
+        เหตุผลที่เคยถูกใช้งานแล้วควร “ปิดใช้งาน” แทนการลบ เพื่อรักษาประวัติย้อนหลัง
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- System Settings -->
+<section class="page settings-page" id="page-system-settings">
+<div class="settings-hero">
+<div><span class="eyebrow">ENTERPRISE CONTROL CENTER</span><h2>System Settings &amp; Developer Console</h2><p>กำหนดค่าระบบ ธีม Feature Flags สีของกะ และทดสอบสิทธิ์การใช้งานจากจุดเดียว</p></div>
+<div class="settings-version"><span>System Version</span><strong id="settingsVersionHero">6.10.2</strong><small id="settingsEnvironmentHero">Development</small></div>
+</div>
+<div class="settings-layout section-gap">
+<aside aria-label="เมนูตั้งค่าระบบ" class="settings-tabs">
+<button class="settings-tab active" data-settings-tab="general">◉ <span>General</span></button>
+<button class="settings-tab" data-settings-tab="theme">◐ <span>Theme</span></button>
+<button class="settings-tab" data-settings-tab="developer">⌘ <span>Developer</span></button>
+<button class="settings-tab" data-settings-tab="features">◆ <span>Feature Flags</span></button>
+<button class="settings-tab" data-settings-tab="shifts">▦ <span>Shift Colors</span></button>
+<button class="settings-tab" data-settings-tab="connection">⌁ <span>Connection</span></button>
+<button class="settings-tab" data-settings-tab="about">ⓘ <span>About</span></button>
+</aside>
+<div class="settings-content">
+<div class="settings-panel active" data-settings-panel="general">
+<div class="settings-panel-head"><div><h3>General</h3><p>ข้อมูลหลักและข้อความที่ใช้แสดงในระบบ</p></div><span class="settings-status-dot">Local configuration</span></div>
+<div class="settings-form-grid">
+<div class="field"><label>ชื่อระบบ</label><input class="input" id="setSystemName"/></div>
+<div class="field"><label>Environment</label><select class="select" id="setEnvironment"><option>Development</option><option>UAT</option><option>Production</option></select></div>
+<div class="field"><label>Version</label><input class="input" id="setVersion"/></div>
+<div class="field"><label>ชื่อบริษัท</label><input class="input" id="setCompanyName"/></div>
+<div class="field settings-span-2"><label>ข้อความ Footer</label><input class="input" id="setFooter"/></div>
+</div>
+<div class="settings-actions"><button class="btn btn-light" data-reset-section="general">คืนค่าเริ่มต้น</button><button class="btn btn-primary" data-save-settings="">บันทึกการตั้งค่า</button></div>
+</div>
+<div class="settings-panel" data-settings-panel="theme">
+<div class="settings-panel-head"><div><h3>Theme</h3><p>ปรับรูปแบบการแสดงผลสำหรับผู้ใช้เครื่องนี้</p></div></div>
+<div class="theme-choice-grid">
+<button class="theme-choice" data-theme-choice="light"><span class="theme-preview theme-light"></span><strong>Light</strong><small>พื้นสว่าง อ่านง่าย</small></button>
+<button class="theme-choice" data-theme-choice="dark"><span class="theme-preview theme-dark"></span><strong>Dark</strong><small>ลดแสงหน้าจอ</small></button>
+<button class="theme-choice" data-theme-choice="system"><span class="theme-preview theme-system"></span><strong>System</strong><small>ตามอุปกรณ์</small></button>
+</div>
+<div class="settings-form-grid section-gap-small"><div class="field"><label>Accent Color</label><select class="select" id="setAccent"><option value="blue">Blue–Navy</option><option value="orange">Orange</option><option value="teal">Teal</option></select></div><div class="field"><label>Font</label><select class="select" id="setFont"><option value="Noto Sans Thai">Noto Sans Thai</option><option value="system">System UI</option></select></div></div>
+<div class="settings-actions"><button class="btn btn-primary" data-save-settings="">นำ Theme ไปใช้</button></div>
+</div>
+<div class="settings-panel" data-settings-panel="developer">
+<div class="settings-panel-head"><div><h3>Developer Mode</h3><p>ใช้สำหรับจำลอง Role ฝั่งหน้าจอเท่านั้น โดย RLS ของ Supabase ยังควบคุมสิทธิ์จริงเหมือนเดิม</p></div><label class="switch"><input id="setDeveloperMode" type="checkbox"/><span></span></label></div>
+<div class="developer-role-card"><div><span>สิทธิ์จริง</span><strong id="realRoleValue">-</strong></div><div class="role-arrow">→</div><div class="field"><label>View As</label><select class="select" id="setViewAsRole"><option value="HR_ADMIN">HR_ADMIN</option><option value="MANAGER">MANAGER</option><option value="VIEWER">VIEWER</option></select></div></div>
+<div class="developer-warning">การสลับ Role ไม่ได้ยกระดับสิทธิ์ในฐานข้อมูล ใช้สำหรับตรวจเมนูและ UX เท่านั้น หาก RPC ถูก RLS ปฏิเสธถือว่าเป็นผลที่ถูกต้อง</div>
+<div class="developer-tools"><button class="btn btn-light" id="devClearCacheBtn">Clear UI Cache</button><button class="btn btn-light" id="devRefreshMetadataBtn">Refresh Metadata</button><button class="btn btn-primary" id="devReloadBtn">Apply &amp; Reload UI</button></div>
+</div>
+<div class="settings-panel" data-settings-panel="features">
+<div class="settings-panel-head"><div><h3>Feature Flags</h3><p>เปิดหรือซ่อนเมนูระหว่างการพัฒนา</p></div></div>
+<div class="feature-list" id="featureFlagList"></div>
+<div class="settings-actions"><button class="btn btn-primary" data-save-settings="">บันทึก Feature Flags</button></div>
+</div>
+<div class="settings-panel" data-settings-panel="shifts">
+<div class="settings-panel-head"><div><h3>Shift Colors</h3><p>กำหนดสีจากประเภทที่ User เห็นจริงในหน้าจัดกะ • ระบบสร้างพื้นหลัง ขอบ และ Hover ให้อัตโนมัติ</p></div><span class="settings-status-dot">Live Preview</span></div>
+<div class="shift-color-section-v6140">
+<div class="shift-color-section-head-v6140"><div><strong>ประเภทกะ</strong><small>สัมพันธ์กับ Icon ในตารางกะรายบุคคล • เต็มเดือน</small></div></div>
+<div class="shift-color-grid shift-color-grid-v6140" id="shiftColorGrid"></div>
+</div>
+<div class="shift-color-section-v6140">
+<div class="shift-color-section-head-v6140"><div><strong>สถานะในตารางจัดกะ</strong><small>แยกจากสีกะ เพื่อให้ Selected / Hover / Warning อ่านง่ายโดยไม่กลบประเภทกะ</small></div></div>
+<div class="shift-color-grid shift-color-grid-v6140 status-color-grid-v6140" id="scheduleStatusColorGrid"></div>
+</div>
+<div class="shift-color-section-v6140 attendance-color-section-v6140">
+<div class="shift-color-section-head-v6140"><div><strong>Attendance</strong><small>สีสถานะที่ไม่ใช่ประเภทกะ</small></div></div>
+<div class="shift-color-grid shift-color-grid-v6140 attendance-color-grid-v6140" id="attendanceColorGrid"></div>
+</div>
+<div class="shift-color-preview-wrap-v6140">
+<div class="shift-color-section-head-v6140"><div><strong>ตัวอย่างการแสดงผล</strong><small>Preview จะเปลี่ยนทันทีเมื่อเลือกสี • ไม่บันทึกจนกดปุ่มด้านล่าง</small></div></div>
+<div class="shift-color-preview-v6140" id="shiftColorPreview"></div>
+<div class="schedule-status-preview-v6140" id="scheduleStatusPreview"></div>
+</div>
+<div class="settings-actions"><button class="btn btn-light" id="resetShiftColorsBtn">คืนค่าสีเริ่มต้น</button><button class="btn btn-primary" data-save-settings="">บันทึกสีการจัดกะ</button></div>
+</div>
+
+<div class="settings-panel" data-settings-panel="connection">
+<div class="settings-panel-head"><div><h3>Supabase Connection</h3><p>แสดงข้อมูลเชื่อมต่อจาก Browser Storage โดยปิดบังค่า Key</p></div><span class="connection-chip" id="connectionStatus">Not tested</span></div>
+<div class="settings-form-grid"><div class="field settings-span-2"><label>Project URL</label><input class="input" id="setConnectionUrl" readonly=""/></div><div class="field settings-span-2"><label>Publishable / Anon Key</label><input class="input" id="setConnectionKey" readonly=""/></div><div class="field"><label>Project Reference</label><input class="input" id="setProjectRef" readonly=""/></div><div class="field"><label>Session</label><input class="input" id="setSessionStatus" readonly=""/></div></div>
+<div class="settings-actions"><button class="btn btn-light" id="openLegacyConfigBtn">แก้ไข Connection</button><button class="btn btn-primary" id="testConnectionBtn">Test Connection</button></div>
+</div>
+<div class="settings-panel" data-settings-panel="about">
+<div class="settings-panel-head"><div><h3>About</h3><p>ข้อมูล Build และสภาพแวดล้อมของระบบ</p></div></div>
+<div class="about-grid"><div><span>Application</span><strong id="aboutAppName">Time-Clock Management</strong></div><div><span>Version</span><strong id="aboutVersion">6.14.94</strong></div><div><span>Build</span><strong id="aboutBuild">Enterprise V6.14.94 Employee Request Workflow</strong></div><div><span>Frontend</span><strong>HTML / CSS / JavaScript</strong></div><div><span>Backend</span><strong>Supabase PostgreSQL</strong></div><div><span>Hosting</span><strong>GitHub Pages</strong></div></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Attendance -->
+<section class="page" id="page-attendance">
+<div class="attendance-hero-v61462">
+  <div class="attendance-hero-copy-v61462">
+    <span class="attendance-hero-eyebrow-v61462">ATTENDANCE DETAIL</span>
+    <h2>รายละเอียดเวลาทำงาน</h2>
+    <p>แสดงข้อมูลครบทุกวันตามช่วงวันที่ รวมวันหยุด วันลา วันที่ไม่มีการลงเวลา และวันที่ยังไม่ถึงกำหนดทำงาน</p>
+    <div class="attendance-hero-chips-v61462">
+      <span>✓ ครบทุกวันตามปฏิทิน</span>
+      <span id="attendanceCoverageV61462">กำลังเตรียมข้อมูล...</span>
+    </div>
+  </div>
+  <div class="attendance-month-nav-v61462">
+    <button class="btn btn-light" id="attendancePrevMonthV61462" type="button">‹ เดือนก่อน</button>
+    <button class="btn btn-primary" id="attendanceThisMonthV61462" type="button">เดือนนี้</button>
+    <button class="btn btn-light" id="attendanceNextMonthV61462" type="button">เดือนถัดไป ›</button>
+  </div>
+</div>
+<div class="panel attendance-filter-panel-v61462">
+<div class="panel-body">
+<div class="attendance-filter-heading-v61462"><div><strong>ตัวกรองข้อมูล</strong><span>เลือกช่วงเวลา พื้นที่ หน่วยงาน หรือพนักงาน</span></div><small>ค่าเริ่มต้นแสดงเต็มเดือน</small></div>
+<div class="toolbar attendance-filter-grid">
+<div class="field attendance-filter-field attendance-filter-date"><label>วันที่เริ่มต้น</label><input class="input" id="attStart" type="date"/></div>
+<div class="field attendance-filter-field attendance-filter-date"><label>วันที่สิ้นสุด</label><input class="input" id="attEnd" type="date"/></div>
+<div class="field attendance-filter-field">
+<label>พื้นที่</label>
+<input autocomplete="off" class="input attendance-searchable-filter" id="attZone" list="attZoneOptions" placeholder="ทุกพื้นที่"/>
+<datalist id="attZoneOptions"></datalist>
+</div>
+<div class="field attendance-filter-field">
+<label>พื้นที่ย่อย</label>
+<input autocomplete="off" class="input attendance-searchable-filter" id="attSubArea" list="attSubAreaOptions" placeholder="ทุกพื้นที่ย่อย"/>
+<datalist id="attSubAreaOptions"></datalist>
+</div>
+<div class="field attendance-filter-field attendance-filter-department">
+<label>หน่วยงาน</label>
+<input autocomplete="off" class="input attendance-searchable-filter" id="attDepartment" list="attDepartmentOptions" placeholder="ทุกหน่วยงาน"/>
+<datalist id="attDepartmentOptions"></datalist>
+</div>
+<div class="field attendance-employee-field attendance-filter-employee">
+<label>ชื่อพนักงาน</label>
+<div class="attendance-employee-multi" id="attEmployeeMulti">
+<button aria-expanded="false" aria-haspopup="listbox" class="attendance-employee-toggle" id="attEmployeeToggle" type="button">
+<span id="attEmployeeToggleText">พนักงานทั้งหมด</span>
+<strong id="attEmployeeSelectedCount">0</strong>
+<i>⌄</i>
+</button>
+<div class="attendance-employee-dropdown hidden" id="attEmployeeDropdown">
+<div class="attendance-employee-search">
+<input autocomplete="off" class="input" id="attEmployeeSearch" placeholder="ค้นหารหัสพนักงาน หรือชื่อ-นามสกุล" type="search"/>
+</div>
+<div class="attendance-employee-actions">
+<button class="btn btn-light btn-sm" id="attEmployeeSelectPage" type="button">เลือกหน้ารายชื่อ</button>
+<button class="btn btn-light btn-sm" id="attEmployeeSelectAll" type="button">เลือกทั้งหมด</button>
+<button class="btn btn-light btn-sm" id="attEmployeeClear" type="button">รีเซ็ตเป็นทั้งหมด</button>
+</div>
+<div aria-multiselectable="true" class="attendance-employee-list" id="attEmployeeList" role="listbox">
+<div class="attendance-employee-empty">
+                          กำลังโหลดรายชื่อพนักงาน...
+                        </div>
+</div>
+<div class="attendance-employee-pagination">
+<button class="btn btn-light btn-icon" id="attEmployeePrev" title="หน้าก่อน" type="button">‹</button>
+<span id="attEmployeePageInfo">หน้า 1 / 1</span>
+<button class="btn btn-light btn-icon" id="attEmployeeNext" title="หน้าถัดไป" type="button">›</button>
+</div>
+</div>
+</div>
+</div>
+<div class="field attendance-filter-field attendance-filter-status"><label>สถานะ</label><select class="select" id="attStatus"><option value="">ทุกสถานะ</option><option value="NORMAL">ปกติ</option><option value="ABSENCE">ขาดงาน (เวลาไม่ครบ / สาย ≥30 นาที)</option><option value="LEAVE">ลา</option><option value="DAY_OFF">วันหยุด</option><option value="LATE">มาสาย (1–29 นาที)</option><option value="EARLY_LEAVE">กลับก่อน</option><option value="LATE_AND_EARLY_LEAVE">สายและกลับก่อน</option></select></div>
+<div class="toolbar-actions attendance-filter-actions">
+<button class="btn btn-primary" id="loadAttendanceBtn">ค้นหา</button>
+<button class="btn btn-success" id="attendanceExcelBtn">Excel</button>
+<button class="btn btn-orange" id="attendancePrintBtn">Print/PDF</button>
+</div>
+</div>
+</div>
+</div>
+<div class="panel section-gap attendance-table-panel-v61462">
+<div class="panel-header"><div><h3>ตารางรายละเอียดรายวัน</h3><p id="attendanceCount">0 รายการ</p></div></div>
+<div class="attendance-column-controls">
+<strong>แสดงคอลัมน์เพิ่มเติม</strong>
+<label><input data-att-column-toggle="zone" type="checkbox"/> พื้นที่</label>
+<label><input data-att-column-toggle="sub_area" type="checkbox"/> พื้นที่ย่อย</label>
+<label><input data-att-column-toggle="template_code" type="checkbox"/> รูปแบบช่วงงาน</label>
+<label><input data-att-column-toggle="overtime_minutes" type="checkbox"/> OT</label>
+<label><input data-att-column-toggle="waiting_minutes" type="checkbox"/> รอคอย</label>
+<label><input data-att-column-toggle="break_deducted_minutes" type="checkbox"/> พัก</label>
+<label><input data-att-column-toggle="late_minutes" type="checkbox"/> สาย</label>
+<label><input data-att-column-toggle="early_leave_minutes" type="checkbox"/> กลับก่อน</label>
+<label><input data-att-column-toggle="absence_minutes" type="checkbox"/> ขาดงาน</label>
+<label><input data-att-column-toggle="comp_off_balance" type="checkbox"/> วันหยุดชดเชยคงเหลือ</label>
+<small>ค่าเริ่มต้นซ่อน และการเลือกมีผลต่อ Export Excel</small>
+</div>
+<div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr>
+<th data-att-col="work_date">วันที่</th>
+<th data-att-col="emp_code">รหัส</th>
+<th data-att-col="full_name">ชื่อ-นามสกุล</th>
+<th data-att-col="department">หน่วยงาน</th>
+<th class="attendance-col-hidden" data-att-col="zone">พื้นที่</th>
+<th class="attendance-col-hidden" data-att-col="sub_area">พื้นที่ย่อย</th>
+<th data-att-col="pattern_code">รูปแบบงาน</th>
+<th class="attendance-col-hidden" data-att-col="template_code">รูปแบบช่วงงาน</th>
+<th data-att-col="day_type">ประเภทวัน</th>
+<th data-att-col="shift_code">กะ</th>
+<th class="attendance-punch-head attendance-plan-head shift-1" data-att-col="shift_1_start"><span>กะที่ 1 • แผน</span><strong>เริ่มกะ</strong></th>
+<th class="attendance-punch-head attendance-plan-head shift-1" data-att-col="shift_1_end"><span>กะที่ 1 • แผน</span><strong>สิ้นสุดกะ</strong></th>
+<th class="attendance-punch-head shift-1" data-att-col="shift_1_in"><span>กะที่ 1 • ลงจริง</span><strong>เวลาเข้า</strong></th>
+<th class="attendance-punch-head shift-1" data-att-col="shift_1_out"><span>กะที่ 1 • ลงจริง</span><strong>เวลาออก</strong></th>
+<th class="attendance-punch-head attendance-plan-head shift-2" data-att-col="shift_2_start"><span>งานลูกค้าช่วงดึก • แผน</span><strong>เริ่ม</strong></th>
+<th class="attendance-punch-head attendance-plan-head shift-2" data-att-col="shift_2_end"><span>งานลูกค้าช่วงดึก • แผน</span><strong>สิ้นสุด</strong></th>
+<th class="attendance-punch-head shift-2" data-att-col="shift_2_in"><span>งานลูกค้าช่วงดึก • ลงจริง</span><strong>เวลาเข้า</strong></th>
+<th class="attendance-punch-head shift-2" data-att-col="shift_2_out"><span>งานลูกค้าช่วงดึก • ลงจริง</span><strong>เวลาออก</strong></th>
+<th data-att-col="display_status">สถานะ</th>
+<th data-att-col="net_work_minutes">ชม.สุทธิ</th>
+<th data-att-col="regular_minutes">ชม.ปกติ</th>
+<th class="attendance-col-hidden" data-att-col="overtime_minutes">OT</th>
+<th class="attendance-col-hidden" data-att-col="waiting_minutes">รอคอย</th>
+<th class="attendance-col-hidden" data-att-col="break_deducted_minutes">พัก</th>
+<th class="attendance-col-hidden" data-att-col="late_minutes">สาย(นาที)</th>
+<th class="attendance-col-hidden" data-att-col="early_leave_minutes">กลับก่อน(นาที)</th>
+<th class="attendance-col-hidden" data-att-col="absence_minutes">ขาดงาน(นาที)</th>
+<th class="attendance-col-hidden" data-att-col="comp_off_balance">วันหยุดชดเชยคงเหลือ</th>
+</tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
+</div>
+</section>
+<!-- Shift Change Requests -->
+<section class="page shift-request-page" id="page-shift-requests">
+<div class="shift-request-hero">
+<div>
+<span class="eyebrow">EMPLOYEE REQUEST CENTER</span>
+<h2>คำขอ / แจ้งข้อมูล</h2>
+<p id="shiftRequestSubtitle">พนักงานส่งคำขอแก้ไขกะ ขอรับรองเวลา และแจ้งงานกะพิเศษ • Manager พิจารณาภายในขอบเขตทีม</p>
+</div>
+<button class="btn btn-primary" id="newShiftRequestBtn">+ ส่งคำขอ / แจ้งข้อมูล</button>
+</div>
+<div class="shift-request-kpi-grid section-gap">
+<article><span>ทั้งหมด</span><strong id="shiftRequestKpiAll">0</strong><small>คำขอในช่วงวันที่</small></article>
+<article class="warning"><span>รอพิจารณา</span><strong id="shiftRequestKpiPending">0</strong><small>Manager ดำเนินการ</small></article>
+<article class="success"><span>ดำเนินการแล้ว</span><strong id="shiftRequestKpiApproved">0</strong><small>อนุมัติ / รับรอง / ปรับกะแล้ว</small></article>
+<article class="danger"><span>ไม่อนุมัติ/ยกเลิก</span><strong id="shiftRequestKpiClosed">0</strong><small>ปิดรายการแล้ว</small></article>
+</div>
+<div class="panel section-gap">
+<div class="panel-body">
+<div class="shift-request-filter-grid">
+<div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="shiftRequestStart" type="date"/></div>
+<div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="shiftRequestEnd" type="date"/></div>
+<div class="field"><label>สถานะ</label><select class="select" id="shiftRequestStatus"><option value="">ทุกสถานะ</option><option value="PENDING">รอพิจารณา</option><option value="RETURNED">ส่งกลับให้แก้ไข</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
+<div class="field"><label>ประเภทคำขอ</label><select class="select" id="shiftRequestTypeFilter"><option value="">ทุกประเภท</option><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></div>
+<div class="field"><label>ค้นหา</label><input class="input" id="shiftRequestSearch" placeholder="เลขที่คำขอ รหัส หรือชื่อพนักงาน"/></div>
+<div class="toolbar-actions"><button class="btn btn-primary" id="loadShiftRequestsBtn">ค้นหา</button></div>
+</div>
+</div>
+</div>
+<div class="panel section-gap">
+<div class="panel-header">
+<div><h3>รายการคำขอ / แจ้งข้อมูล</h3><div class="manager-request-live-row-v61513"><p id="shiftRequestCount">0 รายการ</p><span class="manager-request-live-v61513 ready" id="managerRequestLiveV61513"><i></i><b>Auto Sync</b><em>พร้อม</em></span></div></div>
+<button class="btn btn-success" id="shiftRequestExportBtn">Excel</button>
+</div>
+<div class="panel-body">
+<div class="table-wrap shift-request-table-wrap">
+<table>
+<thead>
+<tr>
+<th>เลขที่คำขอ</th>
+<th>วันที่</th>
+<th>พนักงาน</th>
+<th>ประเภท</th>
+<th>รายละเอียด</th>
+<th>เหตุผล</th>
+<th>สถานะ</th>
+<th>วันที่แจ้ง</th>
+<th>หมายเหตุการพิจารณา</th>
+<th>จัดการ</th>
+</tr>
+</thead>
+<tbody id="shiftRequestBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+<!-- Schedule -->
+<section class="page" id="page-schedule">
+<div class="panel">
+<div class="panel-body">
+<div class="toolbar schedule-toolbar-v61118">
+<input id="scheduleMonth" type="hidden">
+<input id="schedulePeriodStart" type="hidden">
+<div class="schedule-filter-group-v61118">
+<div class="field"><label>พื้นที่</label><select class="select" id="scheduleZone"><option value="">ทุกพื้นที่</option></select></div>
+<div class="field"><label>ทีม / หน่วยงาน</label><select class="select" id="scheduleDepartment"><option value="">ทุกทีม / ทุกหน่วยงาน</option></select></div>
+<div class="field"><label>รูปแบบการทำงาน</label><select class="select" id="schedulePatternFilter"><option value="">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option><option value="UNASSIGNED">ยังไม่ได้กำหนด</option></select></div>
+<div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="scheduleSearch" placeholder="รหัสหรือชื่อ"/></div>
+</div>
+<div class="schedule-week-control-v61118">
+<div class="schedule-week-nav-v61118">
+<button class="btn btn-light schedule-week-btn-v61118" id="schedulePrevMonthBtn" title="สัปดาห์ก่อน">‹ <span>สัปดาห์ก่อน</span></button>
+<div class="schedule-period-field schedule-period-field-v61118">
+<div class="schedule-period-heading-v61152">
+<span class="schedule-period-caption-v61118">สัปดาห์ที่แสดง</span>
+<strong class="schedule-person-month-inline-v61152 hidden" id="schedulePersonMonthInlineV61152">-</strong>
+</div>
+<div class="schedule-period-label" id="schedulePeriodLabel">-</div>
+</div>
+<button class="btn btn-light schedule-week-current-v61118" id="scheduleTodayBtn">สัปดาห์ปัจจุบัน</button>
+<button class="btn btn-light schedule-week-btn-v61118" id="scheduleNextMonthBtn" title="สัปดาห์ถัดไป"><span>สัปดาห์ถัดไป</span> ›</button>
+</div>
+<button class="btn btn-primary schedule-load-btn-v61118" id="loadScheduleBtn"><span>↻</span> โหลดตารางกะ</button>
+</div>
+</input></input></div>
+</div>
+<div id="scheduleLoadStatus" class="schedule-load-status hidden" role="status" aria-live="polite"></div>
+<div aria-live="polite" class="schedule-pattern-summary" id="schedulePatternSummary">
+<button class="pattern-summary-chip active" data-schedule-pattern-chip="" type="button"><span>ทั้งหมด</span><strong id="schedulePatternAllCount">0</strong></button>
+<button class="pattern-summary-chip pattern-5d" data-schedule-pattern-chip="TECH_5D" type="button"><span>5 วัน</span><strong id="schedulePattern5Count">0</strong></button>
+<button class="pattern-summary-chip pattern-6d" data-schedule-pattern-chip="TECH_6D" type="button"><span>6 วัน</span><strong id="schedulePattern6Count">0</strong></button>
+<button class="pattern-summary-chip pattern-unassigned" data-schedule-pattern-chip="UNASSIGNED" type="button"><span>ยังไม่กำหนด</span><strong id="schedulePatternUnknownCount">0</strong></button>
+</div>
+</div>
+<div class="schedule-kpi-grid section-gap">
+<div class="schedule-kpi"><span>พนักงาน</span><strong id="scheduleEmployeeCount">0</strong></div>
+<div class="schedule-kpi"><span>รายการปรับกะ</span><strong id="scheduleAssignedCount">0</strong></div>
+<div class="schedule-kpi"><span>งานลูกค้าช่วงดึก</span><strong id="scheduleConfirmedCount">0</strong></div>
+<div class="schedule-kpi warning"><span>ต้องตรวจสอบ</span><strong id="scheduleReviewCount">0</strong></div>
+<div class="schedule-kpi"><span id="scheduleSelectedKpiLabel">ช่องที่เลือก</span><strong id="scheduleSelectedKpi">0</strong></div>
+</div>
+<div class="schedule-view-shell section-gap">
+<div class="schedule-view-switch" id="scheduleViewSwitch" aria-label="เปลี่ยนมุมมองปฏิทินจัดกะ">
+<button class="active" data-schedule-view="TEAM" type="button"><span class="view-icon">◔</span><span>มุมมองทีม</span></button>
+<button data-schedule-view="TIME" type="button"><span class="view-icon">◷</span><span>มุมมองเวลา</span></button>
+<button data-schedule-view="PERSON" type="button"><span class="view-icon">☰</span><span>มุมมองรายบุคคล</span></button>
+</div>
+<div class="schedule-view-helper">
+<div>
+<strong id="scheduleViewHintTitle">สรุปข้อมูลรายหน่วยงาน</strong>
+<small id="scheduleViewHintText">ดูภาพรวมกะมาตรฐาน รายการที่หัวหน้างานปรับ และจุดที่ต้องตรวจสอบรายทีม แล้วคลิกดูรายคนต่อได้</small>
+</div>
+<div class="field schedule-team-focus-field">
+<label>โฟกัสทีม (ตัวกรองเสริม)</label>
+<select class="select" id="scheduleTeamFocus"><option value="">ทุกทีม / ทุกหน่วยงาน</option></select>
+</div>
+</div>
+</div>
+<div class="panel section-gap schedule-workspace" id="scheduleTeamWorkspace" data-schedule-view-panel="TEAM">
+<div class="panel-header schedule-panel-header schedule-panel-header-team">
+<div><h3 id="scheduleTeamWorkspaceTitleV6146">ตารางกะสรุปรายหน่วยงาน</h3><p id="scheduleTeamWorkspaceSubtitleV6146">สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล</p></div>
+<div class="schedule-legend" id="scheduleTeamLegendV6146"><span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span></div>
+</div>
+
+<div class="schedule-team-week-selector-v61152 schedule-team-period-context-v6149 schedule-team-period-context-v61410" aria-live="polite">
+  <div class="schedule-team-week-selector-copy-v61152">
+    <span>ช่วงที่กำลังแสดง</span>
+    <strong id="scheduleTeamWeekMonthV61152">-</strong>
+  </div>
+  <div id="scheduleTeamPeriodReadOnlyV6149" class="schedule-team-period-readonly-v6149 schedule-team-period-readonly-v61410">-</div>
+</div>
+
+<div class="schedule-team-toolbar">
+<div class="schedule-team-tip" id="scheduleTeamTipV6146">มุมมองทีมเหมาะสำหรับดูภาพรวมการครอบคลุมกำลังคน ก่อนเจาะลงไปดูรายบุคคล</div>
+<div class="schedule-team-stats">
+<div class="schedule-mini-kpi"><span>ทีมที่แสดง</span><strong id="scheduleTeamVisibleCount" data-value="0">0</strong></div>
+<div class="schedule-mini-kpi"><span>พนักงานรวม</span><strong id="scheduleTeamEmployeeCount">0</strong></div>
+<div class="schedule-mini-kpi warning"><span id="scheduleTeamAlertLabelV6146">จุดที่ต้องตรวจสอบ</span><strong id="scheduleTeamAlertCount">0</strong></div>
+</div>
+</div>
+<div class="panel-body schedule-grid-body"><div class="table-wrap schedule-team-grid-wrap" id="scheduleTeamWrap"></div></div>
+</div>
+<div class="panel section-gap schedule-workspace hidden" id="schedulePersonWorkspace" data-schedule-view-panel="PERSON">
+<div class="panel-header schedule-panel-header person-schedule-header-v61412">
+<div><h3 id="schedulePersonTitleV61412">ตารางกะรายบุคคล • เต็มเดือน</h3><p id="schedulePersonSubtitleV61412">แสดงทุกวันของเดือนในตารางเดียว • Label แสดงเฉพาะ Icon • วางเมาส์เพื่อดูรายละเอียดกะ</p></div>
+<div class="schedule-icon-legend-v6136" aria-label="สัญลักษณ์ประเภทกะ">
+  <span class="schedule-icon-legend-item-v6136 tone-day"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg></span>เช้า</span>
+  <span class="schedule-icon-legend-item-v6136 tone-night"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.3 8.3 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg></span>ดึก</span>
+  <span class="schedule-icon-legend-item-v6136 tone-off"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19v-7h18v7M5 12V7h5a3 3 0 0 1 3 3v2M13 12V9h4a4 4 0 0 1 4 4M3 16h18M5 19v2M19 19v2"></path></svg></span>หยุด</span>
+  <span class="schedule-icon-legend-item-v6136 tone-leave"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7zM14 3v5h5M10 12h5M10 16h4"></path></svg></span>ลา</span>
+  <span class="schedule-icon-legend-item-v6136 tone-holiday"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 1.55 4.45L18 9l-4.45 1.55L12 15l-1.55-4.45L6 9l4.45-1.55L12 3ZM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z"></path></svg></span>นักขัต</span>
+  <span class="schedule-icon-legend-item-v6136 tone-hour"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>นับชม.</span>
+  <span class="schedule-icon-legend-item-v6136 tone-split"><span class="legend-svg-v6136"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10l-2.5-2.5M17 17H7l2.5 2.5M17 7l-2.5 2.5M7 17l2.5-2.5"></path></svg></span>เช้า+ดึก</span>
+</div>
+</div>
+<div class="schedule-commandbar person-commandbar-v61412">
+<div class="person-days-control-v61412" aria-label="จำนวนวันที่แสดงในตารางรายบุคคล">
+  <span>ช่วงที่แสดง</span>
+  <div class="person-days-segment-v61412">
+    <button type="button" class="person-days-btn-v61412" data-person-days-mode="15D">15 วัน</button>
+    <button type="button" class="person-days-btn-v61412" data-person-days-mode="MONTH">เต็มเดือน</button>
+  </div>
+</div>
+<div class="schedule-selection-info"><span id="scheduleSelectionCount">ยังไม่ได้เลือกช่อง</span><small id="scheduleClipboardInfo">เลือกช่องแล้วกดกะด่วน</small></div>
+<div class="schedule-quick-shifts">
+<button class="shift-command shift-STD smart-shift-command" data-smart-shift="NORMAL" id="scheduleQuickNormalBtn"><span>กะปกติ</span><small id="scheduleQuickNormalCode">ตามรูปแบบ</small></button>
+<button class="shift-command shift-S134 smart-shift-command" data-smart-shift="NIGHT" id="scheduleQuickNightBtn"><span>กะกลางคืน</span><small id="scheduleQuickNightCode">ตามรูปแบบ</small></button>
+<button class="shift-command shift-OFF" data-quick-shift="OFF" title="กำหนดวันหยุดตามกะทำงานล่าสุด ระบบจะเลือก OSTD / OS043 / OS134 / OS135 ให้อัตโนมัติ"><span>วันหยุด</span><small>ตามกะล่าสุด</small></button>
+<button class="shift-command shift-LV" data-quick-shift="LV" title="กำหนดวันลา"><span>ลา</span><small>LV</small></button>
+</div>
+<div class="schedule-command-actions">
+<button class="btn btn-light" disabled="" id="scheduleUndoBtn">↶ Undo</button>
+<button class="btn btn-light" disabled="" id="scheduleRedoBtn">↷ Redo</button>
+<button class="btn btn-light" id="scheduleCopyBtn">คัดลอก</button>
+<button class="btn btn-light person-month-copy-btn-v61412 person-month-copy-source-btn-v61413" id="scheduleCopyMonthBtnV61412" disabled>คัดลอกทั้งเดือน</button>
+<button class="btn btn-primary person-month-paste-btn-v61413" id="schedulePasteMonthBtnV61413" disabled>วางกะทั้งเดือน</button>
+<button class="btn btn-light hidden" id="scheduleCancelMonthCopyBtnV61413">ยกเลิกคัดลอก</button>
+<button class="btn btn-light" id="schedulePasteBtn">วาง</button>
+<button class="btn btn-danger-soft" id="scheduleClearCellsBtn">ล้างกะ</button>
+<button class="btn btn-light" id="scheduleClearSelectionBtn">ยกเลิกเลือก</button>
+
+</div>
+</div>
+<div class="person-month-copy-workflow-v61413 hidden" id="scheduleMonthCopyWorkflowV61413" aria-live="polite"></div>
+<div class="schedule-summary-strip" id="scheduleSummaryStrip">
+<span><b>STD</b><em id="sumShiftSTD">0</em></span><span><b>S134</b><em id="sumShiftS134">0</em></span><span><b>S043</b><em id="sumShiftS043">0</em></span><span><b>S135</b><em id="sumShiftS135">0</em></span><span><b>OFF</b><em id="sumShiftOFF">0</em></span><span><b>HOL</b><em id="sumShiftHOL">0</em></span><span><b>LV</b><em id="sumShiftLV">0</em></span>
+<small>ลากเมาส์เพื่อเลือกช่วง • Shift+คลิกเลือกต่อเนื่อง • ปุ่มลูกศรเลื่อนเซลล์ • Delete ล้างกะ</small>
+</div>
+<div class="panel-body schedule-grid-body"><div class="table-wrap schedule-grid-wrap" id="scheduleTableWrap" style="max-height:70vh" tabindex="0"></div></div>
+<div class="schedule-context-menu" hidden="" id="scheduleContextMenu">
+<button data-context-action="copy">คัดลอก</button><button data-context-action="paste">วาง</button>
+<hr/><button data-context-smart-shift="NORMAL">กำหนดกะปกติตามรูปแบบ</button><button data-context-smart-shift="NIGHT">กำหนดกะกลางคืนตามรูปแบบ</button><button data-context-shift="OFF">กำหนด OFF</button><button data-context-shift="HOL">กำหนด HOL</button><button data-context-shift="LV">กำหนดลา (LV)</button>
+<hr/><button class="danger" data-context-action="clear">ล้างกะ</button>
+</div>
+</div>
+<div class="modal-backdrop hidden schedule-month-copy-backdrop-v61412 schedule-month-copy-backdrop-v61413" id="scheduleMonthCopyModalV61413" aria-hidden="true">
+  <div class="modal schedule-month-copy-modal-v61412 schedule-month-copy-modal-v61413">
+    <div class="modal-header">
+      <div><span class="eyebrow">PERSON MONTH COPY</span><h3>ยืนยันการวางกะทั้งเดือน</h3><p>ตรวจสอบต้นทาง ปลายทาง และรายการที่จะวางก่อนบันทึกจริง</p></div>
+      <button type="button" class="btn btn-light btn-icon" id="scheduleMonthCopyCloseV61413" aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="month-copy-route-v61413">
+        <div class="month-copy-route-card-v61413 source" id="scheduleMonthCopySourceSummaryV61413"><span>ต้นทาง</span><strong>-</strong></div>
+        <div class="month-copy-route-arrow-v61413">→</div>
+        <div class="month-copy-route-card-v61413 target" id="scheduleMonthCopyTargetSummaryV61413"><span>ปลายทาง</span><strong>-</strong></div>
+      </div>
+      <div class="month-copy-warning-v61413">
+        <strong>ตรวจสอบก่อนวางกะ</strong>
+        <span>ลา (LV) และ HOL จะไม่ถูกคัดลอก • กะพิเศษที่มีช่วงเวลารายบุคคลจะถูกข้าม • ทุกปลายทางยังต้องผ่าน Work Pattern, Scope, Start Date, พักขั้นต่ำ 6 ชม., 48 ชม. และโควต้าวันหยุด</span>
+      </div>
+      <label class="month-copy-mode-v61413"><span>วิธีวาง</span><select class="select" id="scheduleMonthCopyModeV61413"><option value="EMPTY_ONLY" selected>เฉพาะวันที่ปลายทางยังไม่ได้จัดกะเอง (แนะนำ)</option><option value="OVERWRITE">วางทับกะที่มีอยู่แล้ว</option></select></label>
+      <div class="month-copy-preview-v61412 month-copy-preview-v61413" id="scheduleMonthCopyPreviewV61413">กำลังเตรียมตัวอย่าง...</div>
+      <div class="month-copy-target-list-v61413" id="scheduleMonthCopyTargetListV61413"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-light" id="scheduleMonthCopyCancelV61413">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" id="scheduleMonthCopyApplyV61413">ยืนยันวางกะ</button>
+    </div>
+  </div>
+</div>
+<div class="schedule-team-drawer-backdrop hidden" id="scheduleTeamDrawerBackdrop"></div>
+<aside class="schedule-team-drawer hidden" id="scheduleTeamDrawer" aria-hidden="true">
+<div class="schedule-team-drawer-head">
+<div>
+<span class="eyebrow">TEAM DAILY DETAIL</span>
+<h3 id="scheduleTeamDrawerTitle">รายละเอียดทีม</h3>
+<p id="scheduleTeamDrawerSubtitle">-</p>
+</div>
+<button type="button" class="schedule-team-drawer-close" id="scheduleTeamDrawerClose" aria-label="ปิด">×</button>
+</div>
+<div class="schedule-team-drawer-body">
+<div class="schedule-team-drawer-summary" id="scheduleTeamDrawerSummary"></div>
+<div class="schedule-team-drawer-filter" id="scheduleTeamDrawerFilter"></div>
+<div class="schedule-team-drawer-note" id="scheduleTeamDrawerNote">คลิกสถานะด้านบนเพื่อกรองรายชื่อ</div>
+<div class="schedule-team-drawer-list" id="scheduleTeamDrawerList"></div>
+</div>
+</aside>
+</section>
+<!-- Review Center -->
+
+<!-- HR Admin Center -->
+<section class="page hr-admin-center-page" id="page-admin-center">
+<div class="admin-center-hero">
+<div>
+<span class="eyebrow">HR ADMIN CONTROL CENTER</span>
+<h2>ศูนย์บริหารระบบ Time-Clock</h2>
+<p>ตรวจสอบสถานะข้อมูล ผู้ใช้งาน กะ วันหยุด และการนำเข้าข้อมูลจากจุดเดียว</p>
+</div>
+<div class="admin-center-actions">
+<button class="btn btn-primary" id="adminCenterRefreshBtn">รีเฟรชสถานะ</button>
+<button class="btn btn-light" id="adminCenterSettingsBtn">System Settings</button>
+</div>
+</div>
+<div class="admin-health-grid">
+<article class="admin-health-card"><span>ผู้ใช้งานทั้งหมด</span><strong id="adminStatUsers">-</strong><small id="adminStatUsersSub">กำลังตรวจสอบ</small></article>
+<article class="admin-health-card"><span>ผู้ใช้งานที่เปิดใช้งาน</span><strong id="adminStatActiveUsers">-</strong><small id="adminStatActiveUsersSub">กำลังตรวจสอบ</small></article>
+<article class="admin-health-card"><span>กะที่เปิดใช้งาน</span><strong id="adminStatShifts">-</strong><small id="adminStatShiftsSub">กำลังตรวจสอบ</small></article>
+<article class="admin-health-card"><span>วันหยุดปีปัจจุบัน</span><strong id="adminStatHolidays">-</strong><small id="adminStatHolidaysSub">กำลังตรวจสอบ</small></article>
+</div>
+<div class="admin-module-grid">
+<button class="admin-module-card system-period-admin-card" data-admin-open="admin-periods"><span class="admin-module-icon">◷</span><div><strong>จัดการรอบระบบ</strong><small>กำหนดวันสุดท้ายจัดกะ และรับรองเวลาทำงานของแต่ละเดือน</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="admin-org"><span class="admin-module-icon">⌘</span><div><strong>ผังโครงสร้างองค์กร</strong><small>จัดลำดับหน่วยงาน กำหนด Manager และ Upload Scope</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="admin-users"><span class="admin-module-icon">♙</span><div><strong>User และ Scope</strong><small>กำหนด Role, สถานะ และขอบเขตข้อมูล</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="admin-shifts"><span class="admin-module-icon">◫</span><div><strong>ตั้งค่ากะทำงาน</strong><small>จัดการรหัสกะ เวลาเริ่ม-สิ้นสุด และเวลาพัก</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="work-patterns"><span class="admin-module-icon">⌘</span><div><strong>รูปแบบการทำงานช่าง</strong><small>กำหนด 5/6 วัน + กะตั้งต้นเช้า/ดึกแบบหลายคน และรูปแบบช่วงงาน</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="admin-holidays"><span class="admin-module-icon">◈</span><div><strong>วันหยุดนักขัตฤกษ์</strong><small>เพิ่ม แก้ไข และตรวจผลกระทบต่อ Attendance</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="admin-import"><span class="admin-module-icon">⇧</span><div><strong>นำเข้าพนักงาน</strong><small>ตรวจสอบไฟล์ CSV ก่อนนำเข้าฐานข้อมูล</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="admin-time-import"><span class="admin-module-icon">⇩</span><div><strong>นำเข้าข้อมูลลงเวลา CSV</strong><small>ไฟล์ EmployeeId, InOutDate, InOutTime, InOutMode และ GPS</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="admin-attendance-rebuild"><span class="admin-module-icon">↻</span><div><strong>ประมวลผล Attendance ใหม่</strong><small>ประมวลผลตามช่วงวันที่ พร้อม Progress และ Error Log</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card certification-admin-card-v61139" data-admin-open="admin-certification-reasons"><span class="admin-module-icon">✓</span><div><strong>เหตุผลการรับรองเวลา</strong><small>เพิ่ม แก้ไข เปิด/ปิด และกำหนดเหตุผลที่ใช้ใน Time Certification</small></div><em>จัดการ ›</em></button>
+<button class="admin-module-card" data-admin-open="system-settings"><span class="admin-module-icon">⚙</span><div><strong>System Settings</strong><small>Theme, Developer Mode, Feature Flags และ Connection</small></div><em>เปิด ›</em></button>
+<button class="admin-module-card" data-admin-open="report"><span class="admin-module-icon">▤</span><div><strong>ศูนย์รายงาน</strong><small>ส่งออกรายงานและตรวจประวัติการดาวน์โหลด</small></div><em>เปิด ›</em></button>
+</div>
+<div class="admin-center-columns">
+<div class="panel">
+<div class="panel-header"><div><h3>System Health</h3><p>สถานะการเชื่อมต่อและสิทธิ์ปัจจุบัน</p></div><span class="admin-health-badge" id="adminHealthBadge">กำลังตรวจสอบ</span></div>
+<div class="panel-body admin-health-list">
+<div><span>Supabase Connection</span><strong id="adminHealthConnection">-</strong></div>
+<div><span>Actual Role</span><strong id="adminHealthRole">-</strong></div>
+<div><span>Session</span><strong id="adminHealthSession">-</strong></div>
+<div><span>Last Refresh</span><strong id="adminHealthRefresh">-</strong></div>
+</div>
+</div>
+<div class="panel">
+<div class="panel-header"><div><h3>ข้อแนะนำสำหรับผู้ดูแล</h3><p>รายการตรวจสอบก่อนเปิดใช้งานจริง</p></div></div>
+<div class="panel-body admin-checklist">
+<label><input checked="" disabled="" type="checkbox"/> กำหนดบัญชี HR_ADMIN</label>
+<label><input disabled="" id="adminCheckUsers" type="checkbox"/> มีผู้ใช้งานที่เปิดใช้งาน</label>
+<label><input disabled="" id="adminCheckShifts" type="checkbox"/> มีกะมาตรฐานที่เปิดใช้งาน</label>
+<label><input disabled="" id="adminCheckHolidays" type="checkbox"/> มีข้อมูลวันหยุดปีปัจจุบัน</label>
+</div>
+</div>
+</div>
+</section>
+
+<!-- System Period Management -->
+<section class="page admin-page system-period-page" id="page-admin-periods">
+  <div class="system-period-hero">
+    <div>
+      <span class="eyebrow">HR ADMIN • PERIOD CONTROL</span>
+      <h2>จัดการรอบระบบ</h2>
+      <p>กำหนดรอบเวลาการทำงาน วันสุดท้ายแก้ไขตารางกะ และวันสุดท้ายรับรองเวลาทำงานของหัวหน้างาน</p>
+    </div>
+    <div class="system-period-hero-actions">
+      <button type="button" class="btn btn-light" id="systemPeriodRefreshBtn">รีเฟรช</button>
+      <button type="button" class="btn btn-primary" id="systemPeriodNewBtn" data-system-period-new="1">+ เพิ่มรอบระบบ</button>
+    </div>
+  </div>
+
+  <div class="system-period-summary-grid">
+    <article class="system-period-summary-card primary">
+      <span>รอบเดือนปัจจุบัน</span>
+      <strong id="systemPeriodCurrentMonth">-</strong>
+      <small id="systemPeriodCurrentRange">ยังไม่ได้กำหนดรอบ</small>
+    </article>
+    <article class="system-period-summary-card blue">
+      <span>วันสุดท้ายจัดกะ</span>
+      <strong id="systemPeriodScheduleDeadline">-</strong>
+      <small id="systemPeriodScheduleStatus">-</small>
+    </article>
+    <article class="system-period-summary-card orange">
+      <span>วันสุดท้ายรับรองเวลา</span>
+      <strong id="systemPeriodCertDeadline">-</strong>
+      <small id="systemPeriodCertStatus">-</small>
+    </article>
+    <article class="system-period-summary-card neutral">
+      <span>สถานะรอบ</span>
+      <strong id="systemPeriodOverallStatus">-</strong>
+      <small id="systemPeriodOverallMeta">HR Admin สามารถ Override ได้</small>
+    </article>
+  </div>
+
+  <div class="panel section-gap system-period-panel">
+    <div class="panel-header system-period-panel-header">
+      <div>
+        <h3>รอบเวลาการทำงาน</h3>
+        <p>รอบที่สร้างแล้วจะควบคุมสิทธิ์ Manager ตาม Deadline และสถานะเปิด/ปิด</p>
+      </div>
+      <div class="system-period-filterbar">
+        <div class="field">
+          <label>ปี</label>
+          <select class="select" id="systemPeriodYear"><option value="2026" selected>2026</option></select>
+        </div>
+        <div class="field system-period-search-field">
+          <label>ค้นหา</label>
+          <input class="input" id="systemPeriodSearch" placeholder="ค้นหาเดือน / หมายเหตุ / ผู้แก้ไข">
+        </div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="system-period-help-strip">
+        <span><i class="period-dot open"></i> เปิดใช้งาน</span>
+        <span><i class="period-dot due"></i> ใกล้ครบกำหนด</span>
+        <span><i class="period-dot closed"></i> ปิดรอบ</span>
+        <small>เดือนที่ยังไม่ได้สร้างรอบจะไม่ถูกบล็อก เพื่อให้ระบบเดิมทำงานต่อได้</small>
+      </div>
+      <div id="systemPeriodPageLoadMeta" class="system-period-page-load-meta">พร้อมโหลดข้อมูลรอบระบบ</div>
+      <div class="table-wrap system-period-table-wrap">
+        <table class="system-period-table">
+          <thead>
+            <tr>
+              <th>รอบเวลา</th>
+              <th>ช่วงวันที่</th>
+              <th>วันสุดท้ายจัดกะ</th>
+              <th>จัดกะ</th>
+              <th>วันสุดท้ายรับรองเวลา</th>
+              <th>รับรองเวลา</th>
+              <th>แก้ไขล่าสุด</th>
+              <th class="period-actions-head">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="systemPeriodBody">
+            <tr><td colspan="8" class="table-empty">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="modal-backdrop hidden system-period-modal-backdrop" id="systemPeriodModal">
+  <div class="modal system-period-modal">
+    <div class="modal-header">
+      <div>
+        <span class="eyebrow">SYSTEM PERIOD</span>
+        <h3 id="systemPeriodModalTitle">เพิ่มรอบระบบ</h3>
+      </div>
+      <button type="button" class="btn btn-light btn-icon" id="systemPeriodModalClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="system-period-form-grid">
+        <div class="field system-period-month-field">
+          <label>เดือนรอบการทำงาน *</label>
+          <input class="input" id="systemPeriodMonthInput" type="month">
+          <small>ตัวอย่าง: กรกฎาคม 2026 = 01/07/2026 - 31/07/2026</small>
+        </div>
+        <div class="system-period-range-preview">
+          <span>ช่วงรอบ</span>
+          <strong id="systemPeriodRangePreview">-</strong>
+        </div>
+        <div class="field">
+          <label>วันสุดท้ายแก้ไข / จัดกะ *</label>
+          <input class="input" id="systemPeriodScheduleDeadlineInput" type="date">
+          <small>หลังจากวันนี้ Manager จะไม่สามารถเพิ่ม แก้ไข ยืนยัน หรือลบกะได้</small>
+        </div>
+        <div class="field">
+          <label>วันสุดท้ายรับรองเวลาทำงาน *</label>
+          <input class="input" id="systemPeriodCertDeadlineInput" type="date">
+          <small>หลังจากวันนี้ Manager จะไม่สามารถรับรองหรือยกเลิกการรับรองเวลาได้</small>
+        </div>
+      </div>
+
+      <div class="system-period-switch-grid">
+        <label class="system-period-switch-card">
+          <input type="checkbox" id="systemPeriodScheduleOpen" checked>
+          <span class="switch-ui"></span>
+          <div><strong>เปิดให้จัดกะ</strong><small>ปิดสวิตช์เพื่อ Lock ก่อนถึง Deadline</small></div>
+        </label>
+        <label class="system-period-switch-card">
+          <input type="checkbox" id="systemPeriodCertOpen" checked>
+          <span class="switch-ui"></span>
+          <div><strong>เปิดให้รับรองเวลา</strong><small>ปิดสวิตช์เพื่อหยุดการรับรองก่อนถึง Deadline</small></div>
+        </label>
+      </div>
+
+      <div class="field section-gap-sm">
+        <label>หมายเหตุ</label>
+        <textarea class="textarea" id="systemPeriodNote" rows="3" placeholder="เช่น ปิดรอบเดือน ก.ค. ภายในวันที่ 10/08/2026"></textarea>
+      </div>
+
+      <div class="system-period-policy-note">
+        <strong>นโยบายสิทธิ์</strong>
+        <span>Deadline มีผลกับ Manager • HR Admin เป็นผู้ดูแลรอบและสามารถ Override เพื่อแก้ไขกรณีพิเศษได้</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-light" id="systemPeriodCancelBtn">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" id="systemPeriodSaveBtn">บันทึกรอบระบบ</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden system-period-history-backdrop" id="systemPeriodHistoryModal">
+  <div class="modal system-period-history-modal">
+    <div class="modal-header">
+      <div><h3>ประวัติการเปลี่ยนแปลงรอบระบบ</h3><p id="systemPeriodHistorySubtitle">-</p></div>
+      <button type="button" class="btn btn-light btn-icon" id="systemPeriodHistoryClose">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap" style="max-height:65vh">
+        <table>
+          <thead><tr><th>วันเวลา</th><th>การทำงาน</th><th>ผู้ดำเนินการ</th><th>รายละเอียด</th></tr></thead>
+          <tbody id="systemPeriodHistoryBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Technician Work Patterns -->
+<section class="page work-pattern-page" id="page-work-patterns">
+<div class="work-pattern-hero work-pattern-hero-v61111 work-pattern-hero-v61416">
+<div class="work-pattern-hero-copy-v61111">
+<span class="eyebrow">TECHNICIAN WORK MODEL • BULK SETUP</span>
+<h2>รูปแบบการทำงานช่างเทคนิค</h2>
+<p>กำหนดรูปแบบ 5/6 วัน กะตั้งต้น “เช้า / ดึก” และวันหยุดจาก Work Pattern ให้หลายคนพร้อมกัน • ทุกตำแหน่งใช้ค่าที่กำหนดจากหน้านี้ และวันเริ่มใช้ต้องสอดคล้องกับรอบระบบ</p>
+<div class="work-pattern-hero-tags-v61111"><span>เลือกหลายคนพร้อมกัน</span><span>5 วัน / 6 วัน</span><span>☀ กะเช้า / ☾ กะดึก</span><span>Auto Shift + Paired Day-off</span></div>
+</div>
+<button type="button" class="btn btn-primary work-pattern-refresh-v61111" id="workPatternRefreshBtn">↻ รีเฟรชข้อมูล</button>
+</div>
+<div aria-hidden="true" class="panel section-gap hidden" id="workPatternAdminPanel">
+<div class="panel-header"><div><h3>พารามิเตอร์รูปแบบการทำงาน</h3><p>แสดงและแก้ไขได้เฉพาะ HR Admin</p></div><button class="btn btn-orange" id="workPatternNewBtn">+ เพิ่มรูปแบบ</button></div>
+<div class="panel-body"><div class="table-wrap"><table><thead><tr><th>รหัส</th><th>ชื่อ</th><th>วันทำงาน/สัปดาห์</th><th>เวลา/วันรวมพัก</th><th>OT หลัง</th><th>วันหยุดตั้งต้น</th><th>ยกยอด</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="workPatternBody"></tbody></table></div></div>
+</div>
+<div class="panel section-gap employee-pattern-bulk-panel-v61416">
+<div class="panel-header work-pattern-panel-head-v61111">
+<div><span class="work-pattern-section-kicker-v61111">EMPLOYEE ASSIGNMENT • BULK MODE</span><h3>จัดรูปแบบและกะตั้งต้นหลายคน</h3><p>เลือกพนักงานจากตาราง แล้วกำหนด “5 วัน/6 วัน + กะเช้า/กะดึก” พร้อมกันได้ทันที • กะที่จัดด้วยมือไว้แล้วในปฏิทินจะไม่ถูกเขียนทับ</p></div>
+<div class="work-pattern-panel-badge-v61111 bulk">Bulk Assignment</div>
+</div>
+<div class="panel-body">
+<div class="work-pattern-summary-v61111 work-pattern-summary-v61416">
+<article><span>พนักงานที่แสดง</span><strong id="wpSummaryTotalV61111">0</strong></article>
+<article class="five"><span>ทำงาน 5 วัน</span><strong id="wpSummary5DV61416">0</strong></article>
+<article class="six"><span>ทำงาน 6 วัน</span><strong id="wpSummary6DV61416">0</strong></article>
+<article class="day"><span>☀ กะตั้งต้นเช้า</span><strong id="wpSummaryDayV61416">0</strong></article>
+<article class="night"><span>☾ กะตั้งต้นดึก</span><strong id="wpSummaryNightV61416">0</strong></article>
+</div>
+<div class="work-pattern-filterbar-v61111 work-pattern-filterbar-v61416">
+<div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="employeePatternSearch" placeholder="รหัสพนักงาน หรือ ชื่อ-นามสกุล"/></div>
+<div class="field"><label>หน่วยงาน</label><select class="select" id="employeePatternDepartmentFilterV61416"><option value="ALL">ทุกหน่วยงาน</option></select></div>
+<div class="field"><label>เดือนที่อ้างอิง</label><input class="input" id="employeePatternDate" type="month"/><small class="wp-month-helper-v61419">แสดงค่าที่มีผลตั้งแต่วันที่ 1 ของเดือน</small></div>
+<div class="field"><label>รูปแบบ</label><select class="select" id="employeePatternPatternFilterV61416"><option value="ALL">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option></select></div>
+<div class="field"><label>กะตั้งต้น</label><select class="select" id="employeePatternShiftFilterV61416"><option value="ALL">ทั้งหมด</option><option value="DAY">กะเช้า</option><option value="NIGHT">กะดึก</option></select></div>
+<div class="toolbar-actions"><button type="button" class="btn btn-primary" id="employeePatternLoadBtn">⌕ ค้นหา</button></div>
+</div>
+<div class="wp-bulk-bar-v61416" id="wpBulkBarV61416">
+<div class="wp-bulk-head-v61416">
+<label class="wp-select-all-v61416"><input type="checkbox" id="employeePatternSelectAllV61416"><span>เลือกทั้งหมดที่แสดง</span></label>
+<div class="wp-bulk-selected-v61416"><strong id="wpBulkSelectedCountV61416">0</strong><span>คนที่เลือก</span></div>
+<button type="button" class="btn btn-light btn-sm" id="wpBulkClearV61416">ล้างที่เลือก</button>
+</div>
+<div class="wp-bulk-controls-v61416">
+<div class="wp-bulk-control-v61416"><span class="wp-bulk-label-v61416">1. รูปแบบการทำงาน</span><div class="wp-segment-v61416"><button type="button" data-wp-bulk-pattern="TECH_5D">5 วัน</button><button type="button" class="active" data-wp-bulk-pattern="TECH_6D">6 วัน</button></div></div>
+<div class="wp-bulk-control-v61416"><span class="wp-bulk-label-v61416">2. กะตั้งต้น</span><div class="wp-segment-v61416 shift"><button type="button" class="active day" data-wp-bulk-shift="DAY">☀ กะเช้า</button><button type="button" class="night" data-wp-bulk-shift="NIGHT">☾ กะดึก</button></div></div>
+<div class="wp-bulk-control-v61416 date"><span class="wp-bulk-label-v61416">3. เริ่มใช้เดือน</span><input class="input" id="wpBulkEffectiveDateV61416" type="month"><small class="wp-period-hint-v61417">Monthly Baseline • มีผลตั้งแต่วันที่ 1 • อิงรอบแก้ไขกะ + รับรองเวลา</small></div>
+<div class="wp-bulk-map-v61416"><span>Auto Shift ที่จะใช้</span><strong id="wpBulkMappingV61416">S043 • 08:30–17:30</strong><small id="wpBulkDayoffMappingV61416">วันหยุดคู่: OS043</small></div>
+<button type="button" class="btn btn-orange wp-bulk-apply-v61416" id="wpBulkApplyBtnV61416" disabled>✓ ใช้กับ 0 คน</button>
+</div>
+<div id="wpBulkPositionPolicyV61417" class="wp-position-policy-note-v61417 hidden"></div><div class="wp-bulk-note-v61416 wp-month-rule-v61419"><span>ⓘ</span><p><strong>Monthly Baseline:</strong> รูปแบบ 5/6 วันและกะตั้งต้นจากหน้านี้มีผลเต็มเดือน ไม่สามารถเริ่มกลางเดือนได้ • หากต้องเปลี่ยนกะเฉพาะบางวันให้จัดในปฏิทิน • วันเริ่มใช้ต้องไม่ย้อนเข้าเดือนที่ปิดรอบแก้ไขกะหรือรับรองเวลา</p></div>
+</div>
+<div class="work-pattern-load-note-v61111 hidden" id="workPatternMetaWarningV61111"></div>
+<div class="table-wrap section-gap"><table class="employee-pattern-table-v6119 employee-pattern-table-v61416"><thead><tr><th class="select-col"><span class="sr-only">เลือก</span></th><th>พนักงาน</th><th>หน่วยงาน</th><th>ตำแหน่ง</th><th>รูปแบบ</th><th>กะตั้งต้น</th><th>วันหยุดตั้งต้น</th><th>เริ่มใช้</th><th>ผู้บันทึก</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
+</div>
+</div>
+<div class="panel section-gap">
+<div class="panel-header work-pattern-panel-head-v61111">
+<div><span class="work-pattern-section-kicker-v61111">WORK TEMPLATE</span><h3>Template รูปแบบช่วงงาน</h3><p>แสดงรายละเอียดเฉพาะ Work Template / รูปแบบรายวันที่เปิดใช้งาน และอยู่ในขอบเขตหน่วยงานที่ผู้ใช้งานมีสิทธิ์ • กะตั้งต้นเช้า/ดึกยังคงกำหนดจากตาราง Bulk ด้านบน</p></div>
+<div class="work-pattern-panel-badge-v61111 subtle" id="workTemplateAccessBadgeV61438">กำลังตรวจสิทธิ์</div>
+</div>
+<div class="work-template-grid panel-body" id="workTemplateCards"></div>
+</div>
+</section>
+<!-- Attendance Rebuild Admin -->
+<section class="page admin-page att-rebuild-page" id="page-admin-attendance-rebuild">
+<div class="att-rebuild-hero">
+<div>
+<span class="eyebrow">ATTENDANCE OPERATIONS</span>
+<h2>ประมวลผล Attendance ใหม่</h2>
+<p>สร้าง Attendance Workday ใหม่ตามช่วงวันที่ แล้วคำนวณและตรวจผล Attendance ต่อใน Task เดียวกัน พร้อม Progress และ Error Log</p>
+</div>
+<div class="att-rebuild-hero-actions">
+<button class="btn btn-light" id="attRebuildRefreshBtn">รีเฟรชประวัติ</button>
+</div>
+</div>
+<div class="panel section-gap">
+<div class="panel-header"><div><h3>สร้างงานประมวลผลใหม่</h3><p>สำหรับ HR Admin เท่านั้น ควรเลือกช่วงวันที่เท่าที่จำเป็น</p></div></div>
+<div class="panel-body">
+<div class="att-rebuild-form-grid">
+<div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="attRebuildStart" type="date"/></div>
+<div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="attRebuildEnd" type="date"/></div>
+<div class="field"><label>จำนวนพนักงานต่อ Task</label><select class="select" id="attRebuildBatchSize"><option value="25">25 คน — ปลอดภัยสูง</option><option value="50">50 คน</option><option selected="" value="100">100 คน — แนะนำ</option><option value="200">200 คน — เร็วขึ้น</option></select></div>
+<div class="field att-rebuild-note"><label>หมายเหตุ</label><input class="input" id="attRebuildNote" placeholder="เช่น ประมวลผลใหม่หลังนำเข้า MobileTA กรกฎาคม 2569"/></div>
+</div>
+<div class="att-rebuild-action-row"><button class="btn btn-primary" id="attRebuildStartBtn">เริ่มประมวลผล</button></div>
+<div class="att-rebuild-help"><strong>การทำงาน:</strong> แต่ละ Task ใช้ Pipeline เดียวกันคือ <b>Rebuild Attendance Workday → Calculate Attendance → Validate Result</b> และจะนับว่า “สำเร็จ” เมื่อครบทั้ง 3 ขั้นตอนเท่านั้น หาก Task ใช้เวลานาน ระบบจะแบ่งกลุ่มให้เล็กลงอัตโนมัติ และ Error Log จะระบุขั้นตอนที่เกิดปัญหา</div>
+</div>
+</div>
+<div class="panel section-gap att-rebuild-progress-panel hidden" id="attRebuildProgressPanel">
+<div class="panel-body">
+<div class="att-rebuild-progress-head">
+<div><span class="eyebrow">CURRENT JOB</span><h3 style="margin:5px 0 4px">กำลังประมวลผล Attendance</h3><p id="attRebuildRange" style="margin:0;color:var(--slate-500)">-</p></div>
+<span class="att-rebuild-status" id="attRebuildStatus">-</span>
+</div>
+<div class="att-rebuild-progress-track"><div class="att-rebuild-progress-bar" id="attRebuildProgressBar"></div></div>
+<div class="att-rebuild-progress-caption"><strong id="attRebuildPercent">0%</strong><span id="attRebuildTaskText">0 จาก 0 Task</span></div>
+<div class="att-rebuild-kpis">
+<div class="att-rebuild-kpi"><span>พนักงานในช่วง</span><strong id="attRebuildKpiEmployees">0</strong></div>
+<div class="att-rebuild-kpi"><span>จำนวนวัน</span><strong id="attRebuildKpiDays">0</strong></div>
+<div class="att-rebuild-kpi"><span>Task สำเร็จ</span><strong id="attRebuildKpiCompleted">0</strong></div>
+<div class="att-rebuild-kpi"><span>Task ผิดพลาด</span><strong id="attRebuildKpiFailed">0</strong></div>
+<div class="att-rebuild-kpi"><span>ลบข้อมูลเดิม</span><strong id="attRebuildKpiDeleted">0</strong></div>
+<div class="att-rebuild-kpi"><span>สร้างข้อมูลใหม่</span><strong id="attRebuildKpiInserted">0</strong></div>
+</div>
+<div class="att-rebuild-current"><span>กำลังทำวันที่ <strong id="attRebuildCurrentDate">-</strong></span><span id="attRebuildRemaining">0 Task คงเหลือ</span><span>ล่าสุด: <strong id="attRebuildLastError">ไม่พบ Error ล่าสุด</strong></span></div>
+<div class="att-rebuild-action-row">
+<button class="btn btn-light" id="attRebuildPauseBtn">หยุดชั่วคราว</button>
+<button class="btn btn-primary hidden" id="attRebuildResumeBtn">ดำเนินการต่อ</button>
+<button class="btn btn-orange hidden" id="attRebuildRetryBtn">ลองใหม่รายการผิดพลาด</button>
+<button class="btn btn-danger-soft" id="attRebuildCancelBtn">ยกเลิก Job</button>
+</div>
+<div class="att-rebuild-live-note">สามารถเปิดหน้าอื่นได้ แต่ไม่ควรปิด Browser ระหว่าง Worker ทำงาน หากหน้าเว็บถูกปิด ให้กลับมาที่หน้านี้แล้วกด “ดำเนินการต่อ”</div>
+</div>
+</div>
+<div class="panel section-gap att-rebuild-history">
+<div class="panel-header"><div><h3>ประวัติการประมวลผล</h3><p>แสดง 30 Job ล่าสุด</p></div></div>
+<div class="panel-body"><div class="table-wrap"><table><thead><tr><th>สร้างเมื่อ</th><th>ช่วงวันที่</th><th>สถานะ</th><th>Progress</th><th>พนักงาน</th><th>สร้างใหม่</th><th>Error</th><th>ผู้ดำเนินการ</th><th>จัดการ</th></tr></thead><tbody id="attRebuildHistoryBody"><tr><td class="att-rebuild-empty" colspan="9">กำลังโหลด...</td></tr></tbody></table></div></div>
+</div>
+<div class="panel section-gap att-rebuild-errors att-rebuild-error-panel hidden" id="attRebuildErrorPanel">
+<div class="panel-header"><div><h3>Error Log</h3><p id="attRebuildErrorCount">0 รายการ</p></div><button class="btn btn-light" id="attRebuildErrorRefreshBtn">รีเฟรช Error</button></div>
+<div class="panel-body"><div class="table-wrap"><table><thead><tr><th>เวลา</th><th>วันที่ทำงาน</th><th>ระดับ</th><th>Code</th><th>ข้อความ</th><th>รหัสพนักงาน</th><th>การจัดการ</th></tr></thead><tbody id="attRebuildErrorBody"></tbody></table></div></div>
+</div>
+</section>
+<!-- Admin Shifts -->
+<section class="page admin-page shift-pattern-settings-page" id="page-admin-shifts">
+<div class="shift-settings-hero">
+<div>
+<span class="eyebrow">SHIFT &amp; WORK PATTERN</span>
+<h2>ตั้งค่ากะตามรูปแบบการทำงาน</h2>
+<p>แยกกะสำหรับพนักงานทำงาน 5 วันและ 6 วันต่อสัปดาห์ เพื่อให้ชั่วโมงต่อวัน กะตั้งต้น และการคำนวณเวลาถูกต้อง</p>
+</div>
+<button class="btn btn-orange" id="newShiftBtn">+ เพิ่มกะ</button>
+</div>
+<div class="shift-pattern-summary section-gap" id="shiftPatternSummary">
+<article class="shift-pattern-card loading-card"><span>กำลังโหลดกะตั้งต้น...</span></article>
+</div>
+<div class="panel section-gap">
+<div class="panel-header">
+<div><h3>กะทำงานทั้งหมด</h3><p>กะหนึ่งรายการเลือกใช้กับกลุ่ม 5 วัน, 6 วัน หรือทั้งสองกลุ่มได้</p></div>
+<div class="shift-settings-filter">
+<label for="shiftPatternFilter">รูปแบบการทำงาน</label>
+<select class="select" id="shiftPatternFilter">
+<option value="">ทั้งหมด</option>
+<option value="TECH_6D">6 วัน/สัปดาห์</option>
+<option value="TECH_5D">5 วัน/สัปดาห์</option>
+</select>
+</div>
+</div>
+<div class="panel-body">
+<div class="table-wrap">
+<table>
+<thead><tr><th>รหัสกะ</th><th>ชื่อกะ</th><th>ใช้กับรูปแบบ</th><th>เวลาเริ่ม</th><th>เวลาสิ้นสุด</th><th>รวมพัก</th><th>สุทธิ</th><th>พัก</th><th>กะตั้งต้น</th><th>ประเภท</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+<tbody id="shiftMasterBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="panel section-gap">
+<div class="panel-header">
+<div><h3>คำนวณผลย้อนหลังหลังเปลี่ยนกะตั้งต้น</h3><p>ใช้เมื่อแก้เวลาเริ่ม–สิ้นสุดหรือเปลี่ยนกะตั้งต้น เพื่ออัปเดตชั่วโมง สถานะเวลาเข้า กลับก่อน และ OT</p></div>
+</div>
+<div class="panel-body">
+<div class="shift-recalc-grid">
+<div class="field"><label>รูปแบบการทำงาน</label><select class="select" id="shiftRecalcPattern"><option value="TECH_6D">6 วัน/สัปดาห์</option><option value="TECH_5D">5 วัน/สัปดาห์</option></select></div>
+<div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="shiftRecalcStart" type="date"/></div>
+<div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="shiftRecalcEnd" type="date"/></div>
+<button class="btn btn-primary" id="shiftRecalcBtn">คำนวณผลใหม่</button>
+</div>
+<div aria-live="polite" class="shift-recalc-progress hidden" id="shiftRecalcProgress">
+<div class="shift-recalc-progress-head">
+<strong id="shiftRecalcProgressTitle">กำลังเตรียม Job...</strong>
+<span id="shiftRecalcProgressPercent">0%</span>
+</div>
+<div class="shift-recalc-progress-track"><span id="shiftRecalcProgressBar"></span></div>
+<div class="shift-recalc-progress-detail" id="shiftRecalcProgressDetail">ระบบจะแบ่งคำนวณเป็นชุดเล็กเพื่อป้องกัน Timeout</div>
+</div>
+<div class="shift-settings-note">การเปลี่ยนกะตั้งต้นจะมีผลกับการจัดกะอัตโนมัติและการประมวลผลใหม่ ส่วนกะที่จัดให้พนักงานไว้แล้วจะยังคงเดิม ระบบแบ่งคำนวณเป็น Job ย่อยและสามารถกดปุ่มเดิมเพื่อทำต่อได้</div>
+</div>
+</div>
+</section>
+<!-- Admin Holidays -->
+<section class="page admin-page" id="page-admin-holidays">
+<div class="panel">
+<div class="panel-header"><div><h3>วันหยุดนักขัตฤกษ์</h3><p>ข้อมูลวันหยุดที่ใช้คำนวณกะอัตโนมัติ</p></div><button class="btn btn-orange" id="newHolidayBtn">+ เพิ่มวันหยุด</button></div>
+<div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันที่</th><th>ชื่อวันหยุด</th><th>แหล่งข้อมูล</th><th>หมายเหตุ</th><th>รายการ Attendance</th><th>มีเวลาทำงาน</th><th>จัดการ</th></tr></thead><tbody id="holidayBody"></tbody></table></div></div>
+</div>
+</section>
+<!-- Organization Structure -->
+<section class="page admin-page org-structure-page" id="page-admin-org">
+<div class="org-hero org-hero-v6104">
+<div class="org-hero-copy">
+<span class="eyebrow">ORGANIZATION STRUCTURE</span>
+<h2>ผังโครงสร้างองค์กร</h2>
+<p>
+                จัดการโครงสร้างองค์กรหลายระดับ
+                เชื่อม Zone / Area / Sub-area
+                และกำหนด Manager Scope รายหน่วยงาน
+              </p>
+<div class="org-hero-badges">
+<span>Drag &amp; Drop</span>
+<span>Manager Scope</span>
+<span>Organization Master</span>
+</div>
+</div>
+<div class="org-hero-actions org-hero-actions-v6104">
+<button class="btn btn-primary org-primary-action" id="orgAddRootBtn">
+                ＋ เพิ่มหน่วยงานหลัก
+              </button>
+<button class="btn btn-success" id="orgUploadBtn">
+                ⇧ Upload ผังองค์กร
+              </button>
+<button class="btn btn-orange" id="orgScopeUploadBtn">
+                ⇧ Upload Manager Scope
+              </button>
+<button class="btn btn-light org-icon-action" id="orgRefreshBtn" title="รีเฟรชผังองค์กร">
+                ↻ รีเฟรช
+              </button>
+</div>
+</div>
+<div class="org-workspace section-gap">
+<aside class="panel org-tree-panel">
+<div class="org-tree-toolbar">
+<div class="org-tree-search"><span>⌕</span><input class="input" id="orgTreeSearch" placeholder="ค้นหารหัสหรือชื่อหน่วยงาน"/></div>
+<label class="org-inactive-toggle"><input id="orgShowInactive" type="checkbox"/><span>แสดงที่ปิดใช้งาน</span></label>
+</div>
+<div class="org-tree-actions">
+<button class="btn btn-light btn-sm" id="orgExpandAllBtn">ขยายทั้งหมด</button>
+<button class="btn btn-light btn-sm" id="orgCollapseAllBtn">ยุบทั้งหมด</button>
+<span id="orgTreeCount">0 หน่วยงาน</span>
+</div>
+<div class="org-drag-guide">
+<span class="org-drag-guide-icon">⠿</span>
+<div>
+<strong>ลากเพื่อจัดลำดับหรือย้ายหน่วยงาน</strong>
+<small>วางเหนือ/ใต้เพื่อเรียงลำดับ • วางตรงกลางเพื่อย้ายเป็นหน่วยงานลูก</small>
+</div>
+</div>
+<div class="org-root-drop-zone" id="orgRootDropZone">
+<span>↥</span>
+<strong>วางที่นี่เพื่อย้ายเป็นหน่วยงานหลัก</strong>
+</div>
+<div class="org-tree" id="orgTree"><div class="org-tree-empty">กำลังโหลดผังองค์กร...</div></div>
+</aside>
+<section class="panel org-detail-panel">
+<div class="org-detail-empty" id="orgDetailEmpty">
+<div class="org-detail-empty-icon">⌘</div>
+<h3>เลือกหน่วยงานจากผังด้านซ้าย</h3>
+<p>ระบบจะแสดงรายละเอียด หน่วยงานลูก พนักงาน และ Manager ของหน่วยงาน</p>
+</div>
+<div class="hidden" id="orgDetailContent">
+<div class="org-detail-head">
+<div>
+<div class="org-breadcrumb" id="orgBreadcrumb"></div>
+<div class="org-title-line">
+<span class="org-level-badge" id="orgLevelBadge">-</span>
+<div><h2 id="orgDetailTitle">-</h2><p id="orgDetailCode">-</p></div>
+</div>
+</div>
+<div class="org-detail-actions">
+<button class="btn btn-primary" id="orgAddChildBtn">+ เพิ่มหน่วยงานลูก</button>
+<button class="btn btn-orange" id="orgAddManagerBtn">+ กำหนด Manager</button>
+<button class="btn btn-light" id="orgEditBtn">แก้ไข</button>
+<button class="btn btn-danger-soft" id="orgDeactivateBtn">ปิดใช้งาน</button>
+</div>
+</div>
+<div class="org-kpi-grid">
+<article><span>พนักงานในหน่วยงาน</span><strong id="orgDirectEmployees">0</strong></article>
+<article><span>พนักงานรวมหน่วยงานลูก</span><strong id="orgTotalEmployees">0</strong></article>
+<article><span>หน่วยงานลูก</span><strong id="orgChildCount">0</strong></article>
+<article><span>Manager</span><strong id="orgManagerCount">0</strong></article>
+</div>
+<div class="org-detail-columns">
+<div class="org-info-card"><div class="org-section-head"><strong>ข้อมูลหน่วยงาน</strong></div><div class="org-info-grid" id="orgInfoGrid"></div></div>
+<div class="org-info-card"><div class="org-section-head"><strong>หน่วยงานลูก</strong><span id="orgChildrenCount">0 รายการ</span></div><div class="org-children-list" id="orgChildrenList"></div></div>
+</div>
+<div class="org-info-card org-manager-card">
+<div class="org-section-head">
+<div><strong>Manager ของหน่วยงาน</strong><small>Scope สามารถครอบคลุมเฉพาะหน่วยงานนี้หรือรวมหน่วยงานลูก</small></div>
+<button class="btn btn-orange btn-sm" id="orgAddManagerInlineBtn">+ เพิ่ม Manager</button>
+</div>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Manager</th><th>ครอบคลุม</th><th>ดู</th><th>จัดกะ</th><th>รับรองเวลา</th><th>พิจารณาคำขอ</th><th>ช่วงใช้</th><th>สถานะ</th><th>จัดการ</th></tr></thead>
+<tbody id="orgManagerBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+</div>
+</section>
+<!-- User Account Management V6.11.15 -->
+<section class="page admin-page user-account-page" id="page-admin-accounts">
+<div class="user-account-hero">
+<div>
+<span class="eyebrow">
+                USER ACCOUNT MANAGEMENT
+              </span>
+<h2>จัดการบัญชีผู้ใช้งาน</h2>
+<p>
+                สร้างบัญชีด้วย Email จากข้อมูลพนักงาน
+                ระบบส่ง Invite Link ให้ User ตั้งรหัสผ่านด้วยตนเองก่อนเข้าใช้งาน
+              </p>
+</div>
+<div class="user-account-hero-actions">
+<button class="btn btn-light" id="accountRefreshBtn">
+                ↻ รีเฟรช
+              </button>
+<button class="btn btn-primary" id="accountCreateBtn">
+                ＋ สร้างบัญชีผู้ใช้
+              </button>
+</div>
+</div>
+<div class="user-account-security-note section-gap">
+<div class="user-account-security-icon">✓</div>
+<div>
+<strong>แนวทางความปลอดภัย</strong>
+<p>
+                ระบบไม่สร้างและไม่ส่ง Temporary Password
+                User จะได้รับ Invite Link และเป็นผู้ตั้งรหัสผ่านด้วยตนเอง
+              </p>
+</div>
+</div>
+<div class="user-account-kpi-grid user-account-kpi-grid-v6107 section-gap">
+<article>
+<span>บัญชีทั้งหมด</span>
+<strong id="accountKpiTotal">0</strong>
+<small>User</small>
+</article>
+<article class="success">
+<span>Active</span>
+<strong id="accountKpiActive">0</strong>
+<small>User</small>
+</article>
+<article class="invite">
+<span>รอตอบรับ Invite</span>
+<strong id="accountKpiInvite">0</strong>
+<small>User</small>
+</article>
+<article class="warning">
+<span>รอตั้งรหัสผ่าน</span>
+<strong id="accountKpiFirstLogin">0</strong>
+<small>User</small>
+</article>
+<article class="danger">
+<span>Inactive / ไม่มี Profile</span>
+<strong id="accountKpiIssue">0</strong>
+<small>User</small>
+</article>
+</div>
+<div class="panel section-gap user-account-filter-panel">
+<div class="panel-body">
+<div class="user-account-filter-grid">
+<div class="field user-account-search">
+<label>ค้นหา</label>
+<input class="input" id="accountSearch" placeholder="Email รหัสพนักงาน ชื่อ หรือหน่วยงาน"/>
+</div>
+<div class="field">
+<label>Role</label>
+<select class="select" id="accountRoleFilter">
+<option value="">ทุก Role</option>
+<option value="VIEWER">VIEWER</option>
+<option value="MANAGER">MANAGER</option>
+<option value="HR_ADMIN">HR_ADMIN</option>
+</select>
+</div>
+<div class="field">
+<label>สถานะบัญชี</label>
+<select class="select" id="accountStatusFilter">
+<option value="">ทุกสถานะ</option>
+<option value="ACTIVE">พร้อมใช้งาน</option>
+<option value="INVITE_PENDING">รอตอบรับ Invite</option>
+<option value="FIRST_LOGIN_PASSWORD">รอตั้งรหัสผ่าน</option>
+<option value="INACTIVE">Inactive</option>
+<option value="NO_PROFILE">ไม่มี Profile</option>
+</select>
+</div>
+<div class="user-account-filter-actions">
+<button class="btn btn-light" id="accountResetFilterBtn">
+                    ↺ รีเซ็ต
+                  </button>
+<button class="btn btn-primary" id="accountSearchBtn">
+                    ⌕ ค้นหา
+                  </button>
+</div>
+</div>
+</div>
+</div>
+<div class="panel section-gap user-account-table-panel">
+<div class="panel-header">
+<div>
+<h3>บัญชีผู้ใช้งาน</h3>
+<p id="accountTableMeta">
+                  ยังไม่ได้โหลดข้อมูล
+                </p>
+</div>
+<div class="user-account-table-legend">
+<span class="account-status-dot active"></span>
+                พร้อมใช้งาน
+                <span class="account-status-dot invite"></span>
+                Invite
+                <span class="account-status-dot first"></span>
+                ตั้งรหัสผ่าน
+                <span class="account-status-dot inactive"></span>
+                Inactive
+              </div>
+</div>
+<div class="panel-body">
+<div class="table-wrap user-account-table-wrap">
+<table class="user-account-table">
+<thead>
+<tr>
+<th>User / Email</th>
+<th>พนักงาน</th>
+<th>Role</th>
+<th>สถานะบัญชี</th>
+<th>หน่วยงาน</th>
+<th>สร้างบัญชี</th>
+<th>เข้าใช้ล่าสุด</th>
+<th>Manager Scope</th>
+<th>จัดการ</th>
+</tr>
+</thead>
+<tbody id="accountTableBody">
+<tr>
+<td class="fc-empty" colspan="9">
+                        กดรีเฟรชเพื่อโหลดข้อมูล
+                      </td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+<!-- Admin Users -->
+<section class="page admin-page manager-scope-page" id="page-admin-users">
+<div class="manager-scope-hero">
+<div>
+<span class="eyebrow">ROLE &amp; MANAGER SCOPE</span>
+<h2>User และสิทธิ์</h2>
+<p>Role แยกจาก Manager Scope โดยใช้ Email เชื่อมความสัมพันธ์ รองรับ Scope รายหน่วยงานและรายบุคคล</p>
+</div>
+<div class="manager-scope-hero-actions">
+<button class="btn btn-success" id="managerScopeTemplateBtn">Template Scope CSV</button>
+<button class="btn btn-orange" id="managerScopeUploadBtn">Upload Manager Scope</button>
+<button class="btn btn-light" id="reloadUsersBtn">รีเฟรช</button>
+</div>
+</div>
+<div class="panel section-gap">
+<div class="panel-header">
+<div>
+<h3>User ทั้งหมด</h3>
+<p>HR Admin, Manager และ Viewer — Manager สามารถมีหลาย Scope ต่ออีเมล</p>
+</div>
+</div>
+<div class="panel-body">
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>อีเมล</th>
+<th>ชื่อแสดง</th>
+<th>Role</th>
+<th>รหัสพนักงาน</th>
+<th>Manager Scope</th>
+<th>สถานะ</th>
+<th>เข้าใช้ล่าสุด</th>
+<th>จัดการ</th>
+</tr>
+</thead>
+<tbody id="userBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+<!-- CSV Time Import -->
+<section class="page admin-page mobileta-import-page" id="page-admin-time-import">
+<div class="mobileta-import-hero">
+<div>
+<span class="eyebrow">CSV TIME IMPORT</span>
+<h2>นำเข้าข้อมูลลงเวลาจาก CSV</h2>
+<p>รองรับ CSV UTF-8: <strong>EmployeeId, InOutDate, InOutTime, InOutMode, GPSName, GpsLocation</strong> โดยใช้ค่า เข้า/ออกจากไฟล์โดยตรง</p>
+</div>
+<button class="btn btn-light" id="timeCsvRefreshHistoryBtn">รีเฟรชประวัติ</button>
+</div>
+<div class="panel section-gap">
+<div class="panel-header"><div><h3>1. เลือกและตรวจสอบไฟล์ CSV</h3><p>ระบบตรวจหัวคอลัมน์ วันที่ เวลา เข้า/ออก และข้อมูลซ้ำใน Browser ก่อนบันทึก</p></div><span class="mobileta-status-pill neutral" id="timeCsvFileStatus">ยังไม่ได้เลือกไฟล์</span></div>
+<div class="panel-body">
+<div class="mobileta-form-grid">
+<div class="field"><label>ไฟล์ CSV UTF-8</label><input accept=".csv,text/csv" class="input" id="timeCsvFile" type="file"/></div>
+<div class="field"><label>หมายเหตุการนำเข้า</label><input class="input" id="timeCsvImportNote" placeholder="เช่น ข้อมูลลงเวลาเดือนกรกฎาคม 2569"/></div>
+<label class="mobileta-option-card"><input checked="" id="timeCsvRebuildAttendance" type="checkbox"/><span><strong>ประมวลผล Attendance หลังนำเข้า</strong><small>สร้าง Job ตามช่วงวันที่ของไฟล์ พร้อม Progress และ Error Log</small></span></label>
+</div>
+<div class="mobileta-action-row">
+<button class="btn btn-light" id="timeCsvPreviewBtn">ตรวจสอบไฟล์</button>
+<button class="btn btn-primary" disabled="" id="timeCsvImportBtn">นำเข้าข้อมูลลงเวลา</button>
+<button class="btn btn-danger-soft" id="timeCsvResetBtn">ล้างผลตรวจสอบ</button>
+<button class="btn btn-success" id="timeCsvTemplateBtn">ดาวน์โหลด Template CSV</button>
+</div>
+<div class="mobileta-format-note"><strong>วันที่:</strong> YYYY-MM-DD  •  <strong>เวลา:</strong> HH:mm หรือ HH:mm:ss  •  <strong>InOutMode:</strong> เข้า / ออก หรือ IN / OUT  •  รายการซ้ำจะไม่เพิ่มซ้ำ</div>
+</div>
+</div>
+<div class="hidden" id="timeCsvPreviewPanel">
+<div class="mobileta-kpi-grid section-gap">
+<article><span>แถวทั้งหมด</span><strong id="timeCsvRawRows">0</strong><small>ไม่รวมหัวตาราง</small></article>
+<article><span>ข้อมูลถูกต้อง</span><strong id="timeCsvValidRows">0</strong><small>พร้อมนำเข้า</small></article>
+<article><span>ซ้ำภายในไฟล์</span><strong id="timeCsvFileDuplicates">0</strong><small>ระบบจะข้าม</small></article>
+<article><span>พนักงาน</span><strong id="timeCsvEmployees">0</strong><small>รหัสไม่ซ้ำ</small></article>
+<article><span>ช่วงวันที่</span><strong id="timeCsvDateRange">-</strong><small>ข้อมูลในไฟล์</small></article>
+<article><span>ข้อมูลผิดรูปแบบ</span><strong id="timeCsvInvalidRows">0</strong><small>ไม่นำเข้า</small></article>
+</div>
+<div class="panel section-gap">
+<div class="panel-header"><div><h3>ตัวอย่างข้อมูล</h3><p>แสดงสูงสุด 20 รายการแรกหลังตัดข้อมูลซ้ำ</p></div><button class="btn btn-light hidden" id="timeCsvDownloadErrorsBtn">ดาวน์โหลด Error CSV</button></div>
+<div class="panel-body"><div class="table-wrap mobileta-preview-table"><table><thead><tr><th>แถว</th><th>รหัสพนักงาน</th><th>วันที่</th><th>เวลา</th><th>เข้า/ออก</th><th>GPSName</th><th>GpsLocation</th></tr></thead><tbody id="timeCsvPreviewBody"></tbody></table></div></div>
+</div>
+</div>
+<div class="panel section-gap hidden" id="timeCsvProgressPanel">
+<div class="panel-header"><div><h3 id="timeCsvProgressTitle">กำลังนำเข้าข้อมูล</h3><p id="timeCsvProgressText">เตรียมข้อมูล...</p></div><strong id="timeCsvProgressPercent">0%</strong></div>
+<div class="panel-body"><div class="mobileta-progress-track"><div class="mobileta-progress-bar" id="timeCsvProgressBar"></div></div><div class="mobileta-progress-stats"><span>ส่งแล้ว <strong id="timeCsvUploadedRows">0</strong></span><span>เพิ่มใหม่ <strong id="timeCsvInsertedRows">0</strong></span><span>ซ้ำฐานข้อมูล <strong id="timeCsvExistingDuplicates">0</strong></span><span>ไม่พบพนักงาน <strong id="timeCsvUnmatchedRows">0</strong></span><span>GPS Conflict <strong id="timeCsvGpsConflicts">0</strong></span></div></div>
+</div>
+<div class="section-gap" id="timeCsvResultPanel"></div>
+<div class="panel section-gap">
+<div class="panel-header"><div><h3>ประวัติการนำเข้า CSV</h3><p>แสดง 30 รายการล่าสุด</p></div></div>
+<div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>ชื่อไฟล์</th><th>ช่วงวันที่</th><th>แถว</th><th>เพิ่มใหม่</th><th>ข้อมูลซ้ำ</th><th>ไม่พบพนักงาน</th><th>GPS Conflict</th><th>Attendance Job</th><th>สถานะ</th><th>ผู้ดำเนินการ</th></tr></thead><tbody id="timeCsvHistoryBody"><tr><td class="table-empty" colspan="11">กดรีเฟรชเพื่อโหลดประวัติ</td></tr></tbody></table></div></div>
+</div>
+</section>
+<!-- Admin Import -->
+<section class="page admin-page" id="page-admin-import">
+<div class="panel">
+<div class="panel-header"><div><h3>นำเข้าข้อมูลพนักงาน</h3><p>รองรับไฟล์ CSV UTF-8 ตามชื่อคอลัมน์ที่กำหนด</p></div></div>
+<div class="panel-body">
+<div class="form-row">
+<div class="field"><label>เลือกไฟล์ CSV</label><input accept=".csv,text/csv" class="input" id="employeeFile" type="file"/></div>
+<div class="field"><label>หมายเหตุ</label><input class="input" id="importNote" placeholder="เช่น ปรับปรุงข้อมูลประจำเดือน"/></div>
+</div>
+<div style="display:flex;gap:9px;flex-wrap:wrap"><button class="btn btn-light" id="previewImportBtn">ตรวจสอบก่อนนำเข้า</button><button class="btn btn-primary" id="runImportBtn">นำเข้าข้อมูล</button><button class="btn btn-success" id="downloadTemplateBtn">ดาวน์โหลด Template</button></div>
+<div class="employee-import-guide section-gap">
+<div>
+<strong>คอลัมน์ Employee Template V6.11.15</strong>
+<p>employee_id, full_name, email, position_name, department, org_code, pc, car_team, start_date, resign_date</p>
+</div>
+<div class="employee-import-guide-note">
+<span>ผังองค์กร</span>
+<strong>ใช้ org_code เชื่อมกับผังองค์กร และระบบดึง Zone, Area และ Sub-area ให้อัตโนมัติ</strong>
+<small>Manager และสิทธิ์ให้กำหนดแยกใน Manager Scope ไม่ต้องใส่ใน Employee Template</small>
+</div>
+</div>
+<div class="section-gap" id="importResult"></div>
+</div>
+</div>
+</section>
+
+<!-- V6.14.82 Manager Team Portal -->
+<section class="page portal-management-page-v61482" id="page-team-portal">
+  <div class="portal-hero-v61482">
+    <div><span class="eyebrow">TEAM EMPLOYEE PORTAL</span><h2>สมาชิกทีม / Portal</h2><p>สร้าง Link/QR ของทีม ออก Activation Code และ Reset PIN ให้เฉพาะลูกทีมใน Scope ของ Manager</p></div>
+    <button class="btn btn-light" id="teamPortalRefreshV61482">↻ รีเฟรช</button>
+  </div>
+  <div class="portal-team-grid-v61482 section-gap">
+    <article class="portal-link-card-v61482">
+      <div class="portal-card-head-v61482"><div><span>Team Access</span><strong>QR / Link เข้าระบบของทีม</strong></div><span class="portal-secure-badge-v61482">ไม่ใช่ Password</span></div>
+      <div class="portal-qr-wrap-v61482"><div id="teamPortalQrV61482" class="portal-qr-v61482"></div><div class="portal-link-copy-v61482"><code id="teamPortalLinkTextV61482">กำลังสร้าง Link...</code><div><button class="btn btn-primary btn-sm" id="teamPortalCopyLinkV61482">คัดลอก Link</button><button class="btn btn-light btn-sm" id="teamPortalShareLinkV61482">แชร์</button><button class="btn btn-danger-soft btn-sm" id="teamPortalRotateLinkV61482">เปลี่ยน Link</button></div></div></div>
+      <small>QR เดียวใช้ได้ทั้งทีม • Employee ยังต้องยืนยันรหัสพนักงาน + Activation Code/PIN ของตนเอง</small>
+    </article>
+    <div class="portal-team-kpis-v61482">
+      <article><span>ลูกทีมทั้งหมด</span><strong id="teamPortalKpiTotalV61482">0</strong><small>ตาม Manager Scope ปัจจุบัน</small></article>
+      <article class="success"><span>เปิดใช้แล้ว</span><strong id="teamPortalKpiActiveV61482">0</strong><small>ตั้ง PIN แล้ว</small></article>
+      <article class="warning"><span>รอ Activate</span><strong id="teamPortalKpiWaitingV61482">0</strong><small>HR เปิดสิทธิ์แล้ว</small></article>
+      <article class="neutral"><span>HR ยังไม่เปิด</span><strong id="teamPortalKpiDisabledV61482">0</strong><small>Manager ยังสร้าง Code ไม่ได้</small></article>
+    </div>
+  </div>
+  <div class="panel section-gap">
+    <div class="panel-header"><div><h3>สมาชิกทีม</h3><p id="teamPortalMetaV61482">กำลังโหลด...</p></div><div class="portal-filter-inline-v61482"><input class="input" id="teamPortalSearchV61482" placeholder="ค้นหารหัส ชื่อ หน่วยงาน"/><select class="select" id="teamPortalStatusV61482"><option value="">ทุกสถานะ</option><option value="ACTIVE">เปิดใช้แล้ว</option><option value="ACTIVATION_READY">มี Activation Code</option><option value="READY">รอสร้าง Code</option><option value="NOT_ENABLED">HR ยังไม่เปิด</option><option value="DISABLED">ระงับ</option></select></div></div>
+    <div class="panel-body"><div class="table-wrap"><table class="portal-table-v61482"><thead><tr><th>พนักงาน</th><th>ตำแหน่ง / หน่วยงาน</th><th>สถานะ Portal</th><th>เข้าใช้ล่าสุด</th><th>จัดการ</th></tr></thead><tbody id="teamPortalBodyV61482"><tr><td colspan="5" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
+  </div>
+</section>
+
+<!-- V6.15.24 4D.1A.1 + 4D.1B Team Category + Membership -->
+<section class="page team-master-page-v61523" id="page-team-master">
+  <div class="team-master-hero-v61523">
+    <div>
+      <span class="eyebrow">4D · OPERATIONAL TEAM FOUNDATION</span>
+      <h2>ทีมช่างเทคนิค</h2>
+      <p>สร้างทีมรถยนต์/มอเตอร์ไซค์แบบ Auto Generate และกำหนดสมาชิกแบบ Effective Date</p>
+      <div class="team-master-hero-badges-v61523"><span>Auto Generate</span><span>CAR / MOTORCYCLE</span><span>สมาชิกขั้นต่ำ 3 คน</span><span>Effective Date</span></div>
+    </div>
+    <div class="team-master-hero-actions-v61523">
+      <button class="btn btn-light" id="teamMasterRefreshV61523">↻ รีเฟรช</button>
+      <button class="btn btn-primary" id="teamMasterCreateV61523">＋ เพิ่มทีม</button>
+    </div>
+  </div>
+
+  <div class="team-master-foundation-note-v61523 section-gap">
+    <i>4D.1A.1 + 4D.1B</i>
+    <div><strong>เพิ่มประเภททีมและ Team Membership แล้ว</strong><span>รถยนต์ต้องเตรียม Team ก่อนเปิด Enforcement • มอเตอร์ไซค์กำหนดทีมได้แต่ไม่บังคับ • กลุ่มไม่ระบุ car_team แสดงเพื่อให้ตรวจข้อมูล</span></div>
+  </div>
+
+  <div class="team-master-kpis-v61523 section-gap">
+    <article><span>ทีมทั้งหมด</span><strong id="teamMasterKpiAllV61523">0</strong><small>รวมประวัติที่ปิดใช้</small></article>
+    <article class="success"><span>ทีมที่ใช้งาน</span><strong id="teamMasterKpiActiveV61523">0</strong><small>พร้อมรับสมาชิกใน 4D.1B</small></article>
+    <article class="neutral"><span>ปิดใช้งาน</span><strong id="teamMasterKpiInactiveV61523">0</strong><small>Team Code จะไม่ถูกนำกลับมาใช้</small></article>
+    <article class="info"><span>หน่วยงานที่สร้างทีมได้</span><strong id="teamMasterKpiOrgV61523">0</strong><small>ตาม Scope ปัจจุบัน</small></article>
+  </div>
+
+  <div class="panel section-gap">
+    <div class="panel-body">
+      <div class="team-master-toolbar-v61523">
+        <div class="field"><label>หน่วยงาน</label><select class="select" id="teamMasterOrgFilterV61523"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
+        <div class="field"><label>ประเภททีม</label><select class="select" id="teamMasterCategoryFilterV61524"><option value="">ทุกประเภท</option><option value="CAR">รถยนต์</option><option value="MOTORCYCLE">มอเตอร์ไซค์</option></select></div><div class="field"><label>สถานะ</label><select class="select" id="teamMasterStatusFilterV61523"><option value="ACTIVE">ใช้งานอยู่</option><option value="ALL">ทั้งหมด</option><option value="INACTIVE">ปิดใช้งาน</option></select></div>
+        <div class="field team-master-search-v61523"><label>ค้นหา</label><input class="input" id="teamMasterSearchV61523" placeholder="Team Code / ชื่อทีม / หน่วยงาน"/></div>
+        <div class="team-master-toolbar-actions-v61523"><button class="btn btn-primary" id="teamMasterSearchBtnV61523">ค้นหา</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="team-membership-readiness-v61524 section-gap">
+    <article><span>รถยนต์ยังไม่มีทีม</span><strong id="teamReadinessCarV61524">0</strong><small>ต้องจัดทีมก่อนเปิด 4D.1C Enforcement</small></article>
+    <article><span>มอเตอร์ไซค์ไม่มีทีม</span><strong id="teamReadinessMotorcycleV61524">0</strong><small>จัดกะได้แม้ไม่มีทีม</small></article>
+    <article><span>ไม่ระบุ car_team</span><strong id="teamReadinessUnspecifiedV61524">0</strong><small>ควรตรวจ Employee Master</small></article>
+  </div>
+
+  <div class="team-master-layout-v61523 section-gap">
+    <section class="panel team-master-org-panel-v61523">
+      <div class="panel-header"><div><h3>หน่วยงานใน Scope</h3><p>เลือกหน่วยงานเพื่อดู Team Master และเลขทีมถัดไป</p></div></div>
+      <div class="panel-body"><div id="teamMasterOrgListV61523" class="team-master-org-list-v61523"><div class="fc-empty">กำลังโหลด...</div></div></div>
+    </section>
+    <section class="panel team-master-list-panel-v61523">
+      <div class="panel-header"><div><h3>Team Master</h3><p id="teamMasterMetaV61523">กำลังโหลด...</p></div><span class="team-master-auto-chip-v61523">AUTO NAME / CODE</span></div>
+      <div class="panel-body"><div class="table-wrap"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>ประเภท</th><th>หน่วยงาน</th><th>สมาชิก</th><th>สถานะ</th><th>สร้างเมื่อ</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="7" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
+    </section>
+  </div>
+
+  <div class="panel section-gap">
+    <div class="panel-header"><div><h3>ประวัติ Team Master ล่าสุด</h3><p>บันทึกการสร้างและปิดใช้งานเพื่อ Audit ย้อนหลัง</p></div><button class="btn btn-light btn-sm" id="teamMasterAuditRefreshV61523">รีเฟรชประวัติ</button></div>
+    <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>Team Code</th><th>รายการ</th><th>ผู้ดำเนินการ</th><th>เหตุผล / หมายเหตุ</th></tr></thead><tbody id="teamMasterAuditBodyV61523"><tr><td colspan="5" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
+  </div>
+</section>
+
+<!-- V6.15.23 Create Team modal -->
+<div class="modal-backdrop hidden" id="teamMasterCreateModalV61523" aria-hidden="true">
+  <div class="modal team-master-create-modal-v61523" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">AUTO-GENERATED TEAM</span><h3>เพิ่มทีมช่างเทคนิค</h3><p>เลือกหน่วยงานและประเภททีม ระบบจะสร้าง Team Name และ Team Code ให้</p></div><button class="btn btn-light btn-icon" data-team-master-close-v61523>×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>หน่วยงาน <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateOrgV61523"></select></div><div class="field"><label>ประเภททีม <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateCategoryV61524"><option value="CAR">รถยนต์</option><option value="MOTORCYCLE">มอเตอร์ไซค์</option></select></div>
+      <div class="team-master-preview-v61523">
+        <span>ทีมที่จะสร้าง</span>
+        <div><strong id="teamMasterPreviewNameV61523">ทีม 01</strong><code id="teamMasterPreviewCodeV61523">BE5-T01</code></div>
+        <small id="teamMasterPreviewOrgV61523">เลือกหน่วยงานเพื่อดูเลขทีมถัดไป</small>
+      </div>
+      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMasterCreateNoteV61523" rows="3" maxlength="500" placeholder="เช่น เตรียมจัดทีมช่างประจำพื้นที่ (ไม่บังคับ)"></textarea></div>
+      <div class="team-master-create-note-v61523"><i>✓</i><div><strong>Manager ไม่ต้องตั้งชื่อทีมเอง</strong><span>ถ้าปิดใช้งานทีมภายหลัง เลขเดิมจะถูกเก็บในประวัติและทีมใหม่จะใช้เลขถัดไป</span></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-master-close-v61523>ยกเลิก</button><button class="btn btn-primary" id="teamMasterCreateConfirmV61523">สร้างทีม</button></div>
+  </div>
+</div>
+
+<!-- V6.15.24 Team Membership modal -->
+<div class="modal-backdrop hidden" id="teamMembershipModalV61524" aria-hidden="true">
+  <div class="modal team-membership-modal-v61524" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">4D.1B · TEAM MEMBERSHIP</span><h3 id="teamMembershipTitleV61524">กำหนดสมาชิกทีม</h3><p id="teamMembershipMetaV61524">เลือกสมาชิกอย่างน้อย 3 คน</p></div><button class="btn btn-light btn-icon" data-team-membership-close-v61524>×</button></div>
+    <div class="modal-body">
+      <div class="team-membership-summary-v61524"><div><span>ประเภททีม</span><strong id="teamMembershipCategoryV61524">-</strong></div><div><span>วันที่มีผล</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/></div><div><span>เลือกแล้ว</span><strong id="teamMembershipSelectedV61524">0 คน</strong></div></div>
+      <div class="team-membership-warning-v61524" id="teamMembershipPolicyV61524"></div>
+      <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamMembershipSearchV61524" placeholder="รหัส / ชื่อ / หน่วยงาน / car_team"/></div>
+      <div class="team-membership-list-v61524" id="teamMembershipListV61524"><div class="fc-empty">กำลังโหลด...</div></div>
+      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMembershipNoteV61524" rows="2" maxlength="500" placeholder="ไม่บังคับ"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-membership-close-v61524>ยกเลิก</button><button class="btn btn-primary" id="teamMembershipSaveV61524">บันทึกสมาชิกทีม</button></div>
+  </div>
+</div>
+
+<!-- V6.14.82 HR Employee Portal Administration -->
+<section class="page admin-page portal-management-page-v61482" id="page-admin-employee-portal">
+  <div class="portal-hero-v61482 hr">
+    <div><span class="eyebrow">EMPLOYEE PORTAL ADMINISTRATION</span><h2>Employee Portal</h2><p>HR เปิด/ระงับสิทธิ์ Portal จาก Employee Master โดยตรง • ไม่ต้องมี Email และไม่ใช้ตัวกรอง PC ของหน้าบัญชีเดิม</p></div>
+    <button class="btn btn-light" id="portalAdminRefreshV61482">↻ รีเฟรช</button>
+  </div>
+  <div class="portal-admin-kpis-v61482 section-gap"><article><span>ผลค้นหา</span><strong id="portalAdminKpiTotalV61482">0</strong><small>พนักงาน</small></article><article class="success"><span>Activate แล้ว</span><strong id="portalAdminKpiActiveV61482">0</strong><small>ตั้ง PIN แล้ว</small></article><article class="warning"><span>รอ Activate</span><strong id="portalAdminKpiWaitingV61482">0</strong><small>เปิดสิทธิ์แล้ว</small></article><article class="neutral"><span>ยังไม่เปิด</span><strong id="portalAdminKpiOffV61482">0</strong><small>Employee Portal</small></article></div>
+  <div class="panel section-gap"><div class="panel-body"><div class="portal-admin-filter-v61482"><div class="field"><label>ค้นหา</label><input class="input" id="portalAdminSearchV61482" placeholder="รหัส ชื่อ ตำแหน่ง หน่วยงาน พื้นที่ หรือ PC"/></div><div class="field"><label>สถานะ Portal</label><select class="select" id="portalAdminStatusV61482"><option value="">ทุกสถานะ</option><option value="ACTIVE">เปิดใช้แล้ว</option><option value="ACTIVATION_READY">มี Activation Code</option><option value="READY">รอ Activate</option><option value="NOT_ENABLED">ยังไม่เปิด</option><option value="DISABLED">ระงับ</option></select></div><div class="portal-admin-actions-v61482"><button class="btn btn-light" id="portalAdminSelectTechniciansV61482">เลือกกลุ่มช่างเทคนิค</button><button class="btn btn-primary" id="portalAdminSearchBtnV61482">ค้นหา</button><button class="btn btn-success" id="portalAdminEnableBtnV61482">เปิดสิทธิ์ที่เลือก</button><button class="btn btn-danger-soft" id="portalAdminDisableBtnV61482">ระงับที่เลือก</button></div></div></div></div>
+  <div class="panel section-gap"><div class="panel-header"><div><h3>พนักงาน Employee Portal</h3><p id="portalAdminMetaV61482">เลือกพนักงานหลายคนแล้วเปิดสิทธิ์ได้พร้อมกัน</p></div><label class="portal-select-all-v61482"><input type="checkbox" id="portalAdminSelectAllV61482"/> เลือกทั้งหมดที่แสดง</label></div><div class="panel-body"><div class="table-wrap"><table class="portal-table-v61482"><thead><tr><th></th><th>พนักงาน</th><th>ตำแหน่ง</th><th>หน่วยงาน / พื้นที่</th><th>PC</th><th>สถานะ Portal</th><th>Activate / Login ล่าสุด</th></tr></thead><tbody id="portalAdminBodyV61482"><tr><td colspan="7" class="fc-empty">กดค้นหาเพื่อโหลดข้อมูล</td></tr></tbody></table></div></div></div>
+</section>
+
+<!-- V6.14.82 Activation Code modal -->
+<div class="modal-backdrop hidden" id="teamPortalActivationModalV61482" aria-hidden="true">
+  <div class="modal portal-activation-modal-v61482" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">EMPLOYEE ACTIVATION</span><h3 id="teamPortalActivationTitleV61482">Activation Code</h3></div><button class="btn btn-light btn-icon" data-close-team-portal-v61482>×</button></div>
+    <div class="modal-body"><div class="portal-activation-person-v61482" id="teamPortalActivationPersonV61482"></div><div class="portal-activation-code-v61482"><span>Activation Code ใช้ครั้งเดียว</span><strong id="teamPortalActivationCodeV61482">------</strong><small id="teamPortalActivationExpireV61482">หมดอายุภายใน 7 วัน</small></div><div class="portal-security-note-v61482">ส่งรหัสนี้ให้พนักงานเป็นการส่วนตัว • หลังเปิดใช้งานครั้งแรก พนักงานจะตั้ง PIN 6 หลักของตนเอง และ Manager จะไม่เห็น PIN</div></div>
+    <div class="modal-footer"><button class="btn btn-light" data-close-team-portal-v61482>ปิด</button><button class="btn btn-light" id="teamPortalCopyCodeV61482">คัดลอกรหัส</button><button class="btn btn-primary" id="teamPortalShareCodeV61482">แชร์ให้พนักงาน</button></div>
+  </div>
+</div>
+
+<!-- Leave & Certificates -->
+
+<!-- Time Correction -->
+
+<!-- Exception Center -->
+
+<footer class="footer-credit">Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer>
+</div>
+<section class="developer-console hidden" id="developerConsole">
+<button class="developer-console-toggle" id="developerConsoleToggle"><span>⌘ Developer Console</span><strong id="devConsoleSummary">Ready</strong></button>
+<div class="developer-console-body hidden" id="developerConsoleBody">
+<div class="dev-stat"><span>Last API / RPC</span><strong id="devLastRpc">-</strong></div>
+<div class="dev-stat"><span>Execution Time</span><strong id="devExecTime">-</strong></div>
+<div class="dev-stat"><span>Rows</span><strong id="devRows">-</strong></div>
+<div class="dev-stat"><span>Status</span><strong id="devStatus">Ready</strong></div>
+<div class="dev-message"><span>Message</span><code id="devMessage">ยังไม่มีรายการเรียกใช้งาน</code></div>
+<button class="btn btn-light btn-sm" id="devConsoleClearBtn">ล้าง Log</button>
+</div>
+</section>
+</main>
+</div>
+<!-- V6.5 Leave Request Modal -->
+
+<!-- V6.5 Certificate Modal -->
+
+<!-- V6.5 Time Correction Modal -->
+
+<!-- V6.5 Decision Modal -->
+
+<datalist id="v650EmployeeList"></datalist>
+<!-- V6.14.81 Unified Employee Request Modal -->
+<div class="modal-backdrop hidden" id="shiftRequestModal">
+<div class="modal large employee-request-modal-v61481">
+<div class="modal-header">
+<div><h3>ส่งคำขอ / แจ้งข้อมูล</h3><p id="shiftRequestModalSubtitle">รายการจะถูกส่งให้ Manager ตามสายบังคับบัญชา • พนักงานไม่สามารถแก้เวลา Attendance เองได้</p></div>
+<button class="btn btn-light btn-icon" data-v680-close="shiftRequestModal">×</button>
+</div>
+<div class="modal-body">
+<input id="shiftRequestEmpCode" type="hidden"/>
+<div class="shift-request-employee-card" id="shiftRequestEmployeeDisplay">-</div>
+<div class="form-row-3 employee-request-top-grid-v61481">
+  <div class="field"><label>ประเภทคำขอ <span class="required-mark">*</span></label><select class="select" id="shiftRequestRequestType"><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option></select></div>
+  <div class="field"><label>วันที่ <span class="required-mark">*</span></label><input class="input" id="shiftRequestWorkDate" type="date"/></div>
+  <div class="field"><label>กะปัจจุบัน</label><input class="input" disabled="" id="shiftRequestCurrentShift"/></div>
+</div>
+
+<div class="employee-request-section-v61481" id="shiftRequestShiftChangeSectionV61481">
+  <div class="field"><label>กะที่ต้องการ <span class="required-mark">*</span></label><select class="select" id="shiftRequestRequestedShift"></select></div>
+</div>
+
+<div class="employee-request-section-v61481 hidden" id="shiftRequestTimeIssueSectionV61481">
+  <div class="form-row-2">
+    <div class="field"><label>รายการรับรอง <span class="required-mark">*</span></label><select class="select" id="shiftRequestTimeIssueTypeV61481"><option value="MISSING_IN">รับรองเวลา-เข้า</option><option value="MISSING_OUT">รับรองเวลา-ออก</option><option value="WRONG_TIME">รับรอง-เต็มวัน</option></select></div>
+    <div class="employee-request-readonly-v61481"><span>เวลาที่ระบบพบ</span><strong id="shiftRequestPunchSnapshotV61481">เข้า - • ออก -</strong><small>ข้อมูลนี้เป็นข้อมูลอ้างอิงเท่านั้น • User แก้เวลาเองไม่ได้</small></div>
+  </div>
+</div>
+
+<div class="employee-request-section-v61481 hidden" id="shiftRequestSpecialWorkSectionV61481">
+  <div class="field"><label>รูปแบบงานพิเศษ <span class="required-mark">*</span></label><select class="select" id="shiftRequestSpecialModeV61481"><option value="NORMAL_LATE_CUSTOMER">กะปกติ + งานลูกค้าช่วงดึก</option><option value="SPLIT_WAIT_NIGHT">กะเช้า + รอเข้ากะดึก</option><option value="HOUR_BASED">กะนับชั่วโมง</option></select></div>
+  <div class="employee-request-special-fields-v61481" id="shiftRequestCustomerFieldsV61481">
+    <div class="field"><label>ช่วงงานพิเศษเริ่ม</label><input class="input" id="shiftRequestSpecialStartV61481" type="time"/></div>
+    <div class="field"><label>คาดว่าสิ้นสุด</label><input class="input" id="shiftRequestSpecialEndV61481" type="time"/></div>
+  </div>
+  <div class="employee-request-special-fields-v61481 hidden" id="shiftRequestWaitFieldsV61481">
+    <div class="field"><label>ออกจากกะช่วงแรก</label><input class="input" id="shiftRequestFirstEndV61481" type="time"/></div>
+    <div class="field"><label>กลับเข้ากะดึก</label><input class="input" id="shiftRequestSecondStartV61481" type="time"/></div>
+    <div class="field"><label>คาดว่างานเสร็จ</label><input class="input" id="shiftRequestSecondEndV61481" type="time"/></div>
+  </div>
+  <div class="employee-request-special-fields-v61481 hidden" id="shiftRequestHourFieldsV61481">
+    <div class="field"><label>เวลาเริ่มทำงาน</label><input class="input" id="shiftRequestHourStartV61481" type="time"/></div>
+  </div>
+  <div class="field"><label>ลูกค้า / สถานที่ / งานที่ไปปฏิบัติ</label><input class="input" id="shiftRequestWorkLocationV61481" placeholder="เช่น งานติดตั้งลูกค้า จ.ชลบุรี"/></div>
+  <div class="employee-request-callout-v61481"><strong>เวลาที่แจ้งเป็นข้อมูลประกอบคำขอ</strong><span>ระบบจะยังใช้ Raw Punch จริงเป็นข้อมูลเวลาเข้า–ออก และ Manager ต้องตรวจสอบก่อนปรับรูปแบบกะ</span></div>
+</div>
+
+<div class="field"><label>เหตุผล / รายละเอียด <span class="required-mark">*</span></label><textarea class="textarea" id="shiftRequestReason" placeholder="ระบุเหตุผลหรือรายละเอียดให้ Manager ใช้ประกอบการพิจารณา"></textarea></div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-light" data-v680-close="shiftRequestModal">ยกเลิก</button>
+<button class="btn btn-primary" id="submitShiftRequestBtn">ส่งคำขอ / แจ้งข้อมูล</button>
+</div>
+</div>
+</div>
+<!-- Config Modal -->
+<div class="modal-backdrop hidden" id="configModal">
+<div class="modal">
+<div class="modal-header"><h3>ตั้งค่าการเชื่อมต่อ Supabase</h3><button class="btn btn-light btn-icon" data-close-modal="configModal">×</button></div>
+<div class="modal-body">
+<div class="field"><label>Supabase Project URL</label><input class="input" id="configUrl" placeholder="https://xxxxxxxx.supabase.co"/></div>
+<div class="field"><label>Publishable Key / Anon Key</label><textarea class="textarea" id="configKey" placeholder="sb_publishable_... หรือ anon key"></textarea></div>
+<div style="padding:12px;border-radius:10px;background:var(--amber-100);color:var(--amber-600);font-size:11px">ใช้เฉพาะ Publishable/Anon key สำหรับ Browser ห้ามใส่ Service Role key
+          <div class="supabase-default-note-v61010">
+            V6.11.15 มีค่าเชื่อมต่อ Project เริ่มต้นแล้ว
+            User ใหม่ไม่ต้องตั้งค่าส่วนนี้เอง
+          </div></div>
+</div>
+<div class="modal-footer"><button class="btn btn-light" data-close-modal="configModal">ยกเลิก</button><button class="btn btn-primary" id="saveConfigBtn">บันทึกการตั้งค่า</button></div>
+</div>
+</div>
+
+
+<!-- Time Certification Modal V6.11.39 -->
+<div class="modal-backdrop hidden time-certification-backdrop-v61139" id="timeCertificationModal" aria-hidden="true">
+  <div class="modal large time-certification-modal-v61139">
+    <div class="modal-header time-certification-modal-head-v61139">
+      <div><span class="eyebrow">TIME CERTIFICATION</span><h3 id="timeCertificationTitle">รับรองเวลาทำงาน</h3><p id="timeCertificationSubtitle">Manager / HR Admin</p></div>
+      <button class="btn btn-light btn-icon" id="timeCertificationClose" type="button" aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body time-certification-body-v61139">
+      <input id="timeCertificationEmpCode" type="hidden"/><input id="timeCertificationWorkDate" type="hidden"/>
+      <div class="time-cert-context-v61139" id="timeCertificationContext"></div>
+      <div class="employee-request-context-v61494 hidden" id="employeeRequestTimeCertContextV61494"></div>
+      <div class="time-cert-columns-v61139">
+        <section class="time-cert-card-v61139">
+          <div class="time-cert-section-title-v61139"><span>1</span><div><strong>ข้อมูลเวลาเดิม</strong><small>ข้อมูลกะและ Punch จริงจะไม่ถูกแก้ไข</small></div></div>
+          <div class="time-cert-facts-v61139" id="timeCertificationFacts"></div>
+        </section>
+        <section class="time-cert-card-v61139 emphasis">
+          <div class="time-cert-section-title-v61139"><span>2</span><div><strong>เวลาที่รับรอง</strong><small>เวลาเริ่มต้องไม่ก่อนเวลาเริ่มกะ • เวลาสิ้นสุดเกินกะได้</small></div></div>
+          <div class="form-row">
+            <div class="field"><label>วันที่เริ่มรับรอง</label><input class="input" id="timeCertificationStartDate" type="date" readonly/></div>
+            <div class="field"><label>เวลาเริ่มรับรอง *</label><input class="input" id="timeCertificationStartTime" type="time"/></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>วันที่สิ้นสุด *</label><input class="input" id="timeCertificationEndDate" type="date"/></div>
+            <div class="field"><label>เวลาสิ้นสุดรับรอง *</label><input class="input" id="timeCertificationEndTime" type="time"/><small class="time-cert-end-limit-v61145" id="timeCertificationEndLimitHint"></small></div>
+          </div>
+          <div class="time-cert-duration-v61139" id="timeCertificationDuration"></div>
+        </section>
+      </div>
+      <section class="time-cert-card-v61139 reason-card">
+        <div class="time-cert-section-title-v61139"><span>3</span><div><strong>เหตุผลและผู้รับรอง</strong><small>เลือกเหตุผลจาก Master ที่ HR Admin กำหนด</small></div></div>
+        <div class="form-row">
+          <div class="field"><label>เหตุผลการรับรองเวลา *</label><div class="time-cert-reason-picker-v61139"><input class="input" id="timeCertificationReasonSearch" type="search" placeholder="ค้นหารหัสหรือเหตุผล เช่น W10 / ไม่ได้รูดบัตร" autocomplete="off"/><select class="select" id="timeCertificationReason"><option value="">กำลังโหลดเหตุผล...</option></select></div></div>
+          <div class="field"><label>ผู้รับรอง</label><input class="input" id="timeCertificationApprover" readonly/></div>
+        </div>
+        <div class="field"><label>หมายเหตุ <span id="timeCertificationNoteRequired"></span></label><textarea class="textarea" id="timeCertificationNote" placeholder="รายละเอียดเพิ่มเติม / กรณี W90 ต้องระบุเหตุผล"></textarea></div>
+      </section>
+      <div class="time-cert-rule-v61139" id="timeCertificationRule"><span>i</span><div><strong>กติกาการรับรอง</strong><small>เวลาเริ่มรับรองต้องไม่ก่อนเวลาเริ่มกะ และเวลาสิ้นสุดรับรองสามารถเกินเวลาสิ้นสุดกะได้ตามเวลาปฏิบัติงานจริง</small></div></div>
+      <div class="time-cert-existing-v61139 hidden" id="timeCertificationExisting"></div>
+    </div>
+    <div class="modal-footer time-certification-footer-v61139">
+      <button class="btn btn-danger-soft hidden" id="timeCertificationRevokeBtn" type="button" style="margin-right:auto">ยกเลิกการรับรอง</button>
+      <button class="btn btn-light" id="timeCertificationCancelBtn" type="button">ปิด</button>
+      <button class="btn btn-primary" id="timeCertificationSaveBtn" type="button">✓ บันทึกการรับรอง</button>
+    </div>
+  </div>
+</div>
+
+<!-- Time Certification Reason Editor V6.11.39 -->
+<div class="modal-backdrop hidden cert-reason-editor-backdrop-v61139" id="certReasonModal" aria-hidden="true">
+  <div class="modal cert-reason-editor-v61139">
+    <div class="modal-header"><div><span class="eyebrow">HR ADMIN MASTER</span><h3 id="certReasonModalTitle">เพิ่มเหตุผลการรับรองเวลา</h3></div><button class="btn btn-light btn-icon" id="certReasonModalClose" type="button">×</button></div>
+    <div class="modal-body">
+      <div class="form-row"><div class="field"><label>รหัสเหตุผล *</label><input class="input" id="certReasonCode" maxlength="10" placeholder="เช่น W10"/></div><div class="field"><label>ลำดับ</label><input class="input" id="certReasonSort" type="number" min="0" value="0"/></div></div>
+      <div class="field"><label>รายละเอียดเหตุผล *</label><input class="input" id="certReasonName" placeholder="รายละเอียดที่ Manager เห็นใน Dropdown"/></div>
+      <div class="cert-reason-editor-options-v61139">
+        <label class="checkbox-line"><input id="certReasonRequiresNote" type="checkbox"/> บังคับระบุหมายเหตุ</label>
+        <label class="checkbox-line"><input id="certReasonActive" type="checkbox" checked/> เปิดใช้งาน</label>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" id="certReasonModalCancel" type="button">ยกเลิก</button><button class="btn btn-primary" id="certReasonModalSave" type="button">บันทึกเหตุผล</button></div>
+  </div>
+</div>
+
+<!-- Employee Monthly Schedule Overview V6.11.21 -->
+<div class="modal-backdrop hidden employee-month-modal-backdrop-v61121" id="employeeMonthScheduleModal" aria-hidden="true" inert>
+  <div class="modal employee-month-modal-v61121">
+    <div class="modal-header employee-month-modal-header-v61121 employee-month-modal-header-v61127">
+      <div class="employee-month-person-v61127">
+        <div class="employee-month-avatar-v61127" id="employeeMonthScheduleAvatar">พน</div>
+        <div class="employee-month-person-copy-v61127">
+          <span class="eyebrow">MONTHLY PERSONAL OVERVIEW</span>
+          <div class="employee-month-title-row-v61127">
+            <h3 id="employeeMonthScheduleTitle">ปฏิทินรายบุคคล</h3>
+            <span class="employee-month-header-mode-v61127 readonly" id="employeeMonthHeaderMode">ดูข้อมูลอย่างเดียว</span>
+          </div>
+          <p id="employeeMonthScheduleSubtitle">-</p>
+          <div class="employee-month-pattern-meta-v61127" id="employeeMonthSchedulePatternMeta">รูปแบบการทำงานตามข้อมูลพนักงาน</div>
+        </div>
+      </div>
+      <button class="btn btn-light btn-icon employee-month-close-v61127" id="employeeMonthScheduleClose" type="button" aria-label="ปิด">×</button>
+    </div>
+    <div class="employee-month-toolbar-v61121">
+      <div class="employee-month-nav-v61121">
+        <button class="btn btn-light btn-sm" type="button" data-employee-month-nav="prev">‹ เดือนก่อน</button>
+        <div class="employee-month-current-v61121"><small>เดือนที่แสดง</small><strong id="employeeMonthScheduleMonthLabel">-</strong></div>
+        <button class="btn btn-light btn-sm" type="button" data-employee-month-nav="next">เดือนถัดไป ›</button>
+        <button class="btn btn-soft btn-sm" type="button" data-employee-month-nav="today">เดือนปัจจุบัน</button>
+      </div>
+      <div class="employee-month-actions-v61121">
+        <span class="employee-month-edit-hint-v61121" id="employeeMonthEditHint">คลิก “จัดกะ” ในแต่ละวันเพื่อแก้ไข</span>
+        <button class="btn btn-light employee-month-punch-log-btn-v61460" id="employeeMonthPunchLogBtn" type="button" title="ดูข้อมูลการลงเวลาทุก Record ในเดือนที่เลือก">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg>
+          <span>ข้อมูลการลงเวลา</span>
+          <b class="employee-month-punch-alert-count-v61460 hidden" id="employeeMonthPunchAlertCount">0</b>
+        </button>
+        <button class="btn btn-light" id="employeeMonthRefreshBtn" type="button">↻ รีเฟรช</button>
+        <button class="btn btn-primary" id="employeeMonthRecalcBtn" type="button">↻ ประมวลผลเดือนนี้</button>
+      </div>
+    </div>
+    <div class="modal-body employee-month-modal-body-v61121">
+      <div class="employee-month-summary-v61121" id="employeeMonthScheduleSummary"></div>
+      <div class="employee-month-quick-filters-v61480" id="employeeMonthQuickFiltersV61480" aria-label="ตัวกรองเพิ่มเติมของ Monthly Personal Overview"></div>
+      <div class="employee-month-legend-v61121 employee-month-legend-v61127">
+        <strong>สถานะเวลา</strong>
+        <span><i class="tone-normal"></i>ปกติ</span>
+        <span><i class="tone-late"></i>สาย</span>
+        <span><i class="tone-early"></i>กลับก่อน</span>
+        <span><i class="tone-danger"></i>ขาดงาน</span>
+        <span><i class="tone-leave"></i>ลา</span>
+        <span><i class="tone-off"></i>วันหยุด</span>
+        <span class="time-cert-legend-v61139"><i></i>รับรองแล้ว</span>
+        <span class="employee-month-multi-punch-legend-v61460"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg>หลายรายการลงเวลา</span>
+        <small>ไอคอนหลายรายการ = วันนั้นมี Punch มากกว่า 1 คู่หรือมี IN/OUT ซ้ำ • ใช้เป็นข้อมูลประกอบการพิจารณากะพิเศษ</small>
+      </div>
+      <div class="employee-month-grid-v61121" id="employeeMonthScheduleGrid"></div>
+      <div class="employee-month-after-grid-v61153">
+        <section class="employee-month-holiday-list-v61153" id="employeeMonthHolidayListV61153" aria-label="วันหยุดนักขัตฤกษ์ประจำเดือน">
+          <div class="employee-month-holiday-head-v61153">
+            <span class="employee-month-holiday-icon-v61153">HOL</span>
+            <div><strong>วันหยุดนักขัตฤกษ์</strong><small>รายการวันหยุดในเดือนที่แสดง</small></div>
+          </div>
+          <div class="employee-month-holiday-items-v61153" id="employeeMonthHolidayItemsV61153">
+            <span class="employee-month-holiday-empty-v61153">ไม่มีวันหยุดนักขัตฤกษ์ในเดือนนี้</span>
+          </div>
+        </section>
+      </div>
+    </div>
+    <div class="modal-footer employee-month-modal-footer-v61121">
+      <small>กะมาตรฐานจะแสดงอัตโนมัติ • วันที่ปรับกะจะมีผลทันทีหลังบันทึกและระบบประมวลผล Attendance ใหม่</small>
+      <button class="btn btn-light" id="employeeMonthScheduleCloseFooter" type="button">ปิด</button>
+    </div>
+
+    <div class="employee-month-punch-overlay-v61460 hidden" id="employeeMonthPunchOverlay" aria-hidden="true">
+      <button class="employee-month-punch-backdrop-v61460" type="button" data-employee-month-punch-close aria-label="ปิดข้อมูลการลงเวลา"></button>
+      <aside class="employee-month-punch-panel-v61460" id="employeeMonthPunchPanel" aria-label="ข้อมูลการลงเวลาในเดือนที่เลือก">
+        <header class="employee-month-punch-panel-head-v61460">
+          <div class="employee-month-punch-panel-title-v61460">
+            <span class="employee-month-punch-panel-icon-v61460"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="4"></circle><path d="M8 6v2.5l1.8 1.2M14 6h7M14 10h7M4 16h17M4 20h17"></path></svg></span>
+            <div><span>RAW TIME RECORDS</span><h4>ข้อมูลการลงเวลา</h4><small id="employeeMonthPunchSubtitle">ทุก Record ตามเดือนใน Calendar ที่เลือก</small></div>
+          </div>
+          <button class="btn btn-light btn-icon" type="button" data-employee-month-punch-close aria-label="ปิด">×</button>
+        </header>
+        <div class="employee-month-punch-summary-v61460" id="employeeMonthPunchSummary"></div>
+        <div class="employee-month-punch-toolbar-v61460">
+          <div class="employee-month-punch-mode-legend-v61460"><span class="mode-in"><i></i>เข้า</span><span class="mode-out"><i></i>ออก</span><span class="mode-unknown"><i></i>ไม่ระบุ</span></div>
+          <div class="employee-month-punch-view-switch-v61464" role="group" aria-label="เลือกมุมมองข้อมูลการลงเวลา">
+            <button class="employee-month-punch-filter-v61460 active" id="employeeMonthPunchAllBtn" type="button" aria-pressed="true"><span>ทั้งหมด</span><b id="employeeMonthPunchAllDayCount">0</b></button>
+            <button class="employee-month-punch-filter-v61460" id="employeeMonthPunchMultiOnlyBtn" type="button" aria-pressed="false"><span>หลายรายการ</span><b id="employeeMonthPunchMultiDayCount">0</b></button>
+          </div>
+        </div>
+        <div class="employee-month-punch-view-status-v61464" id="employeeMonthPunchViewStatus"></div>
+        <div class="employee-month-punch-list-v61460" id="employeeMonthPunchList">
+          <div class="employee-month-punch-empty-v61460">กด “ข้อมูลการลงเวลา” เพื่อดูรายการ</div>
+        </div>
+        <footer class="employee-month-punch-panel-foot-v61460">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"></path><path d="M12 9v5M12 17h.01"></path></svg>
+          <span>ข้อมูลนี้เป็น Punch ดิบเพื่อประกอบการพิจารณาเท่านั้น ระบบจะไม่เปลี่ยนกะอัตโนมัติ</span>
+        </footer>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- Shift Assignment Modal -->
+<div class="modal-backdrop hidden" id="assignModal">
+  <div class="modal assignment-modal-v61428">
+    <div class="modal-header assignment-modal-header-v61428">
+      <div class="assignment-modal-title-v61428">
+        <span>SHIFT ASSIGNMENT</span>
+        <h3>กำหนดกะทำงาน</h3>
+        <p>เลือกประเภทงาน → เลือกกะ → ตรวจเงื่อนไข → บันทึก</p>
+      </div>
+      <button class="btn btn-light btn-icon" data-close-modal="assignModal" aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body assignment-modal-body-v61428">
+      <input id="assignEmpCode" type="hidden">
+      <input id="assignWorkDate" type="hidden">
+      <div id="assignEmployeeInfo" class="assignment-employee-summary-v61428"></div>
+      <div class="employee-request-context-v61494 hidden" id="employeeRequestAssignContextV61494"></div>
+
+      <section class="assignment-shift-section-v61428">
+        <div class="field">
+          <label><span class="assignment-step-v61428">2</span> กะทำงาน</label>
+          <select class="select" id="assignShiftCode"></select>
+          <small class="field-help">แสดงเฉพาะกะที่ใช้ได้กับรูปแบบการทำงานและหน่วยงานนี้</small>
+        </div>
+      </section>
+
+      <div class="assignment-save-policy-v61117 assignment-save-policy-v61428"><span>✓</span><div><strong>บันทึกครั้งเดียว มีผลทันที</strong><small>ระบบบันทึกผู้ดำเนินการ วันเวลา และประมวลผล Attendance ตาม Pipeline เดิม</small></div></div>
+      <div class="field"><label>รูปแบบช่วงงานของวันนี้</label><select class="select" id="assignWorkTemplate"><option value="">กำลังโหลดรูปแบบช่วงงาน...</option></select><small class="field-help" id="assignWorkTemplateHelp">ค่าเริ่มต้นเป็นกะปกติ และสามารถเลือกงานลูกค้าช่วงดึกเฉพาะวันที่ต้องใช้งาน</small></div>
+      <div class="form-row hidden assignment-customer-row-v61428" id="assignCustomerWindowRow"><div class="field"><label>คาดว่าจะเริ่มงานลูกค้า *</label><input class="input" id="assignCustomerStart" type="time" value="22:00"/><small class="field-help">เวลาเริ่มงานช่วงดึก</small></div><div class="field"><label>คาดว่าจะสิ้นสุด</label><select class="select" id="assignCustomerEndMode"><option value="ACTUAL_OUT" selected>ตามเวลาออกจริง</option><option value="FIXED">กำหนดเวลา</option></select><div class="assign-customer-end-fixed hidden" id="assignCustomerEndFixedWrap"><input class="input" id="assignCustomerEnd" type="time"/><small class="field-help">รองรับข้ามวัน เช่น 22:00–03:00</small></div><small class="field-help" id="assignCustomerEndModeHelp">ระบบจะใช้ OUT จริงเป็นเวลาสิ้นสุด</small></div></div>
+
+      <section class="assignment-meta-section-v61428">
+        <div class="assignment-meta-title-v61428"><span class="assignment-step-v61428">3</span><strong>รายละเอียดเพิ่มเติม</strong><small>ใส่เฉพาะข้อมูลที่จำเป็น</small></div>
+        <div class="assignment-meta-grid-v61428">
+          <div class="field"><label>หมายเหตุ</label><input class="input" id="assignNote" placeholder="เช่น งานลูกค้า / เหตุผลเฉพาะวัน"/></div>
+          <div class="field"><label>เหตุผลการเปลี่ยนแปลง</label><input class="input" id="assignReason" value="กำหนดกะจากหน้าปฏิทิน"/></div>
+        </div>
+      </section>
+    </div>
+    <div class="modal-footer assignment-modal-footer-v61428">
+      <button class="btn btn-danger" id="deleteAssignmentBtn" style="margin-right:auto">ลบกะที่จัดไว้</button>
+      <button class="btn btn-light" data-close-modal="assignModal">ยกเลิก</button>
+      <button class="btn btn-primary" id="saveAssignmentBtn">บันทึกกะ</button>
+    </div>
+  </div>
+</div>
+<!-- Shift Master Modal -->
+<div class="modal-backdrop hidden" id="shiftMasterModal">
+<div class="modal large shift-master-modal-v651">
+<div class="modal-header"><div><h3>ข้อมูลกะทำงาน</h3><p>กำหนดรูปแบบการทำงานและตรวจชั่วโมงก่อนบันทึก</p></div><button class="btn btn-light btn-icon" data-close-modal="shiftMasterModal">×</button></div>
+<div class="modal-body">
+<div class="form-row"><div class="field"><label>รหัสกะ</label><input class="input" id="smCode" maxlength="20" placeholder="เช่น S043"/></div><div class="field"><label>ชื่อกะ</label><input class="input" id="smName" placeholder="ชื่อกะที่ผู้ใช้งานเข้าใจง่าย"/></div></div>
+<div class="shift-pattern-selector">
+<div class="shift-pattern-selector-head"><strong>ใช้กับรูปแบบการทำงาน</strong><small>เลือกอย่างน้อย 1 รูปแบบ</small></div>
+<div class="shift-pattern-choice-grid">
+<label class="shift-pattern-choice"><input checked="" id="smPattern6" type="checkbox" value="TECH_6D"/><span><strong>6 วัน/สัปดาห์</strong><small>9 ชั่วโมงรวมพัก · สุทธิ 8 ชั่วโมง</small></span></label>
+<label class="shift-pattern-choice"><input id="smPattern5" type="checkbox" value="TECH_5D"/><span><strong>5 วัน/สัปดาห์</strong><small>9.5 ชั่วโมงรวมพัก · สุทธิ 8.5 ชั่วโมง</small></span></label>
+</div>
+</div>
+<div class="form-row"><div class="field"><label>เวลาเริ่ม</label><input class="input" id="smStart" type="time" value="08:30"/></div><div class="field"><label>เวลาสิ้นสุด</label><input class="input" id="smEnd" type="time" value="17:30"/></div></div>
+<div class="field-help shift-off-time-help-v6124">กรณีเป็นกะวันหยุด ให้ระบุเวลาเริ่ม–สิ้นสุดให้ตรงกับกะทำงานที่จับคู่ เช่น S135 19:30–04:30 → OS135 19:30–04:30</div>
+<div class="form-row-3"><div class="field"><label>เวลาพัก (นาที)</label><input class="input" id="smBreak" min="0" type="number" value="60"/></div><div class="field"><label>ลำดับ</label><input class="input" id="smOrder" type="number" value="0"/></div><div class="field"><label>สถานะ</label><select class="select" id="smActive"><option value="true">ใช้งาน</option><option value="false">ปิดใช้งาน</option></select></div></div>
+<div class="shift-duration-summary" id="smDurationSummary"></div>
+<div class="shift-default-selector">
+<div class="shift-pattern-selector-head"><strong>กำหนดเป็นกะตั้งต้น</strong><small>ชั่วโมงต้องตรงกับมาตรฐานของรูปแบบที่เลือก</small></div>
+<div class="shift-pattern-choice-grid">
+<label class="shift-pattern-choice default-choice"><input id="smDefault6" type="checkbox" value="TECH_6D"/><span><strong>กะตั้งต้น 6 วัน</strong><small>ใช้จัดกะอัตโนมัติให้กลุ่ม TECH_6D</small></span></label>
+<label class="shift-pattern-choice default-choice"><input id="smDefault5" type="checkbox" value="TECH_5D"/><span><strong>กะตั้งต้น 5 วัน</strong><small>ใช้จัดกะอัตโนมัติให้กลุ่ม TECH_5D</small></span></label>
+</div>
+</div>
+<div style="display:flex;gap:18px;margin:16px 0"><label class="checkbox-line"><input checked="" id="smWorkday" type="checkbox"> เป็นวันทำงาน</input></label><label class="checkbox-line"><input id="smNight" type="checkbox"> กะกลางคืน/ข้ามวัน</input></label></div>
+<div class="field"><label>หมายเหตุ</label><textarea class="textarea" id="smNote" placeholder="รายละเอียดเพิ่มเติมของกะ"></textarea></div>
+</div>
+<div class="modal-footer"><button class="btn btn-light" data-close-modal="shiftMasterModal">ยกเลิก</button><button class="btn btn-primary" id="saveShiftMasterBtn">บันทึก</button></div>
+</div>
+</div>
+<!-- Holiday Modal -->
+<div class="modal-backdrop hidden" id="holidayModal">
+<div class="modal">
+<div class="modal-header"><h3>ข้อมูลวันหยุด</h3><button class="btn btn-light btn-icon" data-close-modal="holidayModal">×</button></div>
+<div class="modal-body"><div class="field"><label>วันที่</label><input class="input" id="holDate" type="date"/></div><div class="field"><label>ชื่อวันหยุด</label><input class="input" id="holName"/></div><div class="field"><label>แหล่งข้อมูล</label><input class="input" id="holSource" value="HR_ADMIN"/></div><div class="field"><label>หมายเหตุ</label><textarea class="textarea" id="holNote"></textarea></div></div>
+<div class="modal-footer"><button class="btn btn-light" data-close-modal="holidayModal">ยกเลิก</button><button class="btn btn-primary" id="saveHolidayBtn">บันทึก</button></div>
+</div>
+</div>
+<!-- Organization Unit Modal -->
+<div class="modal-backdrop hidden" id="orgUnitModal">
+<div class="modal large">
+<div class="modal-header">
+<div>
+<div class="org-modal-title-row">
+<h3 id="orgUnitModalTitle">เพิ่มหน่วยงาน</h3>
+<span class="org-modal-version">V6.11.15</span>
+</div>
+<p>กำหนดรหัส Zone ระดับ และหน่วยงานแม่</p>
+</div>
+<button class="btn btn-light btn-icon" data-org-close="orgUnitModal">×</button>
+</div>
+<div class="modal-body">
+<input id="ouOrgId" type="hidden"/>
+<div class="form-row">
+<div class="field">
+<label>รหัสหน่วยงาน</label>
+<input class="input" id="ouOrgCode"/>
+</div>
+<div class="field">
+<label>ชื่อหน่วยงาน</label>
+<input class="input" id="ouOrgName"/>
+</div>
+</div>
+<div class="org-zone-field-card">
+<div class="org-zone-field-copy">
+<span class="org-zone-field-icon">⌖</span>
+<div>
+<label for="ouZone">Zone ของหน่วยงาน <b>*</b></label>
+<small>พนักงานที่เชื่อมด้วย org_code จะได้รับ Zone จากหน่วยงานนี้อัตโนมัติ</small>
+</div>
+</div>
+<select class="select" id="ouZone" required="">
+<option value="กรุงเทพฯ">กรุงเทพฯ</option>
+<option value="ตจว.">ตจว.</option>
+<option value="สำนักงาน">สำนักงาน</option>
+</select>
+</div>
+<div class="org-location-field-card">
+<div class="org-location-field-head">
+<span class="org-location-field-icon">⌖</span>
+<div>
+<strong>พื้นที่ของหน่วยงาน</strong>
+<small>Area และ Sub-area จะถูกส่งต่อให้พนักงานตาม org_code อัตโนมัติ</small>
+</div>
+</div>
+<div class="form-row">
+<div class="field">
+<label>Area</label>
+<input class="input" id="ouArea" placeholder="เช่น กรุงเทพฯ, ภาคกลาง, สำนักงานใหญ่"/>
+</div>
+<div class="field">
+<label>Sub-area</label>
+<input class="input" id="ouSubArea" placeholder="เช่น วิภาวดี, อยุธยา, BS1"/>
+</div>
+</div>
+</div>
+<div class="form-row-3"><div class="field"><label>รหัสระดับ</label><input class="input" id="ouLevelCode" list="ouLevelOptions" placeholder="DEPARTMENT"/></div><div class="field"><label>ชื่อระดับ</label><input class="input" id="ouLevelName" placeholder="แผนก"/></div><div class="field"><label>ลำดับระดับ</label><input class="input" id="ouLevelOrder" type="number" value="0"/></div></div>
+<datalist id="ouLevelOptions"><option value="COMPANY"></option><option value="OFFICE"></option><option value="DIVISION"></option><option value="DEPARTMENT"></option><option value="SECTION"></option><option value="TEAM"></option><option value="UNIT"></option></datalist>
+<div class="form-row"><div class="field"><label>หน่วยงานแม่</label><input class="input" id="ouParentCode" list="ouParentOptions" placeholder="เว้นว่างสำหรับหน่วยงานหลัก"/></div><div class="field"><label>ลำดับแสดง</label><input class="input" id="ouSortOrder" type="number" value="0"/></div></div>
+<datalist id="ouParentOptions"></datalist>
+<div class="form-row-3"><div class="field"><label>เริ่มใช้</label><input class="input" id="ouEffectiveFrom" type="date"/></div><div class="field"><label>สิ้นสุด</label><input class="input" id="ouEffectiveTo" type="date"/></div><div class="field"><label>สถานะ</label><select class="select" id="ouActive"><option value="true">ใช้งาน</option><option value="false">ปิดใช้งาน</option></select></div></div>
+<div class="field"><label>หมายเหตุ</label><textarea class="textarea" id="ouNote"></textarea></div>
+</div>
+<div class="modal-footer"><button class="btn btn-light" data-org-close="orgUnitModal">ยกเลิก</button><button class="btn btn-primary" id="orgSaveUnitBtn">บันทึกหน่วยงาน</button></div>
+</div>
+</div>
+<!-- Organization Manager Modal -->
+<div class="modal-backdrop hidden" id="orgManagerModal">
+<div class="modal large org-manager-modal-v6104">
+<div class="modal-header">
+<div>
+<div class="org-manager-modal-title-row">
+<h3 id="orgManagerModalTitle">กำหนด Manager</h3>
+<span class="org-manager-modal-badge">MANAGER SCOPE</span>
+</div>
+<p id="orgManagerModalUnit">-</p>
+</div>
+<button class="btn btn-light btn-icon" data-org-close="orgManagerModal">
+          ×
+        </button>
+</div>
+<div class="modal-body">
+<input id="omScopeId" type="hidden"/>
+<input id="omManagerEmail" type="hidden"/>
+<div class="org-manager-search-card">
+<div class="org-manager-search-head">
+<div>
+<strong>ค้นหา Manager</strong>
+<small>
+                ค้นหาจากรหัสพนักงาน ชื่อ-นามสกุล หรือ Email
+              </small>
+</div>
+<span class="org-manager-pc-rule">
+              PC 1A–4C ตามสิทธิ์ที่กำหนด
+            </span>
+</div>
+<div class="org-manager-search-wrap">
+<span class="org-manager-search-icon">⌕</span>
+<input autocomplete="off" class="input" id="omManagerSearch" placeholder="พิมพ์รหัสพนักงาน ชื่อ-นามสกุล หรือ Email"/>
+<button class="org-manager-search-clear hidden" id="omManagerSearchClear" title="ล้างการค้นหา" type="button">
+              ×
+            </button>
+<div class="org-manager-search-results hidden" id="omManagerSearchResults"></div>
+</div>
+<div class="org-manager-selected hidden" id="omManagerSelected"></div>
+<div class="org-manager-search-note">
+            ระบบแสดงเฉพาะพนักงาน PC
+            4C, 4B, 4A, 3C, 3B, 3A,
+            2C, 2B, 2A, 1A และมี Email • หากมีบัญชี User ระบบจะเตรียม Manager Profile ให้อัตโนมัติ
+          </div>
+</div>
+<label class="org-descendant-option org-descendant-option-v6104">
+<input checked="" id="omIncludeDescendants" type="checkbox"/>
+<span>
+<strong>รวมหน่วยงานลูกทั้งหมด</strong>
+<small>
+              สิทธิ์จะครอบคลุมทุกระดับภายใต้หน่วยงานนี้
+            </small>
+</span>
+</label>
+<label class="org-descendant-option hidden" id="msIncludeDescendantsRow">
+<input checked="" id="msIncludeDescendants" type="checkbox"/>
+<span>
+<strong>รวมหน่วยงานลูกทั้งหมด</strong>
+<small>ใช้กับ Scope ประเภทผังองค์กร</small>
+</span>
+</label>
+<div class="org-manager-permission-section">
+<div class="org-manager-permission-head">
+<strong>สิทธิ์การจัดการ</strong>
+<small>เลือกสิทธิ์ที่ Manager คนนี้สามารถดำเนินการได้</small>
+</div>
+<div class="manager-scope-permission-grid">
+<label><input checked="" id="omCanView" type="checkbox"/><span>ดูข้อมูล</span></label>
+<label><input id="omCanEdit" type="checkbox"/><span>บันทึกกะ</span></label>
+
+<label><input id="omCanCertify" type="checkbox"/><span>รับรองเวลา</span></label>
+<label><input id="omCanDecide" type="checkbox"/><span>พิจารณาคำขอ</span></label>
+</div>
+</div>
+<div class="form-row-3 org-manager-effective-row">
+<div class="field">
+<label>เริ่มใช้</label>
+<input class="input" id="omEffectiveFrom" type="date"/>
+</div>
+<div class="field">
+<label>สิ้นสุด</label>
+<input class="input" id="omEffectiveTo" type="date"/>
+</div>
+<div class="field">
+<label>สถานะ</label>
+<select class="select" id="omActive">
+<option value="true">ใช้งาน</option>
+<option value="false">ปิดใช้งาน</option>
+</select>
+</div>
+</div>
+<div class="field">
+<label>หมายเหตุ</label>
+<textarea class="textarea" id="omNote"></textarea>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-light" data-org-close="orgManagerModal">
+          ยกเลิก
+        </button>
+<button class="btn btn-primary" id="orgSaveManagerBtn">
+          บันทึก Manager
+        </button>
+</div>
+</div>
+</div>
+<!-- Organization Upload Modal -->
+<div class="modal-backdrop hidden" id="orgUploadModal">
+<div class="modal extra-large org-upload-modal">
+<div class="modal-header"><div><h3>Upload ผังองค์กร</h3><p>CSV UTF-8 โดย Zone, Area, Sub-area เป็นข้อมูลของหน่วยงาน และ parent_org_code ใช้เชื่อมลำดับชั้น</p></div><button class="btn btn-light btn-icon" data-org-close="orgUploadModal">×</button></div>
+<div class="modal-body">
+<div class="org-upload-grid"><div class="field"><label>ไฟล์ Organization Structure CSV</label><input accept=".csv,text/csv" class="input" id="orgUploadFile" type="file"/></div><label class="org-danger-option"><input id="orgDeactivateMissing" type="checkbox"/><span><strong>ปิดหน่วยงานที่ไม่อยู่ในไฟล์</strong><small>ใช้เมื่อไฟล์เป็น Master ทั้งองค์กรเท่านั้น</small></span></label></div>
+<div class="org-upload-summary" id="orgUploadSummary">ยังไม่ได้เลือกไฟล์</div>
+<div class="table-wrap org-upload-preview">
+<table class="org-upload-preview-table">
+<thead><tr>
+<th>แถว</th><th>รหัสหน่วยงาน</th><th>ชื่อหน่วยงาน</th><th>Zone</th><th>Area</th><th>Sub-area</th>
+<th>รหัสระดับ</th><th>ชื่อระดับ</th><th>ลำดับระดับ</th>
+<th>หน่วยงานแม่</th><th>ลำดับแสดง</th><th>วันที่เริ่มใช้</th>
+<th>วันที่สิ้นสุด</th><th>สถานะ</th><th>หมายเหตุ</th>
+</tr></thead>
+<tbody id="orgUploadBody"><tr><td class="fc-empty" colspan="15">ยังไม่มีข้อมูล Preview</td></tr></tbody>
+</table>
+</div>
+<div class="org-upload-errors hidden" id="orgUploadErrors"></div>
+</div>
+<div class="modal-footer"><button class="btn btn-success" id="orgDownloadTemplateBtn" style="margin-right:auto">ดาวน์โหลด Template</button><button class="btn btn-light" data-org-close="orgUploadModal">ยกเลิก</button><button class="btn btn-primary" disabled="" id="orgImportBtn">นำเข้าผังองค์กร</button></div>
+</div>
+</div>
+<!-- Organization Scope Upload Modal -->
+<div class="modal-backdrop hidden" id="orgScopeUploadModal">
+<div class="modal extra-large">
+<div class="modal-header"><div><h3>Upload Manager Scope</h3><p>กำหนด Manager ด้วย Email และรหัสหน่วยงาน</p></div><button class="btn btn-light btn-icon" data-org-close="orgScopeUploadModal">×</button></div>
+<div class="modal-body">
+<div class="org-upload-grid"><div class="field"><label>ไฟล์ Organization Manager Scope CSV</label><input accept=".csv,text/csv" class="input" id="orgScopeFile" type="file"/></div><label class="org-danger-option"><input id="orgScopeReplace" type="checkbox"/><span><strong>แทนที่ Scope เดิมของ Email ในไฟล์</strong><small>ไม่เลือก = Upsert เฉพาะรายการในไฟล์</small></span></label></div>
+<div class="org-upload-summary" id="orgScopeSummary">ยังไม่ได้เลือกไฟล์</div>
+<div class="table-wrap org-upload-preview"><table><thead><tr><th>แถว</th><th>Manager Email</th><th>รหัสหน่วยงาน</th><th>รวมหน่วยงานลูก</th><th>จัดกะ</th><th>รับรองเวลา</th></tr></thead><tbody id="orgScopeBody"><tr><td class="fc-empty" colspan="6">ยังไม่มีข้อมูล Preview</td></tr></tbody></table></div>
+<div class="org-upload-errors hidden" id="orgScopeErrors"></div>
+</div>
+<div class="modal-footer"><button class="btn btn-success" id="orgScopeTemplateBtn" style="margin-right:auto">ดาวน์โหลด Template</button><button class="btn btn-light" data-org-close="orgScopeUploadModal">ยกเลิก</button><button class="btn btn-primary" disabled="" id="orgScopeImportBtn">นำเข้า Manager Scope</button></div>
+</div>
+</div>
+<!-- Create User Account Modal V6.11.15 -->
+<div class="modal-backdrop hidden" id="accountCreateModal">
+<div class="modal large account-create-modal">
+<div class="modal-header">
+<div>
+<div class="account-modal-title-row">
+<h3>สร้างบัญชีผู้ใช้งาน</h3>
+<span>HR ADMIN</span>
+</div>
+<p>
+            เลือกพนักงานที่มี Email
+            แล้วระบบจะส่ง Invite Link เพื่อให้ User ตั้งรหัสผ่านด้วยตนเอง
+          </p>
+</div>
+<button class="btn btn-light btn-icon" data-close-modal="accountCreateModal">
+          ×
+        </button>
+</div>
+<div class="modal-body">
+<div class="account-employee-search-card">
+<div class="account-employee-search-head">
+<strong>ค้นหาพนักงาน</strong>
+<small>
+              ค้นหาจากรหัสพนักงาน ชื่อ-นามสกุล หรือ Email
+            </small>
+</div>
+<div class="account-employee-search-wrap">
+<span>⌕</span>
+<input autocomplete="off" class="input" id="accountEmployeeSearch" placeholder="พิมพ์รหัส ชื่อ หรือ Email"/>
+<div class="account-employee-results hidden" id="accountEmployeeSearchResults"></div>
+</div>
+<div class="account-selected-employee hidden" id="accountSelectedEmployee"></div>
+</div>
+<input id="accountCreateEmpCode" type="hidden"/>
+<div class="form-row">
+<div class="field">
+<label>Email / User *</label>
+<input class="input" id="accountCreateEmail" readonly="" type="email"/>
+</div>
+<div class="field">
+<label>ชื่อแสดง</label>
+<input class="input" id="accountCreateDisplayName"/>
+</div>
+</div>
+<div class="form-row">
+<div class="field">
+<label>Role *</label>
+<select class="select" id="accountCreateRole">
+<option value="VIEWER">VIEWER</option>
+<option value="MANAGER">MANAGER</option>
+<option value="HR_ADMIN">HR_ADMIN</option>
+</select>
+</div>
+<div class="field">
+<label>การเข้าใช้งานครั้งแรก</label>
+<div class="account-invite-method">
+<strong>Invite Link</strong>
+<small>
+                User กดลิงก์ใน Email และตั้งรหัสผ่านด้วยตนเอง
+              </small>
+</div>
+</div>
+</div>
+<div class="field">
+<label>หมายเหตุ</label>
+<input class="input" id="accountCreateNote" placeholder="เช่น เปิดบัญชีสำหรับเริ่มใช้งานระบบ Time-Clock"/>
+</div>
+<div class="account-email-preview">
+<div class="account-email-preview-icon">✉</div>
+<div>
+<strong>Email ที่ User จะได้รับ</strong>
+<p>
+              Invite Link สำหรับตอบรับคำเชิญ
+              และเปิดหน้าตั้งรหัสผ่านครั้งแรก
+            </p>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-light" data-close-modal="accountCreateModal">
+          ยกเลิก
+        </button>
+<button class="btn btn-primary" id="accountCreateSaveBtn">
+          สร้างบัญชีและส่ง Invite
+        </button>
+</div>
+</div>
+</div>
+<!-- Edit User Account Modal V6.11.15 -->
+<div class="modal-backdrop hidden" id="accountEditModal">
+<div class="modal large account-edit-modal">
+<div class="modal-header">
+<div>
+<h3>แก้ไขบัญชีผู้ใช้งาน</h3>
+<p id="accountEditSubtitle">-</p>
+</div>
+<button class="btn btn-light btn-icon" data-close-modal="accountEditModal">
+          ×
+        </button>
+</div>
+<div class="modal-body">
+<input id="accountEditUserId" type="hidden"/>
+<div class="form-row">
+<div class="field">
+<label>Email</label>
+<input class="input" id="accountEditEmail" readonly=""/>
+</div>
+<div class="field">
+<label>รหัสพนักงาน</label>
+<input class="input" id="accountEditEmpCode"/>
+</div>
+</div>
+<div class="form-row">
+<div class="field">
+<label>ชื่อแสดง</label>
+<input class="input" id="accountEditDisplayName"/>
+</div>
+<div class="field">
+<label>Role</label>
+<select class="select" id="accountEditRole">
+<option value="VIEWER">VIEWER</option>
+<option value="MANAGER">MANAGER</option>
+<option value="HR_ADMIN">HR_ADMIN</option>
+</select>
+</div>
+</div>
+<label class="account-active-toggle">
+<input checked="" id="accountEditActive" type="checkbox"/>
+<span>
+<strong>เปิดใช้งานบัญชี</strong>
+<small>
+              หากปิด User จะ Login ได้แต่ไม่สามารถเข้าใช้งานระบบ
+            </small>
+</span>
+</label>
+<div class="field">
+<label>หมายเหตุ</label>
+<input class="input" id="accountEditNote"/>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-light" data-close-modal="accountEditModal">
+          ยกเลิก
+        </button>
+<button class="btn btn-primary" id="accountEditSaveBtn">
+          บันทึกการเปลี่ยนแปลง
+        </button>
+</div>
+</div>
+</div>
+<!-- Invite Acceptance Modal V6.11.15 -->
+<div class="modal-backdrop hidden account-invite-backdrop" id="inviteAcceptModal">
+<div class="modal account-invite-accept-modal">
+<div class="modal-header account-invite-accept-header">
+<div>
+<span class="eyebrow">USER INVITATION</span>
+<h3>ตอบรับคำเชิญเข้าใช้งาน</h3>
+<p>
+            กรุณากดยืนยันเพื่อไปยัง Supabase Auth
+            สำหรับเปิดใช้งานบัญชี จากนั้นระบบจะให้คุณตั้งรหัสผ่าน
+          </p>
+</div>
+</div>
+<div class="modal-body">
+<div class="account-invite-accept-card">
+<div class="account-invite-accept-icon">✉</div>
+<div>
+<strong>คำเชิญเข้าใช้งาน Time-Clock</strong>
+<p>
+              ระบบจะยืนยัน Invite กับ Supabase Auth โดยตรง
+              และลิงก์มีอายุตามค่า Email OTP Expiration
+            </p>
+</div>
+</div>
+<div class="account-invite-error hidden" id="inviteAcceptError"></div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-primary" id="inviteAcceptBtn">
+          ตอบรับคำเชิญและตั้งรหัสผ่าน
+        </button>
+</div>
+</div>
+</div>
+<!-- Password Recovery OTP V6.11.15 -->
+<div class="modal-backdrop hidden account-recovery-backdrop" id="recoveryOtpModal">
+<div class="modal account-recovery-otp-modal">
+<div class="modal-header account-recovery-otp-header">
+<div>
+<span class="eyebrow">PASSWORD RECOVERY</span>
+<h3>ยืนยันรหัสสำหรับตั้งรหัสผ่าน</h3>
+<p>
+            กรอก Email และรหัส OTP ที่ได้รับจากอีเมล
+          </p>
+</div>
+</div>
+<div class="modal-body">
+<div class="account-recovery-otp-info">
+<div class="account-recovery-otp-icon">🔑</div>
+<div>
+<strong>ใช้รหัส OTP แทนลิงก์ยืนยัน</strong>
+<p>
+              วิธีนี้ช่วยป้องกัน Email Security Scanner
+              ใช้ลิงก์ยืนยันก่อนที่คุณจะเปิดอีเมล
+            </p>
+</div>
+</div>
+<div class="field">
+<label>Email</label>
+<input autocomplete="email" class="input" id="recoveryOtpEmail" placeholder="name@company.com" type="email"/>
+</div>
+<div class="field">
+<label>รหัส OTP</label>
+<input autocomplete="one-time-code" class="input account-recovery-otp-input" id="recoveryOtpCode" inputmode="numeric" maxlength="10" placeholder="กรอกรหัสจาก Email" type="text"/>
+</div>
+<div class="account-recovery-error hidden" id="recoveryOtpError"></div>
+<div class="account-recovery-otp-help">
+          หากรหัสหมดอายุ ให้ HR Admin กด
+          <strong>🔑 ตั้งรหัสผ่าน</strong>
+          เพื่อส่งรหัสใหม่
+        </div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-primary" id="recoveryOtpVerifyBtn">
+          ยืนยัน OTP และตั้งรหัสผ่าน
+        </button>
+</div>
+</div>
+</div>
+<!-- Password Recovery Confirmation V6.11.15 -->
+<div class="modal-backdrop hidden account-recovery-backdrop" id="recoveryConfirmModal">
+<div class="modal account-recovery-confirm-modal">
+<div class="modal-header account-recovery-confirm-header">
+<div>
+<span class="eyebrow">PASSWORD RECOVERY</span>
+<h3>ตั้งรหัสผ่านใหม่</h3>
+<p>
+            กรุณากดยืนยันเพื่อเปิดลิงก์ตั้งรหัสผ่านกับ Supabase Auth
+          </p>
+</div>
+</div>
+<div class="modal-body">
+<div class="account-recovery-confirm-card">
+<div class="account-recovery-confirm-icon">🔑</div>
+<div>
+<strong>ลิงก์ตั้งรหัสผ่าน Time-Clock</strong>
+<p>
+              การยืนยันจริงจะเกิดขึ้นเมื่อคุณกดปุ่มด้านล่าง
+              เพื่อช่วยป้องกันระบบ Email Security Scanner ใช้ลิงก์ก่อนคุณ
+            </p>
+</div>
+</div>
+<div class="account-recovery-error hidden" id="recoveryConfirmError"></div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-primary" id="recoveryConfirmBtn">
+          ยืนยันและตั้งรหัสผ่าน
+        </button>
+</div>
+</div>
+</div>
+<!-- Forced First Password Change -->
+<div class="modal-backdrop hidden account-password-backdrop" id="forcePasswordModal">
+<div class="modal account-password-modal">
+<div class="modal-header account-password-header">
+<div>
+<span class="eyebrow">SECURITY REQUIRED</span>
+<h3 id="forcePasswordTitle">ตั้งรหัสผ่านใหม่</h3>
+<p id="forcePasswordSubtitle">
+            เพื่อความปลอดภัย กรุณาเปลี่ยนรหัสผ่านก่อนเข้าใช้งานระบบ
+          </p>
+</div>
+</div>
+<div class="modal-body">
+<div class="account-password-security">
+<span>🔒</span>
+<div>
+<strong>รหัสผ่านใหม่ต้องมีอย่างน้อย 10 ตัวอักษร</strong>
+<small>
+              แนะนำให้มีตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก ตัวเลข และอักขระพิเศษ
+            </small>
+</div>
+</div>
+<div class="field">
+<label>รหัสผ่านใหม่</label>
+<div class="account-password-input-wrap">
+<input autocomplete="new-password" class="input account-password-input" id="forcePasswordNew" type="password"/>
+<button aria-label="แสดงรหัสผ่านใหม่" aria-pressed="false" class="account-password-toggle" id="forcePasswordNewToggle" type="button">
+<span class="account-password-toggle-icon">◉</span>
+<span class="account-password-toggle-text">แสดง</span>
+</button>
+</div>
+</div>
+<div class="field">
+<label>ยืนยันรหัสผ่านใหม่</label>
+<div class="account-password-input-wrap">
+<input autocomplete="new-password" class="input account-password-input" id="forcePasswordConfirm" type="password"/>
+<button aria-label="แสดงยืนยันรหัสผ่าน" aria-pressed="false" class="account-password-toggle" id="forcePasswordConfirmToggle" type="button">
+<span class="account-password-toggle-icon">◉</span>
+<span class="account-password-toggle-text">แสดง</span>
+</button>
+</div>
+</div>
+<div class="account-password-strength" id="forcePasswordStrength"></div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-primary" id="forcePasswordSaveBtn">
+          เปลี่ยนรหัสผ่านและเข้าใช้งาน
+        </button>
+</div>
+</div>
+</div>
+<!-- Forgot Password Modal -->
+<div class="modal-backdrop hidden" id="forgotPasswordModal">
+<div class="modal account-forgot-modal">
+<div class="modal-header">
+<div>
+<h3>ลืมรหัสผ่าน</h3>
+<p>
+            ระบบจะส่ง Email สำหรับตั้งรหัสผ่านใหม่
+          </p>
+</div>
+<button class="btn btn-light btn-icon" data-close-modal="forgotPasswordModal">
+          ×
+        </button>
+</div>
+<div class="modal-body">
+<div class="field">
+<label>Email</label>
+<input class="input" id="forgotPasswordEmail" placeholder="name@company.com" type="email"/>
+</div>
+<div class="account-reset-note">
+<strong>หมายเหตุ</strong>
+<p>
+            การส่ง Email Reset ใช้ระบบ Supabase Auth
+            จึงควรตั้ง Custom SMTP สำหรับ Production
+          </p>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-light" data-close-modal="forgotPasswordModal">
+          ยกเลิก
+        </button>
+<button class="btn btn-primary" id="forgotPasswordSendBtn">
+          ส่ง Email ตั้งรหัสผ่านใหม่
+        </button>
+</div>
+</div>
+</div>
+<!-- User Modal -->
+<div class="modal-backdrop hidden" id="userModal">
+<div class="modal extra-large manager-user-modal">
+<div class="modal-header">
+<div>
+<h3>กำหนด Role และ Manager Scope</h3>
+<p>ใช้ Email เป็นตัวเชื่อม User กับ Scope</p>
+</div>
+<button class="btn btn-light btn-icon" data-close-modal="userModal">×</button>
+</div>
+<div class="modal-body">
+<input id="umUserId" type="hidden">
+<section class="manager-user-section">
+<div class="manager-user-section-head">
+<strong>ข้อมูล User</strong>
+<small>Role และข้อมูลสำหรับตรวจสอบข้อมูลของตนเอง</small>
+</div>
+<div class="form-row-3">
+<div class="field">
+<label>อีเมล</label>
+<input class="input" disabled="" id="umEmail">
+</input></div>
+<div class="field">
+<label>ชื่อแสดง</label>
+<input class="input" id="umDisplayName">
+</input></div>
+<div class="field">
+<label>Role</label>
+<select class="select" id="umRole">
+<option value="VIEWER">VIEWER</option>
+<option value="MANAGER">MANAGER</option>
+<option value="HR_ADMIN">HR_ADMIN</option>
+</select>
+</div>
+</div>
+<div class="form-row">
+<div class="field">
+<label>รหัสพนักงาน</label>
+<input class="input" id="umEmpCode" list="v650EmployeeList" placeholder="เว้นว่างได้ เมื่อ Email ใน Employee Template ตรงกับ User">
+<small class="field-help">ใช้สำหรับ Viewer/Manager ตรวจสอบข้อมูลของตนเอง และส่งคำขอแก้ไขกะ</small>
+</input></div>
+<label class="manager-user-active">
+<input checked="" id="umActive" type="checkbox">
+<span>
+<strong>เปิดใช้งาน User</strong>
+<small>ปิดแล้วจะไม่สามารถเข้าถึงข้อมูลระบบ</small>
+</span>
+</input></label>
+</div>
+</section>
+<section class="manager-user-section hidden" id="umManagerScopeSection">
+<div class="manager-user-section-head manager-scope-section-head">
+<div>
+<strong>Manager Scope</strong>
+<small>กำหนดหลาย Scope ได้ ทั้งหน่วยงานและพนักงานรายบุคคล</small>
+</div>
+<button class="btn btn-orange btn-sm" id="newManagerScopeBtn">+ เพิ่ม Scope</button>
+</div>
+<div class="manager-scope-email-note">
+            Scope จะเชื่อมกับ Email:
+            <strong id="umManagerScopeEmail">-</strong>
+</div>
+<div class="table-wrap manager-scope-table-wrap">
+<table>
+<thead>
+<tr>
+<th>ประเภท</th>
+<th>ค่า Scope</th>
+<th>ดู</th>
+<th>จัดกะ</th>
+<th>รับรองเวลา</th>
+<th>พิจารณาคำขอ</th>
+<th>ช่วงใช้</th>
+<th>สถานะ</th>
+<th>จัดการ</th>
+</tr>
+</thead>
+<tbody id="umManagerScopeBody">
+<tr><td class="fc-empty" colspan="9">เลือก Role Manager เพื่อกำหนด Scope</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+</input></div>
+<div class="modal-footer">
+<button class="btn btn-light" data-close-modal="userModal">ยกเลิก</button>
+<button class="btn btn-primary" id="saveUserBtn">บันทึก Role</button>
+</div>
+</div>
+</div>
+<!-- Manager Scope Modal -->
+<div class="modal-backdrop hidden" id="managerScopeModal">
+<div class="modal large">
+<div class="modal-header">
+<div>
+<h3 id="managerScopeModalTitle">เพิ่ม Manager Scope</h3>
+<p id="managerScopeModalEmail">-</p>
+</div>
+<button class="btn btn-light btn-icon" data-close-modal="managerScopeModal">×</button>
+</div>
+<div class="modal-body">
+<input id="msScopeId" type="hidden">
+<input id="msManagerEmail" type="hidden">
+<div class="form-row">
+<div class="field">
+<label>ประเภท Scope</label>
+<select class="select" id="msScopeType">
+<option value="DEPARTMENT">หน่วยงาน</option>
+<option value="ZONE">Zone</option>
+<option value="AREA">พื้นที่</option>
+<option value="SUB_AREA">พื้นที่ย่อย</option>
+<option value="EMPLOYEE">พนักงานรายบุคคล</option>
+<option value="ORG_UNIT">ผังองค์กร</option>
+<option value="ALL">ทั้งหมด</option>
+</select>
+</div>
+<div class="field">
+<label>ค่า Scope</label>
+<input class="input" id="msScopeValue" list="msScopeValueOptions" placeholder="ระบุหน่วยงานหรือรหัสพนักงาน">
+<datalist id="msScopeValueOptions"></datalist>
+</input></div>
+</div>
+<div class="field">
+<label>ชื่อแสดง Scope</label>
+<input class="input" id="msScopeLabel" placeholder="เช่น แผนก BE1-PM4">
+</input></div>
+<div class="manager-scope-permission-grid">
+<label><input checked="" id="msCanView" type="checkbox"><span>ดูข้อมูล</span></input></label>
+<label><input id="msCanEdit" type="checkbox"><span>บันทึกกะ</span></input></label>
+
+<label><input id="msCanCertify" type="checkbox"><span>รับรองเวลา</span></input></label>
+<label><input id="msCanDecide" type="checkbox"><span>พิจารณาคำขอแก้ไขกะ</span></input></label>
+</div>
+<div class="form-row-3">
+<div class="field">
+<label>เริ่มใช้</label>
+<input class="input" id="msEffectiveFrom" type="date">
+</input></div>
+<div class="field">
+<label>สิ้นสุด</label>
+<input class="input" id="msEffectiveTo" type="date">
+</input></div>
+<div class="field">
+<label>สถานะ</label>
+<select class="select" id="msActive">
+<option value="true">ใช้งาน</option>
+<option value="false">ปิดใช้งาน</option>
+</select>
+</div>
+</div>
+<div class="field">
+<label>หมายเหตุ</label>
+<textarea class="textarea" id="msNote"></textarea>
+</div>
+</input></input></div>
+<div class="modal-footer">
+<button class="btn btn-light" data-close-modal="managerScopeModal">ยกเลิก</button>
+<button class="btn btn-primary" id="saveManagerScopeBtn">บันทึก Scope</button>
+</div>
+</div>
+</div>
+<!-- Manager Scope Upload Modal -->
+<div class="modal-backdrop hidden" id="managerScopeUploadModal">
+<div class="modal extra-large">
+<div class="modal-header">
+<div>
+<h3>Upload Manager Scope</h3>
+<p>CSV UTF-8 ใช้ manager_email เป็นตัวเชื่อม User</p>
+</div>
+<button class="btn btn-light btn-icon" data-close-modal="managerScopeUploadModal">×</button>
+</div>
+<div class="modal-body">
+<div class="manager-scope-upload-grid">
+<div class="field">
+<label>ไฟล์ Manager Scope CSV</label>
+<input accept=".csv,text/csv" class="input" id="managerScopeFile" type="file">
+</input></div>
+<label class="manager-scope-replace-option">
+<input id="managerScopeReplace" type="checkbox">
+<span>
+<strong>แทนที่ Scope เดิมของ Email ที่อยู่ในไฟล์</strong>
+<small>ไม่เลือก = Upsert เพิ่มหรือปรับเฉพาะรายการในไฟล์</small>
+</span>
+</input></label>
+</div>
+<div class="manager-scope-upload-summary" id="managerScopeUploadSummary">
+          ยังไม่ได้เลือกไฟล์
+        </div>
+<div class="table-wrap manager-scope-upload-preview">
+<table>
+<thead>
+<tr>
+<th>แถว</th>
+<th>Manager Email</th>
+<th>ประเภท</th>
+<th>ค่า Scope</th>
+<th>ดู</th>
+<th>จัดกะ</th>
+<th>รับรองเวลา</th>
+<th>พิจารณาคำขอ</th>
+</tr>
+</thead>
+<tbody id="managerScopeUploadBody">
+<tr><td class="fc-empty" colspan="8">ยังไม่มีข้อมูล Preview</td></tr>
+</tbody>
+</table>
+</div>
+<div class="manager-scope-upload-errors hidden" id="managerScopeUploadErrors"></div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-success" id="managerScopeUploadTemplateBtn" style="margin-right:auto">ดาวน์โหลด Template</button>
+<button class="btn btn-light" data-close-modal="managerScopeUploadModal">ยกเลิก</button>
+<button class="btn btn-primary" disabled="" id="importManagerScopeBtn">นำเข้า Scope</button>
+</div>
+</div>
+</div>
+
+<!-- Unified Action Modal V6.11.35 -->
+<div class="modal-backdrop hidden global-action-modal-backdrop" id="globalActionModal" aria-hidden="true">
+  <div class="modal global-action-modal" role="dialog" aria-modal="true" aria-labelledby="globalActionModalTitle" aria-describedby="globalActionModalMessage">
+    <div class="modal-header global-action-modal-header">
+      <div class="global-action-modal-heading">
+        <span class="global-action-modal-icon" id="globalActionModalIcon">?</span>
+        <div>
+          <span class="eyebrow" id="globalActionModalEyebrow">ยืนยันรายการ</span>
+          <h3 id="globalActionModalTitle">ยืนยันการดำเนินการ</h3>
+        </div>
+      </div>
+      <button class="btn btn-light btn-icon" id="globalActionModalClose" type="button" aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body global-action-modal-body">
+      <div class="global-action-modal-message" id="globalActionModalMessage"></div>
+      <div class="global-action-modal-input hidden" id="globalActionModalInputWrap">
+        <label id="globalActionModalInputLabel" for="globalActionModalInput">หมายเหตุ</label>
+        <textarea class="input" id="globalActionModalInput" rows="4" maxlength="1000" placeholder="ระบุรายละเอียด..."></textarea>
+        <small id="globalActionModalInputHelp">สามารถเว้นว่างได้</small>
+      </div>
+    </div>
+    <div class="modal-footer global-action-modal-footer">
+      <button class="btn btn-light" id="globalActionModalCancel" type="button">ยกเลิก</button>
+      <button class="btn btn-primary" id="globalActionModalConfirm" type="button">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<!-- Unified Print Preview Modal V6.11.35 -->
+<div class="modal-backdrop hidden global-print-modal-backdrop" id="globalPrintModal" aria-hidden="true">
+  <div class="modal extra-large global-print-modal" role="dialog" aria-modal="true" aria-labelledby="globalPrintModalTitle">
+    <div class="modal-header">
+      <div>
+        <span class="eyebrow">PRINT PREVIEW</span>
+        <h3 id="globalPrintModalTitle">ตัวอย่างก่อนพิมพ์</h3>
+      </div>
+      <button class="btn btn-light btn-icon" id="globalPrintModalClose" type="button" aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body global-print-modal-body">
+      <iframe id="globalPrintFrame" class="global-print-frame" title="ตัวอย่างเอกสารก่อนพิมพ์"></iframe>
+    </div>
+    <div class="modal-footer">
+      <small class="global-print-hint">ตรวจสอบข้อมูลก่อนพิมพ์หรือบันทึกเป็น PDF</small>
+      <button class="btn btn-light" id="globalPrintModalCancel" type="button">ปิด</button>
+      <button class="btn btn-primary" id="globalPrintModalPrint" type="button">พิมพ์ / Save PDF</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
+<script src="./app.js?v=6.15.24-20260828a"></script>
+</body>
+</html>

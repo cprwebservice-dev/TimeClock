@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.23-20260828b" rel="stylesheet"/>
+<link href="./app.css?v=6.15.24-20260828a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1532,14 +1532,14 @@
   </div>
 </section>
 
-<!-- V6.15.23 4D.1A Team Master -->
+<!-- V6.15.24 4D.1A.1 + 4D.1B Team Category + Membership -->
 <section class="page team-master-page-v61523" id="page-team-master">
   <div class="team-master-hero-v61523">
     <div>
       <span class="eyebrow">4D · OPERATIONAL TEAM FOUNDATION</span>
       <h2>ทีมช่างเทคนิค</h2>
-      <p>สร้าง Team Master จากหน่วยงานที่อยู่ใน Scope ของ Manager โดยระบบสร้างชื่อทีมและ Team Code ให้อัตโนมัติ</p>
-      <div class="team-master-hero-badges-v61523"><span>Auto Generate</span><span>ไม่ตั้งชื่อเอง</span><span>ไม่ใช้เลขซ้ำ</span><span>Audit Trail</span></div>
+      <p>สร้างทีมรถยนต์/มอเตอร์ไซค์แบบ Auto Generate และกำหนดสมาชิกแบบ Effective Date</p>
+      <div class="team-master-hero-badges-v61523"><span>Auto Generate</span><span>CAR / MOTORCYCLE</span><span>สมาชิกขั้นต่ำ 3 คน</span><span>Effective Date</span></div>
     </div>
     <div class="team-master-hero-actions-v61523">
       <button class="btn btn-light" id="teamMasterRefreshV61523">↻ รีเฟรช</button>
@@ -1548,8 +1548,8 @@
   </div>
 
   <div class="team-master-foundation-note-v61523 section-gap">
-    <i>4D.1A</i>
-    <div><strong>รอบนี้เป็น Team Master เท่านั้น</strong><span>ยังไม่กำหนดสมาชิกทีมและยังไม่บังคับ Team ก่อนจัดกะ — จะเปิดใน 4D.1B / 4D.1C หลัง Migration สมาชิกครบ</span></div>
+    <i>4D.1A.1 + 4D.1B</i>
+    <div><strong>เพิ่มประเภททีมและ Team Membership แล้ว</strong><span>รถยนต์ต้องเตรียม Team ก่อนเปิด Enforcement • มอเตอร์ไซค์กำหนดทีมได้แต่ไม่บังคับ • กลุ่มไม่ระบุ car_team แสดงเพื่อให้ตรวจข้อมูล</span></div>
   </div>
 
   <div class="team-master-kpis-v61523 section-gap">
@@ -1563,11 +1563,17 @@
     <div class="panel-body">
       <div class="team-master-toolbar-v61523">
         <div class="field"><label>หน่วยงาน</label><select class="select" id="teamMasterOrgFilterV61523"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
-        <div class="field"><label>สถานะ</label><select class="select" id="teamMasterStatusFilterV61523"><option value="ACTIVE">ใช้งานอยู่</option><option value="ALL">ทั้งหมด</option><option value="INACTIVE">ปิดใช้งาน</option></select></div>
+        <div class="field"><label>ประเภททีม</label><select class="select" id="teamMasterCategoryFilterV61524"><option value="">ทุกประเภท</option><option value="CAR">รถยนต์</option><option value="MOTORCYCLE">มอเตอร์ไซค์</option></select></div><div class="field"><label>สถานะ</label><select class="select" id="teamMasterStatusFilterV61523"><option value="ACTIVE">ใช้งานอยู่</option><option value="ALL">ทั้งหมด</option><option value="INACTIVE">ปิดใช้งาน</option></select></div>
         <div class="field team-master-search-v61523"><label>ค้นหา</label><input class="input" id="teamMasterSearchV61523" placeholder="Team Code / ชื่อทีม / หน่วยงาน"/></div>
         <div class="team-master-toolbar-actions-v61523"><button class="btn btn-primary" id="teamMasterSearchBtnV61523">ค้นหา</button></div>
       </div>
     </div>
+  </div>
+
+  <div class="team-membership-readiness-v61524 section-gap">
+    <article><span>รถยนต์ยังไม่มีทีม</span><strong id="teamReadinessCarV61524">0</strong><small>ต้องจัดทีมก่อนเปิด 4D.1C Enforcement</small></article>
+    <article><span>มอเตอร์ไซค์ไม่มีทีม</span><strong id="teamReadinessMotorcycleV61524">0</strong><small>จัดกะได้แม้ไม่มีทีม</small></article>
+    <article><span>ไม่ระบุ car_team</span><strong id="teamReadinessUnspecifiedV61524">0</strong><small>ควรตรวจ Employee Master</small></article>
   </div>
 
   <div class="team-master-layout-v61523 section-gap">
@@ -1577,7 +1583,7 @@
     </section>
     <section class="panel team-master-list-panel-v61523">
       <div class="panel-header"><div><h3>Team Master</h3><p id="teamMasterMetaV61523">กำลังโหลด...</p></div><span class="team-master-auto-chip-v61523">AUTO NAME / CODE</span></div>
-      <div class="panel-body"><div class="table-wrap"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>หน่วยงาน</th><th>สถานะ</th><th>สร้างเมื่อ</th><th>ผู้สร้าง</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="6" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
+      <div class="panel-body"><div class="table-wrap"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>ประเภท</th><th>หน่วยงาน</th><th>สมาชิก</th><th>สถานะ</th><th>สร้างเมื่อ</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="7" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
     </section>
   </div>
 
@@ -1590,9 +1596,9 @@
 <!-- V6.15.23 Create Team modal -->
 <div class="modal-backdrop hidden" id="teamMasterCreateModalV61523" aria-hidden="true">
   <div class="modal team-master-create-modal-v61523" role="dialog" aria-modal="true">
-    <div class="modal-header"><div><span class="eyebrow">AUTO-GENERATED TEAM</span><h3>เพิ่มทีมช่างเทคนิค</h3><p>เลือกหน่วยงานเท่านั้น ระบบจะสร้าง Team Name และ Team Code ให้</p></div><button class="btn btn-light btn-icon" data-team-master-close-v61523>×</button></div>
+    <div class="modal-header"><div><span class="eyebrow">AUTO-GENERATED TEAM</span><h3>เพิ่มทีมช่างเทคนิค</h3><p>เลือกหน่วยงานและประเภททีม ระบบจะสร้าง Team Name และ Team Code ให้</p></div><button class="btn btn-light btn-icon" data-team-master-close-v61523>×</button></div>
     <div class="modal-body">
-      <div class="field"><label>หน่วยงาน <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateOrgV61523"></select></div>
+      <div class="field"><label>หน่วยงาน <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateOrgV61523"></select></div><div class="field"><label>ประเภททีม <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateCategoryV61524"><option value="CAR">รถยนต์</option><option value="MOTORCYCLE">มอเตอร์ไซค์</option></select></div>
       <div class="team-master-preview-v61523">
         <span>ทีมที่จะสร้าง</span>
         <div><strong id="teamMasterPreviewNameV61523">ทีม 01</strong><code id="teamMasterPreviewCodeV61523">BE5-T01</code></div>
@@ -1602,6 +1608,21 @@
       <div class="team-master-create-note-v61523"><i>✓</i><div><strong>Manager ไม่ต้องตั้งชื่อทีมเอง</strong><span>ถ้าปิดใช้งานทีมภายหลัง เลขเดิมจะถูกเก็บในประวัติและทีมใหม่จะใช้เลขถัดไป</span></div></div>
     </div>
     <div class="modal-footer"><button class="btn btn-light" data-team-master-close-v61523>ยกเลิก</button><button class="btn btn-primary" id="teamMasterCreateConfirmV61523">สร้างทีม</button></div>
+  </div>
+</div>
+
+<!-- V6.15.24 Team Membership modal -->
+<div class="modal-backdrop hidden" id="teamMembershipModalV61524" aria-hidden="true">
+  <div class="modal team-membership-modal-v61524" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">4D.1B · TEAM MEMBERSHIP</span><h3 id="teamMembershipTitleV61524">กำหนดสมาชิกทีม</h3><p id="teamMembershipMetaV61524">เลือกสมาชิกอย่างน้อย 3 คน</p></div><button class="btn btn-light btn-icon" data-team-membership-close-v61524>×</button></div>
+    <div class="modal-body">
+      <div class="team-membership-summary-v61524"><div><span>ประเภททีม</span><strong id="teamMembershipCategoryV61524">-</strong></div><div><span>วันที่มีผล</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/></div><div><span>เลือกแล้ว</span><strong id="teamMembershipSelectedV61524">0 คน</strong></div></div>
+      <div class="team-membership-warning-v61524" id="teamMembershipPolicyV61524"></div>
+      <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamMembershipSearchV61524" placeholder="รหัส / ชื่อ / หน่วยงาน / car_team"/></div>
+      <div class="team-membership-list-v61524" id="teamMembershipListV61524"><div class="fc-empty">กำลังโหลด...</div></div>
+      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMembershipNoteV61524" rows="2" maxlength="500" placeholder="ไม่บังคับ"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-membership-close-v61524>ยกเลิก</button><button class="btn btn-primary" id="teamMembershipSaveV61524">บันทึกสมาชิกทีม</button></div>
   </div>
 </div>
 
@@ -2797,6 +2818,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.23-20260828b"></script>
+<script src="./app.js?v=6.15.24-20260828a"></script>
 </body>
 </html>

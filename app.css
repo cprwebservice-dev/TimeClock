@@ -23773,3 +23773,25 @@ body.dark-mode .team-master-create-note-v61523,
   .team-master-preview-v61523>div{align-items:flex-start;flex-direction:column}
   .team-master-foundation-note-v61523{grid-template-columns:48px 1fr}
 }
+
+/* V6.15.24 — Team Category + Membership */
+.team-membership-modal-v61524{width:min(860px,94vw);max-height:90vh;display:flex;flex-direction:column}
+.team-membership-modal-v61524 .modal-body{overflow:auto}
+.team-membership-summary-v61524{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.team-membership-summary-v61524>div{border:1px solid var(--border,#dfe5ec);border-radius:14px;padding:12px;background:var(--surface-soft,#f8fafc)}
+.team-membership-summary-v61524 span{display:block;font-size:12px;color:var(--text-muted,#64748b);margin-bottom:4px}
+.team-membership-summary-v61524 strong{font-size:16px}
+.team-membership-warning-v61524{padding:12px 14px;border-radius:12px;background:var(--surface-soft,#f8fafc);margin-bottom:14px;font-size:13px}
+.team-membership-list-v61524{border:1px solid var(--border,#dfe5ec);border-radius:14px;max-height:380px;overflow:auto;margin:10px 0 14px}
+.team-membership-row-v61524{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--border,#e5e7eb);cursor:pointer}
+.team-membership-row-v61524:last-child{border-bottom:0}
+.team-membership-row-v61524.selected{background:rgba(59,130,246,.07)}
+.team-membership-row-v61524 input{margin-top:4px;width:18px;height:18px}
+.team-membership-row-v61524 div{display:flex;flex-direction:column;gap:3px}
+.team-membership-row-v61524 span,.team-membership-row-v61524 small{color:var(--text-muted,#64748b);font-size:12px}
+.team-master-table-v61523 .org-row-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:720px){.team-membership-summary-v61524{grid-template-columns:1fr}.team-membership-modal-v61524{width:96vw}.team-master-toolbar-v61523{grid-template-columns:1fr!important}}
+.team-membership-readiness-v61524{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.team-membership-readiness-v61524 article{padding:14px 16px;border:1px solid var(--border,#dfe5ec);border-radius:14px;background:var(--surface,#fff)}
+.team-membership-readiness-v61524 span,.team-membership-readiness-v61524 small{display:block;color:var(--text-muted,#64748b);font-size:12px}.team-membership-readiness-v61524 strong{display:block;font-size:26px;margin:3px 0}
+@media(max-width:720px){.team-membership-readiness-v61524{grid-template-columns:1fr}}
