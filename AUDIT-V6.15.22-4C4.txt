@@ -1,0 +1,31 @@
+AUDIT — TimeAttendance V6.15.22 / 4C.4
+Leave Result Sync + Notification
+================================
+
+[PASS] Manager frontend calls V6.15.22 Leave Apply wrapper.
+[PASS] Wrapper captures V6.15.21 Manager Review before mutation.
+[PASS] Real schedule mutation remains V6.15.21 atomic business writer.
+[PASS] FULL_DAY publishes exact before/after rows and preserved OFF/PH/leave rows.
+[PASS] PARTIAL_DAY publishes overlay times and proves structural shift remains unchanged.
+[PASS] Request detail stores manager_leave_apply_result_v61522.
+[PASS] HR Connect reminder stored in exact outcome.
+[PASS] Existing terminal notification is enriched instead of duplicated.
+[PASS] Notification remains linked to request_id and becomes unread.
+[PASS] Publication audit = PORTAL_LEAVE_OUTCOME_PUBLISHED_V61522.
+[PASS] Employee Portal My Requests renders result card + before/after + HR reminder.
+[PASS] Partial Leave result has mobile timeline.
+[PASS] More than 4 Full-day rows collapse under "ดูรายละเอียด" to keep mobile cards compact.
+[PASS] Leave validation trigger is PENDING-only; Manager post-apply detail no longer revalidates mutated schedule.
+[PASS] Returned request resubmit remains validated because NEW.status becomes PENDING.
+[PASS] V6.15.13 portal revision auto-sync pipeline retained.
+
+Static validation performed:
+- node --check app.js
+- node --check portal.js
+- HTML parse + duplicate id scan
+- CSS brace balance
+- version/cache scan
+- ZIP integrity
+
+Database runtime:
+- SQL files are generated for Supabase but were not executed against the user's production database by ChatGPT.

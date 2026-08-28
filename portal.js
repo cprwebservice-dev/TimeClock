@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.21";
+  const VERSION="6.15.22";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -987,7 +987,58 @@
     return `<div class="portal-dayoff-outcome-v61519"><div class="portal-dayoff-outcome-head-v61519"><i>✓</i><div><span>ผลที่ระบบปรับจริง</span><strong>${esc(outcome.summary||"ตารางกะอัปเดตแล้ว")}</strong></div></div>${rows?`<div class="portal-dayoff-outcome-grid-v61519">${rows}</div>`:""}</div>`;
   }
 
-  function requestDetail(r){const d=r.detail||{};if(r.request_type==="SPECIAL_WORK")return[d.reported_start_time&&d.reported_end_time?`กะ 2 ${fmtTime(d.reported_start_time)}–${fmtTime(d.reported_end_time)}`:"",d.customer_location||""].filter(Boolean).join(" • ");if(r.request_type==="DAYOFF_SWAP"){const outcome=dayoffOutcomeV61519(r);if(outcome?.summary)return outcome.summary;if(String(r.request_subtype||"").toUpperCase()==="ADD_DAYOFF")return`ขอหยุดเพิ่ม ${fmtDate(r.work_date)}${d.quota_snapshot?` • คงเหลือ ${d.quota_snapshot.balance_days??"-"} วัน`:""}`;return`${fmtDate(r.work_date)} → ${fmtDate(d.target_date)}${d.quota_snapshot?` • โควต้า ${d.quota_snapshot.month_quota_days}/${d.quota_snapshot.used_days}`:""}`;}if(r.request_type==="LEAVE_REQUEST"){const partial=String(r.request_subtype||"").toUpperCase()==="PARTIAL_DAY";const effect=!partial&&d.affected_workday_count!=null?` • ปรับกะ ${d.affected_workday_count} วัน${Number(d.skipped_nonworkday_count||0)>0?` / ไม่เปลี่ยน ${d.skipped_nonworkday_count} วัน`:""}`:"";return`${leaveTypeLabelV61508(d.leave_type_label||d.leave_type)} • ${fmtDate(r.work_date)}${d.end_date&&String(d.end_date)!==String(r.work_date)?` – ${fmtDate(d.end_date)}`:""}${partial&&d.leave_start_time&&d.leave_end_time?` • ${fmtTime(d.leave_start_time)}–${fmtTime(d.leave_end_time)}`:""}${effect}`;}return"";}
+  function leaveOutcomeV61522(r){
+    if(String(r?.request_type||"").toUpperCase()!=="LEAVE_REQUEST")return null;
+    const outcome=r?.detail?.manager_leave_apply_result_v61522;
+    return outcome&&outcome.applied===true?outcome:null;
+  }
+
+  function portalLeaveOutcomeRowV61522(change){
+    const action=String(change?.action||"").toUpperCase();
+    const beforeCode=String(change?.before_shift_code||"").trim().toUpperCase();
+    const afterCode=String(change?.after_shift_code||"").trim().toUpperCase();
+    const before=portalShiftCodeLabelV61519(beforeCode);
+    const after=portalShiftCodeLabelV61519(afterCode);
+    const date=fmtDate(change?.work_date);
+    const skipped=action==="SKIP";
+    const partial=action==="PARTIAL_OVERLAY";
+    const title=partial?"ลาบางส่วน":skipped?"คงตารางเดิม":"ปรับเป็นลา";
+    const result=partial
+      ?`${before} • กะเดิมคงอยู่`
+      :skipped
+        ?`${before} • ไม่เปลี่ยน`
+        :`${before} → ${after}`;
+    const codeLine=partial
+      ?beforeCode
+      :skipped
+        ?beforeCode
+        :[beforeCode,afterCode].filter(Boolean).join(" → ");
+    const note=skipped
+      ?(change?.current_day_type||change?.skip_reason||"วันหยุด / PH / ลาเดิม")
+      :"";
+    return `<div class="portal-leave-outcome-row-v61522 ${skipped?"skip":""} ${partial?"partial":""}"><div><span>${esc(title)} • ${esc(date)}</span><strong>${esc(result)}</strong>${codeLine?`<small>${esc(codeLine)}</small>`:""}${note?`<em>${esc(note)}</em>`:""}</div></div>`;
+  }
+
+  function portalLeavePartialTimelineV61522(outcome){
+    const p=outcome?.partial_leave||{};
+    if(!p.leave_start_time&&!p.leave_end_time)return"";
+    return `<div class="portal-leave-partial-result-v61522"><div class="portal-leave-partial-line-v61522"><span class="work"></span><span class="leave"></span></div><div class="portal-leave-partial-times-v61522"><span>กะ ${esc(fmtTime(p.shift_start_time)||"-")}</span><strong>ลา ${esc(fmtTime(p.leave_start_time)||"-")}–${esc(fmtTime(p.leave_end_time)||"-")}</strong><span>${esc(fmtTime(p.shift_end_time)||"-")}</span></div><small>กะเดิมยังคงอยู่ • ระบบใช้ Partial Leave Overlay เฉพาะช่วงเวลาที่ Manager ดำเนินการ</small></div>`;
+  }
+
+  function portalLeaveOutcomeHtmlV61522(r){
+    const outcome=leaveOutcomeV61522(r);
+    if(!outcome)return"";
+    const changes=Array.isArray(outcome.schedule_changes)?outcome.schedule_changes:[];
+    const primary=changes.slice(0,4).map(portalLeaveOutcomeRowV61522).join("");
+    const more=changes.length>4
+      ?`<details class="portal-leave-outcome-more-v61522"><summary>ดูรายละเอียดอีก ${changes.length-4} วัน</summary><div>${changes.slice(4).map(portalLeaveOutcomeRowV61522).join("")}</div></details>`
+      :"";
+    const partial=String(outcome.mode||"").toUpperCase()==="PARTIAL_DAY"?portalLeavePartialTimelineV61522(outcome):"";
+    const reminder=outcome.hr_connect_reminder||"การลาอย่างเป็นทางการยังต้องดำเนินการใน HR Connect ตามขั้นตอนของบริษัท";
+    return `<div class="portal-leave-outcome-v61522"><div class="portal-leave-outcome-head-v61522"><i>✓</i><div><span>ผลการปรับตารางกะ</span><strong>${esc(outcome.summary||"Manager ดำเนินการแล้ว")}</strong></div></div>${partial}${primary?`<div class="portal-leave-outcome-grid-v61522">${primary}</div>`:""}${more}<div class="portal-leave-hr-reminder-v61522"><i>HR</i><span>${esc(reminder)}</span></div></div>`;
+  }
+
+  function requestDetail(r){const d=r.detail||{};if(r.request_type==="SPECIAL_WORK")return[d.reported_start_time&&d.reported_end_time?`กะ 2 ${fmtTime(d.reported_start_time)}–${fmtTime(d.reported_end_time)}`:"",d.customer_location||""].filter(Boolean).join(" • ");if(r.request_type==="DAYOFF_SWAP"){const outcome=dayoffOutcomeV61519(r);if(outcome?.summary)return outcome.summary;if(String(r.request_subtype||"").toUpperCase()==="ADD_DAYOFF")return`ขอหยุดเพิ่ม ${fmtDate(r.work_date)}${d.quota_snapshot?` • คงเหลือ ${d.quota_snapshot.balance_days??"-"} วัน`:""}`;return`${fmtDate(r.work_date)} → ${fmtDate(d.target_date)}${d.quota_snapshot?` • โควต้า ${d.quota_snapshot.month_quota_days}/${d.quota_snapshot.used_days}`:""}`;}if(r.request_type==="LEAVE_REQUEST"){const outcome=leaveOutcomeV61522(r);if(outcome?.summary)return outcome.summary;const partial=String(r.request_subtype||"").toUpperCase()==="PARTIAL_DAY";const effect=!partial&&d.affected_workday_count!=null?` • ปรับกะ ${d.affected_workday_count} วัน${Number(d.skipped_nonworkday_count||0)>0?` / ไม่เปลี่ยน ${d.skipped_nonworkday_count} วัน`:""}`:"";return`${leaveTypeLabelV61508(d.leave_type_label||d.leave_type)} • ${fmtDate(r.work_date)}${d.end_date&&String(d.end_date)!==String(r.work_date)?` – ${fmtDate(d.end_date)}`:""}${partial&&d.leave_start_time&&d.leave_end_time?` • ${fmtTime(d.leave_start_time)}–${fmtTime(d.leave_end_time)}`:""}${effect}`;}return"";}
   function portalConsistencyBadgeV61515(r){
     if(String(r?.status||"").toUpperCase()!=="RESOLVED")return"";
     const audit=requestConsistencyV61515.get(String(r.request_id));
@@ -1059,7 +1110,7 @@
       const returned=status==="RETURNED";
       const typeClass=`type-${String(r.request_type||"generic").toLowerCase()}`;
       const typeIcon=({TIME_ISSUE:"◷",SPECIAL_WORK:"☾",DAYOFF_SWAP:"⇄",LEAVE_REQUEST:"▤"})[r.request_type]||"•";
-      return `<article class="portal-request-item ${typeClass} ${returned?"returned-v61519":""}" data-portal-request-id="${esc(r.request_id)}"><div class="portal-request-head"><div class="portal-request-title-wrap"><i class="portal-request-type-icon">${esc(typeIcon)}</i><div><span class="portal-request-kicker">${esc(requestType(r))}</span><strong>${esc(r.request_no||"คำขอ")}</strong><small>${esc(fmtDate(r.work_date))} • ${esc(subtype(r))}</small></div></div><span class="portal-request-status ${sc}">${esc(sl)}</span></div>${detail?`<p class="portal-request-detail">${esc(detail)}</p>`:""}<p class="portal-request-reason">${esc(r.reason||"-")}</p>${r.decision_note?`<p class="portal-manager-note ${returned?"returned-v61519":""}"><b>${returned?"Manager ส่งกลับ:":"Manager:"}</b> ${esc(r.decision_note)}</p>`:""}${portalDayoffOutcomeHtmlV61519(r)}${portalConsistencyBadgeV61515(r)}${editable?`<div class="portal-request-actions"><button data-edit-request="${esc(r.request_id)}">✎ ${returned?"แก้ไขและส่งใหม่":"แก้ไข"}</button><button class="danger" data-cancel-request="${esc(r.request_id)}">⌫ ยกเลิก</button></div>`:""}</article>`;
+      return `<article class="portal-request-item ${typeClass} ${returned?"returned-v61519":""}" data-portal-request-id="${esc(r.request_id)}"><div class="portal-request-head"><div class="portal-request-title-wrap"><i class="portal-request-type-icon">${esc(typeIcon)}</i><div><span class="portal-request-kicker">${esc(requestType(r))}</span><strong>${esc(r.request_no||"คำขอ")}</strong><small>${esc(fmtDate(r.work_date))} • ${esc(subtype(r))}</small></div></div><span class="portal-request-status ${sc}">${esc(sl)}</span></div>${detail?`<p class="portal-request-detail">${esc(detail)}</p>`:""}<p class="portal-request-reason">${esc(r.reason||"-")}</p>${r.decision_note?`<p class="portal-manager-note ${returned?"returned-v61519":""}"><b>${returned?"Manager ส่งกลับ:":"Manager:"}</b> ${esc(r.decision_note)}</p>`:""}${portalDayoffOutcomeHtmlV61519(r)}${portalLeaveOutcomeHtmlV61522(r)}${portalConsistencyBadgeV61515(r)}${editable?`<div class="portal-request-actions"><button data-edit-request="${esc(r.request_id)}">✎ ${returned?"แก้ไขและส่งใหม่":"แก้ไข"}</button><button class="danger" data-cancel-request="${esc(r.request_id)}">⌫ ยกเลิก</button></div>`:""}</article>`;
     }).join(""):'<div class="portal-empty portal-empty-card">ยังไม่มีคำขอ / แจ้งข้อมูล</div>';
   }
   function renderNotifications(){
@@ -2749,7 +2800,7 @@
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.21a",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.22a",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }

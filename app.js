@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.21";
-document.documentElement.dataset.timeClockBuild = "6.15.21";
+window.__TIME_CLOCK_BUILD__ = "V6.15.22";
+document.documentElement.dataset.timeClockBuild = "6.15.22";
 
 
 /* ===== js/config.js ===== */
@@ -22216,7 +22216,7 @@ ${names}${extra}
     const subtype=String(request?.request_subtype||"").toUpperCase();
     app()?.showLoading?.(subtype==="PARTIAL_DAY"?"กำลังบันทึก Partial Leave Overlay แบบ Atomic...":"กำลังปรับเฉพาะวันทำงานเป็น LV แบบ Atomic...");
     try{
-      const result=await rpc("ta_apply_employee_request_leave_v61521",{
+      const result=await rpc("ta_apply_employee_request_leave_v61522",{
         p_request_id:request.request_id,
         p_note:request.reason||null
       });
@@ -22229,11 +22229,11 @@ ${names}${extra}
         const overlay=result?.final_state?.overlay||result?.action_result?.action_result?.overlay||{};
         const start=employeeRequestFormatTimeV61481(overlay.leave_start_at||request?.detail?.leave_start_time);
         const end=employeeRequestFormatTimeV61481(overlay.leave_end_at||request?.detail?.leave_end_time);
-        app()?.toast?.(`ปรับตารางลาบางส่วน ${start}–${end} เรียบร้อย • กะเดิมยังคงอยู่ • ตรวจ Final State แล้ว`,`success`);
+        app()?.toast?.(`ปรับตารางลาบางส่วน ${start}–${end} เรียบร้อย • กะเดิมยังคงอยู่ • Sync ผลกลับ Employee Portal แล้ว`,`success`);
       }else{
         const affected=Number(result?.affected_workday_count??review?.affected_workday_count??0);
         const skipped=Number(result?.skipped_nonworkday_count??review?.skipped_nonworkday_count??0);
-        app()?.toast?.(`ปรับตารางลาเรียบร้อย • เปลี่ยนเป็น LV ${affected.toLocaleString("th-TH")} วัน${skipped?` • คงวันหยุด/PH เดิม ${skipped.toLocaleString("th-TH")} วัน`:""}`,`success`);
+        app()?.toast?.(`ปรับตารางลาเรียบร้อย • เปลี่ยนเป็น LV ${affected.toLocaleString("th-TH")} วัน${skipped?` • คงวันหยุด/PH เดิม ${skipped.toLocaleString("th-TH")} วัน`:""} • แจ้งผล Employee Portal แล้ว`,`success`);
       }
 
       try{await app()?.loadSchedule?.();}catch(_){}
@@ -22243,8 +22243,8 @@ ${names}${extra}
       return true;
     }catch(e){
       const msg=String(e?.message||e||"");
-      if(msg.includes("ta_apply_employee_request_leave_v61521")||msg.includes("PGRST202")){
-        app()?.toast?.("กรุณารัน SQL V6.15.21 ก่อนปรับตารางกะจากคำขอลา","error");
+      if(msg.includes("ta_apply_employee_request_leave_v61522")||msg.includes("PGRST202")){
+        app()?.toast?.("กรุณารัน SQL V6.15.22 ก่อนปรับตารางกะจากคำขอลา","error");
       }else app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
       return false;
     }finally{app()?.hideLoading?.();}
