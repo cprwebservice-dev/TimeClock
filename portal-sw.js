@@ -1,5 +1,5 @@
-const CACHE='timeattendance-portal-v61514a';
-const SHELL=['./portal.html','./portal.css?v=6.15.14a','./portal.js?v=6.15.14a','./favicon.svg'];
+const CACHE='timeattendance-portal-v61515a';
+const SHELL=['./portal.html','./portal.css?v=6.15.15a','./portal.js?v=6.15.15a','./favicon.svg'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(
@@ -9,19 +9,16 @@ self.addEventListener('install',e=>{
       .then(()=>self.skipWaiting())
   );
 });
-
 self.addEventListener('activate',e=>{
   e.waitUntil(
     caches.keys()
       .then(keys=>Promise.all(
-        keys
-          .filter(k=>k!==CACHE&&k.startsWith('timeattendance-portal-'))
+        keys.filter(k=>k!==CACHE&&k.startsWith('timeattendance-portal-'))
           .map(k=>caches.delete(k))
       ))
       .then(()=>self.clients.claim())
   );
 });
-
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
   const u=new URL(e.request.url);

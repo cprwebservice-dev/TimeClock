@@ -23216,3 +23216,32 @@ body.theme-dark .employee-request-context-grid-v61494 strong,.dark .employee-req
   0%,100%{transform:scale(.85);opacity:.7}
   50%{transform:scale(1.2);opacity:1}
 }
+
+
+/* V6.15.15 — End-to-End Request Consistency */
+.request-status-stack-v61515{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:5px;
+}
+.request-consistency-v61515{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:3px 7px;
+  border-radius:999px;
+  font-size:8.5px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.request-consistency-v61515.pass{
+  background:#e9f9f0;color:#18794e;border:1px solid #c8edd8;
+}
+.request-consistency-v61515.warn,
+.request-consistency-v61515.pending{
+  background:#fff7e5;color:#a66a10;border:1px solid #f0dbad;
+}
+.request-consistency-v61515.fail{
+  background:#fff0f0;color:#bb3e3e;border:1px solid #f1c5c5;
+}

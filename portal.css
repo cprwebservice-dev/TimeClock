@@ -2238,3 +2238,27 @@ body{font-size:16px;color:var(--p99-ink)}
     display:none;
   }
 }
+
+
+/* V6.15.15 — Request Consistency */
+.portal-consistency-v61515{
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  max-width:100%;
+  margin-top:9px;
+  padding:6px 9px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:900;
+}
+.portal-consistency-v61515.pass{
+  background:#e9f9f0;color:#18794e;border:1px solid #c9ecd7;
+}
+.portal-consistency-v61515.warn,
+.portal-consistency-v61515.pending{
+  background:#fff7e7;color:#9e6918;border:1px solid #eed9ab;
+}
+.portal-consistency-v61515.fail{
+  background:#fff0f0;color:#b43d3d;border:1px solid #efc4c4;
+}

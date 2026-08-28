@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.14";
+window.__TIME_CLOCK_BUILD__ = "V6.15.15";
 document.documentElement.dataset.timeClockBuild = "6.15.10";
 
 
@@ -20683,6 +20683,7 @@ ${names}${extra}
   let shiftRequests = [];
   let employeeRequestsV61481 = [];
   let employeeRequestResolveContextV61481 = null;
+  const employeeRequestConsistencyV61515=new Map();
 
   let managerRequestRevisionV61513=null;
   let managerRequestSyncBusyV61513=false;
@@ -21204,6 +21205,7 @@ ${names}${extra}
 
       renderShiftRequests();
       if(canManage()){
+        loadRequestConsistencyV61515().catch(()=>{});
         setManagerRequestSyncBaselineV61513()
           .catch(()=>{});
       }
@@ -21370,6 +21372,65 @@ ${names}${extra}
   }
 
 
+
+  function consistencyBadgeV61515(request){
+    if(String(request?.request_source||"")!=="EMPLOYEE_REQUEST_V61481")return"";
+    if(String(request?.status||"").toUpperCase()!=="RESOLVED")return"";
+
+    const audit=employeeRequestConsistencyV61515.get(String(request.request_id));
+    if(!audit){
+      return `<span class="request-consistency-v61515 pending" title="รอผลตรวจ Backend ↔ Portal">◷ รอตรวจ</span>`;
+    }
+
+    const status=String(audit.overall_status||"").toUpperCase();
+    const cls=status==="PASS"?"pass":status==="FAIL"?"fail":"warn";
+    const label=status==="PASS"
+      ?"✓ ตรวจครบ"
+      :status==="FAIL"
+        ?"! ไม่ตรง"
+        :"△ รอ Sync";
+
+    return `<span class="request-consistency-v61515 ${cls}" title="${esc(audit.summary||audit.result_code||"")}">${label}</span>`;
+  }
+
+  async function loadRequestConsistencyV61515(){
+    const ids=employeeRequestsV61481
+      .filter(r=>String(r.status||"").toUpperCase()==="RESOLVED")
+      .map(r=>r.request_id)
+      .filter(Boolean);
+
+    employeeRequestConsistencyV61515.clear();
+
+    if(!ids.length){
+      renderShiftRequests();
+      return;
+    }
+
+    try{
+      const rows=await rpc(
+        "ta_get_employee_request_consistency_v61515",
+        {p_request_ids:ids.slice(0,500)}
+      );
+
+      (Array.isArray(rows)?rows:[]).forEach(row=>{
+        if(row?.request_id){
+          employeeRequestConsistencyV61515.set(String(row.request_id),row);
+        }
+      });
+    }catch(e){
+      const m=String(e?.message||e||"");
+      if(
+        !m.includes("ta_get_employee_request_consistency_v61515")
+        && !m.includes("PGRST202")
+      ){
+        console.warn("V6.15.15 request consistency",e);
+      }
+    }
+
+    renderShiftRequests();
+  }
+
+
   function renderShiftRequests() {
     const pending = shiftRequests.filter(request => ["PENDING","IN_REVIEW"].includes(String(request.status || "").toUpperCase())).length;
     const approved = shiftRequests.filter(request => ["APPROVED","RESOLVED"].includes(String(request.status || "").toUpperCase())).length;
@@ -21435,7 +21496,7 @@ ${names}${extra}
             <td>${employeeRequestTypeBadgeV61481(requestType)}</td>
             <td><div class="employee-request-detail-v61481"><strong>${esc(detailText)}</strong>${request.request_subtype && requestType !== "SHIFT_CHANGE" ? `<small>${esc(employeeRequestSubtypeLabelV61481(requestType,request.request_subtype))}</small>` : ""}</div></td>
             <td>${esc(request.reason || "-")}</td>
-            <td><span class="v650-status ${statusClass(request.status)}">${esc(statusLabel(request.status))}</span></td>
+            <td><div class="request-status-stack-v61515"><span class="v650-status ${statusClass(request.status)}">${esc(statusLabel(request.status))}</span>${consistencyBadgeV61515(request)}</div></td>
             <td>${fmtDateTime(request.requested_at || request.created_at)}</td>
             <td>${esc(request.decision_note || "-")}</td>
             <td><div class="v650-actions">${actions.join("") || "-"}</div></td>
