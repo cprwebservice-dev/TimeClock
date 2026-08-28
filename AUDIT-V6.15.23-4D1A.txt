@@ -1,0 +1,22 @@
+AUDIT — Time-Clock Enterprise V6.15.23
+4D.1A Team Master + Auto Generate Team
+======================================
+
+[PASS DESIGN] Team identity is system generated, not user-entered.
+[PASS DESIGN] Team No runs independently per Org Unit.
+[PASS DESIGN] Inactive team number is not recycled.
+[PASS DESIGN] Team Master uses Organization Master UUID as authority.
+[PASS DESIGN] Manager access reuses canonical EDIT_SCHEDULE permission and Manager Scope fallback.
+[PASS DESIGN] Direct table write from authenticated role is closed; Web uses RPC.
+[PASS DESIGN] Team close is soft deactivate; no Team delete RPC is introduced.
+[PASS DESIGN] Team create/deactivate writes Audit.
+[PASS SCOPE] No Team Membership is introduced in 4D.1A.
+[PASS SCOPE] No Team Enforcement is wired to Schedule in 4D.1A.
+[PASS SCOPE] Existing 4B/4C Request workflows are unchanged.
+
+Expected example
+- Org BE5 first team -> ทีม 01 / BE5-T01
+- Org BE5 second team -> ทีม 02 / BE5-T02
+- Deactivate BE5-T02 -> history retained
+- Next new BE5 team -> ทีม 03 / BE5-T03
+- Org BE6 first team remains -> ทีม 01 / BE6-T01

@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.22-20260828a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.23-20260828b" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -82,6 +82,7 @@
 <button class="nav-item" data-page="attendance"><span class="nav-icon">◷</span><span class="nav-text">รายละเอียดเวลาทำงาน</span></button>
 <div class="nav-label nav-label-spaced">คำขอและตรวจสอบ</div>
 <button class="nav-item" data-page="shift-requests"><span class="nav-icon">⇄</span><span class="nav-text">คำขอ / แจ้งข้อมูล</span><span class="nav-count hidden" id="shiftRequestNavBadge">0</span></button>
+<button class="nav-item hidden" data-page="team-master" id="teamMasterNavV61523"><span class="nav-icon">◉</span><span class="nav-text">ทีมช่างเทคนิค</span></button>
 <button class="nav-item hidden" data-page="team-portal" id="teamPortalNavV61482"><span class="nav-icon">▤</span><span class="nav-text">สมาชิกทีม / Portal</span></button>
 <button class="nav-item" data-page="schedule"><span class="nav-icon">▣</span><span class="nav-text">ปฏิทินจัดกะ</span></button>
 <button class="nav-item" data-page="work-patterns"><span class="nav-icon">⌘</span><span class="nav-text">รูปแบบการทำงาน</span></button>
@@ -1531,6 +1532,79 @@
   </div>
 </section>
 
+<!-- V6.15.23 4D.1A Team Master -->
+<section class="page team-master-page-v61523" id="page-team-master">
+  <div class="team-master-hero-v61523">
+    <div>
+      <span class="eyebrow">4D · OPERATIONAL TEAM FOUNDATION</span>
+      <h2>ทีมช่างเทคนิค</h2>
+      <p>สร้าง Team Master จากหน่วยงานที่อยู่ใน Scope ของ Manager โดยระบบสร้างชื่อทีมและ Team Code ให้อัตโนมัติ</p>
+      <div class="team-master-hero-badges-v61523"><span>Auto Generate</span><span>ไม่ตั้งชื่อเอง</span><span>ไม่ใช้เลขซ้ำ</span><span>Audit Trail</span></div>
+    </div>
+    <div class="team-master-hero-actions-v61523">
+      <button class="btn btn-light" id="teamMasterRefreshV61523">↻ รีเฟรช</button>
+      <button class="btn btn-primary" id="teamMasterCreateV61523">＋ เพิ่มทีม</button>
+    </div>
+  </div>
+
+  <div class="team-master-foundation-note-v61523 section-gap">
+    <i>4D.1A</i>
+    <div><strong>รอบนี้เป็น Team Master เท่านั้น</strong><span>ยังไม่กำหนดสมาชิกทีมและยังไม่บังคับ Team ก่อนจัดกะ — จะเปิดใน 4D.1B / 4D.1C หลัง Migration สมาชิกครบ</span></div>
+  </div>
+
+  <div class="team-master-kpis-v61523 section-gap">
+    <article><span>ทีมทั้งหมด</span><strong id="teamMasterKpiAllV61523">0</strong><small>รวมประวัติที่ปิดใช้</small></article>
+    <article class="success"><span>ทีมที่ใช้งาน</span><strong id="teamMasterKpiActiveV61523">0</strong><small>พร้อมรับสมาชิกใน 4D.1B</small></article>
+    <article class="neutral"><span>ปิดใช้งาน</span><strong id="teamMasterKpiInactiveV61523">0</strong><small>Team Code จะไม่ถูกนำกลับมาใช้</small></article>
+    <article class="info"><span>หน่วยงานที่สร้างทีมได้</span><strong id="teamMasterKpiOrgV61523">0</strong><small>ตาม Scope ปัจจุบัน</small></article>
+  </div>
+
+  <div class="panel section-gap">
+    <div class="panel-body">
+      <div class="team-master-toolbar-v61523">
+        <div class="field"><label>หน่วยงาน</label><select class="select" id="teamMasterOrgFilterV61523"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
+        <div class="field"><label>สถานะ</label><select class="select" id="teamMasterStatusFilterV61523"><option value="ACTIVE">ใช้งานอยู่</option><option value="ALL">ทั้งหมด</option><option value="INACTIVE">ปิดใช้งาน</option></select></div>
+        <div class="field team-master-search-v61523"><label>ค้นหา</label><input class="input" id="teamMasterSearchV61523" placeholder="Team Code / ชื่อทีม / หน่วยงาน"/></div>
+        <div class="team-master-toolbar-actions-v61523"><button class="btn btn-primary" id="teamMasterSearchBtnV61523">ค้นหา</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="team-master-layout-v61523 section-gap">
+    <section class="panel team-master-org-panel-v61523">
+      <div class="panel-header"><div><h3>หน่วยงานใน Scope</h3><p>เลือกหน่วยงานเพื่อดู Team Master และเลขทีมถัดไป</p></div></div>
+      <div class="panel-body"><div id="teamMasterOrgListV61523" class="team-master-org-list-v61523"><div class="fc-empty">กำลังโหลด...</div></div></div>
+    </section>
+    <section class="panel team-master-list-panel-v61523">
+      <div class="panel-header"><div><h3>Team Master</h3><p id="teamMasterMetaV61523">กำลังโหลด...</p></div><span class="team-master-auto-chip-v61523">AUTO NAME / CODE</span></div>
+      <div class="panel-body"><div class="table-wrap"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>หน่วยงาน</th><th>สถานะ</th><th>สร้างเมื่อ</th><th>ผู้สร้าง</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="6" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
+    </section>
+  </div>
+
+  <div class="panel section-gap">
+    <div class="panel-header"><div><h3>ประวัติ Team Master ล่าสุด</h3><p>บันทึกการสร้างและปิดใช้งานเพื่อ Audit ย้อนหลัง</p></div><button class="btn btn-light btn-sm" id="teamMasterAuditRefreshV61523">รีเฟรชประวัติ</button></div>
+    <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>Team Code</th><th>รายการ</th><th>ผู้ดำเนินการ</th><th>เหตุผล / หมายเหตุ</th></tr></thead><tbody id="teamMasterAuditBodyV61523"><tr><td colspan="5" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
+  </div>
+</section>
+
+<!-- V6.15.23 Create Team modal -->
+<div class="modal-backdrop hidden" id="teamMasterCreateModalV61523" aria-hidden="true">
+  <div class="modal team-master-create-modal-v61523" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">AUTO-GENERATED TEAM</span><h3>เพิ่มทีมช่างเทคนิค</h3><p>เลือกหน่วยงานเท่านั้น ระบบจะสร้าง Team Name และ Team Code ให้</p></div><button class="btn btn-light btn-icon" data-team-master-close-v61523>×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>หน่วยงาน <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateOrgV61523"></select></div>
+      <div class="team-master-preview-v61523">
+        <span>ทีมที่จะสร้าง</span>
+        <div><strong id="teamMasterPreviewNameV61523">ทีม 01</strong><code id="teamMasterPreviewCodeV61523">BE5-T01</code></div>
+        <small id="teamMasterPreviewOrgV61523">เลือกหน่วยงานเพื่อดูเลขทีมถัดไป</small>
+      </div>
+      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMasterCreateNoteV61523" rows="3" maxlength="500" placeholder="เช่น เตรียมจัดทีมช่างประจำพื้นที่ (ไม่บังคับ)"></textarea></div>
+      <div class="team-master-create-note-v61523"><i>✓</i><div><strong>Manager ไม่ต้องตั้งชื่อทีมเอง</strong><span>ถ้าปิดใช้งานทีมภายหลัง เลขเดิมจะถูกเก็บในประวัติและทีมใหม่จะใช้เลขถัดไป</span></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-master-close-v61523>ยกเลิก</button><button class="btn btn-primary" id="teamMasterCreateConfirmV61523">สร้างทีม</button></div>
+  </div>
+</div>
+
 <!-- V6.14.82 HR Employee Portal Administration -->
 <section class="page admin-page portal-management-page-v61482" id="page-admin-employee-portal">
   <div class="portal-hero-v61482 hr">
@@ -2723,6 +2797,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.22-20260828a"></script>
+<script src="./app.js?v=6.15.23-20260828b"></script>
 </body>
 </html>

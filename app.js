@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.22";
-document.documentElement.dataset.timeClockBuild = "6.15.22";
+window.__TIME_CLOCK_BUILD__ = "V6.15.23";
+document.documentElement.dataset.timeClockBuild = "6.15.23";
 
 
 /* ===== js/config.js ===== */
@@ -2490,6 +2490,10 @@ window.tcIsDayShiftCode = value =>
       qsa("#adminNavGroup .nav-item:not(#systemSettingsNav)").forEach(el => el.classList.toggle("hidden", p.role !== "HR_ADMIN"));
       $("systemSettingsNav")?.classList.toggle("hidden", p._realRole !== "HR_ADMIN");
       $("teamPortalNavV61482")?.classList.toggle("hidden", String(p.role||"").toUpperCase()!=="MANAGER");
+      $("teamMasterNavV61523")?.classList.toggle(
+        "hidden",
+        !["MANAGER","HR_ADMIN"].includes(String(p.role||"").toUpperCase())
+      );
       window.TimeClockSettings?.syncProfile?.(p);
       document.dispatchEvent(new CustomEvent("timeclock:effective-role-changed", {
         detail: {
@@ -12815,7 +12819,8 @@ window.tcIsDayShiftCode = value =>
       const managerPages = new Set([
         "schedule",
         "work-patterns",
-        "team-portal"
+        "team-portal",
+        "team-master"
       ]);
 
       if (
@@ -12851,7 +12856,7 @@ window.tcIsDayShiftCode = value =>
       qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
-        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], "team-portal":["สมาชิกทีม / Portal","จัดการ QR/Link, Activation Code และ Reset PIN ของลูกทีม"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
+        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], "team-master":["ทีมช่างเทคนิค","สร้าง Team Master แบบ Auto Generate ตามหน่วยงานใน Scope ของ Manager"], "team-portal":["สมาชิกทีม / Portal","จัดการ QR/Link, Activation Code และ Reset PIN ของลูกทีม"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
         "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-employee-portal":["Employee Portal","เปิด/ระงับสิทธิ์ Portal ให้พนักงานแบบ Bulk โดยไม่ต้องมี Email"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page);
@@ -12867,6 +12872,7 @@ window.tcIsDayShiftCode = value =>
       );
       if (page === "attendance" && !state.attendance.length) loadAttendance();
       if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
+      if (page === "team-master") window.TimeClockTeamMasterV61523?.load?.();
       if (page === "schedule") {
         const personNeedsFullMonth =
           scheduleCurrentView() === "PERSON"
@@ -15585,7 +15591,7 @@ ${skippedSummary(compatibility.skipped)}
   const $=id=>document.getElementById(id),q=(s,r=document)=>r.querySelector(s),qa=(s,r=document)=>[...r.querySelectorAll(s)];
   const VERSION="6.4.0";
   const menuItems=[
-    ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
+    ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["team-master","ทีมช่างเทคนิค","Team Master แบบ Auto Generate","◉"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
     ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
   ];
   let selected=0,lastProfileKey="";
@@ -32602,4 +32608,264 @@ ${names}${extra}
 
   window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,version:VERSION};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
+})();
+
+
+/* ============================================================================
+   V6.15.23 — 4D.1A Team Master + Auto Generate Team
+   ============================================================================ */
+(()=>{
+  'use strict';
+  const VERSION='6.15.23';
+  const $=id=>document.getElementById(id);
+  const app=()=>window.TimeClockApp;
+  const state={orgs:[],teams:[],audit:[],loaded:false,loading:false};
+
+  function esc(value){
+    return String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
+  function role(){
+    const p=app()?.state?.profile||{};
+    return String(p.role||p._realRole||'VIEWER').toUpperCase();
+  }
+  function allowedRole(){return ['MANAGER','HR_ADMIN'].includes(role());}
+  function toast(message,tone='info'){app()?.toast?.(message,tone);}
+  function human(error){
+    const raw=app()?.humanError?.(error)||error?.message||String(error||'เกิดข้อผิดพลาด');
+    const msg=String(raw||'');
+    if(msg.includes('TEAM_MANAGER_ROLE_REQUIRED'))return 'เมนูทีมช่างเทคนิคสำหรับ Manager และ HR Admin เท่านั้น';
+    if(msg.includes('TEAM_ORG_PERMISSION_DENIED'))return 'ไม่มีสิทธิ์สร้างหรือจัดการทีมในหน่วยงานนี้';
+    if(msg.includes('TEAM_ORG_NOT_ACTIVE'))return 'หน่วยงานนี้ปิดใช้งานหรืออยู่นอกช่วง Effective Date';
+    if(msg.includes('TEAM_ORG_HAS_NO_EMPLOYEES'))return 'หน่วยงานนี้ยังไม่มีพนักงานใน Employee Master จึงยังไม่สามารถสร้างทีมได้';
+    if(msg.includes('TEAM_DEACTIVATION_REASON_REQUIRED'))return 'กรุณาระบุเหตุผลการปิดใช้งานทีม';
+    if(msg.includes('TEAM_IDENTITY_IMMUTABLE'))return 'Team Code / ชื่อทีม / หน่วยงานของ Team Master เปลี่ยนไม่ได้ กรุณาสร้างทีมใหม่แทน';
+    if(msg.includes('TEAM_NOT_FOUND'))return 'ไม่พบ Team Master ที่เลือก';
+    if(msg.includes('PGRST202')||msg.includes('Could not find the function'))return 'กรุณารัน SQL V6.15.23 ก่อนใช้งาน Team Master';
+    return msg;
+  }
+  async function rpc(name,args={}){
+    const client=app()?.state?.client;
+    if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+    const {data,error}=await client.rpc(name,args);
+    if(error)throw error;
+    return data;
+  }
+  function fmtDateTime(value){
+    if(!value)return '-';
+    try{return app()?.formatDateTime?.(value)||new Date(value).toLocaleString('th-TH');}catch(_){return String(value);}
+  }
+  function statusFilter(){return $('teamMasterStatusFilterV61523')?.value||'ACTIVE';}
+  function selectedOrgId(){return $('teamMasterOrgFilterV61523')?.value||'';}
+  function selectedOrg(){
+    const id=selectedOrgId();
+    return state.orgs.find(o=>String(o.org_id)===String(id))||null;
+  }
+  function orgById(id){return state.orgs.find(o=>String(o.org_id)===String(id))||null;}
+  function teamActionLabel(action){return action==='CREATE_TEAM'?'สร้างทีม':action==='DEACTIVATE_TEAM'?'ปิดใช้งานทีม':action||'-';}
+
+  function syncNav(){
+    const nav=$('teamMasterNavV61523');
+    if(nav)nav.classList.toggle('hidden',!allowedRole());
+  }
+
+  function renderOrgOptions(){
+    const filter=$('teamMasterOrgFilterV61523');
+    const create=$('teamMasterCreateOrgV61523');
+    const current=filter?.value||'';
+    const opts=state.orgs.map(o=>`<option value="${esc(o.org_id)}">${esc(o.org_code)} · ${esc(o.org_name)} (${Number(o.active_team_count||0)} ทีม)</option>`).join('');
+    if(filter){
+      filter.innerHTML=`<option value="">ทุกหน่วยงานใน Scope</option>${opts}`;
+      if(state.orgs.some(o=>String(o.org_id)===String(current)))filter.value=current;
+    }
+    if(create){
+      create.innerHTML=state.orgs.length?opts:'<option value="">ไม่พบหน่วยงานที่สร้างทีมได้</option>';
+    }
+  }
+
+  function renderOrgList(){
+    const host=$('teamMasterOrgListV61523');
+    if(!host)return;
+    if(!state.orgs.length){
+      host.innerHTML='<div class="team-master-empty-v61523"><strong>ไม่พบหน่วยงานใน Scope</strong><span>ตรวจ Manager Scope หรือ Employee Master ของหน่วยงานก่อนสร้างทีม</span></div>';
+      return;
+    }
+    const current=selectedOrgId();
+    host.innerHTML=state.orgs.map(o=>{
+      const active=String(current)===String(o.org_id);
+      return `<button type="button" class="team-master-org-card-v61523 ${active?'active':''}" data-team-master-org-v61523="${esc(o.org_id)}"><div class="team-master-org-main-v61523"><span>${esc(o.org_code)}</span><strong>${esc(o.org_name)}</strong><small>${Number(o.employee_count||0).toLocaleString('th-TH')} พนักงานใน Employee Master</small></div><div class="team-master-org-stats-v61523"><b>${Number(o.active_team_count||0)}</b><small>ทีม</small></div><div class="team-master-next-v61523"><span>ถัดไป</span><code>${esc(o.next_team_code||'-')}</code></div></button>`;
+    }).join('');
+  }
+
+  function visibleTeams(){
+    const st=statusFilter();
+    return state.teams.filter(t=>st==='ALL'||(st==='ACTIVE'&&t.is_active===true)||(st==='INACTIVE'&&t.is_active===false));
+  }
+
+  function renderTeams(){
+    const rows=visibleTeams();
+    const body=$('teamMasterBodyV61523');
+    if(body){
+      body.innerHTML=rows.length?rows.map(t=>`<tr class="${t.is_active?'':'team-master-row-inactive-v61523'}"><td><div class="team-master-team-cell-v61523"><span class="team-master-team-icon-v61523">${String(t.team_no||'').padStart(2,'0')}</span><div><strong>${esc(t.team_name)}</strong><code>${esc(t.team_code)}</code></div></div></td><td><strong>${esc(t.org_code)}</strong><small class="team-master-sub-v61523">${esc(t.org_name)}</small></td><td>${t.is_active?'<span class="badge badge-green">ใช้งาน</span>':'<span class="badge badge-gray">ปิดใช้งาน</span>'}</td><td class="nowrap">${esc(fmtDateTime(t.created_at))}</td><td>${esc(t.created_by_email||'-')}</td><td>${t.is_active?`<button class="btn btn-danger-soft btn-sm" data-team-master-deactivate-v61523="${esc(t.team_id)}">ปิดใช้งาน</button>`:`<span class="team-master-locked-v61523">เก็บประวัติ</span>`}</td></tr>`).join(''):'<tr><td colspan="6" class="fc-empty">ไม่พบ Team Master ตามเงื่อนไข</td></tr>';
+    }
+    const all=state.teams.length;
+    const active=state.teams.filter(t=>t.is_active===true).length;
+    const inactive=all-active;
+    if($('teamMasterKpiAllV61523'))$('teamMasterKpiAllV61523').textContent=all.toLocaleString('th-TH');
+    if($('teamMasterKpiActiveV61523'))$('teamMasterKpiActiveV61523').textContent=active.toLocaleString('th-TH');
+    if($('teamMasterKpiInactiveV61523'))$('teamMasterKpiInactiveV61523').textContent=inactive.toLocaleString('th-TH');
+    if($('teamMasterKpiOrgV61523'))$('teamMasterKpiOrgV61523').textContent=state.orgs.length.toLocaleString('th-TH');
+    const org=selectedOrg();
+    const label=org?`${org.org_code} · ${org.org_name}`:'ทุกหน่วยงานใน Scope';
+    if($('teamMasterMetaV61523'))$('teamMasterMetaV61523').textContent=`${label} • แสดง ${rows.length.toLocaleString('th-TH')} ทีม • ชื่อและรหัสสร้างโดยระบบ`;
+  }
+
+  function renderAudit(){
+    const body=$('teamMasterAuditBodyV61523');
+    if(!body)return;
+    body.innerHTML=state.audit.length?state.audit.map(a=>`<tr><td class="nowrap">${esc(fmtDateTime(a.created_at))}</td><td><code>${esc(a.team_code||'-')}</code></td><td>${esc(teamActionLabel(a.action_type))}</td><td>${esc(a.actor_email||'-')}</td><td>${esc(a.reason||'-')}</td></tr>`).join(''):'<tr><td colspan="5" class="fc-empty">ยังไม่มีประวัติ Team Master</td></tr>';
+  }
+
+  function updatePreview(orgId=null){
+    const id=orgId||$('teamMasterCreateOrgV61523')?.value||'';
+    const org=orgById(id);
+    if($('teamMasterPreviewNameV61523'))$('teamMasterPreviewNameV61523').textContent=org?.next_team_name||'ทีม --';
+    if($('teamMasterPreviewCodeV61523'))$('teamMasterPreviewCodeV61523').textContent=org?.next_team_code||'--';
+    if($('teamMasterPreviewOrgV61523'))$('teamMasterPreviewOrgV61523').textContent=org?`${org.org_code} · ${org.org_name} • ปัจจุบัน ${Number(org.active_team_count||0)} ทีม • ${Number(org.employee_count||0)} พนักงาน`:'เลือกหน่วยงานเพื่อดูเลขทีมถัดไป';
+    if($('teamMasterCreateConfirmV61523'))$('teamMasterCreateConfirmV61523').disabled=!org;
+  }
+
+  function openCreate(orgId=null){
+    if(!state.orgs.length){toast('ไม่พบหน่วยงานใน Scope ที่สามารถสร้างทีมได้','warning');return;}
+    const modal=$('teamMasterCreateModalV61523');
+    const select=$('teamMasterCreateOrgV61523');
+    if(select){
+      const preferred=orgId||selectedOrgId()||state.orgs[0]?.org_id||'';
+      select.value=state.orgs.some(o=>String(o.org_id)===String(preferred))?String(preferred):String(state.orgs[0]?.org_id||'');
+    }
+    if($('teamMasterCreateNoteV61523'))$('teamMasterCreateNoteV61523').value='';
+    updatePreview();
+    modal?.classList.remove('hidden');
+    modal?.setAttribute('aria-hidden','false');
+  }
+  function closeCreate(){
+    $('teamMasterCreateModalV61523')?.classList.add('hidden');
+    $('teamMasterCreateModalV61523')?.setAttribute('aria-hidden','true');
+  }
+
+  async function loadAudit(){
+    try{
+      state.audit=await rpc('ta_get_team_audit_v61523',{p_team_id:null,p_limit:100})||[];
+      renderAudit();
+    }catch(error){
+      console.warn('Team Master audit V6.15.23:',error);
+      if($('teamMasterAuditBodyV61523'))$('teamMasterAuditBodyV61523').innerHTML='<tr><td colspan="5" class="fc-empty">โหลด Audit ไม่สำเร็จ</td></tr>';
+    }
+  }
+
+  async function load(options={}){
+    if(!allowedRole()){syncNav();return;}
+    if(state.loading)return;
+    state.loading=true;
+    syncNav();
+    try{
+      app()?.showLoading?.('กำลังโหลด Team Master...');
+      const currentOrg=selectedOrgId();
+      state.orgs=await rpc('ta_get_team_org_options_v61523',{p_include_inactive:false})||[];
+      renderOrgOptions();
+      if(currentOrg&&state.orgs.some(o=>String(o.org_id)===String(currentOrg))&&$('teamMasterOrgFilterV61523'))$('teamMasterOrgFilterV61523').value=currentOrg;
+      const orgId=selectedOrgId()||null;
+      const search=$('teamMasterSearchV61523')?.value?.trim()||null;
+      const includeInactive=statusFilter()!=='ACTIVE';
+      state.teams=await rpc('ta_get_team_master_v61523',{p_org_id:orgId,p_include_inactive:includeInactive,p_search:search})||[];
+      state.loaded=true;
+      renderOrgList();
+      renderTeams();
+      await loadAudit();
+    }catch(error){
+      toast(human(error),'error');
+      if($('teamMasterBodyV61523'))$('teamMasterBodyV61523').innerHTML='<tr><td colspan="6" class="fc-empty">โหลด Team Master ไม่สำเร็จ</td></tr>';
+    }finally{
+      state.loading=false;
+      app()?.hideLoading?.();
+    }
+  }
+
+  async function createTeam(){
+    const orgId=$('teamMasterCreateOrgV61523')?.value||'';
+    const org=orgById(orgId);
+    if(!org)return toast('กรุณาเลือกหน่วยงาน','warning');
+    const ok=await window.tcConfirm?.({
+      title:'ยืนยันสร้างทีม',
+      eyebrow:'AUTO-GENERATED TEAM',
+      message:`ระบบจะสร้าง <b>${esc(org.next_team_name)}</b><br><code>${esc(org.next_team_code)}</code><br><br>ภายใต้ ${esc(org.org_code)} · ${esc(org.org_name)}<br><small>ชื่อและ Team Code แก้ไขเองไม่ได้</small>`,
+      confirmText:'สร้างทีม',
+      tone:'primary'
+    });
+    if(!ok)return;
+    try{
+      app()?.showLoading?.('กำลังสร้าง Team Master...');
+      const result=await rpc('ta_create_team_v61523',{p_org_id:orgId,p_note:$('teamMasterCreateNoteV61523')?.value?.trim()||null});
+      closeCreate();
+      if($('teamMasterOrgFilterV61523'))$('teamMasterOrgFilterV61523').value=orgId;
+      toast(`สร้าง ${result?.full_label||result?.team_code||'ทีม'} เรียบร้อย`,'success');
+      await load();
+    }catch(error){toast(human(error),'error');}
+    finally{app()?.hideLoading?.();}
+  }
+
+  async function deactivateTeam(teamId){
+    const team=state.teams.find(t=>String(t.team_id)===String(teamId));
+    if(!team)return;
+    const reason=await window.TimeClockModal?.prompt?.({
+      title:`ปิดใช้งาน ${team.team_name}`,
+      eyebrow:'TEAM MASTER HISTORY',
+      message:`${esc(team.org_code)} · ${esc(team.team_name)} (${esc(team.team_code)})<br><br>Team Code นี้จะถูกเก็บในประวัติและ <b>จะไม่ถูกนำกลับมาใช้กับทีมใหม่</b>`,
+      inputLabel:'เหตุผลการปิดใช้งาน',
+      placeholder:'เช่น ยุบทีม / ปรับโครงสร้างทีม',
+      required:true,
+      confirmText:'ปิดใช้งาน',
+      tone:'danger'
+    });
+    if(reason===null)return;
+    try{
+      app()?.showLoading?.('กำลังปิดใช้งาน Team Master...');
+      await rpc('ta_deactivate_team_v61523',{p_team_id:teamId,p_reason:String(reason||'').trim()});
+      toast(`ปิดใช้งาน ${team.team_code} แล้ว • เลขทีมเดิมถูกเก็บในประวัติ`,'success');
+      await load();
+    }catch(error){toast(human(error),'error');}
+    finally{app()?.hideLoading?.();}
+  }
+
+  function bind(){
+    syncNav();
+    $('teamMasterRefreshV61523')?.addEventListener('click',()=>load());
+    $('teamMasterSearchBtnV61523')?.addEventListener('click',()=>load());
+    $('teamMasterCreateV61523')?.addEventListener('click',()=>openCreate());
+    $('teamMasterAuditRefreshV61523')?.addEventListener('click',()=>loadAudit());
+    $('teamMasterOrgFilterV61523')?.addEventListener('change',()=>load());
+    $('teamMasterStatusFilterV61523')?.addEventListener('change',()=>load());
+    $('teamMasterCreateOrgV61523')?.addEventListener('change',()=>updatePreview());
+    $('teamMasterCreateConfirmV61523')?.addEventListener('click',createTeam);
+    $('teamMasterSearchV61523')?.addEventListener('keydown',e=>{if(e.key==='Enter')load();});
+
+    document.addEventListener('click',e=>{
+      const org=e.target.closest('[data-team-master-org-v61523]');
+      if(org){
+        if($('teamMasterOrgFilterV61523'))$('teamMasterOrgFilterV61523').value=org.dataset.teamMasterOrgV61523||'';
+        load();return;
+      }
+      const deactivate=e.target.closest('[data-team-master-deactivate-v61523]');
+      if(deactivate){deactivateTeam(deactivate.dataset.teamMasterDeactivateV61523);return;}
+      if(e.target.closest('[data-team-master-close-v61523]')){closeCreate();return;}
+      const nav=e.target.closest('.nav-item[data-page="team-master"]');
+      if(nav)setTimeout(()=>load(),0);
+    });
+    $('teamMasterCreateModalV61523')?.addEventListener('click',e=>{if(e.target.id==='teamMasterCreateModalV61523')closeCreate();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('teamMasterCreateModalV61523')?.classList.contains('hidden'))closeCreate();});
+    document.addEventListener('timeclock:effective-role-changed',syncNav);
+    window.addEventListener('ta:session-ready',syncNav);
+  }
+
+  window.TimeClockTeamMasterV61523={load,openCreate,version:VERSION,state};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
