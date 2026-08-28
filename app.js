@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.18";
-document.documentElement.dataset.timeClockBuild = "6.15.18";
+window.__TIME_CLOCK_BUILD__ = "V6.15.19";
+document.documentElement.dataset.timeClockBuild = "6.15.19";
 
 
 /* ===== js/config.js ===== */
@@ -13650,6 +13650,9 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("DAYOFF_REQUEST_QUOTA_BLOCKED")) return "อนุมัติไม่ได้ เพราะโควต้าวันหยุดไม่เพียงพอตามข้อมูลล่าสุด";
       if (msg.includes("DAYOFF_REQUEST_FINAL_STATE_MISMATCH")) return "ระบบตรวจผลหลังบันทึกแล้วพบว่าตารางกะไม่ตรงกับผลที่อนุมัติ จึง Rollback รายการทั้งหมดอัตโนมัติ";
       if (msg.includes("DAYOFF_REQUEST_FINAL_STATUS_MISMATCH")) return "ระบบไม่สามารถปิดคำขอหลังปรับตารางกะได้ จึง Rollback รายการทั้งหมดอัตโนมัติ";
+      if (msg.includes("REQUEST_RETURN_NOTE_REQUIRED")) return "กรุณาระบุเหตุผลที่ส่งคำขอกลับให้พนักงานแก้ไข";
+      if (msg.includes("REQUEST_RETURN_REQUIRES_EMPLOYEE_PORTAL")) return "ส่งกลับให้แก้ไขได้เฉพาะคำขอที่มาจาก Employee Portal";
+      if (msg.includes("REQUEST_RETURN_ONLY_DAYOFF_SUPPORTED")) return "V6.15.19 รองรับการส่งกลับเฉพาะคำขอวันหยุด / สลับวันหยุด";
       if (msg.includes("NIGHT_SEQUENCE_BLOCKED")) return "คำขอนี้ไม่ผ่านเงื่อนไขกะดึกหรือเวลาพักระหว่างกะ";
       if (msg.includes("DAYOFF_QUOTA_EXHAUSTED")) return "วันหยุดคงเหลือไม่เพียงพอ ไม่สามารถกำหนดกะวันหยุดเพิ่มได้ กรุณาตรวจวันหยุดที่ใช้ไปหรือเปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน";
       if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณาติดตั้ง Day-off Quota Guard V6.14.3 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
@@ -20688,6 +20691,7 @@ ${names}${extra}
     REVOKED:"ยกเลิกการรับรอง",
     STALE:"ต้องรับรองใหม่",
     IN_REVIEW:"กำลังดำเนินการ",
+    RETURNED:"ส่งกลับให้แก้ไข",
     RESOLVED:"ดำเนินการแล้ว"
   })[safeStatus(value)] || value || "-";
   const statusClass = value => {
@@ -20696,6 +20700,7 @@ ${names}${extra}
       return "success";
     }
     if (["PENDING","IN_REVIEW"].includes(code)) return "warning";
+    if (code === "RETURNED") return "info";
     if (["REJECTED","CANCELLED","REVOKED"].includes(code)) {
       return "danger";
     }
@@ -21456,7 +21461,7 @@ ${names}${extra}
   function renderShiftRequests() {
     const pending = shiftRequests.filter(request => ["PENDING","IN_REVIEW"].includes(String(request.status || "").toUpperCase())).length;
     const approved = shiftRequests.filter(request => ["APPROVED","RESOLVED"].includes(String(request.status || "").toUpperCase())).length;
-    const closed = shiftRequests.filter(request => ["REJECTED","CANCELLED"].includes(String(request.status || "").toUpperCase())).length;
+    const closed = shiftRequests.filter(request => ["REJECTED","CANCELLED","RETURNED"].includes(String(request.status || "").toUpperCase())).length;
 
     setText("shiftRequestCount",`${shiftRequests.length.toLocaleString("th-TH")} รายการ`);
     setText("shiftRequestKpiAll",shiftRequests.length.toLocaleString("th-TH"));
@@ -21492,6 +21497,9 @@ ${names}${extra}
                 ? "อนุมัติลาบางส่วน"
                 : "ปรับตารางลาเต็มวัน";
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">${leaveAction}</button>`);
+            }
+            if (request.request_type === "DAYOFF_SWAP") {
+              actions.push(`<button class="btn btn-light btn-sm manager-return-btn-v61519" data-employee-request-return-v61519="${esc(request.request_id)}">ส่งกลับให้แก้ไข</button>`);
             }
             actions.push(`<button class="btn btn-danger-soft btn-sm" data-employee-request-decision-v61481="${esc(request.request_id)}|REJECTED">ไม่อนุมัติ</button>`);
           }
@@ -21585,16 +21593,16 @@ ${names}${extra}
     return result;
   }
 
-  async function applyEmployeeDayoffAtomicV61518(request,acknowledge48h=false,note=null){
+  async function applyEmployeeDayoffAtomicV61519(request,acknowledge48h=false,note=null){
     if(!request?.request_id)throw new Error('REQUEST_ID_REQUIRED');
-    return await rpc('ta_apply_employee_request_dayoff_v61518',{
+    return await rpc('ta_apply_employee_request_dayoff_v61519',{
       p_request_id:request.request_id,
       p_acknowledge_48h:Boolean(acknowledge48h),
       p_note:note||null
     });
   }
 
-  async function refreshAfterEmployeeDayoffApplyV61518(result,review){
+  async function refreshAfterEmployeeDayoffApplyV61519(result,review){
     const rows=Array.isArray(result?.proposed_rows)
       ? result.proposed_rows
       : (Array.isArray(review?.proposed_rows)?review.proposed_rows:[]);
@@ -21889,7 +21897,7 @@ ${names}${extra}
       ${issueHtml}
       <div class="manager-dayoff-review-note-v61517">
         <strong>การทำงานของระบบ</strong>
-        <span>V6.15.18 จะตรวจ 5D/6D, รอบระบบ, โควต้า, พัก ≥ 6 ชม. และ Night Sequence ซ้ำก่อนเขียน • จากนั้นใช้ Atomic Workflow และตรวจผล Source/Target อีกครั้งก่อน Commit • หากจุดใดไม่ผ่าน ระบบ Rollback ทั้งรายการ</span>
+        <span>V6.15.19 จะใช้ V6.15.18 ตรวจ 5D/6D, รอบระบบ, โควต้า, พัก ≥ 6 ชม. และ Night Sequence ก่อนเขียน • หลัง Commit จะ Publish ผล Source/Target จริงกลับ Employee Portal พร้อม Notification ใน Transaction เดียว</span>
       </div>`;
 
     if(confirm){
@@ -21976,7 +21984,7 @@ ${names}${extra}
         const target=String(subtype==="ADD_DAYOFF"?(request.work_date||request.detail?.target_date||""):(request.detail?.target_date||"")).slice(0,10);
         app()?.showLoading?.(subtype==="ADD_DAYOFF"?"กำลังตรวจและเพิ่มวันหยุดแบบ Atomic...":"กำลังตรวจและสลับวันหยุดแบบ Atomic...");
 
-        let result=await applyEmployeeDayoffAtomicV61518(request,false,null);
+        let result=await applyEmployeeDayoffAtomicV61519(request,false,null);
         if(result?.requires_48h_confirmation===true){
           app()?.hideLoading?.();
           const hours=Number(result?.continuous_hours_after||0);
@@ -21988,7 +21996,7 @@ ${names}${extra}
           });
           if(!ok)return;
           app()?.showLoading?.("กำลังยืนยันและปรับ Schedule แบบ Atomic...");
-          result=await applyEmployeeDayoffAtomicV61518(request,true,null);
+          result=await applyEmployeeDayoffAtomicV61519(request,true,null);
         }
 
         if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
@@ -22003,13 +22011,13 @@ ${names}${extra}
             : `สลับวันหยุดเรียบร้อย • ${fmtDate(sourceDate)} → ${finalState?.source?.shift_code||"ทำงาน"} / ${fmtDate(target)} → ${finalState?.target?.shift_code||"หยุด"}`,
           "success"
         );
-        await refreshAfterEmployeeDayoffApplyV61518(result,fresh);
+        await refreshAfterEmployeeDayoffApplyV61519(result,fresh);
         await loadShiftRequests();
         return;
       }catch(e){
         const msg=String(e?.message||e||"");
-        if(msg.includes("ta_apply_employee_request_dayoff_v61518")||msg.includes("PGRST202")){
-          app()?.toast?.("กรุณารัน SQL V6.15.18 ก่อนอนุมัติคำขอวันหยุด","error");
+        if(msg.includes("ta_apply_employee_request_dayoff_v61519")||msg.includes("PGRST202")){
+          app()?.toast?.("กรุณารัน SQL V6.15.19 ก่อนอนุมัติคำขอวันหยุด","error");
         }else{
           app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
         }
@@ -22084,6 +22092,29 @@ ${names}${extra}
       await loadShiftRequests();
     }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
     finally{app()?.hideLoading?.();}
+  }
+
+  async function returnEmployeeRequestV61519(requestId) {
+    const note = await window.tcPrompt("ระบุสิ่งที่ต้องการให้พนักงานแก้ไขก่อนส่งกลับ");
+    if (note === null) return;
+    if (!String(note || "").trim()) {
+      app()?.toast?.("กรุณาระบุเหตุผลที่ส่งกลับให้แก้ไข","warning");
+      return;
+    }
+    try {
+      app()?.showLoading?.("กำลังส่งคำขอกลับ Employee Portal...");
+      await rpc("ta_return_employee_request_v61519",{
+        p_request_id:requestId,
+        p_note:String(note).trim()
+      });
+      app()?.toast?.("ส่งกลับให้พนักงานแก้ไขแล้ว • Portal จะแจ้งเตือนอัตโนมัติ","success");
+      await loadShiftRequests();
+      try { await checkManagerRequestSyncV61513({force:true}); } catch (_) {}
+    } catch (error) {
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
+    } finally {
+      app()?.hideLoading?.();
+    }
   }
 
   async function decideEmployeeRequestV61481(requestId,decision) {
@@ -22411,6 +22442,15 @@ ${names}${extra}
           const request=shiftRequests.find(item=>String(item.request_id)===id);
           if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
           await reviewEmployeeLeaveV61494(request);
+          return;
+        }
+
+        const returnButtonV61519 = event.target.closest("[data-employee-request-return-v61519]");
+        if (returnButtonV61519) {
+          event.preventDefault();
+          await returnEmployeeRequestV61519(
+            returnButtonV61519.getAttribute("data-employee-request-return-v61519")
+          );
           return;
         }
 

@@ -2403,3 +2403,107 @@ body{font-size:16px;color:var(--p99-ink)}
   }
   .portal-dayoff-cell-skeleton-v61512{min-height:48px}
 }
+
+/* ==========================================================================
+   V6.15.19 — 4B.2D Portal result / Returned / Notification UX
+   ========================================================================== */
+.portal-request-status.returned{
+  background:#f2ecff!important;
+  color:#6f4aa2!important;
+}
+.portal-request-item.returned-v61519{
+  border-color:#d9c9ee!important;
+  background:linear-gradient(180deg,#fff,#fcf9ff)!important;
+}
+.portal-manager-note.returned-v61519{
+  border:1px solid #e0d4f1!important;
+  border-radius:12px;
+  padding:10px 11px!important;
+  background:#f8f4ff;
+  color:#684d8b!important;
+}
+.portal-dayoff-outcome-v61519{
+  display:grid;
+  gap:9px;
+  margin-top:10px;
+  padding:11px 12px;
+  border:1px solid #bfe2cf;
+  border-radius:14px;
+  background:linear-gradient(135deg,#effaf4,#fff);
+}
+.portal-dayoff-outcome-head-v61519{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+}
+.portal-dayoff-outcome-head-v61519>i{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 28px;
+  width:28px;
+  height:28px;
+  border-radius:9px;
+  background:#dff4e8;
+  color:#21845a;
+  font-style:normal;
+  font-weight:900;
+}
+.portal-dayoff-outcome-head-v61519 span,
+.portal-dayoff-outcome-row-v61519 span{
+  display:block;
+  color:#678176;
+  font-size:9px;
+  font-weight:800;
+}
+.portal-dayoff-outcome-head-v61519 strong{
+  display:block;
+  margin-top:2px;
+  color:#245f45;
+  font-size:11px;
+  line-height:1.45;
+}
+.portal-dayoff-outcome-grid-v61519{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.portal-dayoff-outcome-row-v61519{
+  padding:8px 9px;
+  border:1px solid #d8ede2;
+  border-radius:10px;
+  background:#fff;
+}
+.portal-dayoff-outcome-row-v61519 strong{
+  display:block;
+  margin-top:3px;
+  color:#174b35;
+  font-size:11px;
+}
+.portal-dayoff-outcome-row-v61519 small{
+  display:block;
+  margin-top:2px;
+  color:#89a095;
+  font-size:8px;
+  font-weight:800;
+}
+.portal-notification-item.severity-success{border-left:4px solid #31a36f}
+.portal-notification-item.severity-warning{border-left:4px solid #d9932f}
+.portal-notification-item.severity-danger{border-left:4px solid #d75a5a}
+.portal-notification-link-v61519{
+  display:block;
+  margin-top:8px;
+  color:#2478b4;
+  font-size:9px;
+  font-weight:900;
+}
+.portal-request-item.focus-v61519{
+  animation:portal-request-focus-v61519 2.1s ease;
+}
+@keyframes portal-request-focus-v61519{
+  0%,30%{box-shadow:0 0 0 4px rgba(31,126,190,.18),0 12px 28px rgba(20,74,111,.14)}
+  100%{box-shadow:var(--portal-card-shadow)}
+}
+@media(max-width:520px){
+  .portal-dayoff-outcome-grid-v61519{grid-template-columns:1fr}
+}

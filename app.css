@@ -23469,3 +23469,16 @@ html[data-theme="dark"] .manager-dayoff-review-note-v61517 strong{color:#eef4ff;
 }
 
 /* V6.15.18 — 4B.2C Atomic Day-off Approve uses existing V6.15.17 review UI. */
+
+/* ==========================================================================
+   V6.15.19 — Manager Returned-to-Employee action
+   ========================================================================== */
+.manager-return-btn-v61519{
+  border-color:#d8c7f0!important;
+  background:#f8f4ff!important;
+  color:#6f4ca6!important;
+}
+.manager-return-btn-v61519:hover{
+  border-color:#c6ace9!important;
+  background:#f1eaff!important;
+}

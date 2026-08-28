@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.18-20260828a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.19-20260828a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -513,7 +513,7 @@
 <div class="shift-request-filter-grid">
 <div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="shiftRequestStart" type="date"/></div>
 <div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="shiftRequestEnd" type="date"/></div>
-<div class="field"><label>สถานะ</label><select class="select" id="shiftRequestStatus"><option value="">ทุกสถานะ</option><option value="PENDING">รอพิจารณา</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
+<div class="field"><label>สถานะ</label><select class="select" id="shiftRequestStatus"><option value="">ทุกสถานะ</option><option value="PENDING">รอพิจารณา</option><option value="RETURNED">ส่งกลับให้แก้ไข</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
 <div class="field"><label>ประเภทคำขอ</label><select class="select" id="shiftRequestTypeFilter"><option value="">ทุกประเภท</option><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></div>
 <div class="field"><label>ค้นหา</label><input class="input" id="shiftRequestSearch" placeholder="เลขที่คำขอ รหัส หรือชื่อพนักงาน"/></div>
 <div class="toolbar-actions"><button class="btn btn-primary" id="loadShiftRequestsBtn">ค้นหา</button></div>
@@ -2723,6 +2723,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.18-20260828a"></script>
+<script src="./app.js?v=6.15.19-20260828a"></script>
 </body>
 </html>

@@ -1,0 +1,49 @@
+AUDIT — TimeClock Enterprise V6.15.19
+4B.2D Employee Portal Result Sync + Notification + Returned Flow
+=================================================================
+
+BASELINE
+- V6.15.18 4B.2C Atomic Day-off Approve retained.
+- V6.15.13 Request / Notification / DATA revision sync retained.
+
+BACKEND
+[PASS] RETURNED added to request lifecycle.
+[PASS] Manager return action requires canonical Manager authorization and a return note.
+[PASS] Employee can edit/resubmit RETURNED -> PENDING and Manager is notified again.
+[PASS] Employee can cancel RETURNED.
+[PASS] V6.15.17 day-off semantic guard skips Manager RETURNED and post-RESOLVED metadata updates; PENDING resubmission is validated again.
+[PASS] V6.15.19 approval delegates the real schedule mutation to V6.15.18.
+[PASS] Exact applied Source/Target before/after shifts are persisted in request.detail.manager_apply_result_v61519.
+[PASS] Existing status notification is enriched with the exact applied result instead of creating an unnecessary duplicate.
+[PASS] Outcome publication audit is written in the same transaction.
+
+EMPLOYEE PORTAL
+[PASS] RETURNED appears in pending work and is editable/cancellable.
+[PASS] Manager return reason is visible.
+[PASS] RESOLVED day-off request shows the actual Source/Target schedule result.
+[PASS] Thai shift terminology is primary; exact Shift Codes remain visible as secondary detail.
+[PASS] Notification severity distinguishes success / warning / danger.
+[PASS] Linked notification opens and highlights its request card.
+[PASS] V6.15.13 lightweight revision polling remains the automatic sync path.
+
+MANAGER WEB
+[PASS] Day-off approval calls V6.15.19 publish wrapper.
+[PASS] “ส่งกลับให้แก้ไข” action added for active day-off requests.
+[PASS] RETURNED status filter added.
+[PASS] Existing V6.15.18 5D/6D / System Period / Quota / 6h / Night Sequence / rollback pipeline retained.
+
+STATIC VALIDATION
+[PASS] node --check app.js
+[PASS] node --check portal.js
+[PASS] node --check portal-sw.js
+[PASS] index.html parse; duplicate IDs = 0
+[PASS] portal.html parse; duplicate IDs = 0
+[PASS] 404.html parse; duplicate IDs = 0
+[PASS] V6.15.19 cache/version assertions
+[PASS] SQL lexical/static assertions
+
+DATABASE RUNTIME
+- Run SQL_ที่ต้องรัน_V6.15.19_4B2D_PORTAL_RESULT_SYNC_NOTIFICATION.sql
+- Then run SQL_สำหรับตรวจสอบ_V6.15.19_4B2D_PORTAL_RESULT_SYNC_NOTIFICATION.sql
+- Expected: PASS all 19 checks.
+- Database SQL has not been executed against the user's Supabase project by ChatGPT.
