@@ -23811,3 +23811,19 @@ body.dark-mode .team-master-create-note-v61523,
 [data-theme="dark"] .team-scope-chip-v61526.warning{background:rgba(251,191,36,.16);color:#fde68a}
 [data-theme="dark"] .team-scope-chip-v61526.optional{background:rgba(56,189,248,.15);color:#bae6fd}
 @media(max-width:900px){.schedule-operational-team-field-v61526{min-width:180px}}
+
+
+/* V6.15.26 FIX1 — Team Runtime Session diagnostics */
+.team-runtime-diagnostic-v61526f1{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding:13px 16px;border:1px solid var(--border,#dbe5f0);border-radius:14px;background:var(--panel,#fff)}
+.team-runtime-diagnostic-v61526f1.hidden{display:none}
+.team-runtime-diagnostic-v61526f1>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.team-runtime-diagnostic-v61526f1 strong{font-size:14px;color:var(--text,#102033)}
+.team-runtime-diagnostic-v61526f1 span{font-size:12px;color:var(--muted,#66758a);overflow-wrap:anywhere}
+.team-runtime-diagnostic-v61526f1.success{border-color:#bfe7d2;background:#f4fbf7}
+.team-runtime-diagnostic-v61526f1.warning{border-color:#f0d9a7;background:#fffaf0}
+.team-runtime-diagnostic-v61526f1.error{border-color:#f1bfc3;background:#fff6f6}
+.team-runtime-error-v61526f1 code,.team-runtime-table-error-v61526f1 code{display:inline-block;margin-top:6px;font-size:11px;opacity:.72}
+.team-runtime-table-error-v61526f1{display:flex;flex-direction:column;align-items:center;gap:4px;padding:24px 12px;text-align:center}
+.team-runtime-table-error-v61526f1 strong{color:var(--text,#102033)}
+.team-runtime-table-error-v61526f1 span{font-size:12px;color:var(--muted,#66758a)}
+@media(max-width:720px){.team-runtime-diagnostic-v61526f1{align-items:flex-start;flex-direction:column}.team-runtime-diagnostic-v61526f1 .btn{width:100%}}

@@ -1,16 +1,13 @@
-TimeClock Enterprise V6.15.26 — GitHub Deploy Slim
-4D.1D Team Schedule View
+TimeClock Enterprise V6.15.26 FIX1 — Team Runtime Session / Loading Error State
 
-อัปโหลดไฟล์ในชุด GitHub Deploy Slim ทับไฟล์เดิมใน Repository ได้โดยตรง
-จำนวนไฟล์ Web App ต่ำกว่า 100 ไฟล์
+GitHub Deploy Slim — 13 files
 
-เพิ่มใน V6.15.26:
-- ปฏิทิน TEAM/TIME ใช้ Effective Team ตามวันที่
-- Filter ทีมช่างเทคนิคแยกจาก Filter หน่วยงาน
-- ทีมรถยนต์/มอเตอร์ไซค์แสดง Team Code + Team Name
-- รถยนต์ไม่มี Team แสดงกลุ่ม "ยังไม่ได้กำหนดทีมรถยนต์"
-- มอเตอร์ไซค์ไม่มี Team แสดง "ไม่บังคับทีม"
-- ไม่ระบุ car_team แสดงกลุ่มเตือนแยก
-- กด รายคน จาก Team View แล้วกรองพนักงานตาม Team เดิม
+FIX1:
+- Team Module ตรวจ Supabase auth session ก่อนโหลดข้อมูล
+- Runtime diagnostic แสดง Actor / Role / Scope / Employee count
+- Backend actor resolver fallback จาก auth.uid() -> JWT email อย่างปลอดภัย
+- หน้า Team Master ไม่ค้างคำว่า กำลังโหลด เมื่อ RPC ผิดพลาด
+- Error card แสดงสาเหตุและปุ่มลองใหม่
+- ไม่เปลี่ยน Team Policy / Membership / Schedule Enforcement เดิม
 
-ต้องรัน SQL V6.15.26 แยกก่อน/พร้อม Deploy Web App
+ต้องรัน SQL V6.15.26 FIX1 ก่อน Deploy Web App แล้ว Hard Refresh
