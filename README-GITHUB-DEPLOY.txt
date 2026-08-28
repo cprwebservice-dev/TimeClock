@@ -1,12 +1,10 @@
-TimeClock Enterprise V6.15.26 FIX5 — GitHub Deploy Slim
-Team Draft / Active Lifecycle + Minimum 3 Guard
+TimeClock Enterprise V6.15.26 FIX6 — GitHub Deploy Slim
 
-Upload all files in this folder to the same GitHub Pages root.
-Run the separate V6.15.26 FIX5 SQL before testing Team lifecycle.
+Scope: Team Draft Visibility / Manager Scope UX
+- New Team starts as DRAFT (รอสมาชิก) and is visible immediately.
+- Default status filter = พร้อมจัดการ (ACTIVE + DRAFT).
+- After Create Team, filter automatically switches to พร้อมจัดการ.
+- ACTIVE-only filter is still available for operational views.
+- No database migration is required; use existing V6.15.26 FIX5 backend.
 
-Lifecycle:
-- DRAFT: Team Master open, effective members < 3
-- ACTIVE: effective members >= 3
-- INACTIVE: team closed
-
-CAR Team Enforcement policy remains unchanged.
+Upload these files to GitHub and hard refresh the web app.
