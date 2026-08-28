@@ -23467,3 +23467,5 @@ html[data-theme="dark"] .manager-dayoff-review-note-v61517 strong{color:#eef4ff;
   .manager-dayoff-review-foot-v61517{align-items:stretch;flex-direction:column;}
   .manager-dayoff-review-foot-v61517>div{display:grid;grid-template-columns:1fr 1.3fr;}
 }
+
+/* V6.15.18 — 4B.2C Atomic Day-off Approve uses existing V6.15.17 review UI. */

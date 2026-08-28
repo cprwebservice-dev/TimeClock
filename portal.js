@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.17";
+  const VERSION="6.15.18";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -2507,7 +2507,7 @@
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.17a",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.18a",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }
