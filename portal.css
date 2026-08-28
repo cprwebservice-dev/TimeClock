@@ -2262,3 +2262,144 @@ body{font-size:16px;color:var(--p99-ink)}
 .portal-consistency-v61515.fail{
   background:#fff0f0;color:#b43d3d;border:1px solid #efc4c4;
 }
+
+
+/* V6.15.16 — 4B.1 Day-off Picker Robust Loading */
+.portal-dayoff-loadstate-v61512{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 11px;
+  border:1px solid #d7e6f1;
+  border-radius:13px;
+  background:#f7fbff;
+  color:#547188;
+}
+.portal-dayoff-loadstate-v61512.hidden{display:none}
+.portal-dayoff-loadstate-v61512>div{min-width:0}
+.portal-dayoff-loadstate-v61512 strong{
+  display:block;
+  color:#1d4e73;
+  font-size:10.5px;
+  line-height:1.35;
+}
+.portal-dayoff-loadstate-v61512 small{
+  display:block;
+  margin-top:3px;
+  color:#7890a2;
+  font-size:8.5px;
+  line-height:1.4;
+}
+.portal-dayoff-loadstate-v61512 button{
+  flex:0 0 auto;
+  min-height:34px;
+  padding:7px 10px;
+  border:1px solid #bdd8eb;
+  border-radius:10px;
+  background:#fff;
+  color:#176fab;
+  font-size:9px;
+  font-weight:900;
+  cursor:pointer;
+}
+.portal-dayoff-loadstate-v61512.warning{
+  border-color:#ead8b7;
+  background:#fffaf1;
+}
+.portal-dayoff-loadstate-v61512.warning strong{color:#8a621f}
+.portal-dayoff-loadstate-v61512.error{
+  border-color:#efc6c6;
+  background:#fff7f7;
+}
+.portal-dayoff-loadstate-v61512.error strong{color:#a33e3e}
+.portal-dayoff-loadstate-v61512.loading{
+  justify-content:flex-start;
+  background:#f5faff;
+}
+.portal-dayoff-mini-spinner-v61512{
+  width:20px;
+  height:20px;
+  flex:0 0 20px;
+  border:2px solid #d7e8f4;
+  border-top-color:#1c76b5;
+  border-radius:50%;
+  animation:portalDayoffSpinV61512 .75s linear infinite;
+}
+@keyframes portalDayoffSpinV61512{to{transform:rotate(360deg)}}
+
+.portal-dayoff-quota-v61505>span.unavailable{
+  border-style:dashed!important;
+  background:#f6f8fa!important;
+}
+.portal-dayoff-quota-v61505>span.unavailable b{
+  color:#8798a5!important;
+}
+.portal-dayoff-quota-skeleton-v61512,
+.portal-dayoff-cell-skeleton-v61512{
+  position:relative;
+  overflow:hidden;
+  background:#eef3f7!important;
+}
+.portal-dayoff-quota-skeleton-v61512:after,
+.portal-dayoff-cell-skeleton-v61512:after{
+  content:"";
+  position:absolute;
+  inset:0;
+  transform:translateX(-105%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.82),transparent);
+  animation:portalDayoffShimmerV61512 1.15s ease-in-out infinite;
+  animation-delay:calc(var(--i,0) * 25ms);
+}
+.portal-dayoff-cell-skeleton-v61512{
+  min-height:54px;
+  border:1px solid #e3ebf1;
+  border-radius:11px;
+}
+@keyframes portalDayoffShimmerV61512{to{transform:translateX(105%)}}
+
+.portal-dayoff-empty-v61512{
+  grid-column:1 / -1;
+  display:flex;
+  min-height:104px;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:16px;
+  border:1px dashed #cbdde9;
+  border-radius:14px;
+  background:#f8fbfd;
+  text-align:center;
+}
+.portal-dayoff-empty-v61512 strong{
+  color:#315b78;
+  font-size:11px;
+}
+.portal-dayoff-empty-v61512 span{
+  max-width:320px;
+  color:#7a8fa0;
+  font-size:9px;
+  line-height:1.45;
+}
+.portal-dayoff-request-v61505 .portal-swap-day.period-locked{
+  opacity:.5;
+  border-style:dashed;
+  border-color:#cdbfcd;
+  background:#f7f4f8;
+}
+.portal-dayoff-request-v61505 .portal-swap-day.period-locked strong,
+.portal-dayoff-request-v61505 .portal-swap-day.period-locked small{
+  color:#8f7c91;
+}
+
+@media(max-width:560px){
+  .portal-dayoff-loadstate-v61512{
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .portal-dayoff-loadstate-v61512 button{
+    width:100%;
+  }
+  .portal-dayoff-cell-skeleton-v61512{min-height:48px}
+}
