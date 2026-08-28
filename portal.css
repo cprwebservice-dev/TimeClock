@@ -2507,3 +2507,219 @@ body{font-size:16px;color:var(--p99-ink)}
 @media(max-width:520px){
   .portal-dayoff-outcome-grid-v61519{grid-template-columns:1fr}
 }
+
+/* ==========================================================================
+   V6.15.20 — 4C.1 Leave Request Preview
+   ========================================================================== */
+.portal-leave-preview-v61520{
+  display:grid;
+  gap:10px;
+  margin-top:10px;
+}
+.portal-leave-preview-empty-v61520,
+.portal-leave-preview-loading-v61520{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-height:52px;
+  padding:12px 13px;
+  border:1px dashed #cbdce8;
+  border-radius:14px;
+  background:#f8fbfd;
+  color:#688096;
+  font-size:9.5px;
+  font-weight:800;
+  line-height:1.5;
+}
+.portal-leave-preview-loading-v61520 i{
+  width:16px;
+  height:16px;
+  flex:0 0 16px;
+  border:2px solid #c7dcea;
+  border-top-color:#1976b8;
+  border-radius:50%;
+  animation:portalLeaveSpinV61520 .8s linear infinite;
+}
+@keyframes portalLeaveSpinV61520{to{transform:rotate(360deg)}}
+.portal-leave-preview-head-v61520{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:11px 12px;
+  border:1px solid #d5e4ed;
+  border-radius:14px;
+  background:#fff;
+}
+.portal-leave-preview-head-v61520>div{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+}
+.portal-leave-preview-head-v61520>div>i{
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  border-radius:50%;
+  font-style:normal;
+  font-size:13px;
+  font-weight:900;
+  background:#edf4f8;
+  color:#42677f;
+}
+.portal-leave-preview-head-v61520 span strong,
+.portal-leave-preview-head-v61520 span small{display:block}
+.portal-leave-preview-head-v61520 span strong{font-size:10.5px;color:#173d5c}
+.portal-leave-preview-head-v61520 span small{margin-top:2px;font-size:8px;color:#72889a}
+.portal-leave-preview-head-v61520>b{
+  flex:0 0 auto;
+  padding:6px 8px;
+  border-radius:999px;
+  background:#edf5fb;
+  color:#176fab;
+  font-size:8px;
+  font-weight:900;
+}
+.portal-leave-preview-head-v61520.pass{border-color:#bfe5d1;background:#f4fbf7}
+.portal-leave-preview-head-v61520.pass>div>i{background:#dff5e8;color:#16855a}
+.portal-leave-preview-head-v61520.block{border-color:#f0c6ca;background:#fff7f7}
+.portal-leave-preview-head-v61520.block>div>i{background:#fde7e9;color:#bd404a}
+.portal-leave-summary-v61520{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+.portal-leave-summary-v61520>div{
+  padding:10px 12px;
+  border:1px solid #dbe8f0;
+  border-radius:13px;
+  background:#fff;
+}
+.portal-leave-summary-v61520 span,
+.portal-leave-summary-v61520 strong{display:block}
+.portal-leave-summary-v61520 span{font-size:8px;color:#6f8496;font-weight:800}
+.portal-leave-summary-v61520 strong{margin-top:2px;font-size:19px;color:#174968}
+.portal-leave-days-v61520{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+  max-height:230px;
+  overflow:auto;
+  padding-right:2px;
+}
+.portal-leave-days-v61520 article{
+  min-width:0;
+  padding:9px 10px;
+  border:1px solid #dce7ee;
+  border-radius:12px;
+  background:#fff;
+}
+.portal-leave-days-v61520 article.apply{border-left:4px solid #2f8e68;background:#f7fcf9}
+.portal-leave-days-v61520 article.skip{border-left:4px solid #9aa9b6;background:#f8fafb}
+.portal-leave-days-v61520 span,
+.portal-leave-days-v61520 strong,
+.portal-leave-days-v61520 small{display:block}
+.portal-leave-days-v61520 span{font-size:8px;color:#71879a;font-weight:800}
+.portal-leave-days-v61520 strong{margin-top:3px;font-size:9.5px;color:#174968;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.portal-leave-days-v61520 small{margin-top:2px;font-size:7.5px;color:#7a8d9c}
+.portal-leave-partial-card-v61520{
+  padding:12px;
+  border:1px solid #d8e5ee;
+  border-radius:14px;
+  background:#fff;
+}
+.portal-leave-partial-meta-v61520{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+.portal-leave-partial-meta-v61520>div{
+  padding:8px 9px;
+  border-radius:10px;
+  background:#f5f8fa;
+}
+.portal-leave-partial-meta-v61520 span,
+.portal-leave-partial-meta-v61520 strong{display:block}
+.portal-leave-partial-meta-v61520 span{font-size:7.5px;color:#72879a;font-weight:800}
+.portal-leave-partial-meta-v61520 strong{margin-top:2px;font-size:9.5px;color:#173f5d}
+.portal-leave-timeline-v61520{
+  display:flex;
+  width:100%;
+  min-height:32px;
+  margin:10px 0 7px;
+  overflow:hidden;
+  border:1px solid #d8e3ea;
+  border-radius:10px;
+  background:#f4f7f9;
+}
+.portal-leave-timeline-v61520 span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+  padding:0 3px;
+  font-size:7.5px;
+  font-weight:900;
+  white-space:nowrap;
+  overflow:hidden;
+}
+.portal-leave-timeline-v61520 .work{background:#eaf5fc;color:#176fab}
+.portal-leave-timeline-v61520 .leave{background:#f6e9fb;color:#7e4f9b}
+.portal-leave-partial-card-v61520>small{display:block;color:#71879a;font-size:8px;line-height:1.5}
+.portal-leave-issues-v61520{display:grid;gap:6px}
+.portal-leave-issues-v61520>div{
+  display:grid;
+  grid-template-columns:24px 1fr;
+  gap:7px;
+  align-items:start;
+  padding:8px 9px;
+  border-radius:10px;
+  font-size:8.5px;
+  font-weight:800;
+  line-height:1.45;
+}
+.portal-leave-issues-v61520>div>i{
+  display:grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  border-radius:50%;
+  background:#fff;
+  font-style:normal;
+  font-weight:900;
+}
+.portal-leave-issues-v61520 .block{background:#fff0f1;color:#a33d45}
+.portal-leave-issues-v61520 .warn{background:#fff8e8;color:#8b671f}
+.portal-leave-hr-note-v61520{
+  display:grid;
+  grid-template-columns:34px 1fr;
+  gap:9px;
+  align-items:center;
+  padding:10px 11px;
+  border:1px solid #d8e4ec;
+  border-radius:12px;
+  background:#f7fafc;
+}
+.portal-leave-hr-note-v61520>i{
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  background:#edf4f8;
+  color:#3e647d;
+  font-size:9px;
+  font-style:normal;
+  font-weight:900;
+}
+.portal-leave-hr-note-v61520 strong,
+.portal-leave-hr-note-v61520 small{display:block}
+.portal-leave-hr-note-v61520 strong{font-size:9px;color:#244a65}
+.portal-leave-hr-note-v61520 small{margin-top:2px;color:#70879a;font-size:7.8px;line-height:1.45}
+@media(max-width:560px){
+  .portal-leave-days-v61520{grid-template-columns:1fr}
+  .portal-leave-partial-meta-v61520{grid-template-columns:1fr}
+}

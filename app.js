@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.19";
-document.documentElement.dataset.timeClockBuild = "6.15.19";
+window.__TIME_CLOCK_BUILD__ = "V6.15.20";
+document.documentElement.dataset.timeClockBuild = "6.15.20";
 
 
 /* ===== js/config.js ===== */
@@ -13652,7 +13652,11 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("DAYOFF_REQUEST_FINAL_STATUS_MISMATCH")) return "ระบบไม่สามารถปิดคำขอหลังปรับตารางกะได้ จึง Rollback รายการทั้งหมดอัตโนมัติ";
       if (msg.includes("REQUEST_RETURN_NOTE_REQUIRED")) return "กรุณาระบุเหตุผลที่ส่งคำขอกลับให้พนักงานแก้ไข";
       if (msg.includes("REQUEST_RETURN_REQUIRES_EMPLOYEE_PORTAL")) return "ส่งกลับให้แก้ไขได้เฉพาะคำขอที่มาจาก Employee Portal";
-      if (msg.includes("REQUEST_RETURN_ONLY_DAYOFF_SUPPORTED")) return "V6.15.19 รองรับการส่งกลับเฉพาะคำขอวันหยุด / สลับวันหยุด";
+      if (msg.includes("REQUEST_RETURN_ONLY_DAYOFF_SUPPORTED")||msg.includes("REQUEST_RETURN_TYPE_NOT_SUPPORTED")) return "รองรับการส่งกลับให้แก้ไขสำหรับคำขอวันหยุดและคำขอลาจาก Employee Portal";
+      if (msg.includes("LEAVE_RANGE_NO_WORKDAY")) return "ช่วงวันที่เลือกไม่มีวันทำงานที่ต้องปรับตารางกะ";
+      if (msg.includes("LEAVE_SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบของวันที่ลาอย่างน้อย 1 วันปิดการแก้ไขตารางกะแล้ว";
+      if (msg.includes("LEAVE_NOT_ALLOWED_NON_WORKDAY")) return "ลาบางส่วนใช้ได้เฉพาะวันที่เป็นวันทำงาน";
+      if (msg.includes("PARTIAL_LEAVE_WINDOW_INVALID")) return "ช่วงลาบางส่วนไม่ผ่านเงื่อนไขกะล่าสุด";
       if (msg.includes("NIGHT_SEQUENCE_BLOCKED")) return "คำขอนี้ไม่ผ่านเงื่อนไขกะดึกหรือเวลาพักระหว่างกะ";
       if (msg.includes("DAYOFF_QUOTA_EXHAUSTED")) return "วันหยุดคงเหลือไม่เพียงพอ ไม่สามารถกำหนดกะวันหยุดเพิ่มได้ กรุณาตรวจวันหยุดที่ใช้ไปหรือเปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน";
       if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณาติดตั้ง Day-off Quota Guard V6.14.3 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
@@ -20833,7 +20837,13 @@ ${names}${extra}
     if (request.request_type === "LEAVE_REQUEST") {
       const endText = detail.end_date && String(detail.end_date).slice(0,10)!==String(request.work_date).slice(0,10)
         ? ` – ${fmtDate(detail.end_date)}` : "";
-      return `${employeeLeaveTypeLabelV61508(detail.leave_type_label||detail.leave_type)} • ${fmtDate(request.work_date)}${endText}`;
+      const partial=String(request.request_subtype||"").toUpperCase()==="PARTIAL_DAY";
+      const effect=!partial&&detail.affected_workday_count!=null
+        ? ` • ปรับกะ ${detail.affected_workday_count} วัน${Number(detail.skipped_nonworkday_count||0)>0?` / ไม่เปลี่ยน ${detail.skipped_nonworkday_count} วัน`:""}`
+        : partial&&detail.leave_start_time&&detail.leave_end_time
+          ? ` • ${employeeRequestFormatTimeV61481(detail.leave_start_time)}–${employeeRequestFormatTimeV61481(detail.leave_end_time)}`
+          : "";
+      return `${employeeLeaveTypeLabelV61508(detail.leave_type_label||detail.leave_type)} • ${fmtDate(request.work_date)}${endText}${effect}`;
     }
     return "-";
   }
@@ -21493,12 +21503,9 @@ ${names}${extra}
             } else if (request.request_type === "DAYOFF_SWAP") {
               actions.push(`<button class="btn btn-success btn-sm manager-dayoff-review-btn-v61517" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">ตรวจและจัดวันหยุด</button>`);
             } else if (request.request_type === "LEAVE_REQUEST") {
-              const leaveAction=String(request.request_subtype||"").toUpperCase()==="PARTIAL_DAY"
-                ? "อนุมัติลาบางส่วน"
-                : "ปรับตารางลาเต็มวัน";
-              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">${leaveAction}</button>`);
+              actions.push(`<button class="btn btn-success btn-sm manager-leave-review-btn-v61520" data-employee-request-leave-review-v61520="${esc(request.request_id)}">ตรวจและปรับตารางกะ</button>`);
             }
-            if (request.request_type === "DAYOFF_SWAP") {
+            if (["DAYOFF_SWAP","LEAVE_REQUEST"].includes(request.request_type)) {
               actions.push(`<button class="btn btn-light btn-sm manager-return-btn-v61519" data-employee-request-return-v61519="${esc(request.request_id)}">ส่งกลับให้แก้ไข</button>`);
             }
             actions.push(`<button class="btn btn-danger-soft btn-sm" data-employee-request-decision-v61481="${esc(request.request_id)}|REJECTED">ไม่อนุมัติ</button>`);
@@ -22028,6 +22035,257 @@ ${names}${extra}
     }
   }
 
+  async function loadEmployeeLeaveReviewV61520(requestId){
+    if(!requestId)throw new Error("REQUEST_ID_REQUIRED");
+    return await rpc("ta_get_employee_request_leave_review_v61520",{p_request_id:requestId});
+  }
+
+  function leaveReviewIssueTextV61520(issue){
+    const raw=String(issue?.message||issue?.code||"");
+    if(!raw)return"-";
+    try{return app()?.humanError?.({message:raw})||raw;}catch(_){return raw;}
+  }
+
+  function leaveReviewSignatureV61520(review){
+    const blockers=JSON.stringify(review?.blockers||[]);
+    const warnings=JSON.stringify(review?.warnings||[]);
+    const days=(review?.days||[]).map(d=>[d.work_date,d.current_shift_code,d.action,d.proposed_shift_code,d.period_allowed]).join(";");
+    const p=review?.partial||{};
+    return [
+      review?.allowed===true?"1":"0",
+      review?.legacy_apply_compatible===true?"1":"0",
+      review?.leave_type||"",review?.start_date||"",review?.end_date||"",
+      review?.affected_workday_count??"",review?.skipped_nonworkday_count??"",days,
+      p.shift_code||"",p.leave_start_at||"",p.leave_end_at||"",blockers,warnings
+    ].join("|");
+  }
+
+  function leaveReviewTimelineV61520(partial){
+    if(!partial)return"";
+    const parse=v=>{if(!v)return NaN;const d=new Date(String(v).replace(" ","T"));return d.getTime();};
+    const ss=parse(partial.shift_start_at),se=parse(partial.shift_end_at),ls=parse(partial.leave_start_at),le=parse(partial.leave_end_at);
+    let before=35,leave=30,after=35;
+    if([ss,se,ls,le].every(Number.isFinite)&&se>ss){
+      const total=se-ss;
+      before=Math.max(0,Math.min(100,((ls-ss)/total)*100));
+      leave=Math.max(4,Math.min(100-before,((le-ls)/total)*100));
+      after=Math.max(0,100-before-leave);
+    }
+    return `<div class="manager-leave-timeline-v61520">
+      ${before>1?`<span class="work" style="width:${before.toFixed(2)}%">ทำงาน</span>`:""}
+      <span class="leave" style="width:${leave.toFixed(2)}%">ลา</span>
+      ${after>1?`<span class="work" style="width:${after.toFixed(2)}%">ทำงาน</span>`:""}
+    </div>`;
+  }
+
+  function managerLeaveDayTypeLabelV61520(value){
+    const code=String(value||"").toUpperCase();
+    return ({PUBLIC_HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุด",LEAVE:"ลาเดิม",WORKDAY:"วันทำงาน",DAY_OFF:"วันหยุด",OFF:"วันหยุด"})[code]||value||"-";
+  }
+
+  function ensureManagerLeaveReviewModalV61520(){
+    let modal=$("managerLeaveReviewModalV61520");
+    if(modal)return modal;
+    document.body.insertAdjacentHTML("beforeend",`
+      <div class="modal-backdrop hidden manager-leave-review-modal-v61520" id="managerLeaveReviewModalV61520">
+        <div class="manager-leave-review-dialog-v61520" role="dialog" aria-modal="true" aria-labelledby="managerLeaveReviewTitleV61520">
+          <div class="manager-leave-review-head-v61520">
+            <div>
+              <span>MANAGER REVIEW</span>
+              <h3 id="managerLeaveReviewTitleV61520">ตรวจและปรับตารางกะ</h3>
+              <p id="managerLeaveReviewSubtitleV61520">ตรวจผลกระทบต่อตารางกะก่อนดำเนินการ</p>
+            </div>
+            <button type="button" class="btn btn-light btn-icon" data-leave-review-close-v61520 aria-label="ปิด">×</button>
+          </div>
+          <div class="manager-leave-review-body-v61520" id="managerLeaveReviewBodyV61520"></div>
+          <div class="manager-leave-review-foot-v61520">
+            <button type="button" class="btn btn-light" data-leave-review-refresh-v61520>↻ ตรวจข้อมูลล่าสุด</button>
+            <div>
+              <button type="button" class="btn btn-light" data-leave-review-return-v61520>ส่งกลับให้แก้ไข</button>
+              <button type="button" class="btn btn-light" data-leave-review-close-v61520>ปิด</button>
+              <button type="button" class="btn btn-success" id="managerLeaveReviewConfirmV61520">ดำเนินการต่อ</button>
+            </div>
+          </div>
+        </div>
+      </div>`);
+    return $("managerLeaveReviewModalV61520");
+  }
+
+  function renderManagerLeaveReviewV61520(request,review){
+    const modal=ensureManagerLeaveReviewModalV61520();
+    const body=$("managerLeaveReviewBodyV61520");
+    const confirm=$("managerLeaveReviewConfirmV61520");
+    const subtype=String(review?.request_subtype||request?.request_subtype||"").toUpperCase();
+    const isPartial=subtype==="PARTIAL_DAY";
+    const blockers=Array.isArray(review?.blockers)?review.blockers:[];
+    const warnings=Array.isArray(review?.warnings)?review.warnings:[];
+    const allowed=review?.allowed===true;
+    const legacyCompatible=review?.legacy_apply_compatible===true;
+    const days=Array.isArray(review?.days)?review.days:[];
+    const partial=review?.partial||{};
+
+    $("managerLeaveReviewTitleV61520").textContent=isPartial?"ตรวจลาบางส่วนและผลต่อเวลา":"ตรวจลาเต็มวันและผลต่อตารางกะ";
+    $("managerLeaveReviewSubtitleV61520").textContent=`${request?.request_no||"-"} • ${review?.employee?.emp_code||request?.emp_code||"-"} ${review?.employee?.full_name||request?.full_name||""}`.trim();
+
+    const checks=[
+      ["ตารางกะปัจจุบัน",blockers.some(x=>String(x?.code||"").includes("SCHEDULE")&& !String(x?.code||"").includes("PERIOD"))?"block":"pass"],
+      ["รอบระบบ",blockers.some(x=>String(x?.code||"").includes("PERIOD"))?"block":"pass"],
+      ["คำขอซ้ำ / Conflict",review?.canonical_conflict_ok===false?"block":"pass"],
+      ["กะดึกก่อน/หลังวันลา",blockers.some(x=>String(x?.code||"").includes("NIGHT_SEQUENCE"))?"block":warnings.some(x=>String(x?.code||"").includes("NIGHT"))?"warn":"pass"],
+      ["HR Connect", "info"]
+    ];
+
+    let main="";
+    if(isPartial){
+      const mins=Number(partial.leave_minutes||request?.detail?.partial_minutes||0);
+      const duration=mins?`${Math.floor(mins/60)} ชม.${mins%60?` ${mins%60} นาที`:""}`:"-";
+      main=`<div class="manager-leave-partial-v61520">
+        <div class="manager-leave-partial-meta-v61520">
+          <div><span>กะปัจจุบัน</span><strong>${esc(partial.shift_code||days[0]?.current_shift_code||"-")} • ${esc(employeeRequestFormatTimeV61481(partial.shift_start_at||days[0]?.shift_start_time))}–${esc(employeeRequestFormatTimeV61481(partial.shift_end_at||days[0]?.shift_end_time))}</strong></div>
+          <div><span>ช่วงลาที่แจ้ง</span><strong>${esc(employeeRequestFormatTimeV61481(partial.leave_start_at||request?.detail?.leave_start_time))}–${esc(employeeRequestFormatTimeV61481(partial.leave_end_at||request?.detail?.leave_end_time))} • ${esc(duration)}</strong></div>
+        </div>
+        ${leaveReviewTimelineV61520(partial)}
+        <small>ผลที่คาดไว้: กะเดิมคงอยู่ และเพิ่ม Partial Leave Overlay เฉพาะช่วงเวลา</small>
+      </div>`;
+    }else{
+      main=`<div class="manager-leave-counts-v61520">
+        <div><span>วันทำงานที่จะปรับเป็น LV</span><strong>${Number(review?.affected_workday_count||0).toLocaleString("th-TH")}</strong></div>
+        <div><span>วันหยุด / PH / ลาเดิม ไม่เปลี่ยน</span><strong>${Number(review?.skipped_nonworkday_count||0).toLocaleString("th-TH")}</strong></div>
+      </div>
+      <div class="manager-leave-days-v61520">${days.map(d=>{const apply=d.action==="SET_LV";return `<article class="${apply?"apply":"skip"}"><div><span>${esc(fmtDate(d.work_date))}</span><strong>${esc(d.current_shift_code||managerLeaveDayTypeLabelV61520(d.current_day_type))}</strong></div><b>${apply?"→ LV":"ไม่เปลี่ยน"}</b><small>${apply?`${esc(fmtTime(d.shift_start_time))}–${esc(fmtTime(d.shift_end_time))}`:esc(managerLeaveDayTypeLabelV61520(d.current_day_type))}</small></article>`;}).join("")}</div>`;
+    }
+
+    const issues=blockers.length||warnings.length
+      ? `<div class="manager-leave-issues-v61520">${blockers.map(x=>`<div class="block"><i>!</i><span><strong>ไม่ผ่าน</strong>${esc(leaveReviewIssueTextV61520(x))}</span></div>`).join("")}${warnings.map(x=>`<div class="warn"><i>△</i><span><strong>ข้อสังเกต</strong>${esc(leaveReviewIssueTextV61520(x))}</span></div>`).join("")}</div>`
+      : `<div class="manager-leave-ok-v61520"><i>✓</i><span><strong>Backend ตรวจข้อมูลล่าสุดแล้ว</strong><small>ไม่พบ Conflict หรือรอบระบบที่ปิดในวันที่ต้องแก้ Schedule</small></span></div>`;
+
+    const compatibilityNote=allowed&&!legacyCompatible&&!isPartial
+      ? `<div class="manager-leave-step-note-v61520 warning"><strong>ช่วงลามีวันหยุด / PH อยู่ภายใน</strong><span>4C.1/4C.2 แสดงและตรวจวันที่ที่ต้อง Skip ได้แล้ว แต่ Writer เดิม V6.15.10 ยังต้องการทุกวันเป็นวันทำงาน • รอบ 4C.3 จะเปลี่ยนเป็น Affected-date Atomic Apply เพื่อเขียนเฉพาะวันทำงาน</span></div>`
+      : `<div class="manager-leave-step-note-v61520"><strong>ขอบเขตการทำงาน</strong><span>Manager กำลังตรวจเพื่อปรับตารางกะใน TimeAttendance เท่านั้น ไม่ใช่การอนุมัติการลาอย่างเป็นทางการ • พนักงานยังต้องดำเนินการใน HR Connect</span></div>`;
+
+    body.innerHTML=`
+      <div class="manager-leave-review-status-v61520 ${allowed?"pass":"block"}">
+        <div><span>${allowed?"✓ ผ่าน Manager Preflight":"! พบเงื่อนไขที่ต้องแก้"}</span><strong>${allowed?"ข้อมูลพร้อมสำหรับขั้นตอนปรับตารางกะ":"ยังไม่ควรแก้ Schedule"}</strong></div>
+        <small>ตรวจล่าสุด ${esc(fmtDateTime(review?.checked_at))}</small>
+      </div>
+      <div class="manager-leave-meta-v61520">
+        <div><span>พนักงาน</span><strong>${esc(review?.employee?.emp_code||request?.emp_code||"-")} • ${esc(review?.employee?.full_name||request?.full_name||"-")}</strong></div>
+        <div><span>ประเภท</span><strong>${esc(review?.leave_type_label||employeeLeaveTypeLabelV61508(request?.detail?.leave_type_label||request?.detail?.leave_type))} • ${esc(isPartial?"ลาบางส่วน":"ลาเต็มวัน")}</strong></div>
+        <div><span>ช่วงวันที่</span><strong>${esc(fmtDate(review?.start_date||request?.work_date))}${String(review?.end_date||request?.work_date)!==String(review?.start_date||request?.work_date)?` – ${esc(fmtDate(review?.end_date))}`:""}</strong></div>
+        <div><span>เหตุผล</span><strong>${esc(review?.reason||request?.reason||"-")}</strong></div>
+      </div>
+      ${main}
+      <div class="manager-leave-checks-v61520">${checks.map(([label,state])=>`<span class="${state}"><i>${state==="pass"?"✓":state==="warn"?"△":state==="block"?"!":"HR"}</i>${esc(label)}</span>`).join("")}</div>
+      ${issues}
+      ${compatibilityNote}`;
+
+    if(confirm){
+      confirm.disabled=!allowed||!legacyCompatible;
+      confirm.textContent=!allowed?"ยังดำเนินการไม่ได้":legacyCompatible?"ตรวจครบ • ดำเนินการต่อ":"พร้อม Review • ต่อ 4C.3";
+    }
+    modal.classList.remove("hidden");
+  }
+
+  function openManagerLeaveReviewModalV61520(request,review){
+    const modal=ensureManagerLeaveReviewModalV61520();
+    renderManagerLeaveReviewV61520(request,review);
+    return new Promise(resolve=>{
+      let done=false;
+      const finish=value=>{
+        if(done)return;done=true;
+        modal.classList.add("hidden");
+        modal.querySelectorAll("[data-leave-review-close-v61520]").forEach(x=>x.onclick=null);
+        const refresh=modal.querySelector("[data-leave-review-refresh-v61520]");
+        const ret=modal.querySelector("[data-leave-review-return-v61520]");
+        const confirm=$("managerLeaveReviewConfirmV61520");
+        if(refresh)refresh.onclick=null;if(ret)ret.onclick=null;if(confirm)confirm.onclick=null;modal.onclick=null;
+        resolve(value);
+      };
+      modal.querySelectorAll("[data-leave-review-close-v61520]").forEach(x=>x.onclick=()=>finish("close"));
+      const refresh=modal.querySelector("[data-leave-review-refresh-v61520]");
+      if(refresh)refresh.onclick=()=>finish("refresh");
+      const ret=modal.querySelector("[data-leave-review-return-v61520]");
+      if(ret)ret.onclick=()=>finish("return");
+      const confirm=$("managerLeaveReviewConfirmV61520");
+      if(confirm)confirm.onclick=()=>{if(!confirm.disabled)finish("confirm");};
+      modal.onclick=e=>{if(e.target===modal)finish("close");};
+    });
+  }
+
+  async function applyReviewedEmployeeLeaveLegacyV61520(request,review){
+    const subtype=String(request?.request_subtype||"").toUpperCase();
+    app()?.showLoading?.(subtype==="PARTIAL_DAY"?"กำลังบันทึก Partial Leave Overlay...":"กำลังปรับตารางลาแบบ Atomic เดิม...");
+    try{
+      const result=await applyEmployeeRequestAtomicV61510(request,{},request.reason||null);
+      if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
+      employeeRequestResolveContextV61481=null;
+      clearEmployeeRequestContextV61494();
+      if(subtype==="PARTIAL_DAY"){
+        const overlay=result?.action_result?.overlay||{};
+        const start=employeeRequestFormatTimeV61481(overlay.leave_start_time||request?.detail?.leave_start_time);
+        const end=employeeRequestFormatTimeV61481(overlay.leave_end_time||request?.detail?.leave_end_time);
+        app()?.toast?.(`ปรับตารางลาบางส่วน ${start}–${end} เรียบร้อย • กะเดิมยังคงอยู่`,`success`);
+      }else{
+        app()?.toast?.(`ปรับตารางลา ${Number(review?.affected_workday_count||0).toLocaleString("th-TH")} วันเรียบร้อย`,`success`);
+      }
+      try{await app()?.loadSchedule?.();}catch(_){}
+      if(app()?.state?.currentPage==="attendance"){try{await app()?.loadAttendance?.();}catch(_){}}
+      try{await checkManagerRequestSyncV61513({force:true});}catch(_){}
+      await loadShiftRequests();
+      return true;
+    }catch(e){
+      app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+      return false;
+    }finally{app()?.hideLoading?.();}
+  }
+
+  async function reviewEmployeeLeaveV61520(request){
+    if(!request)return;
+    let review=null;
+    try{
+      app()?.showLoading?.("กำลังตรวจคำขอลากับ Backend ล่าสุด...");
+      review=await loadEmployeeLeaveReviewV61520(request.request_id);
+      await markEmployeeRequestInReviewV61481(request.request_id);
+    }catch(e){
+      const msg=String(e?.message||e||"");
+      if(msg.includes("ta_get_employee_request_leave_review_v61520")||msg.includes("PGRST202")){
+        app()?.toast?.("กรุณารัน SQL V6.15.20 ก่อนใช้ Manager Review คำขอลา","error");
+      }else app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+      return;
+    }finally{app()?.hideLoading?.();}
+
+    while(review){
+      const signature=leaveReviewSignatureV61520(review);
+      const action=await openManagerLeaveReviewModalV61520(request,review);
+      if(action==="close")return;
+      if(action==="return"){
+        await returnEmployeeRequestV61519(request.request_id);
+        return;
+      }
+      try{
+        app()?.showLoading?.("กำลังตรวจข้อมูลล่าสุดอีกครั้ง...");
+        const fresh=await loadEmployeeLeaveReviewV61520(request.request_id);
+        if(action==="refresh"){review=fresh;continue;}
+        if(leaveReviewSignatureV61520(fresh)!==signature){
+          review=fresh;
+          app()?.toast?.("ข้อมูลกะหรือรอบระบบมีการเปลี่ยนแปลง • ระบบอัปเดต Review ล่าสุดให้แล้ว","warning");
+          continue;
+        }
+        if(fresh?.allowed!==true){review=fresh;app()?.toast?.("คำขอไม่ผ่านเงื่อนไขล่าสุด จึงยังไม่แก้ตารางกะ","warning");continue;}
+        if(fresh?.legacy_apply_compatible!==true){
+          review=fresh;
+          app()?.toast?.("Review ผ่านแล้ว แต่ช่วงลามีวันหยุด/PH ภายใน • โปรดติดตั้ง 4C.3 ก่อนเขียน Schedule แบบข้ามวันหยุด","warning");
+          continue;
+        }
+        app()?.hideLoading?.();
+        await applyReviewedEmployeeLeaveLegacyV61520(request,fresh);
+        return;
+      }catch(e){
+        app()?.toast?.(app()?.humanError?.(e)||e.message,"error");return;
+      }finally{app()?.hideLoading?.();}
+    }
+  }
+
   async function reviewEmployeeLeaveV61494(request){
     if(!request)return;
     const subtype=String(request.request_subtype||"").toUpperCase();
@@ -22435,13 +22693,13 @@ ${names}${extra}
           return;
         }
 
-        const leaveButtonV61491=event.target.closest("[data-employee-request-leave-review-v61491]");
-        if(leaveButtonV61491){
+        const leaveButtonV61520=event.target.closest("[data-employee-request-leave-review-v61520]");
+        if(leaveButtonV61520){
           event.preventDefault();
-          const id=String(leaveButtonV61491.getAttribute("data-employee-request-leave-review-v61491")||"");
+          const id=String(leaveButtonV61520.getAttribute("data-employee-request-leave-review-v61520")||"");
           const request=shiftRequests.find(item=>String(item.request_id)===id);
           if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
-          await reviewEmployeeLeaveV61494(request);
+          await reviewEmployeeLeaveV61520(request);
           return;
         }
 

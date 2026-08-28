@@ -1,0 +1,31 @@
+AUDIT — TimeAttendance V6.15.20
+4C.1 + 4C.2 Leave Request / Manager Review
+================================================
+
+Employee Portal
+[PASS] Backend preview RPC wired before submit
+[PASS] FULL_DAY preview separates affected workdays from skipped OFF/PH/Leave
+[PASS] PARTIAL_DAY keeps V6.15.11 shift-aware validation
+[PASS] System Period checked on affected schedule dates
+[PASS] Duplicate / cross-request conflict checked on Backend
+[PASS] Submit stores affected/skipped preview snapshot
+[PASS] HR Connect boundary displayed clearly
+
+Manager Web
+[PASS] Button label = ตรวจและปรับตารางกะ
+[PASS] Read-only Manager Review RPC reads current Effective Shift
+[PASS] Full-day daily transition list rendered
+[PASS] Partial Leave timeline rendered
+[PASS] System Period / Conflict / Night Sequence status rendered
+[PASS] Return-for-correction extended to LEAVE_REQUEST
+[PASS] Existing Atomic V6.15.10/V6.15.11 retained for compatible requests
+[INFO] Mixed full-day ranges with skipped OFF/PH are Review-ready; affected-date writer is 4C.3
+
+Static validation
+[PASS] node --check portal.js
+[PASS] node --check app.js
+[PASS] index.html / portal.html / 404.html parse
+[PASS] duplicate HTML IDs = 0
+[PASS] CSS brace balance
+[PASS] version/cache-bust V6.15.20 / V6.15.20a
+[PASS] ZIP integrity

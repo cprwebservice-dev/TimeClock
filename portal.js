@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.19";
+  const VERSION="6.15.20";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -23,6 +23,10 @@
 
   const certificationStateCacheV61509=new Map();
   const partialLeaveByDateV61511=new Map();
+  let leavePreviewV61520=null;
+  let leavePreviewLoadingV61520=false;
+  let leavePreviewTimerV61520=null;
+  let leavePreviewSeqV61520=0;
 
   let portalSyncSnapshotV61513=null;
   let portalSyncTimerV61513=null;
@@ -46,7 +50,7 @@
   function config(){try{return {...DEFAULT,...JSON.parse(localStorage.getItem(CFG_KEY)||"{}")};}catch(_){return DEFAULT;}}
   function toast(msg,type="info"){const el=$("portalToast");el.textContent=msg;el.className=`portal-toast ${type}`;clearTimeout(toast.t);toast.t=setTimeout(()=>el.classList.add("hidden"),3500);}
   function loading(on,text="กำลังโหลด..."){const el=$("portalLoading");$("portalLoadingText").textContent=text;el.classList.toggle("hidden",!on);}
-  function friendly(e){const m=String(e?.message||e||"");if(m.includes("PORTAL_LOGIN_INVALID"))return"รหัสพนักงานหรือ PIN ไม่ถูกต้อง";if(m.includes("PORTAL_LOCKED_15_MINUTES"))return"กรอก PIN ผิดเกินกำหนด ระบบล็อกชั่วคราว 15 นาที";if(m.includes("ACTIVATION_CODE_INVALID"))return"Activation Code ไม่ถูกต้อง";if(m.includes("ACTIVATION_CODE_EXPIRED"))return"Activation Code หมดอายุ กรุณาขอ Code ใหม่จาก Manager";if(m.includes("PORTAL_EMPLOYEE_NOT_IN_TEAM"))return"รหัสพนักงานไม่อยู่ในทีมของ Link นี้";if(m.includes("PORTAL_NOT_ENABLED"))return"HR ยังไม่ได้เปิดสิทธิ์ Employee Portal";if(m.includes("PIN_TOO_EASY"))return"PIN ง่ายเกินไป กรุณาตั้งเลขอื่น";if(m.includes("PIN_CANNOT_MATCH_EMPLOYEE_ID"))return"PIN ห้ามตรงกับเลขท้ายรหัสพนักงาน";if(m.includes("PIN_MUST_BE_6_DIGITS"))return"PIN ต้องเป็นตัวเลข 6 หลัก";if(m.includes("PORTAL_SESSION_INVALID_OR_EXPIRED"))return"Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";if(m.includes("PORTAL_DATE_RANGE_MAX_63_DAYS"))return"ช่วงวันที่ปฏิทินกว้างเกินกำหนด กรุณารีเฟรชหน้าเว็บ";if(m.includes("DUPLICATE_TIME_CERTIFICATION_REQUEST"))return"วันที่นี้มีคำขอรับรองเวลาที่ยังรอดำเนินการอยู่แล้ว";if(m.includes("DUPLICATE_TIME_ISSUE_REQUEST"))return"วันที่นี้มีคำขอรับรองเวลาที่ยังรอดำเนินการอยู่แล้ว";if(m.includes("TIME_CERTIFICATION_NOT_ALLOWED_NON_WORKDAY"))return"วันหยุด วันหยุดนักขัตฤกษ์ และวันลา ไม่สามารถขอรับรองเวลาได้";if(m.includes("TIME_CERTIFICATION_SCHEDULE_NOT_FOUND"))return"ไม่พบข้อมูลกะของวันที่เลือก กรุณาตรวจสอบตารางกะก่อน";if(m.includes("TIME_CERTIFICATION_FUTURE_NOT_ALLOWED"))return"ไม่สามารถขอรับรองเวลาล่วงหน้าได้";if(m.includes("TIME_CERTIFICATION_PERIOD_CLOSED_MANUAL"))return"รอบรับรองเวลาของเดือนนี้ถูกปิดแล้ว กรุณาติดต่อ Manager/HR";if(m.includes("TIME_CERTIFICATION_PERIOD_CLOSED_DEADLINE"))return"พ้นกำหนดรับรองเวลาของรอบระบบแล้ว กรุณาติดต่อ Manager/HR";if(m.includes("TIME_CERTIFICATION_PERIOD_NOT_AVAILABLE"))return"รอบรับรองเวลายังไม่พร้อมใช้งาน";if(m.includes("PORTAL_HOME_TEAM_DATE_RANGE"))return"หน้าแรกดูเพื่อนร่วมกะได้เฉพาะวันนี้และเมื่อวาน";if(m.includes("WORK_DATE_REQUIRED"))return"กรุณาเลือกวันที่ก่อนดูข้อมูลการลงเวลา";if(m.includes("REQUEST_DATE_CONFLICT"))return"วันที่เลือกมีคำขออื่นที่กำลังดำเนินการและมีผลต่อกะ/วันหยุด/ลาอยู่แล้ว";if(m.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF"))return"วันที่ต้นทางไม่ใช่วันหยุดที่ใช้โควต้า";if(m.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY"))return"วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน";if(m.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"วันหยุดนักขัตฤกษ์ไม่สามารถนำมาสลับวันหยุดได้";if(m.includes("DAYOFF_SWAP_SAME_MONTH_REQUIRED"))return"การสลับวันหยุดต้องอยู่ภายในเดือนเดียวกัน";if(m.includes("REQUEST_EDIT_NOT_ALLOWED"))return"แก้ไขไม่ได้ เพราะ Manager เริ่มพิจารณาหรือคำขอนี้ปิดแล้ว";if(m.includes("REQUEST_RETURN_NOTE_REQUIRED"))return"Manager ต้องระบุเหตุผลก่อนส่งกลับให้แก้ไข";if(m.includes("DAYOFF_ADD_NO_REQUESTABLE_BALANCE"))return"โควต้าวันหยุดที่สามารถขอเพิ่มได้หมดแล้ว";if(m.includes("DAYOFF_ADD_TARGET_MUST_BE_WORKDAY"))return"ขอหยุดเพิ่มได้เฉพาะวันที่เป็นวันทำงาน";if(m.includes("DAYOFF_ADD_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"วันหยุดนักขัตฤกษ์ไม่สามารถใช้คำขอหยุดเพิ่มได้";if(m.includes("DAYOFF_REQUEST_PERIOD_CLOSED"))return"รอบระบบของวันที่เลือกปิดการจัดกะแล้ว ไม่สามารถส่งหรือแก้คำขอวันหยุดได้";if(m.includes("DAYOFF_PAIRED_SHIFT_NOT_FOUND"))return"กะทำงานของวันที่เลือกยังไม่ได้จับคู่กับกะวันหยุด กรุณาแจ้ง Manager/HR ตรวจการตั้งค่ากะ";if(m.includes("DAYOFF_SWAP_SOURCE_WORK_SHIFT_NOT_FOUND"))return"ระบบไม่พบกะทำงานที่จะใช้คืนให้วันหยุดเดิม กรุณาแจ้ง Manager/HR ตรวจการตั้งค่ากะ";if(m.includes("DAYOFF_SWAP_DATE_MUST_DIFFER"))return"วันหยุดเดิมและวันที่หยุดแทนต้องเป็นคนละวัน";if(m.includes("DAYOFF_SWAP_TARGET_DATE_REQUIRED")||m.includes("DAYOFF_SWAP_TARGET_DATE_INVALID"))return"กรุณาเลือกวันที่ต้องการหยุดแทนใหม่";if(m.includes("DAYOFF_EMPLOYEE_PORTAL_FUTURE_ONLY"))return"Employee Portal ขอวันหยุดได้เฉพาะวันที่หลังวันปัจจุบัน หากต้องการดำเนินการย้อนหลังให้แจ้ง Manager";if(m.includes("DAYOFF_REQUEST_SAME_MONTH_REQUIRED"))return"ขอสลับวันหยุดได้เฉพาะภายในเดือนเดียวกัน";if(m.includes("DAYOFF_ADD_TARGET_MUST_MATCH_REQUEST_DATE"))return"วันที่ขอหยุดเพิ่มไม่สอดคล้องกับเดือนที่เลือก กรุณาเลือกใหม่";if(m.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF"))return"กรุณาเลือกวันหยุดเดิมก่อน";if(m.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY"))return"วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน";if(m.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"ไม่สามารถสลับกับวันหยุดนักขัตฤกษ์ได้";if(m.includes("LEAVE_EMPLOYEE_PORTAL_NO_PAST_DATE"))return"ไม่สามารถขอลาย้อนหลังได้ หากต้องการปรับตารางย้อนหลังให้แจ้ง Manager";if(m.includes("LEAVE_NOT_ALLOWED_NON_WORKDAY"))return"ไม่สามารถขอลาในวันหยุดหรือวันหยุดนักขัตฤกษ์ได้";if(m.includes("LEAVE_TYPE_NOT_ALLOWED"))return"กรุณาเลือกประเภทการลาตามรายการที่ระบบกำหนด";if(m.includes("LEAVE_PARTIAL_NOT_ALLOWED_FOR_TYPE"))return"ประเภทการลานี้กำหนดให้ลาเต็มวันเท่านั้น";if(m.includes("LEAVE_PARTIAL_SINGLE_DAY_ONLY"))return"ลาบางส่วนต้องอยู่ภายในวันเดียวกัน";if(m.includes("LEAVE_PARTIAL_TIME_REQUIRED"))return"กรุณาระบุเวลาเริ่มและเวลาสิ้นสุดของการลาบางส่วน";if(m.includes("LEAVE_PARTIAL_END_AFTER_START_REQUIRED"))return"เวลาสิ้นสุดการลาต้องมากกว่าเวลาเริ่ม";if(m.includes("PERSONAL_LEAVE_PARTIAL_MIN_60_MINUTES"))return"ลากิจบางส่วนกำหนดขั้นต่ำ 1 ชั่วโมง";if(m.includes("VACATION_LEAVE_PARTIAL_MIN_180_MINUTES"))return"ลาพักร้อนบางส่วนกำหนดขั้นต่ำ 3 ชั่วโมง";if(m.includes("ORDINATION_MIN_SERVICE_1_YEAR"))return"ลาอุปสมบทกำหนดอายุงาน 1 ปีขึ้นไป";if(m.includes("ORDINATION_EMPLOYEE_START_DATE_REQUIRED"))return"ระบบไม่พบวันเริ่มงาน จึงยังตรวจสิทธิ์ลาอุปสมบทไม่ได้ กรุณาติดต่อ Manager/HR";if(m.includes("PARTIAL_LEAVE_SHIFT_REQUIRED"))return"ไม่พบเวลาเริ่ม/สิ้นสุดกะของวันที่เลือก กรุณาตรวจตารางกะก่อน";if(m.includes("PARTIAL_LEAVE_OUTSIDE_SHIFT"))return"ช่วงลาบางส่วนต้องอยู่ภายในกะทำงานของ Work Date ที่เลือก";if(m.includes("PARTIAL_LEAVE_MUST_NOT_COVER_FULL_SHIFT"))return"ช่วงลาครอบคลุมทั้งกะ กรุณาเลือกลาเต็มวัน";if(m.includes("PARTIAL_LEAVE_ACTIVE_OVERLAY_EXISTS"))return"วันที่นี้มีลาบางส่วนที่ Manager อนุมัติไว้แล้ว กรุณาติดต่อ Manager หากต้องการเปลี่ยนช่วงเวลา";return m||"เกิดข้อผิดพลาด";}
+  function friendly(e){const m=String(e?.message||e||"");if(m.includes("PORTAL_LOGIN_INVALID"))return"รหัสพนักงานหรือ PIN ไม่ถูกต้อง";if(m.includes("PORTAL_LOCKED_15_MINUTES"))return"กรอก PIN ผิดเกินกำหนด ระบบล็อกชั่วคราว 15 นาที";if(m.includes("ACTIVATION_CODE_INVALID"))return"Activation Code ไม่ถูกต้อง";if(m.includes("ACTIVATION_CODE_EXPIRED"))return"Activation Code หมดอายุ กรุณาขอ Code ใหม่จาก Manager";if(m.includes("PORTAL_EMPLOYEE_NOT_IN_TEAM"))return"รหัสพนักงานไม่อยู่ในทีมของ Link นี้";if(m.includes("PORTAL_NOT_ENABLED"))return"HR ยังไม่ได้เปิดสิทธิ์ Employee Portal";if(m.includes("PIN_TOO_EASY"))return"PIN ง่ายเกินไป กรุณาตั้งเลขอื่น";if(m.includes("PIN_CANNOT_MATCH_EMPLOYEE_ID"))return"PIN ห้ามตรงกับเลขท้ายรหัสพนักงาน";if(m.includes("PIN_MUST_BE_6_DIGITS"))return"PIN ต้องเป็นตัวเลข 6 หลัก";if(m.includes("PORTAL_SESSION_INVALID_OR_EXPIRED"))return"Session หมดอายุ กรุณาเข้าสู่ระบบใหม่";if(m.includes("PORTAL_DATE_RANGE_MAX_63_DAYS"))return"ช่วงวันที่ปฏิทินกว้างเกินกำหนด กรุณารีเฟรชหน้าเว็บ";if(m.includes("DUPLICATE_TIME_CERTIFICATION_REQUEST"))return"วันที่นี้มีคำขอรับรองเวลาที่ยังรอดำเนินการอยู่แล้ว";if(m.includes("DUPLICATE_TIME_ISSUE_REQUEST"))return"วันที่นี้มีคำขอรับรองเวลาที่ยังรอดำเนินการอยู่แล้ว";if(m.includes("TIME_CERTIFICATION_NOT_ALLOWED_NON_WORKDAY"))return"วันหยุด วันหยุดนักขัตฤกษ์ และวันลา ไม่สามารถขอรับรองเวลาได้";if(m.includes("TIME_CERTIFICATION_SCHEDULE_NOT_FOUND"))return"ไม่พบข้อมูลกะของวันที่เลือก กรุณาตรวจสอบตารางกะก่อน";if(m.includes("TIME_CERTIFICATION_FUTURE_NOT_ALLOWED"))return"ไม่สามารถขอรับรองเวลาล่วงหน้าได้";if(m.includes("TIME_CERTIFICATION_PERIOD_CLOSED_MANUAL"))return"รอบรับรองเวลาของเดือนนี้ถูกปิดแล้ว กรุณาติดต่อ Manager/HR";if(m.includes("TIME_CERTIFICATION_PERIOD_CLOSED_DEADLINE"))return"พ้นกำหนดรับรองเวลาของรอบระบบแล้ว กรุณาติดต่อ Manager/HR";if(m.includes("TIME_CERTIFICATION_PERIOD_NOT_AVAILABLE"))return"รอบรับรองเวลายังไม่พร้อมใช้งาน";if(m.includes("PORTAL_HOME_TEAM_DATE_RANGE"))return"หน้าแรกดูเพื่อนร่วมกะได้เฉพาะวันนี้และเมื่อวาน";if(m.includes("WORK_DATE_REQUIRED"))return"กรุณาเลือกวันที่ก่อนดูข้อมูลการลงเวลา";if(m.includes("REQUEST_DATE_CONFLICT"))return"วันที่เลือกมีคำขออื่นที่กำลังดำเนินการและมีผลต่อกะ/วันหยุด/ลาอยู่แล้ว";if(m.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF"))return"วันที่ต้นทางไม่ใช่วันหยุดที่ใช้โควต้า";if(m.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY"))return"วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน";if(m.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"วันหยุดนักขัตฤกษ์ไม่สามารถนำมาสลับวันหยุดได้";if(m.includes("DAYOFF_SWAP_SAME_MONTH_REQUIRED"))return"การสลับวันหยุดต้องอยู่ภายในเดือนเดียวกัน";if(m.includes("REQUEST_EDIT_NOT_ALLOWED"))return"แก้ไขไม่ได้ เพราะ Manager เริ่มพิจารณาหรือคำขอนี้ปิดแล้ว";if(m.includes("REQUEST_RETURN_NOTE_REQUIRED"))return"Manager ต้องระบุเหตุผลก่อนส่งกลับให้แก้ไข";if(m.includes("DAYOFF_ADD_NO_REQUESTABLE_BALANCE"))return"โควต้าวันหยุดที่สามารถขอเพิ่มได้หมดแล้ว";if(m.includes("DAYOFF_ADD_TARGET_MUST_BE_WORKDAY"))return"ขอหยุดเพิ่มได้เฉพาะวันที่เป็นวันทำงาน";if(m.includes("DAYOFF_ADD_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"วันหยุดนักขัตฤกษ์ไม่สามารถใช้คำขอหยุดเพิ่มได้";if(m.includes("DAYOFF_REQUEST_PERIOD_CLOSED"))return"รอบระบบของวันที่เลือกปิดการจัดกะแล้ว ไม่สามารถส่งหรือแก้คำขอวันหยุดได้";if(m.includes("DAYOFF_PAIRED_SHIFT_NOT_FOUND"))return"กะทำงานของวันที่เลือกยังไม่ได้จับคู่กับกะวันหยุด กรุณาแจ้ง Manager/HR ตรวจการตั้งค่ากะ";if(m.includes("DAYOFF_SWAP_SOURCE_WORK_SHIFT_NOT_FOUND"))return"ระบบไม่พบกะทำงานที่จะใช้คืนให้วันหยุดเดิม กรุณาแจ้ง Manager/HR ตรวจการตั้งค่ากะ";if(m.includes("DAYOFF_SWAP_DATE_MUST_DIFFER"))return"วันหยุดเดิมและวันที่หยุดแทนต้องเป็นคนละวัน";if(m.includes("DAYOFF_SWAP_TARGET_DATE_REQUIRED")||m.includes("DAYOFF_SWAP_TARGET_DATE_INVALID"))return"กรุณาเลือกวันที่ต้องการหยุดแทนใหม่";if(m.includes("DAYOFF_EMPLOYEE_PORTAL_FUTURE_ONLY"))return"Employee Portal ขอวันหยุดได้เฉพาะวันที่หลังวันปัจจุบัน หากต้องการดำเนินการย้อนหลังให้แจ้ง Manager";if(m.includes("DAYOFF_REQUEST_SAME_MONTH_REQUIRED"))return"ขอสลับวันหยุดได้เฉพาะภายในเดือนเดียวกัน";if(m.includes("DAYOFF_ADD_TARGET_MUST_MATCH_REQUEST_DATE"))return"วันที่ขอหยุดเพิ่มไม่สอดคล้องกับเดือนที่เลือก กรุณาเลือกใหม่";if(m.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF"))return"กรุณาเลือกวันหยุดเดิมก่อน";if(m.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY"))return"วันที่ต้องการหยุดแทนต้องเป็นวันทำงาน";if(m.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED"))return"ไม่สามารถสลับกับวันหยุดนักขัตฤกษ์ได้";if(m.includes("LEAVE_EMPLOYEE_PORTAL_NO_PAST_DATE"))return"ไม่สามารถขอลาย้อนหลังได้ หากต้องการปรับตารางย้อนหลังให้แจ้ง Manager";if(m.includes("LEAVE_NOT_ALLOWED_NON_WORKDAY"))return"ไม่สามารถขอลาในวันหยุดหรือวันหยุดนักขัตฤกษ์ได้";if(m.includes("LEAVE_TYPE_NOT_ALLOWED"))return"กรุณาเลือกประเภทการลาตามรายการที่ระบบกำหนด";if(m.includes("LEAVE_PARTIAL_NOT_ALLOWED_FOR_TYPE"))return"ประเภทการลานี้กำหนดให้ลาเต็มวันเท่านั้น";if(m.includes("LEAVE_PARTIAL_SINGLE_DAY_ONLY"))return"ลาบางส่วนต้องอยู่ภายในวันเดียวกัน";if(m.includes("LEAVE_PARTIAL_TIME_REQUIRED"))return"กรุณาระบุเวลาเริ่มและเวลาสิ้นสุดของการลาบางส่วน";if(m.includes("LEAVE_PARTIAL_END_AFTER_START_REQUIRED"))return"เวลาสิ้นสุดการลาต้องมากกว่าเวลาเริ่ม";if(m.includes("PERSONAL_LEAVE_PARTIAL_MIN_60_MINUTES"))return"ลากิจบางส่วนกำหนดขั้นต่ำ 1 ชั่วโมง";if(m.includes("VACATION_LEAVE_PARTIAL_MIN_180_MINUTES"))return"ลาพักร้อนบางส่วนกำหนดขั้นต่ำ 3 ชั่วโมง";if(m.includes("ORDINATION_MIN_SERVICE_1_YEAR"))return"ลาอุปสมบทกำหนดอายุงาน 1 ปีขึ้นไป";if(m.includes("ORDINATION_EMPLOYEE_START_DATE_REQUIRED"))return"ระบบไม่พบวันเริ่มงาน จึงยังตรวจสิทธิ์ลาอุปสมบทไม่ได้ กรุณาติดต่อ Manager/HR";if(m.includes("PARTIAL_LEAVE_SHIFT_REQUIRED"))return"ไม่พบเวลาเริ่ม/สิ้นสุดกะของวันที่เลือก กรุณาตรวจตารางกะก่อน";if(m.includes("PARTIAL_LEAVE_OUTSIDE_SHIFT"))return"ช่วงลาบางส่วนต้องอยู่ภายในกะทำงานของ Work Date ที่เลือก";if(m.includes("PARTIAL_LEAVE_MUST_NOT_COVER_FULL_SHIFT"))return"ช่วงลาครอบคลุมทั้งกะ กรุณาเลือกลาเต็มวัน";if(m.includes("PARTIAL_LEAVE_ACTIVE_OVERLAY_EXISTS"))return"วันที่นี้มีลาบางส่วนที่ Manager อนุมัติไว้แล้ว กรุณาติดต่อ Manager หากต้องการเปลี่ยนช่วงเวลา";if(m.includes("LEAVE_RANGE_NO_WORKDAY"))return"ช่วงวันที่เลือกไม่มีวันทำงานที่ต้องปรับตารางกะ";if(m.includes("LEAVE_SYSTEM_PERIOD_SCHEDULE_CLOSED")||m.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED"))return"รอบระบบของวันที่ลาอย่างน้อย 1 วันปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ Manager/HR";if(m.includes("PARTIAL_LEAVE_WINDOW_INVALID"))return"ช่วงลาบางส่วนไม่ผ่านเงื่อนไขกะล่าสุด กรุณาตรวจเวลาอีกครั้ง";return m||"เกิดข้อผิดพลาด";}
   async function rpc(name,args={}){const {data,error}=await client.rpc(name,args);if(error)throw error;return data;}
   function setAuthTab(tab){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.classList.toggle("active",b.dataset.authTab===tab));$("portalActivateForm").classList.toggle("hidden",tab!=="activate");$("portalLoginForm").classList.toggle("hidden",tab!=="login");}
   function deviceLabel(){return `${navigator.platform||"Mobile"} • ${String(navigator.userAgent||"").slice(0,80)}`;}
@@ -983,7 +987,7 @@
     return `<div class="portal-dayoff-outcome-v61519"><div class="portal-dayoff-outcome-head-v61519"><i>✓</i><div><span>ผลที่ระบบปรับจริง</span><strong>${esc(outcome.summary||"ตารางกะอัปเดตแล้ว")}</strong></div></div>${rows?`<div class="portal-dayoff-outcome-grid-v61519">${rows}</div>`:""}</div>`;
   }
 
-  function requestDetail(r){const d=r.detail||{};if(r.request_type==="SPECIAL_WORK")return[d.reported_start_time&&d.reported_end_time?`กะ 2 ${fmtTime(d.reported_start_time)}–${fmtTime(d.reported_end_time)}`:"",d.customer_location||""].filter(Boolean).join(" • ");if(r.request_type==="DAYOFF_SWAP"){const outcome=dayoffOutcomeV61519(r);if(outcome?.summary)return outcome.summary;if(String(r.request_subtype||"").toUpperCase()==="ADD_DAYOFF")return`ขอหยุดเพิ่ม ${fmtDate(r.work_date)}${d.quota_snapshot?` • คงเหลือ ${d.quota_snapshot.balance_days??"-"} วัน`:""}`;return`${fmtDate(r.work_date)} → ${fmtDate(d.target_date)}${d.quota_snapshot?` • โควต้า ${d.quota_snapshot.month_quota_days}/${d.quota_snapshot.used_days}`:""}`;}if(r.request_type==="LEAVE_REQUEST")return`${leaveTypeLabelV61508(d.leave_type_label||d.leave_type)} • ${fmtDate(r.work_date)}${d.end_date&&String(d.end_date)!==String(r.work_date)?` – ${fmtDate(d.end_date)}`:""}${String(r.request_subtype||"").toUpperCase()==="PARTIAL_DAY"&&d.leave_start_time&&d.leave_end_time?` • ${fmtTime(d.leave_start_time)}–${fmtTime(d.leave_end_time)}`:""}`;return"";}
+  function requestDetail(r){const d=r.detail||{};if(r.request_type==="SPECIAL_WORK")return[d.reported_start_time&&d.reported_end_time?`กะ 2 ${fmtTime(d.reported_start_time)}–${fmtTime(d.reported_end_time)}`:"",d.customer_location||""].filter(Boolean).join(" • ");if(r.request_type==="DAYOFF_SWAP"){const outcome=dayoffOutcomeV61519(r);if(outcome?.summary)return outcome.summary;if(String(r.request_subtype||"").toUpperCase()==="ADD_DAYOFF")return`ขอหยุดเพิ่ม ${fmtDate(r.work_date)}${d.quota_snapshot?` • คงเหลือ ${d.quota_snapshot.balance_days??"-"} วัน`:""}`;return`${fmtDate(r.work_date)} → ${fmtDate(d.target_date)}${d.quota_snapshot?` • โควต้า ${d.quota_snapshot.month_quota_days}/${d.quota_snapshot.used_days}`:""}`;}if(r.request_type==="LEAVE_REQUEST"){const partial=String(r.request_subtype||"").toUpperCase()==="PARTIAL_DAY";const effect=!partial&&d.affected_workday_count!=null?` • ปรับกะ ${d.affected_workday_count} วัน${Number(d.skipped_nonworkday_count||0)>0?` / ไม่เปลี่ยน ${d.skipped_nonworkday_count} วัน`:""}`:"";return`${leaveTypeLabelV61508(d.leave_type_label||d.leave_type)} • ${fmtDate(r.work_date)}${d.end_date&&String(d.end_date)!==String(r.work_date)?` – ${fmtDate(d.end_date)}`:""}${partial&&d.leave_start_time&&d.leave_end_time?` • ${fmtTime(d.leave_start_time)}–${fmtTime(d.leave_end_time)}`:""}${effect}`;}return"";}
   function portalConsistencyBadgeV61515(r){
     if(String(r?.status||"").toUpperCase()!=="RESOLVED")return"";
     const audit=requestConsistencyV61515.get(String(r.request_id));
@@ -2023,9 +2027,15 @@
     if(endDate<workDate)return"วันสิ้นสุดต้องไม่น้อยกว่าวันเริ่มลา";
 
     const dates=leaveDateRangeV61508(workDate,endDate);
-    for(const d of dates){
-      const blocked=leaveKnownDayBlockedV61508(d);
-      if(blocked)return`${fmtDate(d)} เป็น${blocked} • ไม่สามารถขอลาในวันที่นี้`;
+    if(subtype==="PARTIAL_DAY"){
+      const blocked=leaveKnownDayBlockedV61508(workDate);
+      if(blocked)return`${fmtDate(workDate)} เป็น${blocked} • ลาบางส่วนใช้ได้เฉพาะวันทำงาน`;
+    }else{
+      const knownWorkdays=dates.filter(d=>leaveKnownDayBlockedV61508(d)===false).length;
+      const knownBlocked=dates.filter(d=>!!leaveKnownDayBlockedV61508(d)).length;
+      if(dates.length&&knownBlocked===dates.length&&knownWorkdays===0){
+        return"ช่วงวันที่เลือกไม่มีวันทำงานที่ต้องปรับตารางกะ";
+      }
     }
 
     if(leaveType==="ORDINATION"){
@@ -2110,6 +2120,126 @@
 
   function updateLeavePartialFieldsV61493(){
     syncLeavePolicyUIV61508();
+  }
+
+  function leavePreviewArgsV61520(){
+    const start=$("portalRequestDate")?.value||"";
+    const subtype=$("portalRequestSubtype")?.value||"FULL_DAY";
+    const leaveType=normalizeLeaveTypeV61508($("portalLeaveTypeV61491")?.value);
+    const end=$("portalLeaveEndV61491")?.value||start;
+    return {
+      p_session_token:session(),
+      p_work_date:start||null,
+      p_request_subtype:subtype||null,
+      p_leave_type:leaveType||null,
+      p_end_date:end||start||null,
+      p_leave_start_time:subtype==="PARTIAL_DAY"?($("portalLeaveStartV61491")?.value||null):null,
+      p_leave_end_time:subtype==="PARTIAL_DAY"?($("portalLeaveEndTimeV61491")?.value||null):null,
+      p_exclude_request_id:editingRequestId||null
+    };
+  }
+
+  function leavePreviewIssueTextV61520(issue){
+    const raw=String(issue?.message||issue?.code||"");
+    return raw?friendly({message:raw}):"-";
+  }
+
+  function leaveDayTypeLabelV61520(value){
+    const code=String(value||"").toUpperCase();
+    return ({PUBLIC_HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุด",LEAVE:"ลาเดิม",WORKDAY:"วันทำงาน",DAY_OFF:"วันหยุด",OFF:"วันหยุด"})[code]||value||"-";
+  }
+
+  function leaveTimelineV61520(partial){
+    if(!partial)return"";
+    const parse=v=>{if(!v)return NaN;const d=new Date(String(v).replace(" ","T"));return d.getTime();};
+    const ss=parse(partial.shift_start_at),se=parse(partial.shift_end_at),ls=parse(partial.leave_start_at),le=parse(partial.leave_end_at);
+    let before=35,leave=30,after=35;
+    if([ss,se,ls,le].every(Number.isFinite)&&se>ss){
+      const total=se-ss;
+      before=Math.max(0,Math.min(100,((ls-ss)/total)*100));
+      leave=Math.max(4,Math.min(100-before,((le-ls)/total)*100));
+      after=Math.max(0,100-before-leave);
+    }
+    return `<div class="portal-leave-timeline-v61520" aria-label="ช่วงทำงานและช่วงลา">
+      ${before>1?`<span class="work" style="width:${before.toFixed(2)}%">ทำงาน</span>`:""}
+      <span class="leave" style="width:${leave.toFixed(2)}%">ลา</span>
+      ${after>1?`<span class="work" style="width:${after.toFixed(2)}%">ทำงาน</span>`:""}
+    </div>`;
+  }
+
+  function renderLeavePreviewV61520(){
+    const box=$("portalLeavePreviewV61520");
+    if(!box)return;
+    if($("portalRequestType")?.value!=="LEAVE_REQUEST"){box.innerHTML="";return;}
+    if(leavePreviewLoadingV61520){
+      box.innerHTML=`<div class="portal-leave-preview-loading-v61520"><i></i><span>กำลังตรวจตารางกะ รอบระบบ และคำขอที่ทับซ้อน...</span></div>`;
+      return;
+    }
+    const p=leavePreviewV61520;
+    if(!p){
+      box.innerHTML=`<div class="portal-leave-preview-empty-v61520">เลือกประเภท รูปแบบ และช่วงวันที่ลา เพื่อดูผลต่อตารางกะ</div>`;
+      return;
+    }
+    const blockers=Array.isArray(p.blockers)?p.blockers:[];
+    const warnings=Array.isArray(p.warnings)?p.warnings:[];
+    const ok=p.allowed===true;
+    const subtype=String(p.request_subtype||"").toUpperCase();
+    const head=`<div class="portal-leave-preview-head-v61520 ${ok?"pass":"block"}"><div><i>${ok?"✓":"!"}</i><span><strong>${ok?"พร้อมส่งให้ Manager":"พบเงื่อนไขที่ต้องแก้"}</strong><small>${esc(p.leave_type_label||"การลา")} • Backend ตรวจล่าสุด ${esc(fmtDateTime(p.checked_at))}</small></span></div><b>${subtype==="PARTIAL_DAY"?"ลาบางส่วน":"ลาเต็มวัน"}</b></div>`;
+    let main="";
+    if(subtype==="PARTIAL_DAY"){
+      const q=p.partial||{};
+      const mins=Number(q.leave_minutes||0);
+      const duration=mins?`${Math.floor(mins/60)} ชม.${mins%60?` ${mins%60} นาที`:""}`:"-";
+      main=`<div class="portal-leave-partial-card-v61520">
+        <div class="portal-leave-partial-meta-v61520"><div><span>กะปัจจุบัน</span><strong>${esc(q.shift_code||"-")} • ${esc(fmtTime(q.shift_start_at))}–${esc(fmtTime(q.shift_end_at))}</strong></div><div><span>ช่วงลา</span><strong>${esc(fmtTime(q.leave_start_at))}–${esc(fmtTime(q.leave_end_at))} • ${esc(duration)}</strong></div></div>
+        ${leaveTimelineV61520(q)}
+        <small>กะเดิมยังคงอยู่ • Manager จะใช้ Partial Leave Overlay เฉพาะช่วงเวลาที่ลา</small>
+      </div>`;
+    }else{
+      const days=Array.isArray(p.days)?p.days:[];
+      main=`<div class="portal-leave-summary-v61520"><div><span>วันที่ปรับเป็นลา</span><strong>${Number(p.affected_workday_count||0).toLocaleString("th-TH")}</strong></div><div><span>วันหยุด / PH / ลาเดิม</span><strong>${Number(p.skipped_nonworkday_count||0).toLocaleString("th-TH")}</strong></div></div>
+      <div class="portal-leave-days-v61520">${days.map(d=>{const apply=d.action==="SET_LV";return `<article class="${apply?"apply":"skip"}"><span>${esc(fmtDate(d.work_date))}</span><strong>${esc(d.current_shift_code||leaveDayTypeLabelV61520(d.current_day_type))} ${apply?"→ LV":"→ ไม่เปลี่ยน"}</strong><small>${apply?`${esc(fmtTime(d.shift_start_time))}–${esc(fmtTime(d.shift_end_time))}`:esc(leaveDayTypeLabelV61520(d.current_day_type))}</small></article>`;}).join("")}</div>`;
+    }
+    const issues=(blockers.length||warnings.length)?`<div class="portal-leave-issues-v61520">${blockers.map(x=>`<div class="block"><i>!</i><span>${esc(leavePreviewIssueTextV61520(x))}</span></div>`).join("")}${warnings.map(x=>`<div class="warn"><i>△</i><span>${esc(leavePreviewIssueTextV61520(x))}</span></div>`).join("")}</div>`:"";
+    box.innerHTML=head+main+issues+`<div class="portal-leave-hr-note-v61520"><i>HR</i><span><strong>TimeAttendance ใช้เพื่อปรับตารางกะ</strong><small>การลาอย่างเป็นทางการยังต้องดำเนินการใน HR Connect และเป็นไปตามสายอนุมัติของบริษัท</small></span></div>`;
+  }
+
+  async function loadLeavePreviewV61520({force=false,quiet=false}={}){
+    if($("portalRequestType")?.value!=="LEAVE_REQUEST")return null;
+    const args=leavePreviewArgsV61520();
+    const localError=leaveValidationErrorV61508();
+    if(!args.p_work_date||!args.p_leave_type||!args.p_request_subtype){
+      leavePreviewV61520=null;leavePreviewLoadingV61520=false;renderLeavePreviewV61520();return null;
+    }
+    if(args.p_request_subtype==="PARTIAL_DAY"&&(!args.p_leave_start_time||!args.p_leave_end_time)){
+      leavePreviewV61520=null;leavePreviewLoadingV61520=false;renderLeavePreviewV61520();return null;
+    }
+    if(localError&&/กรุณาเลือก|กรุณาระบุ/.test(localError)){
+      leavePreviewV61520=null;leavePreviewLoadingV61520=false;renderLeavePreviewV61520();return null;
+    }
+    const seq=++leavePreviewSeqV61520;
+    leavePreviewLoadingV61520=true;renderLeavePreviewV61520();
+    try{
+      const data=await rpc("ta_portal_preview_leave_request_v61520",args);
+      if(seq!==leavePreviewSeqV61520)return leavePreviewV61520;
+      leavePreviewV61520=data||null;
+      return leavePreviewV61520;
+    }catch(e){
+      if(seq!==leavePreviewSeqV61520)return leavePreviewV61520;
+      leavePreviewV61520={allowed:false,blockers:[{code:"LEAVE_PREVIEW_LOAD_ERROR",message:friendly(e)}],warnings:[],request_subtype:args.p_request_subtype,leave_type_label:leaveTypeLabelV61508(args.p_leave_type),checked_at:new Date().toISOString(),version:"V6.15.20"};
+      if(!quiet)toast("ตรวจเงื่อนไขการลากับ Backend ไม่สำเร็จ • "+friendly(e),"error");
+      return leavePreviewV61520;
+    }finally{
+      if(seq===leavePreviewSeqV61520){leavePreviewLoadingV61520=false;renderLeavePreviewV61520();if($("portalRequestType")?.value==="LEAVE_REQUEST")renderEvidence();refreshTimeCertificationSubmitStateV61500();}
+    }
+  }
+
+  function scheduleLeavePreviewV61520(){
+    if(leavePreviewTimerV61520)clearTimeout(leavePreviewTimerV61520);
+    leavePreviewV61520=null;
+    renderLeavePreviewV61520();
+    if($("portalRequestType")?.value!=="LEAVE_REQUEST")return;
+    leavePreviewTimerV61520=setTimeout(()=>loadLeavePreviewV61520({quiet:true}),260);
   }
 
   function portalEvidenceRowV61493(date){
@@ -2248,6 +2378,8 @@
         ? leaveValidationErrorV61508()
         : "";
     const leaveBlocked=!!leaveError;
+    const leaveBackendBlocked=type==="LEAVE_REQUEST"&&!!leavePreviewV61520&&leavePreviewV61520.allowed===false;
+    const leavePreviewBusy=type==="LEAVE_REQUEST"&&leavePreviewLoadingV61520;
     const blocked=
       timeBlocked
       || certPeriodBlocked
@@ -2255,7 +2387,9 @@
       || dayoffBalanceLoadBlocked
       || addDayoffBlocked
       || dayoffDateBlocked
-      || leaveBlocked;
+      || leaveBlocked
+      || leaveBackendBlocked
+      || leavePreviewBusy;
     if(btn){
       btn.disabled=!!blocked;
       btn.classList.toggle("disabled",!!blocked);
@@ -2273,7 +2407,11 @@
                 ?"วันที่เลือกไม่ผ่านเงื่อนไข Employee Portal หรือรอบระบบถูกล็อก"
                 :leaveBlocked
               ?leaveError
-              :"";
+              :leavePreviewBusy
+                ?"กำลังตรวจเงื่อนไขการลากับ Backend"
+                :leaveBackendBlocked
+                  ?leavePreviewIssueTextV61520((leavePreviewV61520.blockers||[])[0])
+                  :"";
     }
   }
 
@@ -2308,14 +2446,19 @@
     if(type==="LEAVE_REQUEST"){
       const err=leaveValidationErrorV61508();
       const leaveType=leaveTypeLabelV61508($("portalLeaveTypeV61491")?.value);
+      const subtype=$("portalRequestSubtype")?.value||"FULL_DAY";
       if(err){
         box.classList.add("blocked");
         box.innerHTML=`<b>${esc(fmtDate(d))}</b> • ${esc(leaveType)}<br><strong>${esc(err)}</strong><br><small>Employee Portal ใช้เพื่อแจ้งปรับตารางกะเท่านั้น • การลาจริงต้องคีย์ใน HR Connect</small>`;
+      }else if(leavePreviewV61520){
+        box.classList.toggle("blocked",leavePreviewV61520.allowed!==true);
+        box.innerHTML=`<b>${esc(subtype==="PARTIAL_DAY"?"ลาบางส่วน":"ลาเต็มวัน")}</b> • ${esc(leaveType)}<br><strong>${leavePreviewV61520.allowed===true?"Backend ตรวจเงื่อนไขพร้อมส่ง":"พบเงื่อนไขที่ต้องแก้"}</strong><br><small>รายละเอียดผลต่อตารางกะแสดงด้านล่าง</small>`;
       }else{
         box.innerHTML=r
-          ? `<b>${esc(fmtDate(d))}</b> • กะ ${esc(r.effective_shift_code||"-")} ${esc(fmtTime(r.shift_start_time))}–${esc(fmtTime(r.shift_end_time))}<br><small>${esc(leaveType)} • ใช้ข้อมูลกะประกอบการแจ้ง Manager • การลาจริงต้องดำเนินการใน HR Connect</small>`
-          : `${esc(fmtDate(d))} • ${esc(leaveType)} • ยังไม่พบข้อมูลกะ`;
+          ? `<b>${esc(fmtDate(d))}</b> • กะ ${esc(r.effective_shift_code||"-")} ${esc(fmtTime(r.shift_start_time))}–${esc(fmtTime(r.shift_end_time))}<br><small>${esc(leaveType)} • ระบบจะตรวจช่วงวันที่และรอบระบบกับ Backend ก่อนส่ง</small>`
+          : `${esc(fmtDate(d))} • ${esc(leaveType)} • กำลังรอข้อมูลกะ`;
       }
+      renderLeavePreviewV61520();
       refreshTimeCertificationSubmitStateV61500();
       return;
     }
@@ -2358,7 +2501,7 @@
   }
 
   function resetRequestFieldsV61493(date){
-    editingRequestId=null;dayoffSource="";dayoffTarget="";
+    editingRequestId=null;dayoffSource="";dayoffTarget="";leavePreviewV61520=null;leavePreviewLoadingV61520=false;leavePreviewSeqV61520++;if(leavePreviewTimerV61520)clearTimeout(leavePreviewTimerV61520);
     $("portalRequestDate").value=date||today();$("portalRequestReason").value="";
     $("portalSpecialStart").value="";$("portalSpecialEnd").value="";$("portalSpecialLocation").value="";
     if($("portalDayoffTargetV61491"))$("portalDayoffTargetV61491").value="";
@@ -2414,7 +2557,9 @@
         {force:true}
       );
     }
-    updateLeavePartialFieldsV61493();renderEvidence();
+    updateLeavePartialFieldsV61493();
+    if(type==="LEAVE_REQUEST")await loadLeavePreviewV61520({force:true,quiet:true});
+    renderEvidence();
     $("portalRequestModal").classList.remove("hidden");
   }
 
@@ -2488,11 +2633,26 @@
       const leaveError=leaveValidationErrorV61508();
       if(leaveError)return toast(leaveError,"warning");
 
+      const leavePreview=await loadLeavePreviewV61520({force:true});
+      if(!leavePreview||leavePreview.allowed!==true){
+        const issue=(leavePreview?.blockers||[])[0];
+        return toast(issue?leavePreviewIssueTextV61520(issue):"คำขอลายังไม่ผ่านการตรวจสอบจาก Backend","warning");
+      }
+
       detail.leave_type=normalizeLeaveTypeV61508($("portalLeaveTypeV61491")?.value);
       detail.leave_type_label=leaveTypeLabelV61508(detail.leave_type);
       detail.end_date=$("portalLeaveEndV61491")?.value||workDate;
       detail.leave_start_time=$("portalLeaveStartV61491")?.value||null;
       detail.leave_end_time=$("portalLeaveEndTimeV61491")?.value||null;
+      Object.assign(detail,leavePreview.submit_detail_patch||{});
+      detail.leave_preview_snapshot={
+        allowed:true,
+        affected_workday_count:leavePreview.affected_workday_count||0,
+        skipped_nonworkday_count:leavePreview.skipped_nonworkday_count||0,
+        canonical_conflict_ok:leavePreview.canonical_conflict_ok!==false,
+        checked_at:leavePreview.checked_at||null,
+        version:leavePreview.version||"V6.15.20"
+      };
       detail.leave_schedule_notice_only=true;
       detail.leave_hr_system="HR Connect";
       detail.leave_hr_approval_level="หัวหน้างานระดับฝ่าย";
@@ -2529,7 +2689,7 @@
     });
   }
 
-  function bind(){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.authTab)));$("portalActivateForm").addEventListener("submit",activate);$("portalLoginForm").addEventListener("submit",login);$("portalLogoutBtn").addEventListener("click",logout);$("portalRefreshBtn").addEventListener("click",refreshAll);document.addEventListener("click",async e=>{const homeDay=e.target.closest("[data-home-day-v61509]");if(homeDay){await setHomeFocusDateV61509(Number(homeDay.dataset.homeDayV61509||0));return;}const n=e.target.closest("[data-portal-nav]");if(n){navigate(n.dataset.portalNav);return;}const q=e.target.closest("[data-request-quick]");if(q){openRequest(q.dataset.requestQuick,today());return;}const cal=e.target.closest("[data-calendar-date]");if(cal){selectedCalendarDate=cal.dataset.calendarDate;renderCalendar();await loadCalendarPunchDetailV61501(selectedCalendarDate);return;}const syncSchedule=e.target.closest("[data-schedule-sync-v61507]");if(syncSchedule){await syncScheduleV61507({force:true});return;}const retryAtt=e.target.closest("[data-retry-attendance-v61504]");if(retryAtt){attendanceByDateV61503.clear();attendanceLoadErrorV61504="";renderTime();await loadAttendanceRangeV61503({force:true});return;}if(e.target.closest("[data-close-request]")){closeRequest();return;}const ed=e.target.closest("[data-edit-request]");if(ed){const req=requests.find(x=>String(x.request_id)===String(ed.dataset.editRequest));if(req)await openRequest(req.request_type,String(req.work_date).slice(0,10),req);return;}const retryDayoff=e.target.closest("[data-dayoff-retry-v61512]");if(retryDayoff){retryDayoff.disabled=true;const ok=await loadDayoffPickerV61494(iso(dayoffPickerMonth),{quiet:true});if(ok&&!dayoffLoadStateV61512.balanceError)toast("อัปเดตข้อมูลวันหยุดล่าสุดแล้ว","success");return;}const dd=e.target.closest("[data-dayoff-date]");if(dd){selectDayoffDateV61494(dd.dataset.dayoffDate);return;}const dm=e.target.closest("[data-dayoff-month-nav]");if(dm){const delta=Number(dm.dataset.dayoffMonthNav||0);if(dayoffSource&&dayoffRequestModeV61505()==="SWAP_DAYOFF"){toast("วันที่หยุดแทนต้องอยู่ในเดือนเดียวกับวันหยุดเดิม กรุณาเลือกวันหยุดแทนหรือยกเลิกวันเดิมก่อน","info");return;}const candidate=new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth()+delta,1);if(iso(candidate)<dayoffCurrentMonthStartV61506()){toast("Employee Portal ไม่รองรับการขอย้อนหลัง กรุณาแจ้ง Manager","warning");return;}dayoffPickerMonth=candidate;dayoffSource="";dayoffTarget="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));return;}const c=e.target.closest("[data-cancel-request]");if(c){cancelRequest(c.dataset.cancelRequest);return;}const r=e.target.closest("[data-read-notification]");if(r){await markRead(r.dataset.readNotification);const requestId=r.getAttribute("data-notification-request-v61519");if(requestId)await focusPortalRequestV61519(requestId);return;}});$("portalNewRequestBtn").addEventListener("click",()=>openRequest("TIME_ISSUE",today()));$("portalRequestType").addEventListener("change",async()=>{fillSubtype();if($("portalRequestType").value==="TIME_ISSUE"&&$("portalRequestDate").value){await loadCertificationStateV61509($("portalRequestDate").value,{force:true});renderEvidence();}});$("portalRequestSubtype").addEventListener("change",async()=>{updateLeavePartialFieldsV61493();if($("portalRequestType").value==="DAYOFF_SWAP"){dayoffSource="";dayoffTarget="";$("portalRequestDate").value="";$("portalDayoffTargetV61491").value="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));renderDayoffPickerV61494();}renderEvidence();});$("portalRequestDate").addEventListener("change",async()=>{if($("portalRequestType").value==="LEAVE_REQUEST"){if(!$("portalLeaveEndV61491").value||$("portalRequestSubtype").value==="PARTIAL_DAY")$("portalLeaveEndV61491").value=$("portalRequestDate").value;syncLeavePolicyUIV61508();}if($("portalRequestType").value==="TIME_ISSUE"&&$("portalRequestDate").value){await loadCertificationStateV61509($("portalRequestDate").value,{force:true});}renderEvidence();});$("portalLeaveTypeV61491")?.addEventListener("change",()=>{syncLeavePolicyUIV61508();renderEvidence();});$("portalLeaveEndV61491")?.addEventListener("change",()=>{syncLeavePolicyUIV61508();renderEvidence();});$("portalLeaveStartV61491")?.addEventListener("change",()=>{syncLeavePolicyUIV61508();renderEvidence();});$("portalLeaveEndTimeV61491")?.addEventListener("change",()=>{syncLeavePolicyUIV61508();renderEvidence();});$("portalDayoffTargetV61491")?.addEventListener("change",renderEvidence);$("portalRequestForm").addEventListener("submit",submitRequest);document.querySelectorAll("[data-request-filter]").forEach(b=>b.addEventListener("click",()=>{requestFilter=b.dataset.requestFilter;document.querySelectorAll("[data-request-filter]").forEach(x=>x.classList.toggle("active",x===b));renderRequests();}));$("portalPrevMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()-1,1);await loadCalendar();});$("portalNextMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()+1,1);await loadCalendar();});$("portalThisMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date();await loadCalendar();});}
+  function bind(){document.querySelectorAll("[data-auth-tab]").forEach(b=>b.addEventListener("click",()=>setAuthTab(b.dataset.authTab)));$("portalActivateForm").addEventListener("submit",activate);$("portalLoginForm").addEventListener("submit",login);$("portalLogoutBtn").addEventListener("click",logout);$("portalRefreshBtn").addEventListener("click",refreshAll);document.addEventListener("click",async e=>{const homeDay=e.target.closest("[data-home-day-v61509]");if(homeDay){await setHomeFocusDateV61509(Number(homeDay.dataset.homeDayV61509||0));return;}const n=e.target.closest("[data-portal-nav]");if(n){navigate(n.dataset.portalNav);return;}const q=e.target.closest("[data-request-quick]");if(q){openRequest(q.dataset.requestQuick,today());return;}const cal=e.target.closest("[data-calendar-date]");if(cal){selectedCalendarDate=cal.dataset.calendarDate;renderCalendar();await loadCalendarPunchDetailV61501(selectedCalendarDate);return;}const syncSchedule=e.target.closest("[data-schedule-sync-v61507]");if(syncSchedule){await syncScheduleV61507({force:true});return;}const retryAtt=e.target.closest("[data-retry-attendance-v61504]");if(retryAtt){attendanceByDateV61503.clear();attendanceLoadErrorV61504="";renderTime();await loadAttendanceRangeV61503({force:true});return;}if(e.target.closest("[data-close-request]")){closeRequest();return;}const ed=e.target.closest("[data-edit-request]");if(ed){const req=requests.find(x=>String(x.request_id)===String(ed.dataset.editRequest));if(req)await openRequest(req.request_type,String(req.work_date).slice(0,10),req);return;}const retryDayoff=e.target.closest("[data-dayoff-retry-v61512]");if(retryDayoff){retryDayoff.disabled=true;const ok=await loadDayoffPickerV61494(iso(dayoffPickerMonth),{quiet:true});if(ok&&!dayoffLoadStateV61512.balanceError)toast("อัปเดตข้อมูลวันหยุดล่าสุดแล้ว","success");return;}const dd=e.target.closest("[data-dayoff-date]");if(dd){selectDayoffDateV61494(dd.dataset.dayoffDate);return;}const dm=e.target.closest("[data-dayoff-month-nav]");if(dm){const delta=Number(dm.dataset.dayoffMonthNav||0);if(dayoffSource&&dayoffRequestModeV61505()==="SWAP_DAYOFF"){toast("วันที่หยุดแทนต้องอยู่ในเดือนเดียวกับวันหยุดเดิม กรุณาเลือกวันหยุดแทนหรือยกเลิกวันเดิมก่อน","info");return;}const candidate=new Date(dayoffPickerMonth.getFullYear(),dayoffPickerMonth.getMonth()+delta,1);if(iso(candidate)<dayoffCurrentMonthStartV61506()){toast("Employee Portal ไม่รองรับการขอย้อนหลัง กรุณาแจ้ง Manager","warning");return;}dayoffPickerMonth=candidate;dayoffSource="";dayoffTarget="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));return;}const c=e.target.closest("[data-cancel-request]");if(c){cancelRequest(c.dataset.cancelRequest);return;}const r=e.target.closest("[data-read-notification]");if(r){await markRead(r.dataset.readNotification);const requestId=r.getAttribute("data-notification-request-v61519");if(requestId)await focusPortalRequestV61519(requestId);return;}});$("portalNewRequestBtn").addEventListener("click",()=>openRequest("TIME_ISSUE",today()));$("portalRequestType").addEventListener("change",async()=>{fillSubtype();if($("portalRequestType").value==="TIME_ISSUE"&&$("portalRequestDate").value){await loadCertificationStateV61509($("portalRequestDate").value,{force:true});renderEvidence();}if($("portalRequestType").value==="LEAVE_REQUEST")scheduleLeavePreviewV61520();});$("portalRequestSubtype").addEventListener("change",async()=>{updateLeavePartialFieldsV61493();if($("portalRequestType").value==="DAYOFF_SWAP"){dayoffSource="";dayoffTarget="";$("portalRequestDate").value="";$("portalDayoffTargetV61491").value="";await loadDayoffPickerV61494(iso(dayoffPickerMonth));renderDayoffPickerV61494();}if($("portalRequestType").value==="LEAVE_REQUEST")scheduleLeavePreviewV61520();renderEvidence();});$("portalRequestDate").addEventListener("change",async()=>{if($("portalRequestType").value==="LEAVE_REQUEST"){if(!$("portalLeaveEndV61491").value||$("portalRequestSubtype").value==="PARTIAL_DAY")$("portalLeaveEndV61491").value=$("portalRequestDate").value;syncLeavePolicyUIV61508();scheduleLeavePreviewV61520();}if($("portalRequestType").value==="TIME_ISSUE"&&$("portalRequestDate").value){await loadCertificationStateV61509($("portalRequestDate").value,{force:true});}renderEvidence();});$("portalLeaveTypeV61491")?.addEventListener("change",()=>{syncLeavePolicyUIV61508();scheduleLeavePreviewV61520();renderEvidence();});$("portalLeaveEndV61491")?.addEventListener("change",()=>{syncLeavePolicyUIV61508();scheduleLeavePreviewV61520();renderEvidence();});$("portalLeaveStartV61491")?.addEventListener("change",()=>{syncLeavePolicyUIV61508();scheduleLeavePreviewV61520();renderEvidence();});$("portalLeaveEndTimeV61491")?.addEventListener("change",()=>{syncLeavePolicyUIV61508();scheduleLeavePreviewV61520();renderEvidence();});$("portalDayoffTargetV61491")?.addEventListener("change",renderEvidence);$("portalRequestForm").addEventListener("submit",submitRequest);document.querySelectorAll("[data-request-filter]").forEach(b=>b.addEventListener("click",()=>{requestFilter=b.dataset.requestFilter;document.querySelectorAll("[data-request-filter]").forEach(x=>x.classList.toggle("active",x===b));renderRequests();}));$("portalPrevMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()-1,1);await loadCalendar();});$("portalNextMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date(scheduleMonth.getFullYear(),scheduleMonth.getMonth()+1,1);await loadCalendar();});$("portalThisMonth").addEventListener("click",async()=>{selectedCalendarDate="";$("portalCalendarPunchDetail")?.classList.add("hidden");scheduleMonth=new Date();await loadCalendar();});}
   function bindScheduleAutoRefreshV61507(){
     window.addEventListener(
       "focus",
@@ -2589,7 +2749,7 @@
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.19a",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.20a",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }

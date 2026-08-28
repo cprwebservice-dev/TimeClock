@@ -23482,3 +23482,157 @@ html[data-theme="dark"] .manager-dayoff-review-note-v61517 strong{color:#eef4ff;
   border-color:#c6ace9!important;
   background:#f1eaff!important;
 }
+
+/* ==========================================================================
+   V6.15.20 — 4C.2 Manager Leave Review
+   ========================================================================== */
+.manager-leave-review-modal-v61520{
+  z-index:1180;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+.manager-leave-review-dialog-v61520{
+  width:min(940px,96vw);
+  max-height:92vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border:1px solid var(--slate-200);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 30px 80px rgba(11,31,58,.24);
+}
+.manager-leave-review-head-v61520{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  padding:22px 24px 18px;
+  border-bottom:1px solid var(--slate-200);
+  background:#f8fbfd;
+}
+.manager-leave-review-head-v61520>div>span{display:block;margin-bottom:4px;font-size:10px;font-weight:900;letter-spacing:.14em;color:var(--blue-600)}
+.manager-leave-review-head-v61520 h3{margin:0;font-size:23px;color:var(--navy-900)}
+.manager-leave-review-head-v61520 p{margin:4px 0 0;color:var(--slate-500);font-size:12px}
+.manager-leave-review-body-v61520{padding:20px 24px 24px;overflow:auto}
+.manager-leave-review-status-v61520{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:14px 16px;margin-bottom:14px;border:1px solid var(--slate-200);border-radius:14px;
+}
+.manager-leave-review-status-v61520>div span,.manager-leave-review-status-v61520>div strong{display:block}
+.manager-leave-review-status-v61520>div span{font-size:11px;font-weight:900;margin-bottom:3px}
+.manager-leave-review-status-v61520>div strong{font-size:15px}
+.manager-leave-review-status-v61520 small{color:var(--slate-500);text-align:right}
+.manager-leave-review-status-v61520.pass{background:var(--green-100);border-color:#b8e6d2}
+.manager-leave-review-status-v61520.pass span,.manager-leave-review-status-v61520.pass strong{color:var(--green-600)}
+.manager-leave-review-status-v61520.block{background:var(--red-100);border-color:#f5c7ce}
+.manager-leave-review-status-v61520.block span,.manager-leave-review-status-v61520.block strong{color:var(--red-600)}
+.manager-leave-meta-v61520{
+  display:grid;grid-template-columns:1.1fr 1fr .9fr 1.25fr;gap:9px;margin-bottom:14px;
+}
+.manager-leave-meta-v61520>div{padding:11px 12px;border:1px solid var(--slate-200);border-radius:12px;background:var(--slate-50,#f8fafc)}
+.manager-leave-meta-v61520 span,.manager-leave-meta-v61520 strong{display:block}
+.manager-leave-meta-v61520 span{font-size:9px;color:var(--slate-500);margin-bottom:3px}
+.manager-leave-meta-v61520 strong{font-size:11px;line-height:1.45;color:var(--navy-900)}
+.manager-leave-counts-v61520{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0 10px}
+.manager-leave-counts-v61520>div{padding:13px 14px;border:1px solid var(--slate-200);border-radius:13px;background:#fff}
+.manager-leave-counts-v61520 span,.manager-leave-counts-v61520 strong{display:block}
+.manager-leave-counts-v61520 span{font-size:10px;color:var(--slate-500)}
+.manager-leave-counts-v61520 strong{margin-top:3px;font-size:22px;color:var(--blue-700)}
+.manager-leave-days-v61520{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:290px;overflow:auto;padding-right:2px;margin-bottom:12px;
+}
+.manager-leave-days-v61520 article{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;gap:3px 10px;
+  padding:11px 12px;border:1px solid var(--slate-200);border-radius:12px;background:#fff;
+}
+.manager-leave-days-v61520 article.apply{border-left:4px solid var(--green-500,#2f8e68);background:#f7fcf9}
+.manager-leave-days-v61520 article.skip{border-left:4px solid var(--slate-400,#94a3b8);background:var(--slate-50,#f8fafc)}
+.manager-leave-days-v61520 article>div{min-width:0}
+.manager-leave-days-v61520 span,.manager-leave-days-v61520 strong,.manager-leave-days-v61520 small{display:block}
+.manager-leave-days-v61520 span{font-size:9px;color:var(--slate-500)}
+.manager-leave-days-v61520 strong{margin-top:2px;font-size:12px;color:var(--navy-900)}
+.manager-leave-days-v61520 b{align-self:center;font-size:11px;color:var(--blue-700)}
+.manager-leave-days-v61520 small{grid-column:1/-1;font-size:9px;color:var(--slate-500)}
+.manager-leave-partial-v61520{padding:14px;border:1px solid var(--slate-200);border-radius:14px;background:#fff;margin:14px 0}
+.manager-leave-partial-meta-v61520{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.manager-leave-partial-meta-v61520>div{padding:10px 11px;border-radius:11px;background:var(--slate-50,#f8fafc)}
+.manager-leave-partial-meta-v61520 span,.manager-leave-partial-meta-v61520 strong{display:block}
+.manager-leave-partial-meta-v61520 span{font-size:9px;color:var(--slate-500)}
+.manager-leave-partial-meta-v61520 strong{margin-top:3px;font-size:12px;color:var(--navy-900)}
+.manager-leave-timeline-v61520{
+  display:flex;width:100%;min-height:40px;margin:12px 0 8px;overflow:hidden;border:1px solid var(--slate-200);border-radius:11px;background:var(--slate-100,#f1f5f9)
+}
+.manager-leave-timeline-v61520 span{display:flex;align-items:center;justify-content:center;min-width:0;padding:0 5px;font-size:10px;font-weight:900;white-space:nowrap;overflow:hidden}
+.manager-leave-timeline-v61520 .work{background:#e8f4fc;color:#1668a7}
+.manager-leave-timeline-v61520 .leave{background:#f3e9f8;color:#76528d}
+.manager-leave-partial-v61520>small{color:var(--slate-500);font-size:10px}
+.manager-leave-checks-v61520{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.manager-leave-checks-v61520>span{display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:999px;font-size:10px;font-weight:800;border:1px solid var(--slate-200)}
+.manager-leave-checks-v61520>span.pass{background:var(--green-100);color:var(--green-600);border-color:#b8e6d2}
+.manager-leave-checks-v61520>span.block{background:var(--red-100);color:var(--red-600);border-color:#f5c7ce}
+.manager-leave-checks-v61520>span.warn{background:var(--amber-100);color:var(--amber-600);border-color:#f4deb1}
+.manager-leave-checks-v61520>span.info{background:var(--blue-100);color:var(--blue-700);border-color:#cfe1fb}
+.manager-leave-checks-v61520>span i{font-style:normal;font-weight:900}
+.manager-leave-issues-v61520{display:grid;gap:7px;margin:12px 0}
+.manager-leave-issues-v61520>div{display:grid;grid-template-columns:30px 1fr;gap:9px;align-items:start;padding:10px 12px;border-radius:11px}
+.manager-leave-issues-v61520>div>i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#fff;font-style:normal;font-weight:900}
+.manager-leave-issues-v61520>div span strong{display:block;margin-bottom:2px}
+.manager-leave-issues-v61520>div.block{background:var(--red-100);color:#8f2731}
+.manager-leave-issues-v61520>div.warn{background:var(--amber-100);color:#82520b}
+.manager-leave-ok-v61520{display:flex;gap:10px;align-items:center;padding:12px 13px;border-radius:12px;background:var(--green-100);color:var(--green-600);margin:12px 0}
+.manager-leave-ok-v61520>i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#fff;font-style:normal;font-weight:900}
+.manager-leave-ok-v61520 strong,.manager-leave-ok-v61520 small{display:block}
+.manager-leave-ok-v61520 small{margin-top:2px;font-size:10px}
+.manager-leave-step-note-v61520{padding:12px 13px;border-radius:12px;background:var(--slate-100);color:var(--slate-600);margin-top:13px}
+.manager-leave-step-note-v61520.warning{background:var(--amber-100);color:#7b5514}
+.manager-leave-step-note-v61520 strong,.manager-leave-step-note-v61520 span{display:block}
+.manager-leave-step-note-v61520 strong{font-size:11px;color:var(--slate-900);margin-bottom:3px}
+.manager-leave-step-note-v61520.warning strong{color:#73500f}
+.manager-leave-step-note-v61520 span{font-size:10px;line-height:1.55}
+.manager-leave-review-foot-v61520{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;border-top:1px solid var(--slate-200);background:var(--slate-50,#f8fafc)
+}
+.manager-leave-review-foot-v61520>div{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.manager-leave-review-btn-v61520{white-space:nowrap}
+body.theme-dark .manager-leave-review-dialog-v61520,
+html[data-theme="dark"] .manager-leave-review-dialog-v61520{background:#101a2a;border-color:#283850;color:#eef4ff}
+body.theme-dark .manager-leave-review-head-v61520,
+html[data-theme="dark"] .manager-leave-review-head-v61520{background:#111d2f;border-color:#283850}
+body.theme-dark .manager-leave-meta-v61520>div,
+body.theme-dark .manager-leave-counts-v61520>div,
+body.theme-dark .manager-leave-days-v61520 article,
+body.theme-dark .manager-leave-partial-v61520,
+html[data-theme="dark"] .manager-leave-meta-v61520>div,
+html[data-theme="dark"] .manager-leave-counts-v61520>div,
+html[data-theme="dark"] .manager-leave-days-v61520 article,
+html[data-theme="dark"] .manager-leave-partial-v61520{background:#121f31;border-color:#2b3c53}
+body.theme-dark .manager-leave-meta-v61520 strong,
+body.theme-dark .manager-leave-days-v61520 strong,
+body.theme-dark .manager-leave-partial-meta-v61520 strong,
+html[data-theme="dark"] .manager-leave-meta-v61520 strong,
+html[data-theme="dark"] .manager-leave-days-v61520 strong,
+html[data-theme="dark"] .manager-leave-partial-meta-v61520 strong{color:#eef4ff}
+body.theme-dark .manager-leave-partial-meta-v61520>div,
+html[data-theme="dark"] .manager-leave-partial-meta-v61520>div{background:#0d1726}
+body.theme-dark .manager-leave-review-foot-v61520,
+body.theme-dark .manager-leave-step-note-v61520,
+html[data-theme="dark"] .manager-leave-review-foot-v61520,
+html[data-theme="dark"] .manager-leave-step-note-v61520{background:#0d1726;border-color:#283850;color:#b7c2d3}
+body.theme-dark .manager-leave-step-note-v61520 strong,
+html[data-theme="dark"] .manager-leave-step-note-v61520 strong{color:#eef4ff}
+@media(max-width:760px){
+  .manager-leave-review-modal-v61520{padding:10px;align-items:flex-end}
+  .manager-leave-review-dialog-v61520{width:100%;max-height:94vh;border-radius:20px 20px 0 0}
+  .manager-leave-review-head-v61520,.manager-leave-review-body-v61520{padding-left:16px;padding-right:16px}
+  .manager-leave-meta-v61520{grid-template-columns:1fr}
+  .manager-leave-days-v61520{grid-template-columns:1fr}
+  .manager-leave-partial-meta-v61520{grid-template-columns:1fr}
+  .manager-leave-review-status-v61520{align-items:flex-start;flex-direction:column}
+  .manager-leave-review-status-v61520 small{text-align:left}
+  .manager-leave-review-foot-v61520{align-items:stretch;flex-direction:column}
+  .manager-leave-review-foot-v61520>div{display:grid;grid-template-columns:1fr 1fr}
+  .manager-leave-review-foot-v61520>div .btn-success{grid-column:1/-1}
+}
