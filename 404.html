@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.24-20260828a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.25-20260828a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1532,7 +1532,7 @@
   </div>
 </section>
 
-<!-- V6.15.24 4D.1A.1 + 4D.1B Team Category + Membership -->
+<!-- V6.15.25 4D.1C Team Enforcement -->
 <section class="page team-master-page-v61523" id="page-team-master">
   <div class="team-master-hero-v61523">
     <div>
@@ -1549,7 +1549,7 @@
 
   <div class="team-master-foundation-note-v61523 section-gap">
     <i>4D.1A.1 + 4D.1B</i>
-    <div><strong>เพิ่มประเภททีมและ Team Membership แล้ว</strong><span>รถยนต์ต้องเตรียม Team ก่อนเปิด Enforcement • มอเตอร์ไซค์กำหนดทีมได้แต่ไม่บังคับ • กลุ่มไม่ระบุ car_team แสดงเพื่อให้ตรวจข้อมูล</span></div>
+    <div><strong>เปิดใช้ Team Enforcement แบบควบคุมจาก Backend</strong><span>รถยนต์ต้องมี Effective Team ก่อนจัดกะเมื่อเปิดใช้งาน • มอเตอร์ไซค์ไม่บังคับ Team • กลุ่มไม่ระบุ car_team เป็น Warning only</span></div>
   </div>
 
   <div class="team-master-kpis-v61523 section-gap">
@@ -1575,6 +1575,18 @@
     <article><span>มอเตอร์ไซค์ไม่มีทีม</span><strong id="teamReadinessMotorcycleV61524">0</strong><small>จัดกะได้แม้ไม่มีทีม</small></article>
     <article><span>ไม่ระบุ car_team</span><strong id="teamReadinessUnspecifiedV61524">0</strong><small>ควรตรวจ Employee Master</small></article>
   </div>
+
+  <section class="panel team-enforcement-panel-v61525 section-gap">
+    <div class="panel-header">
+      <div><h3>Team Enforcement</h3><p id="teamEnforcementDetailV61525">กำลังตรวจสถานะ...</p></div>
+      <div class="team-enforcement-actions-v61525"><span class="badge badge-gray" id="teamEnforcementStatusV61525">กำลังโหลด</span><button class="btn btn-light btn-sm" id="teamEnforcementRefreshV61525">รีเฟรช</button></div>
+    </div>
+    <div class="panel-body team-enforcement-body-v61525">
+      <div class="team-enforcement-policy-v61525"><div><span>รถยนต์</span><strong>ต้องมี Effective Team</strong></div><div><span>มอเตอร์ไซค์</span><strong>ไม่บังคับ Team</strong></div><div><span>ไม่ระบุ car_team</span><strong>Warning only</strong></div></div>
+      <div class="team-enforcement-go-v61525"><div><span>รถยนต์ยังไม่มีทีม</span><strong><b id="teamEnforcementMissingV61525">0</b> คน</strong><small id="teamEnforcementReadyV61525">กำลังตรวจสอบ</small></div><button class="btn btn-primary hidden" id="teamEnforcementToggleV61525">เปิด Team Enforcement</button></div>
+      <p class="team-enforcement-note-v61525">เมื่อเปิดแล้ว Backend จะตรวจทุก Schedule mutation รวม Calendar, Quick Shift, Bulk, Copy/Paste และ Request Apply ก่อนบันทึกจริง</p>
+    </div>
+  </section>
 
   <div class="team-master-layout-v61523 section-gap">
     <section class="panel team-master-org-panel-v61523">
@@ -2818,6 +2830,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.24-20260828a"></script>
+<script src="./app.js?v=6.15.25-20260828a"></script>
 </body>
 </html>
