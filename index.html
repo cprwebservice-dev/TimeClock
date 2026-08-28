@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.25-20260828a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.26-20260828a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -558,7 +558,7 @@
 <input id="schedulePeriodStart" type="hidden">
 <div class="schedule-filter-group-v61118">
 <div class="field"><label>พื้นที่</label><select class="select" id="scheduleZone"><option value="">ทุกพื้นที่</option></select></div>
-<div class="field"><label>ทีม / หน่วยงาน</label><select class="select" id="scheduleDepartment"><option value="">ทุกทีม / ทุกหน่วยงาน</option></select></div>
+<div class="field"><label>หน่วยงาน</label><select class="select" id="scheduleDepartment"><option value="">ทุกหน่วยงาน</option></select></div><div class="field schedule-operational-team-field-v61526"><label>ทีมช่างเทคนิค</label><select class="select" id="scheduleOperationalTeamV61526"><option value="">ทุกทีมช่างเทคนิค</option></select><small id="scheduleOperationalTeamMetaV61526">กำลังโหลด Team Context...</small></div>
 <div class="field"><label>รูปแบบการทำงาน</label><select class="select" id="schedulePatternFilter"><option value="">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option><option value="UNASSIGNED">ยังไม่ได้กำหนด</option></select></div>
 <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="scheduleSearch" placeholder="รหัสหรือชื่อ"/></div>
 </div>
@@ -606,14 +606,14 @@
 <small id="scheduleViewHintText">ดูภาพรวมกะมาตรฐาน รายการที่หัวหน้างานปรับ และจุดที่ต้องตรวจสอบรายทีม แล้วคลิกดูรายคนต่อได้</small>
 </div>
 <div class="field schedule-team-focus-field">
-<label>โฟกัสทีม (ตัวกรองเสริม)</label>
-<select class="select" id="scheduleTeamFocus"><option value="">ทุกทีม / ทุกหน่วยงาน</option></select>
+<label>โฟกัสหน่วยงาน (ตัวกรองเสริม)</label>
+<select class="select" id="scheduleTeamFocus"><option value="">ทุกหน่วยงาน</option></select>
 </div>
 </div>
 </div>
 <div class="panel section-gap schedule-workspace" id="scheduleTeamWorkspace" data-schedule-view-panel="TEAM">
 <div class="panel-header schedule-panel-header schedule-panel-header-team">
-<div><h3 id="scheduleTeamWorkspaceTitleV6146">ตารางกะสรุปรายหน่วยงาน</h3><p id="scheduleTeamWorkspaceSubtitleV6146">สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล</p></div>
+<div><h3 id="scheduleTeamWorkspaceTitleV6146">ตารางกะสรุปรายทีมช่างเทคนิค</h3><p id="scheduleTeamWorkspaceSubtitleV6146">สรุปตาม Effective Team ในช่วงประมาณ 15 วันที่เลือก • แยกทีมรถยนต์ มอเตอร์ไซค์ และกลุ่มยังไม่ได้กำหนดทีม</p></div>
 <div class="schedule-legend" id="scheduleTeamLegendV6146"><span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span></div>
 </div>
 
@@ -1532,7 +1532,7 @@
   </div>
 </section>
 
-<!-- V6.15.25 4D.1C Team Enforcement -->
+<!-- V6.15.26 4D.1D Team Schedule View + 4D.1C Team Enforcement -->
 <section class="page team-master-page-v61523" id="page-team-master">
   <div class="team-master-hero-v61523">
     <div>
@@ -2830,6 +2830,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.25-20260828a"></script>
+<script src="./app.js?v=6.15.26-20260828a"></script>
 </body>
 </html>

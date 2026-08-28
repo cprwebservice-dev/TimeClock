@@ -1,12 +1,16 @@
-TimeClock Enterprise V6.15.25 — GitHub Deploy Slim
+TimeClock Enterprise V6.15.26 — GitHub Deploy Slim
+4D.1D Team Schedule View
 
-ชุดนี้มีเฉพาะไฟล์ Web App ที่ใช้ Deploy บน GitHub Pages
-ไม่รวม SQL / README รุ่นเก่า / AUDIT รุ่นเก่า เพื่อลดจำนวนไฟล์
+อัปโหลดไฟล์ในชุด GitHub Deploy Slim ทับไฟล์เดิมใน Repository ได้โดยตรง
+จำนวนไฟล์ Web App ต่ำกว่า 100 ไฟล์
 
-วิธีใช้:
-1) แตก ZIP
-2) Upload ไฟล์ทั้งหมดในโฟลเดอร์นี้ขึ้น repository root
-3) Commit changes
-4) Hard refresh หน้า Web App
+เพิ่มใน V6.15.26:
+- ปฏิทิน TEAM/TIME ใช้ Effective Team ตามวันที่
+- Filter ทีมช่างเทคนิคแยกจาก Filter หน่วยงาน
+- ทีมรถยนต์/มอเตอร์ไซค์แสดง Team Code + Team Name
+- รถยนต์ไม่มี Team แสดงกลุ่ม "ยังไม่ได้กำหนดทีมรถยนต์"
+- มอเตอร์ไซค์ไม่มี Team แสดง "ไม่บังคับทีม"
+- ไม่ระบุ car_team แสดงกลุ่มเตือนแยก
+- กด รายคน จาก Team View แล้วกรองพนักงานตาม Team เดิม
 
-Database migration ให้ใช้ SQL V6.15.25 ที่แยกส่งต่างหาก
+ต้องรัน SQL V6.15.26 แยกก่อน/พร้อม Deploy Web App

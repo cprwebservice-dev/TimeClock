@@ -23799,3 +23799,15 @@ body.dark-mode .team-master-create-note-v61523,
 
 /* V6.15.25 — Team Enforcement */
 .team-enforcement-panel-v61525{overflow:hidden}.team-enforcement-actions-v61525{display:flex;gap:8px;align-items:center}.team-enforcement-body-v61525{display:grid;gap:14px}.team-enforcement-policy-v61525{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.team-enforcement-policy-v61525>div{border:1px solid var(--border,#dbe3ee);border-radius:12px;padding:12px;display:grid;gap:4px;background:var(--surface-soft,#f8fafc)}.team-enforcement-policy-v61525 span{font-size:12px;opacity:.72}.team-enforcement-policy-v61525 strong{font-size:14px}.team-enforcement-go-v61525{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--border,#dbe3ee);border-radius:14px;padding:14px 16px}.team-enforcement-go-v61525>div{display:grid;gap:3px}.team-enforcement-go-v61525 b{font-size:22px}.team-enforcement-go-v61525 small{opacity:.7}.team-enforcement-note-v61525{margin:0;font-size:12px;opacity:.72}@media(max-width:760px){.team-enforcement-policy-v61525{grid-template-columns:1fr}.team-enforcement-go-v61525{align-items:stretch;flex-direction:column}}
+
+/* V6.15.26 — 4D.1D Team Schedule View */
+.schedule-operational-team-field-v61526{min-width:210px}
+.schedule-operational-team-field-v61526 small{display:block;margin-top:4px;color:var(--muted,#64748b);font-size:11px;line-height:1.25}
+.team-unit-card-v61526 .team-unit-text-v61121{gap:3px}
+.team-scope-chip-v61526{display:inline-flex;align-items:center;width:max-content;max-width:100%;padding:2px 7px;border-radius:999px;background:rgba(37,99,235,.09);color:#1d4ed8;font-size:10px;font-weight:700;line-height:1.35}
+.team-scope-chip-v61526.warning{background:rgba(245,158,11,.12);color:#b45309}
+.team-scope-chip-v61526.optional{background:rgba(14,165,233,.10);color:#0369a1}
+[data-theme="dark"] .team-scope-chip-v61526{background:rgba(96,165,250,.16);color:#bfdbfe}
+[data-theme="dark"] .team-scope-chip-v61526.warning{background:rgba(251,191,36,.16);color:#fde68a}
+[data-theme="dark"] .team-scope-chip-v61526.optional{background:rgba(56,189,248,.15);color:#bae6fd}
+@media(max-width:900px){.schedule-operational-team-field-v61526{min-width:180px}}

@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.25";
+window.__TIME_CLOCK_BUILD__ = "V6.15.26";
 document.documentElement.dataset.timeClockBuild = "6.15.25";
 
 
@@ -3530,6 +3530,7 @@ window.tcIsDayShiftCode = value =>
               || ""
             )
       ).trim();
+      const operationalTeamFilterV61526 = String(val("scheduleOperationalTeamV61526") || '').trim();
 
       return (rows || []).filter(row => {
         const pattern = scheduleRowPattern(row);
@@ -3538,6 +3539,10 @@ window.tcIsDayShiftCode = value =>
           departmentFilter
           && scheduleUnitLabel(row) !== departmentFilter
         ) return false;
+        if (operationalTeamFilterV61526) {
+          const teamGroupV61526=scheduleOperationalTeamGroupV61526(row);
+          if (teamGroupV61526.key !== operationalTeamFilterV61526) return false;
+        }
         if (
           term
           && !`${row.emp_code || ""} ${row.full_name || ""}`
@@ -5689,6 +5694,14 @@ window.tcIsDayShiftCode = value =>
         const scheduleRowsForEnrichmentV6125 = state.schedule;
         Promise.resolve().then(async () => {
           try {
+            await enrichScheduleTeamContextV61526(scheduleRowsForEnrichmentV6125,period);
+            if (managerEnrichTokenV6125 === state.scheduleManagerEnrichTokenV6125) renderSchedule();
+          } catch (teamContextErrorV61526) {
+            console.warn('Deferred Team Context V6.15.26:',teamContextErrorV61526);
+          }
+        });
+        Promise.resolve().then(async () => {
+          try {
             await Promise.all([
               enrichScheduleWorkPlanMetaV6118(period, scheduleRowsForEnrichmentV6125),
               window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(scheduleRowsForEnrichmentV6125)
@@ -5896,6 +5909,112 @@ window.tcIsDayShiftCode = value =>
         : "TEAM";
     }
 
+    // V6.15.26 — 4D.1D effective Team context.
+    // Read-only enrichment; Team Enforcement remains authoritative in V6.15.25.
+    const scheduleTeamContextStateV61526 = {
+      key:'', loading:false, error:null, loadedAt:0
+    };
+
+    function scheduleTeamContextMetaV61526(row) {
+      return row?._team_context_v61526 || null;
+    }
+
+    function scheduleOperationalTeamGroupV61526(row) {
+      const meta = scheduleTeamContextMetaV61526(row);
+      if (meta?.team_filter_key) {
+        return {
+          key:String(meta.team_filter_key),
+          label:String(meta.team_display_label || meta.team_name || meta.team_code || 'ไม่ระบุทีม'),
+          code:String(meta.team_code || ''),
+          name:String(meta.team_name || ''),
+          orgCode:String(meta.team_org_code || meta.employee_org_code || ''),
+          category:String(meta.team_category || meta.car_category || 'UNSPECIFIED').toUpperCase(),
+          state:String(meta.assignment_state || 'TEAM').toUpperCase(),
+          enforcementRequired:meta.enforcement_required === true,
+          enforcementSatisfied:meta.enforcement_satisfied !== false,
+          legacy:false
+        };
+      }
+      const unit = scheduleUnitLabel(row);
+      return {
+        key:`LEGACY:${unit}`, label:unit, code:'', name:unit, orgCode:'',
+        category:'UNSPECIFIED', state:'LEGACY', enforcementRequired:false,
+        enforcementSatisfied:true, legacy:true
+      };
+    }
+
+    function fillScheduleOperationalTeamOptionsV61526(rows = state.schedule) {
+      const select = $("scheduleOperationalTeamV61526");
+      if (!select) return;
+      const old = String(select.value || '');
+      const groups = new Map();
+      (rows || []).forEach(row => {
+        const g = scheduleOperationalTeamGroupV61526(row);
+        if (g.legacy) return;
+        if (!groups.has(g.key)) groups.set(g.key,g);
+      });
+      const sorted = [...groups.values()].sort((a,b) => {
+        const aw = a.state==='CAR_UNASSIGNED' ? 8 : a.state==='MOTORCYCLE_OPTIONAL' ? 9 : a.state==='UNSPECIFIED' ? 10 : 1;
+        const bw = b.state==='CAR_UNASSIGNED' ? 8 : b.state==='MOTORCYCLE_OPTIONAL' ? 9 : b.state==='UNSPECIFIED' ? 10 : 1;
+        return aw-bw || a.label.localeCompare(b.label,'th');
+      });
+      const mappedOptionsV61526 = sorted.map(g => {
+        const suffix = g.state==='CAR_UNASSIGNED' ? ' ⚠' : g.state==='MOTORCYCLE_OPTIONAL' ? ' • optional' : g.state==='UNSPECIFIED' ? ' ⚠' : '';
+        return `<option value="${safe(g.key)}">${safe(g.label + suffix)}</option>`;
+      }).join('');
+      const keepPendingV61526 = old && !sorted.some(g => g.key===old) && scheduleTeamContextStateV61526.loading;
+      select.innerHTML = '<option value="">ทุกทีมช่างเทคนิค</option>' + (keepPendingV61526 ? `<option value="${safe(old)}">กำลังจับคู่ทีม...</option>` : '') + mappedOptionsV61526;
+      if ([...select.options].some(o => o.value === old)) select.value = old;
+      const note = $("scheduleOperationalTeamMetaV61526");
+      if (note) {
+        const unassigned = sorted.filter(g => g.state==='CAR_UNASSIGNED').length;
+        note.textContent = scheduleTeamContextStateV61526.loading
+          ? 'กำลังจับคู่ Effective Team...'
+          : scheduleTeamContextStateV61526.error
+            ? 'โหลด Team Context ไม่สำเร็จ • ตารางยังแสดงตามหน่วยงานเดิม'
+            : `${sorted.filter(g=>g.state==='TEAM').length} ทีม • ${unassigned} กลุ่มรถยนต์ยังไม่มีทีม`;
+      }
+    }
+
+    async function enrichScheduleTeamContextV61526(rows, period) {
+      const list = Array.isArray(rows) ? rows : [];
+      const empCodes = [...new Set(list.map(r => String(r?.emp_code || '').trim()).filter(Boolean))];
+      if (!empCodes.length || !state.client || !period?.startDate || !period?.endDate) {
+        fillScheduleOperationalTeamOptionsV61526(list);
+        return;
+      }
+      const key = `${period.startDate}|${period.endDate}|${empCodes.join(',')}`;
+      scheduleTeamContextStateV61526.key=key;
+      scheduleTeamContextStateV61526.loading=true;
+      scheduleTeamContextStateV61526.error=null;
+      fillScheduleOperationalTeamOptionsV61526(list);
+      try {
+        const all=[];
+        const chunkSize=250;
+        for (let i=0;i<empCodes.length;i+=chunkSize) {
+          const chunk=empCodes.slice(i,i+chunkSize);
+          const {data,error}=await state.client.rpc('ta_get_schedule_team_context_v61526',{
+            p_emp_codes:chunk,p_start_date:period.startDate,p_end_date:period.endDate
+          });
+          if (error) throw error;
+          all.push(...(Array.isArray(data)?data:[]));
+        }
+        if (scheduleTeamContextStateV61526.key!==key) return;
+        const map=new Map(all.map(x=>[`${String(x.emp_code||'').trim()}|${String(x.work_date||'').slice(0,10)}`,x]));
+        list.forEach(row=>{
+          const k=`${String(row?.emp_code||'').trim()}|${String(row?.work_date||'').slice(0,10)}`;
+          row._team_context_v61526=map.get(k)||null;
+        });
+        scheduleTeamContextStateV61526.loadedAt=Date.now();
+      } catch(error) {
+        scheduleTeamContextStateV61526.error=error;
+        console.warn('Schedule Team Context V6.15.26:',error);
+      } finally {
+        scheduleTeamContextStateV61526.loading=false;
+        fillScheduleOperationalTeamOptionsV61526(list);
+      }
+    }
+
     function schedulePersonLoadMatchesV61149(period = null) {
       if (scheduleCurrentView() !== "PERSON") return true;
 
@@ -5950,14 +6069,14 @@ window.tcIsDayShiftCode = value =>
         title.textContent = mode === "TIME"
           ? "สถิติการมาทำงานรายทีม"
           : mode === "TEAM"
-            ? "สรุปข้อมูลรายหน่วยงาน"
+            ? "สรุปข้อมูลรายทีมช่างเทคนิค"
             : "ปฏิทินจัดกะรายบุคคล";
       }
       if (text) {
         text.textContent = mode === "TIME"
           ? "ดูจำนวนพนักงานปกติ ขาดงาน มาสาย กลับก่อน และลารายทีม/รายวัน • คลิก Label เพื่อดูรายชื่อและเวลาเข้า–ออก"
           : mode === "TEAM"
-            ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานทำงานอัตโนมัติ • เมื่อหัวหน้างานปรับกะและกดบันทึก ระบบมีผลทันที"
+            ? "ดูภาพรวมตาม Effective Team • แยกทีมรถยนต์/มอเตอร์ไซค์และกลุ่มยังไม่ได้กำหนดทีมตามวันที่"
             : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงเฉพาะไอคอน • วางเมาส์บนไอคอนเพื่อดูรหัสกะ เวลา และรายละเอียด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
       }
 
@@ -5966,10 +6085,10 @@ window.tcIsDayShiftCode = value =>
       const teamLegendV6146 = $("scheduleTeamLegendV6146");
       const teamTipV6146 = $("scheduleTeamTipV6146");
       const teamAlertLabelV6146 = $("scheduleTeamAlertLabelV6146");
-      if (teamTitleV6146) teamTitleV6146.textContent = mode === "TIME" ? "สรุปเวลาทำงานรายหน่วยงาน" : "ตารางกะสรุปรายหน่วยงาน";
+      if (teamTitleV6146) teamTitleV6146.textContent = mode === "TIME" ? "สรุปเวลาทำงานรายทีมช่างเทคนิค" : "ตารางกะสรุปรายทีมช่างเทคนิค";
       if (teamSubtitleV6146) teamSubtitleV6146.textContent = mode === "TIME"
         ? "สรุปสถานะการมาทำงานรายทีมในช่วงประมาณ 15 วันที่เลือก • คลิกแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
-        : "สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล";
+        : "สรุปตาม Effective Team ในช่วงประมาณ 15 วันที่เลือก • รวมกลุ่มรถยนต์ยังไม่มีทีม มอเตอร์ไซค์ไม่บังคับทีม และไม่ระบุ car_team";
       if (teamLegendV6146) teamLegendV6146.innerHTML = mode === "TIME"
         ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-off-v61411">หยุด</span><span class="badge time-legend-leave-v6149">ลา</span>'
         : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
@@ -6790,7 +6909,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     const scheduleTeamDrawerState = {
-      unit: '',
+      unit: '', groupKey:'',
       date: '',
       filter: 'ALL',
       rows: [],
@@ -7924,7 +8043,7 @@ window.tcIsDayShiftCode = value =>
           p_end_date: date,
           p_area: null,
           p_sub_area: null,
-          p_department: unit || null,
+          p_department: null,
           p_emp_codes: empCodes,
           p_attendance_statuses: null,
           p_schedule_statuses: null,
@@ -7934,7 +8053,7 @@ window.tcIsDayShiftCode = value =>
           p_start_date: date,
           p_end_date: date,
           p_zone: null,
-          p_department: unit || null,
+          p_department: null,
           p_emp_codes: empCodes,
           p_attendance_statuses: null,
           p_schedule_statuses: null,
@@ -7944,7 +8063,7 @@ window.tcIsDayShiftCode = value =>
           p_start_date: date,
           p_end_date: date,
           p_zone: null,
-          p_department: unit || null,
+          p_department: null,
           p_emp_codes: empCodes,
           p_attendance_statuses: null,
           p_schedule_statuses: null,
@@ -8120,19 +8239,21 @@ window.tcIsDayShiftCode = value =>
       }));
     }
 
-    async function openScheduleTeamDrawer(unit, date) {
+    async function openScheduleTeamDrawer(groupKey, date, displayLabel = null) {
       const drawer = $('scheduleTeamDrawer');
       const backdrop = $('scheduleTeamDrawerBackdrop');
       if (!drawer || !backdrop) return;
 
-      scheduleTeamDrawerState.unit = unit;
+      const label=String(displayLabel || groupKey || 'ทีมช่างเทคนิค');
+      scheduleTeamDrawerState.unit = label;
+      scheduleTeamDrawerState.groupKey = String(groupKey || '');
       scheduleTeamDrawerState.date = date;
       scheduleTeamDrawerState.filter = 'ALL';
       scheduleTeamDrawerState.loading = true;
       drawer.dataset.periodDate = String(date || '').slice(0,10);
 
-      const baseRows = scheduleFilteredRows(state.schedule).filter(row => scheduleUnitLabel(row) === unit && String(row.work_date || '').slice(0,10) === date);
-      $('scheduleTeamDrawerTitle').textContent = unit;
+      const baseRows = scheduleFilteredRows(state.schedule).filter(row => scheduleOperationalTeamGroupV61526(row).key === scheduleTeamDrawerState.groupKey && String(row.work_date || '').slice(0,10) === date);
+      $('scheduleTeamDrawerTitle').textContent = label;
       $('scheduleTeamDrawerSubtitle').textContent = `${formatDate(date)} • ${formatNumber(new Set(baseRows.map(row=>row.emp_code)).size)} คน`;
       $('scheduleTeamDrawerList').innerHTML = `<div class="team-drawer-loading"><span class="spinner"></span><strong>กำลังโหลดเวลาลงงาน...</strong></div>`;
 
@@ -8142,7 +8263,7 @@ window.tcIsDayShiftCode = value =>
       document.body.classList.add('schedule-drawer-open');
 
       try {
-        scheduleTeamDrawerState.rows = await fetchScheduleTeamDayAttendance(unit,date,baseRows);
+        scheduleTeamDrawerState.rows = await fetchScheduleTeamDayAttendance(null,date,baseRows);
       } catch (error) {
         console.error('Team drawer:', error);
         scheduleTeamDrawerState.rows = baseRows;
@@ -9983,14 +10104,16 @@ window.tcIsDayShiftCode = value =>
       const totalEmployees = new Set();
 
       for (const row of sourceRows) {
-        const unit = scheduleUnitLabel(row);
+        const teamCtxV61526 = scheduleOperationalTeamGroupV61526(row);
+        const unit = teamCtxV61526.label;
+        const teamKeyV61526 = teamCtxV61526.key;
         const date = String(row.work_date || '').slice(0, 10);
         const shiftMeta = scheduleResolveShiftMeta(row);
         totalEmployees.add(String(row.emp_code || ''));
 
-        if (!units.has(unit)) {
-          units.set(unit, {
-            unit,
+        if (!units.has(teamKeyV61526)) {
+          units.set(teamKeyV61526, {
+            unit, filterKey:teamKeyV61526, teamContext:teamCtxV61526,
             employees: new Set(),
             managers: new Map(),
             managerNames: new Map(),
@@ -9998,7 +10121,7 @@ window.tcIsDayShiftCode = value =>
           });
         }
 
-        const group = units.get(unit);
+        const group = units.get(teamKeyV61526);
         group.employees.add(String(row.emp_code || ''));
         const managerCodeV61121 = scheduleManagerCodeV61121(row);
         if (managerCodeV61121) {
@@ -10102,7 +10225,7 @@ window.tcIsDayShiftCode = value =>
         return `<th class="schedule-team-head ${dow===0||dow===6?'weekend':''} ${meta.holiday?'public-holiday-head':''}"><small>${safe(thaiDaysLong[dow])}</small><strong>${safe(String(d.getDate()))}</strong><span>${safe(thaiMonths[d.getMonth()])}</span></th>`;
       }).join('');
 
-      let html = `<table class="schedule-team-table"><thead><tr><th class="schedule-team-unit-head">หน่วยงาน</th>${headDays}</tr></thead><tbody>`;
+      let html = `<table class="schedule-team-table"><thead><tr><th class="schedule-team-unit-head">ทีมช่างเทคนิค</th>${headDays}</tr></thead><tbody>`;
 
       if (!teams.length) {
         html += `<tr><td colspan="${period.dates.length + 1}" class="table-empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
@@ -10110,7 +10233,15 @@ window.tcIsDayShiftCode = value =>
 
       for (const team of teams) {
         const managerLabelV61121 = scheduleTeamManagerLabelV61121(team);
-        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabelV61121)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
+        const teamCtxV61526=team.teamContext||{};
+        const teamPolicyV61526=teamCtxV61526.state==='CAR_UNASSIGNED'
+          ? '<span class="team-scope-chip-v61526 warning">⚠ ต้องจัดทีม</span>'
+          : teamCtxV61526.state==='MOTORCYCLE_OPTIONAL'
+            ? '<span class="team-scope-chip-v61526 optional">มอเตอร์ไซค์ • ไม่บังคับ</span>'
+            : teamCtxV61526.state==='UNSPECIFIED'
+              ? '<span class="team-scope-chip-v61526 warning">⚠ ไม่ระบุ car_team</span>'
+              : `<span class="team-scope-chip-v61526">${safe(teamCtxV61526.code||teamCtxV61526.category||'ทีม')}</span>`;
+        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115 team-unit-card-v61526"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small>${teamPolicyV61526}<small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabelV61121)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open-key-v61526="${safe(team.filterKey||'')}" data-team-open-label-v61526="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
 
         for (const date of period.dates) {
           const day = team.days.get(date);
@@ -10139,7 +10270,7 @@ window.tcIsDayShiftCode = value =>
             : '';
           const specialModeBadgesV61459 = '';
 
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดกะ">
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-key-v61526="${safe(team.filterKey||'')}" data-team-day-label-v61526="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดกะ">
             ${changeBadge ? `<div class="team-day-top-v61115 team-day-top-manual-v61117">${changeBadge}</div>` : ''}
             <div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 ${[day.day, day.night, day.split, offTotal].filter(value => value > 0).length <= 2 ? 'is-compact' : ''}">
               ${visibleShiftChips || '<span class="team-day-extra-empty">ไม่มีกะทำงาน</span>'}
@@ -10374,13 +10505,15 @@ window.tcIsDayShiftCode = value =>
       const teamFilter = String(val('scheduleTeamFocus') || '').trim();
       const totalEmployees = new Set();
       for (const row of rows || []) {
-        const unit = scheduleUnitLabel(row);
-        if (teamFilter && unit !== teamFilter) continue;
+        const teamCtxV61526=scheduleOperationalTeamGroupV61526(row);
+        const unit=teamCtxV61526.label;
+        const teamKeyV61526=teamCtxV61526.key;
+        if (teamFilter && scheduleUnitLabel(row) !== teamFilter) continue;
         const date = String(row?.work_date || '').slice(0,10);
         if (!period.dates.includes(date)) continue;
         const emp = String(row?.emp_code || '').trim();
-        if (!teams.has(unit)) teams.set(unit,{unit,employees:new Set(),days:new Map(),managerNames:new Map()});
-        const team = teams.get(unit); team.employees.add(emp); totalEmployees.add(emp);
+        if (!teams.has(teamKeyV61526)) teams.set(teamKeyV61526,{unit,filterKey:teamKeyV61526,teamContext:teamCtxV61526,employees:new Set(),days:new Map(),managerNames:new Map()});
+        const team = teams.get(teamKeyV61526); team.employees.add(emp); totalEmployees.add(emp);
         const names = Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : [];
         names.forEach(name => { const n=String(name||'').trim(); if(n) team.managerNames.set(n,(team.managerNames.get(n)||0)+1); });
         if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0});
@@ -10412,11 +10545,19 @@ window.tcIsDayShiftCode = value =>
       const thaiDaysLong=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสฯ','ศุกร์','เสาร์'];
       const thaiMonths=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
       const headDays=period.dates.map(date=>{const d=parseLocalISO(date);const dow=d.getDay();const meta=dateMeta.get(date)||{};return `<th class="schedule-team-head ${dow===0||dow===6?'weekend':''} ${meta.holiday?'public-holiday-head':''}"><small>${safe(thaiDaysLong[dow])}</small><strong>${safe(String(d.getDate()))}</strong><span>${safe(thaiMonths[d.getMonth()])}</span></th>`}).join('');
-      let html=`<table class="schedule-team-table schedule-time-table-v6146"><thead><tr><th class="schedule-team-unit-head">หน่วยงาน</th>${headDays}</tr></thead><tbody>`;
+      let html=`<table class="schedule-team-table schedule-time-table-v6146"><thead><tr><th class="schedule-team-unit-head">ทีมช่างเทคนิค</th>${headDays}</tr></thead><tbody>`;
       if (!sorted.length) html += `<tr><td colspan="${period.dates.length+1}" class="table-empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
       for (const team of sorted) {
         const managerLabel = scheduleTeamManagerLabelV61121(team);
-        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
+        const teamCtxV61526=team.teamContext||{};
+        const teamPolicyV61526=teamCtxV61526.state==='CAR_UNASSIGNED'
+          ? '<span class="team-scope-chip-v61526 warning">⚠ ต้องจัดทีม</span>'
+          : teamCtxV61526.state==='MOTORCYCLE_OPTIONAL'
+            ? '<span class="team-scope-chip-v61526 optional">มอเตอร์ไซค์ • ไม่บังคับ</span>'
+            : teamCtxV61526.state==='UNSPECIFIED'
+              ? '<span class="team-scope-chip-v61526 warning">⚠ ไม่ระบุ car_team</span>'
+              : `<span class="team-scope-chip-v61526">${safe(teamCtxV61526.code||teamCtxV61526.category||'ทีม')}</span>`;
+        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115 team-unit-card-v61526"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small>${teamPolicyV61526}<small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open-key-v61526="${safe(team.filterKey||'')}" data-team-open-label-v61526="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
         for (const date of period.dates) {
           const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0};
           const loading=scheduleTimeAttendanceStateV6146.loading && scheduleTimeAttendanceStateV6146.key===key;
@@ -10440,7 +10581,7 @@ window.tcIsDayShiftCode = value =>
               : '<span class="time-view-empty-v6147">—</span>';
           }
           const timeSpecialBadgesV61459 = '';
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}</button></td>`;
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''}" data-team-day-key-v61526="${safe(team.filterKey||'')}" data-team-day-label-v61526="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}</button></td>`;
         }
         html+='</tr>';
       }
@@ -10494,6 +10635,7 @@ window.tcIsDayShiftCode = value =>
       }
 
       fillScheduleTeamFocusOptions(periodRows);
+      fillScheduleOperationalTeamOptionsV61526(periodRows);
       if (scheduleCurrentView() === 'TIME') {
         renderScheduleTimeViewV6146(rows, period, dateMeta);
       } else {
@@ -13222,6 +13364,7 @@ window.tcIsDayShiftCode = value =>
       });
       $("schedulePatternFilter")?.addEventListener("change", renderSchedule);
       $("scheduleTeamFocus")?.addEventListener("change", renderSchedule);
+      $("scheduleOperationalTeamV61526")?.addEventListener("change", renderSchedule);
       $("scheduleViewSwitch")?.addEventListener("click", async event => {
         const button = event.target.closest('[data-schedule-view]');
         if (!button) return;
@@ -13245,20 +13388,20 @@ window.tcIsDayShiftCode = value =>
         }
       });
       $("scheduleTeamWrap")?.addEventListener("click", async event => {
-        const dayTrigger = event.target.closest('[data-team-day-unit][data-team-day-date]');
+        const dayTrigger = event.target.closest('[data-team-day-key-v61526][data-team-day-date]');
         if (dayTrigger) {
           openScheduleTeamDrawer(
-            String(dayTrigger.dataset.teamDayUnit || ''),
-            String(dayTrigger.dataset.teamDayDate || '')
+            String(dayTrigger.dataset.teamDayKeyV61526 || ''),
+            String(dayTrigger.dataset.teamDayDate || ''),
+            String(dayTrigger.dataset.teamDayLabelV61526 || '')
           );
           return;
         }
 
-        const trigger = event.target.closest('[data-team-open]');
+        const trigger = event.target.closest('[data-team-open-key-v61526]');
         if (!trigger) return;
-        const team = String(trigger.dataset.teamOpen || '');
-        setVal('scheduleDepartment', team);
-        setVal('scheduleTeamFocus', team);
+        const teamKey = String(trigger.dataset.teamOpenKeyV61526 || '');
+        setVal('scheduleOperationalTeamV61526', teamKey);
         setScheduleView('PERSON');
         await loadSchedule();
       });
@@ -32662,11 +32805,11 @@ ${names}${extra}
 
 
 /* ============================================================================
-   V6.15.25 — 4D.1C Team Enforcement
+   V6.15.26 — 4D.1D Team Schedule View + 4D.1C Team Enforcement
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.25';
+  const VERSION='6.15.26';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const state={orgs:[],teams:[],audit:[],members:[],selected:new Set(),activeTeam:null,enforcement:null,loaded:false,loading:false};
