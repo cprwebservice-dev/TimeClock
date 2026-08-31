@@ -1,4 +1,4 @@
-TimeClock Enterprise V6.15.29 — Scoped Team Enforcement Rollout
+TimeClock Enterprise V6.15.29 FIX1 — Modern Team Workspace UX
 
 Frontend + backend rollout redesign on top of V6.15.28 FIX3.
 
@@ -21,3 +21,10 @@ Deploy
 4) Hard Refresh the web app.
 
 SQL files are distributed separately and are not included in this GitHub web package.
+
+
+V6.15.29 FIX1
+- Frontend UX/UI only; no additional SQL required after V6.15.29 backend is installed.
+- Team Workspace compact hierarchy + quick actions.
+- Team Master table simplified.
+- Enforcement Rollout shows action/scope clearly, prevents selecting already-enabled teams for ENABLE, and uses contextual confirmation labels.

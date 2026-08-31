@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.29-scoped-enforcement-20260831a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix1-modern-team-20260831b" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1538,7 +1538,7 @@
     <div class="team-workspace-title-v61528">
       <span class="eyebrow">4D · TEAM WORKSPACE</span>
       <h2>ทีมช่างเทคนิค</h2>
-      <p>ระบบจะแนะนำลำดับงานให้ Manager ตั้งแต่กำหนดรูปแบบการปฏิบัติงาน → สร้างทีม → จัดสมาชิก → ตรวจความพร้อม → เปิดใช้งาน</p>
+      <p>จัดรูปแบบพนักงาน สร้างทีม จัดสมาชิก และเปิดใช้งานจากพื้นที่เดียว โดยระบบบอกงานถัดไปให้อัตโนมัติ</p>
     </div>
     <div class="team-workspace-hero-actions-v61528">
       <div class="field team-workspace-org-filter-v61528"><label>หน่วยงาน</label><select class="select" id="teamMasterOrgFilterV61523"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
@@ -1563,6 +1563,13 @@
     <button class="btn btn-primary" id="teamNextActionBtnV61528">ดูรายการ</button>
   </section>
 
+  <div class="team-quick-actions-v61529f1" aria-label="ทางลัดทีมช่างเทคนิค">
+    <button type="button" id="teamQuickClassifyV61529F1"><span>01</span><div><strong>จัดรูปแบบพนักงาน</strong><small>รถยนต์ · มอเตอร์ไซค์ · สนับสนุน</small></div></button>
+    <button type="button" id="teamQuickCreateV61529F1"><span>02</span><div><strong>สร้างทีม</strong><small>ระบบสร้างชื่อและ Team Code ให้</small></div></button>
+    <button type="button" id="teamQuickPeopleV61529F1"><span>03</span><div><strong>จัดสมาชิก / ดูทีม</strong><small>เพิ่ม ย้าย หรือนำสมาชิกออก</small></div></button>
+    <button type="button" id="teamQuickEnforcementV61529F1"><span>04</span><div><strong>Team Enforcement</strong><small>ตรวจความพร้อมและ Rollout</small></div></button>
+  </div>
+
   <div class="team-workspace-kpis-v61528 section-gap">
     <button type="button" data-team-kpi-action-v61528="UNCLASSIFIED"><span>รอกำหนดรูปแบบ</span><strong id="teamKpiUnclassifiedV61528">0</strong><small>คน</small></button>
     <button type="button" data-team-kpi-action-v61528="CAR"><span>รถยนต์ยังไม่มีทีม</span><strong id="teamKpiCarMissingV61528">0</strong><small>คน · ทีมละ 3–5</small></button>
@@ -1580,7 +1587,7 @@
 
   <div data-team-workspace-pane-v61528="OVERVIEW">
     <section class="panel team-operational-cards-panel-v61528">
-      <div class="panel-header"><div><h3>1 · กำหนดรูปแบบการปฏิบัติงาน</h3><p>Manager เป็นเจ้าของข้อมูลส่วนนี้ ไม่ใช้ car_team จาก Employee Master เป็นค่าเริ่มต้น</p></div><button class="btn btn-primary" id="teamOperationalProfileOpenV61527">กำหนดรูปแบบพนักงาน</button></div>
+      <div class="panel-header"><div><h3>รูปแบบการปฏิบัติงาน</h3><p>Manager กำหนดประเภทงานให้พนักงานก่อนจัด Team และตารางกะ</p></div><button class="btn btn-primary" id="teamOperationalProfileOpenV61527">กำหนดรูปแบบพนักงาน</button></div>
       <div class="panel-body team-operational-type-cards-v61528">
         <article class="car"><div class="team-type-icon-v61528">🚗</div><div><h4>รถยนต์</h4><p>งานภาคสนามด้วยรถยนต์</p><strong>ต้องอยู่ทีม · 3–5 คน/ทีม</strong></div></article>
         <article class="motorcycle"><div class="team-type-icon-v61528">🏍️</div><div><h4>มอเตอร์ไซค์</h4><p>งานภาคสนามด้วยมอเตอร์ไซค์</p><strong>ไม่บังคับ Team ก่อนจัดกะ</strong></div></article>
@@ -1590,7 +1597,7 @@
 
     <section class="panel team-enforcement-panel-v61525 section-gap team-enforcement-rollout-panel-v61529">
       <div class="panel-header">
-        <div><h3>5 · Team Enforcement Rollout</h3><p id="teamEnforcementDetailV61525">เปิดใช้งานแบบเป็นช่วงได้ตามทีม / หน่วยงาน / ทั้งระบบ</p></div>
+        <div><h3>Team Enforcement</h3><p id="teamEnforcementDetailV61525">เปิดใช้แบบ Pilot รายทีม แล้วค่อยขยายเมื่อแต่ละ Scope พร้อม</p></div>
         <div class="team-enforcement-actions-v61525"><span class="badge badge-gray" id="teamEnforcementStatusV61525">กำลังโหลด</span><button class="btn btn-light btn-sm" id="teamEnforcementRefreshV61525">รีเฟรช</button></div>
       </div>
       <div class="panel-body team-enforcement-body-v61525">
@@ -1616,8 +1623,8 @@
 
   <div class="hidden" data-team-workspace-pane-v61528="PEOPLE">
     <div class="team-people-toolbar-v61528">
-      <div><h3>พนักงานและทีม</h3><p id="teamMasterMetaV61523">เลือกหน่วยงานด้านบน แล้วจัดประเภท/สมาชิกจากพื้นที่เดียว</p></div>
-      <div class="team-people-actions-v61528"><button class="btn btn-primary" id="teamOperationalProfileOpenPeopleV61528">กำหนดรูปแบบพนักงาน</button><button class="btn btn-light" id="teamMasterCreatePeopleV61528">＋ สร้างทีม</button></div>
+      <div><h3>พนักงานและทีม</h3><p id="teamMasterMetaV61523">ค้นหา Team แล้วจัดสมาชิกหรือเปลี่ยนรูปแบบพนักงานได้จากหน้านี้</p></div>
+      <div class="team-people-actions-v61528"><button class="btn btn-primary" id="teamOperationalProfileOpenPeopleV61528">จัดรูปแบบพนักงาน</button><button class="btn btn-light" id="teamMasterCreatePeopleV61528">＋ สร้างทีม</button></div>
     </div>
     <div class="panel section-gap">
       <div class="panel-body"><div class="team-master-toolbar-v61523 team-master-toolbar-modern-v61528">
@@ -1628,8 +1635,8 @@
       </div></div>
     </div>
     <section class="panel section-gap">
-      <div class="panel-header"><div><h3>Team Master</h3><p>Team Code สร้างอัตโนมัติ · รถยนต์ 3–5 คน · มอเตอร์ไซค์ Optional · สนับสนุนขั้นต่ำ 1 คน</p></div><span class="team-master-auto-chip-v61523">AUTO NAME / CODE</span></div>
-      <div class="panel-body"><div class="table-wrap"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>รูปแบบ</th><th>หน่วยงาน</th><th>สมาชิก / Capacity</th><th>สถานะ</th><th>Enforcement</th><th>สร้างเมื่อ</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="8" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
+      <div class="panel-header"><div><h3>รายการทีม</h3><p>รถยนต์ 3–5 คน · มอเตอร์ไซค์ไม่บังคับทีม · สนับสนุนขั้นต่ำ 1 คน</p></div><span class="team-master-auto-chip-v61523">AUTO CODE</span></div>
+      <div class="panel-body"><div class="table-wrap"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>รูปแบบ</th><th>หน่วยงาน</th><th>สมาชิก</th><th>สถานะ</th><th>Enforcement</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="7" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div></div>
     </section>
   </div>
 
@@ -1799,26 +1806,27 @@
 <div class="modal-backdrop hidden" id="teamEnforcementRolloutModalV61529" aria-hidden="true">
   <div class="modal team-enforcement-rollout-modal-v61529" role="dialog" aria-modal="true">
     <div class="modal-header">
-      <div><span class="eyebrow">SCOPED TEAM ENFORCEMENT · EFFECTIVE DATE</span><h3>จัดการ Team Enforcement Rollout</h3><p>เริ่ม Pilot รายทีมก่อน แล้วขยายเป็นรายหน่วยงานหรือทั้งระบบเมื่อพร้อม</p></div>
+      <div><span class="eyebrow">TEAM ENFORCEMENT</span><h3>เปิด / ปิด Team Enforcement</h3><p>เลือกขอบเขตและวันที่มีผล ระบบจะแสดงเฉพาะรายการที่ดำเนินการได้</p></div>
       <button class="btn btn-light btn-icon" data-team-enforcement-close-v61529 aria-label="ปิด">×</button>
     </div>
     <div class="modal-body">
       <div class="team-enforcement-rollout-config-v61529">
-        <div class="field"><label>วันที่มีผล</label><input class="input" type="date" id="teamEnforcementEffectiveV61529"/></div>
+        <div class="field"><label>มีผลตั้งแต่</label><input class="input" type="date" id="teamEnforcementEffectiveV61529"/></div>
         <div class="field"><label>หน่วยงาน</label><select class="select" id="teamEnforcementOrgV61529"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
-        <div class="field"><label>การดำเนินการ</label><select class="select" id="teamEnforcementActionV61529"><option value="ENABLE">เปิดใช้งาน</option><option value="DISABLE">ปิดใช้งาน</option></select></div>
+        <div class="field"><label>ต้องการ</label><select class="select" id="teamEnforcementActionV61529"><option value="ENABLE">เปิดใช้งาน</option><option value="DISABLE">ปิดใช้งาน</option></select></div>
       </div>
       <div class="team-enforcement-scope-tabs-v61529" role="tablist">
-        <button type="button" class="active" data-enforcement-scope-v61529="TEAM">ทีมที่เลือก</button>
+        <button type="button" class="active" data-enforcement-scope-v61529="TEAM">รายทีม</button>
         <button type="button" data-enforcement-scope-v61529="ORG">ทั้งหน่วยงาน</button>
         <button type="button" data-enforcement-scope-v61529="GLOBAL">ทั้งระบบ</button>
       </div>
+      <div class="team-enforcement-action-summary-v61529f1" id="teamEnforcementActionSummaryV61529F1">เลือกขอบเขตและรายการที่ต้องการดำเนินการ</div>
 
       <div data-enforcement-scope-pane-v61529="TEAM">
         <div class="team-enforcement-team-toolbar-v61529">
-          <div class="field"><label>แสดงทีม</label><select class="select" id="teamEnforcementTeamStatusV61529"><option value="ALL">ทุกสถานะ</option><option value="READY">พร้อมเปิด</option><option value="ENABLED">เปิดใช้งานแล้ว</option><option value="NOT_READY">ยังไม่พร้อม</option></select></div>
-          <button type="button" class="btn btn-light btn-sm" id="teamEnforcementSelectReadyV61529">เลือกทีมพร้อมทั้งหมด</button>
-          <div class="team-enforcement-selection-v61529">เลือกแล้ว <strong id="teamEnforcementSelectedCountV61529">0</strong> ทีม</div>
+          <div class="field"><label>แสดง</label><select class="select" id="teamEnforcementTeamStatusV61529"><option value="ALL">ทุกสถานะ</option><option value="READY">พร้อมเปิด</option><option value="ENABLED">เปิดใช้งานแล้ว</option><option value="NOT_READY">ยังไม่พร้อม</option></select></div>
+          <button type="button" class="btn btn-light btn-sm" id="teamEnforcementSelectReadyV61529">เลือกทีมที่พร้อมทั้งหมด</button>
+          <div class="team-enforcement-selection-v61529">เลือก <strong id="teamEnforcementSelectedCountV61529">0</strong> ทีม</div>
         </div>
         <div class="team-enforcement-team-list-v61529" id="teamEnforcementTeamListV61529"><div class="fc-empty">กำลังโหลด...</div></div>
       </div>
@@ -1834,7 +1842,7 @@
       <div class="field team-enforcement-note-v61529"><label id="teamEnforcementNoteLabelV61529">หมายเหตุ</label><textarea class="input" id="teamEnforcementNoteV61529" rows="2" maxlength="500" placeholder="ไม่บังคับสำหรับการเปิดใช้งาน"></textarea><small id="teamEnforcementNoteHintV61529">การปิดใช้งานต้องระบุเหตุผล และระบบจะเก็บประวัติไว้ทั้งหมด</small></div>
       <div class="team-enforcement-effective-note-v61529"><span>ℹ</span><p><strong>Enforcement อ้างอิงวันที่ของกะ</strong><small>เช่น มีผล 01/09/2026 → กะวันที่ 31/08 ยังใช้ Policy เดิม ส่วนกะตั้งแต่ 01/09 เป็นต้นไปใช้ Enforcement ตาม Scope</small></p></div>
     </div>
-    <div class="modal-footer team-enforcement-rollout-footer-v61529"><div id="teamEnforcementFooterStatusV61529">เลือกรายการที่ต้องการดำเนินการ</div><button class="btn btn-light" data-team-enforcement-close-v61529>ปิด</button><button class="btn btn-primary" id="teamEnforcementApplyV61529" disabled>เปิดใช้งาน</button></div>
+    <div class="modal-footer team-enforcement-rollout-footer-v61529"><div id="teamEnforcementFooterStatusV61529">กรุณาเลือกรายการ</div><button class="btn btn-light" data-team-enforcement-close-v61529>ยกเลิก</button><button class="btn btn-primary" id="teamEnforcementApplyV61529" disabled>ยืนยัน</button></div>
   </div>
 </div>
 
@@ -3030,6 +3038,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-scoped-enforcement-20260831a"></script>
+<script src="./app.js?v=6.15.29-fix1-modern-team-20260831b"></script>
 </body>
 </html>
