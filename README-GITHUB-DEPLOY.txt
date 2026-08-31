@@ -1,11 +1,12 @@
-TimeClock Enterprise V6.15.27 FIX1
-4D.1E Operational Profile Ownership — Fresh Manager Classification
+Time-Clock Enterprise V6.15.28 — Team Workspace UX Redesign
 
-GitHub FULL deploy package.
-- HR Employee upload no longer seeds Operational Profile from legacy employees.car_team.
-- Existing legacy car_team remains audit/legacy data only.
-- Manager classifies technicians into CAR / MOTORCYCLE and manages team membership.
-- Runtime source of truth is Operational Profile + Team Membership.
+GitHub deploy package (runtime only).
+- Guided Team Workflow 1–5
+- Operational types: CAR / MOTORCYCLE / SUPPORT
+- CAR capacity: 3–5 members
+- Manager-owned Operational Profile (no legacy employees.car_team seed)
+- HR Admin immediate change inbox / acknowledgement
+- Team Schedule context supports SUPPORT
 
-Upload all files in this folder to the repository root.
-Run the V6.15.27 FIX1 SQL migration separately in Supabase before use.
+Deploy all 13 files to repository root, then Hard Refresh.
+Run the separate V6.15.28 SQL migration before using the new Team Workspace.
