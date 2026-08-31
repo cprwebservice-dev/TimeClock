@@ -1,12 +1,11 @@
-TimeClock Enterprise V6.15.27 — 4D.1E Operational Profile Ownership
+TimeClock Enterprise V6.15.27 FIX1
+4D.1E Operational Profile Ownership — Fresh Manager Classification
 
-GitHub Deploy Slim
-- Main Web App: Manager-owned CAR / MOTORCYCLE Operational Profile
-- Existing Employee.car_team is migration-only; future HR uploads do not own this field
-- CAR assignment requires Effective Team in same transaction
-- MOTORCYCLE may be assigned without Team
-- UNCLASSIFIED employees stay in Manager work queue
-- Team Enforcement uses Operational Profile as Source of Truth
+GitHub FULL deploy package.
+- HR Employee upload no longer seeds Operational Profile from legacy employees.car_team.
+- Existing legacy car_team remains audit/legacy data only.
+- Manager classifies technicians into CAR / MOTORCYCLE and manages team membership.
+- Runtime source of truth is Operational Profile + Team Membership.
 
-Deploy: upload these files to the existing GitHub Pages repository root, replacing files with the same names.
-Run the V6.15.27 SQL migration in Supabase before using the new Manager classification UI.
+Upload all files in this folder to the repository root.
+Run the V6.15.27 FIX1 SQL migration separately in Supabase before use.

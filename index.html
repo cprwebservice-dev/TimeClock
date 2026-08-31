@@ -1532,7 +1532,7 @@
   </div>
 </section>
 
-<!-- V6.15.27 4D.1E Operational Profile Ownership -->
+<!-- V6.15.27 FIX1 4D.1E Operational Profile Ownership — Fresh Manager Classification -->
 <section class="page team-master-page-v61523" id="page-team-master">
   <div class="team-master-hero-v61523">
     <div>
@@ -1552,7 +1552,7 @@
 
   <div class="team-master-foundation-note-v61523 section-gap">
     <i>4D.1E</i>
-    <div><strong>Operational Profile เป็นข้อมูลที่ Manager ดูแล</strong><span>HR Upload Employee ไม่ต้องส่ง car_team อีกต่อไป • รถยนต์ต้องมี Effective Team • มอเตอร์ไซค์ไม่บังคับ Team • พนักงานใหม่จะอยู่ในกลุ่มรอ Manager กำหนดประเภท</span></div>
+    <div><strong>Operational Profile เป็นข้อมูลที่ Manager ดูแล</strong><span>HR Upload Employee ไม่ต้องส่ง car_team • ระบบไม่ใช้ค่า car_team เดิมเป็นค่าเริ่มต้น • Manager ต้องกำหนดประเภทใหม่เอง • รถยนต์ต้องมี Effective Team • มอเตอร์ไซค์ไม่บังคับ Team</span></div>
   </div>
 
   <div class="team-master-kpis-v61523 section-gap">
@@ -1581,11 +1581,11 @@
 
   <section class="panel operational-profile-panel-v61527 section-gap">
     <div class="panel-header">
-      <div><h3>ประเภทการปฏิบัติงานของช่าง</h3><p>Source of Truth ใหม่ • Manager เป็นผู้กำหนด รถยนต์ / มอเตอร์ไซค์ ตามวันที่มีผล</p></div>
+      <div><h3>ประเภทการปฏิบัติงานของช่าง</h3><p>Source of Truth ใหม่ • ไม่ Seed จาก Employee.car_team • Manager เป็นผู้กำหนด รถยนต์ / มอเตอร์ไซค์ ตามวันที่มีผล</p></div>
       <button class="btn btn-primary" id="teamOperationalProfileOpenV61527">จัดประเภทพนักงาน</button>
     </div>
     <div class="panel-body operational-profile-overview-v61527">
-      <article><span>รอ Manager กำหนด</span><strong id="teamOperationalUnclassifiedV61527">0</strong><small>พนักงานใหม่หรือข้อมูลเดิมที่ไม่ทราบประเภท</small></article>
+      <article><span>รอ Manager กำหนด</span><strong id="teamOperationalUnclassifiedV61527">0</strong><small>เริ่มใหม่จาก Manager • ไม่ใช้ car_team เดิมใน Employee</small></article>
       <article><span>รถยนต์</span><strong>ต้องเลือก Team</strong><small>บันทึก Operational Profile + Team Membership ในขั้นตอนเดียว</small></article>
       <article><span>มอเตอร์ไซค์</span><strong>Team เป็นทางเลือก</strong><small>Manager เลือกทีมได้ หรือไม่ผูกทีมก็จัดกะได้</small></article>
     </div>
@@ -1654,7 +1654,7 @@
 </div>
 
 
-<!-- V6.15.27 Manager-owned Operational Profile modal -->
+<!-- V6.15.27 FIX1 Manager-owned Operational Profile modal -->
 <div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true">
   <div class="modal operational-profile-modal-v61527" role="dialog" aria-modal="true">
     <div class="modal-header"><div><span class="eyebrow">4D.1E · OPERATIONAL PROFILE</span><h3>กำหนดประเภทการปฏิบัติงาน</h3><p id="teamOperationalProfileMetaV61527">Manager กำหนด CAR / MOTORCYCLE และ Team ตามวันที่มีผล</p></div><button class="btn btn-light btn-icon" data-operational-profile-close-v61527>×</button></div>
@@ -1668,7 +1668,7 @@
       <div class="operational-profile-team-box-v61527"><div class="field"><label>Effective Team</label><select class="select" id="teamOperationalProfileTeamV61527"></select><small id="teamOperationalProfileTeamHintV61527">รถยนต์ต้องเลือกทีม</small></div></div>
       <div class="operational-profile-search-v61527"><div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamOperationalProfileSearchV61527" placeholder="รหัส / ชื่อ / ตำแหน่ง"/></div><button class="btn btn-light" id="teamOperationalProfileSearchBtnV61527">ค้นหา</button><strong id="teamOperationalProfileSelectedV61527">เลือกแล้ว 0 คน</strong></div>
       <div class="team-membership-list-v61524" id="teamOperationalProfileListV61527"><div class="fc-empty">กำลังโหลด...</div></div>
-      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamOperationalProfileNoteV61527" rows="2" maxlength="500" placeholder="เช่น เปลี่ยนประเภทการปฏิบัติงาน / จัดกลุ่มเริ่มต้น"></textarea></div>
+      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamOperationalProfileNoteV61527" rows="2" maxlength="500" placeholder="เช่น จัดประเภทใหม่โดย Manager / เปลี่ยนประเภทการปฏิบัติงาน"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-light" data-operational-profile-close-v61527>ยกเลิก</button><button class="btn btn-primary" id="teamOperationalProfileSaveV61527">บันทึกประเภทและทีม</button></div>
   </div>
