@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.28-fix2-20260831c" rel="stylesheet"/>
+<link href="./app.css?v=6.15.28-fix3-20260831d" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1716,7 +1716,7 @@
   </div>
 </div>
 
-<!-- V6.15.28 FIX2 Operational Profile — Dual-pane Transfer Workspace -->
+<!-- V6.15.28 FIX3 Operational Profile — Reason-required UX -->
 <div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true">
   <div class="modal operational-profile-modal-v61527 operational-profile-dual-modal-v61528f2" role="dialog" aria-modal="true">
     <div class="modal-header">
@@ -1757,8 +1757,10 @@
           </div>
           <div class="operational-target-config-v61528f2">
             <div class="field"><label>Team หลังมีผล</label><select class="select" id="teamOperationalProfileTeamV61527"></select><small id="teamOperationalProfileTeamHintV61527">รถยนต์และสนับสนุนต้องเลือก Team</small></div>
+            <div class="operational-reason-alert-v61528f3 hidden" id="teamOperationalReasonAlertV61528F3"></div>
+            <div class="field operational-reason-box-v61528f2 optional" id="teamOperationalReasonBoxV61528F2"><label>เหตุผลการเปลี่ยน / หมายเหตุ <span id="teamOperationalReasonRequiredV61528"></span></label><textarea class="input" id="teamOperationalProfileNoteV61527" rows="2" maxlength="500" placeholder="หมายเหตุเพิ่มเติม (ไม่บังคับ)"></textarea><small id="teamOperationalReasonHintV61528F2">กำหนดครั้งแรกไม่บังคับเหตุผล • เมื่อเป็นการเปลี่ยนประเภทเดิม HR Admin จะได้รับแจ้งทันที</small></div>
           </div>
-          <div class="operational-target-guide-v61528f2"><span id="teamOperationalTargetTypeV61528F2">🚗 รถยนต์</span><strong id="teamOperationalProfileSelectedV61527">รอบันทึก 0 คน</strong></div>
+          <div class="operational-target-guide-v61528f2"><span id="teamOperationalTargetTypeV61528F2">🚗 รถยนต์</span><strong id="teamOperationalProfileSelectedV61527">ยังไม่มีรายการ</strong></div>
           <div class="team-transfer-list-v61528f1 target-list" id="teamOperationalProfileTargetListV61528F2"><div class="fc-empty">ยังไม่มีรายการรอบันทึก</div></div>
         </section>
       </div>
@@ -1770,7 +1772,6 @@
       </div>
 
       <div class="team-impact-preview-v61528" id="teamOperationalImpactV61528"><div class="team-impact-placeholder-v61528">เลือกพนักงานทางซ้าย แล้วกด “ย้ายเข้า →” เพื่อดูผลก่อนบันทึก</div></div>
-      <div class="field operational-reason-box-v61528f2" id="teamOperationalReasonBoxV61528F2"><label>เหตุผล / หมายเหตุ <span id="teamOperationalReasonRequiredV61528"></span></label><textarea class="input" id="teamOperationalProfileNoteV61527" rows="2" maxlength="500" placeholder="กรณีเปลี่ยนรูปแบบเดิม กรุณาระบุเหตุผลเพื่อแจ้ง HR Admin"></textarea><small id="teamOperationalReasonHintV61528F2">กำหนดครั้งแรกไม่บังคับเหตุผล • เมื่อเป็นการเปลี่ยนประเภทเดิม HR Admin จะได้รับแจ้งทันที</small></div>
     </div>
     <div class="modal-footer operational-profile-sticky-footer-v61528f2"><div class="operational-profile-footer-status-v61528f2" id="teamOperationalFooterStatusV61528F2">ยังไม่มีรายการรอบันทึก</div><button class="btn btn-light" data-operational-profile-close-v61527>ยกเลิก</button><button class="btn btn-primary" id="teamOperationalProfileSaveV61527" disabled>บันทึกการเปลี่ยนแปลง</button></div>
   </div>
@@ -2968,6 +2969,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.28-fix2-20260831c"></script>
+<script src="./app.js?v=6.15.28-fix3-20260831d"></script>
 </body>
 </html>
