@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.28-20260831a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.28-fix1-20260831b" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1657,19 +1657,62 @@
   </div>
 </div>
 
-<!-- V6.15.28 Team Membership modal -->
+<!-- V6.15.28 FIX1 Team Membership — Dual-pane Transfer Workspace -->
 <div class="modal-backdrop hidden" id="teamMembershipModalV61524" aria-hidden="true">
-  <div class="modal team-membership-modal-v61524" role="dialog" aria-modal="true">
-    <div class="modal-header"><div><span class="eyebrow">TEAM MEMBERSHIP</span><h3 id="teamMembershipTitleV61524">กำหนดสมาชิกทีม</h3><p id="teamMembershipMetaV61524">ระบบตรวจ Capacity ก่อนบันทึก</p></div><button class="btn btn-light btn-icon" data-team-membership-close-v61524>×</button></div>
-    <div class="modal-body">
-      <div class="team-membership-summary-v61524"><div><span>รูปแบบทีม</span><strong id="teamMembershipCategoryV61524">-</strong></div><div><span>วันที่มีผล</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/></div><div><span>เลือกแล้ว</span><strong id="teamMembershipSelectedV61524">0 คน</strong></div></div>
-      <div class="team-membership-warning-v61524" id="teamMembershipPolicyV61524"></div>
-      <div class="team-impact-preview-v61528" id="teamMembershipImpactV61528"><div class="team-impact-placeholder-v61528">เลือกสมาชิกเพื่อดูผลก่อนบันทึก</div></div>
-      <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamMembershipSearchV61524" placeholder="รหัส / ชื่อ / หน่วยงาน / รูปแบบการปฏิบัติงาน"/></div>
-      <div class="team-membership-list-v61524" id="teamMembershipListV61524"><div class="fc-empty">กำลังโหลด...</div></div>
-      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMembershipNoteV61524" rows="2" maxlength="500" placeholder="ไม่บังคับ"></textarea></div>
+  <div class="modal team-membership-modal-v61524 team-membership-dual-modal-v61528f1" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div><span class="eyebrow">TEAM MEMBERSHIP · DUAL-PANE</span><h3 id="teamMembershipTitleV61524">จัดสมาชิกทีม</h3><p id="teamMembershipMetaV61524">เลือกพนักงานจากด้านซ้าย แล้วย้ายเข้าสู่ทีมด้านขวา</p></div>
+      <button class="btn btn-light btn-icon" data-team-membership-close-v61524>×</button>
     </div>
-    <div class="modal-footer"><button class="btn btn-light" data-team-membership-close-v61524>ยกเลิก</button><button class="btn btn-primary" id="teamMembershipSaveV61524" disabled>บันทึกสมาชิกทีม</button></div>
+    <div class="modal-body">
+      <div class="team-membership-summary-v61524 team-membership-summary-modern-v61528f1">
+        <div><span>รูปแบบทีม</span><strong id="teamMembershipCategoryV61524">-</strong></div>
+        <div><span>วันที่มีผล</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/></div>
+        <div><span>สมาชิกปัจจุบัน</span><strong id="teamMembershipCurrentV61528F1">0 คน</strong></div>
+        <div><span>หลังบันทึก</span><strong id="teamMembershipSelectedV61524">0 คน</strong><small id="teamMembershipDeltaV61528F1">ยังไม่มีการเปลี่ยนแปลง</small></div>
+      </div>
+      <div class="team-membership-warning-v61524 team-membership-policy-modern-v61528f1" id="teamMembershipPolicyV61524"></div>
+
+      <div class="team-membership-dual-v61528f1">
+        <section class="team-transfer-pane-v61528f1 source">
+          <div class="team-transfer-pane-head-v61528f1">
+            <div><span>ต้นทาง</span><h4>พนักงานที่เลือกได้</h4><small id="teamMembershipSourceCountV61528F1">0 คน</small></div>
+            <button type="button" class="btn btn-light btn-sm" id="teamMembershipSelectAllLeftV61528F1">เลือกทั้งหมด</button>
+          </div>
+          <div class="team-transfer-tools-v61528f1">
+            <input class="input" id="teamMembershipSearchV61524" placeholder="ค้นหารหัส / ชื่อ / ตำแหน่ง / ทีมปัจจุบัน"/>
+            <select class="input" id="teamMembershipSourceFilterV61528F1">
+              <option value="ALL">ทั้งหมด</option>
+              <option value="NO_TEAM">ยังไม่มีทีม</option>
+              <option value="OTHER_TEAM">อยู่ทีมอื่น</option>
+              <option value="REMOVED">นำออกจากทีมนี้</option>
+            </select>
+          </div>
+          <div class="team-transfer-list-v61528f1" id="teamMembershipListV61524"><div class="fc-empty">กำลังโหลด...</div></div>
+        </section>
+
+        <div class="team-transfer-arrows-v61528f1" aria-label="ย้ายสมาชิก">
+          <button type="button" class="btn btn-primary" id="teamMembershipMoveRightV61528F1" disabled><span>ย้ายเข้า</span><b>→</b></button>
+          <button type="button" class="btn btn-light" id="teamMembershipMoveLeftV61528F1" disabled><b>←</b><span>นำออก</span></button>
+        </div>
+
+        <section class="team-transfer-pane-v61528f1 target">
+          <div class="team-transfer-pane-head-v61528f1">
+            <div><span>ปลายทาง</span><h4>สมาชิกทีมหลังบันทึก</h4><small id="teamMembershipTargetCountV61528F1">0 คน</small></div>
+            <div class="team-capacity-pill-v61528f1" id="teamMembershipCapacityV61528F1">0 คน</div>
+          </div>
+          <div class="team-target-guide-v61528f1"><span>สมาชิกเดิม</span><span>เพิ่มใหม่</span><span>ย้ายจากทีมอื่น</span></div>
+          <div class="team-transfer-list-v61528f1 target-list" id="teamMembershipTargetListV61528F1"><div class="fc-empty">ยังไม่มีสมาชิกในทีม</div></div>
+        </section>
+      </div>
+
+      <div class="team-membership-change-strip-v61528f1" id="teamMembershipChangeStripV61528F1">
+        <div><span>เพิ่มเข้า</span><strong>0</strong><small>คน</small></div><div><span>นำออก</span><strong>0</strong><small>คน</small></div><div><span>สถานะ</span><strong>รอตรวจ</strong><small>Impact Preview</small></div>
+      </div>
+      <div class="team-impact-preview-v61528" id="teamMembershipImpactV61528"><div class="team-impact-placeholder-v61528">ย้ายสมาชิกเพื่อดูผลกระทบก่อนบันทึก</div></div>
+      <div class="field team-membership-note-v61528f1"><label>หมายเหตุ</label><textarea class="input" id="teamMembershipNoteV61524" rows="2" maxlength="500" placeholder="ไม่บังคับ เช่น ปรับโครงสร้างทีม / ย้ายพื้นที่รับผิดชอบ"></textarea></div>
+    </div>
+    <div class="modal-footer team-membership-sticky-footer-v61528f1"><div class="team-membership-footer-status-v61528f1" id="teamMembershipFooterStatusV61528F1">ยังไม่มีการเปลี่ยนแปลง</div><button class="btn btn-light" data-team-membership-close-v61524>ยกเลิก</button><button class="btn btn-primary" id="teamMembershipSaveV61524" disabled>บันทึกสมาชิกทีม</button></div>
   </div>
 </div>
 
@@ -2889,6 +2932,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.28-20260831a"></script>
+<script src="./app.js?v=6.15.28-fix1-20260831b"></script>
 </body>
 </html>
