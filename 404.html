@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.29-fix4-readable-team-20260902c" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix5-split-operational-20260902a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1740,21 +1740,34 @@
   </div>
 </div>
 
-<!-- V6.15.28 FIX3 Operational Profile — Reason-required UX -->
+<!-- V6.15.29 FIX5 Operational Profile — Split Assign / Change Mode -->
 <div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true">
-  <div class="modal operational-profile-modal-v61527 operational-profile-dual-modal-v61528f2" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div><span class="eyebrow">MANAGER-OWNED OPERATIONAL PROFILE</span><h3>กำหนด / เปลี่ยนรูปแบบการปฏิบัติงาน</h3><p id="teamOperationalProfileMetaV61527">เลือกต้นทาง → ย้ายรายการไปปลายทาง → ตรวจผล → บันทึก</p></div>
+  <div class="modal operational-profile-modal-v61527 operational-profile-dual-modal-v61528f2 operational-profile-split-modal-v61529f5" role="dialog" aria-modal="true">
+    <div class="modal-header operational-profile-header-v61529f5">
+      <div><span class="eyebrow">OPERATIONAL PROFILE · MANAGER OWNED</span><h3 id="teamOperationalProfileTitleV61529F5">กำหนดรูปแบบการปฏิบัติงาน</h3><p id="teamOperationalProfileMetaV61527">เลือกพนักงานที่ยังไม่ได้กำหนด → เลือกรูปแบบและ Team → ตรวจผล → บันทึก</p></div>
       <button class="btn btn-light btn-icon" data-operational-profile-close-v61527 aria-label="ปิด">×</button>
     </div>
     <div class="modal-body">
-      <div class="operational-transfer-summary-v61528f2">
+      <div class="operational-mode-switch-v61529f5" role="tablist" aria-label="ประเภทการดำเนินการ">
+        <button type="button" class="active" data-operational-mode-v61529f5="ASSIGN" role="tab" aria-selected="true"><span class="operational-mode-icon-v61529f5">＋</span><div><strong>กำหนดรูปแบบ</strong><small>สำหรับพนักงานที่ยังไม่มีรูปแบบ</small></div></button>
+        <button type="button" data-operational-mode-v61529f5="CHANGE" role="tab" aria-selected="false"><span class="operational-mode-icon-v61529f5">⇄</span><div><strong>เปลี่ยนรูปแบบ</strong><small>เปลี่ยนจากรูปแบบเดิมไปอีกประเภท</small></div></button>
+      </div>
+
+      <div class="operational-mode-guide-v61529f5" id="teamOperationalModeGuideV61529F5">
+        <div><strong>กำหนดครั้งแรก</strong><span>แสดงเฉพาะพนักงานที่ “รอกำหนดรูปแบบ” และไม่ต้องระบุเหตุผล</span></div>
+        <span class="operational-mode-guide-chip-v61529f5">ขั้นตอนแนะนำ</span>
+      </div>
+
+      <div class="operational-transfer-summary-v61528f2 operational-transfer-summary-split-v61529f5">
         <div class="field"><label>หน่วยงาน</label><select class="select" id="teamOperationalProfileOrgV61527"></select></div>
         <div class="field"><label>วันที่มีผล</label><input class="input" type="date" id="teamOperationalProfileEffectiveV61527"/></div>
-        <div class="field"><label>จากกลุ่ม</label><select class="select" id="teamOperationalProfileShowV61527"><option value="UNCLASSIFIED">⚠ รอกำหนดรูปแบบ</option><option value="CAR">🚗 รถยนต์</option><option value="MOTORCYCLE">🏍️ มอเตอร์ไซค์</option><option value="SUPPORT">🧰 สนับสนุน</option><option value="ALL">ทั้งหมด</option></select></div>
+        <div class="field operational-source-fixed-v61529f5" id="teamOperationalSourceFixedV61529F5"><label>พนักงานกลุ่ม</label><div class="operational-source-fixed-value-v61529f5">⚠️ <strong>รอกำหนดรูปแบบ</strong></div></div>
+        <div class="field operational-source-select-v61529f5 hidden" id="teamOperationalSourceSelectV61529F5"><label>จากรูปแบบ</label><select class="select" id="teamOperationalProfileShowV61527"><option value="UNCLASSIFIED">⚠ รอกำหนดรูปแบบ</option><option value="CAR">🚗 รถยนต์</option><option value="MOTORCYCLE">🏍️ มอเตอร์ไซค์</option><option value="SUPPORT">🧰 สนับสนุน</option></select></div>
         <div class="operational-transfer-arrow-label-v61528f2" aria-hidden="true">→</div>
-        <div class="field"><label>เปลี่ยนเป็น</label><select class="select" id="teamOperationalProfileTargetV61527"><option value="CAR">🚗 รถยนต์</option><option value="MOTORCYCLE">🏍️ มอเตอร์ไซค์</option><option value="SUPPORT">🧰 สนับสนุน</option></select></div>
+        <div class="field"><label id="teamOperationalTargetLabelV61529F5">กำหนดเป็น</label><select class="select" id="teamOperationalProfileTargetV61527"><option value="CAR">🚗 รถยนต์</option><option value="MOTORCYCLE">🏍️ มอเตอร์ไซค์</option><option value="SUPPORT">🧰 สนับสนุน</option></select></div>
       </div>
+
+      <div class="operational-same-type-guide-v61529f5 hidden" id="teamOperationalSameTypeGuideV61529F5"><span>ℹ️</span><div><strong>ต้องการเปลี่ยน Team แต่ยังเป็นรูปแบบเดิม?</strong><small>เช่น รถยนต์ C01 → รถยนต์ C02 ให้ใช้ <b>TEAM MEMBERSHIP</b> เพื่อย้ายทีม โดยไม่สร้างประวัติเปลี่ยนรูปแบบ</small></div></div>
 
       <div class="operational-transfer-layout-v61528f2">
         <section class="team-transfer-pane-v61528f1 source operational-source-pane-v61528f2">
@@ -3038,6 +3051,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix4-readable-team-20260902c"></script>
+<script src="./app.js?v=6.15.29-fix5-split-operational-20260902a"></script>
 </body>
 </html>

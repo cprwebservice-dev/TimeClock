@@ -13,3 +13,11 @@ Changes:
 - Backend SQL patch changes ta_get_team_enforcement_state_v61529 to return safe JSON instead of HTTP 500 when actor/session cannot be resolved.
 
 Deploy all 13 files to the repository root, run the FIX2 SQL patch, then Hard Refresh.
+
+
+V6.15.29 FIX5 — Readable Compact Team Workspace
+- Increased Team Workspace typography for comfortable daily use.
+- Kept compact layout and existing backend behavior unchanged.
+- No additional SQL required if V6.15.29 FIX2 backend is already installed.
+
+V6.15.29 FIX5: Operational Profile แยกโหมด “กำหนดรูปแบบ” และ “เปลี่ยนรูปแบบ”; โหมดเปลี่ยนจะไม่ให้เลือกปลายทางซ้ำกับต้นทาง และแนะนำให้ใช้ TEAM MEMBERSHIP สำหรับการย้ายทีมในรูปแบบเดิม
