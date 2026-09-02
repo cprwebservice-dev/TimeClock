@@ -18,5 +18,7 @@ Deploy:
 4) Hard Refresh: Ctrl+Shift+R
 
 
-Build: V6.15.29 FIX7 — Polished Readable Team Workspace
+Build: V6.15.29 FIX8 — Operational Effective Row Polish
 Frontend UX/UI only; backend remains V6.15.29 FIX6/FIX2-compatible.
+
+FIX8: Polished Operational Profile top row: aligned labels/controls, wider effective date field, compact policy hint, and cleaner source → target baseline.
