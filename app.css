@@ -24800,3 +24800,30 @@ html[data-theme="dark"] .operational-effective-help-v61529f6.important{color:#fa
 @media(max-width:620px){
   .operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2{grid-template-columns:1fr}
 }
+
+/* ===== V6.15.29 FIX9 · Start Date aligned Operational Effective Date ===== */
+.operational-effective-help-v61529f6.start-date-aware-v61529f9{
+  padding:8px 10px;border:1px solid rgba(37,99,235,.18);border-radius:10px;
+  background:rgba(37,99,235,.055);color:#475569;font-size:12px;line-height:1.45
+}
+.operational-effective-summary-v61529f9{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin:8px 0 10px;padding:11px 12px;border:1px solid rgba(37,99,235,.16);
+  border-radius:12px;background:rgba(37,99,235,.045)
+}
+.operational-effective-summary-v61529f9>div{min-width:0}
+.operational-effective-summary-v61529f9 span,.operational-effective-summary-v61529f9 strong,.operational-effective-summary-v61529f9 small{display:block}
+.operational-effective-summary-v61529f9>div>span{font-size:11.5px;color:var(--text-muted,#64748b);margin-bottom:2px}
+.operational-effective-summary-v61529f9>div>strong{font-size:14px;color:var(--text,#0f172a)}
+.operational-effective-summary-v61529f9>div>small{font-size:11.5px;color:var(--text-muted,#64748b);margin-top:2px;line-height:1.35}
+.operational-effective-summary-v61529f9>span{flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800}
+.operational-effective-summary-v61529f9>span.adjusted{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+.operational-effective-summary-v61529f9>span.base{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.operational-effective-people-v61529f9{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 10px}
+.operational-effective-people-v61529f9 span{padding:5px 8px;border-radius:9px;background:var(--panel,#fff);border:1px solid var(--border,#e2e8f0);font-size:11.5px;color:var(--text-muted,#64748b)}
+.operational-effective-people-v61529f9 b{color:var(--text,#0f172a)}
+[data-theme="dark"] .operational-effective-help-v61529f6.start-date-aware-v61529f9,
+[data-theme="dark"] .operational-effective-summary-v61529f9{background:rgba(59,130,246,.10);border-color:rgba(96,165,250,.25)}
+[data-theme="dark"] .operational-effective-summary-v61529f9>div>strong,
+[data-theme="dark"] .operational-effective-people-v61529f9 b{color:#e2e8f0}
+@media(max-width:720px){.operational-effective-summary-v61529f9{align-items:flex-start;flex-direction:column}.operational-effective-summary-v61529f9>span{align-self:flex-start}}
