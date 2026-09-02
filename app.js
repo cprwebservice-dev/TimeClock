@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX6 Operational Effective Date Guard";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix6-operational-date-guard";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX7 Polished Readable Team Workspace";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix7-polished-readable-team";
 
 
 /* ===== js/config.js ===== */

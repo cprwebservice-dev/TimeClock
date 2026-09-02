@@ -16,3 +16,7 @@ Deploy:
 2) Run SQL_สำหรับตรวจสอบ_V6.15.29_FIX6_OPERATIONAL_EFFECTIVE_DATE_GUARD.sql
 3) Upload all 13 runtime files from the GitHub package to repository root
 4) Hard Refresh: Ctrl+Shift+R
+
+
+Build: V6.15.29 FIX7 — Polished Readable Team Workspace
+Frontend UX/UI only; backend remains V6.15.29 FIX6/FIX2-compatible.

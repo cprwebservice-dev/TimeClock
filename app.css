@@ -24386,3 +24386,332 @@ html[data-theme="dark"] .operational-effective-locked-v61529f6:disabled{backgrou
 
 .operational-effective-help-v61529f6.important{color:#9a6700}.operational-effective-help-v61529f6.important strong{color:#7c4a00}
 html[data-theme="dark"] .operational-effective-help-v61529f6.important{color:#facc15}html[data-theme="dark"] .operational-effective-help-v61529f6.important strong{color:#fde68a}
+
+/* ============================================================================
+   V6.15.29 FIX7 — Polished + Readable Team Workspace
+   Purpose: reduce visual noise, strengthen hierarchy, and keep all Team dialogs
+   comfortably readable without making the workspace oversized.
+   ============================================================================ */
+#page-team-master{
+  --team-fs-xs:11px;
+  --team-fs-sm:12px;
+  --team-fs-md:13px;
+  --team-fs-lg:15px;
+  --team-fs-title:24px;
+  --team-radius:14px;
+  --team-shadow:0 8px 24px rgba(15,23,42,.055);
+}
+
+/* Global workspace rhythm / hierarchy */
+#page-team-master .panel{
+  border-radius:var(--team-radius);
+  border-color:color-mix(in srgb,var(--border-color,#dbe4ef) 92%,#94a3b8);
+  box-shadow:0 4px 16px rgba(15,23,42,.04);
+}
+#page-team-master .panel-header{padding:14px 16px}
+#page-team-master .panel-body{padding:14px 16px}
+#page-team-master .panel-header h3{font-size:17px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+#page-team-master .panel-header p{font-size:12px;line-height:1.45;margin-top:3px}
+#page-team-master .btn{font-weight:700}
+
+/* Hero: readable, clean command header */
+#page-team-master .team-workspace-hero-v61528{
+  padding:16px 18px;
+  border-radius:16px;
+  align-items:center;
+  background:linear-gradient(135deg,color-mix(in srgb,#2563eb 5%,var(--surface,#fff)),var(--surface,#fff) 62%);
+  border-color:color-mix(in srgb,#2563eb 13%,var(--border-color,#dbe4ef));
+  box-shadow:var(--team-shadow);
+}
+#page-team-master .team-workspace-title-v61528{min-width:300px}
+#page-team-master .team-workspace-title-v61528 .eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;color:#2563eb}
+#page-team-master .team-workspace-title-v61528 h2{font-size:var(--team-fs-title);line-height:1.15;margin:2px 0 0;font-weight:850;letter-spacing:-.025em}
+#page-team-master .team-workspace-title-v61528 p{font-size:12.5px;line-height:1.45;margin-top:5px;color:var(--text-muted,#64748b)}
+#page-team-master .team-workspace-hero-actions-v61528{gap:8px;flex-wrap:wrap}
+#page-team-master .team-workspace-org-filter-v61528{min-width:280px}
+#page-team-master .team-workspace-hero-actions-v61528 label{font-size:11.5px;font-weight:800;color:var(--text,#0f172a)}
+#page-team-master .team-workspace-hero-actions-v61528 .select{font-size:13px;min-height:40px;height:40px;border-radius:10px}
+#page-team-master .team-workspace-hero-actions-v61528 .btn{font-size:12.5px;min-height:40px;height:40px;border-radius:10px;padding:0 13px}
+
+/* Runtime diagnostic becomes a subtle status strip, not a second hero */
+#page-team-master .team-runtime-diagnostic-v61526f1{
+  min-height:46px;
+  margin-top:10px;
+  padding:9px 14px;
+  border-radius:12px;
+  box-shadow:none;
+}
+#page-team-master .team-runtime-diagnostic-v61526f1 strong{font-size:13px;font-weight:800}
+#page-team-master .team-runtime-diagnostic-v61526f1 span{font-size:11.5px;line-height:1.35}
+#page-team-master .team-runtime-diagnostic-v61526f1 .btn{min-height:32px;height:32px;font-size:11.5px}
+
+/* Workflow rail: clear enough to guide, visually lighter than content panels */
+#page-team-master .team-workflow-stepper-v61528{
+  margin-top:10px!important;
+  min-height:46px;
+  padding:5px;
+  gap:4px;
+  border-radius:12px;
+  background:color-mix(in srgb,var(--surface-soft,#f8fafc) 86%,#eaf2ff);
+  box-shadow:none;
+}
+#page-team-master .team-workflow-stepper-v61528>div{min-height:36px;padding:5px 8px;grid-template-columns:25px 1fr;column-gap:7px;border-radius:9px}
+#page-team-master .team-workflow-stepper-v61528>div b{width:25px;height:25px;font-size:11px;font-weight:900}
+#page-team-master .team-workflow-stepper-v61528>div span{font-size:12px;line-height:1.2;font-weight:800}
+#page-team-master .team-workflow-stepper-v61528>i{font-size:18px;color:#94a3b8}
+#page-team-master .team-workflow-stepper-v61528>div.active{background:var(--surface,#fff);box-shadow:0 2px 8px rgba(37,99,235,.10)}
+
+/* Primary next action: strongest visual cue on the page */
+#page-team-master .team-next-action-v61528{
+  margin-top:10px!important;
+  grid-template-columns:34px 1fr auto;
+  gap:11px;
+  padding:11px 12px;
+  border-radius:12px;
+  border:1px solid color-mix(in srgb,#2563eb 28%,var(--border-color,#dbe4ef));
+  background:linear-gradient(90deg,color-mix(in srgb,#2563eb 8%,var(--surface,#fff)),var(--surface,#fff));
+}
+#page-team-master .team-next-action-icon-v61528{width:34px;height:34px;border-radius:9px;font-size:15px}
+#page-team-master .team-next-action-v61528 h3{font-size:14px;line-height:1.25;margin:0 0 2px;font-weight:850}
+#page-team-master .team-next-action-v61528 p{font-size:11.5px;line-height:1.4}
+#page-team-master .team-next-action-v61528 .btn{font-size:12px;min-height:36px;height:36px;padding:0 12px}
+
+/* Quick actions were duplicating the workflow, hero and tab actions. Keep them out
+   of the primary reading flow; all functions remain available in their panels. */
+#page-team-master .team-quick-actions-v61529f1{display:none!important}
+
+/* KPI row: readable status cards, still compact */
+#page-team-master .team-workspace-kpis-v61528{gap:7px;margin-top:9px!important}
+#page-team-master .team-workspace-kpis-v61528 button{
+  min-height:68px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:var(--surface,#fff);
+  box-shadow:none;
+}
+#page-team-master .team-workspace-kpis-v61528 button:hover{transform:translateY(-1px);box-shadow:0 7px 16px rgba(15,23,42,.055)}
+#page-team-master .team-workspace-kpis-v61528 span{font-size:11.5px;line-height:1.25;font-weight:800;color:var(--text,#0f172a)}
+#page-team-master .team-workspace-kpis-v61528 strong{font-size:25px;line-height:1;font-weight:850}
+#page-team-master .team-workspace-kpis-v61528 small{font-size:10.5px;line-height:1.25;color:var(--text-muted,#64748b)}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(1){border-left:3px solid #f59e0b}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(2){border-left:3px solid #2563eb}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(3){border-left:3px solid #7c3aed}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(4){border-left:3px solid #16a34a}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(5){border-left:3px solid #0ea5e9}
+
+/* Tabs: stronger current-location cue */
+#page-team-master .team-workspace-tabs-v61528{margin-top:10px!important;padding:4px;border-radius:12px;gap:3px}
+#page-team-master .team-workspace-tabs-v61528 button{font-size:12.5px;font-weight:800;padding:8px 14px;border-radius:9px}
+#page-team-master .team-workspace-tabs-v61528 button.active{color:#1d4ed8;box-shadow:0 2px 8px rgba(15,23,42,.07)}
+
+/* Overview cards: enough text to understand policy, without becoming tall */
+#page-team-master .team-operational-cards-panel-v61528 .panel-header{min-height:54px}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header p{display:block;font-size:11.5px}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header .btn{font-size:12px;min-height:36px;height:36px}
+#page-team-master .team-operational-type-cards-v61528{gap:8px;padding-top:10px;padding-bottom:10px}
+#page-team-master .team-operational-type-cards-v61528 article{grid-template-columns:34px 1fr;gap:9px;min-height:70px;padding:10px 12px;border-radius:11px}
+#page-team-master .team-type-icon-v61528{width:34px;height:34px;font-size:21px;border-radius:10px}
+#page-team-master .team-operational-type-cards-v61528 h4{font-size:13px;line-height:1.2;font-weight:850}
+#page-team-master .team-operational-type-cards-v61528 p{display:block;font-size:10.5px;line-height:1.3;margin:2px 0 3px}
+#page-team-master .team-operational-type-cards-v61528 strong{font-size:11px;line-height:1.3}
+
+/* Enforcement overview: retain dense layout, improve scanability */
+#page-team-master .team-enforcement-rollout-panel-v61529 .panel-header{min-height:54px}
+#page-team-master .team-enforcement-rollout-panel-v61529 .panel-header p{display:block;font-size:11.5px}
+#page-team-master .team-enforcement-rollout-kpis-v61529{gap:7px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article{min-height:58px;padding:9px 10px;border-radius:10px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article span{font-size:10.5px;font-weight:700}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article strong{font-size:22px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article small{font-size:9.5px}
+#page-team-master .team-readiness-checklist-v61528>div{min-height:36px;padding:6px 8px}
+#page-team-master .team-readiness-checklist-v61528 strong{font-size:11.5px}
+#page-team-master .team-readiness-checklist-v61528 small{font-size:10.5px}
+#page-team-master .team-enforcement-rollout-callout-v61529{padding:9px 11px;border-radius:10px}
+#page-team-master .team-enforcement-rollout-callout-v61529 strong{font-size:12.5px}
+#page-team-master .team-enforcement-rollout-callout-v61529 span{font-size:10.5px}
+#page-team-master .team-enforcement-rollout-callout-v61529 .btn{font-size:11.5px;min-height:35px;height:35px}
+
+/* People + Team table: enterprise-readable rather than micro typography */
+#page-team-master .team-people-compact-head-v61529f3 .btn{font-size:12px;min-height:36px;height:36px}
+#page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:150px 160px minmax(260px,1fr) auto;gap:8px}
+#page-team-master .team-master-toolbar-modern-v61528 label{font-size:11.5px;font-weight:800;margin-bottom:4px}
+#page-team-master .team-master-toolbar-modern-v61528 .select,
+#page-team-master .team-master-toolbar-modern-v61528 .input{font-size:12.5px;min-height:38px;height:38px;border-radius:9px}
+#page-team-master .team-master-toolbar-actions-v61523 .btn{font-size:12px;min-height:38px;height:38px}
+#page-team-master .team-list-compact-meta-v61529f3{font-size:10.5px;line-height:1.4;margin:9px 0 7px;padding:7px 0}
+#page-team-master .team-list-compact-meta-v61529f3 .team-master-auto-chip-v61523{font-size:9.5px}
+#page-team-master .team-master-table-v61523 thead th{font-size:11px;line-height:1.3;padding:10px 10px;font-weight:800;color:var(--text-muted,#64748b)}
+#page-team-master .team-master-table-v61523 td{font-size:12px;line-height:1.4;padding:11px 10px}
+#page-team-master .team-master-table-v61523 td strong{font-size:13px;line-height:1.3}
+#page-team-master .team-master-table-v61523 td small,
+#page-team-master .team-master-table-v61523 td code{font-size:10.5px;line-height:1.35}
+#page-team-master .team-master-table-v61523 .btn-sm{font-size:11px;min-height:31px;padding:0 9px}
+
+/* Changes / history */
+#page-team-master .team-change-actions-v61528 .btn,
+#page-team-master .team-change-actions-v61528 .select{font-size:11.5px;min-height:35px;height:35px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table th{font-size:11px;padding:10px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table td{font-size:12px;line-height:1.4;padding:10px}
+
+/* --------------------------------------------------------------------------
+   Team dialogs — consistent readable hierarchy
+   -------------------------------------------------------------------------- */
+#teamMasterCreateModalV61523 .modal,
+#teamMembershipModalV61524 .modal,
+.operational-profile-dual-modal-v61528f2,
+.team-enforcement-rollout-modal-v61529{
+  border-radius:18px;
+  box-shadow:0 22px 64px rgba(15,23,42,.22);
+}
+#teamMasterCreateModalV61523 .modal-header,
+#teamMembershipModalV61524 .modal-header,
+.operational-profile-dual-modal-v61528f2 .modal-header,
+.team-enforcement-rollout-modal-v61529 .modal-header{padding:16px 18px;border-bottom:1px solid var(--border-color,#e2e8f0)}
+#teamMasterCreateModalV61523 .modal-header h3,
+#teamMembershipModalV61524 .modal-header h3,
+.operational-profile-dual-modal-v61528f2 .modal-header h3,
+.team-enforcement-rollout-modal-v61529 .modal-header h3{font-size:21px;line-height:1.2;font-weight:850;letter-spacing:-.015em}
+#teamMasterCreateModalV61523 .modal-header p,
+#teamMembershipModalV61524 .modal-header p,
+.operational-profile-dual-modal-v61528f2 .modal-header p,
+.team-enforcement-rollout-modal-v61529 .modal-header p{font-size:12px;line-height:1.45;margin-top:5px;color:var(--text-muted,#64748b)}
+#teamMasterCreateModalV61523 .modal-body,
+#teamMembershipModalV61524 .modal-body,
+.operational-profile-dual-modal-v61528f2 .modal-body,
+.team-enforcement-rollout-modal-v61529 .modal-body{padding:15px 18px 18px}
+#teamMasterCreateModalV61523 .modal-footer,
+#teamMembershipModalV61524 .modal-footer,
+.operational-profile-dual-modal-v61528f2 .modal-footer,
+.team-enforcement-rollout-modal-v61529 .modal-footer{min-height:62px;padding:10px 18px;border-top:1px solid var(--border-color,#e2e8f0)}
+#teamMasterCreateModalV61523 .modal-footer .btn,
+#teamMembershipModalV61524 .modal-footer .btn,
+.operational-profile-dual-modal-v61528f2 .modal-footer .btn,
+.team-enforcement-rollout-modal-v61529 .modal-footer .btn{font-size:12.5px;min-height:40px;height:40px;padding:0 14px;border-radius:10px}
+
+/* Form controls in every Team dialog */
+#teamMasterCreateModalV61523 .field label,
+#teamMembershipModalV61524 .field label,
+.operational-profile-dual-modal-v61528f2 .field label,
+.team-enforcement-rollout-modal-v61529 .field label{font-size:12px;line-height:1.3;font-weight:800;margin-bottom:5px;color:var(--text,#0f172a)}
+#teamMasterCreateModalV61523 .input,#teamMasterCreateModalV61523 .select,
+#teamMembershipModalV61524 .input,#teamMembershipModalV61524 .select,
+.operational-profile-dual-modal-v61528f2 .input,.operational-profile-dual-modal-v61528f2 .select,
+.team-enforcement-rollout-modal-v61529 .input,.team-enforcement-rollout-modal-v61529 .select{font-size:13px;min-height:42px;border-radius:10px}
+
+/* Membership dual pane */
+#teamMembershipModalV61524 .team-membership-summary-modern-v61528f1 small{font-size:11.5px}
+#teamMembershipModalV61524 .team-membership-summary-modern-v61528f1 strong{font-size:16px}
+#teamMembershipModalV61524 .team-membership-policy-modern-v61528f1 span,
+#teamMembershipModalV61524 .team-membership-policy-modern-v61528f1 small{font-size:11.5px;line-height:1.45}
+#teamMembershipModalV61524 .team-transfer-pane-v61528f1{border-radius:15px;min-height:400px}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1{padding:13px 14px;background:color-mix(in srgb,var(--surface-soft,#f8fafc) 90%,#eaf2ff)}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 span{font-size:11.5px;font-weight:800}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 h4{font-size:16px;line-height:1.25}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 small{font-size:11.5px}
+#teamMembershipModalV61524 .team-transfer-row-v61528f1{padding:12px 13px;min-height:66px}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 strong{font-size:13.5px;line-height:1.3}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1>span{font-size:11.5px;line-height:1.4}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 small.origin,
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 small.target-badge{font-size:10.5px;padding:3px 7px}
+#teamMembershipModalV61524 .team-transfer-arrows-v61528f1 .btn{font-size:12px;min-height:38px}
+#teamMembershipModalV61524 .team-transfer-arrows-v61528f1 span{font-size:11.5px}
+#teamMembershipModalV61524 .team-capacity-pill-v61528f1{font-size:11.5px;font-weight:800}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1 span{font-size:11.5px}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1 strong{font-size:15px}
+#teamMembershipModalV61524 .team-membership-footer-status-v61528f1{font-size:12px;font-weight:800}
+#teamMembershipModalV61524 .team-impact-preview-v61528{font-size:12px}
+#teamMembershipModalV61524 .team-impact-title-v61528 strong{font-size:13px}
+#teamMembershipModalV61524 .team-impact-blockers-v61528 p,
+#teamMembershipModalV61524 .team-impact-recovery-v61529f2{font-size:11.5px;line-height:1.5}
+
+/* Operational Profile split mode */
+.operational-profile-split-modal-v61529f5{width:min(1280px,97vw)}
+.operational-profile-split-modal-v61529f5 .operational-profile-header-v61529f5 h3{font-size:21px!important}
+.operational-profile-split-modal-v61529f5 .operational-profile-header-v61529f5 p{font-size:12px!important}
+.operational-profile-split-modal-v61529f5 .operational-mode-switch-v61529f5{padding:6px;gap:8px;border-radius:14px}
+.operational-profile-split-modal-v61529f5 .operational-mode-switch-v61529f5 button{padding:11px 13px;border-radius:10px}
+.operational-profile-split-modal-v61529f5 .operational-mode-switch-v61529f5 button strong{font-size:14px}
+.operational-profile-split-modal-v61529f5 .operational-mode-switch-v61529f5 button small{font-size:11.5px;line-height:1.4}
+.operational-profile-split-modal-v61529f5 .operational-mode-guide-v61529f5{padding:10px 12px;border-radius:10px}
+.operational-profile-split-modal-v61529f5 .operational-mode-guide-v61529f5 strong{font-size:12px}
+.operational-profile-split-modal-v61529f5 .operational-mode-guide-v61529f5 span:not(.operational-mode-guide-chip-v61529f5){font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 label,
+.operational-profile-split-modal-v61529f5 .operational-target-config-v61528f2 label,
+.operational-profile-split-modal-v61529f5 .operational-reason-box-v61528f2 label{font-size:12px}
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 .select,
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 .input,
+.operational-profile-split-modal-v61529f5 .operational-target-config-v61528f2 .select,
+.operational-profile-split-modal-v61529f5 .operational-target-config-v61528f2 .input,
+.operational-profile-split-modal-v61529f5 .operational-reason-box-v61528f2 textarea{font-size:13px;min-height:42px}
+.operational-profile-split-modal-v61529f5 .operational-effective-help-v61529f6{font-size:11.5px;line-height:1.45}
+.operational-profile-split-modal-v61529f5 .team-transfer-pane-v61528f1{min-height:400px}
+.operational-profile-split-modal-v61529f5 .team-transfer-pane-head-v61528f1 h4{font-size:16px}
+.operational-profile-split-modal-v61529f5 .team-transfer-row-v61528f1{padding:12px 13px}
+.operational-profile-split-modal-v61529f5 .team-transfer-person-v61528f1 strong{font-size:13.5px}
+.operational-profile-split-modal-v61529f5 .team-transfer-person-v61528f1>span{font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-target-guide-v61528f2 span{font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-transfer-status-strip-v61528f2 span{font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-transfer-status-strip-v61528f2 strong{font-size:14px}
+.operational-profile-split-modal-v61529f5 .operational-reason-alert-v61528f3,
+.operational-profile-split-modal-v61529f5 .operational-reason-alert-v61528f3 strong{font-size:11.5px;line-height:1.5}
+.operational-profile-split-modal-v61529f5 .operational-profile-footer-status-v61528f2{font-size:12px;font-weight:800}
+
+/* Enforcement Rollout dialog */
+.team-enforcement-rollout-modal-v61529{width:min(1180px,96vw)}
+.team-enforcement-rollout-config-v61529 label,
+.team-enforcement-team-toolbar-v61529 label,
+.team-enforcement-note-v61529 label{font-size:12px;font-weight:800}
+.team-enforcement-rollout-config-v61529 .select,
+.team-enforcement-rollout-config-v61529 .input,
+.team-enforcement-team-toolbar-v61529 .select,
+.team-enforcement-note-v61529 textarea{font-size:13px;min-height:42px}
+.team-enforcement-scope-tabs-v61529 button{font-size:12.5px;font-weight:800;padding:9px 15px}
+.team-enforcement-action-summary-v61529f1,
+.team-enforcement-action-summary-v61529f1 strong{font-size:12px;line-height:1.4}
+.team-enforcement-action-summary-v61529f1 span{font-size:11.5px}
+.team-enforcement-selection-v61529{font-size:11.5px}
+.team-enforcement-team-row-v61529{padding:12px 14px;min-height:66px}
+.team-enforcement-team-name-v61529 strong{font-size:13.5px}
+.team-enforcement-team-name-v61529 code{font-size:10.5px}
+.team-enforcement-team-row-v61529>div[data-col-v61529] strong{font-size:12.5px}
+.team-enforcement-team-row-v61529 small{font-size:10.5px;line-height:1.4}
+.team-enforcement-ready-v61529{font-size:11.5px}
+.team-enforcement-effective-note-v61529{font-size:12px}
+.team-enforcement-effective-note-v61529 small{font-size:10.5px;line-height:1.45}
+.team-enforcement-rollout-footer-v61529>div:first-child{font-size:12px;font-weight:800}
+
+/* Create Team dialog helper/readability */
+#teamMasterCreateModalV61523 .modal-body small,
+#teamMasterCreateModalV61523 .modal-body p{font-size:11.5px;line-height:1.45}
+#teamMasterCreateModalV61523 .badge{font-size:11px}
+
+/* Dark theme polish */
+[data-theme="dark"] #page-team-master .team-workspace-hero-v61528,
+[data-theme="dark"] #page-team-master .team-next-action-v61528{background:#111b2c}
+[data-theme="dark"] #page-team-master .team-workspace-kpis-v61528 button{background:#111b2c}
+[data-theme="dark"] #page-team-master .team-workflow-stepper-v61528{background:#0f1726}
+[data-theme="dark"] #page-team-master .team-workflow-stepper-v61528>div.active{background:#172033}
+
+/* Responsive: keep readable without ballooning the page */
+@media(max-width:1200px){
+  #page-team-master .team-workspace-kpis-v61528{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:1fr 1fr}
+  #page-team-master .team-master-toolbar-modern-v61528 .team-master-search-v61523{grid-column:1/-1}
+}
+@media(max-width:900px){
+  #page-team-master .team-workspace-hero-v61528{align-items:stretch;flex-direction:column}
+  #page-team-master .team-workspace-hero-actions-v61528{justify-content:flex-start}
+  #page-team-master .team-workspace-org-filter-v61528{min-width:min(100%,360px)}
+  #page-team-master .team-workflow-stepper-v61528{grid-template-columns:repeat(5,minmax(145px,1fr));overflow-x:auto}
+  #page-team-master .team-workspace-kpis-v61528{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  #page-team-master .team-workspace-title-v61528 h2{font-size:22px}
+  #page-team-master .team-workspace-kpis-v61528{grid-template-columns:1fr 1fr}
+  #page-team-master .team-next-action-v61528{grid-template-columns:34px 1fr}
+  #page-team-master .team-next-action-v61528>.btn{grid-column:1/-1;width:100%}
+  #page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:1fr}
+  #page-team-master .team-master-toolbar-modern-v61528 .team-master-search-v61523{grid-column:auto}
+  #teamMembershipModalV61524 .team-transfer-pane-v61528f1,
+  .operational-profile-split-modal-v61529f5 .team-transfer-pane-v61528f1{min-height:320px}
+}
