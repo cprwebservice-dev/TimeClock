@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.29-fix5-split-operational-20260902a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix6-operational-date-guard-20260902b" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1740,7 +1740,7 @@
   </div>
 </div>
 
-<!-- V6.15.29 FIX5 Operational Profile — Split Assign / Change Mode -->
+<!-- V6.15.29 FIX6 Operational Profile — Split Mode + Effective Date Guard -->
 <div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true">
   <div class="modal operational-profile-modal-v61527 operational-profile-dual-modal-v61528f2 operational-profile-split-modal-v61529f5" role="dialog" aria-modal="true">
     <div class="modal-header operational-profile-header-v61529f5">
@@ -1760,7 +1760,7 @@
 
       <div class="operational-transfer-summary-v61528f2 operational-transfer-summary-split-v61529f5">
         <div class="field"><label>หน่วยงาน</label><select class="select" id="teamOperationalProfileOrgV61527"></select></div>
-        <div class="field"><label>วันที่มีผล</label><input class="input" type="date" id="teamOperationalProfileEffectiveV61527"/></div>
+        <div class="field operational-effective-field-v61529f6"><label id="teamOperationalEffectiveLabelV61529F6">วันที่มีผล</label><input class="input" type="date" id="teamOperationalProfileEffectiveV61527"/><small class="operational-effective-help-v61529f6" id="teamOperationalEffectiveHelpV61529F6"></small></div>
         <div class="field operational-source-fixed-v61529f5" id="teamOperationalSourceFixedV61529F5"><label>พนักงานกลุ่ม</label><div class="operational-source-fixed-value-v61529f5">⚠️ <strong>รอกำหนดรูปแบบ</strong></div></div>
         <div class="field operational-source-select-v61529f5 hidden" id="teamOperationalSourceSelectV61529F5"><label>จากรูปแบบ</label><select class="select" id="teamOperationalProfileShowV61527"><option value="UNCLASSIFIED">⚠ รอกำหนดรูปแบบ</option><option value="CAR">🚗 รถยนต์</option><option value="MOTORCYCLE">🏍️ มอเตอร์ไซค์</option><option value="SUPPORT">🧰 สนับสนุน</option></select></div>
         <div class="operational-transfer-arrow-label-v61528f2" aria-hidden="true">→</div>
@@ -3051,6 +3051,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix5-split-operational-20260902a"></script>
+<script src="./app.js?v=6.15.29-fix6-operational-date-guard-20260902b"></script>
 </body>
 </html>

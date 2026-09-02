@@ -24372,3 +24372,17 @@ body.theme-dark #page-team-master .panel,.dark #page-team-master .panel{box-shad
 [data-theme="dark"] .operational-profile-split-modal-v61529f5 .operational-reason-box-v61528f2.required{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.24)}
 @media(max-width:1050px){.operational-transfer-summary-split-v61529f5{grid-template-columns:1fr 1fr}.operational-transfer-summary-split-v61529f5 .operational-transfer-arrow-label-v61528f2{display:none}.operational-mode-guide-v61529f5>div{align-items:flex-start;flex-direction:column;gap:2px}}
 @media(max-width:700px){.operational-mode-switch-v61529f5{grid-template-columns:1fr}.operational-mode-guide-v61529f5{align-items:flex-start;flex-direction:column}.operational-transfer-summary-split-v61529f5{grid-template-columns:1fr}.operational-profile-header-v61529f5 h3{font-size:18px!important}}
+
+
+/* V6.15.29 FIX6 — Operational Profile effective-date policy */
+.operational-effective-field-v61529f6{min-width:188px}
+.operational-effective-help-v61529f6{display:block;margin-top:6px;font-size:12px;line-height:1.35;color:var(--muted,#64748b)}
+.operational-effective-help-v61529f6 strong{color:var(--text,#0f172a);font-weight:700}
+.operational-effective-help-v61529f6.locked{color:#475569}
+.operational-effective-locked-v61529f6:disabled{opacity:1;cursor:not-allowed;background:linear-gradient(180deg,#f8fafc,#f1f5f9);color:#334155;border-color:#cbd5e1}
+html[data-theme="dark"] .operational-effective-help-v61529f6 strong{color:#e2e8f0}
+html[data-theme="dark"] .operational-effective-locked-v61529f6:disabled{background:#172033;color:#e2e8f0;border-color:#334155}
+@media(max-width:900px){.operational-effective-field-v61529f6{min-width:0}}
+
+.operational-effective-help-v61529f6.important{color:#9a6700}.operational-effective-help-v61529f6.important strong{color:#7c4a00}
+html[data-theme="dark"] .operational-effective-help-v61529f6.important{color:#facc15}html[data-theme="dark"] .operational-effective-help-v61529f6.important strong{color:#fde68a}
