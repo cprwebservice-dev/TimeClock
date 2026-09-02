@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX3 Compact Team Workspace";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix3-compact-team";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX4 Readable Compact Team Workspace";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix4-readable-team";
 
 
 /* ===== js/config.js ===== */

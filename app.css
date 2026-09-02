@@ -24152,3 +24152,173 @@ body.theme-dark #page-team-master .panel,.dark #page-team-master .panel{box-shad
   #page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:1fr 1fr}
   #page-team-master .team-master-toolbar-modern-v61528 .team-master-search-v61523{grid-column:1/-1}
 }
+
+/* =====================================================================
+   V6.15.29 FIX4 — Readable Compact Team Workspace
+   Keep the compact layout from FIX3, but restore comfortable enterprise
+   typography, clearer controls, and stronger visual hierarchy.
+   ===================================================================== */
+#page-team-master{--team-readable-body:12px;--team-readable-small:11px;--team-readable-label:11px}
+
+/* Main workspace typography */
+#page-team-master .panel-header h3{font-size:16px;line-height:1.25}
+#page-team-master .panel-header p{font-size:11px;line-height:1.45}
+#page-team-master .team-workspace-title-v61528 .eyebrow{font-size:10px;letter-spacing:.06em}
+#page-team-master .team-workspace-title-v61528 h2{font-size:23px;line-height:1.18}
+#page-team-master .team-workspace-title-v61528 p{font-size:12px;line-height:1.4}
+#page-team-master .team-workspace-hero-actions-v61528 label,
+#page-team-master .team-master-toolbar-modern-v61528 label{font-size:11px;font-weight:700}
+#page-team-master .team-workspace-hero-actions-v61528 .select,
+#page-team-master .team-master-toolbar-modern-v61528 .select,
+#page-team-master .team-master-toolbar-modern-v61528 .input{font-size:12px;min-height:36px;height:36px}
+#page-team-master .team-workspace-hero-actions-v61528 .btn,
+#page-team-master .team-master-toolbar-actions-v61523 .btn{font-size:12px;min-height:36px;height:36px}
+
+/* Workflow + next action */
+#page-team-master .team-workflow-stepper-v61528>div span{font-size:11px;font-weight:700}
+#page-team-master .team-workflow-stepper-v61528>div b{font-size:10px}
+#page-team-master .team-next-action-v61528 strong{font-size:13px}
+#page-team-master .team-next-action-v61528 span,
+#page-team-master .team-next-action-v61528 small{font-size:11px;line-height:1.4}
+#page-team-master .team-next-action-v61528 .btn{font-size:12px;min-height:35px}
+
+/* Quick actions stay compact but become readable */
+#page-team-master .team-quick-actions-v61529f1 button{min-height:48px;padding:8px 10px}
+#page-team-master .team-quick-actions-v61529f1 strong{font-size:12px;line-height:1.25}
+#page-team-master .team-quick-actions-v61529f1 small{font-size:10px;line-height:1.25}
+#page-team-master .team-quick-actions-v61529f1 .team-quick-icon-v61529f1{font-size:18px}
+
+/* KPI chips/cards */
+#page-team-master .team-workspace-kpis-v61528 button{min-height:60px;padding:8px 10px}
+#page-team-master .team-workspace-kpis-v61528 strong{font-size:20px}
+#page-team-master .team-workspace-kpis-v61528 span{font-size:11px;font-weight:700}
+#page-team-master .team-workspace-kpis-v61528 small{font-size:10px}
+#page-team-master .team-workspace-tabs-v61528 button{font-size:12px;font-weight:700;padding:7px 12px}
+
+/* Operational policy strip */
+#page-team-master .team-operational-type-cards-v61528 h4{font-size:12px}
+#page-team-master .team-operational-type-cards-v61528 strong{font-size:10px;line-height:1.3}
+#page-team-master .team-type-icon-v61528{font-size:19px}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header .btn{font-size:12px;min-height:34px;height:34px}
+
+/* Enforcement overview */
+#page-team-master .team-enforcement-actions-v61525 .btn{font-size:11px;min-height:33px;height:33px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article span{font-size:10px;line-height:1.25}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article strong{font-size:20px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article small{font-size:9px;line-height:1.25}
+#page-team-master .team-readiness-checklist-v61528 strong{font-size:11px}
+#page-team-master .team-readiness-checklist-v61528 small{font-size:10px;line-height:1.3}
+#page-team-master .team-enforcement-rollout-callout-v61529 strong{font-size:12px}
+#page-team-master .team-enforcement-rollout-callout-v61529 span{font-size:10px;line-height:1.35}
+#page-team-master .team-enforcement-rollout-callout-v61529 .btn{font-size:11px;min-height:33px;height:33px}
+
+/* People / Team Master */
+#page-team-master .team-people-compact-head-v61529f3 .btn{font-size:11px;min-height:34px;height:34px}
+#page-team-master .team-list-compact-meta-v61529f3{font-size:10px;line-height:1.35}
+#page-team-master .team-list-compact-meta-v61529f3 .team-master-auto-chip-v61523{font-size:9px}
+#page-team-master .team-master-table-v61523 thead th{font-size:10px;padding:8px 9px;letter-spacing:.01em}
+#page-team-master .team-master-table-v61523 td{font-size:11px;line-height:1.35;padding:8px 9px}
+#page-team-master .team-master-table-v61523 td strong{font-size:12px}
+#page-team-master .team-master-table-v61523 td small,
+#page-team-master .team-master-table-v61523 td code{font-size:10px;line-height:1.3}
+#page-team-master .team-master-table-v61523 .btn-sm{font-size:10px;min-height:30px}
+
+/* Changes + History */
+#page-team-master .team-change-actions-v61528 .btn,
+#page-team-master .team-change-actions-v61528 .select{font-size:11px;min-height:33px;height:33px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table th{font-size:10px;padding:8px 9px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table td{font-size:11px;line-height:1.35;padding:8px 9px}
+
+/* Team-related modals: larger text without returning to oversized spacing */
+#teamMasterCreateModalV61523 .modal-header h3,
+#teamMembershipModalV61524 .modal-header h3,
+.operational-profile-dual-modal-v61528f2 .modal-header h3,
+.team-enforcement-rollout-modal-v61529 .modal-header h3{font-size:19px;line-height:1.25}
+#teamMasterCreateModalV61523 .modal-header p,
+#teamMembershipModalV61524 .modal-header p,
+.operational-profile-dual-modal-v61528f2 .modal-header p,
+.team-enforcement-rollout-modal-v61529 .modal-header p{font-size:11px;line-height:1.4}
+#teamMasterCreateModalV61523 .modal-footer .btn,
+#teamMembershipModalV61524 .modal-footer .btn,
+.operational-profile-dual-modal-v61528f2 .modal-footer .btn,
+.team-enforcement-rollout-modal-v61529 .modal-footer .btn{font-size:12px;min-height:37px;height:37px}
+
+/* Dual-pane membership */
+.team-membership-summary-modern-v61528f1 small{font-size:11px}
+.team-membership-summary-modern-v61528f1 strong{font-size:15px}
+.team-membership-policy-modern-v61528f1 span,
+.team-membership-policy-modern-v61528f1 small{font-size:11px;line-height:1.4}
+.team-transfer-pane-head-v61528f1 span{font-size:11px;letter-spacing:.06em}
+.team-transfer-pane-head-v61528f1 h4{font-size:16px}
+.team-transfer-pane-head-v61528f1 small{font-size:11px}
+.team-transfer-row-v61528f1{padding:12px 13px}
+.team-transfer-person-v61528f1 strong{font-size:14px;line-height:1.3}
+.team-transfer-person-v61528f1>span{font-size:12px;line-height:1.35}
+.team-transfer-person-v61528f1 small.origin,
+.team-transfer-person-v61528f1 small.target-badge{font-size:11px;padding:3px 7px}
+.team-target-guide-v61528f1 span{font-size:11px}
+.team-transfer-arrows-v61528f1 span{font-size:12px;font-weight:700}
+.team-capacity-pill-v61528f1{font-size:12px}
+.team-membership-change-strip-v61528f1 span{font-size:12px}
+.team-membership-change-strip-v61528f1 strong{font-size:15px}
+.team-membership-change-strip-v61528f1 small{font-size:11px}
+.team-membership-footer-status-v61528f1{font-size:12px}
+.team-impact-recovery-v61529f2{font-size:12px;line-height:1.45}
+
+/* Dual-pane Operational Profile */
+.operational-transfer-summary-v61528f2 label,
+.operational-target-config-v61528f2 label,
+.operational-reason-box-v61528f2 label{font-size:11px;font-weight:700}
+.operational-transfer-summary-v61528f2 .select,
+.operational-transfer-summary-v61528f2 .input,
+.operational-target-config-v61528f2 .select,
+.operational-target-config-v61528f2 .input,
+.operational-reason-box-v61528f2 textarea{font-size:12px}
+.operational-target-config-v61528f2 small{font-size:11px;line-height:1.4}
+.operational-target-guide-v61528f2 span{font-size:12px}
+.operational-target-guide-v61528f2 strong{font-size:11px}
+.operational-transfer-status-strip-v61528f2 span{font-size:12px}
+.operational-transfer-status-strip-v61528f2 strong{font-size:14px}
+.operational-transfer-status-strip-v61528f2 small{font-size:11px}
+.operational-reason-alert-v61528f3,
+.operational-reason-alert-v61528f3 strong{font-size:12px;line-height:1.4}
+.operational-reason-box-v61528f2 label span{font-size:11px}
+.operational-readiness-check-v61528f3 span{font-size:11px}
+.operational-profile-footer-status-v61528f2{font-size:12px}
+
+/* Enforcement Rollout dialog */
+.team-enforcement-rollout-config-v61529 label,
+.team-enforcement-team-toolbar-v61529 label,
+.team-enforcement-note-v61529 label{font-size:11px;font-weight:700}
+.team-enforcement-rollout-config-v61529 .select,
+.team-enforcement-rollout-config-v61529 .input,
+.team-enforcement-team-toolbar-v61529 .select,
+.team-enforcement-note-v61529 textarea{font-size:12px}
+.team-enforcement-scope-tabs-v61529 button{font-size:12px;font-weight:700}
+.team-enforcement-action-summary-v61529f1,
+.team-enforcement-action-summary-v61529f1 strong{font-size:12px}
+.team-enforcement-action-summary-v61529f1 span{font-size:11px}
+.team-enforcement-selection-v61529{font-size:11px}
+.team-enforcement-team-name-v61529 strong{font-size:13px}
+.team-enforcement-team-name-v61529 code{font-size:11px}
+.team-enforcement-team-row-v61529>div[data-col-v61529] strong{font-size:12px}
+.team-enforcement-team-row-v61529 small{font-size:10px;line-height:1.35}
+.team-enforcement-effective-note-v61529 small{font-size:10px;line-height:1.4}
+.team-enforcement-rollout-footer-v61529>div:first-child{font-size:12px;font-weight:700}
+
+/* Form controls in Team dialogs should not fall below a comfortable size */
+#teamMasterCreateModalV61523 .field label,
+#teamMembershipModalV61524 .field label,
+.operational-profile-dual-modal-v61528f2 .field label,
+.team-enforcement-rollout-modal-v61529 .field label{font-size:11px}
+#teamMasterCreateModalV61523 .input,#teamMasterCreateModalV61523 .select,
+#teamMembershipModalV61524 .input,#teamMembershipModalV61524 .select,
+.operational-profile-dual-modal-v61528f2 .input,.operational-profile-dual-modal-v61528f2 .select,
+.team-enforcement-rollout-modal-v61529 .input,.team-enforcement-rollout-modal-v61529 .select{font-size:12px;min-height:38px}
+
+/* Keep readable on smaller notebook screens as well */
+@media(max-width:1100px){
+  #page-team-master .team-workspace-title-v61528 h2{font-size:21px}
+  #page-team-master .team-workspace-title-v61528 p{font-size:11px}
+  #page-team-master .team-master-table-v61523 td{font-size:11px}
+}
