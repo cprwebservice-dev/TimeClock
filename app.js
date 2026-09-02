@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX2 Enforcement Reader Stable + Membership Guidance";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix2-enforcement-stable";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX3 Compact Team Workspace";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix3-compact-team";
 
 
 /* ===== js/config.js ===== */
@@ -32816,11 +32816,11 @@ ${names}${extra}
 
 
 /* ============================================================================
-   V6.15.29 FIX2 — Team Workspace + Stable Scoped Enforcement Reader
+   V6.15.29 FIX3 — Compact Team Workspace + Stable Scoped Enforcement Reader
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX2';
+  const VERSION='6.15.29 FIX3';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -32974,7 +32974,7 @@ ${names}${extra}
       team_direct_count:sourceCount('TEAM'),org_inherited_count:sourceCount('ORG'),global_inherited_count:sourceCount('GLOBAL'),
       global_default_enabled:sourceCount('GLOBAL')>0,rollout_started:enforced>0,
       car_without_team:Number(ws.car_without_team||0),support_without_team:Number(ws.support_without_team||0),
-      unclassified_total:Number(ws.unclassified_total||0),source_of_truth:'ta_get_team_enforcement_rollout_v61529',version:'V6.15.29 FIX2'
+      unclassified_total:Number(ws.unclassified_total||0),source_of_truth:'ta_get_team_enforcement_rollout_v61529',version:'V6.15.29 FIX3'
     },extra||{});
   }
   async function loadEnforcement(workDate=today(),orgId=selectedOrgId()||null){
