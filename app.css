@@ -24134,7 +24134,7 @@ body.theme-dark #page-team-master .panel,.dark #page-team-master .panel{box-shad
   #page-team-master .team-workspace-hero-actions-v61528{flex-wrap:wrap}
   #page-team-master .team-workspace-kpis-v61528{grid-template-columns:repeat(3,minmax(0,1fr))}
   #page-team-master .team-enforcement-body-v61525{grid-template-columns:1fr;grid-template-areas:"kpi" "ready" "call"}
-  #page-team-master .team-readiness-checklist-v61528{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #page-team-master .team-readiness-checklist-v61528{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:760px){
   #page-team-master{--team-gap:6px}

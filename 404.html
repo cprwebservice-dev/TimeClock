@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.29-fix11-hr-review-correction-20260903a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix13-motorcycle-min1-team-required-20260903a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1575,7 +1575,7 @@
     <button type="button" data-team-kpi-action-v61528="CAR"><span>รถยนต์ยังไม่มีทีม</span><strong id="teamKpiCarMissingV61528">0</strong><small>คน · ทีมละ 3–5</small></button>
     <button type="button" data-team-kpi-action-v61528="SUPPORT"><span>สนับสนุนยังไม่มีทีม</span><strong id="teamKpiSupportMissingV61528">0</strong><small>คน · ต้องมีทีม</small></button>
     <button type="button" data-team-kpi-action-v61528="ACTIVE"><span>ทีมพร้อมใช้งาน</span><strong id="teamKpiActiveTeamsV61528">0</strong><small>ทีม</small></button>
-    <button type="button" data-team-kpi-action-v61528="MOTORCYCLE"><span>มอเตอร์ไซค์ไม่เข้าทีม</span><strong id="teamKpiMotorcycleOptionalV61528">0</strong><small>คน · ไม่บังคับ</small></button>
+    <button type="button" data-team-kpi-action-v61528="MOTORCYCLE"><span>มอเตอร์ไซค์ยังไม่มีทีม</span><strong id="teamKpiMotorcycleOptionalV61528">0</strong><small>คน · ต้องมีทีม</small></button>
   </div>
 
   <nav class="team-workspace-tabs-v61528 section-gap" aria-label="Team workspace">
@@ -1587,17 +1587,17 @@
 
   <div data-team-workspace-pane-v61528="OVERVIEW">
     <section class="panel team-operational-cards-panel-v61528">
-      <div class="panel-header"><div><h3>รูปแบบการปฏิบัติงาน</h3><p>Manager กำหนดประเภทงานให้พนักงานก่อนจัด Team และตารางกะ</p></div><button class="btn btn-primary" id="teamOperationalProfileOpenV61527">กำหนดรูปแบบพนักงาน</button></div>
+      <div class="panel-header"><div><h3>รูปแบบการปฏิบัติงาน</h3><p>Manager กำหนดรูปแบบและจัดสมาชิกเข้าทีมก่อน จึงจะสามารถกำหนดตารางกะได้</p></div><button class="btn btn-primary" id="teamOperationalProfileOpenV61527">กำหนดรูปแบบพนักงาน</button></div>
       <div class="panel-body team-operational-type-cards-v61528">
         <article class="car"><div class="team-type-icon-v61528">🚗</div><div><h4>รถยนต์</h4><p>งานภาคสนามด้วยรถยนต์</p><strong>ต้องอยู่ทีม · 3–5 คน/ทีม</strong></div></article>
-        <article class="motorcycle"><div class="team-type-icon-v61528">🏍️</div><div><h4>มอเตอร์ไซค์</h4><p>งานภาคสนามด้วยมอเตอร์ไซค์</p><strong>ไม่บังคับ Team ก่อนจัดกะ</strong></div></article>
+        <article class="motorcycle"><div class="team-type-icon-v61528">🏍️</div><div><h4>มอเตอร์ไซค์</h4><p>งานภาคสนามด้วยมอเตอร์ไซค์</p><strong>ต้องอยู่ทีม · ขั้นต่ำ 1 คน</strong></div></article>
         <article class="support"><div class="team-type-icon-v61528">🧰</div><div><h4>สนับสนุน</h4><p>งานสนับสนุน ไม่ได้ออกวิ่งงาน</p><strong>ต้องอยู่ทีม · ขั้นต่ำ 1 คน</strong></div></article>
       </div>
     </section>
 
     <section class="panel team-enforcement-panel-v61525 section-gap team-enforcement-rollout-panel-v61529">
       <div class="panel-header">
-        <div><h3>Team Enforcement</h3><p id="teamEnforcementDetailV61525">เปิดใช้แบบ Pilot รายทีม แล้วค่อยขยายเมื่อแต่ละ Scope พร้อม</p></div>
+        <div><h3>Team Enforcement</h3><p id="teamEnforcementDetailV61525">ทุกประเภทต้องมี Team ก่อนกำหนดกะ • Enforcement ใช้ควบคุม Rollout ตาม Scope</p></div>
         <div class="team-enforcement-actions-v61525"><span class="badge badge-gray" id="teamEnforcementStatusV61525">กำลังโหลด</span><button class="btn btn-light btn-sm" id="teamEnforcementRefreshV61525">รีเฟรช</button></div>
       </div>
       <div class="panel-body team-enforcement-body-v61525">
@@ -1610,10 +1610,11 @@
         <div class="team-readiness-checklist-v61528 team-enforcement-prep-v61529">
           <div><span id="teamCheckClassifiedV61528">○</span><p><strong>กำหนดรูปแบบครบ</strong><small id="teamCheckClassifiedDetailV61528">กำลังตรวจ...</small></p></div>
           <div><span id="teamCheckCarV61528">○</span><p><strong>รถยนต์มีทีมครบ</strong><small id="teamCheckCarDetailV61528">กำลังตรวจ...</small></p></div>
+          <div><span id="teamCheckMotorcycleV61529F12">○</span><p><strong>มอเตอร์ไซค์มีทีมครบ</strong><small id="teamCheckMotorcycleDetailV61529F12">กำลังตรวจ...</small></p></div>
           <div><span id="teamCheckSupportV61528">○</span><p><strong>ทีมสนับสนุนครบ</strong><small id="teamCheckSupportDetailV61528">กำลังตรวจ...</small></p></div>
         </div>
         <div class="team-enforcement-rollout-callout-v61529">
-          <div><strong id="teamEnforcementReadyV61525">กำลังตรวจสอบ Rollout</strong><span id="teamEnforcementRolloutTextV61529">HR Admin สามารถเริ่มจากทีมที่พร้อมก่อน โดยไม่ต้องรอทุกทีม</span></div>
+          <div><strong id="teamEnforcementReadyV61525">กำลังตรวจสอบ Rollout</strong><span id="teamEnforcementRolloutTextV61529">Team Membership เป็นเงื่อนไขพื้นฐานทุก Scope • HR Admin ใช้ Rollout เพื่อเปิด Governance ตามทีม/หน่วยงาน</span></div>
           <button class="btn btn-primary" id="teamEnforcementToggleV61525">จัดการการเปิดใช้</button>
         </div>
         <span class="hidden" id="teamEnforcementMissingV61525">0</span><span class="hidden" id="teamEnforcementSupportMissingV61528">0</span><span class="hidden" id="teamEnforcementUnclassifiedV61527">0</span>
@@ -1634,7 +1635,7 @@
           <div class="field team-master-search-v61523"><label>ค้นหา</label><input class="input" id="teamMasterSearchV61523" placeholder="Team Code / ชื่อทีม / หน่วยงาน"/></div>
           <div class="team-master-toolbar-actions-v61523"><button class="btn btn-light" id="teamMasterSearchBtnV61523">ค้นหา</button></div>
         </div>
-        <div class="team-list-compact-meta-v61529f3"><span>รถยนต์ 3–5 คน</span><span>มอเตอร์ไซค์ Optional</span><span>สนับสนุน ≥1 คน</span><span class="team-master-auto-chip-v61523">AUTO CODE</span></div>
+        <div class="team-list-compact-meta-v61529f3"><span>รถยนต์ 3–5 คน</span><span>มอเตอร์ไซค์ ≥1 คน</span><span>สนับสนุน ≥1 คน</span><span class="team-master-auto-chip-v61523">AUTO CODE</span></div>
         <div class="table-wrap team-list-compact-table-v61529f3"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>รูปแบบ</th><th>หน่วยงาน</th><th>สมาชิก</th><th>สถานะ</th><th>Enforcement</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="7" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div>
       </div>
     </section>
@@ -1672,7 +1673,7 @@
     <div class="modal-header"><div><span class="eyebrow">AUTO-GENERATED TEAM</span><h3>สร้างทีมช่างเทคนิค</h3><p>เลือกหน่วยงานและรูปแบบ ระบบสร้าง Team Name / Team Code ให้เอง</p></div><button class="btn btn-light btn-icon" data-team-master-close-v61523>×</button></div>
     <div class="modal-body">
       <div class="field"><label>หน่วยงาน <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateOrgV61523"></select></div>
-      <div class="field"><label>รูปแบบทีม <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateCategoryV61524"><option value="CAR">รถยนต์ · 3–5 คน</option><option value="MOTORCYCLE">มอเตอร์ไซค์ · Optional</option><option value="SUPPORT">สนับสนุน · ขั้นต่ำ 1 คน</option></select></div>
+      <div class="field"><label>รูปแบบทีม <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateCategoryV61524"><option value="CAR">รถยนต์ · 3–5 คน</option><option value="MOTORCYCLE">มอเตอร์ไซค์ · ขั้นต่ำ 1 คน</option><option value="SUPPORT">สนับสนุน · ขั้นต่ำ 1 คน</option></select></div>
       <div class="team-master-preview-v61523"><span>ทีมที่จะสร้าง</span><div><strong id="teamMasterPreviewNameV61523">-</strong><code id="teamMasterPreviewCodeV61523">-</code></div><small id="teamMasterPreviewOrgV61523">เลือกหน่วยงานและรูปแบบ</small></div>
       <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMasterCreateNoteV61523" rows="3" maxlength="500" placeholder="ไม่บังคับ"></textarea></div>
       <div class="team-master-create-note-v61523"><i>✓</i><div><strong>ชื่อและ Team Code สร้างอัตโนมัติ</strong><span>เลขทีมเดิมจะไม่ถูกนำกลับมาใช้เมื่อปิดทีม</span></div></div>
@@ -3053,6 +3054,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix11-hr-review-correction-20260903a"></script>
+<script src="./app.js?v=6.15.29-fix13-motorcycle-min1-team-required-20260903a"></script>
 </body>
 </html>
