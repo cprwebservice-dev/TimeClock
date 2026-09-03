@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.29-fix13-motorcycle-min1-team-required-20260903a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix14-team-modal-a11y-focus-20260903a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1668,7 +1668,7 @@
 
 <!-- V6.15.28 Team modals -->
 <!-- V6.15.28 Create Team modal -->
-<div class="modal-backdrop hidden" id="teamMasterCreateModalV61523" aria-hidden="true">
+<div class="modal-backdrop hidden" id="teamMasterCreateModalV61523" aria-hidden="true" inert>
   <div class="modal team-master-create-modal-v61523" role="dialog" aria-modal="true">
     <div class="modal-header"><div><span class="eyebrow">AUTO-GENERATED TEAM</span><h3>สร้างทีมช่างเทคนิค</h3><p>เลือกหน่วยงานและรูปแบบ ระบบสร้าง Team Name / Team Code ให้เอง</p></div><button class="btn btn-light btn-icon" data-team-master-close-v61523>×</button></div>
     <div class="modal-body">
@@ -1683,7 +1683,7 @@
 </div>
 
 <!-- V6.15.28 FIX1 Team Membership — Dual-pane Transfer Workspace -->
-<div class="modal-backdrop hidden" id="teamMembershipModalV61524" aria-hidden="true">
+<div class="modal-backdrop hidden" id="teamMembershipModalV61524" aria-hidden="true" inert>
   <div class="modal team-membership-modal-v61524 team-membership-dual-modal-v61528f1" role="dialog" aria-modal="true">
     <div class="modal-header">
       <div><span class="eyebrow">TEAM MEMBERSHIP · DUAL-PANE</span><h3 id="teamMembershipTitleV61524">จัดสมาชิกทีม</h3><p id="teamMembershipMetaV61524">เลือกพนักงานจากด้านซ้าย แล้วย้ายเข้าสู่ทีมด้านขวา</p></div>
@@ -1742,7 +1742,7 @@
 </div>
 
 <!-- V6.15.29 FIX11 Operational Profile — HR Review Correction + Effective Change Link -->
-<div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true">
+<div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true" inert>
   <div class="modal operational-profile-modal-v61527 operational-profile-dual-modal-v61528f2 operational-profile-split-modal-v61529f5" role="dialog" aria-modal="true">
     <div class="modal-header operational-profile-header-v61529f5">
       <div><span class="eyebrow">OPERATIONAL PROFILE · MANAGER OWNED</span><h3 id="teamOperationalProfileTitleV61529F5">กำหนดรูปแบบการปฏิบัติงาน</h3><p id="teamOperationalProfileMetaV61527">เลือกพนักงานที่ยังไม่ได้กำหนด → เลือกรูปแบบและ Team → ตรวจผล → บันทึก</p></div>
@@ -1819,7 +1819,7 @@
 
 
 <!-- V6.15.29 Scoped Team Enforcement Rollout -->
-<div class="modal-backdrop hidden" id="teamEnforcementRolloutModalV61529" aria-hidden="true">
+<div class="modal-backdrop hidden" id="teamEnforcementRolloutModalV61529" aria-hidden="true" inert>
   <div class="modal team-enforcement-rollout-modal-v61529" role="dialog" aria-modal="true">
     <div class="modal-header">
       <div><span class="eyebrow">TEAM ENFORCEMENT</span><h3>เปิด / ปิด Team Enforcement</h3><p>เลือกขอบเขตและวันที่มีผล ระบบจะแสดงเฉพาะรายการที่ดำเนินการได้</p></div>
@@ -3054,6 +3054,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix13-motorcycle-min1-team-required-20260903a"></script>
+<script src="./app.js?v=6.15.29-fix14-team-modal-a11y-focus-20260903a"></script>
 </body>
 </html>

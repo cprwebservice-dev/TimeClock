@@ -1,28 +1,24 @@
-TimeClock Enterprise V6.15.29 FIX11
-HR Review Correction Flow
+TimeClock Enterprise V6.15.29 FIX13
+All Types Team Required Before Schedule
 
-ฐาน: V6.15.29 FIX9 Start Date Aligned + Backend patches ก่อนหน้า
+ฐาน: V6.15.29 FIX11 HR Review Correction Flow
 
-สิ่งที่เปลี่ยนใน FIX11
-- HR ส่งกลับ Operational Change แล้ว Manager เปิด Event เดิมโดยตรง
-- ไม่ Filter ด้วย old_operational_type อีกต่อไป
-- Resolve สถานะ Operational Profile / Team ปัจจุบันของพนักงานก่อนแก้
-- Pin พนักงานจาก Event เข้าฝั่งรายการแก้ไขอัตโนมัติ ไม่ต้อง Search ใหม่
-- แสดงรายการเดิม / สถานะปัจจุบัน / หมายเหตุ HR ใน Popup
-- แนะนำปลายทางเดิมก่อนเปลี่ยน (เช่น MOTORCYCLE -> CAR เดิม) และ Team เดิมถ้ายังใช้ได้
-- ตรวจ Team / Capacity / Effective Date ด้วย Preview เดิม
-- ตรวจข้อมูลตารางกะตั้งแต่วันที่มีผลถึงสิ้นเดือนแบบ Read-only; กะเดิมไม่ถูกลบ
-- บันทึก Correction ด้วย Effective Change ใหม่ ไม่ Rewrite Event เดิม
-- Event ที่ HR ส่งกลับเปลี่ยนเป็น CORRECTED และ Link ไป Event ใหม่
-- Event ใหม่ถูกส่งให้ HR Admin เป็น UNREAD เพื่อรับทราบ/ส่งกลับซ้ำได้
+Business Rule
+- CAR: ต้องมี Effective Team ก่อนกำหนดกะ · 3–5 คน
+- MOTORCYCLE: ต้องมี Effective Team ก่อนกำหนดกะ · ขั้นต่ำ 3 คน
+- SUPPORT: ต้องมี Effective Team ก่อนกำหนดกะ · ขั้นต่ำ 1 คน
+- UNCLASSIFIED: กำหนดกะไม่ได้
+- Team Membership เป็น Schedule Prerequisite กลาง ไม่ขึ้นกับ Scoped Team Enforcement
 
-Deployment
-1) รัน SQL_ที่ต้องรัน_V6.15.29_FIX11_HR_REVIEW_CORRECTION_FLOW.sql ใน Supabase
-2) รัน SQL_สำหรับตรวจสอบ_V6.15.29_FIX11_HR_REVIEW_CORRECTION_FLOW.sql
-3) Upload ไฟล์ทั้งหมดใน ZIP นี้ขึ้น GitHub repository root
-4) Hard Refresh (Ctrl+Shift+R)
+ครอบคลุม Calendar/Assignment Modal ทุก Work Mode, Quick/Bulk, Copy/Paste, Request Apply และทุก RPC ที่เขียน shift_calendar ผ่าน Final DB Trigger
 
-หมายเหตุ
-- FIX11 ไม่แก้/ลบประวัติ Operational Change เดิม
-- Team/Operational/Schedule policies เดิมยังคงใช้
-- SQL ไม่ได้ถูก Execute กับ Supabase จริงจากไฟล์นี้
+Deploy: รัน SQL FIX13 -> SQL ตรวจสอบ -> Upload GitHub -> Hard Refresh
+
+FIX13 policy: CAR 3-5, MOTORCYCLE min 1, SUPPORT min 1; all require Effective Team before schedule.
+
+
+V6.15.29 FIX14
+- Fix Team modal aria-hidden/focus lifecycle.
+- Hidden Team modals use inert.
+- Focus is returned outside a modal before aria-hidden=true.
+- No SQL change required.
