@@ -1,24 +1,27 @@
-TimeClock Enterprise V6.15.29 FIX13
-All Types Team Required Before Schedule
+Build: V6.15.29 FIX11 — HR Acknowledge Only
+Manager change = effective immediately by Effective Date; HR Admin = acknowledge/history only.
 
-ฐาน: V6.15.29 FIX11 HR Review Correction Flow
+TimeClock Enterprise V6.15.29 FIX10
+Start Date Aligned Operational Profile + Team Membership + Schedule Guard
 
-Business Rule
-- CAR: ต้องมี Effective Team ก่อนกำหนดกะ · 3–5 คน
-- MOTORCYCLE: ต้องมี Effective Team ก่อนกำหนดกะ · ขั้นต่ำ 3 คน
-- SUPPORT: ต้องมี Effective Team ก่อนกำหนดกะ · ขั้นต่ำ 1 คน
-- UNCLASSIFIED: กำหนดกะไม่ได้
-- Team Membership เป็น Schedule Prerequisite กลาง ไม่ขึ้นกับ Scoped Team Enforcement
+GitHub Deploy FULL — 13 runtime files
 
-ครอบคลุม Calendar/Assignment Modal ทุก Work Mode, Quick/Bulk, Copy/Paste, Request Apply และทุก RPC ที่เขียน shift_calendar ผ่าน Final DB Trigger
+FIX9 changes:
+- กำหนดรูปแบบครั้งแรก: Effective Date รายพนักงาน = MAX(ต้นเดือนปัจจุบัน, วันเริ่มงาน)
+- หากเลือกหลายคนพร้อมกัน ระบบคำนวณวันที่มีผลรายคนอัตโนมัติ
+- CAR / SUPPORT ที่เลือก Team พร้อมกำหนดรูปแบบ: Team Membership ใช้วันเดียวกับ Operational Profile ของพนักงานคนนั้น
+- เปลี่ยนรูปแบบ: ห้ามก่อนต้นเดือนปัจจุบัน / วันเริ่มงาน / วันที่กำหนดรูปแบบครั้งแรก
+- Impact Preview แสดงช่วง Effective Date และคนที่ถูกเลื่อนไปตามวันเริ่มงาน
+- Canonical Schedule Guard ห้ามบันทึกกะก่อนวันเริ่มงาน
+- Scoped Team Enforcement, CAR 3–5, SUPPORT, HR notification และ Dual-pane UX เดิมคงอยู่
 
-Deploy: รัน SQL FIX13 -> SQL ตรวจสอบ -> Upload GitHub -> Hard Refresh
+Deploy:
+1) Run SQL_ที่ต้องรัน_V6.15.29_FIX9_START_DATE_ALIGNED_OPERATIONAL_SCHEDULE.sql in Supabase SQL Editor
+2) Run SQL_สำหรับตรวจสอบ_V6.15.29_FIX9_START_DATE_ALIGNED_OPERATIONAL_SCHEDULE.sql
+3) Upload all 13 runtime files from this GitHub package to repository root
+4) Hard Refresh: Ctrl+Shift+R
 
-FIX13 policy: CAR 3-5, MOTORCYCLE min 1, SUPPORT min 1; all require Effective Team before schedule.
+Build: V6.15.29 FIX10 — Start Date Aligned Operational Schedule
 
 
-V6.15.29 FIX14
-- Fix Team modal aria-hidden/focus lifecycle.
-- Hidden Team modals use inert.
-- Focus is returned outside a modal before aria-hidden=true.
-- No SQL change required.
+FIX10: Modal focus accessibility — restore/blur focus before aria-hidden/inert to prevent Chrome accessibility warning on Unified Action / Print modals.
