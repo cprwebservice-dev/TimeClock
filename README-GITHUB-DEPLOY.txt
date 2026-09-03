@@ -1,27 +1,25 @@
-Build: V6.15.29 FIX11 — HR Acknowledge Only
-Manager change = effective immediately by Effective Date; HR Admin = acknowledge/history only.
+TimeClock Enterprise — V6.15.29 FIX12 Safe Team Closure UX
 
-TimeClock Enterprise V6.15.29 FIX10
-Start Date Aligned Operational Profile + Team Membership + Schedule Guard
+Deploy
+1) รัน SQL: SQL_ที่ต้องรัน_V6.15.29_FIX12_SAFE_TEAM_CLOSURE_WORKFLOW.sql
+2) Upload ไฟล์ทั้งหมดในโฟลเดอร์นี้ขึ้น GitHub repository root
+3) Hard Refresh: Ctrl+Shift+R
 
-GitHub Deploy FULL — 13 runtime files
+FIX12
+- เปลี่ยนปุ่ม “ปิด” เป็น “เตรียมปิด”
+- ก่อนปิดทีม ระบบตรวจสมาชิก Current/Future ที่ยังผูกทีม
+- CAR/SUPPORT ต้องย้ายไป Team ปลายทางที่ถูกประเภท
+- MOTORCYCLE เลือก Team ใหม่ หรือ “ไม่เข้าทีม” ได้
+- รองรับ Checkbox + เลือกหลายคน + Bulk target
+- Impact Preview ตรวจ Capacity ทีมปลายทางก่อนบันทึก
+- CAR ปลายทางต้อง 3–5 คน
+- SUPPORT ปลายทางขั้นต่ำ 1 คน
+- MOTORCYCLE ถ้าเลือก Team ต้องผ่าน Policy ของ Team
+- ตารางกะเดิมไม่ถูกลบ; แสดงจำนวน Schedule ที่จะเปลี่ยน Team Context
+- Direct TEAM Enforcement ของทีมที่ปิดจะสิ้นสุดอัตโนมัติ
+- การย้ายสมาชิก + ปิด Team ทำใน Transaction เดียว
+- Backend safety-net ป้องกัน Client เก่าปิดทีมที่ยังมีสมาชิกโดยตรง
+- Effective Date ของการปิดทีม = วันที่ปัจจุบัน (Asia/Bangkok) เพื่อให้ Flow ชัดและไม่เกิด Scheduled Closure ค้าง
 
-FIX9 changes:
-- กำหนดรูปแบบครั้งแรก: Effective Date รายพนักงาน = MAX(ต้นเดือนปัจจุบัน, วันเริ่มงาน)
-- หากเลือกหลายคนพร้อมกัน ระบบคำนวณวันที่มีผลรายคนอัตโนมัติ
-- CAR / SUPPORT ที่เลือก Team พร้อมกำหนดรูปแบบ: Team Membership ใช้วันเดียวกับ Operational Profile ของพนักงานคนนั้น
-- เปลี่ยนรูปแบบ: ห้ามก่อนต้นเดือนปัจจุบัน / วันเริ่มงาน / วันที่กำหนดรูปแบบครั้งแรก
-- Impact Preview แสดงช่วง Effective Date และคนที่ถูกเลื่อนไปตามวันเริ่มงาน
-- Canonical Schedule Guard ห้ามบันทึกกะก่อนวันเริ่มงาน
-- Scoped Team Enforcement, CAR 3–5, SUPPORT, HR notification และ Dual-pane UX เดิมคงอยู่
-
-Deploy:
-1) Run SQL_ที่ต้องรัน_V6.15.29_FIX9_START_DATE_ALIGNED_OPERATIONAL_SCHEDULE.sql in Supabase SQL Editor
-2) Run SQL_สำหรับตรวจสอบ_V6.15.29_FIX9_START_DATE_ALIGNED_OPERATIONAL_SCHEDULE.sql
-3) Upload all 13 runtime files from this GitHub package to repository root
-4) Hard Refresh: Ctrl+Shift+R
-
-Build: V6.15.29 FIX10 — Start Date Aligned Operational Schedule
-
-
-FIX10: Modal focus accessibility — restore/blur focus before aria-hidden/inert to prevent Chrome accessibility warning on Unified Action / Print modals.
+ฐาน Frontend: V6.15.29 FIX11 HR Acknowledge Only
+Database prerequisite: V6.15.29 FIX11B และ SQL ก่อนหน้าตามลำดับที่ใช้งานอยู่

@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.29-fix11-hr-acknowledge-only-20260903a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix12-safe-team-closure-20260903a" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1740,6 +1740,54 @@
   </div>
 </div>
 
+<!-- V6.15.29 FIX12 Safe Team Closure — guided member reassignment before close -->
+<div class="modal-backdrop hidden" id="teamClosureModalV61529F12" aria-hidden="true">
+  <div class="modal team-closure-modal-v61529f12" role="dialog" aria-modal="true" aria-labelledby="teamClosureTitleV61529F12">
+    <div class="modal-header team-closure-header-v61529f12">
+      <div><span class="eyebrow">SAFE TEAM CLOSURE</span><h3 id="teamClosureTitleV61529F12">เตรียมปิดทีม</h3><p id="teamClosureMetaV61529F12">ตรวจสมาชิก ย้ายปลายทาง และผลกระทบตารางกะก่อนปิดทีม</p></div>
+      <button class="btn btn-light btn-icon" data-team-closure-close-v61529f12 aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="team-closure-stepper-v61529f12" aria-label="ขั้นตอนปิดทีม">
+        <span class="active"><b>1</b>ตรวจทีม</span><i>→</i><span><b>2</b>จัดสมาชิก</span><i>→</i><span><b>3</b>ตรวจผลกระทบ</span><i>→</i><span><b>4</b>ยืนยันปิด</span>
+      </div>
+
+      <section class="team-closure-hero-v61529f12">
+        <div class="team-closure-team-v61529f12"><span id="teamClosureIconV61529F12">🚗</span><div><strong id="teamClosureTeamNameV61529F12">-</strong><code id="teamClosureTeamCodeV61529F12">-</code></div></div>
+        <div class="team-closure-kpis-v61529f12">
+          <div><span>สมาชิกต้องจัดการ</span><strong id="teamClosureMemberCountV61529F12">0</strong><small>คน</small></div>
+          <div><span>กะตั้งแต่วันนี้</span><strong id="teamClosureScheduleCountV61529F12">0</strong><small>รายการ · ไม่ลบ</small></div>
+          <div><span>Enforcement</span><strong id="teamClosureEnforcementV61529F12">-</strong><small id="teamClosureEnforcementHintV61529F12">ตรวจสถานะ</small></div>
+          <div><span>วันที่ปิดทีม</span><strong id="teamClosureEffectiveV61529F12">-</strong><small>ระบบกำหนดเป็นวันนี้</small></div>
+        </div>
+      </section>
+
+      <div class="team-closure-notice-v61529f12"><span>ℹ️</span><div><strong>ตารางกะเดิมจะไม่ถูกลบ</strong><small>ระบบเปลี่ยนเฉพาะ Team Context ตั้งแต่วันที่ย้ายสมาชิก และตรวจ Capacity/Policy ก่อนบันทึก</small></div></div>
+
+      <section class="team-closure-members-v61529f12">
+        <div class="team-closure-section-head-v61529f12">
+          <div><span>สมาชิกในทีม</span><h4>กำหนดปลายทางให้ครบทุกคนก่อนปิด</h4><small id="teamClosureProgressV61529F12">0 / 0 คน</small></div>
+          <div class="team-closure-bulk-v61529f12">
+            <button type="button" class="btn btn-light btn-sm" id="teamClosureSelectAllV61529F12">เลือกทั้งหมด</button>
+            <select class="select" id="teamClosureBulkTargetV61529F12"><option value="">เลือกปลายทางสำหรับรายการที่เลือก</option></select>
+            <button type="button" class="btn btn-primary btn-sm" id="teamClosureApplyBulkV61529F12" disabled>กำหนดปลายทาง</button>
+          </div>
+        </div>
+        <div class="team-closure-list-v61529f12" id="teamClosureMemberListV61529F12"><div class="fc-empty">กำลังตรวจสมาชิก...</div></div>
+      </section>
+
+      <section class="team-closure-impact-v61529f12">
+        <div class="team-closure-section-head-v61529f12"><div><span>Impact Preview</span><h4>ผลหลังปิดทีม</h4></div><span class="badge badge-gray" id="teamClosureReadinessV61529F12">รอตรวจ</span></div>
+        <div id="teamClosureImpactV61529F12"><div class="team-impact-placeholder-v61528">กำหนดทีมปลายทางเพื่อดูผลกระทบ</div></div>
+      </section>
+
+      <div class="field team-closure-reason-v61529f12"><label>เหตุผลการปิดทีม <span class="required-mark">*</span></label><textarea class="input" id="teamClosureReasonV61529F12" rows="2" maxlength="500" placeholder="เช่น ปรับโครงสร้างทีม / รวมทีม / เปลี่ยนพื้นที่รับผิดชอบ"></textarea><small>ใช้เก็บ Audit การปิดทีมและการย้ายสมาชิก</small></div>
+    </div>
+    <div class="modal-footer team-closure-footer-v61529f12"><div id="teamClosureFooterStatusV61529F12">กำลังตรวจข้อมูล...</div><button class="btn btn-light" data-team-closure-close-v61529f12>ยกเลิก</button><button class="btn btn-danger-soft" id="teamClosureConfirmV61529F12" disabled>ยืนยันปิดทีม</button></div>
+  </div>
+</div>
+
+
 <!-- V6.15.29 FIX9 Operational Profile — Start Date aligned Effective Date + Schedule Guard -->
 <div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true">
   <div class="modal operational-profile-modal-v61527 operational-profile-dual-modal-v61528f2 operational-profile-split-modal-v61529f5" role="dialog" aria-modal="true">
@@ -3051,6 +3099,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix11-hr-acknowledge-only-20260903a"></script>
+<script src="./app.js?v=6.15.29-fix12-safe-team-closure-20260903a"></script>
 </body>
 </html>
