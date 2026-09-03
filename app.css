@@ -24827,3 +24827,42 @@ html[data-theme="dark"] .operational-effective-help-v61529f6.important{color:#fa
 [data-theme="dark"] .operational-effective-summary-v61529f9>div>strong,
 [data-theme="dark"] .operational-effective-people-v61529f9 b{color:#e2e8f0}
 @media(max-width:720px){.operational-effective-summary-v61529f9{align-items:flex-start;flex-direction:column}.operational-effective-summary-v61529f9>span{align-self:flex-start}}
+
+/* ==========================================================================
+   V6.15.29 FIX11 — HR Review Correction Flow
+   ========================================================================== */
+.operational-correction-banner-v61529f11{
+  margin:10px 0 12px;padding:12px 14px;border:1px solid #c7d7fe;border-radius:14px;
+  background:linear-gradient(180deg,#f7f9ff 0%,#f3f6ff 100%);box-shadow:0 8px 24px rgba(37,99,235,.06)
+}
+.operational-correction-head-v61529f11{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px}
+.operational-correction-head-v61529f11>div{display:flex;flex-direction:column;gap:2px}
+.operational-correction-head-v61529f11 span{font-size:12px;font-weight:800;color:#4f46e5}
+.operational-correction-head-v61529f11 strong{font-size:15px;line-height:1.35;color:#172033}
+.operational-correction-chip-v61529f11{display:inline-flex;align-items:center;min-height:28px;padding:4px 10px;border-radius:999px;background:#ede9fe;color:#6d28d9!important;font-size:11px!important;white-space:nowrap}
+.operational-correction-grid-v61529f11{display:grid;grid-template-columns:1.35fr 1fr 1.15fr;gap:8px}
+.operational-correction-grid-v61529f11>div{display:flex;flex-direction:column;gap:3px;padding:9px 10px;border:1px solid #e3e8f5;border-radius:11px;background:#fff}
+.operational-correction-grid-v61529f11 small{font-size:11px;font-weight:700;color:#64748b}
+.operational-correction-grid-v61529f11 strong{font-size:12.5px;line-height:1.45;color:#1f2937}
+.operational-correction-grid-v61529f11 span{font-size:11px;color:#64748b}
+.operational-correction-schedule-v61529f11{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 12px;border:1px solid #dbe5f3;border-radius:12px;background:#f8fbff}
+.operational-correction-schedule-v61529f11>div{display:flex;flex-direction:column;gap:2px}
+.operational-correction-schedule-v61529f11 span{font-size:11px;color:#64748b}
+.operational-correction-schedule-v61529f11 strong{font-size:14px;color:#172033}
+.operational-correction-schedule-v61529f11 small{font-size:11px;color:#64748b}
+.operational-correction-schedule-v61529f11>span{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;font-weight:800;white-space:nowrap}
+.operational-correction-schedule-v61529f11>span.review{background:#fff7ed;color:#c2410c}
+.operational-correction-schedule-v61529f11>span.ok{background:#ecfdf5;color:#047857}
+.operational-correction-schedule-v61529f11>span.warning{background:#fff7ed;color:#b45309}
+.team-change-card-v61528.corrected-v61529f11{border-color:#bbf7d0;background:linear-gradient(180deg,#fff 0%,#f7fff9 100%)}
+.team-change-correction-link-v61529f11{margin:8px 0;padding:7px 10px;border-radius:9px;background:#eef2ff;color:#4338ca;font-size:11.5px;font-weight:800}
+.team-change-corrected-note-v61529f11{margin:8px 0 0;padding:8px 10px;border-radius:9px;background:#ecfdf5;color:#047857;font-size:11.5px}
+.operational-mode-switch-v61529f5 button:disabled{cursor:not-allowed;opacity:.72}
+@media(max-width:900px){.operational-correction-grid-v61529f11{grid-template-columns:1fr}.operational-correction-head-v61529f11{flex-direction:column}.operational-correction-schedule-v61529f11{align-items:flex-start;flex-direction:column}}
+html[data-theme="dark"] .operational-correction-banner-v61529f11{background:#151b2b;border-color:#334155}
+html[data-theme="dark"] .operational-correction-grid-v61529f11>div{background:#101827;border-color:#263449}
+html[data-theme="dark"] .operational-correction-grid-v61529f11 strong,
+html[data-theme="dark"] .operational-correction-head-v61529f11 strong,
+html[data-theme="dark"] .operational-correction-schedule-v61529f11 strong{color:#e5edf9}
+html[data-theme="dark"] .operational-correction-schedule-v61529f11{background:#111827;border-color:#334155}
+html[data-theme="dark"] .team-change-card-v61528.corrected-v61529f11{background:#102019;border-color:#166534}

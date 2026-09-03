@@ -1,21 +1,28 @@
-TimeClock Enterprise V6.15.29 FIX9
-Start Date Aligned Operational Profile + Team Membership + Schedule Guard
+TimeClock Enterprise V6.15.29 FIX11
+HR Review Correction Flow
 
-GitHub Deploy FULL — 13 runtime files
+ฐาน: V6.15.29 FIX9 Start Date Aligned + Backend patches ก่อนหน้า
 
-FIX9 changes:
-- กำหนดรูปแบบครั้งแรก: Effective Date รายพนักงาน = MAX(ต้นเดือนปัจจุบัน, วันเริ่มงาน)
-- หากเลือกหลายคนพร้อมกัน ระบบคำนวณวันที่มีผลรายคนอัตโนมัติ
-- CAR / SUPPORT ที่เลือก Team พร้อมกำหนดรูปแบบ: Team Membership ใช้วันเดียวกับ Operational Profile ของพนักงานคนนั้น
-- เปลี่ยนรูปแบบ: ห้ามก่อนต้นเดือนปัจจุบัน / วันเริ่มงาน / วันที่กำหนดรูปแบบครั้งแรก
-- Impact Preview แสดงช่วง Effective Date และคนที่ถูกเลื่อนไปตามวันเริ่มงาน
-- Canonical Schedule Guard ห้ามบันทึกกะก่อนวันเริ่มงาน
-- Scoped Team Enforcement, CAR 3–5, SUPPORT, HR notification และ Dual-pane UX เดิมคงอยู่
+สิ่งที่เปลี่ยนใน FIX11
+- HR ส่งกลับ Operational Change แล้ว Manager เปิด Event เดิมโดยตรง
+- ไม่ Filter ด้วย old_operational_type อีกต่อไป
+- Resolve สถานะ Operational Profile / Team ปัจจุบันของพนักงานก่อนแก้
+- Pin พนักงานจาก Event เข้าฝั่งรายการแก้ไขอัตโนมัติ ไม่ต้อง Search ใหม่
+- แสดงรายการเดิม / สถานะปัจจุบัน / หมายเหตุ HR ใน Popup
+- แนะนำปลายทางเดิมก่อนเปลี่ยน (เช่น MOTORCYCLE -> CAR เดิม) และ Team เดิมถ้ายังใช้ได้
+- ตรวจ Team / Capacity / Effective Date ด้วย Preview เดิม
+- ตรวจข้อมูลตารางกะตั้งแต่วันที่มีผลถึงสิ้นเดือนแบบ Read-only; กะเดิมไม่ถูกลบ
+- บันทึก Correction ด้วย Effective Change ใหม่ ไม่ Rewrite Event เดิม
+- Event ที่ HR ส่งกลับเปลี่ยนเป็น CORRECTED และ Link ไป Event ใหม่
+- Event ใหม่ถูกส่งให้ HR Admin เป็น UNREAD เพื่อรับทราบ/ส่งกลับซ้ำได้
 
-Deploy:
-1) Run SQL_ที่ต้องรัน_V6.15.29_FIX9_START_DATE_ALIGNED_OPERATIONAL_SCHEDULE.sql in Supabase SQL Editor
-2) Run SQL_สำหรับตรวจสอบ_V6.15.29_FIX9_START_DATE_ALIGNED_OPERATIONAL_SCHEDULE.sql
-3) Upload all 13 runtime files from this GitHub package to repository root
-4) Hard Refresh: Ctrl+Shift+R
+Deployment
+1) รัน SQL_ที่ต้องรัน_V6.15.29_FIX11_HR_REVIEW_CORRECTION_FLOW.sql ใน Supabase
+2) รัน SQL_สำหรับตรวจสอบ_V6.15.29_FIX11_HR_REVIEW_CORRECTION_FLOW.sql
+3) Upload ไฟล์ทั้งหมดใน ZIP นี้ขึ้น GitHub repository root
+4) Hard Refresh (Ctrl+Shift+R)
 
-Build: V6.15.29 FIX9 — Start Date Aligned Operational Schedule
+หมายเหตุ
+- FIX11 ไม่แก้/ลบประวัติ Operational Change เดิม
+- Team/Operational/Schedule policies เดิมยังคงใช้
+- SQL ไม่ได้ถูก Execute กับ Supabase จริงจากไฟล์นี้
