@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="./app.css?v=6.15.29-fix12-safe-team-closure-20260903a" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix14b-final-working-team-authority-20260903b" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1575,12 +1575,13 @@
     <button type="button" data-team-kpi-action-v61528="CAR"><span>รถยนต์ยังไม่มีทีม</span><strong id="teamKpiCarMissingV61528">0</strong><small>คน · ทีมละ 3–5</small></button>
     <button type="button" data-team-kpi-action-v61528="SUPPORT"><span>สนับสนุนยังไม่มีทีม</span><strong id="teamKpiSupportMissingV61528">0</strong><small>คน · ต้องมีทีม</small></button>
     <button type="button" data-team-kpi-action-v61528="ACTIVE"><span>ทีมพร้อมใช้งาน</span><strong id="teamKpiActiveTeamsV61528">0</strong><small>ทีม</small></button>
-    <button type="button" data-team-kpi-action-v61528="MOTORCYCLE"><span>มอเตอร์ไซค์ไม่เข้าทีม</span><strong id="teamKpiMotorcycleOptionalV61528">0</strong><small>คน · ไม่บังคับ</small></button>
+    <button type="button" data-team-kpi-action-v61528="MOTORCYCLE"><span>มอเตอร์ไซค์ยังไม่มีทีม</span><strong id="teamKpiMotorcycleOptionalV61528">0</strong><small>คน · ขั้นต่ำ 1</small></button>
   </div>
 
   <nav class="team-workspace-tabs-v61528 section-gap" aria-label="Team workspace">
     <button class="active" data-team-workspace-tab-v61528="OVERVIEW">ภาพรวม</button>
     <button data-team-workspace-tab-v61528="PEOPLE">พนักงานและทีม</button>
+    <button data-team-workspace-tab-v61528="ASSIGNMENTS" id="teamTemporaryTabV61529F14B">ไปช่วยทีม / ยืมตัว <em id="teamTempPendingBadgeV61529F14B" class="hidden">0</em></button>
     <button class="hidden" data-team-workspace-tab-v61528="CHANGES" id="teamChangesTabV61528">การเปลี่ยนแปลง <em id="teamChangesUnreadBadgeV61528" class="hidden">0</em></button>
     <button data-team-workspace-tab-v61528="HISTORY">ประวัติ</button>
   </nav>
@@ -1590,7 +1591,7 @@
       <div class="panel-header"><div><h3>รูปแบบการปฏิบัติงาน</h3><p>Manager กำหนดประเภทงานให้พนักงานก่อนจัด Team และตารางกะ</p></div><button class="btn btn-primary" id="teamOperationalProfileOpenV61527">กำหนดรูปแบบพนักงาน</button></div>
       <div class="panel-body team-operational-type-cards-v61528">
         <article class="car"><div class="team-type-icon-v61528">🚗</div><div><h4>รถยนต์</h4><p>งานภาคสนามด้วยรถยนต์</p><strong>ต้องอยู่ทีม · 3–5 คน/ทีม</strong></div></article>
-        <article class="motorcycle"><div class="team-type-icon-v61528">🏍️</div><div><h4>มอเตอร์ไซค์</h4><p>งานภาคสนามด้วยมอเตอร์ไซค์</p><strong>ไม่บังคับ Team ก่อนจัดกะ</strong></div></article>
+        <article class="motorcycle"><div class="team-type-icon-v61528">🏍️</div><div><h4>มอเตอร์ไซค์</h4><p>งานภาคสนามด้วยมอเตอร์ไซค์</p><strong>ต้องอยู่ Team ก่อนจัดกะ · ขั้นต่ำ 1 คน</strong></div></article>
         <article class="support"><div class="team-type-icon-v61528">🧰</div><div><h4>สนับสนุน</h4><p>งานสนับสนุน ไม่ได้ออกวิ่งงาน</p><strong>ต้องอยู่ทีม · ขั้นต่ำ 1 คน</strong></div></article>
       </div>
     </section>
@@ -1610,6 +1611,7 @@
         <div class="team-readiness-checklist-v61528 team-enforcement-prep-v61529">
           <div><span id="teamCheckClassifiedV61528">○</span><p><strong>กำหนดรูปแบบครบ</strong><small id="teamCheckClassifiedDetailV61528">กำลังตรวจ...</small></p></div>
           <div><span id="teamCheckCarV61528">○</span><p><strong>รถยนต์มีทีมครบ</strong><small id="teamCheckCarDetailV61528">กำลังตรวจ...</small></p></div>
+          <div><span id="teamCheckMotorcycleV61529F14B">○</span><p><strong>มอเตอร์ไซค์มีทีมครบ</strong><small id="teamCheckMotorcycleDetailV61529F14B">กำลังตรวจ...</small></p></div>
           <div><span id="teamCheckSupportV61528">○</span><p><strong>ทีมสนับสนุนครบ</strong><small id="teamCheckSupportDetailV61528">กำลังตรวจ...</small></p></div>
         </div>
         <div class="team-enforcement-rollout-callout-v61529">
@@ -1634,8 +1636,60 @@
           <div class="field team-master-search-v61523"><label>ค้นหา</label><input class="input" id="teamMasterSearchV61523" placeholder="Team Code / ชื่อทีม / หน่วยงาน"/></div>
           <div class="team-master-toolbar-actions-v61523"><button class="btn btn-light" id="teamMasterSearchBtnV61523">ค้นหา</button></div>
         </div>
-        <div class="team-list-compact-meta-v61529f3"><span>รถยนต์ 3–5 คน</span><span>มอเตอร์ไซค์ Optional</span><span>สนับสนุน ≥1 คน</span><span class="team-master-auto-chip-v61523">AUTO CODE</span></div>
+        <div class="team-list-compact-meta-v61529f3"><span>รถยนต์ 3–5 คน</span><span>มอเตอร์ไซค์ ≥1 คน</span><span>สนับสนุน ≥1 คน</span><span class="team-master-auto-chip-v61523">AUTO CODE</span></div>
         <div class="table-wrap team-list-compact-table-v61529f3"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>รูปแบบ</th><th>หน่วยงาน</th><th>สมาชิก</th><th>สถานะ</th><th>Enforcement</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="7" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div>
+      </div>
+    </section>
+  </div>
+
+
+  <div class="hidden" data-team-workspace-pane-v61528="ASSIGNMENTS" id="teamTemporaryWorkspaceV61529F14B">
+    <section class="panel team-temp-panel-v61529f14b">
+      <div class="panel-header team-temp-head-v61529f14b">
+        <div>
+          <span class="eyebrow">TEMPORARY TEAM ASSIGNMENT</span>
+          <h3>ไปช่วยทีม / ยืมตัวช่าง</h3>
+          <p>ระบบจำแนกให้อัตโนมัติจากหน่วยงานต้นสังกัดเทียบหน่วยงานปลายทาง · ไม่เปลี่ยน Permanent Home Team</p>
+        </div>
+        <div class="team-temp-head-actions-v61529f14b">
+          <span class="badge badge-gray" id="teamTempAuthorityBadgeV61529F14B">กำลังตรวจสิทธิ์</span>
+          <button class="btn btn-light" id="teamTempRefreshV61529F14B">↻ รีเฟรช</button>
+          <button class="btn btn-primary" id="teamTempCreateV61529F14B">＋ ไปช่วยทีม / ยืมตัว</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="team-temp-rule-v61529f14b">
+          <div><b>BN5 → BN5</b><span>ไปช่วยทีมภายในหน่วยงาน</span></div>
+          <i>•</i>
+          <div><b>BN5 → BN6</b><span>ยืมตัวต่างหน่วยงาน · ต้องอยู่ฝ่ายเดียวกัน</span></div>
+          <i>•</i>
+          <div><b>Manager / Acting</b><span>มีสิทธิ์ตาม Scope และช่วงวันที่</span></div>
+        </div>
+        <div class="team-temp-kpis-v61529f14b">
+          <article class="pending"><span>รอฉันดำเนินการ</span><strong id="teamTempKpiPendingV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="active"><span>กำลังไปช่วย / ยืม</span><strong id="teamTempKpiActiveV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="scheduled"><span>อนุมัติแล้ว · รอเริ่ม</span><strong id="teamTempKpiScheduledV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="inbound"><span>ยืมเข้า / มาช่วย</span><strong id="teamTempKpiInboundV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="outbound"><span>ยืมออก / ไปช่วย</span><strong id="teamTempKpiOutboundV61529F14B">0</strong><small>รายการ</small></article>
+        </div>
+        <div class="team-temp-toolbar-v61529f14b">
+          <div class="field"><label>ตั้งแต่</label><input class="input" type="date" id="teamTempFromV61529F14B"/></div>
+          <div class="field"><label>ถึง</label><input class="input" type="date" id="teamTempToV61529F14B"/></div>
+          <div class="field"><label>สถานะ</label><select class="select" id="teamTempStatusV61529F14B"><option value="OPEN">กำลังดำเนินการ</option><option value="PENDING">รออนุมัติ</option><option value="ACTIVE">กำลังไปช่วย / ยืม</option><option value="SCHEDULED">อนุมัติแล้ว · รอเริ่ม</option><option value="COMPLETED">สิ้นสุดแล้ว</option><option value="ALL">ทั้งหมด</option></select></div>
+          <div class="field team-temp-search-v61529f14b"><label>ค้นหา</label><input class="input" id="teamTempSearchV61529F14B" placeholder="รหัส / ชื่อ / BN / Team Code"/></div>
+        </div>
+        <div class="team-temp-list-v61529f14b" id="teamTempListV61529F14B"><div class="fc-empty">เลือกแท็บนี้เพื่อโหลดรายการ</div></div>
+      </div>
+    </section>
+
+    <section class="panel section-gap team-acting-panel-v61529f14b hidden" id="teamActingPanelV61529F14B">
+      <div class="panel-header">
+        <div><span class="eyebrow">HR ADMIN</span><h3>Acting Manager</h3><p>มอบอำนาจ Operational Authority ชั่วคราวโดยไม่แก้ Role / PCgrade ของพนักงาน</p></div>
+        <div class="team-temp-head-actions-v61529f14b"><button class="btn btn-light" id="teamActingRefreshV61529F14B">↻ รีเฟรช</button><button class="btn btn-primary" id="teamActingCreateV61529F14B">＋ กำหนด Acting</button></div>
+      </div>
+      <div class="panel-body">
+        <div class="team-acting-note-v61529f14b">Acting มีสิทธิ์เทียบเท่า Manager เฉพาะ Scope และช่วงวันที่ที่กำหนด · สามารถสร้าง/อนุมัติรายการยืมตัวในอำนาจของตนได้</div>
+        <div class="table-wrap"><table class="team-acting-table-v61529f14b"><thead><tr><th>ผู้รักษาการ</th><th>Scope</th><th>ช่วงวันที่</th><th>สถานะ</th><th>เหตุผล</th><th>จัดการ</th></tr></thead><tbody id="teamActingBodyV61529F14B"><tr><td colspan="6" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div>
       </div>
     </section>
   </div>
@@ -1665,6 +1719,54 @@
 </section>
 
 
+
+<!-- V6.15.29 FIX14B Temporary Team Assignment modal -->
+<div class="modal-backdrop hidden" id="teamTempCreateModalV61529F14B" aria-hidden="true">
+  <div class="modal team-temp-create-modal-v61529f14b" role="dialog" aria-modal="true" aria-labelledby="teamTempCreateTitleV61529F14B">
+    <div class="modal-header"><div><span class="eyebrow">WORKING TEAM · EFFECTIVE DATE</span><h3 id="teamTempCreateTitleV61529F14B">ไปช่วยทีม / ยืมตัวช่าง</h3><p>เลือกพนักงานและ Team ปลายทาง ระบบจำแนกประเภทและเส้นทางอนุมัติให้เอง</p></div><button class="btn btn-light btn-icon" data-team-temp-close-v61529f14b>×</button></div>
+    <div class="modal-body">
+      <div class="team-temp-date-grid-v61529f14b"><div class="field"><label>วันที่เริ่ม <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateFromV61529F14B"/></div><div class="field"><label>วันที่สิ้นสุด <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateToV61529F14B"/></div></div>
+      <div class="field"><label>ค้นหาพนักงาน</label><div class="team-temp-search-line-v61529f14b"><input class="input" id="teamTempCandidateSearchV61529F14B" placeholder="รหัสพนักงาน / ชื่อ / หน่วยงาน"/><button class="btn btn-light" id="teamTempCandidateSearchBtnV61529F14B" type="button">ค้นหา</button></div></div>
+      <div class="field"><label>พนักงาน <span class="required-mark">*</span></label><select class="select" id="teamTempEmployeeV61529F14B"><option value="">— เลือกพนักงาน —</option></select></div>
+      <div class="team-temp-home-card-v61529f14b" id="teamTempHomeCardV61529F14B"><span>ทีมต้นสังกัด</span><strong>-</strong><small>เลือกพนักงานเพื่อดู Home Unit / Home Team</small></div>
+      <div class="field"><label>Team ปลายทาง <span class="required-mark">*</span></label><select class="select" id="teamTempDestinationV61529F14B" disabled><option value="">— เลือก Team ปลายทาง —</option></select><small class="field-hint" id="teamTempDestinationHintV61529F14B">ระบบแสดงเฉพาะทีมประเภทเดียวกันและอยู่ภายในระดับฝ่ายเดียวกัน</small></div>
+      <div class="team-temp-preview-v61529f14b" id="teamTempPreviewV61529F14B"><div class="team-temp-preview-placeholder-v61529f14b">เลือกพนักงาน วันที่ และ Team ปลายทาง เพื่อดูประเภทการมอบหมายและขั้นตอนอนุมัติ</div></div>
+      <div class="field"><label>เหตุผล / รายละเอียดงาน</label><textarea class="input" id="teamTempNoteV61529F14B" rows="3" maxlength="500" placeholder="เช่น สนับสนุนงานติดตั้งพื้นที่ BN6"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-temp-close-v61529f14b>ยกเลิก</button><button class="btn btn-primary" id="teamTempCreateConfirmV61529F14B" disabled>ยืนยันรายการ</button></div>
+  </div>
+</div>
+
+<!-- V6.15.29 FIX14B Reject / Cancel / End Early modal -->
+<div class="modal-backdrop hidden" id="teamTempActionModalV61529F14B" aria-hidden="true">
+  <div class="modal team-temp-action-modal-v61529f14b" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">TEMPORARY ASSIGNMENT ACTION</span><h3 id="teamTempActionTitleV61529F14B">ดำเนินการ</h3><p id="teamTempActionSubtitleV61529F14B">-</p></div><button class="btn btn-light btn-icon" data-team-temp-action-close-v61529f14b>×</button></div>
+    <div class="modal-body">
+      <div class="team-temp-action-summary-v61529f14b" id="teamTempActionSummaryV61529F14B"></div>
+      <div class="field hidden" id="teamTempActionEndBoxV61529F14B"><label>ให้สิ้นสุดหลังวันที่ <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempActionEndDateV61529F14B"/></div>
+      <div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea class="input" id="teamTempActionReasonV61529F14B" rows="3" maxlength="500" placeholder="ระบุเหตุผล"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-temp-action-close-v61529f14b>ยกเลิก</button><button class="btn btn-danger" id="teamTempActionConfirmV61529F14B">ยืนยัน</button></div>
+  </div>
+</div>
+
+<!-- V6.15.29 FIX14B Acting Manager modal -->
+<div class="modal-backdrop hidden" id="teamActingModalV61529F14B" aria-hidden="true">
+  <div class="modal team-acting-modal-v61529f14b" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">DELEGATED OPERATIONAL AUTHORITY</span><h3 id="teamActingModalTitleV61529F14B">กำหนด Acting Manager</h3><p>สิทธิ์มีผลเฉพาะ Scope และช่วงวันที่ โดยไม่เปลี่ยน Role / PCgrade</p></div><button class="btn btn-light btn-icon" data-team-acting-close-v61529f14b>×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>ค้นหาผู้รักษาการ</label><div class="team-temp-search-line-v61529f14b"><input class="input" id="teamActingSearchV61529F14B" placeholder="ชื่อ / Email / รหัสพนักงาน"/><button type="button" class="btn btn-light" id="teamActingSearchBtnV61529F14B">ค้นหา</button></div></div>
+      <div class="field"><label>ผู้รักษาการ <span class="required-mark">*</span></label><select class="select" id="teamActingPersonV61529F14B"></select></div>
+      <div class="field"><label>หน่วยงาน / Scope <span class="required-mark">*</span></label><select class="select" id="teamActingOrgV61529F14B"></select></div>
+      <label class="team-acting-descendants-v61529f14b"><input type="checkbox" id="teamActingDescendantsV61529F14B"/><span><strong>รวมหน่วยงานภายใต้ Scope นี้</strong><small>ใช้เมื่อ Acting ต้องดูแลทีมย่อยทั้งหมดภายใต้หน่วยงานที่เลือก</small></span></label>
+      <div class="team-temp-date-grid-v61529f14b"><div class="field"><label>เริ่มรักษาการ <span class="required-mark">*</span></label><input class="input" type="date" id="teamActingFromV61529F14B"/></div><div class="field"><label>สิ้นสุดรักษาการ <span class="required-mark">*</span></label><input class="input" type="date" id="teamActingToV61529F14B"/></div></div>
+      <div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea class="input" id="teamActingReasonV61529F14B" rows="3" maxlength="500" placeholder="เช่น Manager ลาพักร้อน / รักษาการแทน"></textarea></div>
+      <label class="team-acting-active-v61529f14b"><input type="checkbox" id="teamActingActiveV61529F14B" checked/><span>เปิดใช้งาน Acting Assignment</span></label>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-acting-close-v61529f14b>ยกเลิก</button><button class="btn btn-primary" id="teamActingSaveV61529F14B">บันทึก Acting</button></div>
+  </div>
+</div>
+
 <!-- V6.15.28 Team modals -->
 <!-- V6.15.28 Create Team modal -->
 <div class="modal-backdrop hidden" id="teamMasterCreateModalV61523" aria-hidden="true">
@@ -1672,7 +1774,7 @@
     <div class="modal-header"><div><span class="eyebrow">AUTO-GENERATED TEAM</span><h3>สร้างทีมช่างเทคนิค</h3><p>เลือกหน่วยงานและรูปแบบ ระบบสร้าง Team Name / Team Code ให้เอง</p></div><button class="btn btn-light btn-icon" data-team-master-close-v61523>×</button></div>
     <div class="modal-body">
       <div class="field"><label>หน่วยงาน <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateOrgV61523"></select></div>
-      <div class="field"><label>รูปแบบทีม <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateCategoryV61524"><option value="CAR">รถยนต์ · 3–5 คน</option><option value="MOTORCYCLE">มอเตอร์ไซค์ · Optional</option><option value="SUPPORT">สนับสนุน · ขั้นต่ำ 1 คน</option></select></div>
+      <div class="field"><label>รูปแบบทีม <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateCategoryV61524"><option value="CAR">รถยนต์ · 3–5 คน</option><option value="MOTORCYCLE">มอเตอร์ไซค์ · ขั้นต่ำ 1 คน</option><option value="SUPPORT">สนับสนุน · ขั้นต่ำ 1 คน</option></select></div>
       <div class="team-master-preview-v61523"><span>ทีมที่จะสร้าง</span><div><strong id="teamMasterPreviewNameV61523">-</strong><code id="teamMasterPreviewCodeV61523">-</code></div><small id="teamMasterPreviewOrgV61523">เลือกหน่วยงานและรูปแบบ</small></div>
       <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMasterCreateNoteV61523" rows="3" maxlength="500" placeholder="ไม่บังคับ"></textarea></div>
       <div class="team-master-create-note-v61523"><i>✓</i><div><strong>ชื่อและ Team Code สร้างอัตโนมัติ</strong><span>เลขทีมเดิมจะไม่ถูกนำกลับมาใช้เมื่อปิดทีม</span></div></div>
@@ -3099,6 +3201,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix12-safe-team-closure-20260903a"></script>
+<script src="./app.js?v=6.15.29-fix14b-final-working-team-authority-20260903b"></script>
 </body>
 </html>

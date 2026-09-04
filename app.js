@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX12 Safe Team Closure UX";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix12-safe-team-closure";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix14b-final-working-team-authority";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.15.29-fix12-safe-team-closu
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.15.29 FIX12',
+  version: '6.15.29 FIX14B FINAL',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -2550,6 +2550,7 @@ window.tcIsDayShiftCode = value =>
       $("teamMasterNavV61523")?.classList.toggle(
         "hidden",
         !["MANAGER","HR_ADMIN"].includes(String(p.role||"").toUpperCase())
+        && window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.()!==true
       );
       window.TimeClockSettings?.syncProfile?.(p);
       document.dispatchEvent(new CustomEvent("timeclock:effective-role-changed", {
@@ -5502,15 +5503,13 @@ window.tcIsDayShiftCode = value =>
           const selectedDepartment =
             String(val("scheduleDepartment") || "").trim();
 
+          // FIX14B FINAL: do not pre-filter by Employee Master department in Browser.
+          // Borrowed technicians keep their Home Unit in Employee Master, while the
+          // canonical Schedule RPC filters them by the effective Working Org.
           const scopeEmployees =
             (Array.isArray(filterOptions.employees)
               ? filterOptions.employees
-              : [])
-              .filter(employee => {
-                if (!selectedDepartment) return true;
-                return String(employee?.department || "").trim()
-                  === selectedDepartment;
-              });
+              : []);
 
           const scopeEmpCodes =
             [...new Set(
@@ -5612,11 +5611,12 @@ window.tcIsDayShiftCode = value =>
           // fetch 7-day rows by employee batches. This avoids re-running the
           // full cross-product RPC once per HTTP range page.
           const selectedDepartment = String(val("scheduleDepartment") || "").trim();
+          // FIX14B FINAL: server-side Working Org filtering is authoritative.
+          // Client-side Home department filtering would incorrectly hide BN5 staff
+          // borrowed into BN6 before the Schedule RPC can resolve their Working Team.
           const availableScopeEmployees = (Array.isArray(filterOptions.employees)
             ? filterOptions.employees
-            : [])
-            .filter(employee => !selectedDepartment
-              || String(employee?.department || "").trim() === selectedDepartment);
+            : []);
           const teamEmpCodes = [...new Set(
             availableScopeEmployees
               .map(employee => String(employee?.emp_code || "").trim())
@@ -5983,6 +5983,33 @@ window.tcIsDayShiftCode = value =>
       };
     }
 
+    function scheduleTemporaryWorkingMetaV61529F14B(row) {
+      const ctx = scheduleTeamContextMetaV61526(row);
+      const stateCode = String(ctx?.assignment_state || ctx?.assignment_type || '').toUpperCase();
+      if (!['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(stateCode)) return null;
+      const homeOrg = String(ctx?.home_org_code || ctx?.employee_org_code || '').trim();
+      const workingOrg = String(ctx?.team_org_code || '').trim();
+      const canEdit = ctx?.can_edit_schedule === true;
+      return {
+        type:stateCode,
+        isBorrow:stateCode === 'BORROW_CROSS_ORG',
+        isAssist:stateCode === 'TEMP_TEAM_ASSIST',
+        homeOrg,
+        workingOrg,
+        canEdit,
+        canConfirm:ctx?.can_confirm_schedule === true,
+        authorityType:String(ctx?.access_authority_type || '').toUpperCase(),
+        label:stateCode === 'BORROW_CROSS_ORG'
+          ? (canEdit ? `ยืมจาก ${homeOrg || '-'}` : `ยืมไป ${workingOrg || '-'}`)
+          : (canEdit ? 'มาช่วยทีมชั่วคราว' : `ไปช่วย ${workingOrg || 'ทีมอื่น'} ชั่วคราว`)
+      };
+    }
+
+    function scheduleWorkingTeamCanEditV61529F14B(row) {
+      const ctx = scheduleTeamContextMetaV61526(row);
+      return ctx?.can_edit_schedule !== false;
+    }
+
     function fillScheduleOperationalTeamOptionsV61526(rows = state.schedule) {
       const select = $("scheduleOperationalTeamV61526");
       if (!select) return;
@@ -5994,12 +6021,12 @@ window.tcIsDayShiftCode = value =>
         if (!groups.has(g.key)) groups.set(g.key,g);
       });
       const sorted = [...groups.values()].sort((a,b) => {
-        const aw = a.state==='CAR_UNASSIGNED' ? 8 : a.state==='SUPPORT_UNASSIGNED' ? 9 : a.state==='MOTORCYCLE_OPTIONAL' ? 10 : a.state==='UNCLASSIFIED' ? 11 : 1;
-        const bw = b.state==='CAR_UNASSIGNED' ? 8 : b.state==='SUPPORT_UNASSIGNED' ? 9 : b.state==='MOTORCYCLE_OPTIONAL' ? 10 : b.state==='UNCLASSIFIED' ? 11 : 1;
+        const aw = a.state==='CAR_UNASSIGNED' ? 8 : a.state==='SUPPORT_UNASSIGNED' ? 9 : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(a.state) ? 10 : a.state==='UNCLASSIFIED' ? 11 : 1;
+        const bw = b.state==='CAR_UNASSIGNED' ? 8 : b.state==='SUPPORT_UNASSIGNED' ? 9 : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(b.state) ? 10 : b.state==='UNCLASSIFIED' ? 11 : 1;
         return aw-bw || a.label.localeCompare(b.label,'th');
       });
       const mappedOptionsV61526 = sorted.map(g => {
-        const suffix = g.state==='CAR_UNASSIGNED' ? ' ⚠' : g.state==='SUPPORT_UNASSIGNED' ? ' ⚠' : g.state==='MOTORCYCLE_OPTIONAL' ? ' • optional' : g.state==='UNCLASSIFIED' ? ' ⚠' : '';
+        const suffix = g.state==='CAR_UNASSIGNED' ? ' ⚠' : g.state==='SUPPORT_UNASSIGNED' ? ' ⚠' : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(g.state) ? ' ⚠' : g.state==='UNCLASSIFIED' ? ' ⚠' : '';
         return `<option value="${safe(g.key)}">${safe(g.label + suffix)}</option>`;
       }).join('');
       const keepPendingV61526 = old && !sorted.some(g => g.key===old) && scheduleTeamContextStateV61526.loading;
@@ -6007,12 +6034,12 @@ window.tcIsDayShiftCode = value =>
       if ([...select.options].some(o => o.value === old)) select.value = old;
       const note = $("scheduleOperationalTeamMetaV61526");
       if (note) {
-        const unassigned = sorted.filter(g => ['CAR_UNASSIGNED','SUPPORT_UNASSIGNED'].includes(g.state)).length;
+        const unassigned = sorted.filter(g => ['CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(g.state)).length;
         note.textContent = scheduleTeamContextStateV61526.loading
           ? 'กำลังจับคู่ Effective Team...'
           : scheduleTeamContextStateV61526.error
             ? 'โหลด Team Context ไม่สำเร็จ • ตารางยังแสดงตามหน่วยงานเดิม'
-            : `${sorted.filter(g=>g.state==='TEAM').length} ทีม • ${unassigned} กลุ่มที่ยังต้องกำหนดทีม`;
+            : `${sorted.filter(g=>['TEAM','BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(g.state)).length} ทีม/รายการปฏิบัติงาน • ${unassigned} กลุ่มที่ยังต้องกำหนดทีม`;
       }
     }
 
@@ -6033,11 +6060,13 @@ window.tcIsDayShiftCode = value =>
         const chunkSize=250;
         for (let i=0;i<empCodes.length;i+=chunkSize) {
           const chunk=empCodes.slice(i,i+chunkSize);
-          const {data,error}=await state.client.rpc('ta_get_schedule_team_context_v61526',{
-            p_emp_codes:chunk,p_start_date:period.startDate,p_end_date:period.endDate
-          });
-          if (error) throw error;
-          all.push(...(Array.isArray(data)?data:[]));
+          const args={p_emp_codes:chunk,p_start_date:period.startDate,p_end_date:period.endDate};
+          let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
+          if (response.error && missingFunction(response.error)) {
+            response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
+          }
+          if (response.error) throw response.error;
+          all.push(...(Array.isArray(response.data)?response.data:[]));
         }
         if (scheduleTeamContextStateV61526.key!==key) return;
         const map=new Map(all.map(x=>[`${String(x.emp_code||'').trim()}|${String(x.work_date||'').slice(0,10)}`,x]));
@@ -6128,7 +6157,7 @@ window.tcIsDayShiftCode = value =>
       if (teamTitleV6146) teamTitleV6146.textContent = mode === "TIME" ? "สรุปเวลาทำงานรายทีมช่างเทคนิค" : "ตารางกะสรุปรายทีมช่างเทคนิค";
       if (teamSubtitleV6146) teamSubtitleV6146.textContent = mode === "TIME"
         ? "สรุปสถานะการมาทำงานรายทีมในช่วงประมาณ 15 วันที่เลือก • คลิกแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
-        : "สรุปตาม Effective Team ในช่วงประมาณ 15 วันที่เลือก • รวมกลุ่มรถยนต์ยังไม่มีทีม มอเตอร์ไซค์ไม่บังคับทีม และรอ Manager กำหนดประเภท";
+        : "สรุปตาม Effective Team ในช่วงประมาณ 15 วันที่เลือก • รวมกลุ่มรถยนต์/มอเตอร์ไซค์/สนับสนุนที่ยังไม่มีทีม และรอ Manager กำหนดประเภท";
       if (teamLegendV6146) teamLegendV6146.innerHTML = mode === "TIME"
         ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-off-v61411">หยุด</span><span class="badge time-legend-leave-v6149">ลา</span>'
         : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
@@ -8247,6 +8276,11 @@ window.tcIsDayShiftCode = value =>
           const shift2In = scheduleTeamSegmentActualTime(row, 2, 'IN');
           const shift2Out = scheduleTeamSegmentActualTime(row, 2, 'OUT');
           const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(row);
+          const tempWorkingV61529F14B = scheduleTemporaryWorkingMetaV61529F14B(row);
+          const tempWorkingBadgeV61529F14B = tempWorkingV61529F14B
+            ? `<span class="team-scope-chip-v61526 ${tempWorkingV61529F14B.isBorrow?'borrowed':'assist'} team-employee-temp-chip-v61529f14b">${safe(tempWorkingV61529F14B.label)}</span>`
+            : '';
+          const canEditWorkingV61529F14B = scheduleWorkingTeamCanEditV61529F14B(row);
           const splitWorkTemplate = Boolean(specialModeV61459 && ['customer','wait'].includes(specialModeV61459.key)) || templateCode === 'SPLIT_FLEX' || shift2Plan !== '-' || shift2In !== '-' || shift2Out !== '-';
           const splitModeLabelV61459 = specialModeV61459?.label || 'กะปกติ + งานลูกค้าช่วงดึก';
           const shiftDetailHtml = splitWorkTemplate
@@ -8255,12 +8289,14 @@ window.tcIsDayShiftCode = value =>
           return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''}">
             <div class="team-employee-main">
               <div class="team-employee-avatar">${safe(initials)}</div>
-              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
+              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small>${tempWorkingBadgeV61529F14B}</div>
               <div class="team-employee-actions-v61118">
                 <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
                 ${timeCertificationBadgeV61139(row)}
                 ${timeCertificationButtonV61139(row,'team-daily')}
-                <button type="button" class="team-assign-btn-v61118" data-team-assign data-emp="${safe(row.emp_code || '')}" data-date="${safe(String(row.work_date || scheduleTeamDrawerState.date || '').slice(0,10))}" title="จัดกะและประมวลผลเวลาทำงานใหม่"><span>✎</span> จัดกะ</button>
+                ${canEditWorkingV61529F14B
+                  ? `<button type="button" class="team-assign-btn-v61118" data-team-assign data-emp="${safe(row.emp_code || '')}" data-date="${safe(String(row.work_date || scheduleTeamDrawerState.date || '').slice(0,10))}" title="จัดกะและประมวลผลเวลาทำงานใหม่"><span>✎</span> จัดกะ</button>`
+                  : `<span class="team-working-readonly-v61529f14b" title="ช่วงยืมตัวนี้จัดกะโดย Manager/Acting ของทีมปลายทาง">ดูอย่างเดียว</span>`}
               </div>
             </div>
             <div class="team-employee-detail-grid segments-${splitWorkTemplate ? 'five' : 'three'} ${splitWorkTemplate ? 'double-shift' : ''}">
@@ -10135,7 +10171,8 @@ window.tcIsDayShiftCode = value =>
         || val("scheduleTeamFocus")
         || ""
       ).trim();
-      const sourceRows = focusTeam
+      const selectedDepartmentV61529F14B=String(val("scheduleDepartment")||"").trim();
+      const sourceRows = focusTeam && !selectedDepartmentV61529F14B
         ? (rows || []).filter(row => scheduleUnitLabel(row) === focusTeam)
         : (rows || []);
 
@@ -10155,6 +10192,8 @@ window.tcIsDayShiftCode = value =>
           units.set(teamKeyV61526, {
             unit, filterKey:teamKeyV61526, teamContext:teamCtxV61526,
             employees: new Set(),
+            tempBorrowed: new Set(),
+            tempAssist: new Set(),
             managers: new Map(),
             managerNames: new Map(),
             days: new Map()
@@ -10163,14 +10202,17 @@ window.tcIsDayShiftCode = value =>
 
         const group = units.get(teamKeyV61526);
         group.employees.add(String(row.emp_code || ''));
+        if (teamCtxV61526.state === 'BORROW_CROSS_ORG') group.tempBorrowed.add(String(row.emp_code || ''));
+        if (teamCtxV61526.state === 'TEMP_TEAM_ASSIST') group.tempAssist.add(String(row.emp_code || ''));
+        const isTemporaryWorkingRowV61529F14B=['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(teamCtxV61526.state);
         const managerCodeV61121 = scheduleManagerCodeV61121(row);
-        if (managerCodeV61121) {
+        if (managerCodeV61121 && !isTemporaryWorkingRowV61529F14B) {
           group.managers.set(
             managerCodeV61121,
             Number(group.managers.get(managerCodeV61121) || 0) + 1
           );
         }
-        const managerNamesV61123 = Array.isArray(row?._team_manager_names_v61123)
+        const managerNamesV61123 = !isTemporaryWorkingRowV61529F14B && Array.isArray(row?._team_manager_names_v61123)
           ? row._team_manager_names_v61123
           : [];
         managerNamesV61123.forEach(name => {
@@ -10272,15 +10314,23 @@ window.tcIsDayShiftCode = value =>
       }
 
       for (const team of teams) {
-        const managerLabelV61121 = scheduleTeamManagerLabelV61121(team);
         const teamCtxV61526=team.teamContext||{};
-        const teamPolicyV61526=teamCtxV61526.state==='CAR_UNASSIGNED'
+        const tempCountV61529F14B=Number(team.tempBorrowed?.size||0)+Number(team.tempAssist?.size||0);
+        const managerLabelV61121=tempCountV61529F14B>=team.employees.size && team.employees.size>0
+          ? 'Manager ทีมปลายทาง'
+          : scheduleTeamManagerLabelV61121(team);
+        const baseTeamPolicyV61526=teamCtxV61526.state==='CAR_UNASSIGNED'
           ? '<span class="team-scope-chip-v61526 warning">⚠ ต้องจัดทีม</span>'
-          : teamCtxV61526.state==='MOTORCYCLE_OPTIONAL'
-            ? '<span class="team-scope-chip-v61526 optional">มอเตอร์ไซค์ • ไม่บังคับ</span>'
+          : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(teamCtxV61526.state)
+            ? '<span class="team-scope-chip-v61526 warning">⚠ มอเตอร์ไซค์ต้องมีทีม</span>'
             : teamCtxV61526.state==='UNCLASSIFIED'
               ? '<span class="team-scope-chip-v61526 warning">⚠ รอกำหนดประเภท</span>'
               : `<span class="team-scope-chip-v61526">${safe(teamCtxV61526.code||teamCtxV61526.category||'ทีม')}</span>`;
+        const tempTeamPolicyV61529F14B=[
+          team.tempBorrowed?.size ? `<span class="team-scope-chip-v61526 borrowed">↔ ยืมชั่วคราว ${safe(formatNumber(team.tempBorrowed.size))}</span>` : '',
+          team.tempAssist?.size ? `<span class="team-scope-chip-v61526 assist">→ มาช่วย ${safe(formatNumber(team.tempAssist.size))}</span>` : ''
+        ].filter(Boolean).join('');
+        const teamPolicyV61526=baseTeamPolicyV61526+tempTeamPolicyV61529F14B;
         html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115 team-unit-card-v61526"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small>${teamPolicyV61526}<small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabelV61121)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open-key-v61526="${safe(team.filterKey||'')}" data-team-open-label-v61526="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
 
         for (const date of period.dates) {
@@ -10548,13 +10598,17 @@ window.tcIsDayShiftCode = value =>
         const teamCtxV61526=scheduleOperationalTeamGroupV61526(row);
         const unit=teamCtxV61526.label;
         const teamKeyV61526=teamCtxV61526.key;
-        if (teamFilter && scheduleUnitLabel(row) !== teamFilter) continue;
+        if (teamFilter && !String(val('scheduleDepartment')||'').trim() && scheduleUnitLabel(row) !== teamFilter) continue;
         const date = String(row?.work_date || '').slice(0,10);
         if (!period.dates.includes(date)) continue;
         const emp = String(row?.emp_code || '').trim();
-        if (!teams.has(teamKeyV61526)) teams.set(teamKeyV61526,{unit,filterKey:teamKeyV61526,teamContext:teamCtxV61526,employees:new Set(),days:new Map(),managerNames:new Map()});
+        if (!teams.has(teamKeyV61526)) teams.set(teamKeyV61526,{unit,filterKey:teamKeyV61526,teamContext:teamCtxV61526,employees:new Set(),tempBorrowed:new Set(),tempAssist:new Set(),days:new Map(),managerNames:new Map()});
         const team = teams.get(teamKeyV61526); team.employees.add(emp); totalEmployees.add(emp);
-        const names = Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : [];
+        if (teamCtxV61526.state === 'BORROW_CROSS_ORG') team.tempBorrowed.add(emp);
+        if (teamCtxV61526.state === 'TEMP_TEAM_ASSIST') team.tempAssist.add(emp);
+        const names = ['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(teamCtxV61526.state)
+          ? []
+          : (Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : []);
         names.forEach(name => { const n=String(name||'').trim(); if(n) team.managerNames.set(n,(team.managerNames.get(n)||0)+1); });
         if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0});
         const metrics = scheduleTimeMetricsV6146(row, attendanceMap.get(`${emp}|${date}`));
@@ -10588,15 +10642,23 @@ window.tcIsDayShiftCode = value =>
       let html=`<table class="schedule-team-table schedule-time-table-v6146"><thead><tr><th class="schedule-team-unit-head">ทีมช่างเทคนิค</th>${headDays}</tr></thead><tbody>`;
       if (!sorted.length) html += `<tr><td colspan="${period.dates.length+1}" class="table-empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
       for (const team of sorted) {
-        const managerLabel = scheduleTeamManagerLabelV61121(team);
         const teamCtxV61526=team.teamContext||{};
-        const teamPolicyV61526=teamCtxV61526.state==='CAR_UNASSIGNED'
+        const tempCountV61529F14B=Number(team.tempBorrowed?.size||0)+Number(team.tempAssist?.size||0);
+        const managerLabel=tempCountV61529F14B>=team.employees.size && team.employees.size>0
+          ? 'Manager ทีมปลายทาง'
+          : scheduleTeamManagerLabelV61121(team);
+        const baseTeamPolicyV61526=teamCtxV61526.state==='CAR_UNASSIGNED'
           ? '<span class="team-scope-chip-v61526 warning">⚠ ต้องจัดทีม</span>'
-          : teamCtxV61526.state==='MOTORCYCLE_OPTIONAL'
-            ? '<span class="team-scope-chip-v61526 optional">มอเตอร์ไซค์ • ไม่บังคับ</span>'
+          : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(teamCtxV61526.state)
+            ? '<span class="team-scope-chip-v61526 warning">⚠ มอเตอร์ไซค์ต้องมีทีม</span>'
             : teamCtxV61526.state==='UNCLASSIFIED'
               ? '<span class="team-scope-chip-v61526 warning">⚠ รอกำหนดประเภท</span>'
               : `<span class="team-scope-chip-v61526">${safe(teamCtxV61526.code||teamCtxV61526.category||'ทีม')}</span>`;
+        const tempTeamPolicyV61529F14B=[
+          team.tempBorrowed?.size ? `<span class="team-scope-chip-v61526 borrowed">↔ ยืมชั่วคราว ${safe(formatNumber(team.tempBorrowed.size))}</span>` : '',
+          team.tempAssist?.size ? `<span class="team-scope-chip-v61526 assist">→ มาช่วย ${safe(formatNumber(team.tempAssist.size))}</span>` : ''
+        ].filter(Boolean).join('');
+        const teamPolicyV61526=baseTeamPolicyV61526+tempTeamPolicyV61529F14B;
         html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115 team-unit-card-v61526"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small>${teamPolicyV61526}<small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open-key-v61526="${safe(team.filterKey||'')}" data-team-open-label-v61526="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
         for (const date of period.dates) {
           const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0};
@@ -10925,13 +10987,17 @@ window.tcIsDayShiftCode = value =>
                     ? "shift-visual-night"
                     : "shift-visual-day";
 
+          const workingTeamMetaV61529F14B=scheduleTemporaryWorkingMetaV61529F14B(r);
+          const workingTeamReadOnlyV61529F14B=!scheduleWorkingTeamCanEditV61529F14B(r);
           const cls = `shift-${codeClass} ${shiftVisualClass} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
           const tdCls = [
             "day-col",
             "schedule-data-cell",
             publicHoliday ? "public-holiday-cell" : "",
             weeklyOff ? "weekly-off-cell" : "",
-            date > today ? "future-schedule-cell" : ""
+            date > today ? "future-schedule-cell" : "",
+            workingTeamMetaV61529F14B ? "temporary-working-cell-v61529f14b" : "",
+            workingTeamReadOnlyV61529F14B ? "working-team-readonly-cell-v61529f14b" : ""
           ].filter(Boolean).join(" ");
 
           const dayLabel = publicHoliday
@@ -10965,15 +11031,20 @@ window.tcIsDayShiftCode = value =>
             `${Number(r.waiting_minutes||0)>0?'<small class="schedule-calc-flag wait">W</small>':''}` +
             `${r.comp_off_earned?'<small class="schedule-calc-flag comp">C</small>':''}`;
 
+          const scheduleCellReadOnlyV61529F14B=managerOwnEmployee||workingTeamReadOnlyV61529F14B;
           const editAttrs =
             managerOwnEmployee
               ? `data-manager-self-readonly="1"`
-              : `data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}"`;
+              : workingTeamReadOnlyV61529F14B
+                ? `data-working-team-readonly="1"`
+                : `data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}"`;
 
           const cellTitle =
             managerOwnEmployee
               ? `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | Manager ไม่สามารถจัดกะให้ตนเอง`
-              : `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ดับเบิลคลิกเพื่อแก้ไข`;
+              : workingTeamReadOnlyV61529F14B
+                ? `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ${workingTeamMetaV61529F14B?.label||'Working Team'} • ดูอย่างเดียว • Manager/Acting ทีมปลายทางเป็นผู้จัดกะ`
+                : `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ดับเบิลคลิกเพื่อแก้ไข`;
 
           const secondShiftCodeV61147 =
             splitWorkTemplate
@@ -10989,7 +11060,7 @@ window.tcIsDayShiftCode = value =>
           const iconAriaV6136 = `${personShiftIconMetaV6136.label}${normalizedCode && normalizedCode !== '-' ? ` ${normalizedCode}` : ''}${shiftTimeLabel ? ` ${shiftTimeLabel}` : ''}`;
 
           const personSpecialToneStyleV61458 = schedulePersonSpecialToneStyleV61458(personShiftIconMetaV6136.tone);
-          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${managerOwnEmployee?"manager-self-readonly":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${scheduleCellReadOnlyV61529F14B?"working-team-readonly-v61529f14b":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(cellTitle)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
         }
 
         html += `</tr>`;
@@ -13039,14 +13110,18 @@ window.tcIsDayShiftCode = value =>
           "error"
         );
       }
+      const actingTeamAuthority =
+        page === "team-master"
+        && window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.() === true;
       if (
         managerPages.has(page)
         && !["HR_ADMIN","MANAGER"].includes(
           effectiveRole
         )
+        && !actingTeamAuthority
       ) {
         return toast(
-          "Viewer ไม่มีสิทธิ์จัดการกะหรือทีมงาน",
+          "ไม่มีสิทธิ์จัดการกะหรือทีมงานในขอบเขตนี้",
           "error"
         );
       }
@@ -32855,12 +32930,14 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX12';
+  const VERSION='6.15.29 FIX14B FINAL';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const role=()=>String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'VIEWER').toUpperCase();
-  const allowedRole=()=>['MANAGER','HR_ADMIN'].includes(role());
+  const baseTeamRole=()=>['MANAGER','HR_ADMIN'].includes(role());
+  const actingTeamAccess=()=>window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.()===true;
+  const allowedRole=()=>baseTeamRole()||actingTeamAccess();
   const isHr=()=>role()==='HR_ADMIN';
   const toast=(m,t='info')=>app()?.toast?.(m,t);
   const state={
@@ -32868,7 +32945,7 @@ ${names}${extra}
     enforcement:null,enforcementRows:[],enforcementSelected:new Set(),enforcementScope:'TEAM',enforcementModalState:null,runtime:null,runtimeCheckedAt:0,runtimePromise:null,
     opPool:[],opTeams:[],opSelected:new Set(),opLeftPicked:new Set(),opRightPicked:new Set(),opPreview:null,opLoading:false,opMode:'ASSIGN',opPendingSearch:'',
     changeRows:[],enforcementAudit:[],changeChannel:null,changeTimer:null,
-    closureTeam:null,closurePreview:null,closureMoves:new Map(),closurePicked:new Set(),closureLoading:false,closureReturnFocus:null,
+    closureTeam:null,closurePreview:null,closureTempImpact:null,closureMoves:new Map(),closurePicked:new Set(),closureLoading:false,closureReturnFocus:null,
     loading:false,lastError:null
   };
   const RUNTIME_TTL=5*60*1000;
@@ -32882,7 +32959,7 @@ ${names}${extra}
   function catLabel(c){const t=String(c||'UNCLASSIFIED').toUpperCase();return t==='CAR'?'รถยนต์':t==='MOTORCYCLE'?'มอเตอร์ไซค์':t==='SUPPORT'?'สนับสนุน':'รอกำหนดรูปแบบ';}
   function catIcon(c){const t=String(c||'').toUpperCase();return t==='CAR'?'🚗':t==='MOTORCYCLE'?'🏍️':t==='SUPPORT'?'🧰':'⚠';}
   function catChip(c){const t=String(c||'').toUpperCase();const cls=t==='CAR'?'badge-blue':t==='MOTORCYCLE'?'badge-orange':t==='SUPPORT'?'badge-purple':'badge-amber';return `<span class="badge ${cls}">${catIcon(t)} ${esc(catLabel(t))}</span>`;}
-  function policy(c){const t=String(c||'').toUpperCase();if(t==='CAR')return{min:3,max:5,required:true,label:'3–5 คน'};if(t==='MOTORCYCLE')return{min:3,max:null,required:false,label:'Team Optional · ถ้ามีทีมขั้นต่ำ 3 คน'};if(t==='SUPPORT')return{min:1,max:null,required:true,label:'ขั้นต่ำ 1 คน'};return{min:0,max:null,required:true,label:'ต้องกำหนดรูปแบบก่อน'};}
+  function policy(c){const t=String(c||'').toUpperCase();if(t==='CAR')return{min:3,max:5,required:true,label:'3–5 คน'};if(t==='MOTORCYCLE')return{min:1,max:null,required:true,label:'ขั้นต่ำ 1 คน'};if(t==='SUPPORT')return{min:1,max:null,required:true,label:'ขั้นต่ำ 1 คน'};return{min:0,max:null,required:true,label:'ต้องกำหนดรูปแบบก่อน'};}
   function teamLifecycle(t){const s=String(t?.team_status||'').toUpperCase();if(['ACTIVE','DRAFT','INACTIVE'].includes(s))return s;if(t?.is_active===false)return'INACTIVE';const p=policy(t?.team_category),n=Number(t?.active_member_count||0);return n>=p.min&&(p.max==null||n<=p.max)?'ACTIVE':'DRAFT';}
   function statusBadge(t){const s=teamLifecycle(t);return s==='ACTIVE'?'<span class="badge badge-green">ใช้งาน</span>':s==='DRAFT'?'<span class="badge badge-amber">รอสมาชิก</span>':'<span class="badge badge-gray">ปิดใช้งาน</span>';}
   function selectedOrgId(){return $('teamMasterOrgFilterV61523')?.value||'';}
@@ -32891,6 +32968,7 @@ ${names}${extra}
     const raw=String(app()?.humanError?.(error)||error?.message||error||'เกิดข้อผิดพลาด');
     if(raw.includes('TEAM_MANAGER_ROLE_REQUIRED'))return 'เมนูทีมช่างเทคนิคสำหรับ Manager และ HR Admin เท่านั้น';
     if(raw.includes('TEAM_ORG_PERMISSION_DENIED'))return 'ไม่มีสิทธิ์จัดการทีมในหน่วยงานนี้';
+    if(raw.includes('TEAM_HAS_TEMPORARY_ASSIGNMENTS'))return 'ยังปิดทีมไม่ได้ เพราะมีรายการไปช่วยทีม / ยืมตัวที่กำลังใช้งาน รอเริ่ม หรือรออนุมัติ';
     if(raw.includes('TEAM_CATEGORY_REQUIRED'))return 'กรุณาเลือกรูปแบบทีม รถยนต์ / มอเตอร์ไซค์ / สนับสนุน';
     if(raw.includes('TEAM_MEMBERS_MAX')||raw.includes('TEAM_FINAL_MEMBERS_MAX')||raw.includes('TARGET_TEAM_ABOVE_MAX')){
       const team=(raw.match(/TEAM=([^:]+)/)||[])[1],count=(raw.match(/COUNT=(\d+)/)||[])[1],max=(raw.match(/MAX=(\d+)/)||[])[1];
@@ -32937,7 +33015,7 @@ ${names}${extra}
     return raw;
   }
 
-  function syncNav(){ $('teamMasterNavV61523')?.classList.toggle('hidden',!allowedRole()); $('teamChangesTabV61528')?.classList.toggle('hidden',!allowedRole()); const n=$('teamBrowserNotificationV61528'); if(n)n.classList.toggle('hidden',!isHr()); }
+  function syncNav(){ $('teamMasterNavV61523')?.classList.toggle('hidden',!allowedRole()); $('teamChangesTabV61528')?.classList.toggle('hidden',!baseTeamRole()); const n=$('teamBrowserNotificationV61528'); if(n)n.classList.toggle('hidden',!isHr()); }
   function setRuntimeBanner(kind,title,detail=''){
     const box=$('teamRuntimeDiagnosticV61526Fix1');if(!box)return;
     box.className=`team-runtime-diagnostic-v61526f1 ${kind||'info'}`;
@@ -32976,11 +33054,12 @@ ${names}${extra}
   }
   function renderWorkflow(){
     const s=state.summary||{},a=String(s.next_action||'CLASSIFY');
-    const map={CLASSIFY:1,ASSIGN_CAR_TEAM:3,ASSIGN_SUPPORT_TEAM:3,REVIEW_AND_ENABLE:4,READY:5};const active=map[a]||1;
+    const map={CLASSIFY:1,ASSIGN_CAR_TEAM:3,ASSIGN_MOTORCYCLE_TEAM:3,ASSIGN_SUPPORT_TEAM:3,REVIEW_AND_ENABLE:4,READY:5};const active=map[a]||1;
     document.querySelectorAll('[data-team-step-v61528]').forEach(n=>{const i=Number(n.dataset.teamStepV61528);n.classList.toggle('active',i===active);n.classList.toggle('done',i<active);});
     let title='พร้อมใช้งาน',detail='โครงสร้างทีมพร้อมสำหรับการจัดกะ',btn='ดูทีม';
     if(a==='CLASSIFY'){title=`ยังมีพนักงานรอกำหนดรูปแบบ ${Number(s.unclassified_total||0).toLocaleString('th-TH')} คน`;detail='เริ่มจากกำหนดเป็น รถยนต์ / มอเตอร์ไซค์ / สนับสนุน';btn='กำหนดรูปแบบพนักงาน';}
     else if(a==='ASSIGN_CAR_TEAM'){title=`รถยนต์ยังไม่มีทีม ${Number(s.car_without_team||0).toLocaleString('th-TH')} คน`;detail='รถยนต์ต้องอยู่ Effective Team และทีมละ 3–5 คน';btn='จัดพนักงานและทีม';}
+    else if(a==='ASSIGN_MOTORCYCLE_TEAM'){title=`มอเตอร์ไซค์ยังไม่มีทีม ${Number(s.motorcycle_without_team||0).toLocaleString('th-TH')} คน`;detail='มอเตอร์ไซค์ต้องมี Effective Team ก่อนจัดกะ · ขั้นต่ำ 1 คน';btn='จัดพนักงานและทีม';}
     else if(a==='ASSIGN_SUPPORT_TEAM'){title=`กลุ่มสนับสนุนยังไม่มีทีม ${Number(s.support_without_team||0).toLocaleString('th-TH')} คน`;detail='ทีมสนับสนุนต้องมี Effective Team ขั้นต่ำ 1 คน';btn='จัดพนักงานและทีม';}
     else if(a==='REVIEW_AND_ENABLE'){title='ข้อมูลทีมพร้อมแล้ว';detail='ตรวจความพร้อมขั้นสุดท้ายก่อน HR Admin เปิด Team Enforcement';btn=isHr()?'ตรวจและเปิดใช้งาน':'ตรวจความพร้อม';}
     else if(a==='READY'){title='Team Enforcement เปิดใช้งานแล้ว';detail='พนักงานและ Team พร้อมสำหรับ Schedule / Request / Certification';btn='ดูพนักงานและทีม';}
@@ -32993,6 +33072,7 @@ ${names}${extra}
     const set=(iconId,detailId,ok,detail)=>{const i=$(iconId),d=$(detailId);if(i){i.textContent=ok?'✓':'!';i.className=ok?'ok':'warn';}if(d)d.textContent=detail;};
     set('teamCheckClassifiedV61528','teamCheckClassifiedDetailV61528',Number(s.unclassified_total||0)===0,Number(s.unclassified_total||0)===0?'ครบแล้ว':`เหลือ ${Number(s.unclassified_total||0).toLocaleString('th-TH')} คน`);
     set('teamCheckCarV61528','teamCheckCarDetailV61528',Number(s.car_without_team||0)===0,Number(s.car_without_team||0)===0?'ครบแล้ว':`เหลือ ${Number(s.car_without_team||0).toLocaleString('th-TH')} คน`);
+    set('teamCheckMotorcycleV61529F14B','teamCheckMotorcycleDetailV61529F14B',Number(s.motorcycle_without_team||0)===0,Number(s.motorcycle_without_team||0)===0?'ครบแล้ว':`เหลือ ${Number(s.motorcycle_without_team||0).toLocaleString('th-TH')} คน`);
     set('teamCheckSupportV61528','teamCheckSupportDetailV61528',Number(s.support_without_team||0)===0,Number(s.support_without_team||0)===0?'ครบแล้ว':`เหลือ ${Number(s.support_without_team||0).toLocaleString('th-TH')} คน`);
   }
 
@@ -33140,7 +33220,7 @@ ${names}${extra}
     document.querySelectorAll('[data-team-workspace-pane-v61528]').forEach(p=>p.classList.toggle('hidden',p.dataset.teamWorkspacePaneV61528!==t));
     if(t==='HISTORY')loadAudit();if(t==='CHANGES'&&isHr())loadChangeInbox();
   }
-  function handleNextAction(){const a=$('teamNextActionV61528')?.dataset.action||'CLASSIFY';if(a==='CLASSIFY')openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'});else if(a==='ASSIGN_CAR_TEAM'){setTab('PEOPLE');$('teamMasterCategoryFilterV61524')&&($('teamMasterCategoryFilterV61524').value='CAR');renderTeams();}else if(a==='ASSIGN_SUPPORT_TEAM'){setTab('PEOPLE');$('teamMasterCategoryFilterV61524')&&($('teamMasterCategoryFilterV61524').value='SUPPORT');renderTeams();}else if(a==='REVIEW_AND_ENABLE'){setTab('OVERVIEW');$('teamEnforcementToggleV61525')?.scrollIntoView({behavior:'smooth',block:'center'});if(isHr())setTimeout(openEnforcementRollout,250);}else setTab('PEOPLE');}
+  function handleNextAction(){const a=$('teamNextActionV61528')?.dataset.action||'CLASSIFY';if(a==='CLASSIFY')openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'});else if(a==='ASSIGN_CAR_TEAM'){setTab('PEOPLE');$('teamMasterCategoryFilterV61524')&&($('teamMasterCategoryFilterV61524').value='CAR');renderTeams();}else if(a==='ASSIGN_MOTORCYCLE_TEAM'){setTab('PEOPLE');$('teamMasterCategoryFilterV61524')&&($('teamMasterCategoryFilterV61524').value='MOTORCYCLE');renderTeams();}else if(a==='ASSIGN_SUPPORT_TEAM'){setTab('PEOPLE');$('teamMasterCategoryFilterV61524')&&($('teamMasterCategoryFilterV61524').value='SUPPORT');renderTeams();}else if(a==='REVIEW_AND_ENABLE'){setTab('OVERVIEW');$('teamEnforcementToggleV61525')?.scrollIntoView({behavior:'smooth',block:'center'});if(isHr())setTimeout(openEnforcementRollout,250);}else setTab('PEOPLE');}
 
   async function updateCreatePreview(){
     const orgId=$('teamMasterCreateOrgV61523')?.value||'',cat=$('teamMasterCreateCategoryV61524')?.value||'CAR';if(!orgId)return;
@@ -33156,29 +33236,28 @@ ${names}${extra}
   function closureTargetsFor(member){const type=String(member?.operational_type||'').toUpperCase();return closureTargets().filter(t=>String(t.team_category||'').toUpperCase()===type);}
   function closureTargetOptions(member,current){
     const type=String(member?.operational_type||'').toUpperCase();let html='<option value="">— เลือกปลายทาง —</option>';
-    if(type==='MOTORCYCLE')html+=`<option value="__NONE__" ${current===null&&state.closureMoves.has(String(member.emp_code))?'selected':''}>ไม่เข้าทีม · มอเตอร์ไซค์ Optional</option>`;
     for(const t of closureTargetsFor(member)){const id=String(t.team_id),max=t.max_members==null?'':` / ${Number(t.max_members)}`,status=String(t.team_status||'').toUpperCase()==='DRAFT'?' · รอสมาชิก':'';html+=`<option value="${esc(id)}" ${String(current||'')===id?'selected':''}>${esc(t.team_code)} · ${Number(t.member_count||0)}${max} คน${status}</option>`;}
     return html;
   }
   function closureBlockerText(b){const c=String(b?.code||'');if(c==='TEAM_CLOSE_MEMBER_PLAN_INCOMPLETE')return `ยังมีสมาชิก ${Number(b.remaining_count||0)} คนที่ยังไม่ได้กำหนดปลายทาง`;if(c==='TEAM_CLOSE_DUPLICATE_MEMBER_PLAN')return 'พบรายการพนักงานซ้ำในแผนการย้าย';if(c==='TEAM_CLOSE_UNKNOWN_MEMBER_PLAN')return 'พบพนักงานที่ไม่ได้เป็นสมาชิกของทีมนี้ในรายการ';if(c==='TEAM_CLOSE_MEMBER_TARGET_INVALID')return 'ทีมปลายทางของพนักงานบางคนไม่ตรงรูปแบบ/หน่วยงาน หรือยังไม่ได้กำหนด';if(c==='TEAM_CLOSE_TARGET_CAPACITY_INVALID')return 'จำนวนสมาชิกของทีมปลายทางบางทีมไม่ผ่านเกณฑ์หลังการย้าย';return c||'ยังมีเงื่อนไขที่ต้องตรวจสอบ';}
-  function renderClosureBulkTargets(){const s=$('teamClosureBulkTargetV61529F12');if(!s)return;const cat=String(state.closurePreview?.team?.team_category||'').toUpperCase();let html='<option value="">เลือกปลายทางสำหรับรายการที่เลือก</option>';if(cat==='MOTORCYCLE')html+='<option value="__NONE__">ไม่เข้าทีม · มอเตอร์ไซค์ Optional</option>';for(const t of closureTargets().filter(x=>String(x.team_category||'').toUpperCase()===cat)){const max=t.max_members==null?'':` / ${Number(t.max_members)}`;html+=`<option value="${esc(t.team_id)}">${esc(t.team_code)} · ${Number(t.member_count||0)}${max} คน</option>`;}s.innerHTML=html;const b=$('teamClosureApplyBulkV61529F12');if(b)b.disabled=state.closurePicked.size===0||!s.value;}
+  function renderClosureBulkTargets(){const s=$('teamClosureBulkTargetV61529F12');if(!s)return;const cat=String(state.closurePreview?.team?.team_category||'').toUpperCase();let html='<option value="">เลือกปลายทางสำหรับรายการที่เลือก</option>';for(const t of closureTargets().filter(x=>String(x.team_category||'').toUpperCase()===cat)){const max=t.max_members==null?'':` / ${Number(t.max_members)}`;html+=`<option value="${esc(t.team_id)}">${esc(t.team_code)} · ${Number(t.member_count||0)}${max} คน</option>`;}s.innerHTML=html;const b=$('teamClosureApplyBulkV61529F12');if(b)b.disabled=state.closurePicked.size===0||!s.value;}
   function renderTeamClosure(){
     const p=state.closurePreview||{},team=p.team||state.closureTeam||{},members=closureMembers(),moves=state.closureMoves,assigned=members.filter(m=>moves.has(String(m.emp_code))).length,total=Number(p.member_count??members.length??0),schedule=p.schedule_impact||{},enf=p.enforcement||{};
     const set=(id,v)=>{const n=$(id);if(n)n.textContent=v;};set('teamClosureTeamNameV61529F12',team.team_name||'-');set('teamClosureTeamCodeV61529F12',team.team_code||'-');set('teamClosureIconV61529F12',catIcon(team.team_category));set('teamClosureMemberCountV61529F12',Number(total).toLocaleString('th-TH'));set('teamClosureScheduleCountV61529F12',Number(schedule.schedule_count||0).toLocaleString('th-TH'));set('teamClosureEffectiveV61529F12',fmtDate(p.effective_date||today()));set('teamClosureProgressV61529F12',`${assigned} / ${total} คน`);
     const enOn=enf.enforcement_enabled===true;set('teamClosureEnforcementV61529F12',enOn?'เปิดอยู่':'ยังไม่เปิด');set('teamClosureEnforcementHintV61529F12',enOn?`${enforcementSourceLabel(enf.enforcement_source)}${String(enf.enforcement_source||'').toUpperCase()==='TEAM'?' · ปิดอัตโนมัติ':''}`:'ไม่ต้องดำเนินการเพิ่ม');
-    const list=$('teamClosureMemberListV61529F12');if(list){list.innerHTML=members.length?members.map(m=>{const code=String(m.emp_code),picked=state.closurePicked.has(code),has=moves.has(code),cur=has?moves.get(code):undefined,target=has?(cur===null?'ไม่เข้าทีม':closureTargets().find(t=>String(t.team_id)===String(cur))?.team_code||'ทีมปลายทาง'):'ยังไม่กำหนด';return `<article class="team-closure-member-row-v61529f12 ${has?'planned':''}"><label class="team-closure-check-v61529f12"><input type="checkbox" data-team-closure-member-check-v61529f12="${esc(code)}" ${picked?'checked':''}/></label><div class="team-closure-person-v61529f12"><strong>${esc(code)} · ${esc(m.full_name||'-')}</strong><span>${esc(m.position_name||'ช่างเทคนิค')} · ${catIcon(m.operational_type)} ${esc(catLabel(m.operational_type))}</span><small>${m.future_only?'นัดหมายเข้า Team ในอนาคต · ':''}ย้ายมีผล ${fmtDate(m.move_effective_date)}</small></div><div class="team-closure-target-v61529f12"><label>ปลายทาง</label><select class="select" data-team-closure-target-v61529f12="${esc(code)}">${closureTargetOptions(m,cur)}</select><small class="${has?'ok':'warn'}">${has?`→ ${esc(target)}`:'ต้องกำหนดก่อนปิดทีม'}</small></div></article>`;}).join(''):'<div class="team-closure-empty-v61529f12"><span>✓</span><div><strong>ทีมนี้ไม่มีสมาชิกที่ต้องย้าย</strong><small>สามารถระบุเหตุผลและปิดทีมได้ทันที</small></div></div>';}
+    const list=$('teamClosureMemberListV61529F12');if(list){list.innerHTML=members.length?members.map(m=>{const code=String(m.emp_code),picked=state.closurePicked.has(code),has=moves.has(code),cur=has?moves.get(code):undefined,target=has?(cur===null?'ไม่เข้าทีม':closureTargets().find(t=>String(t.team_id)===String(cur))?.team_code||'ทีมปลายทาง'):'ยังไม่กำหนด';return `<article class="team-closure-member-row-v61529f12 ${has?'planned':''}"><label class="team-closure-check-v61529f12"><input type="checkbox" data-team-closure-member-check-v61529f12="${esc(code)}" ${picked?'checked':''}/></label><div class="team-closure-person-v61529f12"><strong>${esc(code)} · ${esc(m.full_name||'-')}</strong><span>${esc(m.position_name||'ช่างเทคนิค')} · ${catIcon(m.operational_type)} ${esc(catLabel(m.operational_type))}</span><small>${m.future_only?'นัดหมายเข้า Team ในอนาคต · ':''}ย้ายมีผล ${fmtDate(m.move_effective_date)}</small></div><div class="team-closure-target-v61529f12"><label>ปลายทาง</label><select class="select" data-team-closure-target-v61529f12="${esc(code)}">${closureTargetOptions(m,cur)}</select><small class="${has?'ok':'warn'}">${has?`→ ${esc(target)}`:'ต้องกำหนดก่อนปิดทีม'}</small></div></article>`;}).join(''):'<div class="team-closure-empty-v61529f12"><span>✓</span><div><strong>ทีมนี้ไม่มีสมาชิกที่ต้องย้าย</strong><small>ระบบจะตรวจตารางกะและรายการไปช่วยทีม / ยืมตัวต่อด้านล่าง</small></div></div>';}
     renderClosureBulkTargets();
-    const impacts=Array.isArray(p.target_impacts)?p.target_impacts:[],blockers=Array.isArray(p.blockers)?p.blockers:[],impact=$('teamClosureImpactV61529F12');if(impact){const cap=impacts.length?`<div class="team-closure-target-impact-grid-v61529f12">${impacts.map(x=>`<div class="${x.blocked?'blocked':'ok'}"><span>${esc(x.team_code||'-')}</span><strong>${Number(x.min_after_count||0)}${x.max_after_count!==x.min_after_count?`–${Number(x.max_after_count||0)}`:''} คน</strong><small>${x.blocked?'ไม่ผ่าน Capacity':'ผ่าน Policy'}</small></div>`).join('')}</div>`:'';const sc=`<div class="team-closure-schedule-impact-v61529f12"><span>📅</span><div><strong>กะเดิม ${Number(schedule.schedule_count||0).toLocaleString('th-TH')} รายการจะถูกเก็บไว้</strong><small>${Number(schedule.employee_count||0).toLocaleString('th-TH')} คน · ระบบเปลี่ยน Team Context เท่านั้น ไม่ลบ Shift</small></div></div>`;const bl=blockers.length?`<div class="team-closure-blockers-v61529f12">${blockers.map(b=>`<p>• ${esc(closureBlockerText(b))}</p>`).join('')}</div>`:`<div class="team-closure-ready-v61529f12">✓ สมาชิกและทีมปลายทางผ่านเงื่อนไขทั้งหมด</div>`;impact.innerHTML=cap+sc+bl;}
-    const ready=p.allowed===true,reason=String($('teamClosureReasonV61529F12')?.value||'').trim(),allReady=ready&&!!reason;const badge=$('teamClosureReadinessV61529F12');if(badge){badge.textContent=ready?'พร้อมปิดทีม':assigned<total?'รอจัดสมาชิก':'ต้องแก้ไข';badge.className='badge '+(ready?'badge-green':assigned<total?'badge-amber':'badge-red');}const foot=$('teamClosureFooterStatusV61529F12');if(foot){foot.className=allReady?'ok':ready?'warning':'';foot.textContent=!ready?(assigned<total?`กรุณากำหนดปลายทางอีก ${Math.max(0,total-assigned)} คน`:'กรุณาแก้ Impact ที่ไม่ผ่าน'):!reason?'กรุณาระบุเหตุผลการปิดทีม':'✓ พร้อมย้ายสมาชิกและปิดทีมเป็นรายการเดียว';}const btn=$('teamClosureConfirmV61529F12');if(btn){btn.disabled=!allReady;btn.textContent=total?`ยืนยันย้าย ${total} คนและปิดทีม`:'ยืนยันปิดทีม';}
+    const impacts=Array.isArray(p.target_impacts)?p.target_impacts:[],blockers=Array.isArray(p.blockers)?p.blockers:[],tempImpact=state.closureTempImpact||{},tempRows=Array.isArray(tempImpact.assignments)?tempImpact.assignments:[],tempBlocking=Number(tempImpact.blocking_count||0),impact=$('teamClosureImpactV61529F12');if(impact){const cap=impacts.length?`<div class="team-closure-target-impact-grid-v61529f12">${impacts.map(x=>`<div class="${x.blocked?'blocked':'ok'}"><span>${esc(x.team_code||'-')}</span><strong>${Number(x.min_after_count||0)}${x.max_after_count!==x.min_after_count?`–${Number(x.max_after_count||0)}`:''} คน</strong><small>${x.blocked?'ไม่ผ่าน Capacity':'ผ่าน Policy'}</small></div>`).join('')}</div>`:'';const sc=`<div class="team-closure-schedule-impact-v61529f12"><span>📅</span><div><strong>กะเดิม ${Number(schedule.schedule_count||0).toLocaleString('th-TH')} รายการจะถูกเก็บไว้</strong><small>${Number(schedule.employee_count||0).toLocaleString('th-TH')} คน · ระบบเปลี่ยน Team Context เท่านั้น ไม่ลบ Shift</small></div></div>`;const temp=tempBlocking?`<div class="team-closure-temp-impact-v61529f14b"><span>↔</span><div><strong>ยังมีไปช่วยทีม / ยืมตัว ${tempBlocking.toLocaleString('th-TH')} รายการ</strong><small>ต้องยกเลิก / สิ้นสุดรายการที่เกี่ยวข้องก่อนปิดทีม</small>${tempRows.slice(0,4).map(x=>`<em>${esc(x.emp_code||'-')} · ${esc(x.assignment_type==='BORROW_CROSS_ORG'?'ยืมต่างหน่วยงาน':'ไปช่วยทีม')} · ${esc(fmtDate(x.effective_from))}–${esc(fmtDate(x.effective_to))} · ${esc(x.status||'-')}</em>`).join('')}${tempRows.length>4?`<em>และอีก ${tempRows.length-4} รายการ</em>`:''}</div></div>`:'';const bl=blockers.length?`<div class="team-closure-blockers-v61529f12">${blockers.map(b=>`<p>• ${esc(closureBlockerText(b))}</p>`).join('')}</div>`:tempBlocking?'':`<div class="team-closure-ready-v61529f12">✓ สมาชิก ทีมปลายทาง และรายการยืมตัวผ่านเงื่อนไขทั้งหมด</div>`;impact.innerHTML=cap+sc+temp+bl;}
+    const ready=p.allowed===true&&tempBlocking===0,reason=String($('teamClosureReasonV61529F12')?.value||'').trim(),allReady=ready&&!!reason;const badge=$('teamClosureReadinessV61529F12');if(badge){badge.textContent=tempBlocking>0?'ติดรายการยืมตัว':ready?'พร้อมปิดทีม':assigned<total?'รอจัดสมาชิก':'ต้องแก้ไข';badge.className='badge '+(tempBlocking>0?'badge-red':ready?'badge-green':assigned<total?'badge-amber':'badge-red');}const foot=$('teamClosureFooterStatusV61529F12');if(foot){foot.className=allReady?'ok':ready?'warning':'';foot.textContent=tempBlocking>0?`ต้องจัดการไปช่วยทีม / ยืมตัว ${tempBlocking} รายการก่อนปิดทีม`:!ready?(assigned<total?`กรุณากำหนดปลายทางอีก ${Math.max(0,total-assigned)} คน`:'กรุณาแก้ Impact ที่ไม่ผ่าน'):!reason?'กรุณาระบุเหตุผลการปิดทีม':'✓ พร้อมย้ายสมาชิกและปิดทีมเป็นรายการเดียว';}const btn=$('teamClosureConfirmV61529F12');if(btn){btn.disabled=!allReady;btn.textContent=tempBlocking>0?'จัดการรายการยืมตัวก่อน':total?`ยืนยันย้าย ${total} คนและปิดทีม`:'ยืนยันปิดทีม';}
   }
   let closurePreviewTimer=null;
   function scheduleClosurePreview(){clearTimeout(closurePreviewTimer);closurePreviewTimer=setTimeout(()=>refreshClosurePreview(),180);}
-  async function refreshClosurePreview(){if(!state.closureTeam?.team_id)return;try{state.closureLoading=true;const p=await rpc('ta_preview_team_closure_v61529f12',{p_team_id:state.closureTeam.team_id,p_member_moves:closureMovePayload()});state.closurePreview=p||{};const valid=new Set(closureMembers().map(x=>String(x.emp_code)));state.closureMoves=new Map([...state.closureMoves].filter(([c])=>valid.has(String(c))));state.closurePicked=new Set([...state.closurePicked].filter(c=>valid.has(String(c))));renderTeamClosure();}catch(e){toast(human(e),'error');const impact=$('teamClosureImpactV61529F12');if(impact)impact.innerHTML=`<div class="fc-empty">ตรวจข้อมูลปิดทีมไม่สำเร็จ: ${esc(human(e))}</div>`;}finally{state.closureLoading=false;}}
-  async function openTeamClosure(id){const t=state.teams.find(x=>String(x.team_id)===String(id));if(!t)return;state.closureReturnFocus=document.activeElement;state.closureTeam=t;state.closurePreview=null;state.closureMoves=new Map();state.closurePicked=new Set();const r=$('teamClosureReasonV61529F12');if(r)r.value='';const m=$('teamClosureModalV61529F12');if(!m)return;m.removeAttribute('inert');m.classList.remove('hidden');m.setAttribute('aria-hidden','false');renderTeamClosure();await refreshClosurePreview();setTimeout(()=>$('teamClosureSelectAllV61529F12')?.focus(),40);}
-  function closeTeamClosure(){const m=$('teamClosureModalV61529F12');if(!m)return;const active=document.activeElement;if(active&&m.contains(active))active.blur();m.classList.add('hidden');m.setAttribute('aria-hidden','true');m.setAttribute('inert','');try{state.closureReturnFocus?.focus?.();}catch(_){}state.closureTeam=null;state.closurePreview=null;state.closureMoves=new Map();state.closurePicked=new Set();}
+  async function refreshClosurePreview(){if(!state.closureTeam?.team_id)return;try{state.closureLoading=true;const [p,temp]=await Promise.all([rpc('ta_preview_team_closure_v61529f12',{p_team_id:state.closureTeam.team_id,p_member_moves:closureMovePayload()}),rpc('ta_get_team_temporary_assignment_impact_v61529f14',{p_team_id:state.closureTeam.team_id})]);state.closurePreview=p||{};state.closureTempImpact=temp||{};const valid=new Set(closureMembers().map(x=>String(x.emp_code)));state.closureMoves=new Map([...state.closureMoves].filter(([c])=>valid.has(String(c))));state.closurePicked=new Set([...state.closurePicked].filter(c=>valid.has(String(c))));renderTeamClosure();}catch(e){toast(human(e),'error');const impact=$('teamClosureImpactV61529F12');if(impact)impact.innerHTML=`<div class="fc-empty">ตรวจข้อมูลปิดทีมไม่สำเร็จ: ${esc(human(e))}</div>`;}finally{state.closureLoading=false;}}
+  async function openTeamClosure(id){const t=state.teams.find(x=>String(x.team_id)===String(id));if(!t)return;state.closureReturnFocus=document.activeElement;state.closureTeam=t;state.closurePreview=null;state.closureTempImpact=null;state.closureMoves=new Map();state.closurePicked=new Set();const r=$('teamClosureReasonV61529F12');if(r)r.value='';const m=$('teamClosureModalV61529F12');if(!m)return;m.removeAttribute('inert');m.classList.remove('hidden');m.setAttribute('aria-hidden','false');renderTeamClosure();await refreshClosurePreview();setTimeout(()=>$('teamClosureSelectAllV61529F12')?.focus(),40);}
+  function closeTeamClosure(){const m=$('teamClosureModalV61529F12');if(!m)return;const active=document.activeElement;if(active&&m.contains(active))active.blur();m.classList.add('hidden');m.setAttribute('aria-hidden','true');m.setAttribute('inert','');try{state.closureReturnFocus?.focus?.();}catch(_){}state.closureTeam=null;state.closurePreview=null;state.closureTempImpact=null;state.closureMoves=new Map();state.closurePicked=new Set();}
   function selectAllClosureMembers(){const rows=closureMembers();const all=rows.length>0&&rows.every(x=>state.closurePicked.has(String(x.emp_code)));state.closurePicked=all?new Set():new Set(rows.map(x=>String(x.emp_code)));renderTeamClosure();}
-  function applyClosureBulkTarget(){const sel=$('teamClosureBulkTargetV61529F12'),v=sel?.value||'';if(!v||state.closurePicked.size===0)return;let applied=0,skipped=0;for(const code of state.closurePicked){const m=closureMemberByCode(code);if(!m)continue;if(v==='__NONE__'){if(String(m.operational_type).toUpperCase()==='MOTORCYCLE'){state.closureMoves.set(code,null);applied++;}else skipped++;continue;}const t=closureTargets().find(x=>String(x.team_id)===v);if(t&&String(t.team_category).toUpperCase()===String(m.operational_type).toUpperCase()){state.closureMoves.set(code,v);applied++;}else skipped++;}state.closurePicked.clear();if(sel)sel.value='';if(skipped)toast(`กำหนดปลายทาง ${applied} คน · ข้าม ${skipped} คนที่รูปแบบไม่ตรง`,'warning');scheduleClosurePreview();renderTeamClosure();}
-  async function confirmTeamClosure(){const p=state.closurePreview||{},reason=String($('teamClosureReasonV61529F12')?.value||'').trim();if(p.allowed!==true)return toast('ยังปิดทีมไม่ได้ กรุณาตรวจ Impact Preview','warning');if(!reason)return toast('กรุณาระบุเหตุผลการปิดทีม','warning');const count=Number(p.member_count||0),sc=Number(p.schedule_impact?.schedule_count||0);const ok=await window.tcConfirm?.({title:`ปิด ${p.team?.team_name||'ทีมนี้'}?`,message:[`สมาชิกที่จัดการ: ${count} คน`,`กะเดิมที่จะคงไว้: ${sc} รายการ`,`มีผล: ${fmtDate(p.effective_date||today())}`,`เหตุผล: ${reason}`,'ระบบจะย้ายสมาชิกและปิดทีมใน Transaction เดียว'].join('\n'),confirmText:'ยืนยันปิดทีม',tone:'danger'});if(!ok)return;try{app()?.showLoading?.('กำลังย้ายสมาชิกและปิดทีม...');const out=await rpc('ta_close_team_v61529f12',{p_team_id:state.closureTeam.team_id,p_member_moves:closureMovePayload(),p_reason:reason});toast(`ปิดทีมเรียบร้อย${Number(out?.members_reassigned||0)?` · จัดสมาชิก ${Number(out.members_reassigned)} คน`:''}`,'success');closeTeamClosure();await load();}catch(e){toast(human(e),'error');await refreshClosurePreview();}finally{app()?.hideLoading?.();}}
+  function applyClosureBulkTarget(){const sel=$('teamClosureBulkTargetV61529F12'),v=sel?.value||'';if(!v||state.closurePicked.size===0)return;let applied=0,skipped=0;for(const code of state.closurePicked){const m=closureMemberByCode(code);if(!m)continue;if(v==='__NONE__'){skipped++;continue;}const t=closureTargets().find(x=>String(x.team_id)===v);if(t&&String(t.team_category).toUpperCase()===String(m.operational_type).toUpperCase()){state.closureMoves.set(code,v);applied++;}else skipped++;}state.closurePicked.clear();if(sel)sel.value='';if(skipped)toast(`กำหนดปลายทาง ${applied} คน · ข้าม ${skipped} คนที่รูปแบบไม่ตรง`,'warning');scheduleClosurePreview();renderTeamClosure();}
+  async function confirmTeamClosure(){const p=state.closurePreview||{},tempBlocking=Number(state.closureTempImpact?.blocking_count||0),reason=String($('teamClosureReasonV61529F12')?.value||'').trim();if(tempBlocking>0)return toast(`ยังปิดทีมไม่ได้ มีรายการไปช่วยทีม / ยืมตัว ${tempBlocking} รายการที่ต้องจัดการก่อน`,'warning');if(p.allowed!==true)return toast('ยังปิดทีมไม่ได้ กรุณาตรวจ Impact Preview','warning');if(!reason)return toast('กรุณาระบุเหตุผลการปิดทีม','warning');const count=Number(p.member_count||0),sc=Number(p.schedule_impact?.schedule_count||0);const ok=await window.tcConfirm?.({title:`ปิด ${p.team?.team_name||'ทีมนี้'}?`,message:[`สมาชิกที่จัดการ: ${count} คน`,`กะเดิมที่จะคงไว้: ${sc} รายการ`,`มีผล: ${fmtDate(p.effective_date||today())}`,`เหตุผล: ${reason}`,'ระบบจะย้ายสมาชิกและปิดทีมใน Transaction เดียว'].join('\n'),confirmText:'ยืนยันปิดทีม',tone:'danger'});if(!ok)return;try{app()?.showLoading?.('กำลังย้ายสมาชิกและปิดทีม...');const out=await rpc('ta_close_team_v61529f12',{p_team_id:state.closureTeam.team_id,p_member_moves:closureMovePayload(),p_reason:reason});toast(`ปิดทีมเรียบร้อย${Number(out?.members_reassigned||0)?` · จัดสมาชิก ${Number(out.members_reassigned)} คน`:''}`,'success');closeTeamClosure();await load();}catch(e){toast(human(e),'error');await refreshClosurePreview();}finally{app()?.hideLoading?.();}}
   async function deactivateTeam(id){return openTeamClosure(id);}
 
 
@@ -33302,7 +33381,7 @@ ${names}${extra}
     $('teamMembershipCategoryV61524')&&($('teamMembershipCategoryV61524').textContent=`${catIcon(t.team_category)} ${catLabel(t.team_category)}`);
     $('teamMembershipEffectiveV61524')&&($('teamMembershipEffectiveV61524').value=today());
     $('teamMembershipSearchV61524')&&($('teamMembershipSearchV61524').value='');$('teamMembershipSourceFilterV61528F1')&&($('teamMembershipSourceFilterV61528F1').value='ALL');
-    const p=policy(t.team_category);$('teamMembershipPolicyV61524')&&($('teamMembershipPolicyV61524').innerHTML=`<div><strong>${catIcon(t.team_category)} ${catLabel(t.team_category)}</strong><span>${esc(p.label)}${t.team_category==='MOTORCYCLE'?' · การมีทีมเป็นทางเลือก':''}</span></div><small>เลือกหลายคนด้วย Checkbox แล้วใช้ปุ่มลูกศรเพื่อเตรียมรายการก่อนบันทึก</small>`);
+    const p=policy(t.team_category);$('teamMembershipPolicyV61524')&&($('teamMembershipPolicyV61524').innerHTML=`<div><strong>${catIcon(t.team_category)} ${catLabel(t.team_category)}</strong><span>${esc(p.label)}${t.team_category==='MOTORCYCLE'?' · ต้องมีทีมก่อนจัดกะ':''}</span></div><small>เลือกหลายคนด้วย Checkbox แล้วใช้ปุ่มลูกศรเพื่อเตรียมรายการก่อนบันทึก</small>`);
     $('teamMembershipModalV61524')?.classList.remove('hidden');await loadMembershipCandidates();
   }
   function closeMembership(){
@@ -33320,7 +33399,7 @@ ${names}${extra}
     try{app()?.showLoading?.('กำลังบันทึกสมาชิกทีม...');await rpc('ta_set_team_members_v61524',{p_team_id:state.activeTeam.team_id,p_emp_codes:[...state.selected],p_effective_from:d,p_note:$('teamMembershipNoteV61524')?.value?.trim()||null});toast('บันทึกสมาชิกทีมเรียบร้อย','success');closeMembership();await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
   }
 
-  function opStateLabel(v){const t=String(v||'').toUpperCase();return t==='CAR_NEEDS_TEAM'?'รถยนต์ • ยังไม่มีทีม':t==='MOTORCYCLE_NO_TEAM'?'มอเตอร์ไซค์ • ไม่เข้าทีม':t==='SUPPORT_NEEDS_TEAM'?'สนับสนุน • ยังไม่มีทีม':t==='READY'?'พร้อมใช้งาน':'รอ Manager กำหนดรูปแบบ';}
+  function opStateLabel(v){const t=String(v||'').toUpperCase();return t==='CAR_NEEDS_TEAM'?'รถยนต์ • ยังไม่มีทีม':t==='MOTORCYCLE_NO_TEAM'?'มอเตอร์ไซค์ • ยังไม่มีทีม':t==='SUPPORT_NEEDS_TEAM'?'สนับสนุน • ยังไม่มีทีม':t==='READY'?'พร้อมใช้งาน':'รอ Manager กำหนดรูปแบบ';}
   const OPERATIONAL_TYPES=['CAR','MOTORCYCLE','SUPPORT'];
   function operationalMode(){return state.opMode==='CHANGE'?'CHANGE':'ASSIGN';}
   function operationalCurrentMonthStart(){const t=today();return `${t.slice(0,7)}-01`;}
@@ -33388,7 +33467,7 @@ ${names}${extra}
   function operationalRowSearchMatch(r,q){if(!q)return true;return[r.emp_code,r.full_name,r.position_name,r.org_code,r.team_code,r.team_name].some(v=>String(v||'').toLowerCase().includes(q));}
   function operationalSourceRows(){const q=String($('teamOperationalProfileSearchV61527')?.value||'').toLowerCase().trim();return(state.opPool||[]).filter(r=>!state.opSelected.has(String(r.emp_code))&&operationalRowSearchMatch(r,q));}
   function operationalTargetRows(){return(state.opPool||[]).filter(r=>state.opSelected.has(String(r.emp_code)));}
-  function operationalTargetLabel(){const type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),team=operationalTargetTeam();return `${catIcon(type)} ${catLabel(type)}${team?` · ${team.team_code}`:type==='MOTORCYCLE'?' · ไม่เข้าทีม':''}`;}
+  function operationalTargetLabel(){const type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),team=operationalTargetTeam();return `${catIcon(type)} ${catLabel(type)}${team?` · ${team.team_code}`:''}`;}
   function operationalProjectedCount(){const type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),team=operationalTargetTeam();if(!team)return null;if(state.opPreview?.target_team&&String(state.opPreview.target_team.team_id||team.team_id)===String(team.team_id))return Number(state.opPreview.target_team.after_count||0);const base=Number(team.active_member_count||0);const additions=operationalTargetRows().filter(r=>String(r.team_code||'')!==String(team.team_code||'')).length;return base+additions;}
   function operationalReasonValue(){return String($('teamOperationalProfileNoteV61527')?.value||'').trim();}
   function operationalReasonMissing(){return state.opPreview?.reason_required===true&&!operationalReasonValue();}
@@ -33400,25 +33479,25 @@ ${names}${extra}
     state.opLeftPicked=new Set([...state.opLeftPicked].filter(c=>src.some(r=>String(r.emp_code)===String(c))));state.opRightPicked=new Set([...state.opRightPicked].filter(c=>target.some(r=>String(r.emp_code)===String(c))));
     $('teamOperationalProfileSourceCountV61528F2')&&($('teamOperationalProfileSourceCountV61528F2').textContent=`${src.length.toLocaleString('th-TH')} คน`);$('teamOperationalProfileTargetCountV61528F2')&&($('teamOperationalProfileTargetCountV61528F2').textContent=`${target.length.toLocaleString('th-TH')} คน`);$('teamOperationalProfileSelectedV61527')&&($('teamOperationalProfileSelectedV61527').textContent=target.length?`การเปลี่ยนแปลง ${target.length.toLocaleString('th-TH')} คน`:'ยังไม่มีรายการ');$('teamOperationalTargetTypeV61528F2')&&($('teamOperationalTargetTypeV61528F2').textContent=operationalTargetLabel());
     const moveR=$('teamOperationalProfileMoveRightV61528F2'),moveL=$('teamOperationalProfileMoveLeftV61528F2');if(moveR)moveR.disabled=state.opLeftPicked.size===0||(p.required&&!team);if(moveL)moveL.disabled=state.opRightPicked.size===0;
-    const cap=$('teamOperationalProfileCapacityV61528F2');if(cap){cap.classList.remove('full','blocked');if(type==='MOTORCYCLE'&&!team){cap.textContent='Team Optional';}else if(!team){cap.textContent='เลือก Team';}else{const n=operationalProjectedCount();cap.textContent=p.max!=null?`${n??Number(team.active_member_count||0)} / ${p.max} คน`:`${n??Number(team.active_member_count||0)} คน`;if(p.max!=null&&Number(n)>p.max)cap.classList.add('blocked');else if(p.max!=null&&Number(n)>=p.max)cap.classList.add('full');}}
+    const cap=$('teamOperationalProfileCapacityV61528F2');if(cap){cap.classList.remove('full','blocked');if(!team){cap.textContent='เลือก Team';}else{const n=operationalProjectedCount();cap.textContent=p.max!=null?`${n??Number(team.active_member_count||0)} / ${p.max} คน`:`${n??Number(team.active_member_count||0)} คน`;if(p.max!=null&&Number(n)>p.max)cap.classList.add('blocked');else if(p.max!=null&&Number(n)>=p.max)cap.classList.add('full');}}
     const ready=operationalReady(),reasonMissing=operationalReasonMissing();
-    const strip=$('teamOperationalTransferStatusV61528F2');if(strip){const nodes=strip.querySelectorAll('strong');if(nodes[0])nodes[0].textContent=target.length;if(nodes[1])nodes[1].textContent=team?team.team_code:(type==='MOTORCYCLE'?'ไม่เข้าทีม':'ยังไม่เลือก Team');if(nodes[2])nodes[2].textContent=!target.length?'รอรายการ':!state.opPreview?'กำลังตรวจ':reasonMissing?'รอเหตุผล':ready?'ผ่าน':'ต้องแก้ไข';strip.classList.toggle('ok',target.length>0&&ready);strip.classList.toggle('blocked',target.length>0&&state.opPreview&&(state.opPreview.allowed===false||reasonMissing));}
+    const strip=$('teamOperationalTransferStatusV61528F2');if(strip){const nodes=strip.querySelectorAll('strong');if(nodes[0])nodes[0].textContent=target.length;if(nodes[1])nodes[1].textContent=team?team.team_code:'ยังไม่เลือก Team';if(nodes[2])nodes[2].textContent=!target.length?'รอรายการ':!state.opPreview?'กำลังตรวจ':reasonMissing?'รอเหตุผล':ready?'ผ่าน':'ต้องแก้ไข';strip.classList.toggle('ok',target.length>0&&ready);strip.classList.toggle('blocked',target.length>0&&state.opPreview&&(state.opPreview.allowed===false||reasonMissing));}
     const foot=$('teamOperationalFooterStatusV61528F2');if(foot){foot.classList.remove('warning','ok','blocked');if(!target.length)foot.textContent='ยังไม่มีรายการรอบันทึก';else if(!state.opPreview)foot.textContent='กำลังตรวจผลกระทบ...';else if(state.opPreview.allowed!==true){foot.textContent='! ยังบันทึกไม่ได้ — ตรวจ Impact Preview';foot.classList.add('blocked');}else if(reasonMissing){foot.textContent='⚠ กรุณาระบุเหตุผลการเปลี่ยน • HR Admin จะได้รับแจ้ง';foot.classList.add('warning');}else{foot.textContent=`✓ พร้อมบันทึก ${target.length} คน`;foot.classList.add('ok');}}
   }
   function renderOpTeamOptions(){
     renderOperationalTargetTypeOptions();const sel=$('teamOperationalProfileTeamV61527');if(!sel)return;const prev=sel.value,type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),p=policy(type);
     const teams=state.opTeams.filter(t=>String(t.team_category||'').toUpperCase()===type&&teamLifecycle(t)!=='INACTIVE');
-    const first=p.required?`<option value="">เลือกทีม${catLabel(type)} (บังคับ)</option>`:'<option value="">ไม่จัดทีม • มอเตอร์ไซค์ไม่บังคับ</option>';
+    const first=`<option value="">เลือกทีม${catLabel(type)} (บังคับ)</option>`;
     sel.innerHTML=first+teams.map(t=>{const n=Number(t.active_member_count||0),pp=policy(type),full=pp.max!=null&&n>=pp.max;return `<option value="${esc(t.team_id)}" ${full?'disabled':''}>${esc(t.team_code)} · ${esc(t.team_name)} • ${n}${pp.max!=null?`/${pp.max}`:''} คน${full?' · เต็ม':''}</option>`;}).join('');
     if(prev&&[...sel.options].some(o=>o.value===prev&&!o.disabled))sel.value=prev;
-    $('teamOperationalProfileTeamHintV61527')&&($('teamOperationalProfileTeamHintV61527').textContent=type==='CAR'?'รถยนต์ต้องเลือกทีม · 3–5 คน/ทีม':type==='SUPPORT'?'ทีมสนับสนุนต้องเลือกทีม · ขั้นต่ำ 1 คน':'มอเตอร์ไซค์ไม่บังคับ Team; ถ้าเลือกทีมต้องมีอย่างน้อย 3 คน');
+    $('teamOperationalProfileTeamHintV61527')&&($('teamOperationalProfileTeamHintV61527').textContent=type==='CAR'?'รถยนต์ต้องเลือกทีม · 3–5 คน/ทีม':type==='SUPPORT'?'ทีมสนับสนุนต้องเลือกทีม · ขั้นต่ำ 1 คน':'มอเตอร์ไซค์ต้องเลือกทีมก่อนจัดกะ · ขั้นต่ำ 1 คน');
     $('teamOperationalTargetTitleV61528F2')&&($('teamOperationalTargetTitleV61528F2').textContent=`รายการที่จะเปลี่ยนเป็น ${catLabel(type)}`);state.opPreview=null;renderOpPool();scheduleOperationalPreview();
   }
   function renderOpPool(){
     const left=$('teamOperationalProfileListV61527'),right=$('teamOperationalProfileTargetListV61528F2');if(!left||!right)return;const rows=operationalSourceRows(),target=operationalTargetRows(),type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),destTeam=operationalTargetTeam();
     state.opLeftPicked=new Set([...state.opLeftPicked].filter(c=>rows.some(r=>String(r.emp_code)===String(c))));state.opRightPicked=new Set([...state.opRightPicked].filter(c=>target.some(r=>String(r.emp_code)===String(c))));
     left.innerHTML=rows.length?rows.map(r=>{const code=String(r.emp_code),curType=String(r.operational_type||'UNCLASSIFIED').toUpperCase();return `<label class="team-transfer-row-v61528f1 ${state.opLeftPicked.has(code)?'picked':''}"><input type="checkbox" data-operational-profile-left-check-v61528f2="${esc(code)}" ${state.opLeftPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${esc(r.position_name||'-')}</span><small class="origin ${curType==='UNCLASSIFIED'?'none':r.team_code?'other':'none'}">${catIcon(curType)} ${esc(catLabel(curType))}${r.team_code?` · ${esc(r.team_code)}`:''}</small></div></label>`;}).join(''):'<div class="fc-empty">ไม่พบพนักงานตามเงื่อนไข</div>';
-    right.innerHTML=target.length?target.map(r=>{const code=String(r.emp_code),curType=String(r.operational_type||'UNCLASSIFIED').toUpperCase(),fromTeam=r.team_code?` · ${r.team_code}`:'',toTeam=destTeam?` · ${destTeam.team_code}`:type==='MOTORCYCLE'?' · ไม่เข้าทีม':'';const eff=operationalEffectiveDateMap().get(code),effText=eff?.effective_date?` · มีผล ${fmtDate(eff.effective_date)}`:'';return `<label class="team-transfer-row-v61528f1 target ${state.opRightPicked.has(code)?'picked':''}"><input type="checkbox" data-operational-profile-right-check-v61528f2="${esc(code)}" ${state.opRightPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${catIcon(curType)} ${esc(catLabel(curType))}${esc(fromTeam)} → ${catIcon(type)} ${esc(catLabel(type))}${esc(toTeam)}</span><small class="target-badge ${curType==='UNCLASSIFIED'?'added':'moved'}">${curType==='UNCLASSIFIED'?'กำหนดครั้งแรก':'เปลี่ยน / ย้าย'}${esc(effText)}</small></div></label>`;}).join(''):'<div class="fc-empty">ยังไม่มีรายการรอบันทึก</div>';
+    right.innerHTML=target.length?target.map(r=>{const code=String(r.emp_code),curType=String(r.operational_type||'UNCLASSIFIED').toUpperCase(),fromTeam=r.team_code?` · ${r.team_code}`:'',toTeam=destTeam?` · ${destTeam.team_code}`:'';const eff=operationalEffectiveDateMap().get(code),effText=eff?.effective_date?` · มีผล ${fmtDate(eff.effective_date)}`:'';return `<label class="team-transfer-row-v61528f1 target ${state.opRightPicked.has(code)?'picked':''}"><input type="checkbox" data-operational-profile-right-check-v61528f2="${esc(code)}" ${state.opRightPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${catIcon(curType)} ${esc(catLabel(curType))}${esc(fromTeam)} → ${catIcon(type)} ${esc(catLabel(type))}${esc(toTeam)}</span><small class="target-badge ${curType==='UNCLASSIFIED'?'added':'moved'}">${curType==='UNCLASSIFIED'?'กำหนดครั้งแรก':'เปลี่ยน / ย้าย'}${esc(effText)}</small></div></label>`;}).join(''):'<div class="fc-empty">ยังไม่มีรายการรอบันทึก</div>';
     syncOperationalTransferControls();
   }
   function selectAllOperationalLeft(){const rows=operationalSourceRows();if(!rows.length)return;const all=rows.every(r=>state.opLeftPicked.has(String(r.emp_code)));state.opLeftPicked=all?new Set():new Set(rows.map(r=>String(r.emp_code)));renderOpPool();}
@@ -33498,7 +33577,11 @@ ${names}${extra}
   async function loadAudit(){try{const [teamAudit,enfAudit]=await Promise.all([rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:150}),rpc('ta_get_team_enforcement_audit_v61529',{p_limit:150})]);state.audit=teamAudit||[];state.enforcementAudit=enfAudit||[];renderAudit();}catch(e){console.warn(e);}}
 
   async function load(){
-    if(!allowedRole()||state.loading)return;state.loading=true;syncNav();
+    if(!allowedRole()||state.loading)return;
+    if(!baseTeamRole()&&actingTeamAccess()){
+      syncNav();setTab('ASSIGNMENTS');window.TimeClockTemporaryAssignmentV61529F14B?.load?.();return;
+    }
+    state.loading=true;syncNav();
     const body=$('teamMasterBodyV61523');if(body)body.innerHTML='<tr><td colspan="7" class="fc-empty">กำลังโหลดทีม...</td></tr>';
     try{
       const orgId=selectedOrgId()||null,search=null;
@@ -33541,3 +33624,240 @@ ${names}${extra}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 
+
+/* ============================================================================
+   V6.15.29 FIX14B — Temporary Team Assignment / Borrow + Acting UX
+   ============================================================================ */
+(()=>{
+  'use strict';
+  const VERSION='6.15.29 FIX14B FINAL';
+  const $=id=>document.getElementById(id);
+  const app=()=>window.TimeClockApp;
+  const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const role=()=>String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'VIEWER').toUpperCase();
+  const isHr=()=>role()==='HR_ADMIN';
+  const baseManager=()=>role()==='MANAGER';
+  const toast=(m,t='info')=>app()?.toast?.(m,t);
+  const state={
+    access:null,rows:[],summary:{},loaded:false,loading:false,
+    candidates:[],destinations:[],preview:null,selectedEmployee:'',
+    action:null,actingRows:[],actingCandidates:[],actingOrgs:[],actingEdit:null,
+    candidateTimer:null,previewTimer:null,accessLoading:false
+  };
+  const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+  const addDays=(iso,n)=>{const [y,m,d]=String(iso).slice(0,10).split('-').map(Number);const x=new Date(y,m-1,d);x.setDate(x.getDate()+n);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;};
+  const monthStart=iso=>String(iso||today()).slice(0,7)+'-01';
+  const fmtDate=v=>{const m=String(v||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v||'-');};
+  const fmtDateTime=v=>{if(!v)return '-';try{return new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short'}).format(new Date(v));}catch{return String(v);}};
+  async function rpc(name,args={}){const c=app()?.state?.client;if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');const {data,error}=await c.rpc(name,args);if(error)throw error;return data;}
+  function human(error){
+    const raw=String(app()?.humanError?.(error)||error?.message||error||'เกิดข้อผิดพลาด');
+    const map=[
+      ['TEMP_ASSIGNMENT_OPERATIONAL_MANAGER_REQUIRED','รายการไปช่วยทีม/ยืมตัวต้องดำเนินการโดย Manager หรือ Acting Manager ที่มี Authority'],
+      ['TEMP_ASSIGNMENT_AUTHORITY_DENIED','ไม่มี Authority ของหน่วยงานต้นทางหรือปลายทาง'],
+      ['TEMP_ASSIGNMENT_COUNTERPART_AUTHORITY_DENIED','รายการนี้ต้องให้ Manager/Acting ของอีกฝั่งเป็นผู้ดำเนินการ'],
+      ['BORROW_CROSS_DIVISION_NOT_ALLOWED','ไม่อนุญาตให้ยืมตัวข้ามระดับฝ่าย'],
+      ['TEMP_ASSIGNMENT_DATE_OVERLAP','พนักงานมีรายการไปช่วยทีม/ยืมตัวที่ช่วงวันที่ซ้อนกันอยู่แล้ว'],
+      ['HOME_TEAM_REQUIRED_BEFORE_TEMP_ASSIGNMENT','ต้องจัด Permanent Home Team ให้พนักงานก่อนทำรายการ'],
+      ['DESTINATION_TEAM_NOT_ACTIVE_ON_EFFECTIVE_DATE','Team ปลายทางยังไม่พร้อมใช้งานในวันที่เริ่ม'],
+      ['DESTINATION_TEAM_CATEGORY_MISMATCH','รูปแบบการปฏิบัติงานของพนักงานไม่ตรงกับประเภท Team ปลายทาง'],
+      ['TEMP_ASSIGNMENT_BACKDATE_NOT_ALLOWED','ไม่สามารถสร้างรายการย้อนหลังได้'],
+      ['TEMP_ASSIGNMENT_BEFORE_EMPLOYEE_START_DATE','วันที่เริ่มยืม/ไปช่วยต้องไม่ก่อนวันเริ่มงาน'],
+      ['TEMP_ASSIGNMENT_AFTER_EMPLOYEE_RESIGN_DATE','วันที่สิ้นสุดต้องไม่เกินวันลาออก'],
+      ['TEMP_ASSIGNMENT_SAME_TEAM','Team ปลายทางต้องไม่ใช่ Home Team เดิม'],
+      ['TEMP_ASSIGNMENT_DATE_RANGE_INVALID','วันที่สิ้นสุดต้องไม่น้อยกว่าวันที่เริ่ม'],
+      ['SYSTEM_PERIOD_SCHEDULE_CLOSED','ช่วงวันที่นี้อยู่ในรอบระบบที่ปิดการแก้ไขกะแล้ว'],
+      ['ACTING_ASSIGNMENT_OVERLAP','Acting คนนี้มีช่วงรักษาการซ้อนกันใน Scope เดียวกัน'],
+      ['HR_ADMIN_REQUIRED','รายการนี้สำหรับ HR Admin เท่านั้น']
+    ];
+    for(const [k,v] of map)if(raw.includes(k))return v;
+    return raw.replace(/^Error:\s*/,'');
+  }
+  const assignmentLabel=t=>String(t||'').toUpperCase()==='BORROW_CROSS_ORG'?'ยืมตัวต่างหน่วยงาน':'ไปช่วยทีมภายในหน่วยงาน';
+  const assignmentIcon=t=>String(t||'').toUpperCase()==='BORROW_CROSS_ORG'?'↔':'→';
+  function statusInfo(r){
+    const l=String(r?.lifecycle_status||r?.status||'').toUpperCase();
+    const m={
+      PENDING_SOURCE:['รอ Manager ต้นทาง','pending'],PENDING_DESTINATION:['รอ Manager ปลายทาง','pending'],
+      SCHEDULED:['อนุมัติแล้ว · รอเริ่ม','scheduled'],ACTIVE:['กำลังไปช่วย / ยืม','active'],COMPLETED:['สิ้นสุดแล้ว','completed'],
+      REJECTED:['ไม่อนุมัติ','rejected'],CANCELLED:['ยกเลิกแล้ว','cancelled'],APPROVED:['อนุมัติแล้ว','active']
+    };
+    const x=m[l]||[l||'-','neutral'];return {label:x[0],tone:x[1]};
+  }
+  function directionText(v){return v==='INBOUND'?'รับเข้ามาช่วย':v==='OUTBOUND'?'ส่งไปช่วย':v==='BOTH'?'ดูแลทั้ง 2 ฝั่ง':v==='AUDIT'?'HR Audit':'-';}
+  function authorityLabel(v){return String(v||'').toUpperCase()==='ACTING_MANAGER'?'Acting Manager':String(v||'').toUpperCase()==='MANAGER'?'Manager':String(v||'').toUpperCase()==='SOURCE_AND_DESTINATION'?'Manager ทั้ง 2 ฝั่ง':'-';}
+  function hasOperationalAuthority(){return state.access?.is_operational_actor===true||state.access?.is_acting===true;}
+  function actingOnly(){return !isHr()&&!baseManager()&&hasOperationalAuthority();}
+
+  async function loadAccess({silent=true}={}){
+    if(state.accessLoading)return state.access;
+    if(!app()?.state?.client)return null;
+    state.accessLoading=true;
+    try{
+      const data=await rpc('ta_get_my_temporary_assignment_access_v61529f14b',{});
+      state.access=data||{};
+      if(app()?.state?.profile)app().state.profile._actingTeamAuthority=hasOperationalAuthority();
+      syncAccessUI();
+      return state.access;
+    }catch(e){if(!silent)toast(human(e),'error');return null;}finally{state.accessLoading=false;}
+  }
+
+  function syncAccessUI(){
+    const can=state.access?.can_access===true||isHr()||baseManager();
+    $('teamTemporaryTabV61529F14B')?.classList.toggle('hidden',!can);
+    if(can)$('teamMasterNavV61523')?.classList.remove('hidden');
+    $('teamActingPanelV61529F14B')?.classList.toggle('hidden',!isHr());
+    $('teamTempCreateV61529F14B')?.classList.toggle('hidden',isHr()||!hasOperationalAuthority());
+    const badge=$('teamTempAuthorityBadgeV61529F14B');
+    if(badge){
+      if(isHr()){badge.textContent='HR Admin · Audit / Acting';badge.className='badge badge-blue';}
+      else if(state.access?.is_acting){badge.textContent='Acting Manager · Operational Authority';badge.className='badge badge-purple';}
+      else if(baseManager()){badge.textContent='Manager · Operational Authority';badge.className='badge badge-green';}
+      else{badge.textContent='ไม่มี Operational Authority';badge.className='badge badge-gray';}
+    }
+    const page=$('page-team-master');page?.classList.toggle('acting-only-v61529f14b',actingOnly());
+    if(actingOnly()){
+      document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>{if(b.dataset.teamWorkspaceTabV61528!=='ASSIGNMENTS')b.classList.add('acting-base-hidden-v61529f14b');});
+      const title=page?.querySelector('.team-workspace-title-v61528 h2'),desc=page?.querySelector('.team-workspace-title-v61528 p');
+      if(title)title.textContent='ไปช่วยทีม / ยืมตัวช่าง';if(desc)desc.textContent='Acting Manager · จัดการรายการชั่วคราวตาม Scope และช่วงวันที่ที่ได้รับมอบหมาย';
+    }else{
+      document.querySelectorAll('.acting-base-hidden-v61529f14b').forEach(b=>b.classList.remove('acting-base-hidden-v61529f14b'));
+    }
+  }
+
+  function ensureAssignmentTabVisible(){
+    document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>b.classList.toggle('active',b.dataset.teamWorkspaceTabV61528==='ASSIGNMENTS'));
+    document.querySelectorAll('[data-team-workspace-pane-v61528]').forEach(p=>p.classList.toggle('hidden',p.dataset.teamWorkspacePaneV61528!=='ASSIGNMENTS'));
+  }
+
+  function listRange(){return {from:$('teamTempFromV61529F14B')?.value||monthStart(today()),to:$('teamTempToV61529F14B')?.value||addDays(today(),90)};}
+  function setDefaultRange(){const f=$('teamTempFromV61529F14B'),t=$('teamTempToV61529F14B');if(f&&!f.value)f.value=monthStart(today());if(t&&!t.value)t.value=addDays(today(),90);}
+  function filteredRows(){
+    const status=String($('teamTempStatusV61529F14B')?.value||'OPEN').toUpperCase();
+    const q=String($('teamTempSearchV61529F14B')?.value||'').toLowerCase().trim();
+    return(state.rows||[]).filter(r=>{
+      const life=String(r.lifecycle_status||r.status||'').toUpperCase();
+      const statusOk=status==='ALL'||(status==='OPEN'&&['PENDING_SOURCE','PENDING_DESTINATION','SCHEDULED','ACTIVE'].includes(life))||(status==='PENDING'&&['PENDING_SOURCE','PENDING_DESTINATION'].includes(life))||life===status;
+      const text=[r.emp_code,r.employee_name,r.source_org_code,r.source_org_name,r.source_team_code,r.destination_org_code,r.destination_org_name,r.destination_team_code,assignmentLabel(r.assignment_type)].join(' ').toLowerCase();
+      return statusOk&&(!q||text.includes(q));
+    });
+  }
+  function rowActions(r){
+    const out=[];
+    if(r.can_decide){out.push(`<button class="btn btn-primary btn-sm" data-temp-approve-v61529f14b="${esc(r.assignment_id)}">อนุมัติ</button>`);out.push(`<button class="btn btn-danger-soft btn-sm" data-temp-reject-v61529f14b="${esc(r.assignment_id)}">ไม่อนุมัติ</button>`);}
+    if(r.can_end){
+      const l=String(r.lifecycle_status||'').toUpperCase();
+      if(['PENDING_SOURCE','PENDING_DESTINATION','SCHEDULED'].includes(l))out.push(`<button class="btn btn-light btn-sm" data-temp-cancel-v61529f14b="${esc(r.assignment_id)}">ยกเลิก</button>`);
+      else if(l==='ACTIVE')out.push(`<button class="btn btn-light btn-sm" data-temp-end-v61529f14b="${esc(r.assignment_id)}">จบก่อนกำหนด</button>`);
+    }
+    return out.length?out.join(''):'<span class="team-temp-no-action-v61529f14b">ดูประวัติ</span>';
+  }
+  function renderWorkspace(){
+    const rows=filteredRows(),host=$('teamTempListV61529F14B');if(!host)return;
+    const pendingMine=(state.rows||[]).filter(r=>r.can_decide).length;
+    const put=(id,v)=>{if($(id))$(id).textContent=Number(v||0).toLocaleString('th-TH');};
+    put('teamTempKpiPendingV61529F14B',pendingMine);put('teamTempKpiActiveV61529F14B',state.summary?.active);put('teamTempKpiScheduledV61529F14B',state.summary?.scheduled);put('teamTempKpiInboundV61529F14B',state.summary?.inbound);put('teamTempKpiOutboundV61529F14B',state.summary?.outbound);
+    const badge=$('teamTempPendingBadgeV61529F14B');if(badge){badge.textContent=pendingMine;badge.classList.toggle('hidden',pendingMine===0);}
+    if(!rows.length){host.innerHTML='<div class="team-temp-empty-v61529f14b"><span>✓</span><div><strong>ไม่มีรายการตามเงื่อนไข</strong><small>ลองเปลี่ยนช่วงวันที่ สถานะ หรือคำค้นหา</small></div></div>';return;}
+    host.innerHTML=rows.map(r=>{
+      const st=statusInfo(r),type=assignmentLabel(r.assignment_type),waiting=r.waiting_for==='SOURCE'?'ต้นทาง':r.waiting_for==='DESTINATION'?'ปลายทาง':'';
+      const auth=r.source_authorized&&r.destination_authorized?'Authority ทั้ง 2 ฝั่ง':r.source_authorized?'Authority ต้นทาง':r.destination_authorized?'Authority ปลายทาง':'Audit';
+      return `<article class="team-temp-card-v61529f14b ${st.tone}">
+        <div class="team-temp-card-main-v61529f14b">
+          <div class="team-temp-person-v61529f14b"><span class="team-temp-type-icon-v61529f14b">${assignmentIcon(r.assignment_type)}</span><div><strong>${esc(r.emp_code)} · ${esc(r.employee_name||'-')}</strong><small>${esc(r.position_name||'ช่างเทคนิค')}</small><span class="team-temp-type-chip-v61529f14b ${String(r.assignment_type||'').toLowerCase()}">${esc(type)}</span></div></div>
+          <div class="team-temp-flow-v61529f14b"><div><span>ต้นสังกัด</span><strong>${esc(r.source_org_code||'-')}</strong><small>${esc(r.source_team_code||'-')} · ${esc(r.source_team_name||'')}</small></div><b>→</b><div><span>ปฏิบัติงานกับ</span><strong>${esc(r.destination_org_code||'-')}</strong><small>${esc(r.destination_team_code||'-')} · ${esc(r.destination_team_name||'')}</small></div></div>
+          <div class="team-temp-period-v61529f14b"><span>ช่วงวันที่</span><strong>${esc(fmtDate(r.effective_from))}</strong><small>ถึง ${esc(fmtDate(r.effective_to))}</small></div>
+          <div class="team-temp-status-v61529f14b"><span class="team-temp-status-chip-v61529f14b ${st.tone}">${esc(st.label)}</span><small>${waiting?`รอการยืนยัน${waiting} · `:''}${esc(directionText(r.direction))}</small><small>${esc(auth)}</small></div>
+        </div>
+        <div class="team-temp-card-foot-v61529f14b"><p><strong>เหตุผล:</strong> ${esc(r.note||'-')}</p><div><span>สร้างโดย ${esc(r.requested_by_email||'-')} · ${esc(fmtDateTime(r.created_at))}</span><div class="team-temp-actions-v61529f14b">${rowActions(r)}</div></div></div>
+      </article>`;
+    }).join('');
+  }
+  async function load(){
+    await loadAccess();if(!(state.access?.can_access||isHr()||baseManager()))return;
+    if(state.loading)return;state.loading=true;setDefaultRange();const host=$('teamTempListV61529F14B');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลดรายการไปช่วยทีม / ยืมตัว...</div>';
+    try{
+      const range=listRange();const data=await rpc('ta_get_temporary_assignment_workspace_v61529f14b',{p_from:range.from||null,p_to:range.to||null,p_org_id:null});
+      state.rows=Array.isArray(data?.rows)?data.rows:[];state.summary=data?.summary||{};state.loaded=true;renderWorkspace();
+      if(isHr())await loadActing();
+    }catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;toast(human(e),'error');}finally{state.loading=false;}
+  }
+
+  function selectedCandidate(){return state.candidates.find(r=>String(r.emp_code)===String($('teamTempEmployeeV61529F14B')?.value||''))||null;}
+  function selectedDestination(){return state.destinations.find(r=>String(r.team_id)===String($('teamTempDestinationV61529F14B')?.value||''))||null;}
+  function renderCandidateOptions(keep=''){
+    const s=$('teamTempEmployeeV61529F14B');if(!s)return;const old=keep||s.value;
+    s.innerHTML='<option value="">— เลือกพนักงาน —</option>'+state.candidates.map(r=>`<option value="${esc(r.emp_code)}">${esc(r.emp_code)} · ${esc(r.full_name||'-')} · ${esc(r.home_org_code||'-')} · ${esc(r.home_team_code||'-')}</option>`).join('');
+    if(state.candidates.some(r=>String(r.emp_code)===String(old)))s.value=old;
+  }
+  function renderHomeCard(){const r=selectedCandidate(),box=$('teamTempHomeCardV61529F14B');if(!box)return;if(!r){box.innerHTML='<span>ทีมต้นสังกัด</span><strong>-</strong><small>เลือกพนักงานเพื่อดู Home Unit / Home Team</small>';return;}box.innerHTML=`<span>Permanent Home Team</span><strong>${esc(r.home_org_code||'-')} · ${esc(r.home_team_code||'-')}</strong><small>${esc(r.home_org_name||'')} · ${esc(r.home_team_name||'')} · ${esc(r.operational_type||'-')}${r.source_authorized?' · คุณมี Authority ต้นทาง':' · คุณไม่มี Authority ต้นทาง'}</small>`;}
+  async function loadCandidates(){
+    const keep=$('teamTempEmployeeV61529F14B')?.value||'';const q=$('teamTempCandidateSearchV61529F14B')?.value?.trim()||'';const d=$('teamTempCreateFromV61529F14B')?.value||today();
+    try{state.candidates=await rpc('ta_get_temporary_assignment_candidates_v61529f14b',{p_search:q||null,p_work_date:d,p_limit:500})||[];renderCandidateOptions(keep);renderHomeCard();}catch(e){toast(human(e),'error');}
+  }
+  async function loadDestinations(){
+    const emp=$('teamTempEmployeeV61529F14B')?.value||'',d=$('teamTempCreateFromV61529F14B')?.value||today(),s=$('teamTempDestinationV61529F14B');state.destinations=[];state.preview=null;if(!s)return;
+    if(!emp){s.disabled=true;s.innerHTML='<option value="">— เลือก Team ปลายทาง —</option>';renderPreview();return;}
+    s.disabled=true;s.innerHTML='<option value="">กำลังโหลด Team ปลายทาง...</option>';
+    try{state.destinations=await rpc('ta_get_temporary_assignment_destinations_v61529f14b',{p_emp_code:emp,p_work_date:d})||[];s.innerHTML='<option value="">— เลือก Team ปลายทาง —</option>'+state.destinations.map(r=>`<option value="${esc(r.team_id)}">${esc(r.org_code)} · ${esc(r.team_code)} · ${esc(r.team_name)} · ${Number(r.current_member_count||0)} คน${r.is_same_home_org?' · ไปช่วยภายในหน่วยงาน':' · ยืมข้ามหน่วยงาน'}${r.destination_authorized?' · คุณดูแลปลายทาง':''}</option>`).join('');s.disabled=false;if(!state.destinations.length)$('teamTempDestinationHintV61529F14B').textContent='ไม่พบ Team ปลายทางที่ Active ประเภทเดียวกัน ภายในฝ่ายเดียวกัน และสัมพันธ์กับ Authority ของคุณ';else $('teamTempDestinationHintV61529F14B').textContent='ระบบแสดงเฉพาะ Team Active ประเภทเดียวกันและอยู่ภายในระดับฝ่ายเดียวกัน';}catch(e){s.innerHTML='<option value="">โหลด Team ไม่สำเร็จ</option>';toast(human(e),'error');}
+    renderPreview();
+  }
+  function blockerText(b){const c=String(b?.code||'');return human(c)||c;}
+  function renderPreview(){
+    const p=state.preview,box=$('teamTempPreviewV61529F14B'),save=$('teamTempCreateConfirmV61529F14B');if(!box||!save)return;const note=String($('teamTempNoteV61529F14B')?.value||'').trim();
+    if(!p){box.innerHTML='<div class="team-temp-preview-placeholder-v61529f14b">เลือกพนักงาน วันที่ และ Team ปลายทาง เพื่อดูประเภทการมอบหมายและขั้นตอนอนุมัติ</div>';save.disabled=true;save.textContent='ยืนยันรายการ';return;}
+    const blockers=Array.isArray(p.blockers)?p.blockers:[],allowed=p.allowed===true,flow=p.workflow||{},source=p.source_org||{},dest=p.destination_org||{},st=p.source_team||{},dt=p.destination_team||{};
+    const workflow=flow.direct_approval?'คุณมี Authority ทั้งต้นทางและปลายทาง · ยืนยันครั้งเดียวและ Approved ทันที':flow.initial_status==='PENDING_DESTINATION'?'ส่งรายการจากต้นทาง → รอ Manager / Acting ปลายทางยืนยัน':'ขอรับช่างจากปลายทาง → รอ Manager / Acting ต้นทางยืนยัน';
+    box.innerHTML=`<div class="team-temp-preview-head-v61529f14b"><div><span>ระบบจำแนกเป็น</span><strong>${assignmentIcon(p.assignment_type)} ${esc(assignmentLabel(p.assignment_type))}</strong></div><span class="${allowed?'ok':'blocked'}">${allowed?'✓ ผ่านเงื่อนไข':'! ยังบันทึกไม่ได้'}</span></div><div class="team-temp-preview-flow-v61529f14b"><div><small>Home</small><strong>${esc(source.org_code||'-')} · ${esc(st.team_code||'-')}</strong></div><b>→</b><div><small>Working Team</small><strong>${esc(dest.org_code||'-')} · ${esc(dt.team_code||'-')}</strong></div></div><div class="team-temp-workflow-v61529f14b"><strong>เส้นทางอนุมัติ</strong><span>${esc(workflow)}</span><small>ต้นทาง: ${esc(authorityLabel(p.source_authority?.type))} ${p.source_authority?.allowed?'✓':'•'} · ปลายทาง: ${esc(authorityLabel(p.destination_authority?.type))} ${p.destination_authority?.allowed?'✓':'•'}</small></div>${blockers.length?`<div class="team-temp-blockers-v61529f14b">${blockers.map(b=>`<p>• ${esc(blockerText(b))}</p>`).join('')}</div>`:''}`;
+    save.disabled=!allowed||note.length<3;save.textContent=flow.direct_approval?'ยืนยันและมีผลทันที':'ส่งรายการให้อีกฝ่ายยืนยัน';
+  }
+  async function preview(){
+    clearTimeout(state.previewTimer);const emp=$('teamTempEmployeeV61529F14B')?.value||'',dest=$('teamTempDestinationV61529F14B')?.value||'',from=$('teamTempCreateFromV61529F14B')?.value||'',to=$('teamTempCreateToV61529F14B')?.value||'';if(!emp||!dest||!from||!to){state.preview=null;renderPreview();return;}
+    if(to<from){state.preview={allowed:false,blockers:[{code:'TEMP_ASSIGNMENT_DATE_RANGE_INVALID'}]};renderPreview();return;}
+    try{state.preview=await rpc('ta_preview_temporary_team_assignment_v61529f14',{p_emp_code:emp,p_destination_team_id:dest,p_effective_from:from,p_effective_to:to});renderPreview();}catch(e){state.preview={allowed:false,blockers:[{code:human(e)}]};renderPreview();}
+  }
+  function schedulePreview(){clearTimeout(state.previewTimer);state.previewTimer=setTimeout(preview,180);}
+  async function openCreate(){
+    await loadAccess({silent:false});if(isHr())return toast('HR Admin ใช้หน้านี้เพื่อตรวจสอบและกำหนด Acting แต่ไม่ใช่ผู้อนุมัติยืมตัว','warning');if(!hasOperationalAuthority())return toast('ไม่มี Operational Authority สำหรับสร้างรายการ','error');
+    const modal=$('teamTempCreateModalV61529F14B');if(!modal)return;const f=$('teamTempCreateFromV61529F14B'),t=$('teamTempCreateToV61529F14B');if(f){f.value=today();f.min=today();}if(t){t.value=addDays(today(),7);t.min=today();}$('teamTempCandidateSearchV61529F14B')&&($('teamTempCandidateSearchV61529F14B').value='');$('teamTempNoteV61529F14B')&&($('teamTempNoteV61529F14B').value='');state.preview=null;state.destinations=[];modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');await loadCandidates();renderHomeCard();renderPreview();
+  }
+  function closeCreate(){const m=$('teamTempCreateModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.preview=null;state.destinations=[];}
+  async function createAssignment(){
+    const emp=$('teamTempEmployeeV61529F14B')?.value||'',dest=$('teamTempDestinationV61529F14B')?.value||'',from=$('teamTempCreateFromV61529F14B')?.value||'',to=$('teamTempCreateToV61529F14B')?.value||'',note=String($('teamTempNoteV61529F14B')?.value||'').trim();if(state.preview?.allowed!==true)return toast('กรุณาตรวจ Preview ให้ผ่านก่อนบันทึก','warning');if(note.length<3)return toast('กรุณาระบุเหตุผล / รายละเอียดงาน','warning');
+    const direct=state.preview?.workflow?.direct_approval===true;const ok=await window.tcConfirm?.({title:direct?'ยืนยันมอบหมายชั่วคราว':'ส่งรายการให้อีกฝ่ายยืนยัน',message:[`${emp} · ${assignmentLabel(state.preview.assignment_type)}`,`${state.preview?.source_org?.org_code||'-'} → ${state.preview?.destination_org?.org_code||'-'}`,`${fmtDate(from)} – ${fmtDate(to)}`,direct?'คุณมี Authority ทั้ง 2 ฝั่ง · Approved ทันที':'ระบบจะส่งให้ Manager / Acting อีกฝั่งยืนยัน'].join('\n'),confirmText:direct?'ยืนยันและมีผล':'ส่งรายการ',tone:'primary'});if(!ok)return;
+    try{app()?.showLoading?.('กำลังบันทึกรายการไปช่วยทีม / ยืมตัว...');const r=await rpc('ta_create_temporary_team_assignment_v61529f14',{p_emp_code:emp,p_destination_team_id:dest,p_effective_from:from,p_effective_to:to,p_note:note});closeCreate();toast(r?.direct_approval?'บันทึกและอนุมัติรายการเรียบร้อย':'ส่งรายการให้อีกฝ่ายยืนยันแล้ว','success');await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+  }
+
+  function rowById(id){return(state.rows||[]).find(r=>String(r.assignment_id)===String(id))||null;}
+  async function approve(id){const r=rowById(id);if(!r)return;const ok=await window.tcConfirm?.({title:'อนุมัติการมอบหมายชั่วคราว',message:[`${r.emp_code} · ${r.employee_name||'-'}`,`${r.source_org_code} → ${r.destination_org_code}`,`${fmtDate(r.effective_from)} – ${fmtDate(r.effective_to)}`].join('\n'),confirmText:'อนุมัติ',tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังอนุมัติ...');await rpc('ta_decide_temporary_team_assignment_v61529f14',{p_assignment_id:id,p_decision:'APPROVE',p_note:null});toast('อนุมัติเรียบร้อย','success');await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+  function openAction(id,mode){const r=rowById(id);if(!r)return;state.action={id,mode,row:r};const modal=$('teamTempActionModalV61529F14B'),title=$('teamTempActionTitleV61529F14B'),sub=$('teamTempActionSubtitleV61529F14B'),sum=$('teamTempActionSummaryV61529F14B'),endBox=$('teamTempActionEndBoxV61529F14B'),end=$('teamTempActionEndDateV61529F14B'),btn=$('teamTempActionConfirmV61529F14B');if(!modal)return;const labels={REJECT:'ไม่อนุมัติรายการ',CANCEL:'ยกเลิกรายการ',END:'จบการยืม / ไปช่วยก่อนกำหนด'};title.textContent=labels[mode]||'ดำเนินการ';sub.textContent=`${r.emp_code} · ${r.employee_name||'-'} · ${r.source_org_code} → ${r.destination_org_code}`;sum.innerHTML=`<div><span>ประเภท</span><strong>${esc(assignmentLabel(r.assignment_type))}</strong></div><div><span>ช่วงเดิม</span><strong>${esc(fmtDate(r.effective_from))} – ${esc(fmtDate(r.effective_to))}</strong></div>`;$('teamTempActionReasonV61529F14B')&&($('teamTempActionReasonV61529F14B').value='');endBox.classList.toggle('hidden',mode!=='END');if(mode==='END'&&end){end.min=today();end.max=addDays(r.effective_to,-1);end.value=today()<r.effective_to?today():addDays(r.effective_to,-1);}btn.textContent=mode==='REJECT'?'ยืนยันไม่อนุมัติ':mode==='CANCEL'?'ยืนยันยกเลิก':'ยืนยันวันสิ้นสุดใหม่';btn.className=mode==='END'?'btn btn-primary':'btn btn-danger';modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');}
+  function closeAction(){const m=$('teamTempActionModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.action=null;}
+  async function confirmAction(){const a=state.action;if(!a)return;const reason=String($('teamTempActionReasonV61529F14B')?.value||'').trim();if(reason.length<3)return toast('กรุณาระบุเหตุผล','warning');try{app()?.showLoading?.('กำลังบันทึก...');if(a.mode==='REJECT')await rpc('ta_decide_temporary_team_assignment_v61529f14',{p_assignment_id:a.id,p_decision:'REJECT',p_note:reason});else{const end=a.mode==='END'?$('teamTempActionEndDateV61529F14B')?.value:today();if(a.mode==='END'&&!end)return toast('กรุณาระบุวันที่สิ้นสุดใหม่','warning');await rpc('ta_end_temporary_team_assignment_v61529f14',{p_assignment_id:a.id,p_effective_to:end,p_reason:reason});}closeAction();toast(a.mode==='REJECT'?'บันทึกไม่อนุมัติแล้ว':a.mode==='CANCEL'?'ยกเลิกรายการแล้ว':'ปรับวันสิ้นสุดเรียบร้อย','success');await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+
+  async function loadActing(){if(!isHr())return;try{const range=listRange();state.actingRows=await rpc('ta_get_acting_manager_assignments_v61529f14b',{p_from:range.from||null,p_to:range.to||null,p_org_id:null})||[];renderActing();}catch(e){console.warn('Acting reader',e);}}
+  function actingStatus(r){return String(r.lifecycle_status||'').toUpperCase()==='ACTIVE'?'<span class="badge badge-green">กำลังรักษาการ</span>':String(r.lifecycle_status||'').toUpperCase()==='SCHEDULED'?'<span class="badge badge-blue">รอเริ่ม</span>':String(r.lifecycle_status||'').toUpperCase()==='COMPLETED'?'<span class="badge badge-gray">สิ้นสุดแล้ว</span>':'<span class="badge badge-red">ปิดใช้งาน</span>';}
+  function renderActing(){const b=$('teamActingBodyV61529F14B');if(!b)return;b.innerHTML=state.actingRows.length?state.actingRows.map(r=>`<tr><td><strong>${esc(r.acting_name||r.acting_email)}</strong><small class="team-master-sub-v61523">${esc(r.acting_emp_code||'-')} · ${esc(r.acting_email)}</small></td><td><strong>${esc(r.org_code||'-')}</strong><small class="team-master-sub-v61523">${esc(r.org_name||'')}${r.include_descendants?' · รวมหน่วยงานย่อย':''}</small></td><td>${esc(fmtDate(r.effective_from))}<small class="team-master-sub-v61523">ถึง ${esc(fmtDate(r.effective_to))}</small></td><td>${actingStatus(r)}</td><td>${esc(r.reason||'-')}</td><td><button class="btn btn-light btn-sm" data-acting-edit-v61529f14b="${esc(r.acting_id)}">แก้ไข</button></td></tr>`).join(''):'<tr><td colspan="6" class="fc-empty">ยังไม่มี Acting Assignment ในช่วงวันที่นี้</td></tr>';}
+  async function loadActingOptions(search=''){if(!isHr())return;const [people,orgs]=await Promise.all([rpc('ta_get_acting_manager_candidates_v61529f14b',{p_search:search||null,p_limit:500}),state.actingOrgs.length?Promise.resolve(state.actingOrgs):rpc('ta_get_acting_org_options_v61529f14b',{})]);state.actingCandidates=people||[];state.actingOrgs=orgs||[];renderActingOptions();}
+  function renderActingOptions(){const p=$('teamActingPersonV61529F14B'),o=$('teamActingOrgV61529F14B');if(p){const old=p.value;p.innerHTML='<option value="">— เลือกผู้รักษาการ —</option>'+state.actingCandidates.map(r=>`<option value="${esc(r.email)}" data-emp="${esc(r.emp_code||'')}">${esc(r.display_name||r.email)} · ${esc(r.email)}${r.emp_code?` · ${esc(r.emp_code)}`:''}</option>`).join('');if([...p.options].some(x=>x.value===old))p.value=old;}if(o){const old=o.value;o.innerHTML='<option value="">— เลือกหน่วยงาน —</option>'+state.actingOrgs.map(r=>`<option value="${esc(r.org_id)}">${esc(r.org_code)} · ${esc(r.org_name)}</option>`).join('');if([...o.options].some(x=>x.value===old))o.value=old;}}
+  async function openActing(id=null){if(!isHr())return;state.actingEdit=id?(state.actingRows.find(r=>String(r.acting_id)===String(id))||null):null;const modal=$('teamActingModalV61529F14B');if(!modal)return;await loadActingOptions('');const r=state.actingEdit;$('teamActingModalTitleV61529F14B').textContent=r?'แก้ไข Acting Manager':'กำหนด Acting Manager';if(r&&!state.actingCandidates.some(x=>String(x.email).toLowerCase()===String(r.acting_email).toLowerCase()))state.actingCandidates.unshift({email:r.acting_email,emp_code:r.acting_emp_code,display_name:r.acting_name,role:'-'});renderActingOptions();if($('teamActingPersonV61529F14B'))$('teamActingPersonV61529F14B').value=r?.acting_email||'';if($('teamActingOrgV61529F14B'))$('teamActingOrgV61529F14B').value=r?.org_unit_id||'';$('teamActingDescendantsV61529F14B')&&($('teamActingDescendantsV61529F14B').checked=r?.include_descendants===true);$('teamActingFromV61529F14B')&&($('teamActingFromV61529F14B').value=r?.effective_from||today());$('teamActingToV61529F14B')&&($('teamActingToV61529F14B').value=r?.effective_to||addDays(today(),7));$('teamActingReasonV61529F14B')&&($('teamActingReasonV61529F14B').value=r?.reason||'');$('teamActingActiveV61529F14B')&&($('teamActingActiveV61529F14B').checked=r?r.is_active!==false:true);modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');}
+  function closeActing(){const m=$('teamActingModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.actingEdit=null;}
+  async function saveActing(){if(!isHr())return;const person=$('teamActingPersonV61529F14B'),email=person?.value||'',emp=person?.selectedOptions?.[0]?.dataset?.emp||'',org=$('teamActingOrgV61529F14B')?.value||'',from=$('teamActingFromV61529F14B')?.value||'',to=$('teamActingToV61529F14B')?.value||'',reason=String($('teamActingReasonV61529F14B')?.value||'').trim(),active=$('teamActingActiveV61529F14B')?.checked!==false;if(!email||!org||!from||!to)return toast('กรุณาระบุผู้รักษาการ หน่วยงาน และช่วงวันที่','warning');if(to<from)return toast('วันที่สิ้นสุดต้องไม่น้อยกว่าวันเริ่ม','warning');if(reason.length<3)return toast('กรุณาระบุเหตุผลการรักษาการ','warning');try{app()?.showLoading?.('กำลังบันทึก Acting Manager...');await rpc('ta_set_acting_manager_assignment_v61529f14',{p_acting_id:state.actingEdit?.acting_id||null,p_acting_email:email,p_acting_emp_code:emp||null,p_org_id:org,p_include_descendants:$('teamActingDescendantsV61529F14B')?.checked===true,p_effective_from:from,p_effective_to:to,p_reason:reason,p_is_active:active});closeActing();toast('บันทึก Acting Manager เรียบร้อย','success');await loadActing();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+
+  function bind(){
+    setDefaultRange();
+    $('teamTempRefreshV61529F14B')?.addEventListener('click',load);$('teamTempCreateV61529F14B')?.addEventListener('click',openCreate);$('teamTempStatusV61529F14B')?.addEventListener('change',renderWorkspace);$('teamTempSearchV61529F14B')?.addEventListener('input',renderWorkspace);$('teamTempFromV61529F14B')?.addEventListener('change',load);$('teamTempToV61529F14B')?.addEventListener('change',load);
+    $('teamTempCandidateSearchBtnV61529F14B')?.addEventListener('click',loadCandidates);$('teamTempCandidateSearchV61529F14B')?.addEventListener('input',()=>{clearTimeout(state.candidateTimer);state.candidateTimer=setTimeout(loadCandidates,280);});$('teamTempCandidateSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadCandidates();}});
+    $('teamTempEmployeeV61529F14B')?.addEventListener('change',async()=>{renderHomeCard();await loadDestinations();schedulePreview();});$('teamTempDestinationV61529F14B')?.addEventListener('change',schedulePreview);$('teamTempCreateFromV61529F14B')?.addEventListener('change',async e=>{if($('teamTempCreateToV61529F14B')&&$('teamTempCreateToV61529F14B').value<e.target.value)$('teamTempCreateToV61529F14B').value=e.target.value;await loadCandidates();await loadDestinations();schedulePreview();});$('teamTempCreateToV61529F14B')?.addEventListener('change',schedulePreview);$('teamTempNoteV61529F14B')?.addEventListener('input',renderPreview);$('teamTempCreateConfirmV61529F14B')?.addEventListener('click',createAssignment);$('teamTempActionConfirmV61529F14B')?.addEventListener('click',confirmAction);
+    $('teamActingRefreshV61529F14B')?.addEventListener('click',loadActing);$('teamActingCreateV61529F14B')?.addEventListener('click',()=>openActing(null));$('teamActingSearchBtnV61529F14B')?.addEventListener('click',()=>loadActingOptions($('teamActingSearchV61529F14B')?.value||''));$('teamActingSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadActingOptions(e.target.value||'');}});$('teamActingSaveV61529F14B')?.addEventListener('click',saveActing);
+    document.addEventListener('click',e=>{
+      const tab=e.target.closest('[data-team-workspace-tab-v61528="ASSIGNMENTS"]');if(tab){setTimeout(()=>{ensureAssignmentTabVisible();load();},0);return;}
+      const ap=e.target.closest('[data-temp-approve-v61529f14b]');if(ap){approve(ap.dataset.tempApproveV61529f14b);return;}const rj=e.target.closest('[data-temp-reject-v61529f14b]');if(rj){openAction(rj.dataset.tempRejectV61529f14b,'REJECT');return;}const ca=e.target.closest('[data-temp-cancel-v61529f14b]');if(ca){openAction(ca.dataset.tempCancelV61529f14b,'CANCEL');return;}const en=e.target.closest('[data-temp-end-v61529f14b]');if(en){openAction(en.dataset.tempEndV61529f14b,'END');return;}const ae=e.target.closest('[data-acting-edit-v61529f14b]');if(ae){openActing(ae.dataset.actingEditV61529f14b);return;}
+      if(e.target.closest('[data-team-temp-close-v61529f14b]')){closeCreate();return;}if(e.target.closest('[data-team-temp-action-close-v61529f14b]')){closeAction();return;}if(e.target.closest('[data-team-acting-close-v61529f14b]')){closeActing();return;}
+    });
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCreate();closeAction();closeActing();}});
+    const init=async()=>{const a=await loadAccess();if(actingOnly()&&document.querySelector('#page-team-master.active')){ensureAssignmentTabVisible();load();}return a;};
+    window.addEventListener('ta:session-ready',()=>setTimeout(init,0));document.addEventListener('timeclock:effective-role-changed',()=>setTimeout(init,0));setTimeout(init,450);
+  }
+  window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,openCreate,state,version:VERSION};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
