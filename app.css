@@ -25014,3 +25014,92 @@ html[data-theme="dark"] .team-closure-temp-impact-v61529f14b,body.dark .team-clo
 .working-team-readonly-cell-v61529f14b .schedule-cell:hover{transform:none;box-shadow:inset 0 0 0 1px rgba(100,116,139,.25)}
 html[data-theme="dark"] .team-working-readonly-v61529f14b,body.dark .team-working-readonly-v61529f14b{border-color:rgba(148,163,184,.25);background:rgba(148,163,184,.10);color:#cbd5e1}
 html[data-theme="dark"] .temporary-working-cell-v61529f14b .schedule-cell,body.dark .temporary-working-cell-v61529f14b .schedule-cell{box-shadow:inset 0 0 0 1px rgba(167,139,250,.24)}
+
+/* ========================================================================== */
+/* V6.15.29 FIX14D — Temporary Assignment layout polish                      */
+/* Fixes explainer-card markup mismatch + KPI wrapping at desktop widths.    */
+/* ========================================================================== */
+.team-temp-rule-v61529f14b{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  padding:14px 16px;
+  align-items:stretch;
+}
+.team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr);
+  gap:11px;
+  align-items:center;
+  min-width:0;
+  min-height:72px;
+  padding:12px 14px;
+  border:1px solid #dbe7f5;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 2px 8px rgba(15,53,96,.035);
+}
+.team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d>div{min-width:0}
+.team-temp-rule-v61529f14b .team-temp-rule-icon-v61529f14d{
+  display:grid;
+  place-items:center;
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  background:#eaf3ff;
+  color:#1554a0;
+  font-size:18px;
+  font-weight:900;
+  line-height:1;
+}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.borrow .team-temp-rule-icon-v61529f14d{background:#f3e8ff;color:#7e22ce}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.authority .team-temp-rule-icon-v61529f14d{background:#e8f7f1;color:#047857}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong{
+  display:block;
+  margin:0;
+  color:#17233b;
+  font-size:13px;
+  font-weight:850;
+  line-height:1.25;
+  white-space:nowrap;
+}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small{
+  display:block;
+  margin-top:4px;
+  color:#64748b;
+  font-size:10.5px;
+  font-weight:600;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+.team-temp-kpis-v61529f14b{
+  grid-template-columns:repeat(5,minmax(150px,1fr));
+  gap:10px;
+  padding:16px 16px 6px;
+}
+.team-temp-kpis-v61529f14b article{min-height:86px;padding:13px 15px 12px 17px}
+.team-temp-kpis-v61529f14b article>span{min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-temp-toolbar-v61529f14b{padding-top:14px}
+
+@media(max-width:1120px){
+  .team-temp-kpis-v61529f14b{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:900px){
+  .team-temp-rule-v61529f14b{grid-template-columns:1fr}
+  .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{min-height:64px}
+}
+@media(max-width:680px){
+  .team-temp-kpis-v61529f14b{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .team-temp-rule-v61529f14b{padding:12px}
+  .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{grid-template-columns:36px minmax(0,1fr);padding:11px 12px}
+  .team-temp-rule-v61529f14b .team-temp-rule-icon-v61529f14d{width:36px;height:36px;border-radius:11px;font-size:16px}
+}
+@media(max-width:440px){
+  .team-temp-kpis-v61529f14b{grid-template-columns:1fr}
+}
+
+html[data-theme="dark"] .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d,
+body.dark .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{background:#10243d;border-color:#29415d;box-shadow:none}
+html[data-theme="dark"] .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong,
+body.dark .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong{color:#e7eef8}
+html[data-theme="dark"] .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small,
+body.dark .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small{color:#9fb0c5}
