@@ -1,3 +1,37 @@
+/* ===== FIX14E typography: Thai = Sukhumvit Set, Latin/digits = sans-serif =====
+   Sukhumvit Set is resolved from the user's operating system via local().
+   unicode-range keeps English letters and Arabic digits on the sans-serif stack. */
+@font-face {
+  font-family: "TimeClock Thai";
+  src: local("Sukhumvit Set"), local("SukhumvitSet-Text"), local("Sukhumvit Set Text");
+  font-style: normal;
+  font-weight: 100 499;
+  font-display: swap;
+  unicode-range: U+0E00-0E7F;
+}
+@font-face {
+  font-family: "TimeClock Thai";
+  src: local("Sukhumvit Set Medium"), local("SukhumvitSet-Medium"), local("Sukhumvit Set"), local("SukhumvitSet-Text");
+  font-style: normal;
+  font-weight: 500 699;
+  font-display: swap;
+  unicode-range: U+0E00-0E7F;
+}
+@font-face {
+  font-family: "TimeClock Thai";
+  src: local("Sukhumvit Set Bold"), local("SukhumvitSet-Bold"), local("Sukhumvit Set"), local("SukhumvitSet-Text");
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+  unicode-range: U+0E00-0E7F;
+}
+:root {
+  --font-ui: "TimeClock Thai", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+}
+html, body, button, input, select, textarea, table, th, td {
+  font-family: var(--font-ui);
+}
+
 
 /* ===== css/tokens.css ===== */
 :root {
@@ -114,7 +148,7 @@ body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; 
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: "Noto Sans Thai", Tahoma, sans-serif;
+      font-family: var(--font-ui);
       color: var(--slate-900);
       background: #eef3f9;
     }

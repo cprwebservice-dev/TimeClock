@@ -68,3 +68,10 @@ D) หลังวันสิ้นสุด
 E) Team Calendar
    - Borrowed technician ต้องรวมใน Team BN6 เดียวกับสมาชิกปลายทาง
    - ไม่ควรมีแถว TEMP:<assignment_id> แยกต่างหาก
+
+
+FIX14E Typography
+- Thai glyphs: Sukhumvit Set (loaded from local operating-system font; no font file is bundled)
+- English + Arabic digits 0-9: system sans-serif stack
+- Google Noto Sans Thai import removed
+- On Windows, Sukhumvit Set must already be installed on that device to render exactly as requested.

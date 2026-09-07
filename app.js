@@ -15530,8 +15530,8 @@ ${skippedSummary(compatibility.skipped)}
   async function rpc(name,args){const c=client();if(!c)throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");const {data,error}=await c.rpc(name,args);if(error)throw error;return data||[];}
   function download(name,content,type){const blob=new Blob([content],{type});const url=URL.createObjectURL(blob);downloads.set(name,url);const a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}
   function makeCsv(rows){return "\ufeff"+rows.map(r=>r.map(csvCell).join(",")).join("\n");}
-  function makeExcel(rows,title){return `\ufeff<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,'Noto Sans Thai',sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #94a3b8;padding:6px;font-size:11px}th{background:#dbeafe}</style></head><body><h2>${safe(title)}</h2><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;}
-  function printRows(rows,title,range){const html=`<!doctype html><html><head><meta charset="utf-8"><title>${safe(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:'Noto Sans Thai',Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:18px;margin:0}p{font-size:10px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #94a3b8;padding:4px;font-size:8px}th{background:#e2e8f0}</style></head><body><h1>${safe(title)}</h1><p>${safe(range)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;window.tcPrintPreview({title,html});}
+  function makeExcel(rows,title){return `\ufeff<!doctype html><html><head><meta charset="utf-8"><style>@font-face{font-family:TimeClockThai;src:local('Sukhumvit Set'),local('SukhumvitSet-Text'),local('Sukhumvit Set Text');unicode-range:U+0E00-0E7F}body{font-family:TimeClockThai,Arial,sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #94a3b8;padding:6px;font-size:11px}th{background:#dbeafe}</style></head><body><h2>${safe(title)}</h2><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;}
+  function printRows(rows,title,range){const html=`<!doctype html><html><head><meta charset="utf-8"><title>${safe(title)}</title><style>@page{size:A4 landscape;margin:10mm}@font-face{font-family:TimeClockThai;src:local('Sukhumvit Set'),local('SukhumvitSet-Text'),local('Sukhumvit Set Text');unicode-range:U+0E00-0E7F}body{font-family:TimeClockThai,Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:18px;margin:0}p{font-size:10px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #94a3b8;padding:4px;font-size:8px}th{background:#e2e8f0}</style></head><body><h1>${safe(title)}</h1><p>${safe(range)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;window.tcPrintPreview({title,html});}
 
   async function build(type){
     const start=val("reportStart"),end=val("reportEnd"),zone=val("reportZone")||null,dept=val("reportDepartment")||null;
@@ -15657,7 +15657,7 @@ ${skippedSummary(compatibility.skipped)}
   const KEY = "ta_enterprise_settings_v4";
   const defaults = {
     systemName: "Time-Clock Management", companyName: "CP Retailink", environment: "Development", version: "6.4.0",
-    footer: "Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์", theme: "light", accent: "blue", font: "Noto Sans Thai",
+    footer: "Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์", theme: "light", accent: "blue", font: "mixed",
     developerMode: false, viewAsRole: "HR_ADMIN",
     features: { dashboard:true, attendance:true, schedule:true, adminShifts:true, adminHolidays:true, adminUsers:true, adminImport:true },
     shiftColors: { D:"#0ea5e9", N:"#5b5b66", OFF:"#e67e00", HOL:"#8b2be2", LV:"#ff0aa8", HOUR:"#0f9488", SPLIT:"#6366f1" },
@@ -15681,7 +15681,7 @@ ${skippedSummary(compatibility.skipped)}
       attendanceColors:{...a.attendanceColors,...(b?.attendanceColors||{}),...(legacyOt?{OT:legacyOt}:{})}
     };
   }
-  function load(){ try{return deepMerge(defaults,JSON.parse(localStorage.getItem(KEY)||"{}"));}catch{return structuredClone(defaults);} }
+  function load(){ try{const merged=deepMerge(defaults,JSON.parse(localStorage.getItem(KEY)||"{}")); merged.font="mixed"; return merged;}catch{const fallback=structuredClone(defaults); fallback.font="mixed"; return fallback;} }
   function save(){ localStorage.setItem(KEY,JSON.stringify(settings)); applyVisuals(); applyFeatureFlags(); }
   function getRuntimeSettings(){ return settings; }
   function normalizeHexColorV61153(value,fallback="#64748b"){
@@ -15727,7 +15727,7 @@ ${skippedSummary(compatibility.skipped)}
     if(settings.attendanceColors?.OT) applyColorFamilyV6140("shift","OT",settings.attendanceColors.OT);
   }
   function applyVisuals(){
-    document.documentElement.style.fontFamily = settings.font === "system" ? "system-ui,sans-serif" : "'Noto Sans Thai',sans-serif";
+    settings.font = "mixed"; document.documentElement.style.fontFamily = "var(--font-ui)";
     document.body.classList.toggle("accent-orange",settings.accent==="orange"); document.body.classList.toggle("accent-teal",settings.accent==="teal");
     let dark=settings.theme==="dark" || (settings.theme==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);
     document.body.classList.toggle("dark-mode",dark);
@@ -15983,11 +15983,11 @@ ${skippedSummary(compatibility.skipped)}
   const csvCell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   function exportCsv(name,rows){download(name,"\ufeff"+rows.map(r=>r.map(csvCell).join(",")).join("\n"),"text/csv;charset=utf-8");}
   function exportExcel(name,rows,title="Time-Clock Report"){
-    const html=`<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,'Noto Sans Thai',sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #94a3b8;padding:6px;font-size:11px}th{background:#dbeafe;font-weight:700}h2{margin:0 0 12px}</style></head><body><h2>${esc(title)}</h2><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><style>@font-face{font-family:TimeClockThai;src:local('Sukhumvit Set'),local('SukhumvitSet-Text'),local('Sukhumvit Set Text');unicode-range:U+0E00-0E7F}body{font-family:TimeClockThai,Arial,sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #94a3b8;padding:6px;font-size:11px}th{background:#dbeafe;font-weight:700}h2{margin:0 0 12px}</style></head><body><h2>${esc(title)}</h2><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
     download(name,`\ufeff${html}`,"application/vnd.ms-excel;charset=utf-8");
   }
   function printRows(rows,title,subtitle=""){
-    const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:'Noto Sans Thai',Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:19px;margin:0}p{font-size:11px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #94a3b8;padding:5px;font-size:9px;vertical-align:top}th{background:#e2e8f0}footer{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:8px;color:#64748b}</style></head><body><h1>${esc(title)}</h1><p>${esc(subtitle)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table><footer>Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer></body></html>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4 landscape;margin:10mm}@font-face{font-family:TimeClockThai;src:local('Sukhumvit Set'),local('SukhumvitSet-Text'),local('Sukhumvit Set Text');unicode-range:U+0E00-0E7F}body{font-family:TimeClockThai,Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:19px;margin:0}p{font-size:11px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #94a3b8;padding:5px;font-size:9px;vertical-align:top}th{background:#e2e8f0}footer{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:8px;color:#64748b}</style></head><body><h1>${esc(title)}</h1><p>${esc(subtitle)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table><footer>Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer></body></html>`;
     window.tcPrintPreview({title,html});
   }
 
