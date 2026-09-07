@@ -70,8 +70,9 @@ E) Team Calendar
    - ไม่ควรมีแถว TEMP:<assignment_id> แยกต่างหาก
 
 
-FIX14E Typography
-- Thai glyphs: Sukhumvit Set (loaded from local operating-system font; no font file is bundled)
-- English + Arabic digits 0-9: system sans-serif stack
-- Google Noto Sans Thai import removed
-- On Windows, Sukhumvit Set must already be installed on that device to render exactly as requested.
+
+FIX14F Typography — KPI-like LINE Seed Sans TH
+- Thai glyphs: LINE Seed Sans TH via jsDelivr webfont (Thai Unicode range only)
+- English letters + Arabic digits: sans-serif stack (Inter/system-ui/Segoe UI/Arial)
+- Thai and Latin/digits are intentionally split with unicode-range
+- No font binary is bundled in this release package; the browser loads the Thai webfont from CDN when online.
