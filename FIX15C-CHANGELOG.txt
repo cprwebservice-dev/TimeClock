@@ -1,0 +1,21 @@
+TimeClock Enterprise V6.15.29 FIX15C
+Borrow Effective Window — Monthly Personal Overview Display Fix
+
+Scope
+- Frontend only. No SQL / database migration required.
+- Based on FIX15B Auth Session + Realtime 401 build.
+
+Fix
+1. Destination Manager gets schedule rows only for APPROVED Borrow effective dates.
+2. Active dates outside that date-scoped access are no longer rendered as OFF / วันหยุด.
+3. Outside-Borrow dates render as a locked neutral card: "นอกช่วงยืมตัว" when Borrow destination context is known.
+4. If Borrow context is not yet enriched, the safe fallback is "นอกขอบเขตการดูแล" rather than inventing a shift.
+5. Outside-scope dates are excluded from Holiday/Pending KPI counts and filter hits.
+6. Edit action remains available only when an actual accessible schedule row exists; DB date-aware authority remains unchanged.
+7. Header/hint clarifies that destination Manager can edit only during the Borrow period.
+
+Preserved
+- FIX15A Manager-based Borrow candidate/preview rules.
+- FIX15B Auth Session / Realtime 401 hardening.
+- Working Team / Acting / Schedule write guards.
+- Permanent Home Team is unchanged by Borrow.

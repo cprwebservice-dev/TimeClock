@@ -8758,6 +8758,75 @@ window.tcIsDayShiftCode = value =>
       return ['HR_ADMIN','MANAGER','ADMIN','SUPER_ADMIN'].includes(role);
     }
 
+
+    // V6.15.29 FIX15C — Borrow-aware Monthly Personal access gap.
+    // The schedule RPC is intentionally date-scoped: a destination Manager gets
+    // rows only while an APPROVED Borrow is effective. A missing active-date row
+    // must therefore never be rendered as OFF / unprocessed, because that would
+    // invent a schedule outside the Manager's authority window.
+    function employeeMonthCurrentRoleV61529F15C() {
+      return String(
+        state.profile?._realRole
+        || state.profile?.role
+        || ''
+      ).trim().toUpperCase();
+    }
+
+    function employeeMonthBorrowDestinationContextV61529F15C(empCode) {
+      const code = String(empCode || '').trim();
+      if (!code) return null;
+      const pools = [
+        ...(Array.isArray(state.schedule) ? state.schedule : []),
+        ...(Array.isArray(employeeMonthCalendarStateV61121.scheduleRows)
+          ? employeeMonthCalendarStateV61121.scheduleRows
+          : [])
+      ];
+      for (const row of pools) {
+        if (String(row?.emp_code || '').trim() !== code) continue;
+        const ctx = scheduleTeamContextMetaV61526(row);
+        const stateCode = String(ctx?.assignment_state || ctx?.assignment_type || '').trim().toUpperCase();
+        if (stateCode === 'BORROW_CROSS_ORG' && ctx?.can_edit_schedule === true) {
+          return {
+            isBorrowDestination:true,
+            homeOrg:String(ctx?.home_org_code || ctx?.employee_org_code || '').trim(),
+            workingOrg:String(ctx?.team_org_code || '').trim(),
+            teamCode:String(ctx?.team_code || '').trim()
+          };
+        }
+      }
+      return null;
+    }
+
+    function employeeMonthScopeGapMetaV61529F15C(
+      scheduleRow,
+      attendanceRow,
+      workDate,
+      employmentState = 'ACTIVE'
+    ) {
+      if (employmentState !== 'ACTIVE' || scheduleRow || attendanceRow) return null;
+      const role = employeeMonthCurrentRoleV61529F15C();
+      if (!['MANAGER','ADMIN','SUPER_ADMIN'].includes(role)) return null;
+      const borrow = employeeMonthBorrowDestinationContextV61529F15C(
+        employeeMonthCalendarStateV61121.empCode
+      );
+      if (borrow?.isBorrowDestination) {
+        return {
+          status:'OUTSIDE_BORROW_WINDOW',
+          label:'นอกช่วงยืมตัว',
+          tone:'scope',
+          detail:'Manager ปลายทางดูและจัดกะได้เฉพาะวันที่รายการยืมตัวมีผล',
+          borrow:true
+        };
+      }
+      return {
+        status:'OUTSIDE_MANAGER_SCOPE',
+        label:'นอกขอบเขตการดูแล',
+        tone:'scope',
+        detail:'ไม่มีสิทธิ์ดูหรือจัดกะในวันที่นี้',
+        borrow:false
+      };
+    }
+
     // V6.12.8: Attendance enrichment still uses adaptive date-splitting
     // strategy as Attendance Detail. The previous full-month attendance RPC could
     // hit PostgreSQL statement_timeout even for one employee when calculation / punch
@@ -9502,8 +9571,9 @@ window.tcIsDayShiftCode = value =>
       const flags = canonical?.flags || null;
       const statusMeta = canonical?.statusMeta || null;
       const publicHoliday = employeeMonthPublicHolidayV61480(scheduleRow, shift);
+      const scopeGap = context.scopeGap || null;
 
-      if (employmentState !== 'ACTIVE') return false;
+      if (employmentState !== 'ACTIVE' || scopeGap) return false;
 
       if (key === 'work') {
         return Boolean(
@@ -9672,10 +9742,17 @@ window.tcIsDayShiftCode = value =>
           defaultShiftCodeV6133 ? `กะตั้งต้น ${defaultShiftCodeV6133}` : ''
         ].filter(Boolean).join(' • ') || 'รูปแบบการทำงานตามข้อมูลพนักงาน'
       );
+      const borrowDestinationContextV61529F15C = employeeMonthBorrowDestinationContextV61529F15C(
+        employeeMonthCalendarStateV61121.empCode
+      );
       const headerMode = $('employeeMonthHeaderMode');
       if (headerMode) {
         headerMode.className = `employee-month-header-mode-v61127 ${canEdit ? 'editable' : 'readonly'}`;
-        headerMode.textContent = canEdit ? 'แก้ไขกะได้' : 'ดูข้อมูลอย่างเดียว';
+        headerMode.textContent = canEdit
+          ? (borrowDestinationContextV61529F15C?.isBorrowDestination
+              ? 'แก้ไขได้เฉพาะช่วงยืมตัว'
+              : 'แก้ไขกะได้')
+          : 'ดูข้อมูลอย่างเดียว';
       }
 
       let workdays = 0;
@@ -9780,6 +9857,13 @@ window.tcIsDayShiftCode = value =>
         const attendanceRowV61480 = attendanceByDate.get(workDateV61480) || null;
         const employmentStateV61480 = employeeMonthEmploymentStateV61429(scheduleRows,workDateV61480);
         if (employmentStateV61480 !== 'ACTIVE') continue;
+        const scopeGapV61529F15C = employeeMonthScopeGapMetaV61529F15C(
+          scheduleRowV61480,
+          attendanceRowV61480,
+          workDateV61480,
+          employmentStateV61480
+        );
+        if (scopeGapV61529F15C) continue;
         const canonicalV61480 = employeeMonthCanonicalDayV61467(
           scheduleRowV61480,
           attendanceRowV61480,
@@ -9846,18 +9930,30 @@ window.tcIsDayShiftCode = value =>
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;
         const employmentStateV61429 = employeeMonthEmploymentStateV61429(scheduleRows,workDate);
+        const scopeGapV61529F15C = employeeMonthScopeGapMetaV61529F15C(
+          scheduleRow,
+          attendanceRow,
+          workDate,
+          employmentStateV61429
+        );
         const canonicalDayV61467 = employeeMonthCanonicalDayV61467(
           scheduleRow,
           attendanceRow,
           workDate,
           employmentStateV61429
         );
+        if (scopeGapV61529F15C) {
+          canonicalDayV61467.statusMeta = scopeGapV61529F15C;
+          canonicalDayV61467.useCanonical = false;
+        }
         const merged = canonicalDayV61467.merged;
         const d = new Date(`${workDate}T00:00:00`);
         const dow = d.getDay();
-        const shift = scheduleRow
-          ? scheduleResolveShiftMeta(scheduleRow)
-          : (merged ? scheduleResolveShiftMeta(merged) : { code:'-', label:'-', tone:'off', isWorking:false });
+        const shift = scopeGapV61529F15C
+          ? { code:'-', label:scopeGapV61529F15C.label, tone:'scope', isWorking:false }
+          : scheduleRow
+            ? scheduleResolveShiftMeta(scheduleRow)
+            : (merged ? scheduleResolveShiftMeta(merged) : { code:'-', label:'-', tone:'off', isWorking:false });
         const statusMeta = canonicalDayV61467.statusMeta;
         const actualIn = merged ? scheduleTeamSegmentActualTime(merged, 1, 'IN') : '-';
         const actualOut = merged ? scheduleTeamSegmentActualTime(merged, 1, 'OUT') : '-';
@@ -9895,7 +9991,8 @@ window.tcIsDayShiftCode = value =>
         // A real assigned work shift takes precedence over the natural
         // holiday/off calendar classification for attendance purposes.
         const holiday = Boolean(
-          !workingShiftOverride
+          !scopeGapV61529F15C
+          && !workingShiftOverride
           && (
             calendarHoliday
             || shift.tone === 'holiday'
@@ -9903,7 +10000,8 @@ window.tcIsDayShiftCode = value =>
         );
 
         const weeklyOff = Boolean(
-          !workingShiftOverride
+          !scopeGapV61529F15C
+          && !workingShiftOverride
           && !holiday
           && (
             naturalWeeklyOff
@@ -9911,11 +10009,13 @@ window.tcIsDayShiftCode = value =>
           )
         );
 
-        const dayKindClass = employmentStateV61429 === 'BEFORE_START'
-          ? 'month-day-kind-inactive-v61429 month-day-before-start-v61429'
-          : employmentStateV61429 === 'AFTER_RESIGN'
-            ? 'month-day-kind-inactive-v61429 month-day-after-resign-v61429'
-            : workingShiftOverride
+        const dayKindClass = scopeGapV61529F15C
+          ? 'month-day-kind-scope-v61529f15c'
+          : employmentStateV61429 === 'BEFORE_START'
+            ? 'month-day-kind-inactive-v61429 month-day-before-start-v61429'
+            : employmentStateV61429 === 'AFTER_RESIGN'
+              ? 'month-day-kind-inactive-v61429 month-day-after-resign-v61429'
+              : workingShiftOverride
               ? 'month-day-kind-work-v61153 month-day-work-override-v61155'
               : holiday
                 ? 'month-day-kind-holiday-v61153'
@@ -9932,7 +10032,8 @@ window.tcIsDayShiftCode = value =>
           employmentState: employmentStateV61429,
           shift,
           specialMode: specialModeV61459,
-          rawPunchDay: rawPunchDayV61460
+          rawPunchDay: rawPunchDayV61460,
+          scopeGap: scopeGapV61529F15C
         });
 
         html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)} ${activeMonthFilterV61480!=='all' && !dayMatchesFilterV61480 ? 'is-filter-muted-v61479' : ''} ${activeMonthFilterV61480!=='all' && dayMatchesFilterV61480 ? 'is-filter-hit-v61479' : ''}" data-month-date="${safe(workDate)}" data-filter-match="${dayMatchesFilterV61480 ? '1' : '0'}">
@@ -9945,6 +10046,12 @@ window.tcIsDayShiftCode = value =>
             <div class="employee-month-inactive-v61429">
               <strong>${safe(statusMeta.label)}</strong>
               <small>${employmentStateV61429==='BEFORE_START' ? 'ตรงกับช่วงก่อนวันเริ่มงานในตารางกะรายบุคคลเต็มเดือน' : 'ตรงกับช่วงหลังวันลาออกในตารางกะรายบุคคลเต็มเดือน'}</small>
+            </div>
+          ` : scopeGapV61529F15C ? `
+            <div class="employee-month-scope-lock-v61529f15c">
+              <div class="employee-month-scope-lock-icon-v61529f15c" aria-hidden="true">🔒</div>
+              <strong>${safe(scopeGapV61529F15C.label)}</strong>
+              <small>${safe(scopeGapV61529F15C.detail)}</small>
             </div>
           ` : `
             <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
@@ -9984,7 +10091,13 @@ window.tcIsDayShiftCode = value =>
 
       grid.innerHTML = html;
       $('employeeMonthRecalcBtn')?.classList.toggle('hidden', !state.client);
-      $('employeeMonthEditHint')?.classList.toggle('hidden', !canEdit);
+      const editHintV61529F15C = $('employeeMonthEditHint');
+      if (editHintV61529F15C) {
+        editHintV61529F15C.classList.toggle('hidden', !canEdit);
+        editHintV61529F15C.textContent = canEdit && borrowDestinationContextV61529F15C?.isBorrowDestination
+          ? 'คลิก “จัดกะ” ได้เฉพาะวันที่อยู่ในช่วงยืมตัว • วันนอกช่วงจะแสดงเป็นล็อกและไม่ถูกนับเป็นวันหยุด/รอประมวลผล'
+          : 'คลิก “จัดกะ” ในแต่ละวันเพื่อแก้ไข';
+      }
       modal.classList.remove('hidden');
       modal.setAttribute('aria-hidden','false');
       document.dispatchEvent(new CustomEvent("timeclock:employee-month-rendered", {

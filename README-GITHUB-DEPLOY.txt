@@ -1,3 +1,5 @@
+V6.15.29 FIX15C — Borrow Effective Window Monthly Personal Display
+
 TimeClock Enterprise — V6.15.29 FIX15
 Manager-based Borrow Workflow + FIX14F Typography
 
