@@ -40,3 +40,9 @@ Typography
 - ภาษาไทย: LINE Seed Sans TH
 - English + ตัวเลข: Inter / system-ui / Segoe UI / Arial / sans-serif
 - ไม่ bundle font binary ใน ZIP
+
+
+V6.15.29 FIX15A
+- Borrow Candidate Pool = same Division + different Manager; no longer hidden by destination Team category.
+- Operational Type mismatch is shown as a warning and remains blocked at Preview by current Team policy.
+- Same Manager continues to use Team Membership > ย้ายทีม.
