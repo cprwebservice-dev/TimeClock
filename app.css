@@ -25146,3 +25146,15 @@ html[data-theme="dark"] .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f1
 body.dark .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong{color:#e7eef8}
 html[data-theme="dark"] .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small,
 body.dark .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small{color:#9fb0c5}
+
+/* ========================================================================== */
+/* V6.15.29 FIX15 — Manager-based Borrow Workflow                            */
+/* Destination requester + different Manager classifier                      */
+/* ========================================================================== */
+.team-temp-rule-v61529f14b{grid-template-columns:repeat(4,minmax(0,1fr))}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.scope .team-temp-rule-icon-v61529f14d{background:#fff4df;color:#b45309}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong{white-space:normal}
+.team-temp-preview-flow-v61529f14b>div>span{display:block;margin-top:3px;font-size:10px;font-weight:650;color:#64748b;overflow-wrap:anywhere}
+@media(max-width:1280px){.team-temp-rule-v61529f14b{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.team-temp-rule-v61529f14b{grid-template-columns:1fr}}
+html[data-theme="dark"] .team-temp-preview-flow-v61529f14b>div>span,body.dark .team-temp-preview-flow-v61529f14b>div>span{color:#9fb0c5}

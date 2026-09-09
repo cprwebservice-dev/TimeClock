@@ -1579,7 +1579,7 @@
   <nav class="team-workspace-tabs-v61528 section-gap" aria-label="Team workspace">
     <button class="active" data-team-workspace-tab-v61528="OVERVIEW">ภาพรวม</button>
     <button data-team-workspace-tab-v61528="PEOPLE">พนักงานและทีม</button>
-    <button data-team-workspace-tab-v61528="ASSIGNMENTS" id="teamTemporaryTabV61529F14B">ไปช่วยทีม / ยืมตัว <em id="teamTempPendingBadgeV61529F14B" class="hidden">0</em></button>
+    <button data-team-workspace-tab-v61528="ASSIGNMENTS" id="teamTemporaryTabV61529F14B">ยืมตัวช่าง <em id="teamTempPendingBadgeV61529F14B" class="hidden">0</em></button>
     <button class="hidden" data-team-workspace-tab-v61528="CHANGES" id="teamChangesTabV61528">การเปลี่ยนแปลง <em id="teamChangesUnreadBadgeV61528" class="hidden">0</em></button>
     <button data-team-workspace-tab-v61528="HISTORY">ประวัติ</button>
   </nav>
@@ -1645,42 +1645,46 @@
     <section class="panel team-temp-panel-v61529f14b">
       <div class="panel-header team-temp-head-v61529f14b">
         <div>
-          <span class="eyebrow">TEMPORARY TEAM ASSIGNMENT</span>
-          <h3>ไปช่วยทีม / ยืมตัวช่าง</h3>
-          <p>ระบบจำแนกให้อัตโนมัติจากหน่วยงานต้นสังกัดเทียบหน่วยงานปลายทาง · ไม่เปลี่ยน Permanent Home Team</p>
+          <span class="eyebrow">BORROW MANAGEMENT</span>
+          <h3>ยืมตัวช่างเทคนิค</h3>
+          <p>ปลายทางเป็นผู้ร้องขอ · ระบบยึด Manager เป็นหลัก · ยืมได้เฉพาะช่างภายใต้ฝ่ายเดียวกันและต่าง Manager</p>
         </div>
         <div class="team-temp-head-actions-v61529f14b">
           <span class="badge badge-gray" id="teamTempAuthorityBadgeV61529F14B">กำลังตรวจสิทธิ์</span>
           <button class="btn btn-light" id="teamTempRefreshV61529F14B">↻ รีเฟรช</button>
-          <button class="btn btn-primary" id="teamTempCreateV61529F14B">＋ ไปช่วยทีม / ยืมตัว</button>
+          <button class="btn btn-primary" id="teamTempCreateV61529F14B">＋ ขอยืมช่าง</button>
         </div>
       </div>
       <div class="panel-body">
-        <div class="team-temp-rule-v61529f14b" aria-label="หลักการไปช่วยทีมและยืมตัว">
-          <div class="team-temp-rule-card-v61529f14d assist">
-            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">↔</span>
-            <div><strong>BN5 → BN5</strong><small>ไปช่วยทีมภายในหน่วยงาน</small></div>
-          </div>
+        <div class="team-temp-rule-v61529f14b" aria-label="หลักการยืมตัวช่าง">
           <div class="team-temp-rule-card-v61529f14d borrow">
-            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">⇢</span>
-            <div><strong>BN5 → BN6</strong><small>ยืมตัวต่างหน่วยงาน · ต้องอยู่ภายใต้ฝ่ายเดียวกัน</small></div>
+            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">1</span>
+            <div><strong>ปลายทางเป็นผู้ร้องขอ</strong><small>Manager / Acting เลือก Team ปลายทางของตนก่อน แล้วจึงเลือกช่างที่ต้องการยืม</small></div>
           </div>
           <div class="team-temp-rule-card-v61529f14d authority">
-            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">✓</span>
-            <div><strong>Manager / Acting</strong><small>ดำเนินการได้ตาม Scope และช่วงวันที่ที่มีสิทธิ์</small></div>
+            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">2</span>
+            <div><strong>ต่าง Manager = ยืมตัว</strong><small>ระบบเทียบ Manager ต้นทางกับ Manager ปลายทาง ไม่ใช้หน่วยงานเป็นตัวจำแนก</small></div>
+          </div>
+          <div class="team-temp-rule-card-v61529f14d assist">
+            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">3</span>
+            <div><strong>Manager เดียวกัน = ย้ายทีม</strong><small>ไม่สร้างรายการยืมตัว ให้ใช้ฟังก์ชันย้ายทีมใน Team Membership ที่มีอยู่แล้ว</small></div>
+          </div>
+          <div class="team-temp-rule-card-v61529f14d scope">
+            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">4</span>
+            <div><strong>เฉพาะฝ่ายเดียวกัน</strong><small>Candidate จะแสดงเฉพาะช่างที่อยู่ระดับฝ่ายเดียวกับ Team ปลายทาง</small></div>
           </div>
         </div>
         <div class="team-temp-kpis-v61529f14b">
           <article class="pending"><span>รอฉันดำเนินการ</span><strong id="teamTempKpiPendingV61529F14B">0</strong><small>รายการ</small></article>
-          <article class="active"><span>กำลังไปช่วย / ยืม</span><strong id="teamTempKpiActiveV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="active"><span>กำลังยืมตัว</span><strong id="teamTempKpiActiveV61529F14B">0</strong><small>รายการ</small></article>
           <article class="scheduled"><span>อนุมัติแล้ว · รอเริ่ม</span><strong id="teamTempKpiScheduledV61529F14B">0</strong><small>รายการ</small></article>
-          <article class="inbound"><span>ยืมเข้า / มาช่วย</span><strong id="teamTempKpiInboundV61529F14B">0</strong><small>รายการ</small></article>
-          <article class="outbound"><span>ยืมออก / ไปช่วย</span><strong id="teamTempKpiOutboundV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="inbound"><span>ยืมเข้าทีม</span><strong id="teamTempKpiInboundV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="outbound"><span>ถูกยืมออก</span><strong id="teamTempKpiOutboundV61529F14B">0</strong><small>รายการ</small></article>
         </div>
         <div class="team-temp-toolbar-v61529f14b">
           <div class="field"><label>ตั้งแต่</label><input class="input" type="date" id="teamTempFromV61529F14B"/></div>
           <div class="field"><label>ถึง</label><input class="input" type="date" id="teamTempToV61529F14B"/></div>
-          <div class="field"><label>สถานะ</label><select class="select" id="teamTempStatusV61529F14B"><option value="OPEN">กำลังดำเนินการ</option><option value="PENDING">รออนุมัติ</option><option value="ACTIVE">กำลังไปช่วย / ยืม</option><option value="SCHEDULED">อนุมัติแล้ว · รอเริ่ม</option><option value="COMPLETED">สิ้นสุดแล้ว</option><option value="ALL">ทั้งหมด</option></select></div>
+          <div class="field"><label>สถานะ</label><select class="select" id="teamTempStatusV61529F14B"><option value="OPEN">กำลังดำเนินการ</option><option value="PENDING">รออนุมัติ</option><option value="ACTIVE">กำลังยืมตัว</option><option value="SCHEDULED">อนุมัติแล้ว · รอเริ่ม</option><option value="COMPLETED">สิ้นสุดแล้ว</option><option value="ALL">ทั้งหมด</option></select></div>
           <div class="field team-temp-search-v61529f14b"><label>ค้นหา</label><input class="input" id="teamTempSearchV61529F14B" placeholder="รหัส / ชื่อ / BN / Team Code"/></div>
         </div>
         <div class="team-temp-list-v61529f14b" id="teamTempListV61529F14B"><div class="fc-empty">เลือกแท็บนี้เพื่อโหลดรายการ</div></div>
@@ -1693,7 +1697,7 @@
         <div class="team-temp-head-actions-v61529f14b"><button class="btn btn-light" id="teamActingRefreshV61529F14B">↻ รีเฟรช</button><button class="btn btn-primary" id="teamActingCreateV61529F14B">＋ กำหนด Acting</button></div>
       </div>
       <div class="panel-body">
-        <div class="team-acting-note-v61529f14b">Acting มีสิทธิ์เทียบเท่า Manager เฉพาะ Scope และช่วงวันที่ที่กำหนด · สามารถสร้าง/อนุมัติรายการยืมตัวในอำนาจของตนได้</div>
+        <div class="team-acting-note-v61529f14b">Acting ใช้ Operational Authority แทน Manager เฉพาะ Scope และช่วงวันที่ที่กำหนด · ปลายทางสามารถร้องขอ และ Acting ต้นทางสามารถอนุมัติแทนได้</div>
         <div class="table-wrap"><table class="team-acting-table-v61529f14b"><thead><tr><th>ผู้รักษาการ</th><th>Scope</th><th>ช่วงวันที่</th><th>สถานะ</th><th>เหตุผล</th><th>จัดการ</th></tr></thead><tbody id="teamActingBodyV61529F14B"><tr><td colspan="6" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div>
       </div>
     </section>
@@ -1728,17 +1732,17 @@
 <!-- V6.15.29 FIX14B Temporary Team Assignment modal -->
 <div class="modal-backdrop hidden" id="teamTempCreateModalV61529F14B" aria-hidden="true">
   <div class="modal team-temp-create-modal-v61529f14b" role="dialog" aria-modal="true" aria-labelledby="teamTempCreateTitleV61529F14B">
-    <div class="modal-header"><div><span class="eyebrow">WORKING TEAM · EFFECTIVE DATE</span><h3 id="teamTempCreateTitleV61529F14B">ไปช่วยทีม / ยืมตัวช่าง</h3><p>เลือกพนักงานและ Team ปลายทาง ระบบจำแนกประเภทและเส้นทางอนุมัติให้เอง</p></div><button class="btn btn-light btn-icon" data-team-temp-close-v61529f14b>×</button></div>
+    <div class="modal-header"><div><span class="eyebrow">DESTINATION REQUEST · BORROW</span><h3 id="teamTempCreateTitleV61529F14B">ขอยืมช่างเทคนิค</h3><p>ปลายทางเลือก Team ของตนก่อน · ระบบจะแสดงช่างภายในฝ่ายเดียวกันที่อยู่ภายใต้ Manager คนอื่น</p></div><button class="btn btn-light btn-icon" data-team-temp-close-v61529f14b>×</button></div>
     <div class="modal-body">
       <div class="team-temp-date-grid-v61529f14b"><div class="field"><label>วันที่เริ่ม <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateFromV61529F14B"/></div><div class="field"><label>วันที่สิ้นสุด <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateToV61529F14B"/></div></div>
-      <div class="field"><label>ค้นหาพนักงาน</label><div class="team-temp-search-line-v61529f14b"><input class="input" id="teamTempCandidateSearchV61529F14B" placeholder="รหัสพนักงาน / ชื่อ / หน่วยงาน"/><button class="btn btn-light" id="teamTempCandidateSearchBtnV61529F14B" type="button">ค้นหา</button></div></div>
-      <div class="field"><label>พนักงาน <span class="required-mark">*</span></label><select class="select" id="teamTempEmployeeV61529F14B"><option value="">— เลือกพนักงาน —</option></select></div>
-      <div class="team-temp-home-card-v61529f14b" id="teamTempHomeCardV61529F14B"><span>ทีมต้นสังกัด</span><strong>-</strong><small>เลือกพนักงานเพื่อดู Home Unit / Home Team</small></div>
-      <div class="field"><label>Team ปลายทาง <span class="required-mark">*</span></label><select class="select" id="teamTempDestinationV61529F14B" disabled><option value="">— เลือก Team ปลายทาง —</option></select><small class="field-hint" id="teamTempDestinationHintV61529F14B">ระบบแสดงเฉพาะทีมประเภทเดียวกันและอยู่ภายในระดับฝ่ายเดียวกัน</small></div>
-      <div class="team-temp-preview-v61529f14b" id="teamTempPreviewV61529F14B"><div class="team-temp-preview-placeholder-v61529f14b">เลือกพนักงาน วันที่ และ Team ปลายทาง เพื่อดูประเภทการมอบหมายและขั้นตอนอนุมัติ</div></div>
-      <div class="field"><label>เหตุผล / รายละเอียดงาน</label><textarea class="input" id="teamTempNoteV61529F14B" rows="3" maxlength="500" placeholder="เช่น สนับสนุนงานติดตั้งพื้นที่ BN6"></textarea></div>
+      <div class="field"><label>1. Team ปลายทางของคุณ <span class="required-mark">*</span></label><select class="select" id="teamTempDestinationV61529F14B"><option value="">— เลือก Team ปลายทาง —</option></select><small class="field-hint" id="teamTempDestinationHintV61529F14B">เลือก Team ที่ต้องการรับช่างเข้ามาช่วยชั่วคราว</small></div>
+      <div class="field"><label>2. ค้นหาช่างภายในฝ่ายเดียวกัน</label><div class="team-temp-search-line-v61529f14b"><input class="input" id="teamTempCandidateSearchV61529F14B" placeholder="รหัสพนักงาน / ชื่อ / หน่วยงาน / Manager"/><button class="btn btn-light" id="teamTempCandidateSearchBtnV61529F14B" type="button">ค้นหา</button></div></div>
+      <div class="field"><label>3. ช่างที่ต้องการยืม <span class="required-mark">*</span></label><select class="select" id="teamTempEmployeeV61529F14B" disabled><option value="">— เลือก Team ปลายทางก่อน —</option></select><small class="field-hint">ระบบไม่แสดงช่างที่อยู่ภายใต้ Manager เดียวกับปลายทาง เพราะกรณีนั้นให้ใช้ “ย้ายทีม”</small></div>
+      <div class="team-temp-home-card-v61529f14b" id="teamTempHomeCardV61529F14B"><span>ต้นทาง</span><strong>-</strong><small>เลือกช่างเพื่อดู Home Team และ Manager ต้นทาง</small></div>
+      <div class="team-temp-preview-v61529f14b" id="teamTempPreviewV61529F14B"><div class="team-temp-preview-placeholder-v61529f14b">เลือก Team ปลายทาง ช่าง และช่วงวันที่ เพื่อดูเส้นทางคำขอ</div></div>
+      <div class="field"><label>4. เหตุผล / รายละเอียดงาน <span class="required-mark">*</span></label><textarea class="input" id="teamTempNoteV61529F14B" rows="3" maxlength="500" placeholder="เช่น ขอสนับสนุนงานติดตั้งพื้นที่ BN6"></textarea></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-light" data-team-temp-close-v61529f14b>ยกเลิก</button><button class="btn btn-primary" id="teamTempCreateConfirmV61529F14B" disabled>ยืนยันรายการ</button></div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-temp-close-v61529f14b>ยกเลิก</button><button class="btn btn-primary" id="teamTempCreateConfirmV61529F14B" disabled>ส่งคำขอยืมตัว</button></div>
   </div>
 </div>
 
