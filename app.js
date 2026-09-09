@@ -2337,8 +2337,23 @@ window.tcIsDayShiftCode = value =>
         state.session = session;
         state.user = session?.user || null;
 
+        // FIX15B: keep Realtime authorization synchronized with the refreshed
+        // access token. Run outside the auth callback tick to avoid auth-lock
+        // re-entrancy while Supabase is persisting the new session.
+        if (session?.access_token && state.client?.realtime?.setAuth) {
+          setTimeout(() => {
+            try {
+              const result = state.client.realtime.setAuth(session.access_token);
+              if (result?.catch) result.catch(() => {});
+            } catch (_) {}
+          }, 0);
+        }
+
         if (event === "SIGNED_OUT") {
+          window.dispatchEvent(new CustomEvent("timeclock:auth-signed-out"));
           showLogin();
+        } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          window.dispatchEvent(new CustomEvent("timeclock:auth-refreshed", { detail: { event } }));
         }
 
         if (
@@ -32930,7 +32945,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX15 MANAGER BORROW';
+  const VERSION='6.15.29 FIX15B AUTH SESSION';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -32955,7 +32970,74 @@ ${names}${extra}
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
   const fmtDate=v=>{const m=String(v||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v||'-');};
   const fmtDateTime=v=>{if(!v)return '-';try{return app()?.formatDateTime?.(v)||new Date(v).toLocaleString('th-TH');}catch{return String(v);}};
-  async function rpc(name,args={}){const c=app()?.state?.client;if(!c)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');const {data,error}=await c.rpc(name,args);if(error)throw error;return data;}
+  function isAuthFailure(error){
+    const status=Number(error?.status||error?.statusCode||0);
+    const raw=String(error?.message||error?.details||error?.hint||error||'');
+    return status===401
+      || /unauthorized|invalid jwt|jwt expired|token.*expired|refresh[_ ]?token/i.test(raw)
+      || String(error?.code||'').toUpperCase()==='PGRST301';
+  }
+  function stopChangeRealtime(){
+    clearInterval(state.changeTimer);
+    state.changeTimer=null;
+    const c=app()?.state?.client;
+    if(state.changeChannel){
+      try{c?.removeChannel?.(state.changeChannel);}catch(_){}
+      state.changeChannel=null;
+    }
+  }
+  async function ensureFreshSession(forceRefresh=false){
+    const a=app(),c=a?.state?.client;
+    if(!c?.auth)throw new Error('SUPABASE_CLIENT_NOT_READY');
+
+    let session=a?.state?.session||null;
+    if(!session?.access_token){
+      const {data,error}=await c.auth.getSession();
+      if(error)throw error;
+      session=data?.session||null;
+    }
+
+    if(!session?.access_token){
+      stopChangeRealtime();
+      throw Object.assign(new Error('AUTH_SESSION_REQUIRED'),{status:401});
+    }
+
+    const expiresAt=Number(session.expires_at||0)*1000;
+    const nearExpiry=expiresAt>0 && expiresAt-Date.now()<90_000;
+    if(forceRefresh||nearExpiry){
+      const {data,error}=await c.auth.refreshSession();
+      if(error||!data?.session?.access_token){
+        stopChangeRealtime();
+        try{await c.auth.signOut({scope:'local'});}catch(_){}
+        throw error||Object.assign(new Error('AUTH_SESSION_EXPIRED'),{status:401});
+      }
+      session=data.session;
+      if(a?.state){
+        a.state.session=session;
+        a.state.user=session.user||null;
+      }
+    }
+
+    if(session?.access_token&&c?.realtime?.setAuth){
+      try{
+        const result=c.realtime.setAuth(session.access_token);
+        if(result?.catch)result.catch(()=>{});
+      }catch(_){}
+    }
+    return session;
+  }
+  async function rpc(name,args={},retryAuth=true){
+    const c=app()?.state?.client;
+    if(!c)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+    await ensureFreshSession(false);
+    const {data,error}=await c.rpc(name,args);
+    if(error&&retryAuth&&isAuthFailure(error)){
+      await ensureFreshSession(true);
+      return rpc(name,args,false);
+    }
+    if(error)throw error;
+    return data;
+  }
   function catLabel(c){const t=String(c||'UNCLASSIFIED').toUpperCase();return t==='CAR'?'รถยนต์':t==='MOTORCYCLE'?'มอเตอร์ไซค์':t==='SUPPORT'?'สนับสนุน':'รอกำหนดรูปแบบ';}
   function catIcon(c){const t=String(c||'').toUpperCase();return t==='CAR'?'🚗':t==='MOTORCYCLE'?'🏍️':t==='SUPPORT'?'🧰':'⚠';}
   function catChip(c){const t=String(c||'').toUpperCase();const cls=t==='CAR'?'badge-blue':t==='MOTORCYCLE'?'badge-orange':t==='SUPPORT'?'badge-purple':'badge-amber';return `<span class="badge ${cls}">${catIcon(t)} ${esc(catLabel(t))}</span>`;}
@@ -33553,7 +33635,7 @@ ${names}${extra}
   async function saveOperational(){const orgId=$('teamOperationalProfileOrgV61527')?.value||'',type=$('teamOperationalProfileTargetV61527')?.value||'',d=$('teamOperationalProfileEffectiveV61527')?.value||'',teamId=$('teamOperationalProfileTeamV61527')?.value||null,note=$('teamOperationalProfileNoteV61527')?.value?.trim()||null;if(!validateOperationalEffectiveDate({autoCorrect:true,showToast:true}))return;if(state.opPreview?.allowed!==true)return toast('กรุณาตรวจ Impact Preview ก่อนบันทึก','warning');if(state.opPreview?.reason_required===true&&!note)return toast('กรุณาระบุเหตุผลการเปลี่ยนรูปแบบ','warning');const effLine=operationalMode()==='ASSIGN'?`วันที่มีผล: ${operationalEffectiveSummary()} (ตามวันเริ่มงานรายบุคคล)`:`วันที่มีผล: ${fmtDate(d)}`;const ok=await window.tcConfirm?.({title:operationalMode()==='ASSIGN'?'ยืนยันกำหนดรูปแบบการปฏิบัติงาน':'ยืนยันเปลี่ยนรูปแบบการปฏิบัติงาน',message:[`พนักงาน: ${state.opSelected.size} คน`,`ปลายทาง: ${operationalTargetLabel()}`,effLine,'Profile + Team Membership ใช้วันเดียวกันต่อพนักงาน',`แจ้ง HR Admin: ${Number(state.opPreview?.hr_notification_count||0)} รายการ`].join('\n'),confirmText:`บันทึก ${state.opSelected.size} คน`,tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังบันทึกการเปลี่ยนแปลง...');const result=await rpc('ta_assign_operational_profile_v61527',{p_emp_codes:[...state.opSelected],p_org_id:orgId,p_operational_type:type,p_effective_from:d,p_team_id:teamId,p_note:note});const range=result?.effective_date_min&&result?.effective_date_max&&result.effective_date_min!==result.effective_date_max?` • มีผล ${fmtDate(result.effective_date_min)}–${fmtDate(result.effective_date_max)}`:result?.effective_date_min?` • มีผล ${fmtDate(result.effective_date_min)}`:'';toast((Number(result?.change_event_count||0)>0?'บันทึกแล้ว • แจ้ง HR Admin เรียบร้อย':'บันทึกรูปแบบและทีมเรียบร้อย')+range,'success');closeOperationalProfile();await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
 
   function changeTypeText(t){return `${catIcon(t)} ${catLabel(t)}`;}
-  async function loadChangeInbox(){if(!allowedRole())return;const host=$('teamChangeInboxV61528');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลด...</div>';try{const sel=$('teamChangeStatusV61528');let status=sel?.value||'ALL';state.changeRows=await rpc('ta_get_operational_change_inbox_v61528',{p_status:status,p_limit:150})||[];renderChangeInbox();}catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;}}
+  async function loadChangeInbox(){if(!allowedRole())return;const host=$('teamChangeInboxV61528');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลด...</div>';try{const sel=$('teamChangeStatusV61528');let status=sel?.value||'ALL';state.changeRows=await rpc('ta_get_operational_change_inbox_v61528',{p_status:status,p_limit:150})||[];renderChangeInbox();}catch(e){if(isAuthFailure(e)||String(e?.message||e).includes('AUTH_SESSION_')){stopChangeRealtime();if(host)host.innerHTML='<div class="fc-empty">Session หมดอายุ • กรุณาเข้าสู่ระบบใหม่</div>';return;}if(host)host.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;}}
   function renderChangeInbox(){
     const rows=state.changeRows||[],host=$('teamChangeInboxV61528');if(!host)return;
     const badge=$('teamChangesUnreadBadgeV61528');const badgeCount=rows.filter(r=>r.hr_status==='UNREAD').length;
@@ -33570,7 +33652,29 @@ ${names}${extra}
     if(!('Notification'in window)||Notification.permission!=='granted')return;const n=payload?.new||{};
     if(isHr()&&payload?.eventType==='INSERT'){const key=String(n.batch_id||n.event_id||Date.now());const item=changeNotifyBatches.get(key)||{count:0,first:n,timer:null};item.count+=1;clearTimeout(item.timer);item.timer=setTimeout(()=>{try{new Notification('TimeAttendance · มีการเปลี่ยนรูปแบบการปฏิบัติงาน',{body:item.count>1?`Manager เปลี่ยนข้อมูล ${item.count} คน · เปิด Team Workspace เพื่อรับทราบ`:`${item.first.emp_code||'พนักงาน'}: ${catLabel(item.first.old_operational_type)} → ${catLabel(item.first.new_operational_type)}`});}catch{}changeNotifyBatches.delete(key);},650);changeNotifyBatches.set(key,item);return;}
   }
-  function setupChangeRealtime(){if(!allowedRole()||state.changeChannel||!app()?.state?.client?.channel)return;try{const c=app().state.client;state.changeChannel=c.channel('team-operational-change-v61528').on('postgres_changes',{event:'*',schema:'public',table:'ta_operational_change_events_v61528'},payload=>{queueChangeNotification(payload);loadChangeInbox();}).subscribe();}catch(e){console.warn('Team change realtime fallback to polling',e);}clearInterval(state.changeTimer);state.changeTimer=setInterval(()=>{if(allowedRole())loadChangeInbox();},60000);}
+  async function setupChangeRealtime(){
+    if(!allowedRole()||state.changeChannel||!app()?.state?.client?.channel)return;
+    const c=app().state.client;
+    try{
+      await ensureFreshSession(false);
+      state.changeChannel=c.channel('team-operational-change-v61528')
+        .on('postgres_changes',{event:'*',schema:'public',table:'ta_operational_change_events_v61528'},payload=>{queueChangeNotification(payload);loadChangeInbox();})
+        .subscribe(status=>{
+          if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+            try{c.removeChannel?.(state.changeChannel);}catch(_){}
+            state.changeChannel=null;
+          }
+        });
+    }catch(e){
+      if(!isAuthFailure(e)&&!String(e?.message||e).includes('AUTH_SESSION_'))console.warn('Team change realtime fallback to polling',e);
+    }
+    clearInterval(state.changeTimer);
+    state.changeTimer=setInterval(async()=>{
+      if(!allowedRole())return;
+      try{await ensureFreshSession(false);await loadChangeInbox();}
+      catch(e){if(isAuthFailure(e)||String(e?.message||e).includes('AUTH_SESSION_'))stopChangeRealtime();}
+    },60000);
+  }
 
 
   function renderAudit(){const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=state.audit.length?state.audit.map(a=>`<tr><td class="nowrap">${esc(fmtDateTime(a.created_at))}</td><td><code>${esc(a.team_code||'-')}</code></td><td>${esc(a.action_type||'-')}</td><td>${esc(a.actor_email||'-')}</td><td>${esc(a.reason||'-')}</td></tr>`).join(''):'<tr><td colspan="5" class="fc-empty">ยังไม่มีประวัติ</td></tr>';const e=$('teamEnforcementAuditBodyV61529');if(e)e.innerHTML=state.enforcementAudit.length?state.enforcementAudit.map(a=>`<tr><td class="nowrap">${esc(fmtDateTime(a.created_at))}</td><td><span class="badge badge-gray">${esc(a.scope_type||'-')}</span></td><td><strong>${esc(a.scope_code||'-')}</strong><small class="team-master-sub-v61523">${esc(a.scope_name||'')}</small></td><td>${esc(fmtDate(a.effective_from))}</td><td>${a.enabled?'<span class="badge badge-green">เปิด</span>':'<span class="badge badge-red">ปิด</span>'}</td><td>${esc(a.actor_email||'-')}</td><td>${esc(a.note||'-')}</td></tr>`).join(''):'<tr><td colspan="7" class="fc-empty">ยังไม่มีประวัติ Enforcement</td></tr>';}
@@ -33618,6 +33722,8 @@ ${names}${extra}
     });
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCreate();closeMembership();closeOperationalProfile();closeEnforcementRollout();closeTeamClosure();}});
     document.addEventListener('timeclock:effective-role-changed',()=>{syncNav();if(document.querySelector('#page-team-master.active'))setTimeout(load,0);});window.addEventListener('ta:session-ready',()=>{syncNav();if(document.querySelector('#page-team-master.active'))setTimeout(load,0);});
+    window.addEventListener('timeclock:auth-signed-out',()=>{stopChangeRealtime();});
+    window.addEventListener('timeclock:auth-refreshed',()=>{if(document.querySelector('#page-team-master.active')&&allowedRole()){stopChangeRealtime();setTimeout(()=>{setupChangeRealtime();loadChangeInbox();},50);}});
   }
   window.TimeClockTeamMasterV61524={load,openCreate,openMembership,openOperationalProfileV61527:openOperationalProfile,openTeamClosure,loadRuntimeDiagnostic,version:VERSION,state};
   window.TimeClockTeamEnforcementV61525={loadEnforcement,toggleEnforcement,openRollout:openEnforcementRollout,version:VERSION,state};

@@ -46,3 +46,11 @@ V6.15.29 FIX15A
 - Borrow Candidate Pool = same Division + different Manager; no longer hidden by destination Team category.
 - Operational Type mismatch is shown as a warning and remains blocked at Preview by current Team policy.
 - Same Manager continues to use Team Membership > ย้ายทีม.
+
+
+FIX15B AUTH SESSION HARDENING
+- Refresh/validate Supabase session before Team Workspace RPC
+- Retry one time on HTTP 401 after refreshSession
+- Synchronize Realtime token after SIGNED_IN/TOKEN_REFRESHED
+- Stop Realtime/polling on SIGNED_OUT or expired session
+- No database/SQL change required
