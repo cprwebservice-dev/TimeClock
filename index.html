@@ -492,59 +492,72 @@
 </div>
 </section>
 <!-- Shift Change Requests -->
-<section class="page shift-request-page" id="page-shift-requests">
-<div class="shift-request-hero">
-<div>
-<span class="eyebrow">EMPLOYEE REQUEST CENTER</span>
-<h2>คำขอ / แจ้งข้อมูล</h2>
-<p id="shiftRequestSubtitle">พนักงานส่งคำขอแก้ไขกะ ขอรับรองเวลา และแจ้งงานกะพิเศษ • Manager พิจารณาภายในขอบเขตทีม</p>
+<section class="page shift-request-page shift-request-page-v61529f15s" id="page-shift-requests">
+<div class="shift-request-hero shift-request-hero-v61529f15s">
+  <div class="shift-request-hero-main-v61529f15s">
+    <span class="eyebrow">EMPLOYEE REQUEST CENTER</span>
+    <h2>คำขอ / แจ้งข้อมูล</h2>
+    <p id="shiftRequestSubtitle">พนักงานส่งคำขอแก้ไขกะ ขอรับรองเวลา และแจ้งงานกะพิเศษ • Manager พิจารณาภายในขอบเขตทีม</p>
+    <div class="shift-request-hero-meta-v61529f15s">
+      <span class="shift-request-meta-chip-v61529f15s scope" id="shiftRequestScopeChipV61529F15S"><i>◎</i><b>Manager Scope</b><em>Active</em></span>
+      <span class="shift-request-meta-chip-v61529f15s sync"><i>●</i><b>Auto Sync</b><em>พร้อม</em></span>
+      <span class="shift-request-last-updated-v61529f15s"><b>อัปเดตล่าสุด</b><em id="shiftRequestLastUpdatedV61529F15S">—</em></span>
+    </div>
+  </div>
+  <button class="btn btn-primary shift-request-new-btn-v61529f15s" id="newShiftRequestBtn"><span aria-hidden="true">＋</span> ส่งคำขอ / แจ้งข้อมูล</button>
 </div>
-<button class="btn btn-primary" id="newShiftRequestBtn">+ ส่งคำขอ / แจ้งข้อมูล</button>
+
+<div class="shift-request-kpi-grid shift-request-kpi-grid-v61529f15s section-gap">
+  <article class="all"><div class="shift-request-kpi-icon-v61529f15s">▦</div><div><span>ทั้งหมด</span><strong id="shiftRequestKpiAll">0</strong><small>คำขอในช่วงวันที่</small></div></article>
+  <article class="warning"><div class="shift-request-kpi-icon-v61529f15s">◷</div><div><span>รอพิจารณา</span><strong id="shiftRequestKpiPending">0</strong><small>รายการที่ต้องดำเนินการ</small></div></article>
+  <article class="success"><div class="shift-request-kpi-icon-v61529f15s">✓</div><div><span>ดำเนินการแล้ว</span><strong id="shiftRequestKpiApproved">0</strong><small>อนุมัติ / รับรอง / ปรับแล้ว</small></div></article>
+  <article class="danger"><div class="shift-request-kpi-icon-v61529f15s">×</div><div><span>ไม่อนุมัติ / ยกเลิก</span><strong id="shiftRequestKpiClosed">0</strong><small>รายการที่ปิดแล้ว</small></div></article>
 </div>
-<div class="shift-request-kpi-grid section-gap">
-<article><span>ทั้งหมด</span><strong id="shiftRequestKpiAll">0</strong><small>คำขอในช่วงวันที่</small></article>
-<article class="warning"><span>รอพิจารณา</span><strong id="shiftRequestKpiPending">0</strong><small>Manager ดำเนินการ</small></article>
-<article class="success"><span>ดำเนินการแล้ว</span><strong id="shiftRequestKpiApproved">0</strong><small>อนุมัติ / รับรอง / ปรับกะแล้ว</small></article>
-<article class="danger"><span>ไม่อนุมัติ/ยกเลิก</span><strong id="shiftRequestKpiClosed">0</strong><small>ปิดรายการแล้ว</small></article>
+
+<div class="panel section-gap shift-request-filter-panel-v61529f15s">
+  <div class="panel-body">
+    <div class="shift-request-filter-head-v61529f15s">
+      <div><strong>ตัวกรองคำขอ</strong><small>เลือกช่วงเวลา สถานะ ประเภท หรือค้นหาพนักงาน</small></div>
+      <div class="shift-request-quick-ranges-v61529f15s" aria-label="ช่วงวันที่ด่วน">
+        <button type="button" data-request-range-v61529f15s="TODAY">วันนี้</button>
+        <button type="button" data-request-range-v61529f15s="7D">7 วัน</button>
+        <button type="button" data-request-range-v61529f15s="30D">30 วัน</button>
+        <button type="button" data-request-range-v61529f15s="MONTH">เดือนนี้</button>
+      </div>
+    </div>
+    <div class="shift-request-filter-grid shift-request-filter-grid-v61529f15s">
+      <div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="shiftRequestStart" type="date"/></div>
+      <div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="shiftRequestEnd" type="date"/></div>
+      <div class="field"><label>สถานะ</label><select class="select" id="shiftRequestStatus"><option value="">ทุกสถานะ</option><option value="PENDING">รอพิจารณา</option><option value="RETURNED">ส่งกลับให้แก้ไข</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
+      <div class="field"><label>ประเภทคำขอ</label><select class="select" id="shiftRequestTypeFilter"><option value="">ทุกประเภท</option><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></div>
+      <div class="field shift-request-search-field-v61529f15s"><label>ค้นหา</label><div class="shift-request-search-wrap-v61529f15s"><span aria-hidden="true">⌕</span><input class="input" id="shiftRequestSearch" placeholder="เลขที่คำขอ / รหัส / ชื่อพนักงาน"/></div></div>
+    </div>
+    <div class="shift-request-filter-actions-v61529f15s">
+      <button class="btn btn-primary" id="loadShiftRequestsBtn"><span aria-hidden="true">⌕</span> ค้นหา</button>
+      <button class="btn btn-light" type="button" id="clearShiftRequestFiltersV61529F15S">ล้างตัวกรอง</button>
+    </div>
+  </div>
 </div>
-<div class="panel section-gap">
-<div class="panel-body">
-<div class="shift-request-filter-grid">
-<div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="shiftRequestStart" type="date"/></div>
-<div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="shiftRequestEnd" type="date"/></div>
-<div class="field"><label>สถานะ</label><select class="select" id="shiftRequestStatus"><option value="">ทุกสถานะ</option><option value="PENDING">รอพิจารณา</option><option value="RETURNED">ส่งกลับให้แก้ไข</option><option value="APPROVED">อนุมัติแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิก</option></select></div>
-<div class="field"><label>ประเภทคำขอ</label><select class="select" id="shiftRequestTypeFilter"><option value="">ทุกประเภท</option><option value="SHIFT_CHANGE">ขอแก้ไขกะ</option><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">ขอสลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></div>
-<div class="field"><label>ค้นหา</label><input class="input" id="shiftRequestSearch" placeholder="เลขที่คำขอ รหัส หรือชื่อพนักงาน"/></div>
-<div class="toolbar-actions"><button class="btn btn-primary" id="loadShiftRequestsBtn">ค้นหา</button></div>
-</div>
-</div>
-</div>
-<div class="panel section-gap">
-<div class="panel-header">
-<div><h3>รายการคำขอ / แจ้งข้อมูล</h3><div class="manager-request-live-row-v61513"><p id="shiftRequestCount">0 รายการ</p><span class="manager-request-live-v61513 ready" id="managerRequestLiveV61513"><i></i><b>Auto Sync</b><em>พร้อม</em></span></div></div>
-<button class="btn btn-success" id="shiftRequestExportBtn">Excel</button>
-</div>
-<div class="panel-body">
-<div class="table-wrap shift-request-table-wrap">
-<table>
-<thead>
-<tr>
-<th>เลขที่คำขอ</th>
-<th>วันที่</th>
-<th>พนักงาน</th>
-<th>ประเภท</th>
-<th>รายละเอียด</th>
-<th>เหตุผล</th>
-<th>สถานะ</th>
-<th>วันที่แจ้ง</th>
-<th>หมายเหตุการพิจารณา</th>
-<th>จัดการ</th>
-</tr>
-</thead>
-<tbody id="shiftRequestBody"></tbody>
-</table>
-</div>
-</div>
+
+<div class="panel section-gap shift-request-list-panel-v61529f15s">
+  <div class="panel-header shift-request-list-header-v61529f15s">
+    <div class="shift-request-list-title-v61529f15s">
+      <div class="shift-request-list-icon-v61529f15s">≡</div>
+      <div><h3>รายการคำขอ / แจ้งข้อมูล</h3><div class="manager-request-live-row-v61513"><p id="shiftRequestCount">0 รายการ</p><span class="manager-request-live-v61513 ready" id="managerRequestLiveV61513"><i></i><b>Auto Sync</b><em>พร้อม</em></span></div></div>
+    </div>
+    <div class="shift-request-list-actions-v61529f15s">
+      <button class="btn btn-light" type="button" id="refreshShiftRequestsV61529F15S"><span aria-hidden="true">↻</span> รีเฟรช</button>
+      <button class="btn btn-success" id="shiftRequestExportBtn"><span aria-hidden="true">⇩</span> Excel</button>
+    </div>
+  </div>
+  <div class="panel-body shift-request-list-body-v61529f15s">
+    <div class="table-wrap shift-request-table-wrap shift-request-table-wrap-v61529f15s">
+      <table class="shift-request-table-v61529f15s">
+        <thead><tr><th>เลขที่คำขอ</th><th>วันที่</th><th>พนักงาน</th><th>ประเภท</th><th>รายละเอียด</th><th>เหตุผล</th><th>สถานะ</th><th>วันที่แจ้ง</th><th>หมายเหตุการพิจารณา</th><th>จัดการ</th></tr></thead>
+        <tbody id="shiftRequestBody"></tbody>
+      </table>
+    </div>
+  </div>
 </div>
 </section>
 <!-- Schedule -->

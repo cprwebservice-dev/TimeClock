@@ -1,0 +1,14 @@
+TimeClock Enterprise V6.15.29 FIX15S — Employee Request Center Modernization
+
+Frontend-only. No SQL required.
+
+Changes
+- Compact modern Request Center hero with Scope/Auto Sync/last-updated metadata.
+- Modern KPI cards with semantic icons and improved hierarchy.
+- Compact filter toolbar with Today / 7 days / 30 days / This month quick ranges.
+- Search field with Enter-to-search and Clear filters action.
+- Refresh + Excel actions grouped in the list header.
+- Sticky modern table header, row hover, cleaner action layout.
+- Rich empty state with clear-filter shortcut.
+- Responsive and dark-mode styling.
+- Request loading, backend RPCs, permissions, approval actions, export behavior unchanged.

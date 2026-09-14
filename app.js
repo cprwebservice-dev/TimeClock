@@ -21718,6 +21718,8 @@ ${names}${extra}
             : "ตรวจสอบและพิจารณาคำขอ / แจ้งข้อมูลทั้งหมด";
     }
 
+    if(typeof refreshShiftRequestScopeChipV61529F15S==="function")refreshShiftRequestScopeChipV61529F15S();
+
     [
       "newLeaveBtn",
       "newCertificateBtn",
@@ -22006,6 +22008,8 @@ ${names}${extra}
         .sort((a,b) => String(b.requested_at || b.created_at || "").localeCompare(String(a.requested_at || a.created_at || "")));
 
       renderShiftRequests();
+      shiftRequestSetLastUpdatedV61529F15S(new Date());
+      refreshShiftRequestScopeChipV61529F15S();
       if(canManage()){
         loadRequestConsistencyV61515().catch(()=>{});
         setManagerRequestSyncBaselineV61513()
@@ -22301,7 +22305,7 @@ ${names}${extra}
             <td><div class="v650-actions">${actions.join("") || "-"}</div></td>
           </tr>`;
         }).join("")
-      : `<tr><td colspan="10" class="fc-empty">ไม่พบคำขอ / แจ้งข้อมูล</td></tr>`;
+      : `<tr class="shift-request-empty-row-v61529f15s"><td colspan="10" class="fc-empty"><div class="shift-request-empty-v61529f15s"><span class="shift-request-empty-icon-v61529f15s">⌕</span><strong>ไม่พบคำขอ / แจ้งข้อมูล</strong><small>ลองปรับช่วงวันที่ สถานะ ประเภทคำขอ หรือคำค้นหา</small><button type="button" class="btn btn-light btn-sm" data-clear-request-filters-v61529f15s>ล้างตัวกรอง</button></div></td></tr>`;
   }
 
   async function fetchEmployeeRequestAttendanceV61481(empCode,workDate) {
@@ -23361,6 +23365,60 @@ ${names}${extra}
     );
   }
 
+  function shiftRequestSetLastUpdatedV61529F15S(value=new Date()) {
+    const el=$("shiftRequestLastUpdatedV61529F15S");
+    if(!el)return;
+    try{
+      el.textContent=new Intl.DateTimeFormat("th-TH",{
+        day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false
+      }).format(value);
+    }catch(_){
+      el.textContent=String(value||"—");
+    }
+  }
+
+  function shiftRequestDefaultRangeV61529F15S(){
+    const today=window.TimeClockCalendarV61448.today();
+    return {
+      start:window.TimeClockCalendarV61448.monthStart(new Date()),
+      end:window.TimeClockCalendarV61448.addDays(today,31)
+    };
+  }
+
+  function shiftRequestApplyRangeV61529F15S(mode){
+    const today=window.TimeClockCalendarV61448.today();
+    let start=today,end=today;
+    if(mode==="7D")start=window.TimeClockCalendarV61448.addDays(today,-6);
+    else if(mode==="30D")start=window.TimeClockCalendarV61448.addDays(today,-29);
+    else if(mode==="MONTH")start=window.TimeClockCalendarV61448.monthStart(new Date());
+    $("shiftRequestStart").value=start;
+    $("shiftRequestEnd").value=end;
+    qsa("[data-request-range-v61529f15s]").forEach(btn=>btn.classList.toggle("active",btn.dataset.requestRangeV61529f15s===mode));
+    loadShiftRequests();
+  }
+
+  function clearShiftRequestFiltersV61529F15S({reload=true}={}){
+    const range=shiftRequestDefaultRangeV61529F15S();
+    if($("shiftRequestStart"))$("shiftRequestStart").value=range.start;
+    if($("shiftRequestEnd"))$("shiftRequestEnd").value=range.end;
+    if($("shiftRequestStatus"))$("shiftRequestStatus").value="";
+    if($("shiftRequestTypeFilter"))$("shiftRequestTypeFilter").value="";
+    if($("shiftRequestSearch"))$("shiftRequestSearch").value="";
+    qsa("[data-request-range-v61529f15s]").forEach(btn=>btn.classList.remove("active"));
+    if(reload)loadShiftRequests();
+  }
+
+  function refreshShiftRequestScopeChipV61529F15S(){
+    const chip=$("shiftRequestScopeChipV61529F15S");
+    if(!chip)return;
+    const profile=app()?.state?.profile||{};
+    const currentRole=role();
+    const b=chip.querySelector("b");
+    const em=chip.querySelector("em");
+    if(b)b.textContent=currentRole==="HR_ADMIN"?"HR Admin":currentRole==="MANAGER"?"Manager Scope":"คำขอของฉัน";
+    if(em)em.textContent=currentRole==="MANAGER"?(roleLevelText(profile)||"Active"):currentRole==="HR_ADMIN"?"ทุกขอบเขต":"Self";
+  }
+
   function bind() {
     const today = window.TimeClockCalendarV61448.today();
     const start = window.TimeClockCalendarV61448.monthStart(new Date());
@@ -23397,6 +23455,23 @@ ${names}${extra}
       "click",
       exportShiftRequests
     );
+    $("refreshShiftRequestsV61529F15S")?.addEventListener("click",()=>loadShiftRequests());
+    $("clearShiftRequestFiltersV61529F15S")?.addEventListener("click",()=>clearShiftRequestFiltersV61529F15S());
+    $("shiftRequestSearch")?.addEventListener("keydown",event=>{
+      if(event.key==="Enter"){
+        event.preventDefault();
+        loadShiftRequests();
+      }
+    });
+    qsa("[data-request-range-v61529f15s]").forEach(button=>{
+      button.addEventListener("click",()=>shiftRequestApplyRangeV61529F15S(button.dataset.requestRangeV61529f15s||"TODAY"));
+    });
+    document.addEventListener("click",event=>{
+      if(event.target.closest("[data-clear-request-filters-v61529f15s]")){
+        clearShiftRequestFiltersV61529F15S();
+      }
+    });
+    refreshShiftRequestScopeChipV61529F15S();
 
     qsa("[data-v680-close]").forEach(button => {
       button.addEventListener(

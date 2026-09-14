@@ -1,0 +1,11 @@
+FIX15S UAT
+1. Open คำขอ / แจ้งข้อมูล as Manager.
+2. Verify header compact layout and scope chip.
+3. Test วันนี้ / 7 วัน / 30 วัน / เดือนนี้.
+4. Press Enter in search input.
+5. Test ล้างตัวกรอง and รีเฟรช.
+6. Verify KPI counts still match current filtered result.
+7. Verify approve/reject/review buttons unchanged.
+8. Verify Excel export uses current loaded rows.
+9. Verify empty state and dark mode.
+10. Verify mobile/tablet responsive layout.
