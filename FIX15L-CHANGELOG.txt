@@ -1,0 +1,19 @@
+TimeClock Enterprise V6.15.29 FIX15L — Borrow UX Modernization
+
+Frontend only. No SQL required.
+
+A) Notification Drawer
+- Modern card layout, grouped by Today / Yesterday / Earlier
+- Filters: All / Borrow / Requests / Schedule
+- Status chips and type icons
+- Unread state and contextual CTA
+- Cleaner spacing, typography, dark mode
+
+B) Borrow effective-window schedule UX
+- Full-month personal table no longer repeats “นอก Scope” in every cell
+- Out-of-scope dates use a subtle lock state + tooltip
+- Borrowed employee row shows a compact Borrow window badge
+- Monthly Personal Overview shows a Borrow permission banner
+- Scope-lock cards are compact; explanation moves to the banner
+
+Business rules / backend permissions remain unchanged.

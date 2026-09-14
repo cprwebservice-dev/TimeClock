@@ -6020,6 +6020,31 @@ window.tcIsDayShiftCode = value =>
       };
     }
 
+    function scheduleBorrowDestinationWindowV61529F15L(days) {
+      const entries=Object.entries(days||{}).filter(([,row])=>{
+        const meta=scheduleTemporaryWorkingMetaV61529F14B(row);
+        return meta?.isBorrow===true && meta?.canEdit===true;
+      });
+      if(!entries.length)return null;
+      entries.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+      const firstMeta=scheduleTemporaryWorkingMetaV61529F14B(entries[0][1])||{};
+      return {
+        from:String(entries[0][0]).slice(0,10),
+        to:String(entries[entries.length-1][0]).slice(0,10),
+        homeOrg:firstMeta.homeOrg||'',
+        workingOrg:firstMeta.workingOrg||''
+      };
+    }
+
+    function scheduleBorrowWindowBadgeV61529F15L(windowMeta) {
+      if(!windowMeta)return '';
+      const fromDay=Number(String(windowMeta.from||'').slice(8,10))||'';
+      const toDay=Number(String(windowMeta.to||'').slice(8,10))||'';
+      const compact=fromDay&&toDay?(fromDay===toDay?`${fromDay}`:`${fromDay}–${toDay}`):'ช่วงยืมตัว';
+      const title=`ยืมตัว${windowMeta.homeOrg?`จาก ${windowMeta.homeOrg}`:''} • จัดกะได้ ${formatDate(windowMeta.from)}–${formatDate(windowMeta.to)}`;
+      return `<span class="schedule-borrow-window-badge-v61529f15l" title="${safe(title)}"><span aria-hidden="true">↔</span><strong>ยืมตัว ${safe(compact)}</strong></span>`;
+    }
+
     function scheduleWorkingTeamCanEditV61529F14B(row) {
       const ctx = scheduleTeamContextMetaV61526(row);
       return ctx?.can_edit_schedule !== false;
@@ -8781,12 +8806,23 @@ window.tcIsDayShiftCode = value =>
           ? employeeMonthCalendarStateV61121.scheduleRows
           : [])
       ];
+      const dates=[];
+      const explicitFrom=[];
+      const explicitTo=[];
+      let result=null;
       for (const row of pools) {
         if (String(row?.emp_code || '').trim() !== code) continue;
         const ctx = scheduleTeamContextMetaV61526(row);
         const stateCode = String(ctx?.assignment_state || ctx?.assignment_type || '').trim().toUpperCase();
-        if (stateCode === 'BORROW_CROSS_ORG' && ctx?.can_edit_schedule === true) {
-          return {
+        if (stateCode !== 'BORROW_CROSS_ORG' || ctx?.can_edit_schedule !== true) continue;
+        const workDate=String(row?.work_date||'').slice(0,10);
+        if(workDate)dates.push(workDate);
+        const from=String(ctx?.effective_from||ctx?.assignment_effective_from||ctx?.borrow_effective_from||'').slice(0,10);
+        const to=String(ctx?.effective_to||ctx?.assignment_effective_to||ctx?.borrow_effective_to||'').slice(0,10);
+        if(from)explicitFrom.push(from);
+        if(to)explicitTo.push(to);
+        if(!result){
+          result={
             isBorrowDestination:true,
             homeOrg:String(ctx?.home_org_code || ctx?.employee_org_code || '').trim(),
             workingOrg:String(ctx?.team_org_code || '').trim(),
@@ -8794,7 +8830,11 @@ window.tcIsDayShiftCode = value =>
           };
         }
       }
-      return null;
+      if(!result)return null;
+      dates.sort();explicitFrom.sort();explicitTo.sort();
+      result.effectiveFrom=explicitFrom[0]||dates[0]||'';
+      result.effectiveTo=explicitTo[explicitTo.length-1]||dates[dates.length-1]||'';
+      return result;
     }
 
     function employeeMonthScopeGapMetaV61529F15C(
@@ -9745,6 +9785,20 @@ window.tcIsDayShiftCode = value =>
       const borrowDestinationContextV61529F15C = employeeMonthBorrowDestinationContextV61529F15C(
         employeeMonthCalendarStateV61121.empCode
       );
+      const borrowScopeBannerV61529F15L=$('employeeMonthBorrowScopeBannerV61529F15L');
+      if(borrowScopeBannerV61529F15L){
+        if(borrowDestinationContextV61529F15C?.isBorrowDestination){
+          const from=borrowDestinationContextV61529F15C.effectiveFrom||'';
+          const to=borrowDestinationContextV61529F15C.effectiveTo||'';
+          const range=from&&to?`${formatDate(from)} – ${formatDate(to)}`:'ตามช่วง Effective Date ของรายการยืมตัว';
+          borrowScopeBannerV61529F15L.classList.remove('hidden');
+          borrowScopeBannerV61529F15L.innerHTML=`<span class="employee-month-borrow-banner-icon-v61529f15l" aria-hidden="true">↔</span><div><strong>ช่วงที่ Manager ปลายทางจัดกะได้</strong><span>${safe(range)}${borrowDestinationContextV61529F15C.homeOrg?` • ยืมจาก ${safe(borrowDestinationContextV61529F15C.homeOrg)}`:''}${borrowDestinationContextV61529F15C.teamCode?` • ทีม ${safe(borrowDestinationContextV61529F15C.teamCode)}`:''}</span></div><small>วันนอกช่วงจะแสดงเป็นล็อก และไม่ถูกนับเป็นวันหยุดหรือรายการรอประมวลผล</small>`;
+        }else{
+          borrowScopeBannerV61529F15L.classList.add('hidden');
+          borrowScopeBannerV61529F15L.innerHTML='';
+        }
+      }
+
       const headerMode = $('employeeMonthHeaderMode');
       if (headerMode) {
         headerMode.className = `employee-month-header-mode-v61127 ${canEdit ? 'editable' : 'readonly'}`;
@@ -10048,10 +10102,9 @@ window.tcIsDayShiftCode = value =>
               <small>${employmentStateV61429==='BEFORE_START' ? 'ตรงกับช่วงก่อนวันเริ่มงานในตารางกะรายบุคคลเต็มเดือน' : 'ตรงกับช่วงหลังวันลาออกในตารางกะรายบุคคลเต็มเดือน'}</small>
             </div>
           ` : scopeGapV61529F15C ? `
-            <div class="employee-month-scope-lock-v61529f15c">
-              <div class="employee-month-scope-lock-icon-v61529f15c" aria-hidden="true">🔒</div>
-              <strong>${safe(scopeGapV61529F15C.label)}</strong>
-              <small>${safe(scopeGapV61529F15C.detail)}</small>
+            <div class="employee-month-scope-lock-v61529f15c employee-month-scope-lock-v61529f15l" title="${safe(scopeGapV61529F15C.detail)}">
+              <div class="employee-month-scope-lock-icon-v61529f15c" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></div>
+              <strong>${safe(scopeGapV61529F15C.borrow?'นอกช่วงยืมตัว':'นอกขอบเขต')}</strong>
             </div>
           ` : `
             <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
@@ -10966,12 +11019,15 @@ window.tcIsDayShiftCode = value =>
             ? ""
             : `data-select-emp="${safe(emp)}"`;
 
+        const borrowWindowV61529F15L = scheduleBorrowDestinationWindowV61529F15L(obj.days);
+        const borrowWindowBadgeV61529F15L = scheduleBorrowWindowBadgeV61529F15L(borrowWindowV61529F15L);
+
         const managerOwnBadge =
           managerOwnEmployee
             ? `<span class="schedule-self-readonly-badge" title="ตนเอง • ดูอย่างเดียว — Manager ดูกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง" aria-label="ตนเอง ดูอย่างเดียว"><svg class="schedule-self-readonly-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.75"></circle></svg></span>`
             : "";
 
-        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${borrowWindowBadgeV61529F15L}${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
@@ -10999,7 +11055,12 @@ window.tcIsDayShiftCode = value =>
           }
 
           if (!r) {
-            html += `<td class="day-col empty-schedule-day out-of-scope-day" title="ไม่มีสิทธิ์ตาม User Scope ในวันที่นี้"><span class="schedule-cell disabled out-of-scope-cell">นอก Scope</span></td>`;
+            const borrowGapV61529F15L=Boolean(borrowWindowV61529F15L);
+            const scopeLabelV61529F15L=borrowGapV61529F15L?'นอกช่วงยืมตัว':'นอกขอบเขตการดูแล';
+            const scopeTitleV61529F15L=borrowGapV61529F15L
+              ? `นอกช่วงยืมตัว • Manager ปลายทางจัดกะได้ ${formatDate(borrowWindowV61529F15L.from)}–${formatDate(borrowWindowV61529F15L.to)}`
+              : 'ไม่มีสิทธิ์ดูหรือจัดกะในวันที่นี้';
+            html += `<td class="day-col empty-schedule-day out-of-scope-day ${borrowGapV61529F15L?'borrow-out-of-scope-day-v61529f15l':''}" title="${safe(scopeTitleV61529F15L)}"><span class="schedule-cell disabled out-of-scope-cell out-of-scope-cell-v61529f15l" aria-label="${safe(scopeLabelV61529F15L)}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg><span class="sr-only">${safe(scopeLabelV61529F15L)}</span></span></td>`;
             continue;
           }
 
@@ -16077,7 +16138,7 @@ ${skippedSummary(compatibility.skipped)}
 );}
   function openCommand(){if(!$("commandBackdrop"))return;$("commandBackdrop").classList.remove("hidden");$("commandInput").value="";renderCommand();setTimeout(()=>$("commandInput")?.focus(),20);}
   function closeCommand(){$("commandBackdrop")?.classList.add("hidden");}
-  function mountDrawer(){if($("notificationDrawer"))return;const d=document.createElement("aside");d.id="notificationDrawer";d.className="notification-drawer";d.innerHTML=`<div class="drawer-head"><div><small>TIME-CLOCK V6</small><h3>การแจ้งเตือน</h3></div><button id="drawerClose" class="btn btn-light btn-icon">×</button></div><div class="drawer-tabs"><button class="drawer-tab active">ทั้งหมด</button><button class="drawer-tab" data-drawer-go="schedule">ตารางกะ</button></div><div class="drawer-body"><div class="notification-empty">กำลังโหลดการแจ้งเตือน...</div></div>`;document.body.appendChild(d);$("drawerClose").onclick=()=>d.classList.remove("open");qa("[data-drawer-go]",d).forEach(b=>b.onclick=()=>{go(b.dataset.drawerGo);d.classList.remove("open");});}
+  function mountDrawer(){if($("notificationDrawer"))return;const d=document.createElement("aside");d.id="notificationDrawer";d.className="notification-drawer notification-drawer-v61529f15l";d.dataset.noticeFilter="ALL";d.innerHTML=`<div class="drawer-head drawer-head-v61529f15l"><div class="drawer-title-v61529f15l"><span class="drawer-title-icon-v61529f15l" aria-hidden="true">◉</span><div><small>TIME-CLOCK V6</small><h3>การแจ้งเตือน</h3><p>ติดตามรายการที่ต้องดำเนินการและเหตุการณ์ล่าสุด</p></div></div><button id="drawerClose" class="btn btn-light btn-icon drawer-close-v61529f15l" aria-label="ปิด">×</button></div><div class="drawer-tabs drawer-tabs-v61529f15l" role="tablist" aria-label="ตัวกรองการแจ้งเตือน"><button class="drawer-tab active" data-notice-filter-v61529f15l="ALL" role="tab" aria-selected="true"><span>ทั้งหมด</span><b data-notice-count-v61529f15l="ALL">0</b></button><button class="drawer-tab" data-notice-filter-v61529f15l="BORROW" role="tab" aria-selected="false"><span>ยืมตัว</span><b data-notice-count-v61529f15l="BORROW">0</b></button><button class="drawer-tab" data-notice-filter-v61529f15l="REQUEST" role="tab" aria-selected="false"><span>คำขอ</span><b data-notice-count-v61529f15l="REQUEST">0</b></button><button class="drawer-tab" data-notice-filter-v61529f15l="SCHEDULE" role="tab" aria-selected="false"><span>ตารางกะ</span><b data-notice-count-v61529f15l="SCHEDULE">0</b></button></div><div class="drawer-body"><div class="notification-empty">กำลังโหลดการแจ้งเตือน...</div></div><div class="drawer-foot-v61529f15l"><span>คลิกรายการเพื่อเปิดหน้าที่เกี่ยวข้อง</span><button type="button" data-drawer-go-v61529f15l="schedule">เปิดตารางกะ →</button></div>`;document.body.appendChild(d);$("drawerClose").onclick=()=>d.classList.remove("open");qa("[data-notice-filter-v61529f15l]",d).forEach(b=>b.onclick=()=>{d.dataset.noticeFilter=b.dataset.noticeFilterV61529f15l||"ALL";qa("[data-notice-filter-v61529f15l]",d).forEach(x=>{const active=x===b;x.classList.toggle("active",active);x.setAttribute("aria-selected",active?"true":"false");});window.TimeClockFunctional?.loadNotifications?.();});qa("[data-drawer-go-v61529f15l]",d).forEach(b=>b.onclick=()=>{go(b.dataset.drawerGoV61529f15l);d.classList.remove("open");});}
   function mountProfile(){if($("profileMenu"))return;const p=document.createElement("div");p.id="profileMenu";p.className="profile-menu hidden";p.innerHTML=`<div class="profile-head"><div class="profile-avatar" id="profileAvatar">TC</div><div class="profile-meta"><strong id="profileName">-</strong><span id="profileEmail">-</span><span id="profileRole">VIEWER</span></div></div><hr><button class="profile-action" data-profile-go="smart-assistant">✦ ผู้ช่วยวิเคราะห์</button><button class="profile-action" data-profile-go="system-settings">⚙ System Settings</button><button class="profile-action" id="profileTheme">◐ เปลี่ยนธีม</button><button class="profile-action" id="profileLogout">↪ ออกจากระบบ</button>`;document.body.appendChild(p);qa("[data-profile-go]",p).forEach(b=>b.onclick=()=>{go(b.dataset.profileGo);p.classList.add("hidden")});$("profileTheme").onclick=()=>$("themeToggleBtn")?.click();$("profileLogout").onclick=()=>$("logoutBtn")?.click();}
   function enhanceTopbar(){const old=q(".global-search");old?.classList.add("hidden-important");const right=q(".topbar-right");if(!right||$("shellSearchBtn"))return;const b=document.createElement("button");b.id="shellSearchBtn";b.className="btn btn-light shell-search-trigger desktop-only";b.innerHTML="<span>⌕ ค้นหาทั้งระบบ</span><kbd>Ctrl K</kbd>";b.onclick=openCommand;right.insertBefore(b,right.firstChild);const roleEl=$("roleBadge");if(roleEl){roleEl.style.cursor="pointer";roleEl.title="เปิดโปรไฟล์ผู้ใช้งาน";roleEl.onclick=toggleProfile;}}
   function toggleProfile(){const p=$("profileMenu");if(!p)return;p.classList.toggle("hidden");$("profileName").textContent=name();$("profileEmail").textContent=email();$("profileRole").textContent=role();$("profileAvatar").textContent=(name().slice(0,2)||"TC").toUpperCase();}
@@ -19133,7 +19194,98 @@ ${skippedSummary(compatibility.skipped)}
   /* ------------------------------------------------------------------
      Notifications
      ------------------------------------------------------------------ */
+  function noticeTargetV61529F15L(r){
+    const rawTarget=String(r?.target_page||'');
+    if(r?._source==='EMPLOYEE_REQUEST')return 'shift-requests';
+    if(r?._source==='BORROW')return 'team-master';
+    return ["review","leave","time-correction","exception-center"].includes(rawTarget)
+      ? 'attendance'
+      : (rawTarget||'dashboard');
+  }
+
+  function noticeCategoryV61529F15L(r){
+    if(r?._source==='BORROW')return 'BORROW';
+    if(r?._source==='EMPLOYEE_REQUEST')return 'REQUEST';
+    const target=noticeTargetV61529F15L(r);
+    const text=`${r?.title||''} ${r?.message||''}`.toLowerCase();
+    if(target==='schedule'||text.includes('ตารางกะ')||text.includes('กะทำงาน'))return 'SCHEDULE';
+    return 'SYSTEM';
+  }
+
+  function noticeStatusV61529F15L(r){
+    const type=String(r?.notification_type||r?.event_type||r?.type||'').trim().toUpperCase();
+    if(r?._source==='BORROW'){
+      const map={
+        REQUESTED:{label:'รออนุมัติ',tone:'warning',icon:'↔'},
+        APPROVED:{label:'อนุมัติแล้ว',tone:'success',icon:'✓'},
+        REJECTED:{label:'ไม่อนุมัติ',tone:'danger',icon:'!'},
+        CANCELLED:{label:'ยกเลิก',tone:'neutral',icon:'×'},
+        END_EARLY:{label:'ปรับวันสิ้นสุด',tone:'info',icon:'↘'},
+        EXPIRING_3D:{label:'ใกล้ครบกำหนด',tone:'warning',icon:'◷'},
+        EXPIRING_2D:{label:'ใกล้ครบกำหนด',tone:'warning',icon:'◷'},
+        EXPIRING_1D:{label:'ครบกำหนดพรุ่งนี้',tone:'warning',icon:'◷'},
+        EXPIRING_TODAY:{label:'ครบกำหนดวันนี้',tone:'danger',icon:'◷'}
+      };
+      return map[type]||{label:'ยืมตัว',tone:'borrow',icon:'↔'};
+    }
+    if(r?._source==='EMPLOYEE_REQUEST')return {label:'คำขอ',tone:'request',icon:'⌁'};
+    if(noticeCategoryV61529F15L(r)==='SCHEDULE')return {label:'ตารางกะ',tone:'schedule',icon:'▣'};
+    const severity=String(r?.severity||'info').toLowerCase();
+    return {label:'ระบบ',tone:severity==='high'||severity==='danger'?'danger':severity==='medium'||severity==='warning'?'warning':'info',icon:'•'};
+  }
+
+  function noticeDateKeyV61529F15L(r){
+    const raw=r?.event_at||r?.created_at||r?.event_date||'';
+    if(!raw)return '';
+    const d=new Date(raw);
+    if(Number.isNaN(d.getTime()))return String(raw).slice(0,10);
+    try{
+      return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+    }catch(_){return d.toISOString().slice(0,10);}
+  }
+
+  function noticeTimeTextV61529F15L(r){
+    const raw=r?.event_at||r?.created_at||r?.event_date||'';
+    if(!raw)return '-';
+    const d=new Date(raw);
+    if(Number.isNaN(d.getTime()))return fmtDate(raw);
+    const todayKey=window.TimeClockCalendarV61448?.today?.()||new Date().toISOString().slice(0,10);
+    const dateKey=noticeDateKeyV61529F15L(r);
+    const time=d.toLocaleTimeString('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',hour12:false});
+    return dateKey===todayKey?`วันนี้ ${time} น.`:`${fmtDate(raw)} • ${time} น.`;
+  }
+
+  function noticeGroupLabelV61529F15L(dateKey){
+    const today=window.TimeClockCalendarV61448?.today?.()||new Date().toISOString().slice(0,10);
+    const yesterday=window.TimeClockCalendarV61448?.addDays?.(today,-1)||'';
+    if(dateKey===today)return 'วันนี้';
+    if(dateKey===yesterday)return 'เมื่อวาน';
+    return 'ก่อนหน้านี้';
+  }
+
+  function noticeCardHtmlV61529F15L(r){
+    const target=noticeTargetV61529F15L(r);
+    const unread=((r._source==='EMPLOYEE_REQUEST'||r._source==='BORROW')&&r.is_read===false)?' is-unread-v61481':'';
+    const requestAttr=r._source==='EMPLOYEE_REQUEST'&&r.notification_id?` data-employee-request-notification-v61481="${esc(r.notification_id)}"`:'';
+    const borrowAttr=r._source==='BORROW'&&r.notification_id
+      ?` data-borrow-notification-v61529f15g="${esc(r.notification_id)}" data-borrow-assignment-v61529f15g="${esc(r.assignment_id||'')}" data-borrow-workflow-v61529f15g="${esc(r.workflow_filter||'ALL')}" data-borrow-from-v61529f15g="${esc(r.effective_from||'')}" data-borrow-to-v61529f15g="${esc(r.effective_to||'')}"`
+      :'';
+    const meta=noticeStatusV61529F15L(r);
+    const title=String(r.title||'การแจ้งเตือน').trim();
+    const message=String(r.message||'').trim();
+    return `<button class="notice-card notice-card-v61529f15l tone-${esc(meta.tone)}${unread}" data-notice-page="${esc(target)}" data-notice-category-v61529f15l="${esc(noticeCategoryV61529F15L(r))}"${requestAttr}${borrowAttr}>
+      <span class="notice-icon-v61529f15l tone-${esc(meta.tone)}" aria-hidden="true">${esc(meta.icon)}</span>
+      <span class="notice-main-v61529f15l">
+        <span class="notice-topline-v61529f15l"><span class="notice-chip-v61529f15l tone-${esc(meta.tone)}">${esc(meta.label)}</span>${unread?'<i class="notice-unread-dot-v61529f15l" aria-label="ยังไม่ได้อ่าน"></i>':''}</span>
+        <strong>${esc(title)}</strong>
+        ${message?`<p>${esc(message)}</p>`:''}
+        <span class="notice-bottom-v61529f15l"><time>${esc(noticeTimeTextV61529F15L(r))}</time><span class="notice-action-v61529f15l">ดูรายการ <b>→</b></span></span>
+      </span>
+    </button>`;
+  }
+
   async function loadNotifications(){
+    const drawer=$("notificationDrawer");
     const body=qs("#notificationDrawer .drawer-body");
     if(!body)return;
     try{
@@ -19157,17 +19309,33 @@ ${skippedSummary(compatibility.skipped)}
       ]
         .sort((a,b)=>String(b.event_at||b.created_at||b.event_date||'').localeCompare(String(a.event_at||a.created_at||a.event_date||'')))
         .slice(0,60);
-      body.innerHTML=rows.length?rows.map(r=>{
-        const rawTarget=String(r.target_page||'');
-        const target=r._source==='EMPLOYEE_REQUEST'?'shift-requests':r._source==='BORROW'?'team-master':(["review","leave","time-correction","exception-center"].includes(rawTarget)?"attendance":(rawTarget||"dashboard"));
-        const unread=((r._source==='EMPLOYEE_REQUEST'||r._source==='BORROW')&&r.is_read===false)?' is-unread-v61481':'';
-        const requestAttr=r._source==='EMPLOYEE_REQUEST'&&r.notification_id?` data-employee-request-notification-v61481="${esc(r.notification_id)}"`:'';
-        const borrowAttr=r._source==='BORROW'&&r.notification_id
-          ?` data-borrow-notification-v61529f15g="${esc(r.notification_id)}" data-borrow-assignment-v61529f15g="${esc(r.assignment_id||'')}" data-borrow-workflow-v61529f15g="${esc(r.workflow_filter||'ALL')}" data-borrow-from-v61529f15g="${esc(r.effective_from||'')}" data-borrow-to-v61529f15g="${esc(r.effective_to||'')}"`
-          :'';
-        const sourceTag=r._source==='BORROW'?'<span class="notice-source-label-v61529f15g">ยืมตัว</span>':'';
-        return `<button class="notice-card severity-${esc(r.severity||'info')}${unread}${r._source==='BORROW'?' notice-borrow-v61529f15g':''}" data-notice-page="${esc(target)}"${requestAttr}${borrowAttr}><span class="notice-dot"></span><div>${sourceTag}<strong>${esc(r.title)}</strong><p>${esc(r.message)}</p><time>${fmtDate(r.event_date||r.created_at||r.event_at)}</time></div></button>`;
-      }).join(""):`<div class="notification-empty">ไม่มีการแจ้งเตือนใหม่</div>`;
+
+      const counts={ALL:rows.length,BORROW:0,REQUEST:0,SCHEDULE:0};
+      rows.forEach(r=>{const c=noticeCategoryV61529F15L(r);if(counts[c]!=null)counts[c]+=1;});
+      Object.entries(counts).forEach(([key,value])=>{
+        const el=qs(`[data-notice-count-v61529f15l="${key}"]`,drawer||document);
+        if(el)el.textContent=String(value);
+      });
+
+      const filter=String(drawer?.dataset.noticeFilter||'ALL').toUpperCase();
+      const visibleRows=filter==='ALL'?rows:rows.filter(r=>noticeCategoryV61529F15L(r)===filter);
+      if(!visibleRows.length){
+        body.innerHTML=`<div class="notification-empty notification-empty-v61529f15l"><span>✓</span><strong>ไม่มีรายการในหมวดนี้</strong><small>การแจ้งเตือนใหม่จะแสดงที่นี่อัตโนมัติ</small></div>`;
+      }else{
+        const groupOrder=['วันนี้','เมื่อวาน','ก่อนหน้านี้'];
+        const groups=new Map(groupOrder.map(label=>[label,[]]));
+        visibleRows.forEach(r=>{
+          const label=noticeGroupLabelV61529F15L(noticeDateKeyV61529F15L(r));
+          if(!groups.has(label))groups.set(label,[]);
+          groups.get(label).push(r);
+        });
+        body.innerHTML=groupOrder.filter(label=>groups.get(label)?.length).map(label=>`
+          <section class="notice-group-v61529f15l">
+            <div class="notice-group-head-v61529f15l"><strong>${esc(label)}</strong><span>${groups.get(label).length} รายการ</span></div>
+            <div class="notice-group-list-v61529f15l">${groups.get(label).map(noticeCardHtmlV61529F15L).join('')}</div>
+          </section>`).join('');
+      }
+
       const unreadCount=rows.filter(r=>{
         if(r._source==='EMPLOYEE_REQUEST'||r._source==='BORROW')return r.is_read===false;
         return true;
@@ -19194,7 +19362,7 @@ ${skippedSummary(compatibility.skipped)}
         setTimeout(()=>window.TimeClockFunctional?.loadNotifications?.(),120);
       };
     }catch(e){
-      body.innerHTML=`<div class="notification-empty">ไม่สามารถโหลดการแจ้งเตือนจากฐานข้อมูล<br><small>${esc(e.message||"")}</small></div>`;
+      body.innerHTML=`<div class="notification-empty notification-empty-v61529f15l"><span>!</span><strong>โหลดการแจ้งเตือนไม่สำเร็จ</strong><small>${esc(e.message||"")}</small></div>`;
     }
   }
 

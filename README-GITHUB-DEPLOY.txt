@@ -1,3 +1,4 @@
+V6.15.29 FIX15L Borrow UX Modernization — Frontend only; no SQL required.
 TimeClock Enterprise V6.15.29 FIX15G — Borrow Notification + Expiry Reminder
 
 ติดตั้ง FIX15G

@@ -1,0 +1,24 @@
+TimeClock Enterprise V6.15.29 FIX15L — UAT
+
+A. Notification Drawer
+1) เปิดกระดิ่ง: Drawer เปิดและไม่มี Console error
+2) Tab ทั้งหมด / ยืมตัว / คำขอ / ตารางกะ แสดงจำนวนและกรองได้
+3) Notification แบ่งกลุ่ม วันนี้ / เมื่อวาน / ก่อนหน้านี้
+4) Borrow notification แสดง chip ตามสถานะ เช่น รออนุมัติ / อนุมัติแล้ว / ใกล้ครบกำหนด
+5) คลิก Borrow notification: mark read + เปิด Team Workspace/Borrow รายการเดิม
+6) Dark mode อ่านง่าย
+
+B. Full-month Personal Schedule
+1) ช่างยืมตัว: ชื่อพนักงานมี badge ช่วงยืมตัว
+2) วันที่ก่อน/หลังช่วงยืม: แสดง icon lock แบบ disabled ไม่แสดง “นอก Scope” ซ้ำ
+3) Hover lock: Tooltip บอกช่วงที่ Manager ปลายทางจัดกะได้
+4) วันที่อยู่ในช่วงยืม: กะเดิม/ปุ่มจัดกะทำงานเหมือน FIX15I
+5) พนักงานทั่วไปที่ Manager ไม่มีสิทธิ์บางวัน: lock state ใช้สี neutral และไม่มีสิทธิ์แก้
+
+C. Monthly Personal Overview Modal
+1) ช่างยืมตัว: แสดง Borrow permission banner ด้านบน
+2) วันนอกช่วง: card lock แบบ compact
+3) วันนอกช่วงไม่ถูกนับเป็นวันหยุด/รอประมวลผล
+4) วันในช่วงยืมยังแก้กะได้ตาม permission เดิม
+
+No SQL required. Backend Borrow/Acting/Permission is unchanged.
