@@ -1,0 +1,8 @@
+FIX15M UAT
+1. Open Schedule page on desktop.
+2. Confirm Area / Department / Technician Team / Work Pattern / Search align in one compact filter row on wide screens.
+3. Confirm previous/current/next period and Load Schedule remain functional.
+4. Load a schedule and verify load-status message + 5D/6D chips render in the same footer strip.
+5. Change each filter and verify existing schedule behavior is unchanged.
+6. Test 1366px/tablet/mobile responsive layout.
+7. Toggle Dark Mode and verify contrast/readability.

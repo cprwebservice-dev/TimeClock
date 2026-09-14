@@ -85,3 +85,8 @@ FIX15I:
 - Run SQL_สำหรับตรวจสอบ_V6.15.29_FIX15I_BORROW_AUDIT_HISTORY_REPORT.sql (12/12 PASS)
 - Deploy this ZIP and Ctrl+Shift+R
 - Borrow > ประวัติ / Audit is read-only and scoped by HR/Manager/Acting authority.
+
+
+FIX15M:
+- Frontend-only Schedule Workspace Header Modernization.
+- No SQL required. Deploy over FIX15L and hard refresh.

@@ -9,7 +9,7 @@
 <meta content="#0b1f3a" name="theme-color"/>
 <title>Time-Clock Enterprise V6.14.73 | CP Retailink</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix15g-20260914" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix15m-20260914" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -549,18 +549,22 @@
 </section>
 <!-- Schedule -->
 <section class="page" id="page-schedule">
-<div class="panel">
-<div class="panel-body">
-<div class="toolbar schedule-toolbar-v61118">
+<div class="panel schedule-control-panel-v61529f15m">
+<div class="panel-body schedule-control-panel-body-v61529f15m">
+<div class="schedule-control-heading-v61529f15m">
+  <div class="schedule-control-heading-main-v61529f15m"><span aria-hidden="true">≡</span><div><strong>ตัวกรองตารางกะ</strong><small>กำหนดขอบเขตพนักงานและช่วงเวลาที่ต้องการแสดง</small></div></div>
+  <span class="schedule-control-heading-hint-v61529f15m">เลือกเงื่อนไข → โหลดตาราง</span>
+</div>
+<div class="toolbar schedule-toolbar-v61118 schedule-toolbar-v61529f15m">
 <input id="scheduleMonth" type="hidden">
 <input id="schedulePeriodStart" type="hidden">
 <div class="schedule-filter-group-v61118">
 <div class="field"><label>พื้นที่</label><select class="select" id="scheduleZone"><option value="">ทุกพื้นที่</option></select></div>
 <div class="field"><label>หน่วยงาน</label><select class="select" id="scheduleDepartment"><option value="">ทุกหน่วยงาน</option></select></div><div class="field schedule-operational-team-field-v61526"><label>ทีมช่างเทคนิค</label><select class="select" id="scheduleOperationalTeamV61526"><option value="">ทุกทีมช่างเทคนิค</option></select><small id="scheduleOperationalTeamMetaV61526">กำลังโหลด Team Context...</small></div>
 <div class="field"><label>รูปแบบการทำงาน</label><select class="select" id="schedulePatternFilter"><option value="">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option><option value="UNASSIGNED">ยังไม่ได้กำหนด</option></select></div>
-<div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="scheduleSearch" placeholder="รหัสหรือชื่อ"/></div>
+<div class="field schedule-search-field-v61529f15m"><label>ค้นหาพนักงาน</label><div class="schedule-search-input-wrap-v61529f15m"><span aria-hidden="true">⌕</span><input class="input" id="scheduleSearch" placeholder="รหัสพนักงาน / ชื่อ"/></div></div>
 </div>
-<div class="schedule-week-control-v61118">
+<div class="schedule-week-control-v61118 schedule-week-control-v61529f15m">
 <div class="schedule-week-nav-v61118">
 <button class="btn btn-light schedule-week-btn-v61118" id="schedulePrevMonthBtn" title="สัปดาห์ก่อน">‹ <span>สัปดาห์ก่อน</span></button>
 <div class="schedule-period-field schedule-period-field-v61118">
@@ -577,12 +581,14 @@
 </div>
 </input></input></div>
 </div>
-<div id="scheduleLoadStatus" class="schedule-load-status hidden" role="status" aria-live="polite"></div>
-<div aria-live="polite" class="schedule-pattern-summary" id="schedulePatternSummary">
-<button class="pattern-summary-chip active" data-schedule-pattern-chip="" type="button"><span>ทั้งหมด</span><strong id="schedulePatternAllCount">0</strong></button>
-<button class="pattern-summary-chip pattern-5d" data-schedule-pattern-chip="TECH_5D" type="button"><span>5 วัน</span><strong id="schedulePattern5Count">0</strong></button>
-<button class="pattern-summary-chip pattern-6d" data-schedule-pattern-chip="TECH_6D" type="button"><span>6 วัน</span><strong id="schedulePattern6Count">0</strong></button>
-<button class="pattern-summary-chip pattern-unassigned" data-schedule-pattern-chip="UNASSIGNED" type="button"><span>ยังไม่กำหนด</span><strong id="schedulePatternUnknownCount">0</strong></button>
+<div class="schedule-control-footer-v61529f15m">
+  <div id="scheduleLoadStatus" class="schedule-load-status hidden" role="status" aria-live="polite"></div>
+  <div aria-live="polite" class="schedule-pattern-summary" id="schedulePatternSummary">
+    <button class="pattern-summary-chip active" data-schedule-pattern-chip="" type="button"><span>ทั้งหมด</span><strong id="schedulePatternAllCount">0</strong></button>
+    <button class="pattern-summary-chip pattern-5d" data-schedule-pattern-chip="TECH_5D" type="button"><span>5 วัน</span><strong id="schedulePattern5Count">0</strong></button>
+    <button class="pattern-summary-chip pattern-6d" data-schedule-pattern-chip="TECH_6D" type="button"><span>6 วัน</span><strong id="schedulePattern6Count">0</strong></button>
+    <button class="pattern-summary-chip pattern-unassigned" data-schedule-pattern-chip="UNASSIGNED" type="button"><span>ยังไม่กำหนด</span><strong id="schedulePatternUnknownCount">0</strong></button>
+  </div>
 </div>
 </div>
 <div class="schedule-kpi-grid section-gap">

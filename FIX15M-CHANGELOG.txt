@@ -1,0 +1,14 @@
+V6.15.29 FIX15M — Schedule Workspace Header Modernization
+
+Frontend-only. No SQL required.
+
+Changes
+- Rebuilt the Schedule control header into a compact control deck.
+- Five filter fields align cleanly on wide desktop screens.
+- Search has an inline icon and clearer placeholder.
+- Period navigator and Load Schedule action form one compact control rail.
+- Load status and 5D/6D summary chips share one footer strip.
+- Reduced vertical whitespace while preserving all existing IDs and behavior.
+- Responsive layouts for desktop/tablet/mobile.
+- Dark-mode styling included.
+- Borrow / Acting / permission / schedule logic unchanged.

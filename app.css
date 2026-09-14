@@ -25425,3 +25425,377 @@ body.theme-dark .schedule-borrow-window-badge-v61529f15l,html[data-theme="dark"]
 body.theme-dark .employee-month-borrow-scope-banner-v61529f15l,html[data-theme="dark"] .employee-month-borrow-scope-banner-v61529f15l{background:linear-gradient(90deg,#153453,#12263f);border-color:#2b5c8c;color:#b9dbff}
 body.theme-dark .employee-month-borrow-scope-banner-v61529f15l strong,html[data-theme="dark"] .employee-month-borrow-scope-banner-v61529f15l strong{color:#d7eaff}
 body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>small,html[data-theme="dark"] .employee-month-borrow-scope-banner-v61529f15l>div>span,html[data-theme="dark"] .employee-month-borrow-scope-banner-v61529f15l>small{color:#9db8d5}
+
+
+/* ==========================================================================
+   V6.15.29 FIX15M — Schedule Workspace Header Modernization
+   Compact control deck: filters + period navigator + load status in one visual system.
+   ========================================================================== */
+#page-schedule .schedule-control-panel-v61529f15m{
+  position:relative;
+  overflow:hidden;
+  border:1px solid #d9e5f1!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;
+  box-shadow:0 8px 26px rgba(29,78,121,.055)!important;
+}
+#page-schedule .schedule-control-panel-v61529f15m::before{
+  content:"";
+  position:absolute;
+  inset:0 0 auto 0;
+  height:3px;
+  background:linear-gradient(90deg,#60a5fa 0%,#3b82f6 42%,#93c5fd 100%);
+  opacity:.82;
+}
+#page-schedule .schedule-control-panel-body-v61529f15m{
+  padding:15px 17px 13px!important;
+}
+.schedule-control-heading-v61529f15m{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:11px;
+}
+.schedule-control-heading-main-v61529f15m{
+  display:flex;
+  align-items:center;
+  min-width:0;
+  gap:9px;
+}
+.schedule-control-heading-main-v61529f15m>span{
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  flex:0 0 30px;
+  border:1px solid #d6e6f7;
+  border-radius:10px;
+  background:#f1f7fd;
+  color:#2d70ad;
+  font-size:15px;
+  font-weight:900;
+}
+.schedule-control-heading-main-v61529f15m>div{min-width:0}
+.schedule-control-heading-main-v61529f15m strong{
+  display:block;
+  color:#183a5b;
+  font-size:12px;
+  font-weight:900;
+  line-height:1.25;
+}
+.schedule-control-heading-main-v61529f15m small{
+  display:block;
+  margin-top:2px;
+  color:#8294a8;
+  font-size:9px;
+  font-weight:650;
+  line-height:1.35;
+}
+.schedule-control-heading-hint-v61529f15m{
+  display:inline-flex;
+  align-items:center;
+  min-height:25px;
+  padding:4px 9px;
+  border:1px solid #e1e9f2;
+  border-radius:999px;
+  background:#f8fafc;
+  color:#718399;
+  font-size:8.5px;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+#page-schedule .schedule-toolbar-v61529f15m{
+  grid-template-columns:minmax(0,1fr) minmax(575px,650px)!important;
+  align-items:end!important;
+  gap:14px!important;
+  padding:0!important;
+}
+#page-schedule .schedule-filter-group-v61118{
+  grid-template-columns:minmax(125px,.80fr) minmax(170px,1.05fr) minmax(185px,1.12fr) minmax(150px,.90fr) minmax(180px,1fr)!important;
+  gap:9px!important;
+}
+#page-schedule .schedule-filter-group-v61118 .field label{
+  margin-bottom:5px!important;
+  color:#405872!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  line-height:1.2;
+}
+#page-schedule .schedule-filter-group-v61118 .select,
+#page-schedule .schedule-filter-group-v61118 .input{
+  min-height:40px!important;
+  height:40px;
+  border:1px solid #d5e1ed!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  color:#243c55!important;
+  font-size:10.5px!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.018)!important;
+}
+#page-schedule .schedule-filter-group-v61118 .select:hover,
+#page-schedule .schedule-filter-group-v61118 .input:hover{
+  border-color:#b9d1e8!important;
+}
+#page-schedule .schedule-filter-group-v61118 .select:focus,
+#page-schedule .schedule-filter-group-v61118 .input:focus{
+  border-color:#7bb4e9!important;
+  box-shadow:0 0 0 3px rgba(59,130,246,.08)!important;
+}
+#page-schedule .schedule-operational-team-field-v61526 small{
+  display:block;
+  max-width:100%;
+  margin-top:4px;
+  color:#8a9aab;
+  font-size:8px;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.schedule-search-input-wrap-v61529f15m{position:relative}
+.schedule-search-input-wrap-v61529f15m>span{
+  position:absolute;
+  z-index:2;
+  left:11px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#8da0b4;
+  font-size:15px;
+  font-weight:900;
+  pointer-events:none;
+}
+#page-schedule .schedule-search-input-wrap-v61529f15m .input{
+  width:100%;
+  padding-left:32px!important;
+}
+
+#page-schedule .schedule-week-control-v61529f15m{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:stretch!important;
+  gap:7px!important;
+  padding:5px!important;
+  border:1px solid #dbe7f2!important;
+  border-radius:14px!important;
+  background:#f6f9fd!important;
+  box-shadow:none!important;
+}
+#page-schedule .schedule-week-nav-v61118{
+  display:grid!important;
+  grid-template-columns:auto minmax(215px,1fr) auto auto;
+  gap:5px!important;
+  min-width:0;
+}
+#page-schedule .schedule-week-nav-v61118 .btn{
+  min-height:40px!important;
+  height:40px;
+  border-radius:9px!important;
+  padding:0 9px!important;
+  font-size:9.5px!important;
+  box-shadow:none!important;
+}
+#page-schedule .schedule-week-btn-v61118{
+  border-color:#dce6f0!important;
+  background:#fff!important;
+  color:#526a82!important;
+}
+#page-schedule .schedule-week-btn-v61118:hover{
+  border-color:#bcd3e9!important;
+  background:#f9fcff!important;
+  color:#245f99!important;
+}
+#page-schedule .schedule-week-current-v61118{
+  border-color:#c8dcf0!important;
+  background:#edf5fd!important;
+  color:#2a659b!important;
+}
+#page-schedule .schedule-period-field-v61118{
+  min-width:0!important;
+  max-width:none!important;
+  min-height:40px!important;
+  height:40px;
+  padding:4px 10px 5px!important;
+  border:1px solid #c6dbee!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+#page-schedule .schedule-period-caption-v61118{
+  color:#8a9aac!important;
+  font-size:7.5px!important;
+  line-height:1.1;
+}
+#page-schedule .schedule-period-field-v61118 .schedule-period-label{
+  color:#163f68!important;
+  font-size:9.7px!important;
+  font-weight:900!important;
+  line-height:1.2!important;
+}
+#page-schedule .schedule-person-month-inline-v61152{
+  color:#1e5e9a;
+  font-size:12px;
+  font-weight:900;
+}
+#page-schedule .schedule-load-btn-v61118{
+  min-height:40px!important;
+  height:40px;
+  padding:0 13px!important;
+  border-radius:9px!important;
+  background:linear-gradient(180deg,#2e78bc 0%,#2568a8 100%)!important;
+  border-color:#2568a8!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  box-shadow:0 4px 10px rgba(37,104,168,.16)!important;
+}
+#page-schedule .schedule-load-btn-v61118:hover{
+  transform:translateY(-1px);
+  box-shadow:0 7px 14px rgba(37,104,168,.20)!important;
+}
+#page-schedule .schedule-load-btn-v61118>span{font-size:13px!important}
+
+.schedule-control-footer-v61529f15m{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:34px;
+  margin-top:10px;
+  padding-top:9px;
+  border-top:1px solid #e9eff5;
+}
+#page-schedule .schedule-control-footer-v61529f15m .schedule-load-status{
+  flex:1 1 auto;
+  min-width:0;
+  margin:0!important;
+  padding:7px 10px!important;
+  border-radius:9px!important;
+  font-size:9px!important;
+  line-height:1.35!important;
+}
+#page-schedule .schedule-control-footer-v61529f15m .schedule-pattern-summary{
+  flex:0 0 auto;
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px!important;
+  padding:0!important;
+  margin:0!important;
+}
+#page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip{
+  min-height:28px!important;
+  padding:4px 9px!important;
+  border:1px solid #dfe8f1!important;
+  border-radius:999px!important;
+  background:#fff!important;
+  color:#63768b!important;
+  font-size:8.5px!important;
+  box-shadow:none!important;
+}
+#page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip strong{
+  margin-left:4px;
+  color:#2f4a65!important;
+  font-size:9px!important;
+}
+#page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip:hover{
+  border-color:#bfd5ea!important;
+  background:#f8fbff!important;
+}
+#page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip.active{
+  border-color:#8fc0f0!important;
+  background:#eef6ff!important;
+  color:#225f99!important;
+  box-shadow:0 0 0 2px rgba(59,130,246,.04)!important;
+}
+#page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip.active strong{color:#174f85!important}
+
+/* Pull the KPI row visually closer to the control deck without crowding it. */
+#page-schedule .schedule-control-panel-v61529f15m + .schedule-kpi-grid{
+  margin-top:11px!important;
+}
+
+@media(max-width:1580px){
+  #page-schedule .schedule-toolbar-v61529f15m{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+  #page-schedule .schedule-week-control-v61529f15m{width:100%}
+}
+@media(max-width:1120px){
+  #page-schedule .schedule-filter-group-v61118{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  #page-schedule .schedule-search-field-v61529f15m{grid-column:span 2}
+  .schedule-control-footer-v61529f15m{align-items:flex-start;flex-direction:column}
+  #page-schedule .schedule-control-footer-v61529f15m .schedule-pattern-summary{justify-content:flex-start;flex-wrap:wrap}
+}
+@media(max-width:760px){
+  #page-schedule .schedule-control-panel-body-v61529f15m{padding:13px 12px 11px!important}
+  .schedule-control-heading-hint-v61529f15m{display:none}
+  #page-schedule .schedule-filter-group-v61118{grid-template-columns:1fr!important}
+  #page-schedule .schedule-search-field-v61529f15m{grid-column:auto}
+  #page-schedule .schedule-week-control-v61529f15m{grid-template-columns:1fr!important}
+  #page-schedule .schedule-week-nav-v61118{grid-template-columns:auto minmax(150px,1fr) auto!important}
+  #page-schedule .schedule-week-current-v61118{grid-column:1/-1}
+  #page-schedule .schedule-load-btn-v61118{width:100%;margin:0!important}
+}
+
+/* Dark mode */
+html[data-theme="dark"] #page-schedule .schedule-control-panel-v61529f15m,
+body.theme-dark #page-schedule .schedule-control-panel-v61529f15m,
+body.dark #page-schedule .schedule-control-panel-v61529f15m{
+  background:linear-gradient(180deg,#102238 0%,#0e1d30 100%)!important;
+  border-color:#29425d!important;
+  box-shadow:0 10px 26px rgba(2,8,20,.28)!important;
+}
+html[data-theme="dark"] .schedule-control-heading-main-v61529f15m strong,
+body.theme-dark .schedule-control-heading-main-v61529f15m strong,
+body.dark .schedule-control-heading-main-v61529f15m strong{color:#e6eef8}
+html[data-theme="dark"] .schedule-control-heading-main-v61529f15m small,
+html[data-theme="dark"] .schedule-control-heading-hint-v61529f15m,
+body.theme-dark .schedule-control-heading-main-v61529f15m small,
+body.theme-dark .schedule-control-heading-hint-v61529f15m,
+body.dark .schedule-control-heading-main-v61529f15m small,
+body.dark .schedule-control-heading-hint-v61529f15m{color:#8fa4bb}
+html[data-theme="dark"] .schedule-control-heading-main-v61529f15m>span,
+body.theme-dark .schedule-control-heading-main-v61529f15m>span,
+body.dark .schedule-control-heading-main-v61529f15m>span{background:#17304d;border-color:#2a4a6c;color:#8bc7ff}
+html[data-theme="dark"] .schedule-control-heading-hint-v61529f15m,
+body.theme-dark .schedule-control-heading-hint-v61529f15m,
+body.dark .schedule-control-heading-hint-v61529f15m{background:#13263e;border-color:#2a405a}
+html[data-theme="dark"] #page-schedule .schedule-filter-group-v61118 .field label,
+body.theme-dark #page-schedule .schedule-filter-group-v61118 .field label,
+body.dark #page-schedule .schedule-filter-group-v61118 .field label{color:#b9c8d9!important}
+html[data-theme="dark"] #page-schedule .schedule-filter-group-v61118 .select,
+html[data-theme="dark"] #page-schedule .schedule-filter-group-v61118 .input,
+body.theme-dark #page-schedule .schedule-filter-group-v61118 .select,
+body.theme-dark #page-schedule .schedule-filter-group-v61118 .input,
+body.dark #page-schedule .schedule-filter-group-v61118 .select,
+body.dark #page-schedule .schedule-filter-group-v61118 .input{background:#142840!important;border-color:#2a435f!important;color:#e6eef8!important}
+html[data-theme="dark"] #page-schedule .schedule-week-control-v61529f15m,
+body.theme-dark #page-schedule .schedule-week-control-v61529f15m,
+body.dark #page-schedule .schedule-week-control-v61529f15m{background:#0d1c2e!important;border-color:#29425d!important}
+html[data-theme="dark"] #page-schedule .schedule-week-btn-v61118,
+html[data-theme="dark"] #page-schedule .schedule-period-field-v61118,
+body.theme-dark #page-schedule .schedule-week-btn-v61118,
+body.theme-dark #page-schedule .schedule-period-field-v61118,
+body.dark #page-schedule .schedule-week-btn-v61118,
+body.dark #page-schedule .schedule-period-field-v61118{background:#152a43!important;border-color:#2a4664!important;color:#b9cbe0!important}
+html[data-theme="dark"] #page-schedule .schedule-week-current-v61118,
+body.theme-dark #page-schedule .schedule-week-current-v61118,
+body.dark #page-schedule .schedule-week-current-v61118{background:#18395b!important;border-color:#2e5b87!important;color:#bfe0ff!important}
+html[data-theme="dark"] #page-schedule .schedule-period-field-v61118 .schedule-period-label,
+body.theme-dark #page-schedule .schedule-period-field-v61118 .schedule-period-label,
+body.dark #page-schedule .schedule-period-field-v61118 .schedule-period-label{color:#d9eaff!important}
+html[data-theme="dark"] .schedule-control-footer-v61529f15m,
+body.theme-dark .schedule-control-footer-v61529f15m,
+body.dark .schedule-control-footer-v61529f15m{border-color:#263b53}
+html[data-theme="dark"] #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip,
+body.theme-dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip,
+body.dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip{background:#13263e!important;border-color:#2a405a!important;color:#aebed1!important}
+html[data-theme="dark"] #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip strong,
+body.theme-dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip strong,
+body.dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip strong{color:#d6e2ef!important}
+html[data-theme="dark"] #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip.active,
+body.theme-dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip.active,
+body.dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip.active{background:#18395f!important;border-color:#356696!important;color:#cde4ff!important}
