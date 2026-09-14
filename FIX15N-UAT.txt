@@ -1,0 +1,13 @@
+FIX15N UAT
+1) Borrow starts after a Public Holiday in the viewed month.
+   Expected: date stays locked as นอกช่วงยืมตัว, but HOL badge + holiday name are visible.
+2) Borrow ends before a later Public Holiday.
+   Expected: later holiday also remains visible while locked.
+3) Holiday inside Borrow period.
+   Expected: existing schedule behavior remains; HOL calendar marker/list is visible.
+4) Quick filter นักขัตฤกษ์.
+   Expected: finds company holidays even outside Borrow window.
+5) Holiday list at bottom.
+   Expected: shows all company Public Holidays in the selected month; no false “ไม่มี...” message.
+6) Permission.
+   Expected: destination Manager still cannot view/edit source schedule outside Borrow period.

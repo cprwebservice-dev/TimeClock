@@ -1,0 +1,18 @@
+V6.15.29 FIX15N — Borrow Public Holiday Visibility
+
+Root cause
+- Monthly Personal used canonical employee schedule rows as the only holiday source.
+- Borrow destination schedule access is intentionally effective-date scoped.
+- Outside the Borrow window there is no employee schedule row, so Public Holiday
+  metadata disappeared together with the schedule row.
+
+Fix
+- Add read-only company holiday calendar RPC: ta_get_calendar_holidays_v61529f15n.
+- Monthly Personal loads company holidays independently from employee Schedule Scope.
+- Public Holidays remain visible/listed/filterable on locked out-of-Borrow dates.
+- Locked dates still do NOT expose source Manager schedule/shift data and remain non-editable.
+- Holiday KPI/list now use the company calendar even when every date is outside Borrow Scope.
+
+Security
+- No employee/team/schedule data is exposed by the holiday RPC.
+- authenticated only; anon remains blocked.

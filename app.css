@@ -25799,3 +25799,101 @@ body.dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-ch
 html[data-theme="dark"] #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip.active,
 body.theme-dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip.active,
 body.dark #page-schedule .schedule-control-footer-v61529f15m .pattern-summary-chip.active{background:#18395f!important;border-color:#356696!important;color:#cde4ff!important}
+
+/* ========================================================================== */
+/* V6.15.29 FIX15N — Public Holiday visibility outside Borrow effective scope */
+/* Company holiday calendar is visible even when employee schedule is locked. */
+/* ========================================================================== */
+.employee-month-calendar-holiday-badge-v61529f15n{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  height:20px;
+  padding:0 7px;
+  border-radius:999px;
+  border:1px solid #fed7aa;
+  background:#fff7ed;
+  color:#c2410c;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.04em;
+  box-shadow:0 1px 2px rgba(124,45,18,.05);
+}
+.employee-month-day.is-calendar-public-holiday-v61529f15n.month-day-kind-scope-v61529f15c{
+  border-color:#fdba74;
+  background:linear-gradient(180deg,#fffaf4 0%,#f8fafc 34%,#f1f5f9 100%);
+}
+.employee-month-day.is-calendar-public-holiday-v61529f15n.month-day-kind-scope-v61529f15c .employee-month-date-v61127 strong{
+  color:#c2410c;
+  border-color:#fed7aa;
+  background:#fff7ed;
+}
+.employee-month-scope-holiday-v61529f15n{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  margin-top:1px;
+  padding:5px 7px;
+  border:1px solid #fed7aa;
+  border-radius:9px;
+  background:#fff7ed;
+  color:#9a3412;
+  line-height:1.2;
+}
+.employee-month-scope-holiday-v61529f15n span{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:24px;
+  height:17px;
+  padding:0 5px;
+  border-radius:999px;
+  background:#ffedd5;
+  color:#c2410c;
+  font-size:8px;
+  font-weight:900;
+}
+.employee-month-scope-holiday-v61529f15n b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:9px;
+  font-weight:800;
+  color:#9a3412;
+}
+html[data-theme="dark"] .employee-month-calendar-holiday-badge-v61529f15n,
+body.theme-dark .employee-month-calendar-holiday-badge-v61529f15n,
+body.dark .employee-month-calendar-holiday-badge-v61529f15n{
+  border-color:rgba(251,146,60,.34);
+  background:rgba(154,52,18,.22);
+  color:#fdba74;
+}
+html[data-theme="dark"] .employee-month-day.is-calendar-public-holiday-v61529f15n.month-day-kind-scope-v61529f15c,
+body.theme-dark .employee-month-day.is-calendar-public-holiday-v61529f15n.month-day-kind-scope-v61529f15c,
+body.dark .employee-month-day.is-calendar-public-holiday-v61529f15n.month-day-kind-scope-v61529f15c{
+  border-color:rgba(251,146,60,.42);
+  background:linear-gradient(180deg,rgba(124,45,18,.18),rgba(30,41,59,.94) 36%,rgba(15,23,42,.96));
+}
+html[data-theme="dark"] .employee-month-scope-holiday-v61529f15n,
+body.theme-dark .employee-month-scope-holiday-v61529f15n,
+body.dark .employee-month-scope-holiday-v61529f15n{
+  border-color:rgba(251,146,60,.28);
+  background:rgba(124,45,18,.2);
+  color:#fdba74;
+}
+html[data-theme="dark"] .employee-month-scope-holiday-v61529f15n span,
+body.theme-dark .employee-month-scope-holiday-v61529f15n span,
+body.dark .employee-month-scope-holiday-v61529f15n span{
+  background:rgba(154,52,18,.32);
+  color:#fed7aa;
+}
+html[data-theme="dark"] .employee-month-scope-holiday-v61529f15n b,
+body.theme-dark .employee-month-scope-holiday-v61529f15n b,
+body.dark .employee-month-scope-holiday-v61529f15n b{
+  color:#fdba74;
+}

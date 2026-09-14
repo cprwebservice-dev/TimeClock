@@ -90,3 +90,9 @@ FIX15I:
 FIX15M:
 - Frontend-only Schedule Workspace Header Modernization.
 - No SQL required. Deploy over FIX15L and hard refresh.
+
+
+FIX15N:
+- Run FIX15N SQL + Verify before deploying this ZIP.
+- Public Holiday calendar remains visible on Borrow dates outside destination schedule scope.
+- Source schedule remains hidden/locked outside Borrow effective dates.

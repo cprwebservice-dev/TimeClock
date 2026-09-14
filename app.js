@@ -8403,6 +8403,7 @@ window.tcIsDayShiftCode = value =>
       month: '',
       scheduleRows: [],
       attendanceRows: [],
+      holidayRows: [],
       dayoffBalance: null,
       timePunchRows: [],
       timePunchLoading: false,
@@ -8440,6 +8441,7 @@ window.tcIsDayShiftCode = value =>
       return {
         scheduleRows: employeeMonthCloneRowsV61138(cached.scheduleRows),
         attendanceRows: employeeMonthCloneRowsV61138(cached.attendanceRows),
+        holidayRows: employeeMonthCloneRowsV61138(cached.holidayRows),
         dayoffBalance: cached.dayoffBalance && typeof cached.dayoffBalance === 'object'
           ? { ...cached.dayoffBalance }
           : null,
@@ -8447,11 +8449,12 @@ window.tcIsDayShiftCode = value =>
       };
     }
 
-    function employeeMonthCacheSetV61138(empCode, monthValue, scheduleRows, attendanceRows, dayoffBalance = null) {
+    function employeeMonthCacheSetV61138(empCode, monthValue, scheduleRows, attendanceRows, dayoffBalance = null, holidayRows = []) {
       const key = employeeMonthCacheKeyV61138(empCode, monthValue);
       employeeMonthCacheV61138.set(key, {
         scheduleRows: employeeMonthCloneRowsV61138(scheduleRows),
         attendanceRows: employeeMonthCloneRowsV61138(attendanceRows),
+        holidayRows: employeeMonthCloneRowsV61138(holidayRows),
         dayoffBalance: dayoffBalance && typeof dayoffBalance === 'object'
           ? { ...dayoffBalance }
           : null,
@@ -9280,13 +9283,25 @@ window.tcIsDayShiftCode = value =>
           'โหลดโควต้าวันหยุด Monthly Personal V6.14.30'
         );
 
+        // FIX15N: Public holidays must not depend on employee Schedule Scope.
+        // This read-only calendar RPC contains no employee/team/schedule data.
+        const holidayCalendarPromise = employeeMonthWithTimeoutV61427(
+          state.client.rpc('ta_get_calendar_holidays_v61529f15n', {
+            p_start_date: bounds.start,
+            p_end_date: bounds.end
+          }),
+          10000,
+          'โหลดวันหยุดนักขัตฤกษ์ Monthly Personal FIX15N'
+        );
+
         const settled = await Promise.allSettled([
           schedulePromise,
           workPlanPromise,
           attendancePromise,
           punchPromise,
           certificationPromise,
-          dayoffBalancePromise
+          dayoffBalancePromise,
+          holidayCalendarPromise
         ]);
 
         const [
@@ -9295,7 +9310,8 @@ window.tcIsDayShiftCode = value =>
           attendanceResult,
           punchResult,
           certificationResult,
-          dayoffBalanceResult
+          dayoffBalanceResult,
+          holidayCalendarResult
         ] = settled;
 
         // Schedule is the structural source of the monthly calendar. After adaptive
@@ -9318,6 +9334,12 @@ window.tcIsDayShiftCode = value =>
         const dayoffBalanceResponse = dayoffBalanceResult.status === 'fulfilled'
           ? dayoffBalanceResult.value
           : { data: null, error: dayoffBalanceResult.reason };
+        const holidayCalendarResponse = holidayCalendarResult.status === 'fulfilled'
+          ? holidayCalendarResult.value
+          : { data: [], error: holidayCalendarResult.reason };
+        const holidayRows = !holidayCalendarResponse?.error
+          ? (holidayCalendarResponse?.data || []).map(row => ({ ...row }))
+          : [];
         const dayoffBalance = !dayoffBalanceResponse?.error
           && dayoffBalanceResponse?.data
           && typeof dayoffBalanceResponse.data === 'object'
@@ -9328,6 +9350,12 @@ window.tcIsDayShiftCode = value =>
           console.info(
             'Monthly Personal canonical day-off balance unavailable; effective-schedule fallback will be used.',
             scheduleRpcErrorSummaryV6126(dayoffBalanceResponse.error).message || 'DAYOFF_BALANCE_UNAVAILABLE'
+          );
+        }
+        if (holidayCalendarResponse?.error) {
+          console.info(
+            'Monthly Personal FIX15N holiday calendar unavailable; schedule-row holiday fallback will be used.',
+            scheduleRpcErrorSummaryV6126(holidayCalendarResponse.error).message || 'HOLIDAY_CALENDAR_UNAVAILABLE'
           );
         }
 
@@ -9427,12 +9455,14 @@ window.tcIsDayShiftCode = value =>
           bounds.value,
           scheduleRows,
           attendanceRows,
-          dayoffBalance
+          dayoffBalance,
+          holidayRows
         );
 
         return {
           scheduleRows,
           attendanceRows,
+          holidayRows,
           dayoffBalance,
           savedAt: Date.now(),
           source: 'NETWORK'
@@ -9580,10 +9610,10 @@ window.tcIsDayShiftCode = value =>
       })[String(filterKey || 'all')] || 'ทั้งหมด';
     }
 
-    function employeeMonthPublicHolidayV61480(scheduleRow, shift = null) {
+    function employeeMonthPublicHolidayV61480(scheduleRow, shift = null, holidayRow = null) {
       const row = scheduleRow || {};
       const dayType = String(row?.day_type || '').trim().toUpperCase();
-      const resolvedShift = shift || scheduleResolveShiftMeta(row);
+      const resolvedShift = shift || (scheduleRow ? scheduleResolveShiftMeta(row) : null);
       const shiftCode = String(
         row?.assigned_shift_code
         || row?.effective_shift_code
@@ -9591,7 +9621,8 @@ window.tcIsDayShiftCode = value =>
         || ''
       ).trim().toUpperCase();
       return Boolean(
-        row?.is_public_holiday
+        holidayRow?.holiday_date
+        || row?.is_public_holiday
         || dayType === 'PUBLIC_HOLIDAY'
         || resolvedShift?.tone === 'holiday'
         || shiftCode === 'HOL'
@@ -9610,10 +9641,16 @@ window.tcIsDayShiftCode = value =>
       const rawPunchDay = context.rawPunchDay || null;
       const flags = canonical?.flags || null;
       const statusMeta = canonical?.statusMeta || null;
-      const publicHoliday = employeeMonthPublicHolidayV61480(scheduleRow, shift);
+      const holidayRow = context.holidayRow || null;
+      const publicHoliday = employeeMonthPublicHolidayV61480(scheduleRow, shift, holidayRow);
       const scopeGap = context.scopeGap || null;
 
-      if (employmentState !== 'ACTIVE' || scopeGap) return false;
+      if (employmentState !== 'ACTIVE') return false;
+      // FIX15N: Public Holiday is a company calendar fact, not employee schedule data.
+      // It remains visible/filterable even when the destination Manager is outside
+      // the effective Borrow window. Other employee-specific filters stay blocked.
+      if (key === 'holiday') return publicHoliday;
+      if (scopeGap) return false;
 
       if (key === 'work') {
         return Boolean(
@@ -9641,18 +9678,29 @@ window.tcIsDayShiftCode = value =>
       if (key === 'early') return Boolean(flags?.early);
       if (key === 'split') return Boolean(specialMode && ['customer','wait'].includes(String(specialMode.key || '')));
       if (key === 'anomaly') return Boolean(flags && (flags.absence || flags.late || flags.early));
-      if (key === 'holiday') return publicHoliday;
       if (key === 'certified') return Boolean(timeCertificationActiveV61139(attendanceRow || canonical?.merged || {}));
       if (key === 'multipunch') return Boolean(rawPunchDay?.multiple);
       if (key === 'pending') return Boolean(flags?.upcoming || String(statusMeta?.status || '').toUpperCase() === 'UNPROCESSED');
       return true;
     }
 
-    function renderEmployeeMonthHolidayListV61153(scheduleRows = []) {
+    function renderEmployeeMonthHolidayListV61153(scheduleRows = [], holidayRows = []) {
       const root = $('employeeMonthHolidayItemsV61153');
       if (!root) return;
 
       const holidayMap = new Map();
+
+      // FIX15N: Company holiday calendar is independent from employee visibility.
+      // Load it first so Borrow dates outside destination scope still show HOL.
+      (holidayRows || []).forEach(row => {
+        const workDate = String(row?.holiday_date || row?.work_date || '').slice(0,10);
+        if (!workDate) return;
+        const name = String(row?.holiday_name || 'วันหยุดนักขัตฤกษ์').trim();
+        holidayMap.set(workDate, {
+          workDate,
+          name: name || 'วันหยุดนักขัตฤกษ์'
+        });
+      });
 
       (scheduleRows || []).forEach(row => {
         const workDate = String(row?.work_date || '').slice(0,10);
@@ -9747,8 +9795,14 @@ window.tcIsDayShiftCode = value =>
       const bounds = employeeMonthBoundsV61121(employeeMonthCalendarStateV61121.month);
       const scheduleRows = employeeMonthCalendarStateV61121.scheduleRows || [];
       const attendanceRows = employeeMonthCalendarStateV61121.attendanceRows || [];
+      const holidayRows = employeeMonthCalendarStateV61121.holidayRows || [];
       const scheduleByDate = new Map(scheduleRows.map(row => [String(row.work_date || '').slice(0,10), row]));
       const attendanceByDate = new Map(attendanceRows.map(row => [String(row.work_date || '').slice(0,10), row]));
+      const holidayByDateV61529F15N = new Map(
+        holidayRows
+          .map(row => [String(row?.holiday_date || row?.work_date || '').slice(0,10), row])
+          .filter(([date]) => Boolean(date))
+      );
       const rawPunchStatsV61460 = employeeMonthPunchStatsV61460();
       const rawPunchByDateV61460 = rawPunchStatsV61460.byDay;
       employeeMonthUpdatePunchButtonV61460();
@@ -9917,6 +9971,14 @@ window.tcIsDayShiftCode = value =>
           workDateV61480,
           employmentStateV61480
         );
+        const holidayRowV61529F15N = holidayByDateV61529F15N.get(workDateV61480) || null;
+        const scheduleShiftV61529F15N = scheduleRowV61480
+          ? scheduleResolveShiftMeta(scheduleRowV61480)
+          : null;
+        // FIX15N: count company holidays even outside destination Borrow Scope.
+        if (employeeMonthPublicHolidayV61480(scheduleRowV61480, scheduleShiftV61529F15N, holidayRowV61529F15N)) {
+          holidayDaysV61480 += 1;
+        }
         if (scopeGapV61529F15C) continue;
         const canonicalV61480 = employeeMonthCanonicalDayV61467(
           scheduleRowV61480,
@@ -9925,9 +9987,8 @@ window.tcIsDayShiftCode = value =>
           employmentStateV61480
         );
         const shiftV61480 = scheduleRowV61480
-          ? scheduleResolveShiftMeta(scheduleRowV61480)
+          ? scheduleShiftV61529F15N
           : (canonicalV61480?.merged ? scheduleResolveShiftMeta(canonicalV61480.merged) : { tone:'off', isWorking:false });
-        if (employeeMonthPublicHolidayV61480(scheduleRowV61480, shiftV61480)) holidayDaysV61480 += 1;
         if (
           canonicalV61480?.flags?.upcoming
           || String(canonicalV61480?.statusMeta?.status || '').toUpperCase() === 'UNPROCESSED'
@@ -9966,7 +10027,7 @@ window.tcIsDayShiftCode = value =>
           <small class="employee-month-quick-filter-help-v61480">เลือกได้ครั้งละ 1 เงื่อนไข • กดซ้ำหรือกด “ทั้งหมด” เพื่อยกเลิก</small>`;
       }
 
-      renderEmployeeMonthHolidayListV61153(scheduleRows);
+      renderEmployeeMonthHolidayListV61153(scheduleRows, holidayRows);
 
       const dowNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
       const firstDow = new Date(bounds.year, bounds.month - 1, 1).getDay();
@@ -9983,6 +10044,7 @@ window.tcIsDayShiftCode = value =>
           : '';
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;
+        const holidayRowV61529F15N = holidayByDateV61529F15N.get(workDate) || null;
         const employmentStateV61429 = employeeMonthEmploymentStateV61429(scheduleRows,workDate);
         const scopeGapV61529F15C = employeeMonthScopeGapMetaV61529F15C(
           scheduleRow,
@@ -10031,9 +10093,16 @@ window.tcIsDayShiftCode = value =>
           attendanceHasWorkingShiftOverrideV61155(scheduleRow || merged);
 
         const calendarHoliday = Boolean(
-          scheduleRow?.is_public_holiday
+          holidayRowV61529F15N?.holiday_date
+          || scheduleRow?.is_public_holiday
           || scheduleRow?.day_type === 'PUBLIC_HOLIDAY'
         );
+        const calendarHolidayNameV61529F15N = String(
+          holidayRowV61529F15N?.holiday_name
+          || scheduleRow?.holiday_name
+          || scheduleRow?.public_holiday_name
+          || 'วันหยุดนักขัตฤกษ์'
+        ).trim() || 'วันหยุดนักขัตฤกษ์';
 
         const naturalWeeklyOff = Boolean(
           scheduleRow?.is_weekly_off
@@ -10087,13 +10156,14 @@ window.tcIsDayShiftCode = value =>
           shift,
           specialMode: specialModeV61459,
           rawPunchDay: rawPunchDayV61460,
-          scopeGap: scopeGapV61529F15C
+          scopeGap: scopeGapV61529F15C,
+          holidayRow: holidayRowV61529F15N
         });
 
-        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)} ${activeMonthFilterV61480!=='all' && !dayMatchesFilterV61480 ? 'is-filter-muted-v61479' : ''} ${activeMonthFilterV61480!=='all' && dayMatchesFilterV61480 ? 'is-filter-hit-v61479' : ''}" data-month-date="${safe(workDate)}" data-filter-match="${dayMatchesFilterV61480 ? '1' : '0'}">
+        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${calendarHoliday?'is-calendar-public-holiday-v61529f15n':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)} ${activeMonthFilterV61480!=='all' && !dayMatchesFilterV61480 ? 'is-filter-muted-v61479' : ''} ${activeMonthFilterV61480!=='all' && dayMatchesFilterV61480 ? 'is-filter-hit-v61479' : ''}" data-month-date="${safe(workDate)}" data-filter-match="${dayMatchesFilterV61480 ? '1' : '0'}">
           <div class="employee-month-day-head">
             <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
-            <div class="employee-month-day-head-actions-v61460">${rawPunchIndicatorV61460}<span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span></div>
+            <div class="employee-month-day-head-actions-v61460">${rawPunchIndicatorV61460}${calendarHoliday ? `<span class="employee-month-calendar-holiday-badge-v61529f15n" title="${safe(calendarHolidayNameV61529F15N)}">HOL</span>` : ''}<span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span></div>
           </div>
 
           ${employmentStateV61429 !== 'ACTIVE' ? `
@@ -10105,6 +10175,7 @@ window.tcIsDayShiftCode = value =>
             <div class="employee-month-scope-lock-v61529f15c employee-month-scope-lock-v61529f15l" title="${safe(scopeGapV61529F15C.detail)}">
               <div class="employee-month-scope-lock-icon-v61529f15c" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></div>
               <strong>${safe(scopeGapV61529F15C.borrow?'นอกช่วงยืมตัว':'นอกขอบเขต')}</strong>
+              ${calendarHoliday ? `<div class="employee-month-scope-holiday-v61529f15n" title="${safe(calendarHolidayNameV61529F15N)}"><span>HOL</span><b>${safe(calendarHolidayNameV61529F15N)}</b></div>` : ''}
             </div>
           ` : `
             <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
@@ -10148,7 +10219,7 @@ window.tcIsDayShiftCode = value =>
       if (editHintV61529F15C) {
         editHintV61529F15C.classList.toggle('hidden', !canEdit);
         editHintV61529F15C.textContent = canEdit && borrowDestinationContextV61529F15C?.isBorrowDestination
-          ? 'คลิก “จัดกะ” ได้เฉพาะวันที่อยู่ในช่วงยืมตัว • วันนอกช่วงจะแสดงเป็นล็อกและไม่ถูกนับเป็นวันหยุด/รอประมวลผล'
+          ? 'คลิก “จัดกะ” ได้เฉพาะวันที่อยู่ในช่วงยืมตัว • วันนอกช่วงจะแสดงเป็นล็อกและไม่ถูกนับเป็นวันหยุดประจำสัปดาห์/รอประมวลผล • วันหยุดนักขัตฤกษ์ยังแสดงตามปฏิทินบริษัท'
           : 'คลิก “จัดกะ” ในแต่ละวันเพื่อแก้ไข';
       }
       modal.classList.remove('hidden');
@@ -10203,6 +10274,7 @@ window.tcIsDayShiftCode = value =>
       if (cached) {
         employeeMonthCalendarStateV61121.scheduleRows = cached.scheduleRows;
         employeeMonthCalendarStateV61121.attendanceRows = cached.attendanceRows;
+        employeeMonthCalendarStateV61121.holidayRows = cached.holidayRows || [];
         employeeMonthCalendarStateV61121.dayoffBalance = cached.dayoffBalance || null;
         renderEmployeeMonthCalendarV61121();
       } else if ($('employeeMonthScheduleGrid')) {
@@ -10224,6 +10296,8 @@ window.tcIsDayShiftCode = value =>
           employeeMonthCloneRowsV61138(bundle.scheduleRows);
         employeeMonthCalendarStateV61121.attendanceRows =
           employeeMonthCloneRowsV61138(bundle.attendanceRows);
+        employeeMonthCalendarStateV61121.holidayRows =
+          employeeMonthCloneRowsV61138(bundle.holidayRows);
         employeeMonthCalendarStateV61121.dayoffBalance =
           bundle.dayoffBalance && typeof bundle.dayoffBalance === 'object'
             ? { ...bundle.dayoffBalance }
