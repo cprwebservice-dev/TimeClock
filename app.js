@@ -4134,7 +4134,14 @@ window.tcIsDayShiftCode = value =>
         state.dashboard = Array.isArray(data) ? data[0] : data;
         renderDashboard(state.dashboard || {});
       } catch (err) { toast(humanError(err), "error"); }
-      finally { hideLoading(); }
+      finally {
+        scheduleAssignmentSaveInFlightV61530 = false;
+        if (scheduleSaveButtonV61530) {
+          scheduleSaveButtonV61530.disabled = false;
+          scheduleSaveButtonV61530.removeAttribute("aria-busy");
+        }
+        hideLoading();
+      }
     }
 
     function renderDashboard(d) {
@@ -11530,6 +11537,8 @@ window.tcIsDayShiftCode = value =>
       }));
     }
 
+    let scheduleAssignmentSaveInFlightV61530 = false;
+
     async function saveAssignment() {
       const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
         [val("assignWorkDate")],
@@ -11609,6 +11618,17 @@ window.tcIsDayShiftCode = value =>
           "error"
         );
         return;
+      }
+
+      if (scheduleAssignmentSaveInFlightV61530) {
+        toast("กำลังบันทึกกะ กรุณารอให้รายการปัจจุบันเสร็จก่อน", "info");
+        return;
+      }
+      scheduleAssignmentSaveInFlightV61530 = true;
+      const scheduleSaveButtonV61530 = $("saveAssignmentBtn");
+      if (scheduleSaveButtonV61530) {
+        scheduleSaveButtonV61530.disabled = true;
+        scheduleSaveButtonV61530.setAttribute("aria-busy", "true");
       }
 
       const scheduleSaveStartedV6144 = performance.now();
