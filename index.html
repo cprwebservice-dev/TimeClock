@@ -1652,6 +1652,7 @@
         <div class="team-temp-head-actions-v61529f14b">
           <span class="badge badge-gray" id="teamTempAuthorityBadgeV61529F14B">กำลังตรวจสิทธิ์</span>
           <button class="btn btn-light" id="teamBorrowBrowserNotificationV61529F15G" type="button" title="รับแจ้งเตือนคำขอยืมตัวและรายการใกล้ครบกำหนด">🔔 เปิดแจ้งเตือน</button>
+          <button class="btn btn-light" id="teamBorrowAuditOpenV61529F15I" type="button" title="ดูประวัติการร้องขอ อนุมัติ ยกเลิก และจบก่อนกำหนด">⌁ ประวัติ / Audit</button>
           <button class="btn btn-light" id="teamTempRefreshV61529F14B">↻ รีเฟรช</button>
           <button class="btn btn-primary" id="teamTempCreateV61529F14B">＋ ขอยืมช่าง</button>
         </div>
@@ -1774,6 +1775,41 @@
       <div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea class="input" id="teamTempActionReasonV61529F14B" rows="3" maxlength="500" placeholder="ระบุเหตุผล"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn btn-light" data-team-temp-action-close-v61529f14b>ยกเลิก</button><button class="btn btn-danger" id="teamTempActionConfirmV61529F14B">ยืนยัน</button></div>
+  </div>
+</div>
+
+<!-- V6.15.29 FIX15I Borrow Audit / History Report modal -->
+<div class="modal-backdrop hidden" id="teamBorrowAuditModalV61529F15I" aria-hidden="true">
+  <div class="modal borrow-audit-modal-v61529f15i" role="dialog" aria-modal="true" aria-labelledby="teamBorrowAuditTitleV61529F15I">
+    <div class="modal-header">
+      <div><span class="eyebrow">BORROW AUDIT · READ ONLY</span><h3 id="teamBorrowAuditTitleV61529F15I">ประวัติการยืมตัวช่าง</h3><p id="teamBorrowAuditSubtitleV61529F15I">ติดตามผู้ร้องขอ ผู้อนุมัติ การยกเลิก และการจบก่อนกำหนดแบบ Audit</p></div>
+      <button class="btn btn-light btn-icon" type="button" data-borrow-audit-close-v61529f15i>×</button>
+    </div>
+    <div class="modal-body borrow-audit-body-v61529f15i">
+      <div class="borrow-audit-kpis-v61529f15i">
+        <article><span>เหตุการณ์ทั้งหมด</span><strong id="borrowAuditKpiTotalV61529F15I">0</strong></article>
+        <article class="create"><span>ส่งคำขอ</span><strong id="borrowAuditKpiCreateV61529F15I">0</strong></article>
+        <article class="approve"><span>อนุมัติ</span><strong id="borrowAuditKpiApproveV61529F15I">0</strong></article>
+        <article class="reject"><span>ไม่อนุมัติ</span><strong id="borrowAuditKpiRejectV61529F15I">0</strong></article>
+        <article class="close"><span>ยกเลิก / จบก่อน</span><strong id="borrowAuditKpiCloseV61529F15I">0</strong></article>
+      </div>
+      <div class="borrow-audit-filter-v61529f15i">
+        <div class="field"><label>วันที่เหตุการณ์ ตั้งแต่</label><input class="input" type="date" id="borrowAuditFromV61529F15I"/></div>
+        <div class="field"><label>ถึง</label><input class="input" type="date" id="borrowAuditToV61529F15I"/></div>
+        <div class="field"><label>เหตุการณ์</label><select class="select" id="borrowAuditActionV61529F15I"><option value="ALL">ทั้งหมด</option><option value="CREATE">ส่งคำขอ</option><option value="APPROVE">อนุมัติ</option><option value="REJECT">ไม่อนุมัติ</option><option value="CANCEL">ยกเลิก</option><option value="END_EARLY">จบก่อนกำหนด</option></select></div>
+        <div class="field borrow-audit-search-v61529f15i"><label>ค้นหา</label><input class="input" id="borrowAuditSearchV61529F15I" placeholder="รหัส / ชื่อ / Team / Manager / ผู้ดำเนินการ"/></div>
+        <div class="borrow-audit-filter-actions-v61529f15i"><button class="btn btn-primary" type="button" id="borrowAuditLoadV61529F15I">ค้นหา</button><button class="btn btn-success" type="button" id="borrowAuditExportV61529F15I">Export CSV</button></div>
+      </div>
+      <div class="borrow-audit-scope-v61529f15i" id="borrowAuditScopeV61529F15I">Audit เป็นข้อมูลอ่านอย่างเดียว · Manager/Acting เห็นเฉพาะรายการในขอบเขตสิทธิ์</div>
+      <div class="table-wrap borrow-audit-table-wrap-v61529f15i">
+        <table class="borrow-audit-table-v61529f15i">
+          <thead><tr><th>วันเวลา</th><th>พนักงาน</th><th>เหตุการณ์</th><th>ต้นทาง → ปลายทาง</th><th>ช่วงยืม</th><th>ผู้ดำเนินการ</th><th>Authority</th><th>เหตุผล / หมายเหตุ</th></tr></thead>
+          <tbody id="borrowAuditBodyV61529F15I"><tr><td colspan="8" class="fc-empty">กดค้นหาเพื่อโหลดประวัติ</td></tr></tbody>
+        </table>
+      </div>
+      <div class="borrow-audit-footer-note-v61529f15i" id="borrowAuditFooterV61529F15I">-</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" type="button" data-borrow-audit-close-v61529f15i>ปิด</button></div>
   </div>
 </div>
 
@@ -3228,6 +3264,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix15g-20260914"></script>
+<script src="./app.js?v=6.15.29-fix15i-20260914"></script>
 </body>
 </html>

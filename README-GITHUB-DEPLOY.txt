@@ -78,3 +78,9 @@ FIX15B AUTH SESSION HARDENING
 - Synchronize Realtime token after SIGNED_IN/TOKEN_REFRESHED
 - Stop Realtime/polling on SIGNED_OUT or expired session
 - No database/SQL change required
+
+FIX15I:
+- Run SQL_ที่ต้องรัน_V6.15.29_FIX15I_BORROW_AUDIT_HISTORY_REPORT.sql
+- Run SQL_สำหรับตรวจสอบ_V6.15.29_FIX15I_BORROW_AUDIT_HISTORY_REPORT.sql (12/12 PASS)
+- Deploy this ZIP and Ctrl+Shift+R
+- Borrow > ประวัติ / Audit is read-only and scoped by HR/Manager/Acting authority.

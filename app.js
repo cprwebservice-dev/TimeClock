@@ -33899,7 +33899,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX15F';
+  const VERSION='6.15.29 FIX15I';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -34096,7 +34096,8 @@ ${names}${extra}
       if(['PENDING_SOURCE','PENDING_DESTINATION','SCHEDULED'].includes(l))out.push(`<button class="btn btn-light btn-sm" data-temp-cancel-v61529f14b="${esc(r.assignment_id)}">ยกเลิก</button>`);
       else if(l==='ACTIVE')out.push(`<button class="btn btn-light btn-sm" data-temp-end-v61529f14b="${esc(r.assignment_id)}">จบก่อนกำหนด</button>`);
     }
-    return out.length?out.join(''):'<span class="team-temp-no-action-v61529f14b">ดูประวัติ</span>';
+    out.push(`<button class="btn btn-light btn-sm" type="button" data-borrow-audit-assignment-v61529f15i="${esc(r.assignment_id)}">⌁ ประวัติ</button>`);
+    return out.join('');
   }
   function renderWorkspace(){
     const rows=filteredRows(),host=$('teamTempListV61529F14B');if(!host)return;
@@ -34369,3 +34370,111 @@ ${names}${extra}
   window.TimeClockBorrowNotificationsV61529F15G={VERSION,state,observeRows,requestPermission,start,stop,markAllRead:()=>rpc('ta_mark_all_borrow_notifications_read_v61529f15g',{})};
 })();
 
+
+
+/* ===== FIX15I Borrow Audit / History Report ===== */
+(() => {
+  "use strict";
+  const VERSION="V6.15.29 FIX15I";
+  const app=()=>window.TimeClockApp;
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const state={rows:[],summary:{},assignmentId:null,loading:false};
+  const pad=n=>String(n).padStart(2,'0');
+  const localIso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const today=()=>localIso(new Date());
+  const addDays=(iso,n)=>{const [y,m,d]=String(iso).slice(0,10).split('-').map(Number);const x=new Date(y,m-1,d);x.setDate(x.getDate()+n);return localIso(x);};
+  const fmtDate=v=>{const m=String(v||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v||'-');};
+  const fmtDateTime=v=>{if(!v)return '-';try{return new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short'}).format(new Date(v));}catch{return String(v);}};
+  function isMissing(error){const raw=String(error?.message||error?.details||error||'');return /ta_get_borrow_audit_v61529f15i|PGRST202|function.*does not exist/i.test(raw);}
+  async function rpc(name,args={}){const c=app()?.state?.client;if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');const {data,error}=await c.rpc(name,args);if(error)throw error;return data;}
+  function human(error){if(isMissing(error))return 'กรุณารัน SQL FIX15I Borrow Audit ก่อนใช้งานหน้านี้';return String(app()?.humanError?.(error)||error?.message||error||'เกิดข้อผิดพลาด').replace(/^Error:\s*/,'');}
+  function actionInfo(action){
+    const a=String(action||'').toUpperCase();
+    const map={
+      CREATE:['ส่งคำขอ','create'],DIRECT_APPROVE:['สร้างและอนุมัติทันที','approve'],APPROVE:['อนุมัติ','approve'],
+      REJECT:['ไม่อนุมัติ','reject'],CANCEL:['ยกเลิก','cancel'],END_EARLY:['จบก่อนกำหนด','end']
+    };
+    const x=map[a]||[a||'-','neutral'];return {label:x[0],tone:x[1]};
+  }
+  function authority(v){
+    const x=String(v||'').toUpperCase();
+    if(x.includes('ACTING_MANAGER'))return 'Acting Manager';
+    if(x==='MANAGER')return 'Manager';
+    if(x==='SOURCE_AND_DESTINATION')return 'Manager ทั้ง 2 ฝั่ง';
+    if(x==='HR_ADMIN')return 'HR Admin';
+    return x||'-';
+  }
+  function setKpis(){
+    const s=state.summary||{},put=(id,v)=>{if($(id))$(id).textContent=Number(v||0).toLocaleString('th-TH');};
+    put('borrowAuditKpiTotalV61529F15I',s.total);put('borrowAuditKpiCreateV61529F15I',s.create);put('borrowAuditKpiApproveV61529F15I',s.approve);put('borrowAuditKpiRejectV61529F15I',s.reject);put('borrowAuditKpiCloseV61529F15I',Number(s.cancel||0)+Number(s.end_early||0));
+  }
+  function render(){
+    setKpis();const body=$('borrowAuditBodyV61529F15I');if(!body)return;
+    const rows=Array.isArray(state.rows)?state.rows:[];
+    if(!rows.length){body.innerHTML='<tr><td colspan="8" class="fc-empty">ไม่พบประวัติตามเงื่อนไข</td></tr>';}
+    else body.innerHTML=rows.map(r=>{
+      const a=actionInfo(r.action_type);
+      const source=[r.source_org_code,r.source_team_code].filter(Boolean).join(' · ')||'-';
+      const dest=[r.destination_org_code,r.destination_team_code].filter(Boolean).join(' · ')||'-';
+      return `<tr>
+        <td><strong>${esc(fmtDateTime(r.created_at))}</strong></td>
+        <td><strong>${esc(r.emp_code||'-')}</strong><small>${esc(r.employee_name||'-')}</small></td>
+        <td><span class="borrow-audit-action-v61529f15i ${esc(a.tone)}">${esc(a.label)}</span></td>
+        <td><strong>${esc(source)}</strong><small>→ ${esc(dest)}</small></td>
+        <td><strong>${esc(fmtDate(r.effective_from))}</strong><small>ถึง ${esc(fmtDate(r.effective_to))}</small></td>
+        <td><strong>${esc(r.actor_email||'-')}</strong><small>${esc(r.requested_by_email&&r.action_type==='CREATE'?`ผู้ร้องขอ: ${r.requested_by_email}`:'')}</small></td>
+        <td>${esc(authority(r.authority_type))}</td>
+        <td><div class="borrow-audit-note-v61529f15i">${esc(r.note||r.assignment_note||'-')}</div></td>
+      </tr>`;
+    }).join('');
+    const foot=$('borrowAuditFooterV61529F15I');if(foot){const total=Number(state.summary?.total||0);foot.textContent=`แสดง ${rows.length.toLocaleString('th-TH')} รายการ${total>rows.length?` จากทั้งหมด ${total.toLocaleString('th-TH')} เหตุการณ์`:''} · Audit อ่านอย่างเดียว`;}
+  }
+  function selectedActions(){const v=String($('borrowAuditActionV61529F15I')?.value||'ALL').toUpperCase();if(v==='ALL')return null;if(v==='CREATE')return ['CREATE','DIRECT_APPROVE'];return [v];}
+  async function load(){
+    if(state.loading)return;state.loading=true;
+    const body=$('borrowAuditBodyV61529F15I');if(body)body.innerHTML='<tr><td colspan="8" class="fc-empty">กำลังโหลดประวัติ...</td></tr>';
+    const btn=$('borrowAuditLoadV61529F15I');if(btn)btn.disabled=true;
+    try{
+      const data=await rpc('ta_get_borrow_audit_v61529f15i',{
+        p_from:$('borrowAuditFromV61529F15I')?.value||null,
+        p_to:$('borrowAuditToV61529F15I')?.value||null,
+        p_search:$('borrowAuditSearchV61529F15I')?.value?.trim()||null,
+        p_actions:selectedActions(),
+        p_assignment_id:state.assignmentId||null,
+        p_limit:1500
+      });
+      state.rows=Array.isArray(data?.rows)?data.rows:[];state.summary=data?.summary||{};
+      const scope=$('borrowAuditScopeV61529F15I');if(scope)scope.textContent=data?.is_hr_admin===true?'HR Admin · เห็นประวัติ Borrow ทั้งหมด · Audit อ่านอย่างเดียว':'Manager / Acting · แสดงเฉพาะรายการต้นทาง/ปลายทางที่อยู่ในขอบเขต Authority · Audit อ่านอย่างเดียว';
+      render();
+    }catch(e){if(body)body.innerHTML=`<tr><td colspan="8" class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</td></tr>`;app()?.toast?.(human(e),'error');}
+    finally{state.loading=false;if(btn)btn.disabled=false;}
+  }
+  function open(assignmentId=null){
+    state.assignmentId=assignmentId?String(assignmentId):null;
+    const modal=$('teamBorrowAuditModalV61529F15I');if(!modal)return;
+    if(!$('borrowAuditToV61529F15I')?.value)$('borrowAuditToV61529F15I').value=today();
+    if(!$('borrowAuditFromV61529F15I')?.value)$('borrowAuditFromV61529F15I').value=addDays(today(),-90);
+    const title=$('teamBorrowAuditTitleV61529F15I'),sub=$('teamBorrowAuditSubtitleV61529F15I');
+    if(title)title.textContent=state.assignmentId?'Timeline รายการยืมตัว':'ประวัติการยืมตัวช่าง';
+    if(sub)sub.textContent=state.assignmentId?'แสดงทุกเหตุการณ์ของรายการที่เลือก · เปลี่ยนช่วงวันที่เพื่อค้นย้อนหลังได้':'ติดตามผู้ร้องขอ ผู้อนุมัติ การยกเลิก และการจบก่อนกำหนดแบบ Audit';
+    modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');load();
+  }
+  function close(){const modal=$('teamBorrowAuditModalV61529F15I');if(modal){modal.classList.add('hidden');modal.setAttribute('aria-hidden','true');}state.assignmentId=null;}
+  function csvCell(v){const s=String(v??'');return /[",\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}
+  function exportCsv(){
+    if(!state.rows.length)return app()?.toast?.('ไม่มีข้อมูล Audit สำหรับ Export','warning');
+    const rows=[['วันเวลา','รหัสพนักงาน','ชื่อ','เหตุการณ์','หน่วยงานต้นทาง','ทีมต้นทาง','หน่วยงานปลายทาง','ทีมปลายทาง','วันที่เริ่ม','วันที่สิ้นสุด','ผู้ดำเนินการ','Authority','ผู้ร้องขอ','เหตุผล/หมายเหตุ']];
+    state.rows.forEach(r=>rows.push([fmtDateTime(r.created_at),r.emp_code,r.employee_name,actionInfo(r.action_type).label,r.source_org_code,r.source_team_code,r.destination_org_code,r.destination_team_code,fmtDate(r.effective_from),fmtDate(r.effective_to),r.actor_email,authority(r.authority_type),r.requested_by_email,r.note||r.assignment_note||'']));
+    const content='\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\n');const blob=new Blob([content],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`Borrow_Audit_${today()}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);app()?.toast?.('Export Borrow Audit เรียบร้อย','success');
+  }
+  function bind(){
+    $('teamBorrowAuditOpenV61529F15I')?.addEventListener('click',()=>open(null));
+    $('borrowAuditLoadV61529F15I')?.addEventListener('click',load);$('borrowAuditExportV61529F15I')?.addEventListener('click',exportCsv);
+    $('borrowAuditSearchV61529F15I')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    document.addEventListener('click',e=>{const h=e.target.closest('[data-borrow-audit-assignment-v61529f15i]');if(h){e.preventDefault();open(h.dataset.borrowAuditAssignmentV61529f15i||null);return;}if(e.target.closest('[data-borrow-audit-close-v61529f15i]')){close();return;}});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('teamBorrowAuditModalV61529F15I')?.classList.contains('hidden'))close();});
+  }
+  window.TimeClockBorrowAuditV61529F15I={VERSION,state,open,close,load,exportCsv};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();

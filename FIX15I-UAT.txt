@@ -1,0 +1,14 @@
+FIX15I UAT — Borrow Audit / History
+
+1. รัน SQL FIX15I และ Verify ต้องได้ 12/12 PASS
+2. Deploy Frontend FIX15I และ Ctrl+Shift+R
+3. Manager ปลายทาง: เปิด “ประวัติ / Audit” ต้องเห็นเฉพาะ Borrow ที่เกี่ยวข้องกับ Authority ของตน
+4. Manager ต้นทาง: เห็นรายการ Borrow ของช่างใน Scope ตน
+5. Acting: เห็นเฉพาะรายการที่อยู่ใน Operational Authority ปัจจุบัน
+6. HR Admin: เห็นรายการ Borrow ทั้งหมด
+7. เปิด Card Borrow แล้วกด “⌁ ประวัติ” ต้อง Focus เฉพาะ Assignment นั้น
+8. Filter CREATE / APPROVE / REJECT / CANCEL / END_EARLY ต้องทำงาน
+9. Search ด้วยรหัสพนักงาน / ชื่อ / Team / Email ต้องทำงาน
+10. Export CSV ต้องเปิดภาษาไทยใน Excel ได้ถูกต้อง
+11. หน้า Audit ต้องไม่มีปุ่มแก้ไข/อนุมัติ/ยกเลิก
+12. Console ต้องไม่มี 401 / 409 / 500 / ReferenceError

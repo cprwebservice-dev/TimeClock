@@ -1,0 +1,12 @@
+V6.15.29 FIX15I — Borrow Audit / History Report
+
+- เพิ่มปุ่ม “ประวัติ / Audit” ในหน้า ยืมตัวช่าง
+- เพิ่ม Timeline ราย Assignment จากปุ่ม “⌁ ประวัติ” บน Card
+- เพิ่ม Audit Modal พร้อม KPI, ช่วงวันที่, ประเภทเหตุการณ์ และ Search
+- แสดง CREATE / APPROVE / REJECT / CANCEL / END_EARLY พร้อมผู้ดำเนินการและ Authority
+- HR Admin เห็น Audit Borrow ทั้งหมด
+- Manager / Acting เห็นเฉพาะรายการที่อยู่ในขอบเขต Authority
+- Direct Audit Table ยังคงปิดสิทธิ์ และอ่านผ่าน SECURITY DEFINER RPC เท่านั้น
+- Export CSV UTF-8 BOM พร้อมเปิดใน Excel ได้
+- Read-only: ไม่มี Action ใดในหน้า Audit ที่แก้ไข Borrow Ledger
+- คง FIX15H V680 guard, FIX15G Notification, FIX15F Workflow, FIX15E/D/C/B/A เดิม
