@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
 window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix14b-final-working-team-authority";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix15e-schedule-save-button-scope";
 
 
 /* ===== js/config.js ===== */
@@ -4134,14 +4134,7 @@ window.tcIsDayShiftCode = value =>
         state.dashboard = Array.isArray(data) ? data[0] : data;
         renderDashboard(state.dashboard || {});
       } catch (err) { toast(humanError(err), "error"); }
-      finally {
-        scheduleAssignmentSaveInFlightV61530 = false;
-        if (scheduleSaveButtonV61530) {
-          scheduleSaveButtonV61530.disabled = false;
-          scheduleSaveButtonV61530.removeAttribute("aria-busy");
-        }
-        hideLoading();
-      }
+      finally { hideLoading(); }
     }
 
     function renderDashboard(d) {
@@ -11954,7 +11947,15 @@ window.tcIsDayShiftCode = value =>
           toast('บันทึกกะเรียบร้อยแล้ว แต่รีเฟรชหน้าจอไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง','warning');
         }
       } catch (err) { toast(humanError(err), "error"); }
-      finally { hideLoading(); }
+      finally {
+        scheduleAssignmentSaveInFlightV61530 = false;
+        const scheduleSaveButtonAfterV61530 = $("saveAssignmentBtn");
+        if (scheduleSaveButtonAfterV61530) {
+          scheduleSaveButtonAfterV61530.disabled = false;
+          scheduleSaveButtonAfterV61530.removeAttribute("aria-busy");
+        }
+        hideLoading();
+      }
     }
 
     async function deleteAssignment() {

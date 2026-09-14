@@ -1,0 +1,19 @@
+TimeClock Enterprise V6.15.29 FIX15E
+Schedule Save Button Scope / Login Runtime Fix
+
+Scope
+- Frontend only. No SQL required.
+- Based on FIX15D concurrency guard build.
+
+Fix
+1. Removed FIX15D save-button cleanup accidentally inserted into loadDashboard().
+2. Restores the save-button cleanup in saveAssignment() finally block where the variable is valid.
+3. Save single-flight flag is always released after success, error, or early return inside try.
+4. Save button is re-enabled and aria-busy removed after each save attempt.
+5. Bumped app.js/app.css cache query key for fresh deployment.
+
+Preserved
+- FIX15D backend 409 concurrency guard.
+- FIX15C Borrow Effective Window UX.
+- FIX15B Auth/Realtime hardening.
+- FIX15A/FIX15 Manager-based Borrow workflow.
