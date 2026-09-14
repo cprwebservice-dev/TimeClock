@@ -1,0 +1,8 @@
+TimeClock Enterprise V6.15.29 FIX15Q — Team Members Borrow Overlay
+
+- Team Membership now shows effective-date Working Members.
+- Permanent membership remains editable and unchanged by Borrow.
+- Borrow-In appears read-only with source Team and effective date range.
+- Permanent members borrowed out remain visible with a temporary-away badge.
+- Summary shows Permanent / Borrow-In / Working Team counts separately.
+- Working Team capacity is shown as a warning only; Borrow business rules are not silently changed.

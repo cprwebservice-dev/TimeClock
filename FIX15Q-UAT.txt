@@ -1,0 +1,9 @@
+FIX15Q UAT
+
+1. Open Team Membership and choose a date before Borrow starts -> borrowed technician must not appear.
+2. Choose a date inside approved Borrow -> technician appears in Borrowed Members as read-only.
+3. Choose a date after Borrow ends -> borrowed technician disappears automatically.
+4. Source Home Team still shows technician as Permanent but with “borrowed out” when the selected date is inside Borrow.
+5. Permanent membership save must not add/remove the Borrow row.
+6. Working count = permanent working here + borrowed in; permanent borrowed out is excluded.
+7. Changing reference/effective date reloads both permanent and temporary views.

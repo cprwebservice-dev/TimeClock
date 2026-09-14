@@ -1,3 +1,4 @@
+V6.15.29 FIX15Q — Team Members Borrow / Working Members Overlay
 TimeClock Enterprise V6.15.29 FIX15O — USER SCOPE + ORG BOUNDARY HARDENING
 - Schedule Organization metadata is now server-scoped by current User authority/date.
 - Browser no longer reads the complete Organization Master directly.

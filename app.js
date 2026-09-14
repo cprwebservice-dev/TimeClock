@@ -33375,7 +33375,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX15B AUTH SESSION';
+  const VERSION='6.15.29 FIX15Q TEAM MEMBERS BORROW OVERLAY';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -33386,7 +33386,7 @@ ${names}${extra}
   const isHr=()=>role()==='HR_ADMIN';
   const toast=(m,t='info')=>app()?.toast?.(m,t);
   const state={
-    orgs:[],teams:[],summary:null,audit:[],activeTab:'OVERVIEW',activeTeam:null,members:[],selected:new Set(),initialMembership:new Set(),membershipLeftPicked:new Set(),membershipRightPicked:new Set(),membershipPreview:null,
+    orgs:[],teams:[],summary:null,audit:[],activeTab:'OVERVIEW',activeTeam:null,members:[],workingMembers:[],selected:new Set(),initialMembership:new Set(),membershipLeftPicked:new Set(),membershipRightPicked:new Set(),membershipPreview:null,
     enforcement:null,enforcementRows:[],enforcementSelected:new Set(),enforcementScope:'TEAM',enforcementModalState:null,runtime:null,runtimeCheckedAt:0,runtimePromise:null,
     opPool:[],opTeams:[],opSelected:new Set(),opLeftPicked:new Set(),opRightPicked:new Set(),opPreview:null,opLoading:false,opMode:'ASSIGN',opPendingSearch:'',
     changeRows:[],enforcementAudit:[],changeChannel:null,changeTimer:null,
@@ -33806,6 +33806,16 @@ ${names}${extra}
     return{added,removed,changed:added>0||removed>0};
   }
   function membershipHasChanges(){return membershipChangeCounts().changed;}
+  function membershipWorkingRowsV61529F15Q(){return Array.isArray(state.workingMembers)?state.workingMembers:[];}
+  function membershipBorrowInRowsV61529F15Q(){return membershipWorkingRowsV61529F15Q().filter(r=>String(r?.member_kind||'').toUpperCase()==='BORROWED_IN');}
+  function membershipBorrowedOutMapV61529F15Q(){return new Map(membershipWorkingRowsV61529F15Q().filter(r=>String(r?.member_kind||'').toUpperCase()==='PERMANENT_BORROWED_OUT').map(r=>[String(r.emp_code),r]));}
+  function membershipPermanentWorkingCountV61529F15Q(){
+    const out=membershipBorrowedOutMapV61529F15Q();let n=0;
+    state.selected.forEach(code=>{if(!out.has(String(code)))n++;});
+    return n;
+  }
+  function membershipWorkingCountV61529F15Q(){return membershipPermanentWorkingCountV61529F15Q()+membershipBorrowInRowsV61529F15Q().length;}
+  function membershipTemporaryLabelV61529F15Q(r){return String(r?.assignment_type||'').toUpperCase()==='BORROW_CROSS_ORG'?'ยืมตัว':'ชั่วคราว';}
   function memberSubline(r){
     const type=r.operational_type||r.car_category||state.activeTeam?.team_category;
     return `${r.position_name||'-'} · ${catIcon(type)} ${catLabel(type)}`;
@@ -33817,10 +33827,13 @@ ${names}${extra}
     if(moveL)moveL.disabled=state.membershipRightPicked.size===0;
     $('teamMembershipSourceCountV61528F1')&&($('teamMembershipSourceCountV61528F1').textContent=`${src.length.toLocaleString('th-TH')} คน`);
     $('teamMembershipTargetCountV61528F1')&&($('teamMembershipTargetCountV61528F1').textContent=`${target.length.toLocaleString('th-TH')} คน`);
+    const borrowedIn=membershipBorrowInRowsV61529F15Q().length,workingCount=membershipWorkingCountV61529F15Q();
     $('teamMembershipCurrentV61528F1')&&($('teamMembershipCurrentV61528F1').textContent=`${state.initialMembership.size.toLocaleString('th-TH')} คน`);
+    $('teamMembershipBorrowedInV61529F15Q')&&($('teamMembershipBorrowedInV61529F15Q').textContent=`${borrowedIn.toLocaleString('th-TH')} คน`);
+    $('teamMembershipWorkingNowV61529F15Q')&&($('teamMembershipWorkingNowV61529F15Q').textContent=`${workingCount.toLocaleString('th-TH')} คน`);
     $('teamMembershipSelectedV61524')&&($('teamMembershipSelectedV61524').textContent=`${state.selected.size.toLocaleString('th-TH')} คน`);
     const delta=$('teamMembershipDeltaV61528F1');if(delta)delta.textContent=chg.changed?`เพิ่ม ${chg.added} · นำออก ${chg.removed}`:'ยังไม่มีการเปลี่ยนแปลง';
-    const cap=$('teamMembershipCapacityV61528F1');if(cap){cap.textContent=p.max!=null?`${state.selected.size} / ${p.max} คน`:`${state.selected.size} คน`;cap.classList.toggle('full',p.max!=null&&state.selected.size>=p.max);cap.classList.toggle('blocked',p.max!=null&&state.selected.size>p.max);}
+    const cap=$('teamMembershipCapacityV61528F1');if(cap){cap.textContent=p.max!=null?`ปฏิบัติงาน ${workingCount} / ${p.max}`:`ปฏิบัติงาน ${workingCount} คน`;cap.classList.toggle('full',p.max!=null&&workingCount>=p.max);cap.classList.toggle('blocked',p.max!=null&&workingCount>p.max);cap.title=p.max!=null&&workingCount>p.max?'จำนวนปฏิบัติงานรวมสมาชิกยืมตัวเกิน Capacity ของทีม กรุณาตรวจรายการยืมตัว':'จำนวนปฏิบัติงาน ณ วันที่อ้างอิง';}
     const strip=$('teamMembershipChangeStripV61528F1');if(strip){const nodes=strip.querySelectorAll('strong');if(nodes[0])nodes[0].textContent=chg.added;if(nodes[1])nodes[1].textContent=chg.removed;if(nodes[2])nodes[2].textContent=!chg.changed?'ยังไม่เปลี่ยน':state.membershipPreview?(state.membershipPreview.allowed?'ผ่าน':'ต้องแก้ไข'):'กำลังตรวจ';strip.classList.toggle('ok',chg.changed&&state.membershipPreview?.allowed===true);strip.classList.toggle('blocked',chg.changed&&state.membershipPreview?.allowed===false);}
     const foot=$('teamMembershipFooterStatusV61528F1');if(foot){if(!chg.changed)foot.textContent='ยังไม่มีการเปลี่ยนแปลง';else if(!state.membershipPreview)foot.textContent='กำลังตรวจผลกระทบ...';else foot.textContent=state.membershipPreview.allowed?'✓ พร้อมบันทึก':'! ยังบันทึกไม่ได้ — ตรวจ Impact Preview';}
   }
@@ -33836,12 +33849,18 @@ ${names}${extra}
       const originCls=wasHere?'removed':cur?'other':'none';
       return `<label class="team-transfer-row-v61528f1 ${state.membershipLeftPicked.has(code)?'picked':''}"><input type="checkbox" data-team-membership-left-check-v61528f1="${esc(code)}" ${state.membershipLeftPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${esc(memberSubline(r))}</span><small class="origin ${originCls}">${esc(origin)}</small></div></label>`;
     }).join(''):'<div class="fc-empty">ไม่พบพนักงานที่สามารถเลือกได้</div>';
+    const borrowedOut=membershipBorrowedOutMapV61529F15Q();
     right.innerHTML=target.length?target.map(r=>{
-      const code=String(r.emp_code),existing=state.initialMembership.has(code),cur=String(r.current_team_code||'');
+      const code=String(r.emp_code),existing=state.initialMembership.has(code),cur=String(r.current_team_code||''),out=borrowedOut.get(code);
       let badge=existing?'สมาชิกเดิม':(cur&&cur!==String(state.activeTeam?.team_code||'')?`ย้ายจาก ${cur}`:'เพิ่มใหม่');
       let cls=existing?'existing':cur?'moved':'added';
-      return `<label class="team-transfer-row-v61528f1 target ${state.membershipRightPicked.has(code)?'picked':''}"><input type="checkbox" data-team-membership-right-check-v61528f1="${esc(code)}" ${state.membershipRightPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${esc(memberSubline(r))}</span><small class="target-badge ${cls}">${esc(badge)}</small></div></label>`;
-    }).join(''):'<div class="fc-empty">ยังไม่มีสมาชิกในทีมหลังบันทึก</div>';
+      let extra='';
+      if(existing&&out){badge=`สมาชิกประจำ · ยืมออก → ${out.destination_team_code||out.destination_org_code||'-'}`;cls='borrowed-out';extra=`<small class="team-borrow-period-v61529f15q">↗ ${esc(membershipTemporaryLabelV61529F15Q(out))} ${esc(fmtDate(out.effective_from))}–${esc(fmtDate(out.effective_to))} · วันนี้ไม่ปฏิบัติงานกับทีมนี้</small>`;}
+      return `<label class="team-transfer-row-v61528f1 target ${state.membershipRightPicked.has(code)?'picked':''} ${out?'temporarily-away-v61529f15q':''}"><input type="checkbox" data-team-membership-right-check-v61528f1="${esc(code)}" ${state.membershipRightPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${esc(memberSubline(r))}</span><small class="target-badge ${cls}">${esc(badge)}</small>${extra}</div></label>`;
+    }).join(''):'<div class="fc-empty">ยังไม่มีสมาชิกประจำในทีมหลังบันทึก</div>';
+    const borrowBox=$('teamMembershipBorrowListV61529F15Q'),borrowRows=membershipBorrowInRowsV61529F15Q();
+    if(borrowBox){borrowBox.innerHTML=borrowRows.length?borrowRows.map(r=>`<article class="team-borrow-overlay-row-v61529f15q"><div class="team-borrow-overlay-icon-v61529f15q">↔</div><div><strong>${esc(r.emp_code||'-')} · ${esc(r.full_name||'-')}</strong><span>${esc(r.position_name||'-')} · ${catIcon(r.operational_type||state.activeTeam?.team_category)} ${esc(catLabel(r.operational_type||state.activeTeam?.team_category))}</span><small><b>${esc(membershipTemporaryLabelV61529F15Q(r))}</b> จาก ${esc(r.source_team_code||r.source_org_code||'-')} · ${esc(fmtDate(r.effective_from))}–${esc(fmtDate(r.effective_to))}</small></div><em>อ่านอย่างเดียว</em></article>`).join(''):'<div class="team-borrow-overlay-empty-v61529f15q">ไม่มีสมาชิกยืมตัวในวันที่อ้างอิง</div>';}
+    const borrowHead=$('teamMembershipBorrowCountV61529F15Q');if(borrowHead)borrowHead.textContent=`${borrowRows.length.toLocaleString('th-TH')} คน`;
     syncMembershipTransferControls();
   }
   function moveMembershipRight(){
@@ -33875,7 +33894,8 @@ ${names}${extra}
       const max=Number(aboveMax.max_members||policy(state.activeTeam?.team_category).max||5),after=Number(aboveMax.after_count||0),over=Math.max(1,after-max);
       recovery=`<div class="team-impact-recovery-v61529f2"><strong>ทีมเกินความจุ</strong><span>นำออกอย่างน้อย ${over} คน หรือเลือก Team ปลายทางอื่นก่อนบันทึก</span></div>`;
     }
-    box.innerHTML=`<div class="team-impact-title-v61528"><strong>Impact Preview ก่อนบันทึก</strong><span class="${p.allowed?'ok':'blocked'}">${p.allowed?'✓ ผ่านทุกเงื่อนไข':'! ต้องแก้ไข'}</span></div><div class="team-impact-target-v61528"><span>${esc(p.team_code||state.activeTeam?.team_code||'-')}</span><strong>${Number(target.before_count??state.initialMembership.size)} → ${Number(target.after_count??state.selected.size)} คน</strong><small>ทีมปลายทาง · ขั้นต่ำ ${Number(target.min_members??policy(state.activeTeam?.team_category).min)}${target.max_members!=null?` · สูงสุด ${Number(target.max_members)}`:policy(state.activeTeam?.team_category).max!=null?` · สูงสุด ${policy(state.activeTeam?.team_category).max}`:' · ไม่จำกัดสูงสุด'}</small></div>${sources.length?`<div class="team-impact-sources-v61528">${sources.map(s=>`<div class="${s.blocked?'blocked':'ok'}"><span>${esc(s.team_code||'-')}</span><strong>${Number(s.before_count||0)} → ${Number(s.after_count||0)} คน</strong><small>${s.blocked?`ต่ำกว่าขั้นต่ำ ${Number(s.min_members||0)}`:Number(s.after_count||0)===0?'ทีมจะกลับเป็นรอสมาชิก':'ผ่าน'}</small></div>`).join('')}</div>`:''}${blockers.length?`<div class="team-impact-blockers-v61528">${blockers.map(b=>`<p>• ${esc(previewBlockerText(b))}</p>`).join('')}</div>`:''}${recovery}`;
+    const workingCount=membershipWorkingCountV61529F15Q(),maxWorking=policy(state.activeTeam?.team_category).max,workingWarn=maxWorking!=null&&workingCount>maxWorking?`<div class="team-working-capacity-warning-v61529f15q"><span>⚠</span><div><strong>จำนวนผู้ปฏิบัติงานรวม ${workingCount} คน เกิน Capacity ${maxWorking} คน</strong><small>ตัวเลขนี้รวมสมาชิกยืมตัว ณ วันที่อ้างอิง · FIX15Q แสดงคำเตือนเพื่อให้ Manager ตรวจ Borrow Workflow โดยไม่แก้ Permanent Membership อัตโนมัติ</small></div></div>`:'';
+    box.innerHTML=`<div class="team-impact-title-v61528"><strong>Impact Preview ก่อนบันทึก</strong><span class="${p.allowed?'ok':'blocked'}">${p.allowed?'✓ ผ่านทุกเงื่อนไข':'! ต้องแก้ไข'}</span></div><div class="team-impact-target-v61528"><span>${esc(p.team_code||state.activeTeam?.team_code||'-')}</span><strong>${Number(target.before_count??state.initialMembership.size)} → ${Number(target.after_count??state.selected.size)} คน</strong><small>สมาชิกประจำ · ขั้นต่ำ ${Number(target.min_members??policy(state.activeTeam?.team_category).min)}${target.max_members!=null?` · สูงสุด ${Number(target.max_members)}`:policy(state.activeTeam?.team_category).max!=null?` · สูงสุด ${policy(state.activeTeam?.team_category).max}`:' · ไม่จำกัดสูงสุด'} · ปฏิบัติงานรวมยืมตัว ${workingCount} คน</small></div>${workingWarn}${sources.length?`<div class="team-impact-sources-v61528">${sources.map(s=>`<div class="${s.blocked?'blocked':'ok'}"><span>${esc(s.team_code||'-')}</span><strong>${Number(s.before_count||0)} → ${Number(s.after_count||0)} คน</strong><small>${s.blocked?`ต่ำกว่าขั้นต่ำ ${Number(s.min_members||0)}`:Number(s.after_count||0)===0?'ทีมจะกลับเป็นรอสมาชิก':'ผ่าน'}</small></div>`).join('')}</div>`:''}${blockers.length?`<div class="team-impact-blockers-v61528">${blockers.map(b=>`<p>• ${esc(previewBlockerText(b))}</p>`).join('')}</div>`:''}${recovery}`;
     const btn=$('teamMembershipSaveV61524');if(btn)btn.disabled=p.allowed!==true||!chg.changed;syncMembershipTransferControls();
   }
   function previewBlockerText(b){const c=String(b?.code||'');if(c==='EMPLOYEE_START_DATE_REQUIRED')return `ไม่พบวันเริ่มงานของพนักงาน ${Number(b.count||0)>0?`${Number(b.count)} คน`:''} กรุณาตรวจ Employee Master`;if(c==='OPERATIONAL_ASSIGN_EFFECTIVE_MUST_CURRENT_MONTH_START')return `ฐานวันที่กำหนดครั้งแรกต้องเป็น ${fmtDate(b.required_date||operationalCurrentMonthStart())} • ระบบจะเลื่อนไปวันเริ่มงานรายคนเมื่อจำเป็น`;if(c==='OPERATIONAL_CHANGE_EFFECTIVE_BEFORE_CURRENT_MONTH')return `ไม่สามารถเปลี่ยนรูปแบบย้อนหลังไปก่อน ${fmtDate(b.minimum_effective_date||operationalCurrentMonthStart())}`;if(c==='OPERATIONAL_CHANGE_EFFECTIVE_BEFORE_START_DATE')return `วันที่มีผลต้องไม่ก่อนวันเริ่มงานพนักงาน • เร็วสุด ${fmtDate(b.minimum_effective_date||b.employee_start_date||operationalCurrentMonthStart())}`;if(c==='OPERATIONAL_CHANGE_EFFECTIVE_TOO_EARLY')return `วันที่มีผลต้องไม่ก่อนวันเริ่มงาน/วันที่กำหนดรูปแบบครั้งแรก • เร็วสุด ${fmtDate(b.minimum_effective_date||operationalCurrentMonthStart())}`;if(c==='OPERATIONAL_PROFILE_MIXED_ASSIGN_CHANGE_NOT_ALLOWED')return 'กรุณาแยก “กำหนดรูปแบบครั้งแรก” และ “เปลี่ยนรูปแบบ” เป็นคนละรายการ';if(c==='TARGET_TEAM_ABOVE_MAX')return `${b.team_code||'ทีม'} จะมี ${b.after_count} คน เกินสูงสุด ${b.max_members}`;if(c==='TARGET_TEAM_BELOW_MIN')return `${b.team_code||'ทีม'} จะมี ${b.after_count} คน ต่ำกว่าขั้นต่ำ ${b.min_members}`;if(c==='SOURCE_TEAM_BELOW_MIN')return b.team_code?`ทีมต้นทาง ${b.team_code} จะเหลือ ${b.after_count??b.remaining??'-'} คน ต่ำกว่าขั้นต่ำ ${b.min_members??'-'}`:'ทีมต้นทางบางทีมจะเหลือสมาชิกต่ำกว่าขั้นต่ำ';if(c==='TEAM_MEMBER_OPERATIONAL_TYPE_MISMATCH')return 'มีพนักงานที่รูปแบบการปฏิบัติงานไม่ตรงกับประเภททีม';if(c==='TEAM_MEMBER_ORG_MISMATCH')return 'มีพนักงานอยู่นอกหน่วยงานของทีม';return c||'ยังไม่ผ่านเงื่อนไข';}
@@ -33893,15 +33913,20 @@ ${names}${extra}
     $('teamMembershipCategoryV61524')&&($('teamMembershipCategoryV61524').textContent=`${catIcon(t.team_category)} ${catLabel(t.team_category)}`);
     $('teamMembershipEffectiveV61524')&&($('teamMembershipEffectiveV61524').value=today());
     $('teamMembershipSearchV61524')&&($('teamMembershipSearchV61524').value='');$('teamMembershipSourceFilterV61528F1')&&($('teamMembershipSourceFilterV61528F1').value='ALL');
-    const p=policy(t.team_category);$('teamMembershipPolicyV61524')&&($('teamMembershipPolicyV61524').innerHTML=`<div><strong>${catIcon(t.team_category)} ${catLabel(t.team_category)}</strong><span>${esc(p.label)}${t.team_category==='MOTORCYCLE'?' · ต้องมีทีมก่อนจัดกะ':''}</span></div><small>เลือกหลายคนด้วย Checkbox แล้วใช้ปุ่มลูกศรเพื่อเตรียมรายการก่อนบันทึก</small>`);
+    const p=policy(t.team_category);$('teamMembershipPolicyV61524')&&($('teamMembershipPolicyV61524').innerHTML=`<div><strong>${catIcon(t.team_category)} ${catLabel(t.team_category)}</strong><span>${esc(p.label)}${t.team_category==='MOTORCYCLE'?' · ต้องมีทีมก่อนจัดกะ':''}</span></div><small>สมาชิกยืมตัวจะแสดงตามวันที่อ้างอิงแบบอ่านอย่างเดียว · การแก้ช่วงยืมทำที่เมนูยืมตัวช่าง</small>`);
     $('teamMembershipModalV61524')?.classList.remove('hidden');await loadMembershipCandidates();
   }
   function closeMembership(){
-    $('teamMembershipModalV61524')?.classList.add('hidden');state.activeTeam=null;state.members=[];state.selected.clear();state.initialMembership.clear();state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;
+    $('teamMembershipModalV61524')?.classList.add('hidden');state.activeTeam=null;state.members=[];state.workingMembers=[];state.selected.clear();state.initialMembership.clear();state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;
   }
   async function loadMembershipCandidates(){
     if(!state.activeTeam)return;
-    try{app()?.showLoading?.('กำลังโหลดสมาชิก...');const d=$('teamMembershipEffectiveV61524')?.value||today();state.members=await rpc('ta_get_team_membership_candidates_v61524',{p_team_id:state.activeTeam.team_id,p_effective_date:d})||[];state.initialMembership=new Set(state.members.filter(r=>r.is_current_member).map(r=>String(r.emp_code)));state.selected=new Set(state.initialMembership);state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;renderMemberList();$('teamMembershipMetaV61524')&&($('teamMembershipMetaV61524').textContent=`${catLabel(state.activeTeam.team_category)} • ${policy(state.activeTeam.team_category).label} • เลือกซ้าย → ย้ายเข้าขวา`);renderMembershipPreview();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+    try{
+      app()?.showLoading?.('กำลังโหลดสมาชิก...');const d=$('teamMembershipEffectiveV61524')?.value||today();
+      state.members=await rpc('ta_get_team_membership_candidates_v61524',{p_team_id:state.activeTeam.team_id,p_effective_date:d})||[];
+      try{state.workingMembers=await rpc('ta_get_team_working_members_v61529f15q',{p_team_id:state.activeTeam.team_id,p_work_date:d})||[];}catch(overlayError){state.workingMembers=[];console.warn('[FIX15Q] Working member overlay unavailable:',overlayError);toast('โหลดสมาชิกประจำได้แล้ว แต่ข้อมูลยืมตัวของทีมยังโหลดไม่สำเร็จ','warning');}
+      state.initialMembership=new Set(state.members.filter(r=>r.is_current_member).map(r=>String(r.emp_code)));state.selected=new Set(state.initialMembership);state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;renderMemberList();$('teamMembershipMetaV61524')&&($('teamMembershipMetaV61524').textContent=`${catLabel(state.activeTeam.team_category)} • สมาชิกประจำ + สมาชิกยืมตัว ณ ${fmtDate(d)} • เลือกซ้าย → ย้ายเข้าขวา`);renderMembershipPreview();
+    }catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
   }
   async function saveMembership(){
     if(!state.activeTeam||!membershipHasChanges())return toast('ยังไม่มีการเปลี่ยนแปลงสมาชิกทีม','warning');
