@@ -9,7 +9,7 @@
 <meta content="#0b1f3a" name="theme-color"/>
 <title>Time-Clock Enterprise V6.14.73 | CP Retailink</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix15e-20260914" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix15f-20260914" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1675,17 +1675,29 @@
           </div>
         </div>
         <div class="team-temp-kpis-v61529f14b">
-          <article class="pending"><span>รอฉันดำเนินการ</span><strong id="teamTempKpiPendingV61529F14B">0</strong><small>รายการ</small></article>
-          <article class="active"><span>กำลังยืมตัว</span><strong id="teamTempKpiActiveV61529F14B">0</strong><small>รายการ</small></article>
-          <article class="scheduled"><span>อนุมัติแล้ว · รอเริ่ม</span><strong id="teamTempKpiScheduledV61529F14B">0</strong><small>รายการ</small></article>
-          <article class="inbound"><span>ยืมเข้าทีม</span><strong id="teamTempKpiInboundV61529F14B">0</strong><small>รายการ</small></article>
-          <article class="outbound"><span>ถูกยืมออก</span><strong id="teamTempKpiOutboundV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="pending" data-borrow-kpi-filter-v61529f15f="ACTION" title="ดูรายการที่รอคุณอนุมัติ"><span>รอฉันอนุมัติ</span><strong id="teamTempKpiPendingV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="active" data-borrow-kpi-filter-v61529f15f="ACTIVE" title="ดูช่างที่กำลังยืมตัว"><span>กำลังยืมตัว</span><strong id="teamTempKpiActiveV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="scheduled" title="รายการอนุมัติแล้วและรอเริ่ม"><span>อนุมัติแล้ว · รอเริ่ม</span><strong id="teamTempKpiScheduledV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="expiring" data-borrow-kpi-filter-v61529f15f="EXPIRING" title="ครบกำหนดภายใน 3 วัน"><span>ใกล้ครบกำหนด</span><strong id="teamTempKpiExpiringV61529F15F">0</strong><small>ภายใน 3 วัน</small></article>
+          <article class="inbound" title="จำนวนรายการยืมเข้าทีม"><span>ยืมเข้าทีม</span><strong id="teamTempKpiInboundV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="outbound" title="จำนวนรายการถูกยืมออก"><span>ถูกยืมออก</span><strong id="teamTempKpiOutboundV61529F14B">0</strong><small>รายการ</small></article>
+        </div>
+        <div class="borrow-workflow-filter-v61529f15f" aria-label="ตัวกรอง Workflow การยืมตัว">
+          <div class="borrow-workflow-filter-head-v61529f15f"><div><strong>Workflow</strong><small>เลือกมุมมองงานที่ต้องดำเนินการ</small></div><span id="teamTempResultLabelV61529F15F">แสดง 0 รายการ</span></div>
+          <div class="borrow-workflow-filter-chips-v61529f15f">
+            <button type="button" class="active" data-borrow-workflow-filter-v61529f15f="ACTION" aria-pressed="true"><span>รอฉันอนุมัติ</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="REQUESTED" aria-pressed="false"><span>คำขอของฉัน</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="ACTIVE" aria-pressed="false"><span>กำลังยืม</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="EXPIRING" aria-pressed="false"><span>ใกล้ครบกำหนด</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="COMPLETED" aria-pressed="false"><span>สิ้นสุดแล้ว</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="ALL" aria-pressed="false"><span>ทั้งหมด</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+          </div>
         </div>
         <div class="team-temp-toolbar-v61529f14b">
           <div class="field"><label>ตั้งแต่</label><input class="input" type="date" id="teamTempFromV61529F14B"/></div>
           <div class="field"><label>ถึง</label><input class="input" type="date" id="teamTempToV61529F14B"/></div>
-          <div class="field"><label>สถานะ</label><select class="select" id="teamTempStatusV61529F14B"><option value="OPEN">กำลังดำเนินการ</option><option value="PENDING">รออนุมัติ</option><option value="ACTIVE">กำลังยืมตัว</option><option value="SCHEDULED">อนุมัติแล้ว · รอเริ่ม</option><option value="COMPLETED">สิ้นสุดแล้ว</option><option value="ALL">ทั้งหมด</option></select></div>
-          <div class="field team-temp-search-v61529f14b"><label>ค้นหา</label><input class="input" id="teamTempSearchV61529F14B" placeholder="รหัส / ชื่อ / BN / Team Code"/></div>
+          <div class="field"><label>สถานะละเอียด</label><select class="select" id="teamTempStatusV61529F14B"><option value="ALL" selected>ทั้งหมด</option><option value="OPEN">กำลังดำเนินการ</option><option value="PENDING">รออนุมัติ</option><option value="ACTIVE">กำลังยืมตัว</option><option value="SCHEDULED">อนุมัติแล้ว · รอเริ่ม</option><option value="COMPLETED">สิ้นสุดแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิกแล้ว</option></select></div>
+          <div class="field team-temp-search-v61529f14b"><label>ค้นหา</label><input class="input" id="teamTempSearchV61529F14B" placeholder="รหัส / ชื่อ / หน่วยงาน / Team / ผู้ร้องขอ"/></div>
         </div>
         <div class="team-temp-list-v61529f14b" id="teamTempListV61529F14B"><div class="fc-empty">เลือกแท็บนี้เพื่อโหลดรายการ</div></div>
       </div>
@@ -3210,6 +3222,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix15e-20260914"></script>
+<script src="./app.js?v=6.15.29-fix15f-20260914"></script>
 </body>
 </html>

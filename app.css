@@ -25240,3 +25240,53 @@ html.dark .employee-month-scope-lock-v61529f15c small,
 body.dark .employee-month-scope-lock-v61529f15c small{
   color:#94a3b8;
 }
+
+
+/* ========================================================================== */
+/* V6.15.29 FIX15F — Borrow Workflow Completion                               */
+/* ========================================================================== */
+.team-temp-kpis-v61529f14b{grid-template-columns:repeat(6,minmax(135px,1fr))}
+.team-temp-kpis-v61529f14b article.expiring::before{background:#ea580c}
+.team-temp-kpis-v61529f14b article[data-borrow-kpi-filter-v61529f15f]{cursor:pointer;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.team-temp-kpis-v61529f14b article[data-borrow-kpi-filter-v61529f15f]:hover{transform:translateY(-1px);border-color:#b8cee8;box-shadow:0 7px 18px rgba(15,53,96,.07)}
+
+.borrow-workflow-filter-v61529f15f{margin:12px 16px 0;padding:12px 13px;border:1px solid #dbe5f0;border-radius:15px;background:#f8fbff}
+.borrow-workflow-filter-head-v61529f15f{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.borrow-workflow-filter-head-v61529f15f>div{min-width:0}.borrow-workflow-filter-head-v61529f15f strong,.borrow-workflow-filter-head-v61529f15f small{display:block}
+.borrow-workflow-filter-head-v61529f15f strong{font-size:11px;color:#18324f}.borrow-workflow-filter-head-v61529f15f small{margin-top:1px;font-size:9.5px;color:#64748b}
+.borrow-workflow-filter-head-v61529f15f>span{font-size:9.5px;font-weight:700;color:#64748b;white-space:nowrap}
+.borrow-workflow-filter-chips-v61529f15f{display:flex;align-items:center;gap:7px;overflow-x:auto;padding-bottom:1px;scrollbar-width:thin}
+.borrow-workflow-filter-chips-v61529f15f button{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;min-height:34px;padding:6px 9px 6px 11px;border:1px solid #dbe4ef;border-radius:999px;background:#fff;color:#526174;font:inherit;font-size:10px;font-weight:750;cursor:pointer;transition:.15s ease}
+.borrow-workflow-filter-chips-v61529f15f button:hover{border-color:#9fc0e8;background:#f5f9ff;color:#1d4ed8}
+.borrow-workflow-filter-chips-v61529f15f button.active{border-color:#60a5fa;background:#eaf3ff;color:#1554a0;box-shadow:0 0 0 2px rgba(59,130,246,.08)}
+.borrow-workflow-filter-chips-v61529f15f button b{display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#eef2f7;color:#475569;font-size:9px;line-height:1}
+.borrow-workflow-filter-chips-v61529f15f button.active b{background:#fff;color:#1554a0}
+
+.borrow-meta-chips-v61529f15f{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:5px}
+.borrow-meta-chip-v61529f15f{display:inline-flex;align-items:center;padding:3px 6px;border-radius:999px;font-size:8.5px;font-weight:800;line-height:1.1}
+.borrow-meta-chip-v61529f15f.mine{background:#e0f2fe;color:#0369a1}.borrow-meta-chip-v61529f15f.action{background:#fff4d6;color:#a16207}.borrow-meta-chip-v61529f15f.expiring{background:#ffedd5;color:#c2410c}
+
+.borrow-workflow-stepper-v61529f15f{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0 15px 9px;padding:9px 10px;border:1px solid #e5ebf3;border-radius:12px;background:#fafcff}
+.borrow-workflow-stepper-v61529f15f>div{position:relative;display:flex;align-items:center;gap:6px;min-width:0;color:#94a3b8}
+.borrow-workflow-stepper-v61529f15f>div:not(:last-child)::after{content:"";position:absolute;left:calc(100% - 4px);right:4px;top:50%;height:1px;background:#dbe3ed;transform:translateY(-50%);z-index:0}
+.borrow-workflow-stepper-v61529f15f>div>span{position:relative;z-index:1;display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border:1px solid #dbe3ed;border-radius:50%;background:#fff;color:#94a3b8;font-size:9px;font-weight:900}
+.borrow-workflow-stepper-v61529f15f>div>small{position:relative;z-index:1;display:inline-block;padding-right:7px;background:#fafcff;font-size:8.5px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.borrow-workflow-stepper-v61529f15f>div.done{color:#15803d}.borrow-workflow-stepper-v61529f15f>div.done>span{border-color:#86efac;background:#dcfce7;color:#15803d}.borrow-workflow-stepper-v61529f15f>div.done:not(:last-child)::after{background:#86efac}
+.borrow-workflow-stepper-v61529f15f>div.current{color:#1d4ed8}.borrow-workflow-stepper-v61529f15f>div.current>span{border-color:#93c5fd;background:#dbeafe;color:#1d4ed8;box-shadow:0 0 0 3px rgba(59,130,246,.08)}
+.borrow-workflow-stepper-v61529f15f>div.stop{color:#b91c1c}.borrow-workflow-stepper-v61529f15f>div.stop>span{border-color:#fecaca;background:#fee2e2;color:#b91c1c}
+
+html[data-theme="dark"] .borrow-workflow-filter-v61529f15f,body.dark .borrow-workflow-filter-v61529f15f,
+html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f,body.dark .borrow-workflow-stepper-v61529f15f{background:#0e1b2d;border-color:#29415d}
+html[data-theme="dark"] .borrow-workflow-filter-head-v61529f15f strong,body.dark .borrow-workflow-filter-head-v61529f15f strong{color:#e7eef8}
+html[data-theme="dark"] .borrow-workflow-filter-chips-v61529f15f button,body.dark .borrow-workflow-filter-chips-v61529f15f button{background:#10243d;border-color:#29415d;color:#aebed1}
+html[data-theme="dark"] .borrow-workflow-filter-chips-v61529f15f button.active,body.dark .borrow-workflow-filter-chips-v61529f15f button.active{background:#153458;border-color:#3b82f6;color:#bfdbfe}
+html[data-theme="dark"] .borrow-workflow-filter-chips-v61529f15f button b,body.dark .borrow-workflow-filter-chips-v61529f15f button b{background:#1a304c;color:#c3d1e2}
+html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f>div>small,body.dark .borrow-workflow-stepper-v61529f15f>div>small{background:#0e1b2d}
+html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f>div>span,body.dark .borrow-workflow-stepper-v61529f15f>div>span{background:#10243d;border-color:#36516f}
+
+@media(max-width:1280px){.team-temp-kpis-v61529f14b{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){
+  .borrow-workflow-filter-head-v61529f15f{align-items:flex-start;flex-direction:column;gap:4px}
+  .borrow-workflow-stepper-v61529f15f{grid-template-columns:1fr 1fr;gap:8px}.borrow-workflow-stepper-v61529f15f>div::after{display:none}
+}
+@media(max-width:520px){.borrow-workflow-stepper-v61529f15f{grid-template-columns:1fr}.borrow-workflow-filter-v61529f15f{margin-left:12px;margin-right:12px}}

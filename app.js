@@ -33870,7 +33870,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX15A';
+  const VERSION='6.15.29 FIX15F';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -33882,7 +33882,8 @@ ${names}${extra}
     access:null,rows:[],summary:{},loaded:false,loading:false,
     candidates:[],destinations:[],preview:null,selectedEmployee:'',
     action:null,actingRows:[],actingCandidates:[],actingOrgs:[],actingEdit:null,
-    candidateTimer:null,previewTimer:null,accessLoading:false
+    candidateTimer:null,previewTimer:null,accessLoading:false,
+    workflowFilter:'ACTION'
   };
   const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
   const addDays=(iso,n)=>{const [y,m,d]=String(iso).slice(0,10).split('-').map(Number);const x=new Date(y,m-1,d);x.setDate(x.getDate()+n);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;};
@@ -33936,6 +33937,44 @@ ${names}${extra}
   function authorityLabel(v){return String(v||'').toUpperCase()==='ACTING_MANAGER'?'Acting Manager':String(v||'').toUpperCase()==='MANAGER'?'Manager':String(v||'').toUpperCase()==='SOURCE_AND_DESTINATION'?'Manager ทั้ง 2 ฝั่ง':'-';}
   function hasOperationalAuthority(){return state.access?.is_operational_actor===true||state.access?.is_acting===true;}
   function actingOnly(){return !isHr()&&!baseManager()&&hasOperationalAuthority();}
+  const actorEmail=()=>String(state.access?.actor_email||app()?.state?.profile?.email||'').trim().toLowerCase();
+  function isoDayDiff(fromIso,toIso){
+    const a=String(fromIso||'').slice(0,10),b=String(toIso||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(a)||!/^\d{4}-\d{2}-\d{2}$/.test(b))return null;
+    const [ay,am,ad]=a.split('-').map(Number),[by,bm,bd]=b.split('-').map(Number);
+    return Math.round((Date.UTC(by,bm-1,bd)-Date.UTC(ay,am-1,ad))/86400000);
+  }
+  function isMyRequest(r){const me=actorEmail();return !!me&&String(r?.requested_by_email||'').trim().toLowerCase()===me;}
+  function isExpiringSoon(r){
+    const life=String(r?.lifecycle_status||r?.status||'').toUpperCase();
+    if(life!=='ACTIVE')return false;
+    const left=isoDayDiff(today(),r?.effective_to);return left!==null&&left>=0&&left<=3;
+  }
+  function workflowCounts(){
+    const rows=state.rows||[];
+    return {
+      ACTION:rows.filter(r=>r.can_decide===true).length,
+      REQUESTED:rows.filter(isMyRequest).length,
+      ACTIVE:rows.filter(r=>String(r.lifecycle_status||r.status||'').toUpperCase()==='ACTIVE').length,
+      EXPIRING:rows.filter(isExpiringSoon).length,
+      COMPLETED:rows.filter(r=>String(r.lifecycle_status||r.status||'').toUpperCase()==='COMPLETED').length,
+      ALL:rows.length
+    };
+  }
+  function syncWorkflowFilterUI(){
+    const counts=workflowCounts();
+    document.querySelectorAll('[data-borrow-workflow-filter-v61529f15f]').forEach(btn=>{
+      const key=String(btn.dataset.borrowWorkflowFilterV61529f15f||'ALL').toUpperCase();
+      btn.classList.toggle('active',key===state.workflowFilter);
+      btn.setAttribute('aria-pressed',key===state.workflowFilter?'true':'false');
+      const count=btn.querySelector('[data-borrow-workflow-count-v61529f15f]');if(count)count.textContent=Number(counts[key]||0).toLocaleString('th-TH');
+    });
+  }
+  function setWorkflowFilter(key,{render=true,resetStatus=true}={}){
+    state.workflowFilter=String(key||'ALL').toUpperCase();
+    if(resetStatus&&$('teamTempStatusV61529F14B'))$('teamTempStatusV61529F14B').value='ALL';
+    syncWorkflowFilterUI();if(render)renderWorkspace();
+  }
 
   async function loadAccess({silent=true}={}){
     if(state.accessLoading)return state.access;
@@ -33981,14 +34020,44 @@ ${names}${extra}
   function listRange(){return {from:$('teamTempFromV61529F14B')?.value||monthStart(today()),to:$('teamTempToV61529F14B')?.value||addDays(today(),90)};}
   function setDefaultRange(){const f=$('teamTempFromV61529F14B'),t=$('teamTempToV61529F14B');if(f&&!f.value)f.value=monthStart(today());if(t&&!t.value)t.value=addDays(today(),90);}
   function filteredRows(){
-    const status=String($('teamTempStatusV61529F14B')?.value||'OPEN').toUpperCase();
+    const status=String($('teamTempStatusV61529F14B')?.value||'ALL').toUpperCase();
+    const workflow=String(state.workflowFilter||'ALL').toUpperCase();
     const q=String($('teamTempSearchV61529F14B')?.value||'').toLowerCase().trim();
     return(state.rows||[]).filter(r=>{
       const life=String(r.lifecycle_status||r.status||'').toUpperCase();
       const statusOk=status==='ALL'||(status==='OPEN'&&['PENDING_SOURCE','PENDING_DESTINATION','SCHEDULED','ACTIVE'].includes(life))||(status==='PENDING'&&['PENDING_SOURCE','PENDING_DESTINATION'].includes(life))||life===status;
-      const text=[r.emp_code,r.employee_name,r.source_org_code,r.source_org_name,r.source_team_code,r.destination_org_code,r.destination_org_name,r.destination_team_code,assignmentLabel(r.assignment_type)].join(' ').toLowerCase();
-      return statusOk&&(!q||text.includes(q));
+      const workflowOk=workflow==='ALL'
+        ||(workflow==='ACTION'&&r.can_decide===true)
+        ||(workflow==='REQUESTED'&&isMyRequest(r))
+        ||(workflow==='ACTIVE'&&life==='ACTIVE')
+        ||(workflow==='EXPIRING'&&isExpiringSoon(r))
+        ||(workflow==='COMPLETED'&&life==='COMPLETED');
+      const text=[r.emp_code,r.employee_name,r.source_org_code,r.source_org_name,r.source_team_code,r.destination_org_code,r.destination_org_name,r.destination_team_code,r.requested_by_email,assignmentLabel(r.assignment_type)].join(' ').toLowerCase();
+      return statusOk&&workflowOk&&(!q||text.includes(q));
     });
+  }
+  function workflowStepperHtml(r){
+    const life=String(r.lifecycle_status||r.status||'').toUpperCase();
+    const rejected=life==='REJECTED',cancelled=life==='CANCELLED';
+    const approved=['SCHEDULED','ACTIVE','COMPLETED','APPROVED'].includes(life);
+    const working=['ACTIVE','COMPLETED'].includes(life);
+    const completed=life==='COMPLETED';
+    const steps=[
+      {label:'ส่งคำขอ',state:'done'},
+      {label:rejected?'ไม่อนุมัติ':'อนุมัติ',state:rejected?'stop':approved?'done':['PENDING_SOURCE','PENDING_DESTINATION'].includes(life)?'current':'idle'},
+      {label:cancelled?'ยกเลิก':'ช่วงยืม',state:cancelled?'stop':working?'done':life==='SCHEDULED'?'current':'idle'},
+      {label:'สิ้นสุด',state:completed?'done':life==='ACTIVE'?'current':'idle'}
+    ];
+    return `<div class="borrow-workflow-stepper-v61529f15f" aria-label="สถานะขั้นตอนการยืมตัว">${steps.map((x,i)=>`<div class="${x.state}"><span>${x.state==='done'?'✓':x.state==='stop'?'×':i+1}</span><small>${esc(x.label)}</small></div>`).join('')}</div>`;
+  }
+  function workflowMetaHtml(r){
+    const tags=[];
+    if(isMyRequest(r))tags.push('<span class="borrow-meta-chip-v61529f15f mine">คำขอของฉัน</span>');
+    if(r.can_decide===true)tags.push('<span class="borrow-meta-chip-v61529f15f action">รอฉันอนุมัติ</span>');
+    if(isExpiringSoon(r)){
+      const left=isoDayDiff(today(),r.effective_to);tags.push(`<span class="borrow-meta-chip-v61529f15f expiring">${left===0?'ครบกำหนดวันนี้':`เหลือ ${left} วัน`}</span>`);
+    }
+    return tags.length?`<div class="borrow-meta-chips-v61529f15f">${tags.join('')}</div>`:'';
   }
   function rowActions(r){
     const out=[];
@@ -34003,20 +34072,27 @@ ${names}${extra}
   function renderWorkspace(){
     const rows=filteredRows(),host=$('teamTempListV61529F14B');if(!host)return;
     const pendingMine=(state.rows||[]).filter(r=>r.can_decide).length;
+    const expiring=(state.rows||[]).filter(isExpiringSoon).length;
     const put=(id,v)=>{if($(id))$(id).textContent=Number(v||0).toLocaleString('th-TH');};
-    put('teamTempKpiPendingV61529F14B',pendingMine);put('teamTempKpiActiveV61529F14B',state.summary?.active);put('teamTempKpiScheduledV61529F14B',state.summary?.scheduled);put('teamTempKpiInboundV61529F14B',state.summary?.inbound);put('teamTempKpiOutboundV61529F14B',state.summary?.outbound);
+    put('teamTempKpiPendingV61529F14B',pendingMine);put('teamTempKpiActiveV61529F14B',state.summary?.active);put('teamTempKpiScheduledV61529F14B',state.summary?.scheduled);put('teamTempKpiInboundV61529F14B',state.summary?.inbound);put('teamTempKpiOutboundV61529F14B',state.summary?.outbound);put('teamTempKpiExpiringV61529F15F',expiring);
     const badge=$('teamTempPendingBadgeV61529F14B');if(badge){badge.textContent=pendingMine;badge.classList.toggle('hidden',pendingMine===0);}
-    if(!rows.length){host.innerHTML='<div class="team-temp-empty-v61529f14b"><span>✓</span><div><strong>ไม่มีรายการตามเงื่อนไข</strong><small>ลองเปลี่ยนช่วงวันที่ สถานะ หรือคำค้นหา</small></div></div>';return;}
+    syncWorkflowFilterUI();
+    const resultLabel=$('teamTempResultLabelV61529F15F');if(resultLabel)resultLabel.textContent=`แสดง ${Number(rows.length).toLocaleString('th-TH')} จาก ${Number((state.rows||[]).length).toLocaleString('th-TH')} รายการ`;
+    if(!rows.length){
+      const emptyText=state.workflowFilter==='ACTION'?'ไม่มีรายการรอคุณอนุมัติ':state.workflowFilter==='REQUESTED'?'ยังไม่มีคำขอที่คุณเป็นผู้ร้องขอ':state.workflowFilter==='ACTIVE'?'ไม่มีช่างที่กำลังยืมตัวในช่วงนี้':state.workflowFilter==='EXPIRING'?'ไม่มีรายการที่จะครบกำหนดภายใน 3 วัน':state.workflowFilter==='COMPLETED'?'ยังไม่มีรายการที่สิ้นสุดในช่วงนี้':'ไม่มีรายการตามเงื่อนไข';
+      host.innerHTML=`<div class="team-temp-empty-v61529f14b"><span>✓</span><div><strong>${esc(emptyText)}</strong><small>ลองเปลี่ยนช่วงวันที่ ตัวกรอง หรือคำค้นหา</small></div></div>`;return;
+    }
     host.innerHTML=rows.map(r=>{
       const st=statusInfo(r),type=assignmentLabel(r.assignment_type),waiting=r.waiting_for==='SOURCE'?'ต้นทาง':r.waiting_for==='DESTINATION'?'ปลายทาง':'';
       const auth=r.source_authorized?'Manager/Acting ต้นทาง':r.destination_authorized?'Manager/Acting ปลายทาง':'Audit';
       return `<article class="team-temp-card-v61529f14b ${st.tone}">
         <div class="team-temp-card-main-v61529f14b">
-          <div class="team-temp-person-v61529f14b"><span class="team-temp-type-icon-v61529f14b">${assignmentIcon(r.assignment_type)}</span><div><strong>${esc(r.emp_code)} · ${esc(r.employee_name||'-')}</strong><small>${esc(r.position_name||'ช่างเทคนิค')}</small><span class="team-temp-type-chip-v61529f14b ${String(r.assignment_type||'').toLowerCase()}">${esc(type)}</span></div></div>
-          <div class="team-temp-flow-v61529f14b"><div><span>ต้นสังกัด</span><strong>${esc(r.source_org_code||'-')}</strong><small>${esc(r.source_team_code||'-')} · ${esc(r.source_team_name||'')}</small></div><b>→</b><div><span>ปฏิบัติงานกับ</span><strong>${esc(r.destination_org_code||'-')}</strong><small>${esc(r.destination_team_code||'-')} · ${esc(r.destination_team_name||'')}</small></div></div>
-          <div class="team-temp-period-v61529f14b"><span>ช่วงวันที่</span><strong>${esc(fmtDate(r.effective_from))}</strong><small>ถึง ${esc(fmtDate(r.effective_to))}</small></div>
+          <div class="team-temp-person-v61529f14b"><span class="team-temp-type-icon-v61529f14b">${assignmentIcon(r.assignment_type)}</span><div><strong>${esc(r.emp_code)} · ${esc(r.employee_name||'-')}</strong><small>${esc(r.position_name||'ช่างเทคนิค')}</small><span class="team-temp-type-chip-v61529f14b ${String(r.assignment_type||'').toLowerCase()}">${esc(type)}</span>${workflowMetaHtml(r)}</div></div>
+          <div class="team-temp-flow-v61529f14b"><div><span>ต้นทาง</span><strong>${esc(r.source_org_code||'-')}</strong><small>${esc(r.source_team_code||'-')} · ${esc(r.source_team_name||'')}</small></div><b>→</b><div><span>Team ปลายทาง</span><strong>${esc(r.destination_org_code||'-')}</strong><small>${esc(r.destination_team_code||'-')} · ${esc(r.destination_team_name||'')}</small></div></div>
+          <div class="team-temp-period-v61529f14b"><span>ช่วงยืมตัว</span><strong>${esc(fmtDate(r.effective_from))}</strong><small>ถึง ${esc(fmtDate(r.effective_to))}</small></div>
           <div class="team-temp-status-v61529f14b"><span class="team-temp-status-chip-v61529f14b ${st.tone}">${esc(st.label)}</span><small>${waiting?`รอการอนุมัติ${waiting} · `:''}${esc(directionText(r.direction))}</small><small>${esc(auth)}</small></div>
         </div>
+        ${workflowStepperHtml(r)}
         <div class="team-temp-card-foot-v61529f14b"><p><strong>เหตุผล:</strong> ${esc(r.note||'-')}</p><div><span>ร้องขอโดย ${esc(r.requested_by_email||'-')} · ${esc(fmtDateTime(r.created_at))}</span><div class="team-temp-actions-v61529f14b">${rowActions(r)}</div></div></div>
       </article>`;
     }).join('');
@@ -34026,7 +34102,9 @@ ${names}${extra}
     if(state.loading)return;state.loading=true;setDefaultRange();const host=$('teamTempListV61529F14B');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลดรายการยืมตัว...</div>';
     try{
       const range=listRange();const data=await rpc('ta_get_borrow_workspace_v61529f15',{p_from:range.from||null,p_to:range.to||null,p_org_id:null});
-      state.rows=Array.isArray(data?.rows)?data.rows:[];state.summary=data?.summary||{};state.loaded=true;renderWorkspace();
+      state.rows=Array.isArray(data?.rows)?data.rows:[];state.summary=data?.summary||{};state.loaded=true;
+      if(isHr()&&state.workflowFilter==='ACTION')state.workflowFilter='ALL';
+      renderWorkspace();
       if(isHr())await loadActing();
     }catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;toast(human(e),'error');}finally{state.loading=false;}
   }
@@ -34116,11 +34194,13 @@ ${names}${extra}
 
   function bind(){
     setDefaultRange();
-    $('teamTempRefreshV61529F14B')?.addEventListener('click',load);$('teamTempCreateV61529F14B')?.addEventListener('click',openCreate);$('teamTempStatusV61529F14B')?.addEventListener('change',renderWorkspace);$('teamTempSearchV61529F14B')?.addEventListener('input',renderWorkspace);$('teamTempFromV61529F14B')?.addEventListener('change',load);$('teamTempToV61529F14B')?.addEventListener('change',load);
+    $('teamTempRefreshV61529F14B')?.addEventListener('click',load);$('teamTempCreateV61529F14B')?.addEventListener('click',openCreate);$('teamTempStatusV61529F14B')?.addEventListener('change',()=>{state.workflowFilter='ALL';syncWorkflowFilterUI();renderWorkspace();});$('teamTempSearchV61529F14B')?.addEventListener('input',renderWorkspace);$('teamTempFromV61529F14B')?.addEventListener('change',load);$('teamTempToV61529F14B')?.addEventListener('change',load);
     $('teamTempCandidateSearchBtnV61529F14B')?.addEventListener('click',loadCandidates);$('teamTempCandidateSearchV61529F14B')?.addEventListener('input',()=>{clearTimeout(state.candidateTimer);state.candidateTimer=setTimeout(loadCandidates,280);});$('teamTempCandidateSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadCandidates();}});
     $('teamTempDestinationV61529F14B')?.addEventListener('change',async()=>{if($('teamTempEmployeeV61529F14B'))$('teamTempEmployeeV61529F14B').value='';await loadCandidates();schedulePreview();});$('teamTempEmployeeV61529F14B')?.addEventListener('change',()=>{renderHomeCard();schedulePreview();});$('teamTempCreateFromV61529F14B')?.addEventListener('change',async e=>{if($('teamTempCreateToV61529F14B')&&$('teamTempCreateToV61529F14B').value<e.target.value)$('teamTempCreateToV61529F14B').value=e.target.value;if($('teamTempDestinationV61529F14B'))$('teamTempDestinationV61529F14B').value='';await loadDestinations();await loadCandidates();schedulePreview();});$('teamTempCreateToV61529F14B')?.addEventListener('change',schedulePreview);$('teamTempNoteV61529F14B')?.addEventListener('input',renderPreview);$('teamTempCreateConfirmV61529F14B')?.addEventListener('click',createAssignment);$('teamTempActionConfirmV61529F14B')?.addEventListener('click',confirmAction);
     $('teamActingRefreshV61529F14B')?.addEventListener('click',loadActing);$('teamActingCreateV61529F14B')?.addEventListener('click',()=>openActing(null));$('teamActingSearchBtnV61529F14B')?.addEventListener('click',()=>loadActingOptions($('teamActingSearchV61529F14B')?.value||''));$('teamActingSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadActingOptions(e.target.value||'');}});$('teamActingSaveV61529F14B')?.addEventListener('click',saveActing);
     document.addEventListener('click',e=>{
+      const wf=e.target.closest('[data-borrow-workflow-filter-v61529f15f]');if(wf){setWorkflowFilter(wf.dataset.borrowWorkflowFilterV61529f15f||'ALL');return;}
+      const kpi=e.target.closest('[data-borrow-kpi-filter-v61529f15f]');if(kpi){setWorkflowFilter(kpi.dataset.borrowKpiFilterV61529f15f||'ALL');return;}
       const tab=e.target.closest('[data-team-workspace-tab-v61528="ASSIGNMENTS"]');if(tab){setTimeout(()=>{ensureAssignmentTabVisible();load();},0);return;}
       const ap=e.target.closest('[data-temp-approve-v61529f14b]');if(ap){approve(ap.dataset.tempApproveV61529f14b);return;}const rj=e.target.closest('[data-temp-reject-v61529f14b]');if(rj){openAction(rj.dataset.tempRejectV61529f14b,'REJECT');return;}const ca=e.target.closest('[data-temp-cancel-v61529f14b]');if(ca){openAction(ca.dataset.tempCancelV61529f14b,'CANCEL');return;}const en=e.target.closest('[data-temp-end-v61529f14b]');if(en){openAction(en.dataset.tempEndV61529f14b,'END');return;}const ae=e.target.closest('[data-acting-edit-v61529f14b]');if(ae){openActing(ae.dataset.actingEditV61529f14b);return;}
       if(e.target.closest('[data-team-temp-close-v61529f14b]')){closeCreate();return;}if(e.target.closest('[data-team-temp-action-close-v61529f14b]')){closeAction();return;}if(e.target.closest('[data-team-acting-close-v61529f14b]')){closeActing();return;}

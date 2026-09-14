@@ -1,0 +1,22 @@
+TimeClock Enterprise V6.15.29 FIX15F
+Borrow Workflow Completion UX
+
+Frontend-only release. No SQL migration required.
+
+Changes
+- Borrow page now has workflow filters: รอฉันอนุมัติ, คำขอของฉัน, กำลังยืม, ใกล้ครบกำหนด, สิ้นสุดแล้ว, ทั้งหมด.
+- Added live workflow counts and result counter.
+- Added expiring-soon KPI (<= 3 days remaining).
+- Added per-request chips for My Request / Awaiting My Approval / Expiring Soon.
+- Added 4-step lifecycle tracker on every borrow card.
+- Added detailed status filter including Rejected and Cancelled.
+- Improved empty states by selected workflow.
+- Preserved FIX15E login/save-button scope fix, FIX15D schedule concurrency guard, FIX15C effective borrow window, FIX15B auth hardening, FIX15A candidate preview, and FIX15 manager-based borrow rules.
+- Updated app.js/app.css cache version to FIX15F.
+
+Static validation
+- node --check app.js: PASS
+- index.html duplicate IDs: 0
+- 404.html duplicate IDs: 0
+- portal.html duplicate IDs: 0
+- app.css brace balance: PASS
