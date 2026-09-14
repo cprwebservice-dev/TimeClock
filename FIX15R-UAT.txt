@@ -1,0 +1,30 @@
+FIX15R UAT — Employee Portal Working Team / Borrow
+
+A. Normal Home Team
+1. Login technician not on Borrow.
+2. Home -> Team card must show Team Master team_code/team_name.
+3. Roster must include permanent Working Team members, including current user.
+4. Members may show different shift/day status; they must not be hidden merely because shift code differs.
+
+B. Borrow destination
+1. Use approved Borrow effective today.
+2. Borrowed technician Portal must show Destination Team.
+3. Destination Team permanent members + effective Borrow-In members must appear.
+4. Current borrowed technician displays "คุณ" + "ยืมตัว".
+5. Banner displays Home Team and Borrow effective dates.
+
+C. Source team
+1. Open Portal of a source-team colleague on same date.
+2. Borrowed-out technician must NOT remain in source Working-Team roster during Borrow.
+
+D. Effective dates
+1. Yesterday before Borrow start -> Home Team.
+2. Today inside Borrow -> Destination Team.
+3. After Borrow ends -> Home Team automatically.
+
+E. Privacy
+1. Card must never expose colleague IN/OUT, attendance result, leave reason, or certification data.
+
+F. Backend
+1. Run FIX15R verify -> 12/12 PASS.
+2. Diagnostic 2 -> 0 rows.

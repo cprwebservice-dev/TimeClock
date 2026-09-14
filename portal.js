@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.26";
+  const VERSION="6.15.29 FIX15R";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -207,19 +207,39 @@
     return parts.slice(0,2).map(x=>x.slice(0,1)).join("");
   }
 
+  function workingTeamCategoryLabelV61529F15R(category){
+    const c=String(category||"").trim().toUpperCase();
+    if(c==="CAR")return"ทีมรถเดียวกับคุณ";
+    if(c==="MOTORCYCLE")return"ทีมมอเตอร์ไซค์เดียวกับคุณ";
+    if(c==="SUPPORT")return"ทีมสนับสนุนเดียวกับคุณ";
+    return"ทีมปฏิบัติงานเดียวกับคุณ";
+  }
+
+  function workingTeamMemberShiftV61529F15R(m={}){
+    const code=String(m.shift_code||"").trim().toUpperCase();
+    const dayType=String(m.day_type||"").trim().toUpperCase();
+    const work=m.is_workday===true||String(m.is_workday).toLowerCase()==="true";
+    if(code==="LV"||code==="LEAVE"||dayType.includes("LEAVE"))return{label:"ลา",tone:"leave",time:""};
+    if(code==="HOL"||code.startsWith("O")&&dayType.includes("HOL")||dayType.includes("PUBLIC_HOLIDAY")||dayType==="HOLIDAY")return{label:"นักขัตฯ",tone:"holiday",time:""};
+    if(!work||code==="OFF"||dayType.includes("OFF"))return{label:"หยุด",tone:"off",time:""};
+    const night=Boolean(m.is_night_shift)||isNightShiftCode(code);
+    const time=(m.shift_start_time||m.shift_end_time)
+      ?`${fmtTime(m.shift_start_time)}–${fmtTime(m.shift_end_time)}`
+      :"";
+    return{label:night?"ดึก":"เช้า",tone:night?"night":"day",time};
+  }
+
   function renderSameShiftTeamV61509(data,date){
     const box=$("portalSameShiftTeamV61509");
     if(!box)return;
 
     const focus=date||homeFocusDateV61509||today();
-    const self=row(focus)||{};
-    const visual=shiftVisual(self);
 
     if(sameShiftTeamLoadingV61509){
       box.innerHTML=`
         <div class="portal-same-shift-loading-v61509">
           <span class="portal-mini-spinner"></span>
-          <strong>กำลังตรวจสอบช่างเทคนิคที่เข้ากะเดียวกับคุณ...</strong>
+          <strong>กำลังตรวจสอบสมาชิกทีมปฏิบัติงานของวันที่เลือก...</strong>
         </div>`;
       return;
     }
@@ -229,7 +249,7 @@
         <div class="portal-same-shift-empty-v61509">
           <i>👥</i>
           <div>
-            <strong>ทีมร่วมกะ</strong>
+            <strong>ทีมปฏิบัติงาน</strong>
             <span>ยังไม่พบข้อมูลทีมของวันที่เลือก</span>
           </div>
         </div>`;
@@ -238,55 +258,67 @@
 
     const members=Array.isArray(data.members)?data.members:[];
     const total=Number(data.total_members||members.length||0);
-    const selfWork=String(self.is_workday)!=="false"
-      && !["off","holiday","leave"].includes(dayMeta(self).tone);
+    const categoryLabel=workingTeamCategoryLabelV61529F15R(data.team_category);
+    const teamLabel=[data.team_code,data.team_name].filter(Boolean).join(" • ")||"ยังไม่กำหนดทีม";
+    const selfBorrow=Boolean(data.self_is_temporary);
 
-    if(!selfWork){
-      box.innerHTML=`
-        <div class="portal-same-shift-empty-v61509 nonwork">
-          <i>${esc(visual.icon)}</i>
+    const memberHtml=members.map(m=>{
+      const shift=workingTeamMemberShiftV61529F15R(m);
+      const tags=[];
+      if(m.is_self)tags.push('<span class="portal-working-team-chip-v61529f15r self">คุณ</span>');
+      if(m.is_temporary)tags.push('<span class="portal-working-team-chip-v61529f15r borrow">↔ ยืมตัว</span>');
+      const borrowNote=m.is_temporary
+        ? `<span class="portal-working-team-borrow-note-v61529f15r">จาก ${esc(m.source_team_code||m.home_team_code||"ทีมต้นทาง")} • ${esc(fmtDate(m.borrow_effective_from))}–${esc(fmtDate(m.borrow_effective_to))}</span>`
+        :"";
+      return `
+        <div class="portal-same-shift-member-v61509 ${m.is_self?"is-self-v61529f15r":""} ${m.is_temporary?"is-borrow-v61529f15r":""}">
+          <span class="portal-same-shift-avatar-v61509">${esc(sameShiftInitialsV61509(m.full_name))}</span>
           <div>
-            <strong>วันนี้ไม่ใช่วันทำงาน</strong>
-            <span>จึงไม่แสดงรายชื่อช่างเทคนิคที่เข้ากะเดียวกัน</span>
+            <div class="portal-working-team-name-v61529f15r">
+              <strong>${esc(m.full_name||m.emp_code||"-")}</strong>
+              ${tags.length?`<span class="portal-working-team-tags-v61529f15r">${tags.join("")}</span>`:""}
+            </div>
+            <small>${esc([m.position_name,m.department].filter(Boolean).join(" • ")||"สมาชิกทีม")}</small>
+            ${borrowNote}
+          </div>
+          <div class="portal-working-team-shift-v61529f15r">
+            <span class="portal-same-shift-badge-v61509 ${esc(shift.tone)}">${esc(shift.label)}</span>
+            ${shift.time?`<small>${esc(shift.time)}</small>`:""}
           </div>
         </div>`;
-      return;
-    }
+    }).join("");
 
-    const memberHtml=members.map(m=>`
-      <div class="portal-same-shift-member-v61509">
-        <span class="portal-same-shift-avatar-v61509">
-          ${esc(sameShiftInitialsV61509(m.full_name))}
-        </span>
+    const borrowBanner=selfBorrow?`
+      <div class="portal-working-team-self-borrow-v61529f15r">
+        <i>↔</i>
         <div>
-          <strong>${esc(m.full_name||m.emp_code||"-")}</strong>
-          <small>${esc([m.position_name,m.department].filter(Boolean).join(" • ")||"ช่างเทคนิค")}</small>
+          <strong>คุณกำลังยืมตัวมาปฏิบัติงานกับ ${esc(data.team_code||data.team_name||"ทีมนี้")}</strong>
+          <span>
+            Home Team ${esc(data.self_source_team_code||data.self_home_team_code||"-")}
+            • มีผล ${esc(fmtDate(data.self_borrow_effective_from))}–${esc(fmtDate(data.self_borrow_effective_to))}
+          </span>
         </div>
-        <span class="portal-same-shift-badge-v61509">${esc(visual.display||"กะเดียวกัน")}</span>
-      </div>
-    `).join("");
+      </div>`:"";
 
     box.innerHTML=`
       <div class="portal-same-shift-head-v61509">
         <div>
-          <span>ทีมร่วมกะ</span>
-          <strong>ช่างเทคนิคที่เข้ากะเดียวกับคุณ</strong>
-          <small>
-            ${esc(fmtDate(focus))}
-            • ${esc(visual.display||data.self_shift_code||"-")}
-            ${visual.time?` • ${esc(visual.time)}`:""}
-          </small>
+          <span>ทีมปฏิบัติงาน</span>
+          <strong>${esc(categoryLabel)}</strong>
+          <small>${esc(fmtDate(focus))} • ${esc(teamLabel)}${data.team_org_code?` • ${esc(data.team_org_code)}`:""}</small>
         </div>
         <b>${total} คน</b>
       </div>
 
+      ${borrowBanner}
+
       ${members.length
         ? `<div class="portal-same-shift-grid-v61509">${memberHtml}</div>`
-        : `<div class="portal-same-shift-none-v61509">ไม่พบช่างเทคนิคในทีมที่จัดกะเดียวกับคุณในวันนี้</div>`
+        : `<div class="portal-same-shift-none-v61509">ยังไม่พบสมาชิก Working Team ในวันที่เลือก</div>`
       }
 
       <div class="portal-same-shift-foot-v61509">
-        แสดงเฉพาะช่างเทคนิคที่มีสาย Manager ร่วมกัน และจัดกะรหัสเดียวกันในวันที่เลือก
+        แสดงสมาชิก Working Team ตามวันที่เลือก • ยืมตัวแล้วจะแสดงกับทีมปลายทางเฉพาะช่วงที่มีผล • Permanent Home Team ไม่เปลี่ยน
       </div>`;
   }
 
@@ -303,9 +335,7 @@
       return cached;
     }
 
-    if(sameShiftLoadPromiseV61514){
-      return sameShiftLoadPromiseV61514;
-    }
+    if(sameShiftLoadPromiseV61514)return sameShiftLoadPromiseV61514;
 
     sameShiftTeamLoadingV61509=true;
     if(key===homeFocusDateV61509)renderSameShiftTeamV61509(null,key);
@@ -313,32 +343,21 @@
     sameShiftLoadPromiseV61514=(async()=>{
       try{
         const data=await rpc(
-          "ta_portal_get_same_shift_team_v61509",
-          {
-            p_session_token:session(),
-            p_work_date:key
-          }
+          "ta_portal_get_working_team_v61529f15r",
+          {p_session_token:session(),p_work_date:key}
         );
         sameShiftTeamCacheV61509.set(key,data||null);
         return data||null;
       }catch(e){
-        console.warn("V6.15.14 same-shift team",e);
-        const fallback={
-          work_date:key,
-          total_members:0,
-          members:[],
-          error:friendly(e)
-        };
+        console.warn("V6.15.29 FIX15R working team",e);
+        const fallback={work_date:key,total_members:0,members:[],error:friendly(e)};
         sameShiftTeamCacheV61509.set(key,fallback);
         return fallback;
       }finally{
         sameShiftTeamLoadingV61509=false;
         sameShiftLoadPromiseV61514=null;
         if(key===homeFocusDateV61509){
-          renderSameShiftTeamV61509(
-            sameShiftTeamCacheV61509.get(key)||null,
-            key
-          );
+          renderSameShiftTeamV61509(sameShiftTeamCacheV61509.get(key)||null,key);
         }
       }
     })();
@@ -347,25 +366,15 @@
   }
 
   async function setHomeFocusDateV61509(offset){
-    const next=Number(offset||0)===-1
-      ? addDays(today(),-1)
-      : today();
-
+    const next=Number(offset||0)===-1?addDays(today(),-1):today();
     if(homeFocusDateV61509===next){
       renderToday();
-      renderSameShiftTeamV61509(
-        sameShiftTeamCacheV61509.get(next)||null,
-        next
-      );
+      renderSameShiftTeamV61509(sameShiftTeamCacheV61509.get(next)||null,next);
       return;
     }
-
     homeFocusDateV61509=next;
     renderToday();
-    renderSameShiftTeamV61509(
-      sameShiftTeamCacheV61509.get(next)||null,
-      next
-    );
+    renderSameShiftTeamV61509(sameShiftTeamCacheV61509.get(next)||null,next);
     await loadSameShiftTeamV61509(next);
   }
 

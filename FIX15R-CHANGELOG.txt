@@ -1,0 +1,28 @@
+TimeClock Enterprise V6.15.29 FIX15R
+Employee Portal — Working Team / Car Team + Borrow Alignment
+Date: 2026-09-14
+
+CHANGED
+1. Portal Home card no longer defines a team as "same Manager + same shift".
+2. Portal now loads effective Working Team from Backend Team Master.
+3. Normal date: Working Team = Permanent Home Team.
+4. Approved Borrow effective date: Working Team = Destination Team.
+5. After Borrow effective_to: Working Team automatically returns to Home Team.
+6. Roster shows all Working Team members for the selected date even if shift/day status differs.
+7. Borrowed members show Borrow badge + source Team + effective window.
+8. Current employee is marked "คุณ".
+9. No colleague Punch/Attendance is exposed.
+10. Legacy ta_portal_get_same_shift_team_v61509 delegates to FIX15R for cached clients.
+
+PORTAL/BACKEND AUDIT
+PASS / ALIGNED
+- Portal uses RPC/session APIs; no direct business-table reads in portal.js.
+- My Schedule uses ta_portal_get_my_calendar_v61482 and Manager-approved shift_calendar.
+- Work Time uses ta_portal_get_my_attendance_range_v61503 canonical Attendance/Punch metadata.
+- Request/Portal sync uses V6.15.13 revision mechanism.
+- Team roster is fixed in FIX15R to use effective Working Team / Borrow.
+
+FOLLOW-UP FOUND
+- Employee Request approver routing still resolves _ta_request_manager_email_v61481 via canonical Manager Map.
+- During an effective Borrow, this can still point to the Home/Source Manager instead of Destination Working-Team Manager.
+- FIX15R intentionally does not silently change approval ownership. Review this as the next Borrow/Portal rule before changing Request approval authority.

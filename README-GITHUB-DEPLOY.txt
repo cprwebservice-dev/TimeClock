@@ -1,3 +1,9 @@
+TimeClock Enterprise V6.15.29 FIX15R
+Employee Portal Working Team / Borrow Alignment
+
+Deploy after running FIX15R SQL + Verify.
+Portal Home team card now follows Team Master + Working Team effective date.
+
 V6.15.29 FIX15Q — Team Members Borrow / Working Members Overlay
 TimeClock Enterprise V6.15.29 FIX15O — USER SCOPE + ORG BOUNDARY HARDENING
 - Schedule Organization metadata is now server-scoped by current User authority/date.
