@@ -9,7 +9,7 @@
 <meta content="#0b1f3a" name="theme-color"/>
 <title>Time-Clock Enterprise V6.14.73 | CP Retailink</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix15f-20260914" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix15g-20260914" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1651,6 +1651,7 @@
         </div>
         <div class="team-temp-head-actions-v61529f14b">
           <span class="badge badge-gray" id="teamTempAuthorityBadgeV61529F14B">กำลังตรวจสิทธิ์</span>
+          <button class="btn btn-light" id="teamBorrowBrowserNotificationV61529F15G" type="button" title="รับแจ้งเตือนคำขอยืมตัวและรายการใกล้ครบกำหนด">🔔 เปิดแจ้งเตือน</button>
           <button class="btn btn-light" id="teamTempRefreshV61529F14B">↻ รีเฟรช</button>
           <button class="btn btn-primary" id="teamTempCreateV61529F14B">＋ ขอยืมช่าง</button>
         </div>
@@ -1673,6 +1674,11 @@
             <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">4</span>
             <div><strong>เฉพาะฝ่ายเดียวกัน</strong><small>Candidate จะแสดงเฉพาะช่างที่อยู่ระดับฝ่ายเดียวกับ Team ปลายทาง</small></div>
           </div>
+        </div>
+        <div class="borrow-notification-policy-v61529f15g">
+          <span class="borrow-notification-policy-icon-v61529f15g" aria-hidden="true">🔔</span>
+          <div><strong>Notification การยืมตัว</strong><small>แจ้งเมื่อมีคำขอใหม่ / อนุมัติ / ไม่อนุมัติ / ยกเลิก / จบก่อนกำหนด และเตือนก่อนครบกำหนดอัตโนมัติ</small></div>
+          <span class="borrow-notification-policy-badge-v61529f15g">3 วัน · 1 วัน · วันครบกำหนด</span>
         </div>
         <div class="team-temp-kpis-v61529f14b">
           <article class="pending" data-borrow-kpi-filter-v61529f15f="ACTION" title="ดูรายการที่รอคุณอนุมัติ"><span>รอฉันอนุมัติ</span><strong id="teamTempKpiPendingV61529F14B">0</strong><small>รายการ</small></article>
@@ -3222,6 +3228,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix15f-20260914"></script>
+<script src="./app.js?v=6.15.29-fix15g-20260914"></script>
 </body>
 </html>

@@ -1,0 +1,24 @@
+TimeClock Enterprise V6.15.29 FIX15G — UAT
+
+1. Destination Manager ส่งคำขอยืม
+   EXPECT: Source Manager/Acting เห็น Notification “มีคำขอยืมช่างรออนุมัติ”
+   EXPECT: HR Admin เห็น Notification “มีการขอยืมช่างใหม่” เพื่อรับทราบ (ไม่มีสิทธิ์ Approve)
+2. Source Manager อนุมัติ
+   EXPECT: Destination Manager/Acting เห็น Notification “คำขอยืมช่างได้รับอนุมัติ”
+3. Source Manager ไม่อนุมัติ
+   EXPECT: Destination ได้ Notification พร้อมเหตุผล
+4. Cancel / End Early
+   EXPECT: ทั้ง Source และ Destination ได้ Notification
+5. Borrow ที่เหลือ 3 วัน
+   EXPECT: Warning “จะครบกำหนดใน 3 วัน”
+   NOTE: ถ้าไม่ได้เปิดระบบใน D-3 แต่เปิดใน D-2 ระบบจะ Catch-up เป็น “ครบกำหนดใน 2 วัน”
+6. Borrow ที่เหลือ 1 วัน
+   EXPECT: Warning “จะครบกำหนดพรุ่งนี้”
+7. วันครบกำหนด
+   EXPECT: Danger “ครบกำหนดวันนี้”
+8. คลิก Notification
+   EXPECT: เปิด Team Workspace > Borrow + เลือก Workflow ที่เกี่ยวข้อง + Highlight รายการ
+9. กด Browser Notification Permission
+   EXPECT: ปุ่มเปลี่ยนเป็น “แจ้งเตือนเปิดอยู่”; Notification ใหม่แสดงเป็น OS/Browser notification เมื่อ session ทำงาน
+10. Security
+   EXPECT: ผู้ใช้เห็นเฉพาะ Notification ของตน; anon อ่านไม่ได้; direct INSERT/UPDATE/DELETE ไม่ได้

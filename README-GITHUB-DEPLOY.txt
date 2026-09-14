@@ -1,5 +1,24 @@
-TimeClock Enterprise V6.15.29 FIX15F — Borrow Workflow Completion
-Frontend-only: no SQL required for this release.
+TimeClock Enterprise V6.15.29 FIX15G — Borrow Notification + Expiry Reminder
+
+ติดตั้ง FIX15G
+1) รัน SQL_ที่ต้องรัน_V6.15.29_FIX15G_BORROW_NOTIFICATION_EXPIRY_REMINDER.sql
+2) รัน SQL_สำหรับตรวจสอบ_V6.15.29_FIX15G_BORROW_NOTIFICATION_EXPIRY_REMINDER.sql
+   - Check 1–18 ต้อง PASS
+   - Diagnostic Query ท้าย 4 ชุดต้องได้ 0 rows
+3) Deploy Web ZIP ไปที่ repository root
+4) Ctrl + Shift + R และ Login ใหม่
+5) หน้า ยืมตัวช่าง: กด “🔔 เปิดแจ้งเตือน” หากต้องการ Browser Notification
+
+FIX15G Notification
+- ปลายทางส่งคำขอ -> แจ้ง Manager/Acting ต้นทาง + แจ้ง HR Admin เพื่อรับทราบ
+- ต้นทางอนุมัติ/ไม่อนุมัติ -> แจ้ง Manager/Acting ปลายทาง
+- Cancel / End Early -> แจ้งทั้งสองฝ่าย
+- ก่อนครบกำหนด -> แจ้ง 3 วัน, 1 วัน และวันครบกำหนด
+- Notification ถูกเก็บในฐานข้อมูลและรวมกับกระดิ่งแจ้งเตือนเดิมของ TimeClock
+- คลิก Notification จะเปิด Team Workspace > Borrow และ Focus รายการนั้น
+- Realtime เมื่อใช้งานได้ + polling fallback 60 วินาที
+- Browser Notification ทำงานเมื่อ Browser/App session ยังทำงานและผู้ใช้อนุญาต Notification
+- ไม่ส่ง Notification การยืมตัวให้ HR Admin ในฐานะ Operational Actor
 
 V6.15.29 FIX15C — Borrow Effective Window Monthly Personal Display
 
@@ -25,7 +44,7 @@ BASE
 - การยืมตัวตัดสินจาก Manager ไม่ใช่ Home Org vs Destination Org
 - ปลายทางเป็นผู้ร้องขอเสมอ
 - ปลายทางเลือก Team ของตนก่อน
-- Candidate แสดงเฉพาะช่างใน Division เดียวกัน + ประเภทการปฏิบัติงานตรงกับ Team ปลายทาง
+- Candidate แสดงช่างใน Division เดียวกัน + ต่าง Manager; ประเภททีมที่ไม่ตรงจะแสดง Warning และยัง Block ที่ Preview ตาม Team policy
 - Source Manager != Destination Manager => Borrow
 - Source Manager = Destination Manager => ไม่สร้าง Borrow; ใช้ Team Membership > ย้ายทีม
 - เมื่อส่งคำขอ => PENDING_SOURCE

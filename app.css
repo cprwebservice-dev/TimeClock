@@ -25290,3 +25290,19 @@ html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f>div>span,body.dark .
   .borrow-workflow-stepper-v61529f15f{grid-template-columns:1fr 1fr;gap:8px}.borrow-workflow-stepper-v61529f15f>div::after{display:none}
 }
 @media(max-width:520px){.borrow-workflow-stepper-v61529f15f{grid-template-columns:1fr}.borrow-workflow-filter-v61529f15f{margin-left:12px;margin-right:12px}}
+
+
+/* ===== V6.15.29 FIX15G — Borrow Notification + Expiry Reminder ===== */
+.borrow-notification-policy-v61529f15g{display:flex;align-items:center;gap:12px;margin:14px 0;padding:12px 14px;border:1px solid #d9e8f7;border-radius:16px;background:linear-gradient(180deg,#f7fbff,#f1f7fd);color:#173b5c}
+.borrow-notification-policy-icon-v61529f15g{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:12px;background:#e2f0ff;font-size:18px}
+.borrow-notification-policy-v61529f15g>div{min-width:0;flex:1}.borrow-notification-policy-v61529f15g strong{display:block;font-size:13px;font-weight:900}.borrow-notification-policy-v61529f15g small{display:block;margin-top:2px;color:#607a91;font-size:11px;line-height:1.45}
+.borrow-notification-policy-badge-v61529f15g{flex:0 0 auto;padding:6px 10px;border-radius:999px;background:#fff4db;color:#9a5a00;border:1px solid #f4d79c;font-size:10px;font-weight:900;white-space:nowrap}
+#teamBorrowBrowserNotificationV61529F15G.borrow-notify-enabled-v61529f15g{border-color:#b9e5ce;background:#edf9f2;color:#087447}
+.notice-borrow-v61529f15g{position:relative}.notice-source-label-v61529f15g{display:inline-flex;width:max-content;margin-bottom:4px;padding:2px 7px;border-radius:999px;background:#eaf3ff;color:#1d62a7;font-size:9px;font-weight:900;letter-spacing:.03em}
+.borrow-notification-highlight-v61529f15g{animation:borrowNotificationPulseV61529F15G 1.05s ease-in-out 0s 3;box-shadow:0 0 0 3px rgba(37,132,255,.16),0 18px 40px rgba(20,76,130,.14)!important}
+@keyframes borrowNotificationPulseV61529F15G{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px);box-shadow:0 0 0 5px rgba(37,132,255,.12),0 18px 44px rgba(20,76,130,.16)}}
+html[data-theme="dark"] .borrow-notification-policy-v61529f15g,body.dark .borrow-notification-policy-v61529f15g{border-color:#31506d;background:#16293d;color:#e7f1fb}
+html[data-theme="dark"] .borrow-notification-policy-v61529f15g small,body.dark .borrow-notification-policy-v61529f15g small{color:#9fb7cb}
+html[data-theme="dark"] .borrow-notification-policy-icon-v61529f15g,body.dark .borrow-notification-policy-icon-v61529f15g{background:#203e5b}
+html[data-theme="dark"] .borrow-notification-policy-badge-v61529f15g,body.dark .borrow-notification-policy-badge-v61529f15g{background:#3a301d;border-color:#6b5530;color:#ffd58b}
+@media(max-width:900px){.borrow-notification-policy-v61529f15g{align-items:flex-start;flex-wrap:wrap}.borrow-notification-policy-badge-v61529f15g{margin-left:48px}}

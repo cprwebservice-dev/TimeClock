@@ -1,0 +1,21 @@
+TimeClock Enterprise V6.15.29 FIX15G
+Borrow Notification + Expiry Reminder
+
+Backend
+- Stored Borrow notification inbox for Manager / Acting
+- Trigger notifications: new request, approved, rejected, cancelled, end early
+- New Borrow request also sends an informational notification to active HR Admin users (audit only)
+- Expiry reminder: 3 days, 1 day, due today; D-2 catch-up if D-3 was missed because the app was not open
+- Dedupe by assignment/event/effective-end/recipient
+- Realtime publication best effort + RPC/polling fallback
+- RLS own-recipient SELECT; direct writes remain closed
+
+Frontend
+- Borrow notifications merged into the existing global Notification drawer
+- Unread badge includes Borrow notifications
+- Notification click opens Team Workspace > Borrow and highlights the related item
+- Optional Browser Notification button in Borrow header
+- Realtime when available; 60-second polling fallback
+- Expiry reminder policy displayed in Borrow workspace
+
+Run FIX15G SQL before deploying this frontend.

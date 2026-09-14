@@ -19144,25 +19144,54 @@ ${skippedSummary(compatibility.skipped)}
         if(!window.TimeClockShiftAPI?.missingFunction?.(error))console.warn('Employee request notifications V6.14.81:',error?.message||error);
         return [];
       });
-      const [baseRows,requestRows]=await Promise.all([basePromise,requestPromise]);
-      const rows=[...(baseRows||[]).map(r=>({...r,_source:'BASE'})),...(requestRows||[]).map(r=>({...r,_source:'EMPLOYEE_REQUEST'}))]
+      const borrowPromise=rpc("ta_get_borrow_notifications_v61529f15g",{p_limit:50,p_unread_only:false}).catch(error=>{
+        if(!window.TimeClockShiftAPI?.missingFunction?.(error))console.warn('Borrow notifications FIX15G:',error?.message||error);
+        return [];
+      });
+      const [baseRows,requestRows,borrowRows]=await Promise.all([basePromise,requestPromise,borrowPromise]);
+      window.TimeClockBorrowNotificationsV61529F15G?.observeRows?.(borrowRows||[]);
+      const rows=[
+        ...(baseRows||[]).map(r=>({...r,_source:'BASE'})),
+        ...(requestRows||[]).map(r=>({...r,_source:'EMPLOYEE_REQUEST'})),
+        ...(borrowRows||[]).map(r=>({...r,_source:'BORROW'}))
+      ]
         .sort((a,b)=>String(b.event_at||b.created_at||b.event_date||'').localeCompare(String(a.event_at||a.created_at||a.event_date||'')))
-        .slice(0,50);
+        .slice(0,60);
       body.innerHTML=rows.length?rows.map(r=>{
         const rawTarget=String(r.target_page||'');
-        const target=r._source==='EMPLOYEE_REQUEST'?'shift-requests':(["review","leave","time-correction","exception-center"].includes(rawTarget)?"attendance":(rawTarget||"dashboard"));
-        const unread=r.is_read===false?' is-unread-v61481':'';
-        return `<button class="notice-card severity-${esc(r.severity||'info')}${unread}" data-notice-page="${esc(target)}" ${r.notification_id?`data-employee-request-notification-v61481="${esc(r.notification_id)}"`:''}><span class="notice-dot"></span><div><strong>${esc(r.title)}</strong><p>${esc(r.message)}</p><time>${fmtDate(r.event_date||r.created_at||r.event_at)}</time></div></button>`;
+        const target=r._source==='EMPLOYEE_REQUEST'?'shift-requests':r._source==='BORROW'?'team-master':(["review","leave","time-correction","exception-center"].includes(rawTarget)?"attendance":(rawTarget||"dashboard"));
+        const unread=((r._source==='EMPLOYEE_REQUEST'||r._source==='BORROW')&&r.is_read===false)?' is-unread-v61481':'';
+        const requestAttr=r._source==='EMPLOYEE_REQUEST'&&r.notification_id?` data-employee-request-notification-v61481="${esc(r.notification_id)}"`:'';
+        const borrowAttr=r._source==='BORROW'&&r.notification_id
+          ?` data-borrow-notification-v61529f15g="${esc(r.notification_id)}" data-borrow-assignment-v61529f15g="${esc(r.assignment_id||'')}" data-borrow-workflow-v61529f15g="${esc(r.workflow_filter||'ALL')}" data-borrow-from-v61529f15g="${esc(r.effective_from||'')}" data-borrow-to-v61529f15g="${esc(r.effective_to||'')}"`
+          :'';
+        const sourceTag=r._source==='BORROW'?'<span class="notice-source-label-v61529f15g">ยืมตัว</span>':'';
+        return `<button class="notice-card severity-${esc(r.severity||'info')}${unread}${r._source==='BORROW'?' notice-borrow-v61529f15g':''}" data-notice-page="${esc(target)}"${requestAttr}${borrowAttr}><span class="notice-dot"></span><div>${sourceTag}<strong>${esc(r.title)}</strong><p>${esc(r.message)}</p><time>${fmtDate(r.event_date||r.created_at||r.event_at)}</time></div></button>`;
       }).join(""):`<div class="notification-empty">ไม่มีการแจ้งเตือนใหม่</div>`;
-      const unreadCount=rows.filter(r=>r._source!=='EMPLOYEE_REQUEST'||r.is_read===false).length;
+      const unreadCount=rows.filter(r=>{
+        if(r._source==='EMPLOYEE_REQUEST'||r._source==='BORROW')return r.is_read===false;
+        return true;
+      }).length;
       const badge=$("notificationCount");if(badge)badge.textContent=unreadCount;
       body.onclick=async e=>{
         const b=e.target.closest("[data-notice-page]");
         if(!b)return;
         const notificationId=b.dataset.employeeRequestNotificationV61481;
         if(notificationId){try{await rpc('ta_mark_employee_request_notification_read_v61481',{p_notification_id:notificationId});}catch(_){} }
+        const borrowNotificationId=b.getAttribute('data-borrow-notification-v61529f15g');
+        if(borrowNotificationId){try{await rpc('ta_mark_borrow_notification_read_v61529f15g',{p_notification_id:borrowNotificationId});}catch(_){} }
         app()?.switchPage?.(b.dataset.noticePage);
+        if(borrowNotificationId){
+          const context={
+            assignmentId:b.getAttribute('data-borrow-assignment-v61529f15g')||'',
+            workflowFilter:b.getAttribute('data-borrow-workflow-v61529f15g')||'ALL',
+            effectiveFrom:b.getAttribute('data-borrow-from-v61529f15g')||'',
+            effectiveTo:b.getAttribute('data-borrow-to-v61529f15g')||''
+          };
+          setTimeout(()=>window.TimeClockTemporaryAssignmentV61529F14B?.openFromNotification?.(context),40);
+        }
         $("notificationDrawer")?.classList.remove("open");
+        setTimeout(()=>window.TimeClockFunctional?.loadNotifications?.(),120);
       };
     }catch(e){
       body.innerHTML=`<div class="notification-empty">ไม่สามารถโหลดการแจ้งเตือนจากฐานข้อมูล<br><small>${esc(e.message||"")}</small></div>`;
@@ -34085,7 +34114,7 @@ ${names}${extra}
     host.innerHTML=rows.map(r=>{
       const st=statusInfo(r),type=assignmentLabel(r.assignment_type),waiting=r.waiting_for==='SOURCE'?'ต้นทาง':r.waiting_for==='DESTINATION'?'ปลายทาง':'';
       const auth=r.source_authorized?'Manager/Acting ต้นทาง':r.destination_authorized?'Manager/Acting ปลายทาง':'Audit';
-      return `<article class="team-temp-card-v61529f14b ${st.tone}">
+      return `<article class="team-temp-card-v61529f14b ${st.tone}" data-borrow-assignment-card-v61529f15g="${esc(r.assignment_id||'')}">
         <div class="team-temp-card-main-v61529f14b">
           <div class="team-temp-person-v61529f14b"><span class="team-temp-type-icon-v61529f14b">${assignmentIcon(r.assignment_type)}</span><div><strong>${esc(r.emp_code)} · ${esc(r.employee_name||'-')}</strong><small>${esc(r.position_name||'ช่างเทคนิค')}</small><span class="team-temp-type-chip-v61529f14b ${String(r.assignment_type||'').toLowerCase()}">${esc(type)}</span>${workflowMetaHtml(r)}</div></div>
           <div class="team-temp-flow-v61529f14b"><div><span>ต้นทาง</span><strong>${esc(r.source_org_code||'-')}</strong><small>${esc(r.source_team_code||'-')} · ${esc(r.source_team_name||'')}</small></div><b>→</b><div><span>Team ปลายทาง</span><strong>${esc(r.destination_org_code||'-')}</strong><small>${esc(r.destination_team_code||'-')} · ${esc(r.destination_team_name||'')}</small></div></div>
@@ -34174,14 +34203,14 @@ ${names}${extra}
   async function createAssignment(){
     const emp=$('teamTempEmployeeV61529F14B')?.value||'',dest=$('teamTempDestinationV61529F14B')?.value||'',from=$('teamTempCreateFromV61529F14B')?.value||'',to=$('teamTempCreateToV61529F14B')?.value||'',note=String($('teamTempNoteV61529F14B')?.value||'').trim();if(state.preview?.allowed!==true)return toast('กรุณาตรวจ Preview ให้ผ่านก่อนส่งคำขอ','warning');if(note.length<3)return toast('กรุณาระบุเหตุผล / รายละเอียดงาน','warning');
     const sm=state.preview?.source_manager?.email||'-',dm=state.preview?.destination_manager?.email||'-';const ok=await window.tcConfirm?.({title:'ส่งคำขอยืมช่าง?',message:[`${emp} · ยืมตัว`,`Manager ต้นทาง: ${sm}`,`Manager ปลายทาง: ${dm}`,`${state.preview?.source_org?.org_code||'-'} → ${state.preview?.destination_org?.org_code||'-'}`,`${fmtDate(from)} – ${fmtDate(to)}`,'เมื่อส่งแล้ว ระบบจะรอ Manager / Acting ต้นทางอนุมัติ'].join('\n'),confirmText:'ส่งคำขอยืมตัว',tone:'primary'});if(!ok)return;
-    try{app()?.showLoading?.('กำลังส่งคำขอยืมตัว...');await rpc('ta_create_borrow_request_v61529f15',{p_emp_code:emp,p_destination_team_id:dest,p_effective_from:from,p_effective_to:to,p_note:note});closeCreate();toast('ส่งคำขอให้ Manager ต้นทางอนุมัติแล้ว','success');await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+    try{app()?.showLoading?.('กำลังส่งคำขอยืมตัว...');await rpc('ta_create_borrow_request_v61529f15',{p_emp_code:emp,p_destination_team_id:dest,p_effective_from:from,p_effective_to:to,p_note:note});closeCreate();toast('ส่งคำขอให้ Manager ต้นทางอนุมัติแล้ว','success');await load();window.TimeClockFunctional?.loadNotifications?.();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
   }
 
   function rowById(id){return(state.rows||[]).find(r=>String(r.assignment_id)===String(id))||null;}
-  async function approve(id){const r=rowById(id);if(!r)return;const ok=await window.tcConfirm?.({title:'อนุมัติการยืมตัวช่าง',message:[`${r.emp_code} · ${r.employee_name||'-'}`,`${r.source_org_code} → ${r.destination_org_code}`,`${fmtDate(r.effective_from)} – ${fmtDate(r.effective_to)}`].join('\n'),confirmText:'อนุมัติ',tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังอนุมัติ...');await rpc('ta_decide_borrow_request_v61529f15',{p_assignment_id:id,p_decision:'APPROVE',p_note:null});toast('อนุมัติเรียบร้อย','success');await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+  async function approve(id){const r=rowById(id);if(!r)return;const ok=await window.tcConfirm?.({title:'อนุมัติการยืมตัวช่าง',message:[`${r.emp_code} · ${r.employee_name||'-'}`,`${r.source_org_code} → ${r.destination_org_code}`,`${fmtDate(r.effective_from)} – ${fmtDate(r.effective_to)}`].join('\n'),confirmText:'อนุมัติ',tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังอนุมัติ...');await rpc('ta_decide_borrow_request_v61529f15',{p_assignment_id:id,p_decision:'APPROVE',p_note:null});toast('อนุมัติเรียบร้อย','success');await load();window.TimeClockFunctional?.loadNotifications?.();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
   function openAction(id,mode){const r=rowById(id);if(!r)return;state.action={id,mode,row:r};const modal=$('teamTempActionModalV61529F14B'),title=$('teamTempActionTitleV61529F14B'),sub=$('teamTempActionSubtitleV61529F14B'),sum=$('teamTempActionSummaryV61529F14B'),endBox=$('teamTempActionEndBoxV61529F14B'),end=$('teamTempActionEndDateV61529F14B'),btn=$('teamTempActionConfirmV61529F14B');if(!modal)return;const labels={REJECT:'ไม่อนุมัติคำขอยืมตัว',CANCEL:'ยกเลิกคำขอยืมตัว',END:'จบการยืมตัวก่อนกำหนด'};title.textContent=labels[mode]||'ดำเนินการ';sub.textContent=`${r.emp_code} · ${r.employee_name||'-'} · ${r.source_org_code} → ${r.destination_org_code}`;sum.innerHTML=`<div><span>ประเภท</span><strong>${esc(assignmentLabel(r.assignment_type))}</strong></div><div><span>ช่วงเดิม</span><strong>${esc(fmtDate(r.effective_from))} – ${esc(fmtDate(r.effective_to))}</strong></div>`;$('teamTempActionReasonV61529F14B')&&($('teamTempActionReasonV61529F14B').value='');endBox.classList.toggle('hidden',mode!=='END');if(mode==='END'&&end){end.min=today();end.max=addDays(r.effective_to,-1);end.value=today()<r.effective_to?today():addDays(r.effective_to,-1);}btn.textContent=mode==='REJECT'?'ยืนยันไม่อนุมัติ':mode==='CANCEL'?'ยืนยันยกเลิก':'ยืนยันวันสิ้นสุดใหม่';btn.className=mode==='END'?'btn btn-primary':'btn btn-danger';modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');}
   function closeAction(){const m=$('teamTempActionModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.action=null;}
-  async function confirmAction(){const a=state.action;if(!a)return;const reason=String($('teamTempActionReasonV61529F14B')?.value||'').trim();if(reason.length<3)return toast('กรุณาระบุเหตุผล','warning');try{app()?.showLoading?.('กำลังบันทึก...');if(a.mode==='REJECT')await rpc('ta_decide_borrow_request_v61529f15',{p_assignment_id:a.id,p_decision:'REJECT',p_note:reason});else{const end=a.mode==='END'?$('teamTempActionEndDateV61529F14B')?.value:today();if(a.mode==='END'&&!end)return toast('กรุณาระบุวันที่สิ้นสุดใหม่','warning');await rpc('ta_end_borrow_request_v61529f15',{p_assignment_id:a.id,p_effective_to:end,p_reason:reason});}closeAction();toast(a.mode==='REJECT'?'บันทึกไม่อนุมัติแล้ว':a.mode==='CANCEL'?'ยกเลิกรายการแล้ว':'ปรับวันสิ้นสุดเรียบร้อย','success');await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+  async function confirmAction(){const a=state.action;if(!a)return;const reason=String($('teamTempActionReasonV61529F14B')?.value||'').trim();if(reason.length<3)return toast('กรุณาระบุเหตุผล','warning');try{app()?.showLoading?.('กำลังบันทึก...');if(a.mode==='REJECT')await rpc('ta_decide_borrow_request_v61529f15',{p_assignment_id:a.id,p_decision:'REJECT',p_note:reason});else{const end=a.mode==='END'?$('teamTempActionEndDateV61529F14B')?.value:today();if(a.mode==='END'&&!end)return toast('กรุณาระบุวันที่สิ้นสุดใหม่','warning');await rpc('ta_end_borrow_request_v61529f15',{p_assignment_id:a.id,p_effective_to:end,p_reason:reason});}closeAction();toast(a.mode==='REJECT'?'บันทึกไม่อนุมัติแล้ว':a.mode==='CANCEL'?'ยกเลิกรายการแล้ว':'ปรับวันสิ้นสุดเรียบร้อย','success');await load();window.TimeClockFunctional?.loadNotifications?.();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
 
   async function loadActing(){if(!isHr())return;try{const range=listRange();state.actingRows=await rpc('ta_get_acting_manager_assignments_v61529f14b',{p_from:range.from||null,p_to:range.to||null,p_org_id:null})||[];renderActing();}catch(e){console.warn('Acting reader',e);}}
   function actingStatus(r){return String(r.lifecycle_status||'').toUpperCase()==='ACTIVE'?'<span class="badge badge-green">กำลังรักษาการ</span>':String(r.lifecycle_status||'').toUpperCase()==='SCHEDULED'?'<span class="badge badge-blue">รอเริ่ม</span>':String(r.lifecycle_status||'').toUpperCase()==='COMPLETED'?'<span class="badge badge-gray">สิ้นสุดแล้ว</span>':'<span class="badge badge-red">ปิดใช้งาน</span>';}
@@ -34192,8 +34221,32 @@ ${names}${extra}
   function closeActing(){const m=$('teamActingModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.actingEdit=null;}
   async function saveActing(){if(!isHr())return;const person=$('teamActingPersonV61529F14B'),email=person?.value||'',emp=person?.selectedOptions?.[0]?.dataset?.emp||'',org=$('teamActingOrgV61529F14B')?.value||'',from=$('teamActingFromV61529F14B')?.value||'',to=$('teamActingToV61529F14B')?.value||'',reason=String($('teamActingReasonV61529F14B')?.value||'').trim(),active=$('teamActingActiveV61529F14B')?.checked!==false;if(!email||!org||!from||!to)return toast('กรุณาระบุผู้รักษาการ หน่วยงาน และช่วงวันที่','warning');if(to<from)return toast('วันที่สิ้นสุดต้องไม่น้อยกว่าวันเริ่ม','warning');if(reason.length<3)return toast('กรุณาระบุเหตุผลการรักษาการ','warning');try{app()?.showLoading?.('กำลังบันทึก Acting Manager...');await rpc('ta_set_acting_manager_assignment_v61529f14',{p_acting_id:state.actingEdit?.acting_id||null,p_acting_email:email,p_acting_emp_code:emp||null,p_org_id:org,p_include_descendants:$('teamActingDescendantsV61529F14B')?.checked===true,p_effective_from:from,p_effective_to:to,p_reason:reason,p_is_active:active});closeActing();toast('บันทึก Acting Manager เรียบร้อย','success');await loadActing();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
 
+  async function openFromNotification(context={}){
+    const assignmentId=String(context.assignmentId||'');
+    const from=String(context.effectiveFrom||'').slice(0,10);
+    const to=String(context.effectiveTo||'').slice(0,10);
+    const workflow=String(context.workflowFilter||'ALL').toUpperCase();
+    ensureAssignmentTabVisible();
+    const f=$('teamTempFromV61529F14B'),t=$('teamTempToV61529F14B');
+    if(f&&/^\d{4}-\d{2}-\d{2}$/.test(from)&&(!f.value||from<f.value))f.value=from;
+    if(t&&/^\d{4}-\d{2}-\d{2}$/.test(to)&&(!t.value||to>t.value))t.value=to;
+    state.workflowFilter=['ACTION','REQUESTED','ACTIVE','EXPIRING','COMPLETED','ALL'].includes(workflow)?workflow:'ALL';
+    if($('teamTempStatusV61529F14B'))$('teamTempStatusV61529F14B').value='ALL';
+    syncWorkflowFilterUI();
+    await load();
+    if(!assignmentId)return;
+    const card=[...document.querySelectorAll('[data-borrow-assignment-card-v61529f15g]')]
+      .find(el=>String(el.getAttribute('data-borrow-assignment-card-v61529f15g')||'')===assignmentId);
+    if(card){
+      card.classList.add('borrow-notification-highlight-v61529f15g');
+      card.scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(()=>card.classList.remove('borrow-notification-highlight-v61529f15g'),3200);
+    }
+  }
+
   function bind(){
     setDefaultRange();
+    $('teamBorrowBrowserNotificationV61529F15G')?.addEventListener('click',()=>window.TimeClockBorrowNotificationsV61529F15G?.requestPermission?.());
     $('teamTempRefreshV61529F14B')?.addEventListener('click',load);$('teamTempCreateV61529F14B')?.addEventListener('click',openCreate);$('teamTempStatusV61529F14B')?.addEventListener('change',()=>{state.workflowFilter='ALL';syncWorkflowFilterUI();renderWorkspace();});$('teamTempSearchV61529F14B')?.addEventListener('input',renderWorkspace);$('teamTempFromV61529F14B')?.addEventListener('change',load);$('teamTempToV61529F14B')?.addEventListener('change',load);
     $('teamTempCandidateSearchBtnV61529F14B')?.addEventListener('click',loadCandidates);$('teamTempCandidateSearchV61529F14B')?.addEventListener('input',()=>{clearTimeout(state.candidateTimer);state.candidateTimer=setTimeout(loadCandidates,280);});$('teamTempCandidateSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadCandidates();}});
     $('teamTempDestinationV61529F14B')?.addEventListener('change',async()=>{if($('teamTempEmployeeV61529F14B'))$('teamTempEmployeeV61529F14B').value='';await loadCandidates();schedulePreview();});$('teamTempEmployeeV61529F14B')?.addEventListener('change',()=>{renderHomeCard();schedulePreview();});$('teamTempCreateFromV61529F14B')?.addEventListener('change',async e=>{if($('teamTempCreateToV61529F14B')&&$('teamTempCreateToV61529F14B').value<e.target.value)$('teamTempCreateToV61529F14B').value=e.target.value;if($('teamTempDestinationV61529F14B'))$('teamTempDestinationV61529F14B').value='';await loadDestinations();await loadCandidates();schedulePreview();});$('teamTempCreateToV61529F14B')?.addEventListener('change',schedulePreview);$('teamTempNoteV61529F14B')?.addEventListener('input',renderPreview);$('teamTempCreateConfirmV61529F14B')?.addEventListener('click',createAssignment);$('teamTempActionConfirmV61529F14B')?.addEventListener('click',confirmAction);
@@ -34209,6 +34262,110 @@ ${names}${extra}
     const init=async()=>{const a=await loadAccess();if(actingOnly()&&document.querySelector('#page-team-master.active')){ensureAssignmentTabVisible();load();}return a;};
     window.addEventListener('ta:session-ready',()=>setTimeout(init,0));document.addEventListener('timeclock:effective-role-changed',()=>setTimeout(init,0));setTimeout(init,450);
   }
-  window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,openCreate,state,version:VERSION};
+  window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,openCreate,openFromNotification,state,version:VERSION};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
+
+/* ===== FIX15G Borrow Notifications + Expiry Reminder live sync ===== */
+(() => {
+  "use strict";
+  const VERSION="V6.15.29 FIX15G";
+  const app=()=>window.TimeClockApp;
+  const $=id=>document.getElementById(id);
+  const state={channel:null,timer:null,seen:new Set(),observed:false};
+
+  function isAuthFailure(error){
+    const status=Number(error?.status||error?.statusCode||0);
+    const raw=String(error?.message||error?.details||error?.hint||error||'');
+    return status===401||/unauthorized|invalid jwt|jwt expired|token.*expired|refresh[_ ]?token/i.test(raw)||String(error?.code||'').toUpperCase()==='PGRST301';
+  }
+  async function ensureFreshSession(force=false){
+    const a=app(),c=a?.state?.client;
+    if(!c?.auth)throw new Error('SUPABASE_CLIENT_NOT_READY');
+    let session=a?.state?.session||null;
+    if(!session?.access_token){const {data,error}=await c.auth.getSession();if(error)throw error;session=data?.session||null;}
+    if(!session?.access_token)throw Object.assign(new Error('AUTH_SESSION_REQUIRED'),{status:401});
+    const expiresAt=Number(session.expires_at||0)*1000;
+    if(force||(expiresAt>0&&expiresAt-Date.now()<90000)){
+      const {data,error}=await c.auth.refreshSession();if(error||!data?.session?.access_token)throw error||Object.assign(new Error('AUTH_SESSION_EXPIRED'),{status:401});
+      session=data.session;if(a?.state){a.state.session=session;a.state.user=session.user||null;}
+    }
+    if(session?.access_token&&c?.realtime?.setAuth){try{const x=c.realtime.setAuth(session.access_token);if(x?.catch)x.catch(()=>{});}catch(_){}}
+    return session;
+  }
+  async function rpc(name,args={},retry=true){
+    const c=app()?.state?.client;if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');
+    await ensureFreshSession(false);const {data,error}=await c.rpc(name,args);
+    if(error&&retry&&isAuthFailure(error)){await ensureFreshSession(true);return rpc(name,args,false);}
+    if(error)throw error;return data;
+  }
+  function buttonState(){
+    const b=$('teamBorrowBrowserNotificationV61529F15G');if(!b)return;
+    if(!('Notification' in window)){b.textContent='🔕 Browser ไม่รองรับ';b.disabled=true;return;}
+    b.disabled=false;
+    if(Notification.permission==='granted'){b.textContent='🔔 แจ้งเตือนเปิดอยู่';b.classList.add('borrow-notify-enabled-v61529f15g');}
+    else if(Notification.permission==='denied'){b.textContent='🔕 Browser ปิดแจ้งเตือน';b.classList.remove('borrow-notify-enabled-v61529f15g');}
+    else{b.textContent='🔔 เปิดแจ้งเตือน';b.classList.remove('borrow-notify-enabled-v61529f15g');}
+  }
+  async function requestPermission(){
+    if(!('Notification' in window))return app()?.toast?.('Browser นี้ไม่รองรับ Notification','warning');
+    const permission=await Notification.requestPermission();buttonState();
+    app()?.toast?.(permission==='granted'?'เปิด Browser Notification สำหรับการยืมตัวแล้ว':'ยังไม่ได้อนุญาต Browser Notification',permission==='granted'?'success':'warning');
+  }
+  function showBrowser(row){
+    if(!row||!('Notification' in window)||Notification.permission!=='granted')return;
+    try{
+      const n=new Notification(`TimeClock · ${row.title||'แจ้งเตือนการยืมตัว'}`,{body:String(row.message||''),tag:`borrow-${row.notification_id||row.assignment_id||Date.now()}`});
+      n.onclick=()=>{
+        try{window.focus();}catch(_){}
+        app()?.switchPage?.('team-master');
+        setTimeout(()=>window.TimeClockTemporaryAssignmentV61529F14B?.openFromNotification?.({
+          assignmentId:row.assignment_id||'',workflowFilter:row.workflow_filter||'ALL',effectiveFrom:row.effective_from||'',effectiveTo:row.effective_to||''
+        }),60);
+        try{n.close();}catch(_){}
+      };
+    }catch(_){ }
+  }
+  function observeRows(rows=[]){
+    const list=Array.isArray(rows)?rows:[];
+    if(!state.observed){list.forEach(r=>state.seen.add(String(r.notification_id||'')));state.observed=true;buttonState();return;}
+    const fresh=list.filter(r=>r?.is_read===false&&!state.seen.has(String(r.notification_id||'')));
+    fresh.slice().reverse().forEach(r=>{state.seen.add(String(r.notification_id||''));showBrowser(r);});
+    if(fresh.length){
+      const first=fresh[0];
+      app()?.toast?.(fresh.length===1?String(first.title||'มีแจ้งเตือนการยืมตัวใหม่'):`มีแจ้งเตือนการยืมตัวใหม่ ${fresh.length} รายการ`,fresh.some(r=>String(r.severity).toLowerCase()==='danger')?'warning':'info');
+    }
+    list.forEach(r=>state.seen.add(String(r.notification_id||'')));
+    buttonState();
+  }
+  function stop(){
+    clearInterval(state.timer);state.timer=null;
+    const c=app()?.state?.client;if(state.channel){try{c?.removeChannel?.(state.channel);}catch(_){}state.channel=null;}
+  }
+  async function setupRealtime(){
+    const c=app()?.state?.client;if(!c?.channel||state.channel)return;
+    try{
+      const session=await ensureFreshSession(false);const uid=String(session?.user?.id||'');if(!uid)return;
+      state.channel=c.channel(`borrow-notification-v61529f15g-${uid.slice(0,8)}`)
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'ta_borrow_notifications_v61529f15g',filter:`target_user_id=eq.${uid}`},()=>window.TimeClockFunctional?.loadNotifications?.())
+        .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){try{c.removeChannel?.(state.channel);}catch(_){}state.channel=null;}});
+    }catch(e){if(!isAuthFailure(e))console.warn('Borrow notification realtime fallback to polling:',e?.message||e);}
+  }
+  function setupPolling(){
+    clearInterval(state.timer);
+    state.timer=setInterval(()=>{if(document.visibilityState==='visible')window.TimeClockFunctional?.loadNotifications?.();},60000);
+  }
+  async function start(){
+    buttonState();
+    try{await setupRealtime();}catch(_){}
+    setupPolling();
+    setTimeout(()=>window.TimeClockFunctional?.loadNotifications?.(),80);
+  }
+  window.addEventListener('ta:session-ready',()=>setTimeout(start,80));
+  window.addEventListener('timeclock:auth-signed-out',stop);
+  window.addEventListener('timeclock:auth-refreshed',()=>{stop();setTimeout(start,80);});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.TimeClockFunctional?.loadNotifications?.();});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',buttonState);else buttonState();
+  window.TimeClockBorrowNotificationsV61529F15G={VERSION,state,observeRows,requestPermission,start,stop,markAllRead:()=>rpc('ta_mark_all_borrow_notifications_read_v61529f15g',{})};
+})();
+
