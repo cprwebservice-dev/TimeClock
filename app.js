@@ -5142,6 +5142,8 @@ window.tcIsDayShiftCode = value =>
     const scheduleFilterOptionsCacheV6125 = new Map();
     const SCHEDULE_FILTER_CACHE_TTL_V6125 = 30000;
 
+    // FIX15O: server-side options are Working-Org aware. Borrow destination
+    // visibility must not leak the employee's Home Department/Zone into filters.
     async function loadScheduleFilterOptions(
       period = syncSchedulePeriodUI(),
       zoneOverride = undefined
@@ -6388,6 +6390,7 @@ window.tcIsDayShiftCode = value =>
 
     const scheduleOrgManagerStateV61123 = {
       loadedUnits: false,
+      loadedKey: "",
       units: [],
       byCode: new Map(),
       byName: new Map(),
@@ -6412,17 +6415,32 @@ window.tcIsDayShiftCode = value =>
       return true;
     }
 
-    async function scheduleLoadOrgUnitsV61123() {
+    async function scheduleLoadOrgUnitsV61123(period = null) {
       const cache = scheduleOrgManagerStateV61123;
-      if (cache.loadedUnits || !state.client) return cache.units;
+      if (!state.client) return cache.units;
+
+      // FIX15O: Organization Master is a permission boundary. Never read the
+      // complete ta_org_units table directly from a Manager/Viewer browser.
+      // The server returns only organization metadata authorized for the
+      // selected Schedule period (HR Admin remains unrestricted).
+      const resolvedPeriod = period || syncSchedulePeriodUI();
+      const startDate = String(resolvedPeriod?.startDate || todayISO()).slice(0,10);
+      const endDate = String(resolvedPeriod?.endDate || startDate).slice(0,10);
+      const cacheKey = `${startDate}|${endDate}`;
+
+      if (cache.loadedUnits && cache.loadedKey === cacheKey) return cache.units;
+
       try {
-        const { data, error } = await state.client
-          .from('ta_org_units')
-          .select('org_id,org_code,org_name,parent_org_id,is_active,effective_from,effective_to')
-          .order('level_order', { ascending: true })
-          .order('sort_order', { ascending: true });
+        const { data, error } = await state.client.rpc(
+          'ta_get_schedule_org_units_v61529f15o',
+          {
+            p_start_date: startDate,
+            p_end_date: endDate
+          }
+        );
         if (error) throw error;
-        cache.units = data || [];
+
+        cache.units = Array.isArray(data) ? data : [];
         cache.byCode.clear();
         cache.byName.clear();
         cache.units.forEach(unit => {
@@ -6432,8 +6450,15 @@ window.tcIsDayShiftCode = value =>
           if (nameKey && !cache.byName.has(nameKey)) cache.byName.set(nameKey, unit);
         });
         cache.loadedUnits = true;
+        cache.loadedKey = cacheKey;
       } catch (error) {
-        console.warn('Schedule org-unit metadata V6.11.24:', error);
+        // Security-first fallback: do not fall back to an unscoped table read.
+        cache.units = [];
+        cache.byCode.clear();
+        cache.byName.clear();
+        cache.loadedUnits = false;
+        cache.loadedKey = '';
+        console.warn('Schedule scoped org metadata FIX15O:', error);
       }
       return cache.units;
     }
@@ -6532,7 +6557,7 @@ window.tcIsDayShiftCode = value =>
 
     async function enrichScheduleOrgManagersV61123(rows = [], period = null) {
       if (!rows?.length || !state.client) return;
-      await scheduleLoadOrgUnitsV61123();
+      await scheduleLoadOrgUnitsV61123(period);
       const cache = scheduleOrgManagerStateV61123;
       if (!cache.units.length) return;
 

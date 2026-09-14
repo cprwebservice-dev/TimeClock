@@ -1,0 +1,11 @@
+TimeClock Enterprise V6.15.29 FIX15O
+User Scope + Organization Boundary Hardening
+
+1. Replaced Schedule direct ta_org_units read with ta_get_schedule_org_units_v61529f15o.
+2. Organization metadata is date-aware and limited by current VIEW authority.
+3. Schedule filter options are Borrow-aware:
+   - Source Manager: Home Org context.
+   - Destination Manager/Acting: Destination Working Org context.
+   - Source Home Department/Zone is not added to destination filter options.
+4. Security-first behavior: no unscoped direct-table fallback if scoped Org RPC fails.
+5. No change to canonical Borrow/Acting schedule edit/confirm authority.

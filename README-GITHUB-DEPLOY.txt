@@ -1,3 +1,9 @@
+TimeClock Enterprise V6.15.29 FIX15O — USER SCOPE + ORG BOUNDARY HARDENING
+- Schedule Organization metadata is now server-scoped by current User authority/date.
+- Browser no longer reads the complete Organization Master directly.
+- Borrow destination filters use Destination Working Org; Source Home Department/Zone is not exposed to destination Manager.
+- Borrow/Acting effective-date schedule authority is unchanged.
+
 V6.15.29 FIX15L Borrow UX Modernization — Frontend only; no SQL required.
 TimeClock Enterprise V6.15.29 FIX15G — Borrow Notification + Expiry Reminder
 

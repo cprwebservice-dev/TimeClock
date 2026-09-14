@@ -1,0 +1,25 @@
+FIX15O UAT
+
+A. Manager Scope
+1. Login Manager with one limited Org Scope.
+2. Open Dashboard / Schedule filters.
+3. Only authorized units must appear.
+4. Search/Calendar must not return employees outside canonical VIEW scope.
+
+B. Borrow destination
+1. Borrow technician from another Manager in same Division.
+2. During Borrow period, destination Manager can see technician.
+3. Schedule Department filter must show destination Working Org, not source Home Department.
+4. Outside Borrow period, destination Manager must not see source schedule/unit.
+
+C. Source Manager
+1. During Borrow period source Manager keeps VIEW only.
+2. Source Manager filter remains Home Org context.
+3. Source cannot edit/confirm schedule during Borrow.
+
+D. Acting
+1. Acting sees only delegated Org/descendants and effective dates.
+2. After Acting expiry, delegated Org disappears.
+
+E. HR Admin
+1. HR Admin retains full Organization visibility.
