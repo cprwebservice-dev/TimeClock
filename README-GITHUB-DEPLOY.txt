@@ -1,3 +1,9 @@
+FIX15T — Manager Dashboard / Home Minimal Modernization
+- Frontend-only; no SQL.
+- Compact Dashboard header, filter rail, KPIs and executive panels.
+- Reduced visual noise while preserving all Dashboard data and actions.
+- Responsive + Dark Mode aligned.
+
 TimeClock Enterprise V6.15.29 FIX15R
 Employee Portal Working Team / Borrow Alignment
 

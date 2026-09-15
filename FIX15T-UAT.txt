@@ -1,0 +1,10 @@
+FIX15T UAT — Manager Dashboard / Home Minimal Modernization
+
+1. Login as Manager and open Dashboard.
+2. Verify filters (start/end date, area, department) still load and Search/Reset behavior is unchanged.
+3. Confirm KPI values equal the previous release for the same filters.
+4. Confirm Dashboard quick actions still navigate to Attendance/Schedule.
+5. Confirm Attendance Health, Need Attention, Schedule Readiness, chart/legend, status bars and insights still render after Load Dashboard.
+6. Resize desktop/tablet/mobile widths and confirm no overlapping controls.
+7. Enable Dark Mode and confirm text, cards, inputs and panel boundaries remain readable.
+8. Borrow/Acting/Scope behavior must be unchanged because FIX15T contains no backend permission changes.

@@ -1,0 +1,21 @@
+TimeClock Enterprise V6.15.29 FIX15T
+Manager Dashboard / Home Minimal Modernization
+
+Frontend-only — no SQL / backend change.
+
+Changed
+- Compact Dashboard hero/header and primary actions.
+- Converted Dashboard filters to a compact one-line control rail on desktop.
+- Reduced KPI visual noise; primary KPIs remain prominent and secondary metrics are quieter.
+- Removed redundant per-card progress bars/percentages from KPI cards; executive panels remain the place for ratios.
+- Compressed Attendance Health / Need Attention / Schedule Readiness without removing data.
+- Reduced panel padding, border weight, shadows, and vertical spacing throughout Dashboard.
+- Refined Quick Actions, status bars, operational summary, recent activity, Executive Insights, and Workforce Distribution.
+- Responsive layouts for desktop/tablet/mobile.
+- Dark mode aligned with the same minimal visual system.
+
+Unchanged
+- Dashboard RPCs and scope rules.
+- Attendance / Schedule calculations.
+- Manager/Acting/Borrow permissions.
+- Navigation and filter behavior.
