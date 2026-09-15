@@ -9,7 +9,7 @@
 <meta content="#0b1f3a" name="theme-color"/>
 <title>Time-Clock Enterprise V6.14.73 | CP Retailink</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix15u-20260915" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix15v-20260915" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1865,30 +1865,38 @@
   </div>
 </div>
 
-<!-- V6.15.28 FIX1 Team Membership — Dual-pane Transfer Workspace -->
+<!-- V6.15.29 FIX15V Team Membership — Minimal Working-Team Workspace -->
 <div class="modal-backdrop hidden" id="teamMembershipModalV61524" aria-hidden="true">
-  <div class="modal team-membership-modal-v61524 team-membership-dual-modal-v61528f1" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div><span class="eyebrow">TEAM MEMBERSHIP · DUAL-PANE</span><h3 id="teamMembershipTitleV61524">จัดสมาชิกทีม</h3><p id="teamMembershipMetaV61524">เลือกพนักงานจากด้านซ้าย แล้วย้ายเข้าสู่ทีมด้านขวา</p></div>
-      <button class="btn btn-light btn-icon" data-team-membership-close-v61524>×</button>
+  <div class="modal team-membership-modal-v61524 team-membership-dual-modal-v61528f1 team-membership-modal-v61529f15v" role="dialog" aria-modal="true">
+    <div class="modal-header team-membership-header-v61529f15v">
+      <div class="team-membership-heading-v61529f15v">
+        <div class="team-membership-heading-icon-v61529f15v" aria-hidden="true">◎</div>
+        <div><span class="eyebrow">TEAM MEMBERSHIP</span><h3 id="teamMembershipTitleV61524">จัดสมาชิกทีม</h3><p id="teamMembershipMetaV61524">สมาชิกประจำ + Working Team ตามวันที่อ้างอิง</p></div>
+      </div>
+      <div class="team-membership-header-actions-v61529f15v">
+        <span class="team-membership-mode-chip-v61529f15v">Effective-dated</span>
+        <button class="btn btn-light btn-icon" data-team-membership-close-v61524 aria-label="ปิด">×</button>
+      </div>
     </div>
     <div class="modal-body">
-      <div class="team-membership-summary-v61524 team-membership-summary-modern-v61528f1">
+      <div class="team-membership-summary-v61524 team-membership-summary-modern-v61528f1 team-membership-summary-v61529f15q team-membership-summary-v61529f15v">
         <div><span>รูปแบบทีม</span><strong id="teamMembershipCategoryV61524">-</strong></div>
-        <div><span>วันที่มีผล</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/></div>
-        <div><span>สมาชิกปัจจุบัน</span><strong id="teamMembershipCurrentV61528F1">0 คน</strong></div>
-        <div><span>หลังบันทึก</span><strong id="teamMembershipSelectedV61524">0 คน</strong><small id="teamMembershipDeltaV61528F1">ยังไม่มีการเปลี่ยนแปลง</small></div>
+        <div class="team-membership-date-card-v61529f15v"><span>วันที่อ้างอิง / มีผล</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/></div>
+        <div><span>สมาชิกประจำ</span><strong id="teamMembershipCurrentV61528F1">0 คน</strong><small>ก่อนแก้ไข</small></div>
+        <div class="borrow-stat-v61529f15v"><span>ยืมเข้า</span><strong id="teamMembershipBorrowedInV61529F15Q">0 คน</strong><small>อ่านอย่างเดียว</small></div>
+        <div class="working-stat-v61529f15v"><span>ปฏิบัติงาน ณ วันนั้น</span><strong id="teamMembershipWorkingNowV61529F15Q">0 คน</strong><small>รวมยืมเข้า − ยืมออก</small></div>
+        <div><span>สมาชิกประจำหลังบันทึก</span><strong id="teamMembershipSelectedV61524">0 คน</strong><small id="teamMembershipDeltaV61528F1">ยังไม่มีการเปลี่ยนแปลง</small></div>
       </div>
-      <div class="team-membership-warning-v61524 team-membership-policy-modern-v61528f1" id="teamMembershipPolicyV61524"></div>
+      <div class="team-membership-warning-v61524 team-membership-policy-modern-v61528f1 team-membership-policy-v61529f15v" id="teamMembershipPolicyV61524"></div>
 
-      <div class="team-membership-dual-v61528f1">
+      <div class="team-membership-dual-v61528f1 team-membership-dual-v61529f15v">
         <section class="team-transfer-pane-v61528f1 source">
           <div class="team-transfer-pane-head-v61528f1">
-            <div><span>ต้นทาง</span><h4>พนักงานที่เลือกได้</h4><small id="teamMembershipSourceCountV61528F1">0 คน</small></div>
+            <div><span>AVAILABLE</span><h4>พนักงานที่เลือกได้</h4><small id="teamMembershipSourceCountV61528F1">0 คน</small></div>
             <button type="button" class="btn btn-light btn-sm" id="teamMembershipSelectAllLeftV61528F1">เลือกทั้งหมด</button>
           </div>
           <div class="team-transfer-tools-v61528f1">
-            <input class="input" id="teamMembershipSearchV61524" placeholder="ค้นหารหัส / ชื่อ / ตำแหน่ง / ทีมปัจจุบัน"/>
+            <input class="input" id="teamMembershipSearchV61524" placeholder="ค้นหารหัส ชื่อ ตำแหน่ง หรือทีม"/>
             <select class="input" id="teamMembershipSourceFilterV61528F1">
               <option value="ALL">ทั้งหมด</option>
               <option value="NO_TEAM">ยังไม่มีทีม</option>
@@ -1899,28 +1907,37 @@
           <div class="team-transfer-list-v61528f1" id="teamMembershipListV61524"><div class="fc-empty">กำลังโหลด...</div></div>
         </section>
 
-        <div class="team-transfer-arrows-v61528f1" aria-label="ย้ายสมาชิก">
-          <button type="button" class="btn btn-primary" id="teamMembershipMoveRightV61528F1" disabled><span>ย้ายเข้า</span><b>→</b></button>
-          <button type="button" class="btn btn-light" id="teamMembershipMoveLeftV61528F1" disabled><b>←</b><span>นำออก</span></button>
+        <div class="team-transfer-arrows-v61528f1 team-transfer-arrows-v61529f15v" aria-label="ย้ายสมาชิก">
+          <button type="button" class="btn btn-primary" id="teamMembershipMoveRightV61528F1" disabled title="ย้ายพนักงานที่เลือกเข้าทีม"><span>ย้ายเข้า</span><b>→</b></button>
+          <button type="button" class="btn btn-light" id="teamMembershipMoveLeftV61528F1" disabled title="นำสมาชิกที่เลือกออกจากทีม"><b>←</b><span>นำออก</span></button>
         </div>
 
         <section class="team-transfer-pane-v61528f1 target">
           <div class="team-transfer-pane-head-v61528f1">
-            <div><span>ปลายทาง</span><h4>สมาชิกทีมหลังบันทึก</h4><small id="teamMembershipTargetCountV61528F1">0 คน</small></div>
+            <div><span>WORKING TEAM</span><h4>สมาชิกทีมตามวันที่อ้างอิง</h4><small id="teamMembershipTargetCountV61528F1">0 คน</small></div>
             <div class="team-capacity-pill-v61528f1" id="teamMembershipCapacityV61528F1">0 คน</div>
           </div>
-          <div class="team-target-guide-v61528f1"><span>สมาชิกเดิม</span><span>เพิ่มใหม่</span><span>ย้ายจากทีมอื่น</span></div>
-          <div class="team-transfer-list-v61528f1 target-list" id="teamMembershipTargetListV61528F1"><div class="fc-empty">ยังไม่มีสมาชิกในทีม</div></div>
+          <div class="team-target-guide-v61528f1"><span>สมาชิกเดิม</span><span>เพิ่มใหม่</span><span>ย้ายจากทีมอื่น</span><span class="borrow-guide-v61529f15q">↔ ยืมตัว</span></div>
+          <div class="team-transfer-list-v61528f1 target-list" id="teamMembershipTargetListV61528F1"><div class="fc-empty">ยังไม่มีสมาชิกประจำในทีม</div></div>
+          <div class="team-borrow-overlay-v61529f15q team-borrow-overlay-v61529f15v">
+            <div class="team-borrow-overlay-head-v61529f15q"><div><span>TEMPORARY</span><strong>สมาชิกยืมเข้าตามวันที่อ้างอิง</strong></div><small id="teamMembershipBorrowCountV61529F15Q">0 คน</small></div>
+            <div class="team-borrow-overlay-note-v61529f15q">Read-only • ไม่เปลี่ยน Permanent Home Team • แก้ช่วงยืมตัวที่ Borrow Workflow</div>
+            <div class="team-borrow-overlay-list-v61529f15q" id="teamMembershipBorrowListV61529F15Q"><div class="team-borrow-overlay-empty-v61529f15q">กำลังโหลดข้อมูลยืมตัว...</div></div>
+          </div>
         </section>
       </div>
 
-      <div class="team-membership-change-strip-v61528f1" id="teamMembershipChangeStripV61528F1">
-        <div><span>เพิ่มเข้า</span><strong>0</strong><small>คน</small></div><div><span>นำออก</span><strong>0</strong><small>คน</small></div><div><span>สถานะ</span><strong>รอตรวจ</strong><small>Impact Preview</small></div>
+      <div class="team-membership-bottom-grid-v61529f15v">
+        <div>
+          <div class="team-membership-change-strip-v61528f1" id="teamMembershipChangeStripV61528F1">
+            <div><span>เพิ่มเข้า</span><strong>0</strong><small>คน</small></div><div><span>นำออก</span><strong>0</strong><small>คน</small></div><div><span>สถานะ</span><strong>รอตรวจ</strong><small>Impact Preview</small></div>
+          </div>
+          <div class="team-impact-preview-v61528" id="teamMembershipImpactV61528"><div class="team-impact-placeholder-v61528">ย้ายสมาชิกเพื่อดูผลกระทบก่อนบันทึก</div></div>
+        </div>
+        <div class="field team-membership-note-v61528f1 team-membership-note-v61529f15v"><label>หมายเหตุ</label><textarea class="input" id="teamMembershipNoteV61524" rows="3" maxlength="500" placeholder="ไม่บังคับ เช่น ปรับโครงสร้างทีม / ย้ายพื้นที่รับผิดชอบ"></textarea></div>
       </div>
-      <div class="team-impact-preview-v61528" id="teamMembershipImpactV61528"><div class="team-impact-placeholder-v61528">ย้ายสมาชิกเพื่อดูผลกระทบก่อนบันทึก</div></div>
-      <div class="field team-membership-note-v61528f1"><label>หมายเหตุ</label><textarea class="input" id="teamMembershipNoteV61524" rows="2" maxlength="500" placeholder="ไม่บังคับ เช่น ปรับโครงสร้างทีม / ย้ายพื้นที่รับผิดชอบ"></textarea></div>
     </div>
-    <div class="modal-footer team-membership-sticky-footer-v61528f1"><div class="team-membership-footer-status-v61528f1" id="teamMembershipFooterStatusV61528F1">ยังไม่มีการเปลี่ยนแปลง</div><button class="btn btn-light" data-team-membership-close-v61524>ยกเลิก</button><button class="btn btn-primary" id="teamMembershipSaveV61524" disabled>บันทึกสมาชิกทีม</button></div>
+    <div class="modal-footer team-membership-sticky-footer-v61528f1 team-membership-footer-v61529f15v"><div class="team-membership-footer-status-v61528f1" id="teamMembershipFooterStatusV61528F1">ยังไม่มีการเปลี่ยนแปลง</div><button class="btn btn-light" data-team-membership-close-v61524>ยกเลิก</button><button class="btn btn-primary" id="teamMembershipSaveV61524" disabled>บันทึกสมาชิกทีม</button></div>
   </div>
 </div>
 
@@ -3284,6 +3301,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix15u-20260915"></script>
+<script src="./app.js?v=6.15.29-fix15v-20260915"></script>
 </body>
 </html>

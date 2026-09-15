@@ -1,0 +1,25 @@
+FIX15V UAT — Team Membership Minimal Working-Team Modernization
+
+1. Open Team Master > Team Membership.
+2. Confirm header is compact and shows team name/code.
+3. Confirm summary shows:
+   - Team type
+   - Reference/effective date
+   - Permanent members
+   - Borrow-In
+   - Working Team count
+   - Permanent members after save
+4. Select a date inside an approved Borrow period:
+   - Borrow-In appears in the read-only temporary section.
+   - Working Team count includes Borrow-In and excludes permanent members borrowed out.
+   - Borrowed-out permanent member remains in permanent list with temporary-away status.
+5. Select a date outside the Borrow period:
+   - Borrow-In disappears automatically.
+   - Working Team count returns to normal Home Team state.
+6. Move permanent members left/right and confirm Impact Preview still works.
+7. Confirm Borrow-In rows cannot be edited from Team Membership.
+8. Confirm save button remains disabled until preview passes.
+9. Test CAR capacity warning when Working Team count is above policy max.
+10. Test desktop/tablet/mobile and dark mode.
+
+Expected: UI-only change; business results match FIX15Q/FIX15R backend behavior.

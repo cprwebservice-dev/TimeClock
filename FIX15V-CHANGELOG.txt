@@ -1,0 +1,27 @@
+TimeClock Enterprise V6.15.29 — FIX15V
+Team Membership Minimal Working-Team Modernization
+
+Frontend-only release. Backend / SQL contracts are unchanged.
+
+Changes
+- Reworked Team Membership modal into a compact minimal workspace.
+- Added the missing FIX15Q visual counters for Borrow-In and Working Team count.
+- Added a dedicated read-only Borrow-In section under the destination Working Team pane.
+- Preserved Permanent Membership separately from Borrow overlay.
+- Made effective/reference date more prominent without adding extra steps.
+- Reduced header height, panel chrome, shadows, spacing and row density.
+- Simplified transfer controls, search/filter rail, capacity indicator and footer actions.
+- Kept borrowed-out permanent members visible with their temporary-away state.
+- Kept Borrow-In read-only and directed changes back to Borrow Workflow.
+- Improved Impact Preview / note area balance.
+- Added responsive and dark-mode refinements.
+
+Unchanged
+- ta_get_team_membership_candidates_v61524
+- ta_get_team_working_members_v61529f15q
+- ta_preview_team_membership_change_v61528
+- ta_set_team_members_v61524
+- Permanent Home Team rules
+- Borrow effective-date rules
+- Team min/max policy and Team Enforcement
+- Manager / Acting / HR scope rules

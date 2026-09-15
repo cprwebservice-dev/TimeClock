@@ -27172,3 +27172,208 @@ body.dark #page-schedule .schedule-context-menu{
   #page-schedule .schedule-quick-shifts{overflow-x:auto;padding-bottom:2px}
   #page-schedule .schedule-summary-strip small{width:100%!important;margin-left:0!important}
 }
+
+/* ========================================================================== */
+/* FIX15V — Team Membership Minimal Working-Team Modernization                */
+/* Frontend-only. Membership / Borrow business rules and RPC contracts stay.  */
+/* ========================================================================== */
+#teamMembershipModalV61524 .team-membership-modal-v61529f15v{
+  --tm-line:#dce6ef;
+  --tm-line-soft:#eaf0f5;
+  --tm-text:#163b5c;
+  --tm-muted:#6f8497;
+  --tm-soft:#f7fafc;
+  --tm-blue:#176fbd;
+  width:min(1240px,96vw);
+  max-height:92vh;
+  border:1px solid var(--tm-line);
+  border-radius:20px;
+  box-shadow:0 18px 60px rgba(15,42,67,.16);
+  overflow:hidden;
+}
+#teamMembershipModalV61524 .team-membership-header-v61529f15v{
+  min-height:72px;
+  padding:13px 16px;
+  border-bottom:1px solid var(--tm-line);
+  background:linear-gradient(110deg,#fbfdff 0%,#fff 62%,#fffaf5 100%);
+}
+#teamMembershipModalV61524 .team-membership-heading-v61529f15v{display:flex;align-items:center;gap:11px;min-width:0}
+#teamMembershipModalV61524 .team-membership-heading-icon-v61529f15v{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:12px;background:#edf6fd;color:var(--tm-blue);font-size:18px;font-weight:900}
+#teamMembershipModalV61524 .team-membership-heading-v61529f15v .eyebrow{font-size:8px;letter-spacing:.13em;color:#5d819e}
+#teamMembershipModalV61524 .team-membership-heading-v61529f15v h3{margin:2px 0 1px;font-size:17px;line-height:1.25;color:var(--tm-text)}
+#teamMembershipModalV61524 .team-membership-heading-v61529f15v p{margin:0;max-width:720px;font-size:9px;line-height:1.4;color:var(--tm-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#teamMembershipModalV61524 .team-membership-header-actions-v61529f15v{display:flex;align-items:center;gap:7px}
+#teamMembershipModalV61524 .team-membership-mode-chip-v61529f15v{display:inline-flex;align-items:center;min-height:26px;padding:5px 9px;border:1px solid #d8e7f3;border-radius:999px;background:#f4f9fd;color:#52728c;font-size:8px;font-weight:850;letter-spacing:.02em}
+#teamMembershipModalV61524 .team-membership-header-actions-v61529f15v .btn-icon{width:34px;height:34px;min-width:34px;border-radius:10px;font-size:18px}
+
+#teamMembershipModalV61524 .modal-body{padding:12px 14px 14px;background:#fbfcfe}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v{
+  position:static;
+  display:grid;
+  grid-template-columns:1fr 1.15fr .9fr .82fr 1fr 1.12fr;
+  gap:7px;
+  padding:0;
+  margin:0 0 8px;
+  background:transparent;
+}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v>div{
+  min-height:62px;
+  padding:9px 11px;
+  border:1px solid var(--tm-line);
+  border-radius:13px;
+  background:#fff;
+  box-shadow:0 3px 12px rgba(24,62,94,.025);
+  justify-content:center;
+}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v>div:nth-child(4),
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v>div:nth-child(5){background:#fff;border-color:var(--tm-line)}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v span{font-size:8px;font-weight:800;color:#7790a4}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v strong{margin-top:3px;font-size:14px;line-height:1.15;color:var(--tm-text)}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v small{margin-top:2px;font-size:7.7px;color:#8ba0b1}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v .input{height:32px;margin-top:4px;padding:5px 8px;border-radius:9px;font-size:9px;border-color:#d7e3ed}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v .borrow-stat-v61529f15v{border-color:#f1dfd0;background:#fffaf6}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v .borrow-stat-v61529f15v strong{color:#ba5b20}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v .working-stat-v61529f15v{border-color:#d7e7f4;background:#f8fbfe}
+#teamMembershipModalV61524 .team-membership-summary-v61529f15v .working-stat-v61529f15v strong{color:#176fbd}
+
+#teamMembershipModalV61524 .team-membership-policy-v61529f15v{
+  min-height:38px;
+  margin:0 0 9px;
+  padding:8px 10px;
+  border:1px solid #dbe8f2;
+  border-radius:11px;
+  background:#f7fbfe;
+  box-shadow:none;
+}
+#teamMembershipModalV61524 .team-membership-policy-v61529f15v strong{font-size:9.5px;color:#315a77}
+#teamMembershipModalV61524 .team-membership-policy-v61529f15v span,
+#teamMembershipModalV61524 .team-membership-policy-v61529f15v small{font-size:8px;line-height:1.35;color:#7890a4}
+
+#teamMembershipModalV61524 .team-membership-dual-v61529f15v{grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr);gap:9px}
+#teamMembershipModalV61524 .team-transfer-pane-v61528f1{
+  min-height:395px;
+  border:1px solid var(--tm-line);
+  border-radius:15px;
+  background:#fff;
+  box-shadow:none!important;
+}
+#teamMembershipModalV61524 .team-transfer-pane-v61528f1.target{min-height:395px}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1{min-height:58px;padding:10px 12px;border-color:var(--tm-line-soft);background:#fbfcfe}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 span{font-size:7.5px;letter-spacing:.12em;color:#8297a8}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 h4{margin:1px 0;font-size:12px;color:var(--tm-text)}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 small{font-size:8px;color:var(--tm-muted)}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 .btn-sm{min-height:30px;padding:5px 9px;border-radius:9px;font-size:8px}
+#teamMembershipModalV61524 .team-transfer-tools-v61528f1{grid-template-columns:minmax(0,1fr) 128px;gap:6px;padding:7px 9px;border-color:var(--tm-line-soft);background:#fff}
+#teamMembershipModalV61524 .team-transfer-tools-v61528f1 .input{height:34px;border-radius:9px;padding:6px 9px;font-size:8.5px;border-color:#d9e4ed;background:#fff}
+#teamMembershipModalV61524 .team-transfer-list-v61528f1{max-height:300px;background:#fff}
+#teamMembershipModalV61524 .team-transfer-pane-v61528f1.target .target-list{max-height:218px;min-height:130px}
+#teamMembershipModalV61524 .team-transfer-row-v61528f1{gap:8px;padding:8px 10px;border-color:#eef3f7;transition:background .13s ease}
+#teamMembershipModalV61524 .team-transfer-row-v61528f1:hover{background:#f8fbfe}
+#teamMembershipModalV61524 .team-transfer-row-v61528f1.picked{background:#eef6fd}
+#teamMembershipModalV61524 .team-transfer-row-v61528f1 input{width:15px;height:15px;margin-top:1px}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1{gap:2px}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 strong{font-size:9.5px;line-height:1.25;color:#274a66}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1>span{font-size:8px;line-height:1.3;color:#7e93a5}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 small.origin,
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 small.target-badge{padding:2px 6px;font-size:7.5px;border-radius:999px}
+#teamMembershipModalV61524 .team-borrow-period-v61529f15q{font-size:7.8px!important;line-height:1.3}
+
+#teamMembershipModalV61524 .team-transfer-arrows-v61529f15v{gap:7px}
+#teamMembershipModalV61524 .team-transfer-arrows-v61529f15v .btn{min-height:36px;padding:6px 7px;border-radius:10px;gap:4px;box-shadow:none}
+#teamMembershipModalV61524 .team-transfer-arrows-v61529f15v span{font-size:8px}
+#teamMembershipModalV61524 .team-transfer-arrows-v61529f15v b{font-size:15px}
+#teamMembershipModalV61524 .team-capacity-pill-v61528f1{padding:5px 8px;border:1px solid #d9e7f3;background:#f4f9fd;color:#39749f;font-size:8px}
+#teamMembershipModalV61524 .team-target-guide-v61528f1{gap:4px;padding:6px 9px;border-color:var(--tm-line-soft);background:#fff}
+#teamMembershipModalV61524 .team-target-guide-v61528f1 span{padding:2px 6px;font-size:7px;background:#f5f8fb;color:#758da0}
+#teamMembershipModalV61524 .team-target-guide-v61528f1 .borrow-guide-v61529f15q{background:#fff8f1;color:#b65c27;border-color:#f2dccb}
+
+#teamMembershipModalV61524 .team-borrow-overlay-v61529f15v{border-top:1px solid var(--tm-line-soft);background:#fffdfa}
+#teamMembershipModalV61524 .team-borrow-overlay-head-v61529f15q{padding:7px 9px 4px}
+#teamMembershipModalV61524 .team-borrow-overlay-head-v61529f15q span{font-size:7px;color:#b96837}
+#teamMembershipModalV61524 .team-borrow-overlay-head-v61529f15q strong{font-size:9.5px;color:#71472e}
+#teamMembershipModalV61524 .team-borrow-overlay-head-v61529f15q>small{padding:3px 6px;border-color:#f0ddcf;background:#fff8f1;color:#b65c27;font-size:7.5px}
+#teamMembershipModalV61524 .team-borrow-overlay-note-v61529f15q{padding:0 9px 6px;font-size:7.3px;color:#9a7d6c}
+#teamMembershipModalV61524 .team-borrow-overlay-list-v61529f15q{max-height:130px;border-top:1px dashed #eaded5}
+#teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q{grid-template-columns:25px minmax(0,1fr) auto;gap:7px;padding:7px 9px;border-color:#f1ece7;background:#fff}
+#teamMembershipModalV61524 .team-borrow-overlay-icon-v61529f15q{width:24px;height:24px;border-radius:8px;background:#fff5ec;color:#d46a2b;font-size:12px}
+#teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q strong{font-size:9px;color:#4e463f}
+#teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q span,
+#teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q small{font-size:7.4px;line-height:1.3}
+#teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q em{padding:2px 5px;font-size:6.8px;border-color:#ece4dd;background:#faf7f4}
+#teamMembershipModalV61524 .team-borrow-overlay-empty-v61529f15q{padding:10px 9px;font-size:8px;background:#fff}
+
+#teamMembershipModalV61524 .team-membership-bottom-grid-v61529f15v{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(250px,.65fr);gap:9px;margin-top:9px;align-items:stretch}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1{gap:6px;margin:0 0 7px}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1>div{padding:7px 9px;border-radius:10px;background:#fff;border-color:var(--tm-line);box-shadow:none}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1 span{font-size:8px}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1 strong{font-size:11px;color:var(--tm-text)}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1 small{font-size:7px}
+#teamMembershipModalV61524 .team-impact-preview-v61528{min-height:68px;margin:0;padding:9px 10px;border:1px solid var(--tm-line);border-radius:11px;background:#fff;box-shadow:none}
+#teamMembershipModalV61524 .team-impact-placeholder-v61528{min-height:48px;display:grid;place-items:center;color:#8297a8;font-size:8.5px;text-align:center}
+#teamMembershipModalV61524 .team-impact-title-v61528 strong{font-size:9.5px}
+#teamMembershipModalV61524 .team-impact-title-v61528 span{font-size:7.5px}
+#teamMembershipModalV61524 .team-impact-target-v61528{padding:7px 9px;border-radius:9px}
+#teamMembershipModalV61524 .team-impact-target-v61528 span,#teamMembershipModalV61524 .team-impact-target-v61528 small{font-size:7.5px}
+#teamMembershipModalV61524 .team-impact-target-v61528 strong{font-size:10px}
+#teamMembershipModalV61524 .team-membership-note-v61529f15v{height:100%;margin:0;padding:9px 10px;border:1px solid var(--tm-line);border-radius:11px;background:#fff}
+#teamMembershipModalV61524 .team-membership-note-v61529f15v label{font-size:8px;color:#5f7a90}
+#teamMembershipModalV61524 .team-membership-note-v61529f15v textarea{min-height:74px;margin-top:5px;border-radius:9px;border-color:#d9e4ed;font-size:8.5px;resize:vertical}
+#teamMembershipModalV61524 .team-working-capacity-warning-v61529f15q{margin:7px 0;padding:7px 9px;border-radius:9px}
+#teamMembershipModalV61524 .team-working-capacity-warning-v61529f15q>span{font-size:13px}
+#teamMembershipModalV61524 .team-working-capacity-warning-v61529f15q strong{font-size:8.5px}
+#teamMembershipModalV61524 .team-working-capacity-warning-v61529f15q small{font-size:7.5px}
+
+#teamMembershipModalV61524 .team-membership-footer-v61529f15v{min-height:56px;padding:9px 14px;background:#fff;border-color:var(--tm-line)}
+#teamMembershipModalV61524 .team-membership-footer-status-v61528f1{font-size:8.5px;color:#6e8598}
+#teamMembershipModalV61524 .team-membership-footer-v61529f15v .btn{min-height:35px;padding:7px 13px;border-radius:10px;font-size:8.5px;box-shadow:none}
+#teamMembershipModalV61524 .team-membership-footer-v61529f15v .btn-primary{min-width:120px}
+
+body.theme-dark #teamMembershipModalV61524 .team-membership-modal-v61529f15v,
+body.dark #teamMembershipModalV61524 .team-membership-modal-v61529f15v{--tm-line:#30485e;--tm-line-soft:#293e52;--tm-text:#dce9f3;--tm-muted:#91a7b9;--tm-soft:#162738;background:#17283a;border-color:#30485e}
+body.theme-dark #teamMembershipModalV61524 .team-membership-header-v61529f15v,
+body.dark #teamMembershipModalV61524 .team-membership-header-v61529f15v{background:linear-gradient(110deg,#17283a,#182a3c 65%,#26251f);border-color:#30485e}
+body.theme-dark #teamMembershipModalV61524 .modal-body,body.dark #teamMembershipModalV61524 .modal-body{background:#132333}
+body.theme-dark #teamMembershipModalV61524 .team-membership-summary-v61529f15v>div,body.dark #teamMembershipModalV61524 .team-membership-summary-v61529f15v>div,
+body.theme-dark #teamMembershipModalV61524 .team-transfer-pane-v61528f1,body.dark #teamMembershipModalV61524 .team-transfer-pane-v61528f1,
+body.theme-dark #teamMembershipModalV61524 .team-transfer-tools-v61528f1,body.dark #teamMembershipModalV61524 .team-transfer-tools-v61528f1,
+body.theme-dark #teamMembershipModalV61524 .team-target-guide-v61528f1,body.dark #teamMembershipModalV61524 .team-target-guide-v61528f1,
+body.theme-dark #teamMembershipModalV61524 .team-membership-change-strip-v61528f1>div,body.dark #teamMembershipModalV61524 .team-membership-change-strip-v61528f1>div,
+body.theme-dark #teamMembershipModalV61524 .team-impact-preview-v61528,body.dark #teamMembershipModalV61524 .team-impact-preview-v61528,
+body.theme-dark #teamMembershipModalV61524 .team-membership-note-v61529f15v,body.dark #teamMembershipModalV61524 .team-membership-note-v61529f15v,
+body.theme-dark #teamMembershipModalV61524 .team-membership-footer-v61529f15v,body.dark #teamMembershipModalV61524 .team-membership-footer-v61529f15v{background:#17283a;border-color:#30485e}
+body.theme-dark #teamMembershipModalV61524 .team-transfer-pane-head-v61528f1,body.dark #teamMembershipModalV61524 .team-transfer-pane-head-v61528f1{background:#162738;border-color:#293f53}
+body.theme-dark #teamMembershipModalV61524 .team-membership-policy-v61529f15v,body.dark #teamMembershipModalV61524 .team-membership-policy-v61529f15v{background:#172c40;border-color:#31506b}
+body.theme-dark #teamMembershipModalV61524 .team-borrow-overlay-v61529f15v,body.dark #teamMembershipModalV61524 .team-borrow-overlay-v61529f15v{background:#241f1c;border-color:#49382e}
+body.theme-dark #teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q,body.dark #teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q{background:#1c2d3d;border-color:#3c352f}
+body.theme-dark #teamMembershipModalV61524 .team-transfer-row-v61528f1:hover,body.dark #teamMembershipModalV61524 .team-transfer-row-v61528f1:hover{background:#1d3145}
+body.theme-dark #teamMembershipModalV61524 .team-transfer-row-v61528f1.picked,body.dark #teamMembershipModalV61524 .team-transfer-row-v61528f1.picked{background:#213b52}
+
+@media(max-width:1120px){
+  #teamMembershipModalV61524 .team-membership-summary-v61529f15v{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #teamMembershipModalV61524 .team-membership-bottom-grid-v61529f15v{grid-template-columns:1fr}
+}
+@media(max-width:900px){
+  #teamMembershipModalV61524 .team-membership-dual-v61529f15v{grid-template-columns:1fr}
+  #teamMembershipModalV61524 .team-transfer-arrows-v61529f15v{display:grid;grid-template-columns:1fr 1fr}
+  #teamMembershipModalV61524 .team-transfer-arrows-v61529f15v .btn:first-child b,
+  #teamMembershipModalV61524 .team-transfer-arrows-v61529f15v .btn:last-child b{transform:rotate(90deg)}
+  #teamMembershipModalV61524 .team-transfer-pane-v61528f1,
+  #teamMembershipModalV61524 .team-transfer-pane-v61528f1.target{min-height:310px}
+  #teamMembershipModalV61524 .team-transfer-list-v61528f1{max-height:250px}
+}
+@media(max-width:640px){
+  #teamMembershipModalV61524 .team-membership-modal-v61529f15v{width:98vw;max-height:96vh;border-radius:15px}
+  #teamMembershipModalV61524 .team-membership-header-v61529f15v{padding:11px 12px}
+  #teamMembershipModalV61524 .team-membership-heading-icon-v61529f15v{display:none}
+  #teamMembershipModalV61524 .team-membership-heading-v61529f15v p{white-space:normal}
+  #teamMembershipModalV61524 .team-membership-mode-chip-v61529f15v{display:none}
+  #teamMembershipModalV61524 .modal-body{padding:9px}
+  #teamMembershipModalV61524 .team-membership-summary-v61529f15v{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #teamMembershipModalV61524 .team-transfer-tools-v61528f1{grid-template-columns:1fr}
+  #teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q{grid-template-columns:25px minmax(0,1fr)}
+  #teamMembershipModalV61524 .team-borrow-overlay-row-v61529f15q em{grid-column:2;justify-self:start}
+  #teamMembershipModalV61524 .team-membership-footer-v61529f15v{flex-wrap:wrap}
+  #teamMembershipModalV61524 .team-membership-footer-status-v61528f1{width:100%;margin:0}
+  #teamMembershipModalV61524 .team-membership-footer-v61529f15v .btn{flex:1}
+}
+@media(max-width:420px){#teamMembershipModalV61524 .team-membership-summary-v61529f15v{grid-template-columns:1fr}}
