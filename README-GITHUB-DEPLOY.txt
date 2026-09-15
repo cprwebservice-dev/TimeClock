@@ -1,3 +1,6 @@
+V6.15.29 FIX15U — Schedule Workspace Minimal Modernization
+Frontend-only: Deploy files over FIX15T. No SQL required.
+
 FIX15T — Manager Dashboard / Home Minimal Modernization
 - Frontend-only; no SQL.
 - Compact Dashboard header, filter rail, KPIs and executive panels.

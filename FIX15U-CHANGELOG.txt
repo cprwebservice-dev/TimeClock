@@ -1,0 +1,21 @@
+TimeClock Enterprise V6.15.29 FIX15U
+Schedule Workspace Minimal Modernization
+
+Frontend-only. No SQL / backend change.
+
+Updated:
+- Schedule KPI cards: smaller, flatter, clearer hierarchy.
+- View switch: removed heavy dark slab; clean segmented control.
+- Team / Person workspace: consistent white surfaces and compact headers.
+- Team context / mini KPI strip: reduced visual noise and spacing.
+- Person command bar: grouped period, selection, quick shifts, and actions.
+- Schedule summary strip: compact count chips.
+- Schedule table: softer header, tighter cells, cleaner selection state.
+- Context menu, responsive behavior, and Dark Mode aligned to the same minimal system.
+
+Unchanged:
+- Schedule business logic
+- Borrow / Acting / Working Team rules
+- Permission / Scope checks
+- Shift writers / validation
+- Attendance calculations

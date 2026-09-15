@@ -1,0 +1,12 @@
+FIX15U UAT — Schedule Workspace Minimal Modernization
+
+1. Open Schedule page and confirm filter/load behavior is unchanged.
+2. Switch TEAM / TIME / PERSON views; active view must remain correct.
+3. TEAM view: team counts and drill-down behavior unchanged.
+4. PERSON view: 15-day / Full Month switch unchanged.
+5. Select cells and test Quick Shift, Copy, Paste, Clear, Undo, Redo.
+6. Borrowed employee remains editable only inside effective Borrow dates.
+7. Out-of-scope / holiday / leave / off states retain correct business meaning.
+8. Test Desktop, ~1024px tablet, and mobile width.
+9. Test Dark Mode readability.
+10. No new SQL is required for FIX15U.
