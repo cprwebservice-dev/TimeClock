@@ -3224,3 +3224,56 @@ body.theme-dark .portal-modal-body,body.dark .portal-modal-body,body.dark-mode .
 body.theme-dark .portal-modal-actions,body.dark .portal-modal-actions,body.dark-mode .portal-modal-actions{background:#191D21;border-color:#2B3136}
 body.theme-dark .portal-modal-body label,body.dark .portal-modal-body label,body.dark-mode .portal-modal-body label{color:#C9C6C1}
 body.theme-dark .portal-modal-body :is(input,select,textarea),body.dark .portal-modal-body :is(input,select,textarea),body.dark-mode .portal-modal-body :is(input,select,textarea){background:#181C20;color:#ECE9E3;border-color:#353C42}
+
+/* ========================================================================== 
+   V6.15.29 FIX16F — Employee Portal dark contract
+   Mirrors the same graphite/orange system used by the Manager application.
+   ========================================================================== */
+body:is(.theme-dark,.dark,.dark-mode){
+  color-scheme:dark;
+  --pbg:#14171A;--pbg2:#191D21;--ps:#202428;--ps2:#282D33;--pline:#34393F;
+  --ptext:#ECE9E3;--pmuted:#98A0A8;--pdim:#6B737B;--paccent:#FF6A2C;
+  --paccent-soft:rgba(255,106,44,.12);--pteal:#35CFAE;--pteal-soft:rgba(53,207,174,.10);
+  --pamber:#F3C64B;--pamber-soft:rgba(243,198,75,.10);--pred:#FF6868;--pred-soft:rgba(255,104,104,.10);
+  --pblue:#6E98F5;--pblue-soft:rgba(110,152,245,.10);
+  --portal-min-bg:var(--pbg);--portal-min-card:var(--ps);--portal-min-line:var(--pline);--portal-min-text:var(--ptext);--portal-min-muted:var(--pmuted);--portal-min-blue:var(--paccent);--portal-min-blue-soft:var(--paccent-soft);
+  background:var(--pbg)!important;color:var(--ptext)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-app,.portal-main){background:var(--pbg)!important;color:var(--ptext)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-topbar{background:rgba(25,29,33,.96)!important;border-color:#2A2E33!important;box-shadow:none!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-profile-card,.portal-same-shift-team-v61509,.portal-schedule-panel,.portal-view-hero,.portal-time-item,.portal-request-item,.portal-notification-item,.portal-team-card,.portal-calendar-punch-detail){background:var(--ps)!important;border-color:#2A2E33!important;color:var(--ptext)!important;box-shadow:none!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-section-title strong,.portal-profile-copy strong,.portal-schedule-titlebar strong,.portal-view-hero strong,.portal-quick-grid button strong,.portal-same-shift-member-v61509 strong){color:var(--ptext)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-section-title span,.portal-profile-copy span,.portal-profile-copy small,.portal-schedule-titlebar span,.portal-schedule-titlebar small,.portal-view-hero span,.portal-view-hero small,.portal-quick-grid button small,.portal-same-shift-member-v61509 small){color:var(--pmuted)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-icon-btn,.portal-schedule-today-btn,.portal-text-btn,.portal-month-nav button,.portal-request-actions button){background:var(--ps2)!important;border-color:var(--pline)!important;color:var(--ptext)!important;box-shadow:none!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-home-date-toggle-v61509,.portal-request-tabs,.portal-schedule-summary){background:var(--pbg2)!important;border-color:#2A2E33!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-home-date-toggle-v61509 button.active,.portal-request-tabs button.active,.portal-bottom-nav button.active){background:var(--paccent-soft)!important;color:#FFB18F!important;box-shadow:none!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-today-card{background:linear-gradient(135deg,#252A2F,#1E2327)!important;border:1px solid rgba(255,106,44,.24)!important;box-shadow:inset 3px 0 0 var(--paccent)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip{background:var(--ps)!important;border-color:#2A2E33!important;color:var(--ptext)!important;box-shadow:none!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.today{border-color:rgba(255,106,44,.34)!important;box-shadow:inset 0 0 0 1px rgba(255,106,44,.20)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.off{background:#1B2024!important;color:var(--pdim)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.leave{background:rgba(170,138,246,.08)!important;color:#D5C5FF!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.holiday{background:var(--pamber-soft)!important;color:#E8D38B!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-quick-grid button{background:var(--ps)!important;border-color:#2A2E33!important;color:var(--ptext)!important;box-shadow:none!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-quick-grid button:hover{background:var(--ps2)!important;border-color:var(--pline)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-cal-day,.portal-time-grid div,.portal-punch-detail-grid>div,.portal-raw-summary>div,.portal-att-punch-grid>div,.portal-att-metric,.portal-leave-summary-v61520>div,.portal-leave-days-v61520 article,.portal-leave-partial-meta-v61520>div){background:var(--ps)!important;border-color:#2A2E33!important;color:var(--ptext)!important;box-shadow:none!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-cal-day.outside,.portal-cal-day.blank){background:#181C20!important;color:var(--pdim)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-raw-shift-group,.portal-att-shift,.portal-day-evidence,.portal-special-fields,.portal-request-detail,.portal-dayoff-mode-guide,.portal-leave-rule-v61508,.portal-leave-partial-card-v61520,.portal-leave-timeline-v61520){background:var(--ps2)!important;border-color:#2A2E33!important;color:var(--ptext)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-raw-shift-group>header,.portal-att-shift-head,.portal-leave-preview-head-v61520){background:#1A1F23!important;border-color:#2A2E33!important;color:var(--ptext)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-same-shift-member-v61509{background:var(--ps2)!important;border-color:#30373D!important;color:var(--ptext)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-same-shift-member-v61509.is-self-v61529f15r{background:var(--paccent-soft)!important;border-color:rgba(255,106,44,.24)!important;box-shadow:inset 3px 0 0 var(--paccent)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-working-team-chip-v61529f15r.self{background:var(--paccent-soft)!important;color:#FFB18F!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-working-team-chip-v61529f15r.borrow{background:var(--pamber-soft)!important;color:#E8D38B!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav{background:rgba(25,29,33,.98)!important;border-color:#2A2E33!important;box-shadow:0 12px 28px rgba(0,0,0,.30)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button{color:var(--pmuted)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button.active:before{background:var(--paccent)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-auth{background:var(--pbg)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-auth-shell{background:var(--ps)!important;border:1px solid #2A2E33!important;color:var(--ptext)!important;box-shadow:0 18px 44px rgba(0,0,0,.34)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-auth-form input,.portal-modal-body input,.portal-modal-body select,.portal-modal-body textarea){background:#181C20!important;color:var(--ptext)!important;border-color:var(--pline)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-modal-backdrop{background:rgba(8,10,12,.74)!important;backdrop-filter:blur(5px)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-modal{background:var(--ps)!important;border-color:var(--pline)!important;color:var(--ptext)!important;box-shadow:0 -22px 56px rgba(0,0,0,.44)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-modal-head{background:#1A1F23!important;border-color:#2A2E33!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-modal-body{background:var(--ps)!important;color:var(--ptext)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-modal-actions{background:var(--pbg2)!important;border-color:#2A2E33!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-raw-empty,.portal-raw-error,.portal-same-shift-none-v61509,.portal-same-shift-empty-v61509,.portal-dayoff-empty-v61512,.portal-leave-preview-empty-v61520,.portal-leave-preview-loading-v61520){background:transparent!important;color:var(--pmuted)!important;border-color:#2A2E33!important}
+body:is(.theme-dark,.dark,.dark-mode) *::-webkit-scrollbar-track{background:transparent!important}
+body:is(.theme-dark,.dark,.dark-mode) *::-webkit-scrollbar-thumb{background:#394149!important;border-radius:999px!important}

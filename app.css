@@ -34294,3 +34294,289 @@ html[data-theme="dark"] body :is(.modal,.drawer,.notification-drawer,.command-pa
 body.theme-dark :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-track,
 body.dark :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-track,
 body.dark-mode :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-track{background:transparent!important}
+
+/* ========================================================================== 
+   V6.15.29 FIX16F — GLOBAL DARK MODE CONTRACT / FINAL CONSISTENCY PASS
+   One authoritative palette for every page, tab, alert, drawer and popup.
+   ========================================================================== */
+
+html[data-theme="dark"] body,
+body:is(.theme-dark,.dark,.dark-mode){
+  color-scheme:dark;
+  --dispatch-bg:#14171A;
+  --dispatch-bg-alt:#191D21;
+  --dispatch-surface:#202428;
+  --dispatch-surface-2:#282D33;
+  --dispatch-surface-3:#2D343A;
+  --dispatch-border-soft:#2A2E33;
+  --dispatch-border:#34393F;
+  --dispatch-border-strong:#46505A;
+  --dispatch-text:#ECE9E3;
+  --dispatch-muted:#98A0A8;
+  --dispatch-dim:#6B737B;
+  --dispatch-accent:#FF6A2C;
+  --dispatch-accent-soft:rgba(255,106,44,.12);
+  --dispatch-accent-line:rgba(255,106,44,.30);
+  --dispatch-teal:#35CFAE;
+  --dispatch-teal-soft:rgba(53,207,174,.10);
+  --dispatch-amber:#F3C64B;
+  --dispatch-amber-soft:rgba(243,198,75,.10);
+  --dispatch-red:#FF6868;
+  --dispatch-red-soft:rgba(255,104,104,.10);
+  --dispatch-blue:#6E98F5;
+  --dispatch-blue-soft:rgba(110,152,245,.10);
+  --surface:var(--dispatch-surface);
+  --surface-soft:var(--dispatch-surface-2);
+  --panel:var(--dispatch-surface);
+  --text:var(--dispatch-text);
+  --text-main:var(--dispatch-text);
+  --text-muted:var(--dispatch-muted);
+  --muted:var(--dispatch-muted);
+  --line:var(--dispatch-border-soft);
+  --border:var(--dispatch-border);
+  --border-color:var(--dispatch-border);
+  --primary:var(--dispatch-accent);
+  --slate-50:#1A1F23;
+  --slate-100:#20262B;
+  --slate-200:#30373D;
+  --slate-300:#46505A;
+  --slate-400:#737C84;
+  --slate-500:#98A0A8;
+  --slate-600:#B4BAC0;
+  --slate-700:#CDD0D0;
+  --slate-800:#DFDED9;
+  --slate-900:#ECE9E3;
+  background:var(--dispatch-bg)!important;
+  color:var(--dispatch-text)!important;
+}
+
+/* Core shell / page surfaces: no navy islands and no pure-black jumps. */
+html[data-theme="dark"] body :is(.app-shell,.main-content,.content,.page-content),
+body:is(.theme-dark,.dark,.dark-mode) :is(.app-shell,.main-content,.content,.page-content){
+  background:var(--dispatch-bg)!important;
+  color:var(--dispatch-text)!important;
+}
+html[data-theme="dark"] body :is(.topbar,.sidebar,.sidebar-footer,.status-bar),
+body:is(.theme-dark,.dark,.dark-mode) :is(.topbar,.sidebar,.sidebar-footer,.status-bar){
+  background:var(--dispatch-bg-alt)!important;
+  border-color:var(--dispatch-border-soft)!important;
+  color:var(--dispatch-text)!important;
+}
+
+/* Shared panel language across every main page. */
+html[data-theme="dark"] body [id^="page-"] :is(.panel,.table-wrap,.toolbar,.filter-panel,.settings-panel,.overview-card,.org-detail-panel,.org-tree-panel,.org-manager-card,.admin-health-card,.admin-module-card,.certification-admin-card,.system-period-panel,.user-account-table-panel,.attendance-table-panel-v61462,.schedule-control-panel-v61529f15m,.team-enforcement-panel-v61525,.team-enforcement-rollout-panel-v61529,.team-operational-cards-panel-v61528,.team-people-compact-panel-v61529f3,.team-temp-panel-v61529f14b),
+body:is(.theme-dark,.dark,.dark-mode) [id^="page-"] :is(.panel,.table-wrap,.toolbar,.filter-panel,.settings-panel,.overview-card,.org-detail-panel,.org-tree-panel,.org-manager-card,.admin-health-card,.admin-module-card,.certification-admin-card,.system-period-panel,.user-account-table-panel,.attendance-table-panel-v61462,.schedule-control-panel-v61529f15m,.team-enforcement-panel-v61525,.team-enforcement-rollout-panel-v61529,.team-operational-cards-panel-v61528,.team-people-compact-panel-v61529f3,.team-temp-panel-v61529f14b){
+  background:var(--dispatch-surface)!important;
+  border-color:var(--dispatch-border-soft)!important;
+  color:var(--dispatch-text)!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body [id^="page-"] :is(.panel-header,.panel-head,.settings-panel-head,.system-period-panel-header,.work-pattern-panel-head-v61111,.schedule-panel-header,.schedule-panel-header-team,.cert-reason-admin-panel-head-v61148),
+body:is(.theme-dark,.dark,.dark-mode) [id^="page-"] :is(.panel-header,.panel-head,.settings-panel-head,.system-period-panel-header,.work-pattern-panel-head-v61111,.schedule-panel-header,.schedule-panel-header-team,.cert-reason-admin-panel-head-v61148){
+  background:var(--dispatch-surface)!important;
+  border-color:var(--dispatch-border-soft)!important;
+  color:var(--dispatch-text)!important;
+}
+
+/* Forms / filters / menus / tabs share one graphite depth. */
+html[data-theme="dark"] body :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea,.input,.select),
+body:is(.theme-dark,.dark,.dark-mode) :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea,.input,.select){
+  background:#181C20!important;
+  color:var(--dispatch-text)!important;
+  border-color:var(--dispatch-border)!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body :is(input,textarea)::placeholder,
+body:is(.theme-dark,.dark,.dark-mode) :is(input,textarea)::placeholder{color:#737B83!important}
+html[data-theme="dark"] body select option,
+body:is(.theme-dark,.dark,.dark-mode) select option{background:#181C20!important;color:var(--dispatch-text)!important}
+html[data-theme="dark"] body :is(.settings-tabs,.team-workspace-tabs-v61528,.view-toggle,.shift-request-quick-ranges-v61529f15s,.portal-auth-tabs),
+body:is(.theme-dark,.dark,.dark-mode) :is(.settings-tabs,.team-workspace-tabs-v61528,.view-toggle,.shift-request-quick-ranges-v61529f15s,.portal-auth-tabs){
+  background:var(--dispatch-bg-alt)!important;
+  border-color:var(--dispatch-border-soft)!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body :is(.settings-tabs,.team-workspace-tabs-v61528,.view-toggle,.shift-request-quick-ranges-v61529f15s) button,
+body:is(.theme-dark,.dark,.dark-mode) :is(.settings-tabs,.team-workspace-tabs-v61528,.view-toggle,.shift-request-quick-ranges-v61529f15s) button{
+  background:transparent!important;
+  color:var(--dispatch-muted)!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body :is(.settings-tabs,.team-workspace-tabs-v61528,.view-toggle,.shift-request-quick-ranges-v61529f15s) button:is(.active,[aria-selected="true"]),
+body:is(.theme-dark,.dark,.dark-mode) :is(.settings-tabs,.team-workspace-tabs-v61528,.view-toggle,.shift-request-quick-ranges-v61529f15s) button:is(.active,[aria-selected="true"]){
+  background:var(--dispatch-accent-soft)!important;
+  color:#FFB18F!important;
+  border-color:var(--dispatch-accent-line)!important;
+  box-shadow:none!important;
+}
+
+/* Buttons: one predictable hierarchy. */
+html[data-theme="dark"] body :is(.btn,.button),
+body:is(.theme-dark,.dark,.dark-mode) :is(.btn,.button){box-shadow:none!important}
+html[data-theme="dark"] body :is(.btn-light,.btn-soft,.btn-secondary,.btn-ghost),
+body:is(.theme-dark,.dark,.dark-mode) :is(.btn-light,.btn-soft,.btn-secondary,.btn-ghost){
+  background:var(--dispatch-surface-2)!important;
+  border-color:var(--dispatch-border)!important;
+  color:var(--dispatch-text)!important;
+}
+html[data-theme="dark"] body :is(.btn-light,.btn-soft,.btn-secondary,.btn-ghost):hover,
+body:is(.theme-dark,.dark,.dark-mode) :is(.btn-light,.btn-soft,.btn-secondary,.btn-ghost):hover{
+  background:var(--dispatch-surface-3)!important;
+  border-color:var(--dispatch-border-strong)!important;
+}
+html[data-theme="dark"] body :is(.btn-primary,.primary),
+body:is(.theme-dark,.dark,.dark-mode) :is(.btn-primary,.primary){
+  background:var(--dispatch-accent)!important;
+  border-color:var(--dispatch-accent)!important;
+  color:#17191B!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body :is(.btn-primary,.primary):hover,
+body:is(.theme-dark,.dark,.dark-mode) :is(.btn-primary,.primary):hover{background:#FF7A42!important;border-color:#FF7A42!important}
+
+/* Tables: quieter header, consistent rows, clear hover. */
+html[data-theme="dark"] body [id^="page-"] table thead th,
+body:is(.theme-dark,.dark,.dark-mode) [id^="page-"] table thead th{
+  background:#1A1F23!important;
+  color:#B7BDC2!important;
+  border-color:var(--dispatch-border-soft)!important;
+}
+html[data-theme="dark"] body [id^="page-"] table tbody td,
+body:is(.theme-dark,.dark,.dark-mode) [id^="page-"] table tbody td{
+  border-color:var(--dispatch-border-soft)!important;
+  color:var(--dispatch-text)!important;
+}
+html[data-theme="dark"] body [id^="page-"] table tbody tr:hover>td,
+body:is(.theme-dark,.dark,.dark-mode) [id^="page-"] table tbody tr:hover>td{background:#242A2F!important}
+
+/* Empty / loading states must never become white canvases in dark mode. */
+html[data-theme="dark"] body :is(.fc-empty,.table-empty,.att-rebuild-empty,.attendance-employee-empty,.org-detail-empty,.org-tree-empty,.employee-month-holiday-empty-v61153,.employee-month-punch-empty-v61460,.team-borrow-overlay-empty-v61529f15q,.shift-request-empty-v61529f15s),
+body:is(.theme-dark,.dark,.dark-mode) :is(.fc-empty,.table-empty,.att-rebuild-empty,.attendance-employee-empty,.org-detail-empty,.org-tree-empty,.employee-month-holiday-empty-v61153,.employee-month-punch-empty-v61460,.team-borrow-overlay-empty-v61529f15q,.shift-request-empty-v61529f15s){
+  background:transparent!important;
+  color:var(--dispatch-muted)!important;
+  border-color:var(--dispatch-border-soft)!important;
+}
+
+/* Alerts / notices: semantic color lives in border/icon, not bright pastel blocks. */
+html[data-theme="dark"] body :is(.developer-warning,.attendance-detail-alert,.schedule-team-alert,.operational-reason-alert-v61528f3,.team-change-review-note-v61528,.team-working-capacity-warning-v61529f15q,.rest-transition-advice-v61431,.month-copy-warning-v61413),
+body:is(.theme-dark,.dark,.dark-mode) :is(.developer-warning,.attendance-detail-alert,.schedule-team-alert,.operational-reason-alert-v61528f3,.team-change-review-note-v61528,.team-working-capacity-warning-v61529f15q,.rest-transition-advice-v61431,.month-copy-warning-v61413){
+  background:var(--dispatch-amber-soft)!important;
+  border-color:rgba(243,198,75,.24)!important;
+  color:#E8D38B!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body :is(.account-invite-error,.account-recovery-error,.employee-import-errors,.manager-scope-upload-errors,.org-upload-errors,.att-rebuild-error-panel),
+body:is(.theme-dark,.dark,.dark-mode) :is(.account-invite-error,.account-recovery-error,.employee-import-errors,.manager-scope-upload-errors,.org-upload-errors,.att-rebuild-error-panel){
+  background:var(--dispatch-red-soft)!important;
+  border-color:rgba(255,104,104,.24)!important;
+  color:#FFAAAA!important;
+}
+
+/* Work Pattern page — remove the last white segmented controls / bright shift cards. */
+html[data-theme="dark"] body #page-work-patterns .wp-segment-v61416,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-segment-v61416{background:#181C20!important;border-color:var(--dispatch-border)!important}
+html[data-theme="dark"] body #page-work-patterns .wp-segment-v61416 button.active,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-segment-v61416 button.active{background:var(--dispatch-accent-soft)!important;color:#FFB18F!important;box-shadow:none!important}
+html[data-theme="dark"] body #page-work-patterns .wp-segment-v61416.shift button.night.active,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-segment-v61416.shift button.night.active{background:rgba(170,138,246,.10)!important;color:#D5C5FF!important}
+html[data-theme="dark"] body #page-work-patterns :is(.wp-bulk-map-v61416,.wp-position-policy-note-v61417,.wp-month-legacy-v61419),
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns :is(.wp-bulk-map-v61416,.wp-position-policy-note-v61417,.wp-month-legacy-v61419){background:var(--dispatch-amber-soft)!important;border-color:rgba(243,198,75,.22)!important;color:#E8D38B!important}
+
+/* Monthly / punch drawer / slide panels. */
+html[data-theme="dark"] body :is(.employee-month-punch-panel-v61460,.employee-month-modal-v61121),
+body:is(.theme-dark,.dark,.dark-mode) :is(.employee-month-punch-panel-v61460,.employee-month-modal-v61121){background:var(--dispatch-bg-alt)!important;border-color:var(--dispatch-border)!important;box-shadow:0 24px 64px rgba(0,0,0,.42)!important}
+html[data-theme="dark"] body :is(.employee-month-punch-kpi-v61460,.employee-month-punch-day-v61460,.employee-month-punch-filter-v61460,.employee-month-punch-panel-foot-v61460,.employee-month-punch-day-v61460>header),
+body:is(.theme-dark,.dark,.dark-mode) :is(.employee-month-punch-kpi-v61460,.employee-month-punch-day-v61460,.employee-month-punch-filter-v61460,.employee-month-punch-panel-foot-v61460,.employee-month-punch-day-v61460>header){background:var(--dispatch-surface)!important;border-color:var(--dispatch-border-soft)!important;color:var(--dispatch-text)!important}
+
+/* Organization / Accounts / Admin utility controls that previously kept light fills. */
+html[data-theme="dark"] body :is(.org-tree-toggle,.org-tree-actions,.org-children-list button,.org-manager-search-results,.org-manager-candidate,.org-manager-permission-section,.account-email-preview,.account-reset-note,.account-invite-method,.account-invite-accept-card,.account-recovery-confirm-card,.account-recovery-otp-info,.account-recovery-otp-help,.manager-scope-replace-option,.manager-scope-upload-summary,.manager-scope-upload-errors,.portal-link-card-v61482),
+body:is(.theme-dark,.dark,.dark-mode) :is(.org-tree-toggle,.org-tree-actions,.org-children-list button,.org-manager-search-results,.org-manager-candidate,.org-manager-permission-section,.account-email-preview,.account-reset-note,.account-invite-method,.account-invite-accept-card,.account-recovery-confirm-card,.account-recovery-otp-info,.account-recovery-otp-help,.manager-scope-replace-option,.manager-scope-upload-summary,.manager-scope-upload-errors,.portal-link-card-v61482){
+  background:var(--dispatch-surface-2)!important;
+  border-color:var(--dispatch-border-soft)!important;
+  color:var(--dispatch-text)!important;
+  box-shadow:none!important;
+}
+
+/* --------------------------------------------------------------------------
+   TEAM MEMBERSHIP — exact fix for the white panes visible in the screenshot.
+   -------------------------------------------------------------------------- */
+html[data-theme="dark"] body #teamMembershipModalV61524 .team-membership-modal-v61529f15v,
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 .team-membership-modal-v61529f15v{
+  --tm-line:var(--dispatch-border);
+  --tm-line-soft:var(--dispatch-border-soft);
+  --tm-text:var(--dispatch-text);
+  --tm-muted:var(--dispatch-muted);
+  --tm-soft:var(--dispatch-surface-2);
+  background:var(--dispatch-surface)!important;
+  border-color:var(--dispatch-border)!important;
+}
+html[data-theme="dark"] body #teamMembershipModalV61524 .modal-body,
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 .modal-body{background:var(--dispatch-bg-alt)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 :is(.team-membership-summary-v61529f15v>div,.team-membership-date-card-v61529f15v,.team-transfer-pane-v61528f1,.team-transfer-pane-head-v61528f1,.team-transfer-tools-v61528f1,.team-transfer-list-v61528f1,.team-target-guide-v61528f1,.team-membership-change-strip-v61528f1>div,.team-impact-preview-v61528,.team-membership-note-v61529f15v,.team-membership-footer-v61529f15v,.team-borrow-overlay-row-v61529f15q),
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 :is(.team-membership-summary-v61529f15v>div,.team-membership-date-card-v61529f15v,.team-transfer-pane-v61528f1,.team-transfer-pane-head-v61528f1,.team-transfer-tools-v61528f1,.team-transfer-list-v61528f1,.team-target-guide-v61528f1,.team-membership-change-strip-v61528f1>div,.team-impact-preview-v61528,.team-membership-note-v61529f15v,.team-membership-footer-v61529f15v,.team-borrow-overlay-row-v61529f15q){
+  background:var(--dispatch-surface)!important;
+  border-color:var(--dispatch-border-soft)!important;
+  color:var(--dispatch-text)!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body #teamMembershipModalV61524 :is(.team-membership-summary-v61529f15v>div,.team-membership-date-card-v61529f15v,.team-membership-change-strip-v61528f1>div,.team-membership-note-v61529f15v),
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 :is(.team-membership-summary-v61529f15v>div,.team-membership-date-card-v61529f15v,.team-membership-change-strip-v61528f1>div,.team-membership-note-v61529f15v){background:var(--dispatch-surface-2)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 :is(.team-membership-summary-v61529f15v .borrow-stat-v61529f15v,.team-borrow-overlay-v61529f15v),
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 :is(.team-membership-summary-v61529f15v .borrow-stat-v61529f15v,.team-borrow-overlay-v61529f15v){background:rgba(255,106,44,.055)!important;border-color:rgba(255,106,44,.18)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 .team-membership-summary-v61529f15v .working-stat-v61529f15v,
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 .team-membership-summary-v61529f15v .working-stat-v61529f15v{background:rgba(53,207,174,.055)!important;border-color:rgba(53,207,174,.18)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 :is(.team-transfer-row-v61528f1,.team-borrow-overlay-empty-v61529f15q,.fc-empty),
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 :is(.team-transfer-row-v61528f1,.team-borrow-overlay-empty-v61529f15q,.fc-empty){background:transparent!important;border-color:var(--dispatch-border-soft)!important;color:var(--dispatch-muted)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 .team-transfer-row-v61528f1:hover,
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 .team-transfer-row-v61528f1:hover{background:#252B30!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 .team-transfer-row-v61528f1.picked,
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 .team-transfer-row-v61528f1.picked{background:var(--dispatch-accent-soft)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 :is(.team-transfer-person-v61528f1 strong,.team-borrow-overlay-row-v61529f15q strong),
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 :is(.team-transfer-person-v61528f1 strong,.team-borrow-overlay-row-v61529f15q strong){color:var(--dispatch-text)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 :is(.team-transfer-person-v61528f1>span,.team-transfer-person-v61528f1 small,.team-borrow-overlay-row-v61529f15q small),
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 :is(.team-transfer-person-v61528f1>span,.team-transfer-person-v61528f1 small,.team-borrow-overlay-row-v61529f15q small){color:var(--dispatch-muted)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 :is(.team-membership-mode-chip-v61529f15v,.team-capacity-pill-v61528f1,.team-target-guide-v61528f1 span,.team-borrow-overlay-head-v61529f15q>small,.team-borrow-overlay-row-v61529f15q em),
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 :is(.team-membership-mode-chip-v61529f15v,.team-capacity-pill-v61528f1,.team-target-guide-v61528f1 span,.team-borrow-overlay-head-v61529f15q>small,.team-borrow-overlay-row-v61529f15q em){background:var(--dispatch-surface-2)!important;border-color:var(--dispatch-border-soft)!important;color:var(--dispatch-muted)!important}
+html[data-theme="dark"] body #teamMembershipModalV61524 .team-target-guide-v61528f1 .borrow-guide-v61529f15q,
+body:is(.theme-dark,.dark,.dark-mode) #teamMembershipModalV61524 .team-target-guide-v61528f1 .borrow-guide-v61529f15q{background:var(--dispatch-accent-soft)!important;border-color:var(--dispatch-accent-line)!important;color:#FFB18F!important}
+
+/* Borrow workspace / request center / drawers: same surface ladder. */
+html[data-theme="dark"] body :is(.team-temp-card-v61529f14b,.team-temp-kpis-v61529f14b article,.borrow-workflow-filter-v61529f15f,.borrow-notification-policy-v61529f15g,.shift-request-filter-panel-v61529f15s,.shift-request-list-panel-v61529f15s,.shift-request-table-wrap-v61529f15s),
+body:is(.theme-dark,.dark,.dark-mode) :is(.team-temp-card-v61529f14b,.team-temp-kpis-v61529f14b article,.borrow-workflow-filter-v61529f15f,.borrow-notification-policy-v61529f15g,.shift-request-filter-panel-v61529f15s,.shift-request-list-panel-v61529f15s,.shift-request-table-wrap-v61529f15s){background:var(--dispatch-surface)!important;border-color:var(--dispatch-border-soft)!important;box-shadow:none!important}
+html[data-theme="dark"] body .shift-request-table-v61529f15s tbody td,
+body:is(.theme-dark,.dark,.dark-mode) .shift-request-table-v61529f15s tbody td{background:transparent!important;border-color:var(--dispatch-border-soft)!important;color:var(--dispatch-text)!important}
+html[data-theme="dark"] body .shift-request-empty-row-v61529f15s td,
+body:is(.theme-dark,.dark,.dark-mode) .shift-request-empty-row-v61529f15s td{background:transparent!important}
+
+/* Popup / drawer contract: all nested content follows the same depth. */
+html[data-theme="dark"] body :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer),
+body:is(.theme-dark,.dark,.dark-mode) :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer){background:var(--dispatch-surface)!important;border-color:var(--dispatch-border)!important;color:var(--dispatch-text)!important}
+html[data-theme="dark"] body :is(.modal-header,.drawer-head,.schedule-team-drawer-head,.command-input-wrap),
+body:is(.theme-dark,.dark,.dark-mode) :is(.modal-header,.drawer-head,.schedule-team-drawer-head,.command-input-wrap){background:#1A1F23!important;border-color:var(--dispatch-border-soft)!important;color:var(--dispatch-text)!important}
+html[data-theme="dark"] body :is(.modal-body,.drawer-body,.schedule-team-drawer-body,.command-results),
+body:is(.theme-dark,.dark,.dark-mode) :is(.modal-body,.drawer-body,.schedule-team-drawer-body,.command-results){background:var(--dispatch-surface)!important;color:var(--dispatch-text)!important}
+html[data-theme="dark"] body :is(.modal-footer,.drawer-footer),
+body:is(.theme-dark,.dark,.dark-mode) :is(.modal-footer,.drawer-footer){background:var(--dispatch-bg-alt)!important;border-color:var(--dispatch-border-soft)!important}
+
+/* Inline light styles left by legacy templates: final safety net. */
+html[data-theme="dark"] body [style*="background:#fff"],
+html[data-theme="dark"] body [style*="background: #fff"],
+html[data-theme="dark"] body [style*="background:white"],
+html[data-theme="dark"] body [style*="background: white"],
+body:is(.theme-dark,.dark,.dark-mode) [style*="background:#fff"],
+body:is(.theme-dark,.dark,.dark-mode) [style*="background: #fff"],
+body:is(.theme-dark,.dark,.dark-mode) [style*="background:white"],
+body:is(.theme-dark,.dark,.dark-mode) [style*="background: white"]{background:var(--dispatch-surface)!important}
+
+/* Final semantic chips — muted fills, readable text. */
+html[data-theme="dark"] body :is(.status-success,.tone-success,.success,.pass,.available) > :is(.badge,.chip,.status-tag),
+body:is(.theme-dark,.dark,.dark-mode) :is(.status-success,.tone-success,.success,.pass,.available) > :is(.badge,.chip,.status-tag){background:var(--dispatch-teal-soft)!important;color:#8DDECD!important;border-color:rgba(53,207,174,.18)!important}
+
+/* Scrollbars and focus: subtle but visible everywhere. */
+html[data-theme="dark"] body *::-webkit-scrollbar-track,
+body:is(.theme-dark,.dark,.dark-mode) *::-webkit-scrollbar-track{background:transparent!important}
+html[data-theme="dark"] body *::-webkit-scrollbar-thumb,
+body:is(.theme-dark,.dark,.dark-mode) *::-webkit-scrollbar-thumb{background:#394149!important;border:2px solid transparent!important;background-clip:padding-box!important;border-radius:999px!important}
+html[data-theme="dark"] body *::-webkit-scrollbar-thumb:hover,
+body:is(.theme-dark,.dark,.dark-mode) *::-webkit-scrollbar-thumb:hover{background:#4A545D!important;background-clip:padding-box!important}
