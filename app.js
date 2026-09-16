@@ -2897,6 +2897,32 @@ window.tcIsDayShiftCode = value =>
       return selected;
     }
 
+    // FIX16J: When the employee filter shows a small, scope-aware list, send
+    // those employee codes explicitly to the attendance RPC. Previously the
+    // UI displayed e.g. "พนักงานทั้งหมด • 5 คน" but translated that state to
+    // p_emp_codes = null. On some Manager scopes / historical periods the
+    // server returned no persisted attendance rows, and the calendar fallback
+    // then had no employee codes to request, so the table stayed empty.
+    // Keep null for large scopes to avoid oversized RPC payloads.
+    function attendanceEmployeeCodesForLoadV616J() {
+      const selected = attendanceEmployeeCodesForQuery();
+      if (Array.isArray(selected) && selected.length) {
+        return selected;
+      }
+
+      const optionCodes = [
+        ...new Set(
+          (attendanceEmployeeFilter.options || [])
+            .map(employee => String(employee?.emp_code || "").trim())
+            .filter(Boolean)
+        )
+      ];
+
+      return optionCodes.length && optionCodes.length <= 250
+        ? optionCodes
+        : null;
+    }
+
     function updateAttendanceEmployeeToggle() {
       const button = $("attEmployeeToggle");
       const text = $("attEmployeeToggleText");
@@ -4788,9 +4814,19 @@ window.tcIsDayShiftCode = value =>
       const dayCount = startObj && endObj ? Math.max(1, Math.floor((endObj-startObj)/86400000)+1) : 31;
       const maxEmployeeCount = Math.max(1, Math.floor(5000/dayCount));
       const persistedCodes = [...new Set((persistedRows || []).map(row=>String(row?.emp_code||'').trim()).filter(Boolean))];
+      // FIX16J: Full-calendar fallback must not depend only on persisted
+      // attendance rows. If there are no persisted rows yet, use the employee
+      // options already resolved from the current Manager/User Scope so the
+      // schedule calendar can still produce rows for workdays, OFF, leave and
+      // no-punch dates.
+      const optionCodesV616J = [...new Set(
+        (attendanceEmployeeFilter.options || [])
+          .map(employee => String(employee?.emp_code || '').trim())
+          .filter(Boolean)
+      )];
       let calendarEmpCodes = Array.isArray(requestEmployeeCodes) && requestEmployeeCodes.length
         ? [...new Set(requestEmployeeCodes.map(code=>String(code||'').trim()).filter(Boolean))]
-        : persistedCodes;
+        : (optionCodesV616J.length ? optionCodesV616J : persistedCodes);
       if (calendarEmpCodes.length > maxEmployeeCount) {
         state.attendanceCalendarScopeLimitedV61462 = true;
         calendarEmpCodes = calendarEmpCodes.slice(0,maxEmployeeCount);
@@ -4875,8 +4911,20 @@ window.tcIsDayShiftCode = value =>
               ]
             : null;
 
+        // FIX16J: Resolve the employee scope before running the attendance
+        // search. The dropdown previously loaded lazily, so pressing Search
+        // without opening it could leave the loader with no employee scope for
+        // the calendar fallback. The options RPC is cached by date/org filters.
+        const employeeOptionKeyV616J = attendanceEmployeeFilterKey();
+        if (
+          attendanceEmployeeFilter.loadedKey !== employeeOptionKeyV616J
+          || !attendanceEmployeeFilter.options.length
+        ) {
+          await loadAttendanceEmployeeOptions(true);
+        }
+
         const requestEmployeeCodes =
-          attendanceEmployeeCodesForQuery();
+          attendanceEmployeeCodesForLoadV616J();
 
         const ranges =
           attendanceChunkRanges(
@@ -17077,7 +17125,11 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${esc(comp)}</td>
           </tr>`;
         }).join("")
-      : `<tr><td colspan="28" class="fc-empty">ไม่พบข้อมูล</td></tr>`;
+      : `<tr><td colspan="28" class="fc-empty">${
+          (attendanceEmployeeFilter.options || []).length
+            ? `พบพนักงาน ${(attendanceEmployeeFilter.options || []).length.toLocaleString("th-TH")} คน แต่ไม่พบข้อมูลเวลา/ตารางกะในช่วงวันที่และตัวกรองที่เลือก`
+            : "ไม่พบข้อมูลตามช่วงวันที่และตัวกรองที่เลือก"
+        }</td></tr>`;
 
     $("attendanceCount").textContent=
       `${num(all.length)} รายการ`;
