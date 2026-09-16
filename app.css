@@ -27377,3 +27377,347 @@ body.theme-dark #teamMembershipModalV61524 .team-transfer-row-v61528f1.picked,bo
   #teamMembershipModalV61524 .team-membership-footer-v61529f15v .btn{flex:1}
 }
 @media(max-width:420px){#teamMembershipModalV61524 .team-membership-summary-v61529f15v{grid-template-columns:1fr}}
+
+/* ========================================================================== 
+   V6.15.29 FIX15W — Borrow Workflow Minimal Modernization
+   Frontend-only: preserve FIX15 Manager-based Borrow / Working Team logic.
+   ========================================================================== */
+
+/* Workspace shell */
+#teamTemporaryWorkspaceV61529F14B .team-temp-panel-v61529f14b{
+  border:1px solid #dfe7f1;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 6px 22px rgba(15,39,68,.045);
+  overflow:hidden;
+}
+#teamTemporaryWorkspaceV61529F14B .panel-body{padding:0 0 12px}
+.team-temp-head-v61529f14b{
+  align-items:flex-start;
+  gap:18px;
+  padding:18px 20px 16px;
+  border-bottom:1px solid #edf2f7;
+  background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);
+}
+.team-temp-head-v61529f14b .eyebrow{font-size:9px;letter-spacing:.12em;color:#6b7d90}
+.team-temp-head-v61529f14b h3{margin-top:3px;font-size:19px;letter-spacing:-.02em;color:#122b49}
+.team-temp-head-v61529f14b p{max-width:760px;margin-top:4px;font-size:10.5px;line-height:1.55;color:#6c7e91}
+.team-temp-head-actions-v61529f14b{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.team-temp-head-actions-v61529f14b .btn{min-height:34px;padding:7px 10px;border-radius:10px;font-size:10px;box-shadow:none}
+.team-temp-head-actions-v61529f14b .badge{min-height:30px;display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;font-size:9px}
+
+/* 4 business rules -> compact process rail */
+.team-temp-rule-v61529f14b{
+  position:relative;
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:0;
+  margin:14px 16px 0;
+  padding:0;
+  border:1px solid #e4ebf3;
+  border-radius:14px;
+  background:#fbfcfe;
+  overflow:hidden;
+}
+.team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{
+  position:relative;
+  display:grid;
+  grid-template-columns:30px minmax(0,1fr);
+  gap:9px;
+  align-items:center;
+  min-height:66px;
+  padding:11px 13px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+.team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d:not(:last-child){border-right:1px solid #e8edf3}
+.team-temp-rule-v61529f14b .team-temp-rule-icon-v61529f14d{
+  width:30px;height:30px;border-radius:10px;font-size:11px;
+  background:#eef4fb;color:#315f8f;
+}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.borrow .team-temp-rule-icon-v61529f14d{background:#f3e8ff;color:#7e22ce}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.authority .team-temp-rule-icon-v61529f14d{background:#eaf8f1;color:#047857}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.assist .team-temp-rule-icon-v61529f14d{background:#eef4ff;color:#1d4ed8}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.scope .team-temp-rule-icon-v61529f14d{background:#fff4df;color:#b45309}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong{font-size:10.5px;line-height:1.35;color:#263b54}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small{
+  margin-top:2px;
+  font-size:8.5px;
+  line-height:1.35;
+  color:#8190a0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+/* Notification policy is supportive, not a hero */
+.borrow-notification-policy-v61529f15g{
+  margin:8px 16px 0;
+  min-height:42px;
+  padding:8px 10px;
+  border:1px solid #e9eef4;
+  border-radius:11px;
+  background:#fff;
+  box-shadow:none;
+}
+.borrow-notification-policy-icon-v61529f15g{width:28px;height:28px;border-radius:9px;font-size:13px}
+.borrow-notification-policy-v61529f15g strong{font-size:10px}
+.borrow-notification-policy-v61529f15g small{font-size:8.5px;color:#8090a2}
+.borrow-notification-policy-badge-v61529f15g{padding:4px 7px;border-radius:999px;font-size:8px;font-weight:800}
+
+/* KPI hierarchy: 3 operational KPIs first, 3 context KPIs quieter */
+.team-temp-kpis-v61529f14b{
+  grid-template-columns:repeat(6,minmax(115px,1fr));
+  gap:8px;
+  padding:10px 16px 0;
+}
+.team-temp-kpis-v61529f14b article{
+  min-height:72px;
+  padding:10px 11px 9px 13px;
+  border:1px solid #e5ebf2;
+  border-radius:12px;
+  background:#fff;
+  box-shadow:none;
+}
+.team-temp-kpis-v61529f14b article::before{width:2px;opacity:.9}
+.team-temp-kpis-v61529f14b article>span{min-height:0;font-size:9px;color:#768698}
+.team-temp-kpis-v61529f14b strong{margin-top:6px;font-size:21px;color:#17314e}
+.team-temp-kpis-v61529f14b small{font-size:8px;color:#97a4b2}
+.team-temp-kpis-v61529f14b article.scheduled,
+.team-temp-kpis-v61529f14b article.inbound,
+.team-temp-kpis-v61529f14b article.outbound{background:#fbfcfe}
+.team-temp-kpis-v61529f14b article[data-borrow-kpi-filter-v61529f15f]:hover{
+  transform:none;border-color:#b9cde3;background:#f8fbff;box-shadow:none
+}
+
+/* One compact filter surface */
+.borrow-workflow-filter-v61529f15f{
+  margin:10px 16px 0;
+  padding:10px 11px 9px;
+  border:1px solid #e1e8f0;
+  border-radius:12px 12px 0 0;
+  background:#fbfcfe;
+}
+.borrow-workflow-filter-head-v61529f15f{margin-bottom:7px}
+.borrow-workflow-filter-head-v61529f15f strong{font-size:10px;color:#2d425a}
+.borrow-workflow-filter-head-v61529f15f small{font-size:8.5px;color:#8a98a8}
+.borrow-workflow-filter-head-v61529f15f>span{font-size:8.5px;color:#758699}
+.borrow-workflow-filter-chips-v61529f15f{gap:5px}
+.borrow-workflow-filter-chips-v61529f15f button{
+  min-height:30px;
+  padding:5px 8px 5px 9px;
+  border-color:#e0e7ef;
+  border-radius:9px;
+  background:#fff;
+  font-size:9px;
+  font-weight:750;
+}
+.borrow-workflow-filter-chips-v61529f15f button.active{
+  border-color:#b8d2ef;
+  background:#eef6ff;
+  color:#1554a0;
+  box-shadow:none;
+}
+.borrow-workflow-filter-chips-v61529f15f button b{min-width:18px;height:18px;padding:0 4px;font-size:8px}
+.team-temp-toolbar-v61529f14b{
+  grid-template-columns:145px 145px 190px minmax(220px,1fr);
+  gap:8px;
+  margin:0 16px;
+  padding:9px 11px 11px;
+  border:1px solid #e1e8f0;
+  border-top:0;
+  border-radius:0 0 12px 12px;
+  background:#fbfcfe;
+}
+.team-temp-toolbar-v61529f14b label{font-size:8.5px;color:#728397}
+.team-temp-toolbar-v61529f14b .input,.team-temp-toolbar-v61529f14b .select{min-height:34px;border-radius:9px;font-size:10px;background:#fff}
+
+/* Request cards: flatter, clearer hierarchy */
+.team-temp-list-v61529f14b{gap:8px;padding:10px 16px 6px}
+.team-temp-card-v61529f14b{
+  border:1px solid #e2e9f1;
+  border-radius:13px;
+  box-shadow:none;
+  transition:border-color .15s ease,background .15s ease;
+}
+.team-temp-card-v61529f14b:hover{transform:none;border-color:#bdd0e4;box-shadow:none;background:#fdfefe}
+.team-temp-card-v61529f14b.pending,.team-temp-card-v61529f14b.active,.team-temp-card-v61529f14b.scheduled,
+.team-temp-card-v61529f14b.completed,.team-temp-card-v61529f14b.cancelled,.team-temp-card-v61529f14b.rejected{border-left-width:3px}
+.team-temp-card-main-v61529f14b{
+  grid-template-columns:minmax(235px,1.05fr) minmax(300px,1.45fr) minmax(140px,.6fr) minmax(160px,.72fr);
+  gap:12px;
+  padding:12px 13px 10px;
+}
+.team-temp-type-icon-v61529f14b{flex-basis:34px;width:34px;height:34px;border-radius:10px;font-size:15px}
+.team-temp-person-v61529f14b{gap:9px}
+.team-temp-person-v61529f14b strong{font-size:11px;color:#1a3049}
+.team-temp-person-v61529f14b small{font-size:8.7px;color:#7d8b9b}
+.team-temp-type-chip-v61529f14b{margin-top:5px;padding:3px 6px;font-size:8px}
+.borrow-meta-chips-v61529f15f{margin-top:5px;gap:4px}
+.borrow-meta-chip-v61529f15f{padding:3px 6px;border-radius:999px;font-size:7.5px}
+.team-temp-flow-v61529f14b{grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr);gap:6px}
+.team-temp-flow-v61529f14b>div{padding:7px 8px;border-color:#e9edf3;border-radius:9px;background:#fafbfd}
+.team-temp-flow-v61529f14b>div>span,.team-temp-flow-v61529f14b>div>small{font-size:8px;color:#8391a0}
+.team-temp-flow-v61529f14b>div>strong{font-size:11px;color:#253b54}
+.team-temp-flow-v61529f14b>b{font-size:13px;color:#9aa8b7}
+.team-temp-period-v61529f14b span,.team-temp-period-v61529f14b small,.team-temp-status-v61529f14b small{font-size:8px;color:#8391a0}
+.team-temp-period-v61529f14b strong{font-size:10.5px;color:#2c4158}
+.team-temp-status-chip-v61529f14b{padding:4px 7px;font-size:8px}
+
+/* Lifecycle rail is informative but visually quiet */
+.borrow-workflow-stepper-v61529f15f{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  margin:0 13px 7px;
+  padding:6px 8px;
+  border-color:#edf1f5;
+  border-radius:9px;
+  background:#fcfdfe;
+}
+.borrow-workflow-stepper-v61529f15f>div{gap:5px}
+.borrow-workflow-stepper-v61529f15f>div>span{flex-basis:19px;width:19px;height:19px;font-size:7.5px}
+.borrow-workflow-stepper-v61529f15f>div>small{font-size:7.5px;background:#fcfdfe;color:#8492a1}
+.team-temp-card-foot-v61529f14b{
+  padding:7px 13px;
+  border-top-color:#f0f3f6;
+  background:#fcfdfe;
+}
+.team-temp-card-foot-v61529f14b p{font-size:8.5px;color:#718195}
+.team-temp-card-foot-v61529f14b>div>span{font-size:8px}
+.team-temp-actions-v61529f14b{gap:5px}
+.team-temp-actions-v61529f14b .btn{min-height:29px;padding:5px 8px;border-radius:8px;font-size:8.5px;box-shadow:none}
+
+/* Better empty state */
+.team-temp-empty-v61529f14b{
+  min-height:124px;
+  border-color:#dde5ee;
+  border-radius:12px;
+  background:#fbfcfe;
+}
+.team-temp-empty-v61529f14b>span{width:32px;height:32px;font-size:14px}
+.team-temp-empty-v61529f14b strong{font-size:11px}.team-temp-empty-v61529f14b small{font-size:9px}
+
+/* Create Borrow modal */
+.team-temp-create-modal-v61529f14b{
+  width:min(790px,calc(100vw - 28px));
+  max-height:92vh;
+  border-radius:18px;
+  box-shadow:0 24px 70px rgba(15,35,65,.22);
+}
+.team-temp-create-modal-v61529f14b .modal-header{padding:16px 18px 13px;border-bottom:1px solid #edf1f5;background:#fbfdff}
+.team-temp-create-modal-v61529f14b .modal-header h3{font-size:18px;color:#19324f}
+.team-temp-create-modal-v61529f14b .modal-header p{max-width:650px;margin-top:3px;font-size:9.5px;line-height:1.5;color:#76879a}
+.team-temp-create-modal-v61529f14b .modal-body{padding:15px 18px 16px}
+.team-temp-create-modal-v61529f14b .field{margin-bottom:11px}
+.team-temp-create-modal-v61529f14b .field label{font-size:9.5px;color:#34495f}
+.team-temp-create-modal-v61529f14b .field-hint{font-size:8px;line-height:1.4;color:#8795a5}
+.team-temp-create-modal-v61529f14b .input,.team-temp-create-modal-v61529f14b .select{min-height:38px;border-radius:10px;font-size:10.5px}
+.team-temp-date-grid-v61529f14b{gap:9px}
+.team-temp-search-line-v61529f14b{gap:6px}.team-temp-search-line-v61529f14b .btn{min-width:72px;border-radius:9px}
+.team-temp-home-card-v61529f14b{margin:2px 0 9px;padding:9px 11px;border-color:#e1e9f2;border-radius:10px;background:#fbfdff}
+.team-temp-home-card-v61529f14b span,.team-temp-home-card-v61529f14b small{font-size:8px}.team-temp-home-card-v61529f14b strong{margin:2px 0;font-size:11px}
+.team-temp-preview-v61529f14b{margin:8px 0 11px;padding:10px;border-color:#dde7f1;border-radius:11px;background:#fbfdff;min-height:70px}
+.team-temp-preview-placeholder-v61529f14b{padding:10px;font-size:9.5px;color:#8795a5}
+.team-temp-preview-head-v61529f14b strong{font-size:11px}
+.team-temp-preview-flow-v61529f14b{gap:7px}
+.team-temp-preview-flow-v61529f14b>div{padding:8px 9px;border-radius:9px;background:#fff;border:1px solid #e6edf4}
+.team-temp-preview-flow-v61529f14b>div span{font-size:8px}
+.team-temp-workflow-v61529f14b{margin-top:8px;padding-top:8px;border-top:1px solid #e9eef4}
+.team-temp-workflow-v61529f14b strong{font-size:9px}.team-temp-workflow-v61529f14b span,.team-temp-workflow-v61529f14b small{font-size:8px}
+.team-temp-create-modal-v61529f14b .modal-footer{padding:11px 18px;border-top:1px solid #edf1f5;background:#fbfcfe}
+.team-temp-create-modal-v61529f14b .modal-footer .btn{min-height:36px;border-radius:10px;font-size:10px}
+
+/* Reject/Cancel/End + Audit dialog consistency */
+.team-temp-action-modal-v61529f14b{border-radius:18px;box-shadow:0 24px 70px rgba(15,35,65,.22)}
+.team-temp-action-modal-v61529f14b .modal-header,.borrow-audit-modal-v61529f15i .modal-header{padding:15px 17px 12px;background:#fbfdff;border-bottom:1px solid #edf1f5}
+.team-temp-action-modal-v61529f14b .modal-body{padding:15px 17px}
+.team-temp-action-summary-v61529f14b{margin-bottom:11px;padding:10px 11px;border-radius:10px;background:#fbfcfe;border-color:#e5ebf2}
+.borrow-audit-modal-v61529f15i{border-radius:18px;box-shadow:0 24px 70px rgba(15,35,65,.22)}
+.borrow-audit-body-v61529f15i{padding:14px 16px 16px}
+.borrow-audit-kpis-v61529f15i{gap:7px}
+.borrow-audit-kpis-v61529f15i article{min-height:68px;padding:9px 10px;border-radius:11px;box-shadow:none}
+.borrow-audit-kpis-v61529f15i article span{font-size:8.5px}.borrow-audit-kpis-v61529f15i article strong{font-size:20px}
+.borrow-audit-filter-v61529f15i{gap:7px;padding:10px;border-radius:11px;background:#fbfcfe;border-color:#e5ebf2}
+.borrow-audit-filter-v61529f15i label{font-size:8.5px}.borrow-audit-filter-v61529f15i .input,.borrow-audit-filter-v61529f15i .select{min-height:34px;border-radius:9px;font-size:9.5px}
+.borrow-audit-table-wrap-v61529f15i{border-radius:11px;border-color:#e5ebf2}
+.borrow-audit-table-v61529f15i thead th{font-size:8.5px;letter-spacing:.01em}
+.borrow-audit-table-v61529f15i tbody td{font-size:9px}
+
+/* Acting panel belongs to the same visual system */
+.team-acting-panel-v61529f14b{border-radius:17px;border-color:#e2e9f1;box-shadow:none}
+.team-acting-panel-v61529f14b>.panel-header{padding:15px 17px;background:#fbfdff}
+.team-acting-note-v61529f14b{margin-bottom:10px;padding:9px 11px;border-radius:10px;font-size:9px}
+
+/* Dark mode */
+html[data-theme="dark"] #teamTemporaryWorkspaceV61529F14B .team-temp-panel-v61529f14b,
+body.dark #teamTemporaryWorkspaceV61529F14B .team-temp-panel-v61529f14b{background:#0f2035;border-color:#29415d;box-shadow:none}
+html[data-theme="dark"] .team-temp-head-v61529f14b,body.dark .team-temp-head-v61529f14b,
+html[data-theme="dark"] .team-temp-create-modal-v61529f14b .modal-header,body.dark .team-temp-create-modal-v61529f14b .modal-header,
+html[data-theme="dark"] .team-temp-action-modal-v61529f14b .modal-header,body.dark .team-temp-action-modal-v61529f14b .modal-header,
+html[data-theme="dark"] .borrow-audit-modal-v61529f15i .modal-header,body.dark .borrow-audit-modal-v61529f15i .modal-header{background:#10243d;border-color:#29415d}
+html[data-theme="dark"] .team-temp-rule-v61529f14b,body.dark .team-temp-rule-v61529f14b,
+html[data-theme="dark"] .borrow-workflow-filter-v61529f15f,body.dark .borrow-workflow-filter-v61529f15f,
+html[data-theme="dark"] .team-temp-toolbar-v61529f14b,body.dark .team-temp-toolbar-v61529f14b{background:#0e1b2d;border-color:#29415d}
+html[data-theme="dark"] .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d,body.dark .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{background:transparent;border-color:#29415d;box-shadow:none}
+html[data-theme="dark"] .borrow-notification-policy-v61529f15g,body.dark .borrow-notification-policy-v61529f15g,
+html[data-theme="dark"] .team-temp-kpis-v61529f14b article,body.dark .team-temp-kpis-v61529f14b article,
+html[data-theme="dark"] .team-temp-card-v61529f14b,body.dark .team-temp-card-v61529f14b,
+html[data-theme="dark"] .team-temp-create-modal-v61529f14b,body.dark .team-temp-create-modal-v61529f14b,
+html[data-theme="dark"] .team-temp-action-modal-v61529f14b,body.dark .team-temp-action-modal-v61529f14b,
+html[data-theme="dark"] .borrow-audit-modal-v61529f15i,body.dark .borrow-audit-modal-v61529f15i{background:#10243d;border-color:#29415d}
+html[data-theme="dark"] .team-temp-kpis-v61529f14b article.scheduled,body.dark .team-temp-kpis-v61529f14b article.scheduled,
+html[data-theme="dark"] .team-temp-kpis-v61529f14b article.inbound,body.dark .team-temp-kpis-v61529f14b article.inbound,
+html[data-theme="dark"] .team-temp-kpis-v61529f14b article.outbound,body.dark .team-temp-kpis-v61529f14b article.outbound{background:#0f2035}
+html[data-theme="dark"] .borrow-workflow-filter-chips-v61529f15f button,body.dark .borrow-workflow-filter-chips-v61529f15f button,
+html[data-theme="dark"] .team-temp-toolbar-v61529f14b .input,body.dark .team-temp-toolbar-v61529f14b .input,
+html[data-theme="dark"] .team-temp-toolbar-v61529f14b .select,body.dark .team-temp-toolbar-v61529f14b .select,
+html[data-theme="dark"] .team-temp-preview-flow-v61529f14b>div,body.dark .team-temp-preview-flow-v61529f14b>div{background:#10243d;border-color:#29415d;color:#d6e1ee}
+html[data-theme="dark"] .borrow-workflow-filter-chips-v61529f15f button.active,body.dark .borrow-workflow-filter-chips-v61529f15f button.active{background:#153458;border-color:#365f8d;color:#d8eafe}
+html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f,body.dark .borrow-workflow-stepper-v61529f15f,
+html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f>div>small,body.dark .borrow-workflow-stepper-v61529f15f>div>small,
+html[data-theme="dark"] .team-temp-card-foot-v61529f14b,body.dark .team-temp-card-foot-v61529f14b,
+html[data-theme="dark"] .team-temp-empty-v61529f14b,body.dark .team-temp-empty-v61529f14b,
+html[data-theme="dark"] .team-temp-home-card-v61529f14b,body.dark .team-temp-home-card-v61529f14b,
+html[data-theme="dark"] .team-temp-preview-v61529f14b,body.dark .team-temp-preview-v61529f14b,
+html[data-theme="dark"] .team-temp-action-summary-v61529f14b,body.dark .team-temp-action-summary-v61529f14b,
+html[data-theme="dark"] .borrow-audit-filter-v61529f15i,body.dark .borrow-audit-filter-v61529f15i{background:#0e1b2d;border-color:#29415d}
+html[data-theme="dark"] .team-temp-head-v61529f14b h3,body.dark .team-temp-head-v61529f14b h3,
+html[data-theme="dark"] .team-temp-kpis-v61529f14b strong,body.dark .team-temp-kpis-v61529f14b strong,
+html[data-theme="dark"] .team-temp-person-v61529f14b strong,body.dark .team-temp-person-v61529f14b strong,
+html[data-theme="dark"] .team-temp-flow-v61529f14b>div>strong,body.dark .team-temp-flow-v61529f14b>div>strong{color:#e7eef8}
+
+/* Responsive */
+@media(max-width:1280px){
+  .team-temp-kpis-v61529f14b{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .team-temp-card-main-v61529f14b{grid-template-columns:minmax(220px,1fr) minmax(280px,1.3fr) minmax(150px,.7fr)}
+  .team-temp-status-v61529f14b{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+}
+@media(max-width:980px){
+  .team-temp-head-v61529f14b{flex-direction:column;padding:15px}
+  .team-temp-head-actions-v61529f14b{justify-content:flex-start;width:100%}
+  .team-temp-rule-v61529f14b{grid-template-columns:1fr 1fr}
+  .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{border-bottom:1px solid #e8edf3}
+  .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d:nth-child(2n){border-right:0}
+  .team-temp-toolbar-v61529f14b{grid-template-columns:1fr 1fr}
+  .team-temp-search-v61529f14b{grid-column:1/-1}
+  .team-temp-card-main-v61529f14b{grid-template-columns:1fr 1fr}
+  .team-temp-flow-v61529f14b,.team-temp-status-v61529f14b{grid-column:1/-1}
+  .team-temp-period-v61529f14b{align-self:start}
+}
+@media(max-width:640px){
+  .team-temp-rule-v61529f14b{grid-template-columns:1fr;margin-left:12px;margin-right:12px}
+  .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{border-right:0!important}
+  .borrow-notification-policy-v61529f15g{margin-left:12px;margin-right:12px;align-items:flex-start}
+  .borrow-notification-policy-badge-v61529f15g{display:none}
+  .team-temp-kpis-v61529f14b{grid-template-columns:1fr 1fr;padding-left:12px;padding-right:12px}
+  .borrow-workflow-filter-v61529f15f,.team-temp-toolbar-v61529f14b{margin-left:12px;margin-right:12px}
+  .team-temp-toolbar-v61529f14b{grid-template-columns:1fr}
+  .team-temp-search-v61529f14b{grid-column:auto}
+  .team-temp-list-v61529f14b{padding-left:12px;padding-right:12px}
+  .team-temp-card-main-v61529f14b{grid-template-columns:1fr;padding:11px}
+  .team-temp-flow-v61529f14b,.team-temp-status-v61529f14b{grid-column:auto}
+  .team-temp-card-foot-v61529f14b{grid-template-columns:1fr;gap:7px}
+  .team-temp-actions-v61529f14b{justify-content:flex-start}
+  .borrow-workflow-stepper-v61529f15f{grid-template-columns:1fr 1fr;gap:5px}.borrow-workflow-stepper-v61529f15f>div::after{display:none}
+  .team-temp-create-modal-v61529f14b{width:min(96vw,790px)}
+  .team-temp-date-grid-v61529f14b{grid-template-columns:1fr}
+}
