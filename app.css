@@ -34580,3 +34580,260 @@ html[data-theme="dark"] body *::-webkit-scrollbar-thumb,
 body:is(.theme-dark,.dark,.dark-mode) *::-webkit-scrollbar-thumb{background:#394149!important;border:2px solid transparent!important;background-clip:padding-box!important;border-radius:999px!important}
 html[data-theme="dark"] body *::-webkit-scrollbar-thumb:hover,
 body:is(.theme-dark,.dark,.dark-mode) *::-webkit-scrollbar-thumb:hover{background:#4A545D!important;background-clip:padding-box!important}
+
+/* ========================================================================== 
+   FIX16G — Targeted dark-mode polish for Login / Team Workspace / Work Pattern
+   Based on user visual review 2026-09-16. Keep the global graphite contract,
+   remove remaining white/pastel/navy islands, preserve semantic color only.
+   ========================================================================== */
+
+/* ---------- 1) LOGIN: dark mode must be fully dark, never white-on-white ---------- */
+html[data-theme="dark"] body .login-screen,
+body:is(.theme-dark,.dark,.dark-mode) .login-screen{
+  background:
+    radial-gradient(circle at 14% 10%, rgba(255,106,44,.075), transparent 30%),
+    radial-gradient(circle at 84% 84%, rgba(53,207,174,.045), transparent 28%),
+    #14171A!important;
+}
+html[data-theme="dark"] body .login-hero,
+body:is(.theme-dark,.dark,.dark-mode) .login-hero{
+  background:linear-gradient(145deg,#171B1F 0%,#14171A 56%,#191D21 100%)!important;
+  color:#ECE9E3!important;
+}
+html[data-theme="dark"] body .login-hero::after,
+body:is(.theme-dark,.dark,.dark-mode) .login-hero::after{
+  border-color:rgba(236,233,227,.08)!important;
+  box-shadow:0 0 0 60px rgba(236,233,227,.018),0 0 0 120px rgba(236,233,227,.010)!important;
+}
+html[data-theme="dark"] body .login-hero :is(.brand-title,h1),
+body:is(.theme-dark,.dark,.dark-mode) .login-hero :is(.brand-title,h1){color:#ECE9E3!important}
+html[data-theme="dark"] body .login-hero :is(.brand-subtitle,p),
+body:is(.theme-dark,.dark,.dark-mode) .login-hero :is(.brand-subtitle,p){color:#B4BAC0!important}
+html[data-theme="dark"] body .login-hero h1 span,
+body:is(.theme-dark,.dark,.dark-mode) .login-hero h1 span{color:#FF8A57!important}
+html[data-theme="dark"] body .login-hero .feature-pill,
+body:is(.theme-dark,.dark,.dark-mode) .login-hero .feature-pill{
+  background:#202428!important;
+  border-color:#34393F!important;
+  color:#DFDED9!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body .login-panel-wrap,
+body:is(.theme-dark,.dark,.dark-mode) .login-panel-wrap{background:#191D21!important}
+html[data-theme="dark"] body .login-card,
+body:is(.theme-dark,.dark,.dark-mode) .login-card{
+  background:#202428!important;
+  border:1px solid #34393F!important;
+  color:#ECE9E3!important;
+  box-shadow:0 24px 64px rgba(0,0,0,.30)!important;
+}
+html[data-theme="dark"] body .login-card :is(.brand-title,h2),
+body:is(.theme-dark,.dark,.dark-mode) .login-card :is(.brand-title,h2){color:#ECE9E3!important}
+html[data-theme="dark"] body .login-card :is(.brand-subtitle,p),
+body:is(.theme-dark,.dark,.dark-mode) .login-card :is(.brand-subtitle,p){color:#98A0A8!important}
+html[data-theme="dark"] body .login-card .field label,
+body:is(.theme-dark,.dark,.dark-mode) .login-card .field label{color:#CDD0D0!important}
+html[data-theme="dark"] body .login-card :is(.input,input),
+body:is(.theme-dark,.dark,.dark-mode) .login-card :is(.input,input){
+  background:#181C20!important;
+  color:#ECE9E3!important;
+  border-color:#3A4249!important;
+}
+html[data-theme="dark"] body .login-card :is(.input,input):focus,
+body:is(.theme-dark,.dark,.dark-mode) .login-card :is(.input,input):focus{
+  border-color:#FF6A2C!important;
+  box-shadow:0 0 0 3px rgba(255,106,44,.12)!important;
+}
+html[data-theme="dark"] body .login-card .account-password-toggle,
+body:is(.theme-dark,.dark,.dark-mode) .login-card .account-password-toggle{
+  background:#282D33!important;
+  color:#CDD0D0!important;
+  border-color:#3A4249!important;
+}
+html[data-theme="dark"] body .login-card .account-password-toggle:hover,
+body:is(.theme-dark,.dark,.dark-mode) .login-card .account-password-toggle:hover{
+  background:#2D343A!important;
+  color:#ECE9E3!important;
+}
+html[data-theme="dark"] body .login-card .login-link-button,
+body:is(.theme-dark,.dark,.dark-mode) .login-card .login-link-button{color:#FF9A70!important}
+html[data-theme="dark"] body .login-card .btn-light,
+body:is(.theme-dark,.dark,.dark-mode) .login-card .btn-light{
+  background:#282D33!important;
+  border:1px solid #3A4249!important;
+  color:#ECE9E3!important;
+}
+html[data-theme="dark"] body .login-card .btn-light:hover,
+body:is(.theme-dark,.dark,.dark-mode) .login-card .btn-light:hover{background:#2D343A!important}
+
+/* ---------- 2) TEAM WORKSPACE: status strip + workflow rail ---------- */
+html[data-theme="dark"] body #page-team-master .team-runtime-diagnostic-v61526f1,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-runtime-diagnostic-v61526f1{
+  background:#202428!important;
+  border-color:#34393F!important;
+  color:#ECE9E3!important;
+}
+html[data-theme="dark"] body #page-team-master .team-runtime-diagnostic-v61526f1.success,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-runtime-diagnostic-v61526f1.success{
+  background:rgba(53,207,174,.055)!important;
+  border-color:rgba(53,207,174,.20)!important;
+}
+html[data-theme="dark"] body #page-team-master .team-runtime-diagnostic-v61526f1.warning,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-runtime-diagnostic-v61526f1.warning{
+  background:rgba(243,198,75,.055)!important;
+  border-color:rgba(243,198,75,.20)!important;
+}
+html[data-theme="dark"] body #page-team-master .team-runtime-diagnostic-v61526f1.error,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-runtime-diagnostic-v61526f1.error{
+  background:rgba(255,104,104,.055)!important;
+  border-color:rgba(255,104,104,.20)!important;
+}
+html[data-theme="dark"] body #page-team-master .team-runtime-diagnostic-v61526f1 strong,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-runtime-diagnostic-v61526f1 strong{color:#ECE9E3!important}
+html[data-theme="dark"] body #page-team-master .team-runtime-diagnostic-v61526f1 span,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-runtime-diagnostic-v61526f1 span{color:#98A0A8!important}
+html[data-theme="dark"] body #page-team-master .team-workflow-stepper-v61528,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-workflow-stepper-v61528{
+  background:#202428!important;
+  border:1px solid #2A2E33!important;
+}
+html[data-theme="dark"] body #page-team-master .team-workflow-stepper-v61528>div,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-workflow-stepper-v61528>div{
+  color:#B4BAC0!important;
+}
+html[data-theme="dark"] body #page-team-master .team-workflow-stepper-v61528>div b,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-workflow-stepper-v61528>div b{
+  background:#282D33!important;
+  color:#CDD0D0!important;
+  border:1px solid #34393F!important;
+}
+html[data-theme="dark"] body #page-team-master .team-workflow-stepper-v61528>div.active,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-workflow-stepper-v61528>div.active{
+  background:#282D33!important;
+  box-shadow:inset 3px 0 0 #FF6A2C!important;
+}
+html[data-theme="dark"] body #page-team-master .team-workflow-stepper-v61528>div.active b,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-workflow-stepper-v61528>div.active b{
+  background:#FF6A2C!important;
+  border-color:#FF6A2C!important;
+  color:#17191B!important;
+}
+html[data-theme="dark"] body #page-team-master .team-workflow-stepper-v61528>div.active span,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-workflow-stepper-v61528>div.active span{color:#ECE9E3!important}
+html[data-theme="dark"] body #page-team-master .team-workflow-stepper-v61528>i,
+body:is(.theme-dark,.dark,.dark-mode) #page-team-master .team-workflow-stepper-v61528>i{color:#5D666E!important}
+
+/* ---------- 3) WORK PATTERN: remove legacy navy islands / bright shift rows ---------- */
+html[data-theme="dark"] body #page-work-patterns,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns{
+  --wp-bg:#14171A;
+  --wp-surface:#202428;
+  --wp-surface-2:#282D33;
+  --wp-line:#34393F;
+  --wp-text:#ECE9E3;
+  --wp-text-soft:#CDD0D0;
+  --wp-text-muted:#98A0A8;
+  background:#14171A!important;
+  color:#ECE9E3!important;
+}
+html[data-theme="dark"] body #page-work-patterns :is(.panel,.panel-header,.panel-body,.work-pattern-hero-v61111,.employee-pattern-bulk-panel-v61416),
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns :is(.panel,.panel-header,.panel-body,.work-pattern-hero-v61111,.employee-pattern-bulk-panel-v61416){
+  background:#202428!important;
+  border-color:#34393F!important;
+  color:#ECE9E3!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-hero-v61111,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-hero-v61111{
+  background:linear-gradient(135deg,rgba(255,106,44,.045),rgba(53,207,174,.018)),#202428!important;
+}
+html[data-theme="dark"] body #page-work-patterns :is(.work-pattern-panel-head-v61111 p,.work-pattern-hero-v61111 p,.wp-period-hint-v61417,.wp-month-helper-v61419),
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns :is(.work-pattern-panel-head-v61111 p,.work-pattern-hero-v61111 p,.wp-period-hint-v61417,.wp-month-helper-v61419){color:#98A0A8!important}
+html[data-theme="dark"] body #page-work-patterns :is(.work-template-grid,.work-template-card,.work-template-card-v61438,.work-template-pattern-group-v61439),
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns :is(.work-template-grid,.work-template-card,.work-template-card-v61438,.work-template-pattern-group-v61439){
+  background:#202428!important;
+  border-color:#34393F!important;
+  color:#ECE9E3!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-template-card,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-template-card{
+  background:#202428!important;
+  border-color:#34393F!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-template-pattern-group-v61439,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-template-pattern-group-v61439{background:#191D21!important}
+html[data-theme="dark"] body #page-work-patterns .work-template-pattern-group-head-v61439 strong,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-template-pattern-group-head-v61439 strong{color:#ECE9E3!important}
+html[data-theme="dark"] body #page-work-patterns .work-template-pattern-group-head-v61439 small,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-template-pattern-group-head-v61439 small{color:#98A0A8!important}
+html[data-theme="dark"] body #page-work-patterns .work-template-shift-row-v61439.day,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-template-shift-row-v61439.day{
+  background:rgba(243,198,75,.075)!important;
+  border-color:rgba(243,198,75,.24)!important;
+  color:#E8D38B!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-template-shift-row-v61439.night,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-template-shift-row-v61439.night{
+  background:rgba(110,152,245,.075)!important;
+  border-color:rgba(110,152,245,.24)!important;
+  color:#AFC5F6!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-template-code-v61111,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-template-code-v61111{
+  background:#282D33!important;
+  color:#B4BAC0!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-template-access-chip-v61438,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-template-access-chip-v61438{
+  background:rgba(53,207,174,.075)!important;
+  border-color:rgba(53,207,174,.22)!important;
+  color:#8DDECD!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-panel-badge-v61111.subtle,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-panel-badge-v61111.subtle{
+  background:#282D33!important;
+  border-color:#34393F!important;
+  color:#CDD0D0!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-panel-badge-v61111.bulk,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-panel-badge-v61111.bulk{
+  background:rgba(255,106,44,.10)!important;
+  border-color:rgba(255,106,44,.25)!important;
+  color:#FFB18F!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-bulk-controls-v61416,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-bulk-controls-v61416{
+  background:#191D21!important;
+  border-color:#34393F!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-bulk-map-v61416,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-bulk-map-v61416{
+  background:rgba(243,198,75,.06)!important;
+  border-color:rgba(243,198,75,.20)!important;
+  color:#E8D38B!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-month-rule-v61419,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-month-rule-v61419{
+  background:#191D21!important;
+  border-color:#34393F!important;
+  color:#B4BAC0!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-month-rule-v61419 strong,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-month-rule-v61419 strong{color:#FF9A70!important}
+html[data-theme="dark"] body #page-work-patterns .employee-pattern-table-v6119 thead th,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .employee-pattern-table-v6119 thead th{
+  background:#191D21!important;
+  color:#B7BDC2!important;
+  border-color:#2A2E33!important;
+}
+html[data-theme="dark"] body #page-work-patterns .employee-pattern-table-v6119 tbody td,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .employee-pattern-table-v6119 tbody td{
+  background:#202428!important;
+  color:#ECE9E3!important;
+  border-color:#2A2E33!important;
+}
+html[data-theme="dark"] body #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .employee-pattern-table-v6119 tbody tr:nth-child(even) td{background:#1D2226!important}
+html[data-theme="dark"] body #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .employee-pattern-table-v6119 tbody tr:hover td{background:#282D33!important}
