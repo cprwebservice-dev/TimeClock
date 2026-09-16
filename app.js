@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
 window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix15e-schedule-save-button-scope";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16k-global-scope-contract";
 
 
 /* ===== js/config.js ===== */
@@ -994,6 +994,17 @@ window.tcIsDayShiftCode = value =>
       if (!missingFunction(response.error)) throw response.error;
     } catch (error) {
       if (!missingFunction(error) && !String(error?.message || "").includes("ใช้เวลานานเกิน")) throw error;
+    }
+    const roleV616K = String(
+      app?.state?.profile?._realRole || app?.state?.profile?.role || "VIEWER"
+    ).toUpperCase();
+    if (
+      roleV616K !== "HR_ADMIN"
+      && (!Array.isArray(exact.p_emp_codes) || !exact.p_emp_codes.length)
+    ) {
+      throw new Error(
+        "SECURE_REVIEW_SCOPE_RPC_REQUIRED: ไม่อนุญาต Direct Table fallback โดยไม่มี Employee Scope"
+      );
     }
     return withTimeout(directReview(client, exact), 30000, "โหลดรายการรอตรวจสอบสำรอง");
   }
@@ -2524,7 +2535,12 @@ window.tcIsDayShiftCode = value =>
       const { data, error } = await state.client.from("ta_user_profiles").select("*").eq("user_id", state.user.id).maybeSingle();
       if (error) throw error;
       state.profile = data || { user_id: state.user.id, email: state.user.email, display_name: state.user.email, role: "VIEWER", is_active: false };
-      state.profile.role = String(state.profile.role || "VIEWER").toUpperCase() === "USER" ? "MANAGER" : String(state.profile.role || "VIEWER").toUpperCase();
+      // FIX16K Scope Contract: USER is the technician/Portal role and must never
+      // be promoted to MANAGER by the browser. Keep legacy Manager-Web access
+      // read-only by treating USER as VIEWER; all write RPCs remain server-authoritative.
+      const sourceRoleV616K = String(state.profile.role || "VIEWER").toUpperCase();
+      state.profile._sourceRole = sourceRoleV616K;
+      state.profile.role = sourceRoleV616K === "USER" ? "VIEWER" : sourceRoleV616K;
       if (!state.profile.is_active) throw new Error("บัญชีนี้ยังไม่ได้เปิดใช้งาน กรุณาติดต่อ HR Admin");
     }
 
@@ -3379,105 +3395,115 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function loadAttendanceFilterOptions(preserve = true) {
-      const oldArea = preserve ? val("attZone") : "";
-      const oldSubArea = preserve ? val("attSubArea") : "";
-      const oldDepartment = preserve ? val("attDepartment") : "";
+      const oldArea = preserve ? String(val("attZone") || "") : "";
+      const oldSubArea = preserve ? String(val("attSubArea") || "") : "";
+      const oldDepartment = preserve ? String(val("attDepartment") || "") : "";
       try {
-        const {
-          data,
-          error
-        } =
-          await state.client.rpc(
-            "ta_get_attendance_filter_options_v61022",
-            {
-              p_start_date:
-                val("attStart"),
-
-              p_end_date:
-                val("attEnd"),
-
-              p_area:
-                oldArea
-                || null,
-
-              p_sub_area:
-                oldSubArea
-                || null
-            }
-          );
-
-        if(error) {
-          if(
-            window.TimeClockShiftAPI
-              ?.missingFunction?.(
-                error
-              )
-          ) {
+        // Area-level scope first. Do not let a stale Sub-area constrain the parent list.
+        let response = await state.client.rpc(
+          "ta_get_attendance_filter_options_v61022",
+          {
+            p_start_date: val("attStart"),
+            p_end_date: val("attEnd"),
+            p_area: oldArea || null,
+            p_sub_area: null
+          }
+        );
+        if (response.error) {
+          if (window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
             throw new Error(
               "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.15"
             );
           }
-
-          throw error;
+          throw response.error;
         }
-        const f = data || {};
+
+        let f = response.data || {};
+        let areas = Array.isArray(f.areas) ? f.areas : [];
+        let effectiveArea = oldArea && areas.some(v => String(v) === oldArea) ? oldArea : "";
+
+        // If a manually typed/stale Area is invalid, reload the full authorized Area list.
+        if (oldArea && !effectiveArea) {
+          response = await state.client.rpc(
+            "ta_get_attendance_filter_options_v61022",
+            {
+              p_start_date: val("attStart"),
+              p_end_date: val("attEnd"),
+              p_area: null,
+              p_sub_area: null
+            }
+          );
+          if (response.error) throw response.error;
+          f = response.data || {};
+          areas = Array.isArray(f.areas) ? f.areas : [];
+        }
+
+        let subAreas = Array.isArray(f.sub_areas) ? f.sub_areas : [];
+        let departments = Array.isArray(f.departments) ? f.departments : [];
+
+        // Employee options are the most concrete scope source for the hierarchy.
+        // Use them to remove impossible Area/Sub-area/Department combinations.
+        if (effectiveArea) {
+          try {
+            const areaEmployees = await attendanceHierarchyEmployeesV616K(effectiveArea,null);
+            const derivedSubAreas = [...new Set(areaEmployees.map(r => r.sub_area).filter(Boolean))]
+              .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
+            const derivedDepartments = [...new Set(areaEmployees.map(r => r.department).filter(Boolean))]
+              .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
+            if (derivedSubAreas.length) subAreas = derivedSubAreas;
+            if (areaEmployees.length) departments = derivedDepartments;
+          } catch (hierarchyError) {
+            console.warn("Attendance scope hierarchy area FIX16K:",hierarchyError);
+          }
+        }
+
+        let effectiveSubArea = oldSubArea && subAreas.some(v => String(v) === oldSubArea)
+          ? oldSubArea
+          : "";
+
+        if (effectiveArea && effectiveSubArea) {
+          try {
+            const subEmployees = await attendanceHierarchyEmployeesV616K(effectiveArea,effectiveSubArea);
+            departments = [...new Set(subEmployees.map(r => r.department).filter(Boolean))]
+              .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
+          } catch (hierarchyError) {
+            // Fall back to server filter RPC for the exact hierarchy.
+            const child = await state.client.rpc(
+              "ta_get_attendance_filter_options_v61022",
+              {
+                p_start_date: val("attStart"),
+                p_end_date: val("attEnd"),
+                p_area: effectiveArea,
+                p_sub_area: effectiveSubArea
+              }
+            );
+            if (!child.error) {
+              departments = Array.isArray(child.data?.departments) ? child.data.departments : departments;
+            }
+          }
+        }
+
         state.filters.attendance = {
-          areas: Array.isArray(f.areas) ? f.areas : [],
-          sub_areas: Array.isArray(f.sub_areas) ? f.sub_areas : [],
-          departments: Array.isArray(f.departments) ? f.departments : [],
-          employees:
-            state.filters.attendance.employees || []
+          areas,
+          sub_areas: subAreas,
+          departments,
+          employees: state.filters.attendance.employees || []
         };
-        fillSearchableAttendanceFilter(
-          "attZone",
-          "attZoneOptions",
-          state.filters.attendance.areas,
-          "ทุกพื้นที่"
-        );
-        fillSearchableAttendanceFilter(
-          "attSubArea",
-          "attSubAreaOptions",
-          state.filters.attendance.sub_areas,
-          "ทุกพื้นที่ย่อย"
-        );
-        fillSearchableAttendanceFilter(
-          "attDepartment",
-          "attDepartmentOptions",
-          state.filters.attendance.departments,
-          "ทุกหน่วยงาน"
-        );
+        fillSearchableAttendanceFilter("attZone","attZoneOptions",areas,"ทุกพื้นที่");
+        fillSearchableAttendanceFilter("attSubArea","attSubAreaOptions",subAreas,"ทุกพื้นที่ย่อย");
+        fillSearchableAttendanceFilter("attDepartment","attDepartmentOptions",departments,"ทุกหน่วยงาน");
 
-        if (
-          oldArea
-          && attendanceFilterHasOption("attZone",oldArea)
-        ) {
-          setVal("attZone",oldArea);
-        }
-        if (
-          oldSubArea
-          && attendanceFilterHasOption(
-            "attSubArea",
-            oldSubArea
-          )
-        ) {
-          setVal("attSubArea",oldSubArea);
-        }
-        if (
-          oldDepartment
-          && attendanceFilterHasOption(
-            "attDepartment",
-            oldDepartment
-          )
-        ) {
-          setVal("attDepartment",oldDepartment);
-        }
+        setVal("attZone",effectiveArea);
+        setVal("attSubArea",effectiveSubArea);
+        const effectiveDepartment = oldDepartment && departments.some(v => String(v) === oldDepartment)
+          ? oldDepartment
+          : "";
+        setVal("attDepartment",effectiveDepartment);
       } catch (err) {
         toast(`โหลดตัวกรองรายละเอียดเวลาไม่สำเร็จ: ${humanError(err)}`, "error");
       }
 
-      invalidateAttendanceEmployeeOptions(
-        preserve
-      );
+      invalidateAttendanceEmployeeOptions(preserve);
     }
 
     function fillSearchableAttendanceFilter(
@@ -3528,6 +3554,102 @@ window.tcIsDayShiftCode = value =>
         return values.includes(value);
       } catch (_) {
         return false;
+      }
+    }
+
+    // FIX16K — Scope Contract helpers. UI filters are only a convenience layer;
+    // every data RPC remains the final permission boundary. These helpers prevent
+    // impossible Area > Sub-area > Department combinations from being selectable.
+    function attendanceRejectOutOfScopeValueV616K(inputId,label) {
+      const value = String(val(inputId) || "").trim();
+      if (!value || attendanceFilterHasOption(inputId,value)) return true;
+      setVal(inputId,"");
+      toast(`${label} “${value}” ไม่อยู่ใน Scope หรือไม่สัมพันธ์กับตัวกรองก่อนหน้า`,"warning");
+      return false;
+    }
+
+    async function attendanceHierarchyEmployeesV616K(area,subArea) {
+      const args = {
+        p_start_date: val("attStart"),
+        p_end_date: val("attEnd"),
+        p_area: area || null,
+        p_sub_area: subArea || null,
+        p_department: null,
+        p_search: null,
+        p_limit: 5000
+      };
+      let response = await state.client.rpc(
+        "ta_get_attendance_employee_options_v61018",
+        args
+      );
+      if (
+        response.error
+        && window.TimeClockShiftAPI?.missingFunction?.(response.error)
+      ) {
+        response = await state.client.rpc(
+          "ta_get_attendance_employee_options_v671",
+          args
+        );
+      }
+      if (response.error) throw response.error;
+      return (response.data || [])
+        .map(normalizeAttendanceEmployeeOption)
+        .filter(row => row.emp_code);
+    }
+
+    async function loadScopedAreaDepartmentOptionsV616K({
+      startId,
+      endId,
+      areaId,
+      departmentId,
+      preserve = true
+    } = {}) {
+      if (!state.client || !$(areaId) || !$(departmentId)) return null;
+      const start = val(startId);
+      const end = val(endId);
+      const oldArea = preserve ? String(val(areaId) || "") : "";
+      const oldDepartment = preserve ? String(val(departmentId) || "") : "";
+      if (!start || !end) return null;
+      try {
+        let base = await state.client.rpc(
+          "ta_get_attendance_filter_options_v61022",
+          {
+            p_start_date: start,
+            p_end_date: end,
+            p_area: null,
+            p_sub_area: null
+          }
+        );
+        if (base.error) throw base.error;
+        const areas = Array.isArray(base.data?.areas) ? base.data.areas : [];
+        fillSelect(areaId,areas,"ทุกพื้นที่");
+        const area = oldArea && areas.some(v => String(v) === oldArea) ? oldArea : "";
+        setVal(areaId,area);
+
+        let scoped = base.data || {};
+        if (area) {
+          const response = await state.client.rpc(
+            "ta_get_attendance_filter_options_v61022",
+            {
+              p_start_date: start,
+              p_end_date: end,
+              p_area: area,
+              p_sub_area: null
+            }
+          );
+          if (response.error) throw response.error;
+          scoped = response.data || {};
+        }
+        const departments = Array.isArray(scoped.departments) ? scoped.departments : [];
+        fillSelect(departmentId,departments,"ทุกหน่วยงาน");
+        const department = oldDepartment && departments.some(v => String(v) === oldDepartment)
+          ? oldDepartment
+          : "";
+        setVal(departmentId,department);
+        return {areas,departments,area,department};
+      } catch (error) {
+        console.warn("Scoped Area/Department options FIX16K:",error);
+        return null;
       }
     }
 
@@ -4142,6 +4264,9 @@ window.tcIsDayShiftCode = value =>
     async function loadDashboard() {
       showLoading("กำลังโหลด Dashboard...");
       try {
+        await loadScopedAreaDepartmentOptionsV616K({
+          startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true
+        });
         const args = {
           p_start_date: val("dashStart"), p_end_date: val("dashEnd"), p_zone: val("dashZone") || null, p_department: val("dashDepartment") || null
         };
@@ -13474,15 +13599,18 @@ window.tcIsDayShiftCode = value =>
           "error"
         );
       }
-      const actingTeamAuthority =
-        page === "team-master"
-        && window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.() === true;
+      const actingOperationalAuthority =
+        window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.() === true;
+      const actingOperationalPages = new Set(["schedule","team-master"]);
+      const actingPageAllowed =
+        actingOperationalAuthority
+        && actingOperationalPages.has(page);
       if (
         managerPages.has(page)
         && !["HR_ADMIN","MANAGER"].includes(
           effectiveRole
         )
-        && !actingTeamAuthority
+        && !actingPageAllowed
       ) {
         return toast(
           "ไม่มีสิทธิ์จัดการกะหรือทีมงานในขอบเขตนี้",
@@ -13595,10 +13723,18 @@ window.tcIsDayShiftCode = value =>
         );
       });
       $("loadDashboardBtn").addEventListener("click", loadDashboard);
+      ["dashStart","dashEnd"].forEach(id => $(id)?.addEventListener("change", async () => {
+        await loadScopedAreaDepartmentOptionsV616K({startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true});
+      }));
+      $("dashZone")?.addEventListener("change", async () => {
+        setVal("dashDepartment","");
+        await loadScopedAreaDepartmentOptionsV616K({startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true});
+      });
       $("loadAttendanceBtn").addEventListener("click", loadAttendance);
       $("attZone")?.addEventListener(
         "change",
         async () => {
+          attendanceRejectOutOfScopeValueV616K("attZone","พื้นที่");
           setVal("attSubArea","");
           setVal("attDepartment","");
           await loadAttendanceFilterOptions(true);
@@ -13607,6 +13743,7 @@ window.tcIsDayShiftCode = value =>
       $("attSubArea")?.addEventListener(
         "change",
         async () => {
+          attendanceRejectOutOfScopeValueV616K("attSubArea","พื้นที่ย่อย");
           setVal("attDepartment","");
           await loadAttendanceFilterOptions(true);
         }
@@ -13614,6 +13751,7 @@ window.tcIsDayShiftCode = value =>
       $("attDepartment")?.addEventListener(
         "change",
         () => {
+          attendanceRejectOutOfScopeValueV616K("attDepartment","หน่วยงาน");
           invalidateAttendanceEmployeeOptions(
             true
           );
@@ -14322,6 +14460,7 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 ก่อนบันทึกหรือแก้ไขกะ";
       if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตัวกรองตาม User Scope";
       if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_REVIEW_SCOPE_RPC_REQUIRED")) return "ไม่อนุญาตโหลดรายการตรวจสอบแบบไม่จำกัด Scope กรุณาใช้ Secure Review RPC ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("TIME_CERTIFICATION_FUTURE_DATE_NOT_ALLOWED")) return "รับรองเวลาได้เฉพาะวันที่ปัจจุบันและย้อนหลังเท่านั้น";
@@ -14414,6 +14553,7 @@ window.tcIsDayShiftCode = value =>
       attendancePlannedCellV61110,
       enrichAttendanceWorkSegmentsV6118,
       loadAttendanceFilterOptions,
+      loadScopedAreaDepartmentOptionsV616K,
       loadAttendanceEmployeeOptions,
       attendanceEmployeeCodesForQuery,
       selectAttendanceEmployees,
@@ -15900,7 +16040,13 @@ ${skippedSummary(compatibility.skipped)}
   function makeExcel(rows,title){return `\ufeff<!doctype html><html><head><meta charset="utf-8"><style>@font-face{font-family:TimeClockThai;src:url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Regular.woff2') format('woff2');font-weight:100 500;font-display:swap;unicode-range:U+0E00-0E7F}@font-face{font-family:TimeClockThai;src:url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Bold.woff2') format('woff2');font-weight:600 900;font-display:swap;unicode-range:U+0E00-0E7F}body{font-family:TimeClockThai,Arial,sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #94a3b8;padding:6px;font-size:11px}th{background:#dbeafe}</style></head><body><h2>${safe(title)}</h2><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;}
   function printRows(rows,title,range){const html=`<!doctype html><html><head><meta charset="utf-8"><title>${safe(title)}</title><style>@page{size:A4 landscape;margin:10mm}@font-face{font-family:TimeClockThai;src:url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Regular.woff2') format('woff2');font-weight:100 500;font-display:swap;unicode-range:U+0E00-0E7F}@font-face{font-family:TimeClockThai;src:url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Bold.woff2') format('woff2');font-weight:600 900;font-display:swap;unicode-range:U+0E00-0E7F}body{font-family:TimeClockThai,Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:18px;margin:0}p{font-size:10px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #94a3b8;padding:4px;font-size:8px}th{background:#e2e8f0}</style></head><body><h1>${safe(title)}</h1><p>${safe(range)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${safe(v)}</th>`:`<td>${safe(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;window.tcPrintPreview({title,html});}
 
+  async function refreshReportScopeOptionsV616K(){
+    return await app()?.loadScopedAreaDepartmentOptionsV616K?.({
+      startId:"reportStart",endId:"reportEnd",areaId:"reportZone",departmentId:"reportDepartment",preserve:true
+    });
+  }
   async function build(type){
+    await refreshReportScopeOptionsV616K();
     const start=val("reportStart"),end=val("reportEnd"),zone=val("reportZone")||null,dept=val("reportDepartment")||null;
     if(!start||!end)throw new Error("กรุณาเลือกช่วงวันที่");
     if(type==="attendance"||type==="late"){
@@ -15948,7 +16094,14 @@ ${skippedSummary(compatibility.skipped)}
   }
   function renderJobs(){const body=$("reportJobsBody");if(!body)return;const list=jobs();body.innerHTML=list.length?list.map(j=>`<tr><td>${safe(fmtDateTime(j.created_at))}</td><td>${safe(j.name)}<small style="display:block;color:#64748b">${safe(String(j.format||"").toUpperCase())}</small></td><td>${safe(j.range)}</td><td>${Number(j.rows||0).toLocaleString("th-TH")}</td><td><span class="job-status ${safe(j.status)}">${j.status==="completed"?"สำเร็จ":j.status==="failed"?"ไม่สำเร็จ":"กำลังทำงาน"}</span>${j.error?`<span class="report-job-error">${safe(j.error)}</span>`:""}</td><td>${j.status==="completed"?`<button class="report-file-link" data-redownload="${safe(j.filename)}">${safe(j.filename)}</button>`:"-"}</td></tr>`).join(""):`<tr><td colspan="6" class="report-empty">ยังไม่มีประวัติการส่งออก</td></tr>`;}
   function setDefaults(){const now=new Date(),end=window.TimeClockCalendarV61448.localISO(now),start=window.TimeClockCalendarV61448.monthStart(now);if($("reportStart")&&!val("reportStart"))$("reportStart").value=start;if($("reportEnd")&&!val("reportEnd"))$("reportEnd").value=end;renderJobs();}
-  function init(){setDefaults();$("reportRefreshJobsBtn")?.addEventListener("click",renderJobs);$("reportClearJobsBtn")?.addEventListener("click",()=>{localStorage.removeItem(STORAGE_KEY);renderJobs();});}
+  function init(){
+    setDefaults();
+    refreshReportScopeOptionsV616K();
+    ["reportStart","reportEnd"].forEach(id=>$(id)?.addEventListener("change",refreshReportScopeOptionsV616K));
+    $("reportZone")?.addEventListener("change",async()=>{if($("reportDepartment"))$("reportDepartment").value="";await refreshReportScopeOptionsV616K();});
+    $("reportRefreshJobsBtn")?.addEventListener("click",renderJobs);
+    $("reportClearJobsBtn")?.addEventListener("click",()=>{localStorage.removeItem(STORAGE_KEY);renderJobs();});
+  }
 
   document.addEventListener("click",e=>{const b=e.target.closest("[data-run-report-format]");if(b){const [type,format]=b.dataset.runReportFormat.split("|");run(type,format);}const legacy=e.target.closest("[data-run-report]");if(legacy)run(legacy.dataset.runReport,"csv");const r=e.target.closest("[data-redownload]");if(r){const url=downloads.get(r.dataset.redownload);if(url){const a=document.createElement("a");a.href=url;a.download=r.dataset.redownload;a.click();}else app()?.toast?.("ไฟล์เดิมไม่ได้อยู่ในหน่วยความจำ กรุณาสร้างรายงานใหม่","error");}});
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(init,50));else setTimeout(init,50);
@@ -21724,16 +21877,19 @@ ${names}${extra}
       "schedule",
       "work-patterns"
     ];
+    const actingOperationalAuthorityV616K =
+      window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.() === true;
 
     managerAllowed.forEach(page => {
       const nav = document.querySelector(
         `.nav-item[data-page="${page}"]`
       );
+      const actingAllowed = page === "schedule" && actingOperationalAuthorityV616K;
       nav?.classList.toggle(
         "hidden",
         !["HR_ADMIN","MANAGER"].includes(
           currentRole
-        )
+        ) && !actingAllowed
       );
     });
 
@@ -34451,6 +34607,7 @@ ${names}${extra}
     const can=state.access?.can_access===true||isHr()||baseManager();
     $('teamTemporaryTabV61529F14B')?.classList.toggle('hidden',!can);
     if(can)$('teamMasterNavV61523')?.classList.remove('hidden');
+    if(hasOperationalAuthority())document.querySelector('.nav-item[data-page="schedule"]')?.classList.remove('hidden');
     $('teamActingPanelV61529F14B')?.classList.toggle('hidden',!isHr());
     $('teamTempCreateV61529F14B')?.classList.toggle('hidden',isHr()||!hasOperationalAuthority());
     const badge=$('teamTempAuthorityBadgeV61529F14B');
