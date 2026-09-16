@@ -4141,19 +4141,25 @@ window.tcIsDayShiftCode = value =>
       const cards = [
         ["พนักงาน", d.total_employees, "คนในขอบเขตข้อมูล", "♙", ""],
         ["รายการทั้งหมด", d.total_rows, "วัน-พนักงาน", "▦", ""],
-        ["ลงเวลาครบคู่", d.complete_time_rows, "มีเวลาเข้าและออก (ข้อมูลเทคนิค)", "✓", "green"],
-        ["ขาดงาน", d.absent_rows ?? 0, "เวลาไม่ครบ หรือ เข้าหลังเริ่มกะ ≥ 30 นาที", "×", "red"],
+        ["ลงเวลาครบคู่", d.complete_time_rows, "มีเวลาเข้าและออก", "✓", "green"],
+        ["ขาดงาน", d.absent_rows ?? 0, "เวลาไม่ครบ หรือสาย ≥ 30 นาที", "×", "red"],
         ["มาสาย", d.late_rows ?? 0, "เข้าหลังเริ่มกะ 1–29 นาที", "!", "orange"],
-        ["กลับก่อน", d.early_leave_rows ?? 0, "ลงเวลาออกก่อนเวลาสิ้นสุดกะ", "↙", "orange"],
-        ["เวลาไม่ครบ", Number(d.missing_in_rows||0)+Number(d.missing_out_rows||0), "ใช้ตรวจสาเหตุขาดงานจาก Punch", "…", ""],
-        ["ชั่วโมงสุทธิ", Number(d.paid_work_hours||0), "ชั่วโมงหลังหักพัก/รอคอย", "◷", "blue"],
-        ["ชั่วโมงปกติ", Number(d.regular_hours||0), "ชั่วโมงปกติรวม", "◉", "green"],
-        ["OT", Number(d.overtime_hours||0), `${formatNumber(d.overtime_rows||0)} รายการ`, "＋", "orange"],
-        ["ช่วงรอคอย", Number(d.waiting_hours||0), "ไม่นำไปคำนวณ OT", "⌛", ""],
-        ["ทำงานวันหยุด", Number(d.offday_work_hours||0), "ชั่วโมงวันหยุด", "◆", "blue"],
-        ["วันหยุดชดเชย", d.comp_off_earned_rows||0, "สิทธิ์ที่ได้รับจากการทำงานวันหยุด", "↺", "green"]
+        ["กลับก่อน", d.early_leave_rows ?? 0, "ออกก่อนเวลาสิ้นสุดกะ", "↙", "orange"]
       ];
       $("dashboardKpis").innerHTML = cards.map(c => `<div class="panel kpi-card ${c[4]}"><div class="kpi-label">${safe(c[0])}</div><div class="kpi-value">${formatNumber(c[1])}</div><div class="kpi-sub">${safe(c[2])}</div><div class="kpi-icon">${c[3]}</div></div>`).join("");
+
+      const secondary = [
+        ["เวลาไม่ครบ", Number(d.missing_in_rows||0)+Number(d.missing_out_rows||0), "รายการ", "…", "neutral"],
+        ["ชั่วโมงสุทธิ", Number(d.paid_work_hours||0), "ชม.", "◷", "blue"],
+        ["ชั่วโมงปกติ", Number(d.regular_hours||0), "ชม.", "◉", "green"],
+        ["OT", Number(d.overtime_hours||0), "ชม.", "＋", "orange"],
+        ["ช่วงรอคอย", Number(d.waiting_hours||0), "ชม.", "⌛", "neutral"],
+        ["ทำงานวันหยุด", Number(d.offday_work_hours||0), "ชม.", "◆", "blue"],
+        ["วันหยุดชดเชย", Number(d.comp_off_earned_rows||0), "วัน", "↺", "green"]
+      ];
+      const opsHost = $("dashboardOpsMetricsV616H");
+      if (opsHost) opsHost.innerHTML = secondary.map(x => `<article class="dashboard-ops-card-v616h ${x[4]}"><span class="dashboard-ops-icon-v616h">${x[3]}</span><div><small>${safe(x[0])}</small><strong>${formatNumber(x[1])}<em>${x[2]}</em></strong></div></article>`).join("");
+
       const bars = [
         ["ขาดงาน", d.absent_rows, "red"],
         ["มาสาย 1–29 นาที", d.late_rows, "orange"],
@@ -4168,6 +4174,7 @@ window.tcIsDayShiftCode = value =>
         ["กลับก่อน", d.early_leave_rows, "attendance"],
         ["กะที่หัวหน้างานบันทึก", d.confirmed_rows, "schedule"]
       ].map(x => `<button class="quick-item" data-go-page="${x[2]}"><div><strong>${safe(x[0])}</strong><span> คลิกเพื่อดูรายละเอียด</span></div><span class="badge badge-blue">${formatNumber(x[1])}</span></button>`).join("");
+      document.dispatchEvent(new CustomEvent('timeclock:dashboard-rendered-v616h', { detail: { dashboard: d } }));
     }
 
     let attendanceLoadRequestId = 0;
@@ -14626,7 +14633,9 @@ window.tcIsDayShiftCode = value =>
   }
 
   function renderEnterprisePanels(values){
-    const employees=values[0]||0, total=values[1]||0, complete=values[2]||0, incomplete=values[3]||0, absent=values[4]||0;
+    const dash = window.TimeClockApp?.state?.dashboard || {};
+    const employees=Number(dash.total_employees||0), total=Number(dash.total_rows||0), complete=Number(dash.complete_time_rows||0);
+    const incomplete=Number(dash.missing_in_rows||0)+Number(dash.missing_out_rows||0), absent=Number(dash.absent_rows||0);
     const completePct=pct(complete,total);
     if ($('attendanceDonut')) $('attendanceDonut').style.setProperty('--donut-angle', `${completePct*3.6}deg`);
     if ($('donutPercent')) $('donutPercent').textContent=`${completePct}%`;
@@ -14637,8 +14646,8 @@ window.tcIsDayShiftCode = value =>
     ].map(x=>`<div class="legend-item"><i class="legend-dot" style="background:${x[0]}"></i><span>${x[1]}</span><strong>${fmt(x[2])}</strong></div>`).join('');
     if ($('operationalSummary')) $('operationalSummary').innerHTML = [
       ['อัตราลงเวลาครบ',`${completePct}%`,'เทียบรายการทั้งหมด'],
-      ['เฉลี่ยรายการต่อคน',employees? (total/employees).toFixed(1):'0','วัน-พนักงานต่อคน'],
-      ['รายการผิดปกติ',fmt(incomplete+absent),'ตรวจสอบจากรายละเอียดเวลาทำงาน']
+      ['ชั่วโมงสุทธิ',fmt(dash.paid_work_hours||0),'ชั่วโมงหลังหักพัก/รอคอย'],
+      ['OT',fmt(dash.overtime_hours||0),`${fmt(dash.overtime_rows||0)} รายการ`]
     ].map(x=>`<div class="ops-card"><span>${x[0]}</span><strong>${x[1]}</strong><small>${x[2]}</small></div>`).join('');
     if ($('recentActivity')) $('recentActivity').innerHTML = [
       ['✓','โหลด Dashboard สำเร็จ',`${fmt(total)} รายการในช่วงวันที่`],
@@ -14672,14 +14681,15 @@ window.tcIsDayShiftCode = value =>
   const percent = (value, total) => total > 0 ? Math.max(0, Math.min(100, Math.round(value / total * 100))) : 0;
 
   function readDashboardValues() {
-    const cards = [...document.querySelectorAll('#dashboardKpis .kpi-card')];
-    const values = cards.map(card => num((card.querySelector('.kpi-value')?.textContent || '0').replace(/,/g, '')));
+    const dash = window.TimeClockApp?.state?.dashboard || {};
     return {
-      employees: values[0] || 0,
-      total: values[1] || 0,
-      complete: values[2] || 0,
-      incomplete: values[3] || 0,
-      absent: values[4] || 0
+      employees: num(dash.total_employees),
+      total: num(dash.total_rows),
+      complete: num(dash.complete_time_rows),
+      incomplete: num(dash.missing_in_rows) + num(dash.missing_out_rows),
+      absent: num(dash.absent_rows),
+      late: num(dash.late_rows),
+      early: num(dash.early_leave_rows)
     };
   }
 
@@ -34844,4 +34854,182 @@ ${names}${extra}
   }
   window.TimeClockBorrowAuditV61529F15I={VERSION,state,open,close,load,exportCsv};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+
+
+/* ===== FIX16H · Dashboard Dual View (Overview + Daily/Cumulative) ===== */
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const fmt = value => new Intl.NumberFormat('th-TH', {maximumFractionDigits:1}).format(Number(value || 0));
+  const pct = (n,d) => Number(d||0) > 0 ? Math.max(0,Math.min(100,Number(n||0)/Number(d)*100)) : 0;
+  const cache = new Map();
+  const CACHE_TTL = 120000;
+  let currentView = 'overview';
+  let loadToken = 0;
+
+  function localISO(d){
+    if (window.TimeClockCalendarV61448?.localISO) return window.TimeClockCalendarV61448.localISO(d);
+    const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+  function parseISO(s){ const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m?new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),12,0,0):null; }
+  function addDays(s,n){ const d=parseISO(s); if(!d)return s; d.setDate(d.getDate()+n); return localISO(d); }
+  function dateList(start,end){
+    const a=parseISO(start),b=parseISO(end); if(!a||!b||a>b)return [];
+    const out=[]; for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)) out.push(localISO(d)); return out;
+  }
+  function shortDate(s){ const d=parseISO(s); return d?d.toLocaleDateString('th-TH',{day:'numeric',month:'short'}):s; }
+  function longDate(s){ const d=parseISO(s); return d?d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}):s; }
+  function safe(v){ return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
+  function setView(view, load=true){
+    currentView = view === 'daily' ? 'daily' : 'overview';
+    document.querySelectorAll('[data-dashboard-view-v616h]').forEach(btn=>{
+      const active=btn.dataset.dashboardViewV616h===currentView;
+      btn.classList.toggle('active',active); btn.setAttribute('aria-selected',active?'true':'false');
+    });
+    $('dashboardViewOverviewV616H')?.classList.toggle('hidden',currentView!=='overview');
+    $('dashboardViewOverviewV616H')?.classList.toggle('active',currentView==='overview');
+    $('dashboardViewDailyV616H')?.classList.toggle('hidden',currentView!=='daily');
+    $('dashboardViewDailyV616H')?.classList.toggle('active',currentView==='daily');
+    localStorage.setItem('tc_dashboard_view_v616h',currentView);
+    if(currentView==='daily' && load) loadDailySeries(false);
+  }
+
+  function rangePreset(code){
+    const now=new Date(), end=new Date(now), start=new Date(now);
+    if(code==='7D') start.setDate(start.getDate()-6);
+    else if(code==='15D') start.setDate(start.getDate()-14);
+    else if(code==='MONTH') start.setDate(1);
+    $('dashStart') && ($('dashStart').value=localISO(start));
+    $('dashEnd') && ($('dashEnd').value=localISO(end));
+    document.querySelectorAll('[data-dashboard-range-v616h]').forEach(b=>b.classList.toggle('active',b.dataset.dashboardRangeV616h===code));
+    $('loadDashboardBtn')?.click();
+  }
+
+  async function rpcOverview(date,zone,department){
+    const client=window.TimeClockApp?.state?.client; if(!client) throw new Error('Supabase client not initialized');
+    const key=[date,zone||'',department||''].join('|');
+    const hit=cache.get(key); if(hit && Date.now()-hit.at<CACHE_TTL) return hit.data;
+    const args={p_start_date:date,p_end_date:date,p_zone:zone||null,p_department:department||null};
+    const names=['ta_get_dashboard_overview_v61463','ta_get_dashboard_overview_v650','ta_get_dashboard_overview_v640','ta_get_dashboard_overview'];
+    let lastError=null;
+    for(const name of names){
+      const res=await client.rpc(name,args);
+      if(!res.error){ const data=Array.isArray(res.data)?(res.data[0]||{}):(res.data||{}); cache.set(key,{at:Date.now(),data}); return data; }
+      lastError=res.error;
+      if(!window.TimeClockShiftAPI?.missingFunction?.(res.error)) break;
+    }
+    throw lastError || new Error('Dashboard RPC failed');
+  }
+
+  async function mapPool(items,limit,worker){
+    const out=new Array(items.length); let cursor=0;
+    async function run(){ while(true){ const i=cursor++; if(i>=items.length) return; out[i]=await worker(items[i],i); } }
+    await Promise.all(Array.from({length:Math.min(limit,items.length)},run)); return out;
+  }
+
+  function seriesRow(date,d){
+    const total=Number(d.total_rows||0), complete=Number(d.complete_time_rows||0), absent=Number(d.absent_rows||0), late=Number(d.late_rows||0), early=Number(d.early_leave_rows||0);
+    return {date,total,employees:Number(d.total_employees||0),complete,completeRate:pct(complete,total),absent,late,early,issues:absent+late+early,missing:Number(d.missing_in_rows||0)+Number(d.missing_out_rows||0),paid:Number(d.paid_work_hours||0),regular:Number(d.regular_hours||0),ot:Number(d.overtime_hours||0),waiting:Number(d.waiting_hours||0),offday:Number(d.offday_work_hours||0)};
+  }
+
+  function cumulative(rows){
+    let t=0,c=0,a=0,l=0,e=0,ot=0,paid=0,issues=0;
+    return rows.map(r=>{t+=r.total;c+=r.complete;a+=r.absent;l+=r.late;e+=r.early;ot+=r.ot;paid+=r.paid;issues+=r.issues;return {...r,cumTotal:t,cumComplete:c,cumCompleteRate:pct(c,t),cumAbsent:a,cumLate:l,cumEarly:e,cumOT:ot,cumPaid:paid,cumIssues:issues};});
+  }
+
+  function lineChart(rows){
+    if(!rows.length) return '<div class="dashboard-daily-empty-v616h">ไม่มีข้อมูลในช่วงวันที่</div>';
+    const W=760,H=230,pL=46,pR=18,pT=16,pB=38,plotW=W-pL-pR,plotH=H-pT-pB;
+    const x=i=>pL+(rows.length===1?plotW/2:(i/(rows.length-1))*plotW), y=v=>pT+(100-Math.max(0,Math.min(100,v)))/100*plotH;
+    const pts=key=>rows.map((r,i)=>`${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`).join(' ');
+    const grid=[0,25,50,75,100].map(v=>`<g><line x1="${pL}" y1="${y(v)}" x2="${W-pR}" y2="${y(v)}" class="grid"/><text x="${pL-9}" y="${y(v)+4}" text-anchor="end">${v}%</text></g>`).join('');
+    const labelIdx=[0,Math.floor((rows.length-1)/2),rows.length-1].filter((v,i,a)=>a.indexOf(v)===i);
+    const labels=labelIdx.map(i=>`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${safe(shortDate(rows[i].date))}</text>`).join('');
+    const dots=rows.map((r,i)=>`<circle cx="${x(i)}" cy="${y(r.completeRate)}" r="2.5" class="daily-dot"><title>${safe(longDate(r.date))}: ${r.completeRate.toFixed(1)}%</title></circle>`).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="อัตราลงเวลาครบรายวันและสะสม"><g class="axis">${grid}${labels}</g><polyline points="${pts('cumCompleteRate')}" class="cum-line"/><polyline points="${pts('completeRate')}" class="daily-line"/>${dots}</svg>`;
+  }
+
+  function renderIssueBars(rows){
+    const host=$('dashboardDailyIssueBarsV616H'); if(!host)return;
+    if(!rows.length){host.innerHTML='<div class="dashboard-daily-empty-v616h">ไม่มีข้อมูล</div>';return;}
+    const max=Math.max(1,...rows.map(r=>r.issues));
+    host.innerHTML=rows.map(r=>{ const ah=r.absent/max*100,lh=r.late/max*100,eh=r.early/max*100; return `<div class="issue-day-v616h" title="${safe(longDate(r.date))} • ขาด ${fmt(r.absent)} • สาย ${fmt(r.late)} • กลับก่อน ${fmt(r.early)}"><div class="issue-stack-v616h"><i class="early" style="height:${eh}%"></i><i class="late" style="height:${lh}%"></i><i class="absent" style="height:${ah}%"></i></div><span>${safe(shortDate(r.date))}</span></div>`; }).join('');
+  }
+
+  function renderHeatmap(rows){
+    const host=$('dashboardDailyHeatmapV616H'); if(!host)return;
+    host.innerHTML=rows.length?rows.map(r=>{ const cls=r.total===0?'empty':r.completeRate>=90?'good':r.completeRate>=75?'warn':'bad'; return `<div class="heat-day-v616h ${cls}" title="${safe(longDate(r.date))} • ลงเวลาครบ ${r.completeRate.toFixed(1)}% • ${fmt(r.complete)}/${fmt(r.total)} รายการ"><span>${parseISO(r.date)?.getDate()||''}</span><strong>${r.total?`${r.completeRate.toFixed(0)}%`:'—'}</strong><small>${safe(shortDate(r.date))}</small></div>`;}).join(''):'<div class="dashboard-daily-empty-v616h">ไม่มีข้อมูล</div>';
+  }
+
+  function renderDaily(rows,originalStart,originalEnd,displayStart){
+    const cumulativeRows=cumulative(rows), latest=cumulativeRows[cumulativeRows.length-1]||null;
+    if($('dashboardDailyRangeV616H')) $('dashboardDailyRangeV616H').textContent = rows.length?`${longDate(rows[0].date)} – ${longDate(rows[rows.length-1].date)}`:'—';
+    if($('dashboardDailyLoadStateV616H')) $('dashboardDailyLoadStateV616H').textContent=`${rows.length} วัน • อัปเดต ${new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}`;
+    const notice=$('dashboardDailyNoticeV616H');
+    if(notice){ const clipped=displayStart!==originalStart; notice.classList.toggle('hidden',!clipped); notice.textContent=clipped?`ช่วงที่เลือกยาวเกิน 31 วัน • มุมมองรายวันแสดง 31 วันล่าสุด (${longDate(displayStart)} – ${longDate(originalEnd)}) เพื่อให้โหลดเร็วและอ่านแนวโน้มได้ชัดเจน`:''; }
+    const kpis=$('dashboardDailyKpisV616H');
+    if(kpis){
+      if(!latest) kpis.innerHTML='<div class="dashboard-daily-empty-v616h">ไม่มีข้อมูลรายวัน</div>';
+      else kpis.innerHTML=[
+        ['วัน-พนักงาน',latest.total,'รายการ',`วันที่ ${longDate(latest.date)}`,'neutral'],
+        ['ลงเวลาครบ',latest.completeRate.toFixed(1),'%',`${fmt(latest.complete)} รายการ`,'good'],
+        ['ขาดงาน',latest.absent,'รายการ','ตามเกณฑ์ Attendance','bad'],
+        ['มาสาย',latest.late,'รายการ','1–29 นาที','warn'],
+        ['กลับก่อน',latest.early,'รายการ','ก่อนสิ้นสุดกะ','warn'],
+        ['OT',latest.ot,'ชม.','ของวันล่าสุด','accent']
+      ].map(x=>`<article class="daily-kpi-v616h ${x[4]}"><span>${x[0]}</span><div><strong>${fmt(x[1])}</strong><em>${x[2]}</em></div><small>${x[3]}</small></article>`).join('');
+    }
+    if($('dashboardDailyRateChartV616H')) $('dashboardDailyRateChartV616H').innerHTML=lineChart(cumulativeRows);
+    if($('dashboardDailyLatestRateV616H')) $('dashboardDailyLatestRateV616H').textContent=latest?`${latest.completeRate.toFixed(1)}% ล่าสุด`:'—';
+    if($('dashboardDailyCumulativeV616H')) $('dashboardDailyCumulativeV616H').innerHTML=latest?[
+      ['ลงเวลาครบสะสม',latest.cumComplete,'รายการ',`${latest.cumCompleteRate.toFixed(1)}% ของ ${fmt(latest.cumTotal)}`,'good'],
+      ['ขาดงานสะสม',latest.cumAbsent,'รายการ','รวมตามวัน','bad'],
+      ['มาสายสะสม',latest.cumLate,'รายการ','รวมตามวัน','warn'],
+      ['กลับก่อนสะสม',latest.cumEarly,'รายการ','รวมตามวัน','warn'],
+      ['OT สะสม',latest.cumOT,'ชม.','ช่วงวันที่ที่แสดง','accent'],
+      ['ชั่วโมงสุทธิสะสม',latest.cumPaid,'ชม.','หลังหักพัก/รอคอย','neutral']
+    ].map(x=>`<div class="cum-card-v616h ${x[4]}"><span>${x[0]}</span><strong>${fmt(x[1])}<em>${x[2]}</em></strong><small>${x[3]}</small></div>`).join(''):'<div class="dashboard-daily-empty-v616h">ไม่มีข้อมูล</div>';
+    renderIssueBars(cumulativeRows); renderHeatmap(cumulativeRows);
+    const body=$('dashboardDailyTableBodyV616H');
+    if(body) body.innerHTML=cumulativeRows.length?cumulativeRows.map(r=>`<tr><td><strong>${safe(longDate(r.date))}</strong></td><td class="text-right">${fmt(r.total)}</td><td class="text-right"><span class="daily-rate-pill-v616h ${r.completeRate>=90?'good':r.completeRate>=75?'warn':'bad'}">${r.completeRate.toFixed(1)}%</span></td><td class="text-right">${fmt(r.absent)}</td><td class="text-right">${fmt(r.late)}</td><td class="text-right">${fmt(r.early)}</td><td class="text-right">${fmt(r.ot)}</td><td class="text-right">${r.cumCompleteRate.toFixed(1)}%</td><td class="text-right">${fmt(r.cumIssues)}</td><td class="text-right">${fmt(r.cumOT)}</td></tr>`).join(''):'<tr><td colspan="10" class="empty-cell">ไม่พบข้อมูลรายวัน</td></tr>';
+  }
+
+  async function loadDailySeries(force=false){
+    if(currentView!=='daily') return;
+    const start=$('dashStart')?.value,end=$('dashEnd')?.value,zone=$('dashZone')?.value||'',department=$('dashDepartment')?.value||'';
+    if(!start||!end||start>end){ window.TimeClockApp?.toast?.('กรุณาเลือกช่วงวันที่ Dashboard ให้ถูกต้อง','error'); return; }
+    let dates=dateList(start,end); if(!dates.length)return;
+    let displayStart=start;
+    if(dates.length>31){dates=dates.slice(-31);displayStart=dates[0];}
+    const requestKey=[start,end,displayStart,zone,department].join('|');
+    if(!force && $('dashboardViewDailyV616H')?.dataset.loadedKey===requestKey) return;
+    const token=++loadToken;
+    $('dashboardDailyLoadStateV616H') && ($('dashboardDailyLoadStateV616H').textContent='กำลังโหลดข้อมูลรายวัน…');
+    $('dashboardDailyRateChartV616H') && ($('dashboardDailyRateChartV616H').innerHTML='<div class="dashboard-daily-loading-v616h"><i></i><span>กำลังสรุปข้อมูลรายวัน</span></div>');
+    try{
+      const rows=await mapPool(dates,4,async date=>seriesRow(date,await rpcOverview(date,zone,department)));
+      if(token!==loadToken)return;
+      $('dashboardViewDailyV616H').dataset.loadedKey=requestKey;
+      renderDaily(rows,start,end,displayStart);
+    }catch(err){
+      console.error('FIX16H daily dashboard:',err);
+      if(token!==loadToken)return;
+      $('dashboardDailyLoadStateV616H') && ($('dashboardDailyLoadStateV616H').textContent='โหลดไม่สำเร็จ');
+      $('dashboardDailyRateChartV616H') && ($('dashboardDailyRateChartV616H').innerHTML='<div class="dashboard-daily-empty-v616h">ไม่สามารถโหลดข้อมูลรายวันได้</div>');
+      window.TimeClockApp?.toast?.(window.TimeClockApp?.humanError?.(err)||err?.message||'โหลด Dashboard รายวันไม่สำเร็จ','error');
+    }
+  }
+
+  function bind(){
+    document.querySelectorAll('[data-dashboard-view-v616h]').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.dashboardViewV616h,true)));
+    document.querySelectorAll('[data-dashboard-range-v616h]').forEach(btn=>btn.addEventListener('click',()=>rangePreset(btn.dataset.dashboardRangeV616h)));
+    ['dashStart','dashEnd','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{ $('dashboardViewDailyV616H')?.removeAttribute('data-loaded-key'); document.querySelectorAll('[data-dashboard-range-v616h]').forEach(b=>b.classList.remove('active')); }));
+    $('loadDashboardBtn')?.addEventListener('click',()=>{ $('dashboardViewDailyV616H')?.removeAttribute('data-loaded-key'); });
+    document.addEventListener('timeclock:dashboard-rendered-v616h',()=>{ if(currentView==='daily') loadDailySeries(true); });
+    setView(localStorage.getItem('tc_dashboard_view_v616h')||'overview',false);
+  }
+  document.addEventListener('DOMContentLoaded',bind);
 })();

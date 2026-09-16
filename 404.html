@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix16g-three-page-dark-polish-20260916" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix16h-dashboard-dual-view-20260916" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -140,12 +140,12 @@
 </header>
 <div class="content">
 <!-- Dashboard -->
-<section class="page active enterprise-dashboard" id="page-dashboard">
+<section class="page active enterprise-dashboard dashboard-dual-view-v616h" id="page-dashboard">
 <div class="dashboard-welcome">
 <div>
 <span class="eyebrow">WORKFORCE OPERATIONS</span>
 <h2>ภาพรวมการบริหารเวลาและกะทำงาน</h2>
-<p>ติดตามสถานะสำคัญ ตรวจรายการผิดปกติ และดำเนินการได้จากหน้าจอเดียว</p>
+<p>ติดตามสถานะสำคัญ ตรวจรายการผิดปกติ และดูแนวโน้มรายวัน/สะสมจากข้อมูลจริงใน Scope</p>
 </div>
 <div class="dashboard-welcome-actions">
 <span class="updated-chip" id="dashboardUpdatedAt">อัปเดตล่าสุด --:--</span>
@@ -153,8 +153,25 @@
 <button class="btn btn-primary" data-go-page="attendance">เปิดรายละเอียดเวลา</button>
 </div>
 </div>
-<div class="panel filter-panel">
+
+<div class="dashboard-view-tabs-v616h" role="tablist" aria-label="มุมมอง Dashboard">
+<button type="button" class="dashboard-view-tab-v616h active" id="dashboardOverviewTabV616H" data-dashboard-view-v616h="overview" role="tab" aria-selected="true" aria-controls="dashboardViewOverviewV616H">
+<span class="dashboard-tab-icon-v616h">▦</span><span><b>ภาพรวม</b><small>สถานะรวม • KPI • ประเด็นสำคัญ</small></span>
+</button>
+<button type="button" class="dashboard-view-tab-v616h" id="dashboardDailyTabV616H" data-dashboard-view-v616h="daily" role="tab" aria-selected="false" aria-controls="dashboardViewDailyV616H">
+<span class="dashboard-tab-icon-v616h">⌁</span><span><b>รายวัน / สะสม</b><small>แนวโน้มรายวัน • ผลสะสมตามช่วงวันที่</small></span>
+</button>
+</div>
+
+<div class="panel filter-panel dashboard-filter-panel-v616h">
 <div class="panel-body">
+<div class="dashboard-quick-range-v616h" aria-label="เลือกช่วงวันที่ด่วน">
+<span>ช่วงข้อมูล</span>
+<button type="button" data-dashboard-range-v616h="TODAY">วันนี้</button>
+<button type="button" data-dashboard-range-v616h="7D">7 วัน</button>
+<button type="button" data-dashboard-range-v616h="15D">15 วัน</button>
+<button type="button" data-dashboard-range-v616h="MONTH">เดือนนี้</button>
+</div>
 <div class="toolbar enterprise-filterbar">
 <div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="dashStart" type="date"/></div>
 <div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="dashEnd" type="date"/></div>
@@ -167,7 +184,12 @@
 </div>
 </div>
 </div>
-<div class="kpi-grid section-gap enterprise-kpis" id="dashboardKpis"></div>
+
+<div id="dashboardViewOverviewV616H" class="dashboard-view-panel-v616h active" role="tabpanel" aria-labelledby="dashboardOverviewTabV616H">
+<div class="dashboard-section-heading-v616h section-gap"><div><span class="eyebrow">OVERVIEW</span><h3>ภาพรวมตามช่วงวันที่</h3><p>แสดงเฉพาะตัวชี้วัดที่มีอยู่จริงจาก Dashboard RPC และ Scope ที่ผู้ใช้เข้าถึงได้</p></div></div>
+<div class="kpi-grid enterprise-kpis dashboard-primary-kpis-v616h" id="dashboardKpis"></div>
+<div class="dashboard-ops-metrics-v616h section-gap" id="dashboardOpsMetricsV616H"></div>
+
 <div class="executive-strip section-gap">
 <article class="executive-score-card">
 <div class="executive-score-head"><div><span class="eyebrow">ATTENDANCE HEALTH</span><h3>คะแนนสุขภาพการลงเวลา</h3></div><span class="health-status" id="executiveScoreStatus">กำลังประเมิน</span></div>
@@ -185,6 +207,7 @@
 <div class="schedule-readiness" id="scheduleReadiness"></div>
 </article>
 </div>
+
 <div class="dashboard-main-grid section-gap">
 <div class="panel overview-card">
 <div class="panel-header"><div><h3>คุณภาพการลงเวลา</h3><p>สัดส่วนรายการลงเวลาครบเทียบกับรายการทั้งหมด</p></div><span class="panel-chip">Realtime</span></div>
@@ -198,28 +221,52 @@
 <div class="panel-body quick-list enterprise-quick-list" id="dashboardQuick"></div>
 </div>
 </div>
+
 <div class="dashboard-secondary-grid section-gap">
-<div class="panel">
-<div class="panel-header"><div><h3>สถานะการลงเวลา</h3><p>เปรียบเทียบรายการสำคัญตามช่วงวันที่</p></div></div>
-<div class="panel-body status-bars" id="dashboardBars"></div>
+<div class="panel"><div class="panel-header"><div><h3>สถานะการลงเวลา</h3><p>เปรียบเทียบรายการสำคัญตามช่วงวันที่</p></div></div><div class="panel-body status-bars" id="dashboardBars"></div></div>
+<div class="panel"><div class="panel-header"><div><h3>สรุปเชิงปฏิบัติการ</h3><p>ตัวชี้วัดสำหรับติดตามการดำเนินงาน</p></div></div><div class="panel-body operational-summary" id="operationalSummary"></div></div>
+<div class="panel"><div class="panel-header"><div><h3>กิจกรรมล่าสุด</h3><p>สรุปจากข้อมูลที่โหลดล่าสุด</p></div></div><div class="panel-body activity-list" id="recentActivity"></div></div>
 </div>
-<div class="panel">
-<div class="panel-header"><div><h3>สรุปเชิงปฏิบัติการ</h3><p>ตัวชี้วัดสำหรับติดตามการดำเนินงาน</p></div></div>
-<div class="panel-body operational-summary" id="operationalSummary"></div>
-</div>
-<div class="panel">
-<div class="panel-header"><div><h3>กิจกรรมล่าสุด</h3><p>สรุปจากข้อมูลที่โหลดล่าสุด</p></div></div>
-<div class="panel-body activity-list" id="recentActivity"></div>
-</div>
-</div>
+
 <div class="executive-insights-grid section-gap">
-<div class="panel executive-insight-panel">
-<div class="panel-header"><div><h3>Executive Insights</h3><p>ข้อสังเกตที่คำนวณจากข้อมูลชุดล่าสุดโดยไม่สร้างข้อมูลสมมติ</p></div><span class="panel-chip">Auto analysis</span></div>
-<div class="panel-body executive-insights" id="executiveInsights"></div>
+<div class="panel executive-insight-panel"><div class="panel-header"><div><h3>Executive Insights</h3><p>ข้อสังเกตที่คำนวณจากข้อมูลชุดล่าสุดโดยไม่สร้างข้อมูลสมมติ</p></div><span class="panel-chip">Auto analysis</span></div><div class="panel-body executive-insights" id="executiveInsights"></div></div>
+<div class="panel executive-distribution-panel"><div class="panel-header"><div><h3>Workforce Distribution</h3><p>สัดส่วนสถานะหลักจากรายการทั้งหมด</p></div></div><div class="panel-body distribution-list" id="workforceDistribution"></div></div>
 </div>
-<div class="panel executive-distribution-panel">
-<div class="panel-header"><div><h3>Workforce Distribution</h3><p>สัดส่วนสถานะหลักจากรายการทั้งหมด</p></div></div>
-<div class="panel-body distribution-list" id="workforceDistribution"></div>
+</div>
+
+<div id="dashboardViewDailyV616H" class="dashboard-view-panel-v616h hidden" role="tabpanel" aria-labelledby="dashboardDailyTabV616H">
+<div class="dashboard-daily-heading-v616h section-gap">
+<div><span class="eyebrow">DAILY + CUMULATIVE</span><h3>มุมมองรายวัน / รายวันสะสม</h3><p>รายวัน = ผลของแต่ละวัน • สะสม = รวมตั้งแต่วันเริ่มต้นที่เลือกจนถึงวันนั้น</p></div>
+<div class="dashboard-daily-meta-v616h"><span id="dashboardDailyRangeV616H">—</span><span id="dashboardDailyLoadStateV616H">รอโหลดข้อมูล</span></div>
+</div>
+<div class="dashboard-daily-notice-v616h hidden" id="dashboardDailyNoticeV616H"></div>
+<div class="dashboard-daily-kpis-v616h" id="dashboardDailyKpisV616H"></div>
+
+<div class="dashboard-daily-grid-v616h section-gap">
+<div class="panel dashboard-trend-panel-v616h">
+<div class="panel-header"><div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม</h3><p>เส้นสีเขียว = รายวัน • เส้นสีส้ม = อัตราสะสมตั้งแต่วันเริ่มต้น</p></div><span class="panel-chip" id="dashboardDailyLatestRateV616H">—</span></div>
+<div class="panel-body"><div class="dashboard-line-chart-v616h" id="dashboardDailyRateChartV616H"><div class="dashboard-daily-empty-v616h">เลือกช่วงวันที่แล้วกดแสดงผล</div></div></div>
+</div>
+<div class="panel dashboard-cumulative-panel-v616h">
+<div class="panel-header"><div><h3>ผลสะสมในช่วงวันที่</h3><p>ยอดสะสมจากข้อมูลจริงในแต่ละวัน</p></div><span class="panel-chip">Cumulative</span></div>
+<div class="panel-body"><div class="dashboard-cumulative-cards-v616h" id="dashboardDailyCumulativeV616H"></div></div>
+</div>
+</div>
+
+<div class="dashboard-daily-grid-v616h section-gap">
+<div class="panel">
+<div class="panel-header"><div><h3>เหตุผิดปกติรายวัน</h3><p>ขาดงาน • มาสาย • กลับก่อน แยกตามวัน</p></div><div class="dashboard-issue-legend-v616h"><span class="absent">ขาดงาน</span><span class="late">มาสาย</span><span class="early">กลับก่อน</span></div></div>
+<div class="panel-body"><div class="dashboard-issue-bars-v616h" id="dashboardDailyIssueBarsV616H"></div></div>
+</div>
+<div class="panel">
+<div class="panel-header"><div><h3>ปฏิทินคุณภาพการลงเวลา</h3><p>สีตามอัตราลงเวลาครบของแต่ละวัน</p></div><div class="dashboard-heat-legend-v616h"><span class="good">≥90%</span><span class="warn">75–89%</span><span class="bad">&lt;75%</span></div></div>
+<div class="panel-body"><div class="dashboard-heatmap-v616h" id="dashboardDailyHeatmapV616H"></div></div>
+</div>
+</div>
+
+<div class="panel section-gap dashboard-daily-table-panel-v616h">
+<div class="panel-header"><div><h3>รายละเอียดรายวันและยอดสะสม</h3><p>ใช้ตรวจแนวโน้มรายวันก่อนลงไปที่รายละเอียดเวลาทำงาน</p></div><button type="button" class="btn btn-light btn-sm" data-go-page="attendance">เปิดรายละเอียดเวลา</button></div>
+<div class="panel-body"><div class="table-wrap"><table class="dashboard-daily-table-v616h"><thead><tr><th>วันที่</th><th class="text-right">วัน-พนักงาน</th><th class="text-right">ลงเวลาครบ</th><th class="text-right">ขาดงาน</th><th class="text-right">มาสาย</th><th class="text-right">กลับก่อน</th><th class="text-right">OT (ชม.)</th><th class="text-right">ครบสะสม</th><th class="text-right">ผิดปกติสะสม</th><th class="text-right">OT สะสม</th></tr></thead><tbody id="dashboardDailyTableBodyV616H"><tr><td colspan="10" class="empty-cell">ยังไม่มีข้อมูลรายวัน</td></tr></tbody></table></div></div>
 </div>
 </div>
 </section>
@@ -3291,6 +3338,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix15v-20260915"></script>
+<script src="./app.js?v=6.15.29-fix16h-dashboard-dual-view-20260916"></script>
 </body>
 </html>
