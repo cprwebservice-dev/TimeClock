@@ -3211,3 +3211,16 @@ body{background:var(--portal-min-bg)}
   .portal-bottom-nav{left:5px;right:5px;bottom:4px;border-radius:16px}.portal-bottom-nav button{min-height:45px}.portal-bottom-nav i{font-size:17px}.portal-bottom-nav span{font-size:7.5px}
   .portal-modal{max-width:100%;width:100%}
 }
+
+/* V6.15.29 FIX16E — Portal popup consistency */
+.portal-modal-backdrop{background:rgba(16,24,32,.48);backdrop-filter:blur(4px)}
+.portal-modal{border:1px solid rgba(208,220,230,.95);background:#fff;box-shadow:0 -18px 44px rgba(19,50,75,.18)}
+.portal-modal-head{border-bottom:1px solid #e4ebf1;background:#fbfcfd}
+.portal-modal-actions{border-top:1px solid #e4ebf1;background:#fbfcfd;padding-top:10px}
+body.theme-dark .portal-modal-backdrop,body.dark .portal-modal-backdrop,body.dark-mode .portal-modal-backdrop{background:rgba(8,10,12,.72)}
+body.theme-dark .portal-modal,body.dark .portal-modal,body.dark-mode .portal-modal{background:#1E2327;border-color:#353C42;color:#ECE9E3;box-shadow:0 -22px 56px rgba(0,0,0,.42)}
+body.theme-dark .portal-modal-head,body.dark .portal-modal-head,body.dark-mode .portal-modal-head{background:#1A1F23;border-color:#2B3136}
+body.theme-dark .portal-modal-body,body.dark .portal-modal-body,body.dark-mode .portal-modal-body{background:#1E2327;color:#ECE9E3}
+body.theme-dark .portal-modal-actions,body.dark .portal-modal-actions,body.dark-mode .portal-modal-actions{background:#191D21;border-color:#2B3136}
+body.theme-dark .portal-modal-body label,body.dark .portal-modal-body label,body.dark-mode .portal-modal-body label{color:#C9C6C1}
+body.theme-dark .portal-modal-body :is(input,select,textarea),body.dark .portal-modal-body :is(input,select,textarea),body.dark-mode .portal-modal-body :is(input,select,textarea){background:#181C20;color:#ECE9E3;border-color:#353C42}

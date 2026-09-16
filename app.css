@@ -33982,3 +33982,315 @@ body.dark-mode :is(button,a,[role="button"],input,select,textarea):focus-visible
   outline:2px solid rgba(255,106,44,.78)!important;
   outline-offset:2px;
 }
+
+/* ========================================================================== 
+   V6.15.29 FIX16E — Global Popup / Modal Dark Consistency
+   Applies the same graphite depth, typography and action hierarchy to every
+   modal, drawer, confirm dialog, command palette, menu and toast.
+   ========================================================================== */
+
+/* Backdrop depth: dark enough to focus, but not a black wall. */
+html[data-theme="dark"] body :is(.modal-backdrop,.command-backdrop,.schedule-team-drawer-backdrop),
+body.theme-dark :is(.modal-backdrop,.command-backdrop,.schedule-team-drawer-backdrop),
+body.dark :is(.modal-backdrop,.command-backdrop,.schedule-team-drawer-backdrop),
+body.dark-mode :is(.modal-backdrop,.command-backdrop,.schedule-team-drawer-backdrop){
+  background:rgba(8,10,12,.72)!important;
+  backdrop-filter:blur(5px)!important;
+}
+
+/* Main popup shell. */
+html[data-theme="dark"] body :is(.modal,.command-panel,.profile-menu,.notification-drawer,.drawer,.schedule-team-drawer),
+body.theme-dark :is(.modal,.command-panel,.profile-menu,.notification-drawer,.drawer,.schedule-team-drawer),
+body.dark :is(.modal,.command-panel,.profile-menu,.notification-drawer,.drawer,.schedule-team-drawer),
+body.dark-mode :is(.modal,.command-panel,.profile-menu,.notification-drawer,.drawer,.schedule-team-drawer){
+  background:var(--dispatch-surface)!important;
+  color:var(--dispatch-text)!important;
+  border:1px solid var(--dispatch-border)!important;
+  box-shadow:0 28px 72px rgba(0,0,0,.46)!important;
+}
+
+/* Header / body / footer use a quiet 3-level hierarchy. */
+html[data-theme="dark"] body :is(.modal-header,.drawer-head,.command-input-wrap,.schedule-team-drawer-head),
+body.theme-dark :is(.modal-header,.drawer-head,.command-input-wrap,.schedule-team-drawer-head),
+body.dark :is(.modal-header,.drawer-head,.command-input-wrap,.schedule-team-drawer-head),
+body.dark-mode :is(.modal-header,.drawer-head,.command-input-wrap,.schedule-team-drawer-head){
+  background:#1A1F23!important;
+  border-color:var(--dispatch-border-soft)!important;
+  color:var(--dispatch-text)!important;
+}
+html[data-theme="dark"] body :is(.modal-body,.drawer-body,.command-results,.schedule-team-drawer-body),
+body.theme-dark :is(.modal-body,.drawer-body,.command-results,.schedule-team-drawer-body),
+body.dark :is(.modal-body,.drawer-body,.command-results,.schedule-team-drawer-body),
+body.dark-mode :is(.modal-body,.drawer-body,.command-results,.schedule-team-drawer-body){
+  background:var(--dispatch-surface)!important;
+  color:var(--dispatch-text)!important;
+}
+html[data-theme="dark"] body .modal-footer,
+body.theme-dark .modal-footer,
+body.dark .modal-footer,
+body.dark-mode .modal-footer{
+  background:#191D21!important;
+  border-color:var(--dispatch-border-soft)!important;
+  box-shadow:0 -8px 22px rgba(0,0,0,.08)!important;
+}
+
+/* Popup typography: neutral text stays neutral; accent only communicates action. */
+html[data-theme="dark"] body :is(.modal,.drawer,.command-panel,.profile-menu,.notification-drawer) :is(h2,h3,h4,strong,.title),
+body.theme-dark :is(.modal,.drawer,.command-panel,.profile-menu,.notification-drawer) :is(h2,h3,h4,strong,.title),
+body.dark :is(.modal,.drawer,.command-panel,.profile-menu,.notification-drawer) :is(h2,h3,h4,strong,.title),
+body.dark-mode :is(.modal,.drawer,.command-panel,.profile-menu,.notification-drawer) :is(h2,h3,h4,strong,.title){color:var(--dispatch-text)!important}
+html[data-theme="dark"] body :is(.modal,.drawer,.command-panel,.profile-menu,.notification-drawer) :is(p,small,.field-help,.field-hint,.helper-text,.eyebrow,.muted),
+body.theme-dark :is(.modal,.drawer,.command-panel,.profile-menu,.notification-drawer) :is(p,small,.field-help,.field-hint,.helper-text,.eyebrow,.muted),
+body.dark :is(.modal,.drawer,.command-panel,.profile-menu,.notification-drawer) :is(p,small,.field-help,.field-hint,.helper-text,.eyebrow,.muted),
+body.dark-mode :is(.modal,.drawer,.command-panel,.profile-menu,.notification-drawer) :is(p,small,.field-help,.field-hint,.helper-text,.eyebrow,.muted){color:var(--dispatch-muted)!important}
+html[data-theme="dark"] body .modal .field>label,
+body.theme-dark .modal .field>label,
+body.dark .modal .field>label,
+body.dark-mode .modal .field>label{color:#C9C6C1!important}
+
+/* Form controls inside popups: no white islands. */
+html[data-theme="dark"] body :is(.modal,.drawer,.command-panel) :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea),
+body.theme-dark :is(.modal,.drawer,.command-panel) :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea),
+body.dark :is(.modal,.drawer,.command-panel) :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea),
+body.dark-mode :is(.modal,.drawer,.command-panel) :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea){
+  background:#181C20!important;
+  color:var(--dispatch-text)!important;
+  border-color:var(--dispatch-border)!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body :is(.modal,.drawer,.command-panel) :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea):focus,
+body.theme-dark :is(.modal,.drawer,.command-panel) :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea):focus,
+body.dark :is(.modal,.drawer,.command-panel) :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea):focus,
+body.dark-mode :is(.modal,.drawer,.command-panel) :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]),select,textarea):focus{
+  border-color:var(--dispatch-accent-line)!important;
+  box-shadow:0 0 0 3px rgba(255,106,44,.08)!important;
+}
+html[data-theme="dark"] body :is(.modal,.drawer) input::placeholder,
+body.theme-dark :is(.modal,.drawer) input::placeholder,
+body.dark :is(.modal,.drawer) input::placeholder,
+body.dark-mode :is(.modal,.drawer) input::placeholder,
+html[data-theme="dark"] body :is(.modal,.drawer) textarea::placeholder,
+body.theme-dark :is(.modal,.drawer) textarea::placeholder,
+body.dark :is(.modal,.drawer) textarea::placeholder,
+body.dark-mode :is(.modal,.drawer) textarea::placeholder{color:#676E75!important}
+html[data-theme="dark"] body :is(.modal,.drawer) :is(input[type="checkbox"],input[type="radio"]),
+body.theme-dark :is(.modal,.drawer) :is(input[type="checkbox"],input[type="radio"]),
+body.dark :is(.modal,.drawer) :is(input[type="checkbox"],input[type="radio"]),
+body.dark-mode :is(.modal,.drawer) :is(input[type="checkbox"],input[type="radio"]){accent-color:var(--dispatch-accent)}
+
+/* Common nested popup cards/panes. */
+html[data-theme="dark"] body .modal :is(
+  .month-copy-route-card-v61413,.month-copy-warning-v61413,.month-copy-mode-v61413,.month-copy-preview-v61413,
+  .system-period-switch-card,.system-period-range-preview,.system-period-policy-note,
+  .team-temp-home-card-v61529f14b,.team-temp-preview-v61529f14b,.team-temp-action-summary-v61529f14b,
+  .team-master-preview-v61523,.team-master-create-note-v61523,
+  .team-membership-summary-modern-v61528f1,.team-membership-date-card-v61529f15v,.team-membership-policy-modern-v61528f1,.team-borrow-overlay-v61529f15q,.team-membership-bottom-grid-v61529f15v,
+  .team-transfer-pane-v61528f1,.team-impact-preview-v61528,.team-impact-placeholder-v61528,
+  .team-closure-hero-v61529f12,.team-closure-notice-v61529f12,.team-closure-members-v61529f12,.team-closure-impact-v61529f12,
+  .operational-mode-guide-v61529f5,.operational-transfer-summary-v61528f2,.operational-transfer-summary-split-v61529f5,.operational-reason-alert-v61528f3,.operational-reason-box-v61528f2,
+  .team-enforcement-scope-summary-v61529,.team-enforcement-rollout-config-v61529,
+  .portal-activation-person-v61482,.portal-activation-code-v61482,.portal-security-note-v61482,
+  .shift-request-employee-card,.employee-request-section-v61481,.employee-request-context-v61494,.employee-request-callout-v61481,.supabase-default-note-v61010,
+  .time-cert-card-v61139,.time-cert-context-v61139,.reason-card,.time-cert-rule-v61139,.time-cert-existing-v61139,
+  .assignment-step-v61428,.shift-pattern-choice,.org-upload-summary,.org-upload-preview,.org-upload-errors,
+  .manager-user-section,.account-recovery-confirm-card
+),
+body.theme-dark .modal :is(
+  .month-copy-route-card-v61413,.month-copy-warning-v61413,.month-copy-mode-v61413,.month-copy-preview-v61413,
+  .system-period-switch-card,.system-period-range-preview,.system-period-policy-note,
+  .team-temp-home-card-v61529f14b,.team-temp-preview-v61529f14b,.team-temp-action-summary-v61529f14b,
+  .team-master-preview-v61523,.team-master-create-note-v61523,
+  .team-membership-summary-modern-v61528f1,.team-membership-date-card-v61529f15v,.team-membership-policy-modern-v61528f1,.team-borrow-overlay-v61529f15q,.team-membership-bottom-grid-v61529f15v,
+  .team-transfer-pane-v61528f1,.team-impact-preview-v61528,.team-impact-placeholder-v61528,
+  .team-closure-hero-v61529f12,.team-closure-notice-v61529f12,.team-closure-members-v61529f12,.team-closure-impact-v61529f12,
+  .operational-mode-guide-v61529f5,.operational-transfer-summary-v61528f2,.operational-transfer-summary-split-v61529f5,.operational-reason-alert-v61528f3,.operational-reason-box-v61528f2,
+  .team-enforcement-scope-summary-v61529,.team-enforcement-rollout-config-v61529,
+  .portal-activation-person-v61482,.portal-activation-code-v61482,.portal-security-note-v61482,
+  .shift-request-employee-card,.employee-request-section-v61481,.employee-request-context-v61494,.employee-request-callout-v61481,.supabase-default-note-v61010,
+  .time-cert-card-v61139,.time-cert-context-v61139,.reason-card,.time-cert-rule-v61139,.time-cert-existing-v61139,
+  .assignment-step-v61428,.shift-pattern-choice,.org-upload-summary,.org-upload-preview,.org-upload-errors,
+  .manager-user-section,.account-recovery-confirm-card
+),
+body.dark .modal :is(
+  .month-copy-route-card-v61413,.month-copy-warning-v61413,.month-copy-mode-v61413,.month-copy-preview-v61413,
+  .system-period-switch-card,.system-period-range-preview,.system-period-policy-note,
+  .team-temp-home-card-v61529f14b,.team-temp-preview-v61529f14b,.team-temp-action-summary-v61529f14b,
+  .team-master-preview-v61523,.team-master-create-note-v61523,
+  .team-membership-summary-modern-v61528f1,.team-membership-date-card-v61529f15v,.team-membership-policy-modern-v61528f1,.team-borrow-overlay-v61529f15q,.team-membership-bottom-grid-v61529f15v,
+  .team-transfer-pane-v61528f1,.team-impact-preview-v61528,.team-impact-placeholder-v61528,
+  .team-closure-hero-v61529f12,.team-closure-notice-v61529f12,.team-closure-members-v61529f12,.team-closure-impact-v61529f12,
+  .operational-mode-guide-v61529f5,.operational-transfer-summary-v61528f2,.operational-transfer-summary-split-v61529f5,.operational-reason-alert-v61528f3,.operational-reason-box-v61528f2,
+  .team-enforcement-scope-summary-v61529,.team-enforcement-rollout-config-v61529,
+  .portal-activation-person-v61482,.portal-activation-code-v61482,.portal-security-note-v61482,
+  .shift-request-employee-card,.employee-request-section-v61481,.employee-request-context-v61494,.employee-request-callout-v61481,.supabase-default-note-v61010,
+  .time-cert-card-v61139,.time-cert-context-v61139,.reason-card,.time-cert-rule-v61139,.time-cert-existing-v61139,
+  .assignment-step-v61428,.shift-pattern-choice,.org-upload-summary,.org-upload-preview,.org-upload-errors,
+  .manager-user-section,.account-recovery-confirm-card
+),
+body.dark-mode .modal :is(
+  .month-copy-route-card-v61413,.month-copy-warning-v61413,.month-copy-mode-v61413,.month-copy-preview-v61413,
+  .system-period-switch-card,.system-period-range-preview,.system-period-policy-note,
+  .team-temp-home-card-v61529f14b,.team-temp-preview-v61529f14b,.team-temp-action-summary-v61529f14b,
+  .team-master-preview-v61523,.team-master-create-note-v61523,
+  .team-membership-summary-modern-v61528f1,.team-membership-date-card-v61529f15v,.team-membership-policy-modern-v61528f1,.team-borrow-overlay-v61529f15q,.team-membership-bottom-grid-v61529f15v,
+  .team-transfer-pane-v61528f1,.team-impact-preview-v61528,.team-impact-placeholder-v61528,
+  .team-closure-hero-v61529f12,.team-closure-notice-v61529f12,.team-closure-members-v61529f12,.team-closure-impact-v61529f12,
+  .operational-mode-guide-v61529f5,.operational-transfer-summary-v61528f2,.operational-transfer-summary-split-v61529f5,.operational-reason-alert-v61528f3,.operational-reason-box-v61528f2,
+  .team-enforcement-scope-summary-v61529,.team-enforcement-rollout-config-v61529,
+  .portal-activation-person-v61482,.portal-activation-code-v61482,.portal-security-note-v61482,
+  .shift-request-employee-card,.employee-request-section-v61481,.employee-request-context-v61494,.employee-request-callout-v61481,.supabase-default-note-v61010,
+  .time-cert-card-v61139,.time-cert-context-v61139,.reason-card,.time-cert-rule-v61139,.time-cert-existing-v61139,
+  .assignment-step-v61428,.shift-pattern-choice,.org-upload-summary,.org-upload-preview,.org-upload-errors,
+  .manager-user-section,.account-recovery-confirm-card
+){
+  background:var(--dispatch-surface-2)!important;
+  border-color:var(--dispatch-border-soft)!important;
+  color:var(--dispatch-text)!important;
+  box-shadow:none!important;
+}
+
+/* Tables inside popups. */
+html[data-theme="dark"] body .modal :is(.table-wrap,.borrow-audit-table-wrap-v61529f15i),
+body.theme-dark .modal :is(.table-wrap,.borrow-audit-table-wrap-v61529f15i),
+body.dark .modal :is(.table-wrap,.borrow-audit-table-wrap-v61529f15i),
+body.dark-mode .modal :is(.table-wrap,.borrow-audit-table-wrap-v61529f15i){
+  background:transparent!important;
+  border-color:var(--dispatch-border-soft)!important;
+}
+html[data-theme="dark"] body .modal table thead th,
+body.theme-dark .modal table thead th,
+body.dark .modal table thead th,
+body.dark-mode .modal table thead th{background:#181C20!important;color:#C6C3BE!important;border-color:var(--dispatch-border-soft)!important}
+html[data-theme="dark"] body .modal table tbody td,
+body.theme-dark .modal table tbody td,
+body.dark .modal table tbody td,
+body.dark-mode .modal table tbody td{background:var(--dispatch-surface)!important;color:var(--dispatch-text)!important;border-color:var(--dispatch-border-soft)!important}
+html[data-theme="dark"] body .modal table tbody tr:hover td,
+body.theme-dark .modal table tbody tr:hover td,
+body.dark .modal table tbody tr:hover td,
+body.dark-mode .modal table tbody tr:hover td{background:var(--dispatch-surface-2)!important}
+
+/* Buttons inside popup: predictable hierarchy. */
+html[data-theme="dark"] body :is(.modal,.drawer,.command-panel) .btn-light,
+body.theme-dark :is(.modal,.drawer,.command-panel) .btn-light,
+body.dark :is(.modal,.drawer,.command-panel) .btn-light,
+body.dark-mode :is(.modal,.drawer,.command-panel) .btn-light{
+  background:var(--dispatch-surface-2)!important;
+  border-color:var(--dispatch-border)!important;
+  color:var(--dispatch-text)!important;
+  box-shadow:none!important;
+}
+html[data-theme="dark"] body :is(.modal,.drawer,.command-panel) .btn-light:hover,
+body.theme-dark :is(.modal,.drawer,.command-panel) .btn-light:hover,
+body.dark :is(.modal,.drawer,.command-panel) .btn-light:hover,
+body.dark-mode :is(.modal,.drawer,.command-panel) .btn-light:hover{background:var(--dispatch-surface-3)!important;border-color:var(--dispatch-border-strong)!important}
+html[data-theme="dark"] body :is(.modal,.drawer) .btn-danger-soft,
+body.theme-dark :is(.modal,.drawer) .btn-danger-soft,
+body.dark :is(.modal,.drawer) .btn-danger-soft,
+body.dark-mode :is(.modal,.drawer) .btn-danger-soft{background:var(--dispatch-red-soft)!important;color:#FF9C9C!important;border-color:rgba(255,104,104,.24)!important}
+html[data-theme="dark"] body :is(.modal,.drawer) .btn-success,
+body.theme-dark :is(.modal,.drawer) .btn-success,
+body.dark :is(.modal,.drawer) .btn-success,
+body.dark-mode :is(.modal,.drawer) .btn-success{background:var(--dispatch-teal)!important;color:#111715!important;border-color:var(--dispatch-teal)!important;box-shadow:none!important}
+
+/* Dynamic global action / print popup: remove legacy blue cast. */
+html[data-theme="dark"] body .global-action-modal-body,
+body.theme-dark .global-action-modal-body,
+body.dark .global-action-modal-body,
+body.dark-mode .global-action-modal-body{background:var(--dispatch-surface)!important}
+html[data-theme="dark"] body .global-action-modal-message,
+body.theme-dark .global-action-modal-message,
+body.dark .global-action-modal-message,
+body.dark-mode .global-action-modal-message{background:var(--dispatch-surface-2)!important;border-color:var(--dispatch-border-soft)!important;color:var(--dispatch-text)!important}
+html[data-theme="dark"] body .global-action-modal-icon,
+body.theme-dark .global-action-modal-icon,
+body.dark .global-action-modal-icon,
+body.dark-mode .global-action-modal-icon{background:var(--dispatch-accent-soft)!important;border-color:var(--dispatch-accent-line)!important;color:#FFB18F!important}
+html[data-theme="dark"] body .global-action-modal-backdrop[data-tone="warning"] .global-action-modal-icon,
+body.theme-dark .global-action-modal-backdrop[data-tone="warning"] .global-action-modal-icon,
+body.dark .global-action-modal-backdrop[data-tone="warning"] .global-action-modal-icon,
+body.dark-mode .global-action-modal-backdrop[data-tone="warning"] .global-action-modal-icon{background:var(--dispatch-amber-soft)!important;border-color:rgba(243,198,75,.24)!important;color:#F5D77B!important}
+html[data-theme="dark"] body .global-action-modal-backdrop[data-tone="danger"] .global-action-modal-icon,
+body.theme-dark .global-action-modal-backdrop[data-tone="danger"] .global-action-modal-icon,
+body.dark .global-action-modal-backdrop[data-tone="danger"] .global-action-modal-icon,
+body.dark-mode .global-action-modal-backdrop[data-tone="danger"] .global-action-modal-icon{background:var(--dispatch-red-soft)!important;border-color:rgba(255,104,104,.24)!important;color:#FF9A9A!important}
+html[data-theme="dark"] body .global-print-modal-body,
+body.theme-dark .global-print-modal-body,
+body.dark .global-print-modal-body,
+body.dark-mode .global-print-modal-body{background:#111417!important}
+
+/* Command palette and profile popup. */
+html[data-theme="dark"] body .command-kbd,
+body.theme-dark .command-kbd,
+body.dark .command-kbd,
+body.dark-mode .command-kbd{background:var(--dispatch-surface-2)!important;border-color:var(--dispatch-border)!important;color:var(--dispatch-muted)!important}
+html[data-theme="dark"] body .command-item:hover,
+html[data-theme="dark"] body .command-item.active,
+body.theme-dark .command-item:hover,
+body.theme-dark .command-item.active,
+body.dark .command-item:hover,
+body.dark .command-item.active,
+body.dark-mode .command-item:hover,
+body.dark-mode .command-item.active{background:var(--dispatch-surface-2)!important}
+html[data-theme="dark"] body .command-item-icon,
+body.theme-dark .command-item-icon,
+body.dark .command-item-icon,
+body.dark-mode .command-item-icon{background:var(--dispatch-accent-soft)!important;color:#FFB18F!important}
+html[data-theme="dark"] body .profile-action:hover,
+body.theme-dark .profile-action:hover,
+body.dark .profile-action:hover,
+body.dark-mode .profile-action:hover{background:var(--dispatch-surface-2)!important}
+html[data-theme="dark"] body .profile-avatar,
+body.theme-dark .profile-avatar,
+body.dark .profile-avatar,
+body.dark-mode .profile-avatar{background:var(--dispatch-accent-soft)!important;color:#FFB18F!important;border:1px solid var(--dispatch-accent-line)!important}
+
+/* Notification drawer and toast. */
+html[data-theme="dark"] body .drawer-tabs,
+body.theme-dark .drawer-tabs,
+body.dark .drawer-tabs,
+body.dark-mode .drawer-tabs{background:#191D21!important;border-color:var(--dispatch-border-soft)!important}
+html[data-theme="dark"] body .drawer-tab,
+body.theme-dark .drawer-tab,
+body.dark .drawer-tab,
+body.dark-mode .drawer-tab{background:var(--dispatch-surface-2)!important;color:var(--dispatch-muted)!important;border:1px solid transparent!important}
+html[data-theme="dark"] body .drawer-tab.active,
+body.theme-dark .drawer-tab.active,
+body.dark .drawer-tab.active,
+body.dark-mode .drawer-tab.active{background:var(--dispatch-accent-soft)!important;color:#FFB18F!important;border-color:var(--dispatch-accent-line)!important}
+html[data-theme="dark"] body .notice-card,
+body.theme-dark .notice-card,
+body.dark .notice-card,
+body.dark-mode .notice-card{border-color:var(--dispatch-border-soft)!important}
+html[data-theme="dark"] body .toast,
+body.theme-dark .toast,
+body.dark .toast,
+body.dark-mode .toast{background:var(--dispatch-surface-2)!important;color:var(--dispatch-text)!important;border:1px solid var(--dispatch-border)!important;border-left:4px solid var(--dispatch-blue)!important;box-shadow:0 16px 44px rgba(0,0,0,.34)!important}
+html[data-theme="dark"] body .toast.success,
+body.theme-dark .toast.success,
+body.dark .toast.success,
+body.dark-mode .toast.success{border-left-color:var(--dispatch-teal)!important}
+html[data-theme="dark"] body .toast.error,
+body.theme-dark .toast.error,
+body.dark .toast.error,
+body.dark-mode .toast.error{border-left-color:var(--dispatch-red)!important}
+
+/* Loading popup / inline popup overlay. */
+html[data-theme="dark"] body .loading-overlay,
+body.theme-dark .loading-overlay,
+body.dark .loading-overlay,
+body.dark-mode .loading-overlay{background:rgba(8,10,12,.74)!important;color:var(--dispatch-text)!important;backdrop-filter:blur(4px)!important}
+html[data-theme="dark"] body .spinner,
+body.theme-dark .spinner,
+body.dark .spinner,
+body.dark-mode .spinner{border-color:rgba(255,255,255,.14)!important;border-top-color:var(--dispatch-accent)!important}
+
+/* Popup scrollbar follows the same graphite palette. */
+html[data-theme="dark"] body :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-thumb,
+body.theme-dark :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-thumb,
+body.dark :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-thumb,
+body.dark-mode :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-thumb{background:#3A4147!important}
+html[data-theme="dark"] body :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-track,
+body.theme-dark :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-track,
+body.dark :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-track,
+body.dark-mode :is(.modal,.drawer,.notification-drawer,.command-panel,.schedule-team-drawer) ::-webkit-scrollbar-track{background:transparent!important}
