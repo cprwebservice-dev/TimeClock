@@ -2977,3 +2977,184 @@ body{font-size:16px;color:var(--p99-ink)}
   .portal-working-team-shift-v61529f15r{min-width:44px}
   .portal-working-team-shift-v61529f15r>small{font-size:6.5px}
 }
+
+/* ========================================================================== 
+   V6.15.29 FIX15Y — Employee Portal Minimal Modernization
+   Visual-only. Business logic / RPC / Borrow / Attendance unchanged.
+   ========================================================================== */
+:root{
+  --portal-min-bg:#f4f7fa;
+  --portal-min-card:#ffffff;
+  --portal-min-line:#e3eaf1;
+  --portal-min-text:#17324a;
+  --portal-min-muted:#74879a;
+  --portal-min-blue:#1769aa;
+  --portal-min-blue-soft:#eef6fc;
+  --portal-min-shadow:0 5px 16px rgba(25,55,82,.055);
+}
+body{background:var(--portal-min-bg)}
+.portal-app{padding-bottom:82px;background:var(--portal-min-bg)}
+.portal-main{width:min(100%,960px);padding:12px 14px 96px}
+
+/* top bar — quieter and more compact */
+.portal-topbar{
+  min-height:58px;padding:8px 14px;padding-top:max(8px,env(safe-area-inset-top));
+  border-bottom:1px solid rgba(218,228,237,.92);background:rgba(255,255,255,.95);
+  box-shadow:none
+}
+.portal-brand-mark.small{width:34px;height:34px;border-radius:10px;background:#1769aa;box-shadow:none}
+.portal-top-brand{gap:9px}.portal-top-brand strong{font-size:15px}.portal-top-brand span{font-size:9px}
+.portal-top-actions{gap:6px}.portal-icon-btn{width:34px;height:34px;border-radius:10px;box-shadow:none}
+.portal-live-sync-v61513{min-height:30px;padding:5px 8px;border-radius:10px;box-shadow:none}
+
+/* profile becomes a compact identity strip */
+.portal-profile-card{
+  grid-template-columns:42px minmax(0,1fr) auto;gap:10px;margin:0 0 10px;padding:10px 12px;
+  border:1px solid var(--portal-min-line);border-radius:16px;background:#fff;box-shadow:none
+}
+.portal-avatar{width:42px;height:42px;border-radius:12px;background:#edf6fd;color:#1769aa;font-size:13px}
+.portal-profile-copy span{font-size:8px!important;color:var(--portal-min-muted)!important}
+.portal-profile-copy strong{margin:1px 0 2px!important;font-size:15px!important;color:var(--portal-min-text)!important;line-height:1.25!important;letter-spacing:0!important}
+.portal-profile-copy small{font-size:9px!important;color:var(--portal-min-muted)!important}
+.portal-user-badge{display:inline-flex!important;padding:4px 7px;border:1px solid #d9eee3;border-radius:999px;background:#f3fbf6;color:#26845a!important;font-size:8px}
+
+/* shared section hierarchy */
+.portal-section-title{margin:15px 2px 8px}
+.portal-section-title span{font-size:8px!important;color:#8797a7!important;letter-spacing:.08em!important}
+.portal-section-title strong{margin-top:1px!important;font-size:15px!important;color:var(--portal-min-text)!important;line-height:1.25!important}
+.portal-text-btn{padding:5px 7px;border-radius:8px;background:transparent;font-size:10px!important;color:#1769aa}
+.portal-text-btn:hover{background:#eef6fc}
+
+/* Home: remove oversized sheet treatment */
+#portalViewHome{margin:0;padding:0 0 8px;border:0;border-radius:0;background:transparent;box-shadow:none}
+#portalViewHome .portal-section-title{margin:14px 2px 8px}
+#portalViewHome .portal-section-title:first-child{padding:0}
+.portal-home-date-actions-v61509{gap:6px}
+.portal-home-date-toggle-v61509{padding:3px;border:1px solid var(--portal-min-line);border-radius:10px;background:#fff;box-shadow:none}
+.portal-home-date-toggle-v61509 button{min-height:29px;padding:5px 9px;border-radius:7px;font-size:9px}
+.portal-home-date-toggle-v61509 button.active{background:#eaf4fb;color:#1769aa;box-shadow:none}
+
+/* Today shift: information-first, less decorative */
+.portal-today-card{
+  padding:14px 15px;border:1px solid #d8e7f2;border-radius:17px;
+  background:linear-gradient(135deg,#164f7d,#176aa4);box-shadow:0 7px 18px rgba(20,84,130,.14)
+}
+.portal-today-shift>span{font-size:9px}.portal-today-shift>strong{margin-top:4px!important;font-size:26px!important;gap:8px}
+.portal-today-shift-icon{width:38px;height:38px;border-radius:11px;font-size:20px}
+.portal-today-shift>small{margin-top:3px;font-size:10px}.portal-shift-pill{padding:5px 8px;font-size:9px}
+.portal-today-times{gap:7px;margin-top:10px}.portal-today-times div{min-height:auto;padding:8px 9px;border-radius:10px}
+.portal-today-times span{font-size:8px}.portal-today-times strong{margin-top:2px;font-size:15px}.portal-today-times small{font-size:8px}
+.portal-today-special{margin-top:8px;padding:8px 9px;border-radius:11px}.portal-today-special i{width:30px;height:30px;font-size:16px}.portal-today-special span{font-size:8px}.portal-today-special strong{font-size:10px}
+.portal-status-line{margin-top:9px;padding-top:8px;font-size:9px}
+
+/* Working Team roster: compact operational card */
+.portal-same-shift-team-v61509{
+  margin-top:10px!important;padding:12px!important;border:1px solid var(--portal-min-line)!important;
+  border-radius:16px!important;background:#fff!important;box-shadow:none!important
+}
+.portal-same-shift-head-v61509{margin-bottom:8px!important;padding-bottom:8px!important;border-bottom:1px solid #edf1f5!important}
+.portal-same-shift-head-v61509>div>span{font-size:8px!important}.portal-same-shift-head-v61509>div>strong{font-size:13px!important}
+.portal-same-shift-head-v61509>div>small{font-size:8px!important}.portal-same-shift-head-v61509>b{padding:4px 7px!important;font-size:9px!important}
+.portal-same-shift-grid-v61509{gap:6px!important}
+.portal-same-shift-member-v61509{grid-template-columns:32px minmax(0,1fr) auto!important;gap:8px!important;padding:7px 8px!important;border-radius:11px!important;box-shadow:none!important}
+.portal-same-shift-avatar-v61509{width:32px!important;height:32px!important;border-radius:9px!important;font-size:9px!important}
+.portal-same-shift-member-v61509 strong{font-size:9px!important}.portal-same-shift-member-v61509 small{font-size:7.5px!important}
+.portal-working-team-chip-v61529f15r{min-height:16px;padding:2px 5px;font-size:6.5px}
+.portal-same-shift-badge-v61509{padding:4px 6px!important;font-size:7px!important}.portal-working-team-shift-v61529f15r>small{font-size:6.5px}
+.portal-working-team-self-borrow-v61529f15r{margin-top:8px;padding:8px 9px;border-radius:11px}.portal-working-team-self-borrow-v61529f15r>i{width:29px;height:29px;border-radius:9px;font-size:15px}
+
+/* 7-day strip: dense scan view */
+.portal-week-strip{gap:6px;margin:0;padding:0 0 5px}
+.portal-day-chip{flex:0 0 78px;min-width:78px;min-height:102px;padding:8px 5px;border-radius:13px;box-shadow:none}
+.portal-day-chip.today{border-width:1px;box-shadow:inset 0 0 0 1px #1767e8}
+.portal-day-chip span{font-size:8px}.portal-day-chip strong{gap:2px;margin:5px 0 3px;font-size:12px}.portal-day-chip .portal-shift-icon{font-size:19px}
+.portal-day-chip small{font-size:7.5px}.portal-day-chip .portal-special-line{margin-top:4px;padding-top:4px;font-size:6.5px}
+.portal-day-chip .portal-shift-code{margin-top:4px;padding:2px 5px;font-size:7px}
+
+/* Quick self-service: smaller action tiles */
+.portal-quick-title{margin:12px 2px 7px}.portal-quick-title strong{font-size:14px!important}
+.portal-quick-grid{gap:7px}
+.portal-quick-grid button{
+  grid-template-columns:34px minmax(0,1fr) 10px;min-height:66px;padding:9px 8px;column-gap:7px;row-gap:1px;
+  border-radius:13px;border-color:var(--portal-min-line);box-shadow:none;background:#fff
+}
+.portal-quick-grid button:hover{transform:none;border-color:#cbdde9;box-shadow:none;background:#fbfdff}
+.portal-quick-grid button i{width:32px;height:32px;border-radius:10px;font-size:16px}
+.portal-quick-grid button strong{font-size:10px;line-height:1.2}.portal-quick-grid button small{font-size:7.5px;line-height:1.3}
+.portal-quick-grid button:after{font-size:16px;color:#8aa0b3}
+
+/* Schedule: make the calendar the main object, not the header */
+#portalViewSchedule{margin-top:0}
+.portal-schedule-titlebar{align-items:center;padding:5px 2px 9px;color:var(--portal-min-text)}
+.portal-schedule-titlebar span{font-size:8px;color:#8496a8}.portal-schedule-titlebar strong{margin-top:1px;font-size:19px;color:var(--portal-min-text);letter-spacing:0}
+.portal-schedule-titlebar small{margin-top:2px;font-size:9px;color:var(--portal-min-muted)}
+.portal-schedule-sync-v61507{margin-left:5px!important;font-size:8px!important}
+.portal-schedule-today-btn{padding:7px 9px;border:1px solid var(--portal-min-line);border-radius:10px;background:#fff;color:#1769aa;font-size:9px;box-shadow:none}
+.portal-schedule-panel{padding:12px 10px 15px;border:1px solid var(--portal-min-line);border-radius:17px;background:#fff;box-shadow:none}
+.portal-schedule-month-head{grid-template-columns:34px 1fr 34px;padding:0 0 8px}.portal-schedule-month-head strong{font-size:17px}.portal-schedule-month-head button{height:34px;font-size:25px}
+.portal-schedule-summary{gap:5px;margin-bottom:10px;padding:6px;border-radius:12px;background:#fafcfe}
+.portal-shift-legend{min-height:32px;border-radius:9px;font-size:8px}.portal-shift-legend i{font-size:15px}
+.portal-calendar{gap:4px}.portal-cal-head{min-height:24px;font-size:8px}
+.portal-cal-day{min-height:82px;padding:5px 2px;border-radius:10px;box-shadow:none}.portal-cal-day>span{font-size:10px}.portal-cal-day.today>span{min-width:22px;height:22px}
+.portal-cal-day .portal-cal-shift-label{gap:1px;margin-top:4px;font-size:8px}.portal-cal-day .portal-shift-icon{font-size:16px}.portal-cal-day .portal-cal-time{margin-top:2px;font-size:6.4px}.portal-cal-day .portal-special-line{margin-top:3px;padding-top:3px;font-size:6px}
+.portal-calendar-punch-detail{margin-top:9px;padding:10px;border-radius:13px;box-shadow:none}
+
+/* Time / Requests / Notifications: compact page heading and lightweight rows */
+#portalViewTime,#portalViewRequests,#portalViewNotifications{padding-bottom:8px}
+.portal-view-hero{padding:11px 12px;border-radius:14px;box-shadow:none;background:#fff}
+.portal-view-hero span{font-size:8px}.portal-view-hero strong{margin-top:1px;font-size:16px}.portal-view-hero small{margin-top:2px;font-size:9px}
+.portal-primary.compact{padding:7px 9px;border-radius:9px;font-size:9px;box-shadow:none}
+.portal-request-tabs{margin:8px 0!important;padding:3px!important;border-radius:10px!important}
+.portal-request-tabs button{min-height:29px!important;padding:5px 8px!important;border-radius:7px!important;font-size:8px!important}
+.portal-time-list,.portal-request-list,.portal-notification-list{gap:7px;margin-top:8px}
+.portal-time-item,.portal-request-item,.portal-notification-item{padding:10px 11px;border-radius:13px;box-shadow:none}
+.portal-time-title strong,.portal-request-title-wrap strong,.portal-notification-head strong{font-size:11px!important}
+.portal-time-title small,.portal-request-title-wrap small,.portal-notification-head span,.portal-request-kicker,.portal-request-status,.portal-time-status{font-size:8px!important}
+.portal-time-grid{gap:5px}.portal-time-grid div{padding:7px}.portal-time-grid strong{font-size:12px}.portal-time-grid span{font-size:8px}
+.portal-request-detail,.portal-request-reason,.portal-manager-note,.portal-notification-item p{font-size:9px!important;line-height:1.4}
+.portal-request-actions{gap:5px}.portal-request-actions button{padding:6px 8px!important;border-radius:8px!important;font-size:8px!important}
+
+/* Bottom navigation: calm and compact */
+.portal-bottom-nav{
+  left:9px;right:9px;bottom:7px;padding:5px 4px;padding-bottom:max(5px,env(safe-area-inset-bottom));
+  border:1px solid rgba(218,228,237,.94);border-radius:18px;background:rgba(255,255,255,.98);
+  box-shadow:0 9px 24px rgba(15,46,82,.13)
+}
+.portal-bottom-nav button{min-height:48px;border-radius:12px;color:#6f8294;transform:none!important}
+.portal-bottom-nav button.active{background:#eef6fc;color:#1769aa;box-shadow:none}
+.portal-bottom-nav button.active:before{top:4px;width:22px;height:3px;background:#1769aa}
+.portal-bottom-nav i{font-size:18px}.portal-bottom-nav span{margin-top:2px;font-size:8px;font-weight:800}
+.portal-bottom-nav em{top:1px;right:18%;min-width:16px;height:16px;line-height:16px;font-size:8px}
+.portal-app-credit-v61508{font-size:7px!important;color:#9aa8b4!important}
+
+/* Modal: less oversized while retaining touch targets */
+.portal-modal{border-radius:20px 20px 0 0;box-shadow:0 -10px 32px rgba(19,50,75,.13)}
+.portal-modal-head{padding:12px 14px}.portal-modal-head strong{font-size:15px}.portal-modal-head span{font-size:8px}.portal-modal-head>button{width:32px;height:32px!important;border-radius:9px!important}
+.portal-modal-body{gap:10px;padding:12px 14px 20px}.portal-modal-body label{font-size:9px}
+.portal-modal-body input,.portal-modal-body select,.portal-modal-body textarea{min-height:42px;padding:9px 10px;border-radius:10px;font-size:12px}
+.portal-modal-actions button{min-height:40px;border-radius:10px;font-size:11px}
+
+/* Auth screen follows the same minimal language */
+.portal-auth{padding:16px;background:#f5f8fb}.portal-auth-shell{width:min(100%,500px);padding:18px;border-radius:18px;box-shadow:0 12px 30px rgba(21,50,75,.08)}
+.portal-brand-mark{width:40px;height:40px;border-radius:12px;background:#1769aa}.portal-brand strong{font-size:16px}.portal-brand span{font-size:9px}
+.portal-team-card{margin-top:13px;padding:10px 11px;border-radius:11px;background:#f8fbfd}.portal-auth-tabs{margin-top:13px}.portal-auth-form{gap:10px;margin-top:13px}
+.portal-form-title strong{font-size:14px}.portal-form-title span{font-size:9px}.portal-auth-form label{font-size:9px}.portal-auth-form input{padding:9px 10px;border-radius:9px}
+.portal-security-hint{padding:8px 9px;border-radius:9px;font-size:8px}.portal-auth-footer{margin-top:13px;font-size:7.5px}
+
+@media(max-width:560px){
+  .portal-main{padding:9px 9px 90px}
+  .portal-profile-card{grid-template-columns:38px minmax(0,1fr) auto;padding:8px 9px}.portal-avatar{width:38px;height:38px}
+  .portal-profile-copy strong{font-size:14px!important}.portal-user-badge{font-size:7px}
+  #portalViewHome{padding:0}
+  .portal-home-date-title-v61509{align-items:flex-start}.portal-home-date-actions-v61509{align-items:flex-end}
+  .portal-today-card{padding:12px}.portal-today-main{flex-direction:row;align-items:flex-start}.portal-today-shift>strong{font-size:23px!important}.portal-today-shift-icon{width:34px;height:34px;font-size:18px}
+  .portal-today-times{grid-template-columns:1fr 1fr}.portal-today-times div{padding:7px}.portal-today-times strong{font-size:13px}
+  .portal-same-shift-team-v61509{padding:9px!important}.portal-same-shift-grid-v61509{grid-template-columns:1fr!important}
+  .portal-day-chip{flex-basis:72px;min-width:72px;min-height:96px}
+  .portal-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.portal-quick-grid button{grid-template-columns:30px minmax(0,1fr) 8px;min-height:62px;padding:8px 7px}.portal-quick-grid button i{width:29px;height:29px;font-size:15px}.portal-quick-grid button strong{font-size:9px}.portal-quick-grid button small{font-size:7px}.portal-quick-grid button:after{font-size:14px}
+  .portal-schedule-titlebar{padding:3px 2px 7px}.portal-schedule-titlebar strong{font-size:17px}.portal-schedule-titlebar small{font-size:8px}.portal-schedule-panel{padding:10px 7px 13px;border-radius:15px}.portal-schedule-summary{grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;padding:4px}.portal-shift-legend{min-height:29px;padding:2px;font-size:6.5px}.portal-shift-legend i{font-size:13px}
+  .portal-calendar{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}.portal-cal-head{display:flex;min-height:21px;font-size:7px}.portal-cal-day.blank{display:block}.portal-cal-day{min-height:76px;padding:4px 1px;border-radius:8px}.portal-cal-day>span{font-size:9px}.portal-cal-day.today>span{min-width:19px;height:19px}.portal-cal-day .portal-cal-shift-label{font-size:7px}.portal-cal-day .portal-shift-icon{font-size:14px}.portal-cal-day .portal-cal-time{font-size:5.7px}.portal-cal-day .portal-special-line{font-size:5.5px}
+  .portal-view-hero{padding:10px 11px}.portal-view-hero strong{font-size:15px}.portal-view-hero small{font-size:8px}
+  .portal-bottom-nav{left:5px;right:5px;bottom:4px;border-radius:16px}.portal-bottom-nav button{min-height:45px}.portal-bottom-nav i{font-size:17px}.portal-bottom-nav span{font-size:7.5px}
+  .portal-modal{max-width:100%;width:100%}
+}
