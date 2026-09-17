@@ -35499,3 +35499,138 @@ html[data-theme="dark"] #page-team-master .team-enforcement-rollout-callout-v615
   #page-team-master .team-workflow-stepper-v61528{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   #page-team-master .team-next-action-v61528 p{display:none!important}
 }
+
+
+/* ========================================================================== 
+   FIX16Y — Shift Assignment Modal Minimal / Planning Context Separation
+   ========================================================================== */
+#assignModal .assignment-modal-v61428{
+  width:min(880px,100%);
+}
+#assignModal .assignment-modal-body-v61428{
+  padding-top:10px;
+}
+#assignModal .assignment-employee-summary-v61428{
+  min-height:50px;
+  margin-bottom:8px;
+  padding:8px 10px;
+  box-shadow:none;
+}
+#assignModal .assignment-planning-context-v616y{
+  margin:0 0 8px;
+  padding:8px 10px 9px;
+  border:1px solid var(--slate-200,#e2e8f0);
+  border-radius:11px;
+  background:var(--surface,#fff);
+  box-shadow:none;
+}
+#assignModal .assignment-planning-context-head-v616y{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:6px;
+}
+#assignModal .assignment-planning-context-head-v616y strong{
+  color:var(--slate-700,#334155);
+  font-size:10.5px;
+  font-weight:850;
+}
+#assignModal .assignment-planning-context-head-v616y small{
+  color:var(--slate-400,#94a3b8);
+  font-size:10px;
+  white-space:nowrap;
+}
+#assignModal .assignment-planning-status-v616y{
+  margin-top:0!important;
+  gap:5px!important;
+}
+#assignModal .assignment-planning-status-v616y .rule-kpi-v6120{
+  min-height:48px!important;
+  padding:6px 8px!important;
+  border-radius:8px!important;
+  background:var(--slate-50,#f8fafc);
+  box-shadow:none!important;
+}
+#assignModal .assignment-planning-status-v616y .rule-kpi-v6120 span{
+  font-size:9.5px!important;
+  font-weight:750;
+}
+#assignModal .assignment-planning-status-v616y .rule-kpi-v6120 strong{
+  margin:1px 0!important;
+  font-size:11.5px!important;
+  line-height:1.2;
+}
+#assignModal .assignment-planning-status-v616y .rule-kpi-v6120 small{
+  font-size:9.5px!important;
+  line-height:1.15!important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#assignModal .assignment-planning-status-v616y .rule-kpi-v6120.ok{
+  border-color:var(--slate-200,#e2e8f0);
+}
+#assignModal .assignment-planning-status-v616y .rule-kpi-v6120.ok strong{
+  color:var(--slate-700,#334155);
+}
+#assignModal .assignment-planning-status-v616y .rule-kpi-v6120.warn{
+  border-color:#fed7aa;
+  background:#fffaf5;
+}
+#assignModal .assignment-planning-status-v616y .rule-kpi-v6120.danger{
+  border-color:#fecaca;
+  background:#fff8f8;
+}
+#assignModal .assignment-planning-status-v616y .rest-transition-advice-v61431{
+  grid-column:1/-1;
+  margin:0 0 2px;
+  padding:7px 8px;
+  border-radius:8px;
+  box-shadow:none;
+}
+#assignModal .assign-rule-shell-v6120{
+  margin-bottom:8px;
+  padding:8px;
+  border:1px solid var(--slate-200,#e2e8f0);
+  background:var(--surface,#fff);
+  box-shadow:none;
+}
+#assignModal .assign-rule-head-v6120{
+  margin-bottom:6px;
+}
+#assignModal .assign-mode-card-v6120{
+  min-height:54px;
+  padding:6px 7px;
+  box-shadow:none;
+}
+#assignModal .assignment-shift-section-v61428,
+#assignModal .assignment-meta-section-v61428{
+  box-shadow:none;
+}
+#assignModal .assignment-save-policy-v61428{
+  min-height:42px;
+  padding:7px 9px;
+  box-shadow:none;
+}
+body.theme-dark #assignModal .assignment-planning-context-v616y,
+.dark #assignModal .assignment-planning-context-v616y{
+  background:#121b26;
+  border-color:#334155;
+}
+body.theme-dark #assignModal .assignment-planning-context-head-v616y strong,
+.dark #assignModal .assignment-planning-context-head-v616y strong{color:#dbe7f2}
+body.theme-dark #assignModal .assignment-planning-context-head-v616y small,
+.dark #assignModal .assignment-planning-context-head-v616y small{color:#8fa3b7}
+body.theme-dark #assignModal .assignment-planning-status-v616y .rule-kpi-v6120,
+.dark #assignModal .assignment-planning-status-v616y .rule-kpi-v6120{
+  background:#172331;
+  border-color:#33475b;
+}
+body.theme-dark #assignModal .assignment-planning-status-v616y .rule-kpi-v6120.ok strong,
+.dark #assignModal .assignment-planning-status-v616y .rule-kpi-v6120.ok strong{color:#dbe7f2}
+@media(max-width:700px){
+  #assignModal .assignment-planning-context-head-v616y small{display:none}
+  #assignModal .assignment-planning-status-v616y{grid-template-columns:1fr!important}
+  #assignModal .assignment-planning-status-v616y .rule-kpi-v6120{min-height:0!important}
+}

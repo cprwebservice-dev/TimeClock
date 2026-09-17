@@ -33165,14 +33165,17 @@ ${names}${extra}
   function ensureAssignmentUi(){
     if($('assignWorkModeV6120'))return;
     const info=$('assignEmployeeInfo');if(!info)return;
-    info.insertAdjacentHTML('afterend',`<section class="assign-rule-shell-v6120">
+    info.insertAdjacentHTML('afterend',`<section class="assignment-planning-context-v616y">
+      <div class="assignment-planning-context-head-v616y"><strong>ข้อมูลประกอบการจัดกะ</strong><small>ตรวจพักต่อเนื่องและโควต้าอัตโนมัติ</small></div>
+      <div class="schedule-rule-status-v6120 assignment-planning-status-v616y" id="assignRuleStatusV6120"></div>
+    </section>
+    <section class="assign-rule-shell-v6120">
       <div class="assign-rule-head-v6120"><div><span><b class="assignment-step-v61428">1</b> รูปแบบการทำงานของวันนี้</span><strong id="assignModeTitleV6120">เลือกประเภทการจัดกะ</strong></div><small>เลือก 1 รูปแบบ • ระบบกรองตามสิทธิ์และหน่วยงาน</small></div>
       <input type="hidden" id="assignWorkModeV6120" value="NORMAL">
       <div class="assign-mode-grid-v6120" id="assignModeGridV6120"></div>
       <div class="assign-mode-fields-v6120 hidden" id="assignSplitWaitFieldsV6120"><div class="form-row-3"><div class="field"><label>ออกจากกะช่วงแรก *</label><input class="input" type="time" id="assignFirstEndV6120" value="15:00"><small class="field-help">เช่น 15:00 น.</small></div><div class="field"><label>กลับเข้าทำงาน *</label><input class="input" type="time" id="assignSecondStartV6120" value="21:00"><small class="field-help">ช่วงรอจะไม่นับเป็นเวลาทำงาน</small></div><div class="field"><label>คาดว่างานเสร็จ *</label><input class="input" type="time" id="assignSecondEndV6120" value="01:00"><small class="field-help">ใช้ตรวจพักขั้นต่ำ 6 ชม. กะถัดไป</small></div></div><div class="split-wait-preview-v6120" id="assignSplitPreviewV6120"></div></div>
       <div class="assign-mode-fields-v6120 hidden" id="assignHourFieldsV6120"><div class="form-row"><div class="field"><label>เวลาเริ่มกะ *</label><input class="input" type="time" id="assignHourStartV6120" value="04:00"></div><div class="field"><label>เวลาสิ้นสุดกะ</label><div class="hour-end-preview-v6120" id="assignHourEndV6120">-</div><small class="field-help">คำนวณอัตโนมัติจากชั่วโมงรวมพักของรูปแบบ 5/6 วัน</small></div></div></div>
       <div class="assign-mode-fields-v6120 hidden" id="assignOffFieldsV6120"><div class="dynamic-off-preview-v6120" id="assignOffPreviewV6120">ระบบจะอ้างอิงกะทำงานล่าสุดย้อนหลังข้ามเดือน และใช้กะตั้งต้นเมื่อไม่มีประวัติ</div></div>
-      <div class="schedule-rule-status-v6120" id="assignRuleStatusV6120"></div>
     </section>`);
     const templateField=$('assignWorkTemplate')?.closest('.field');if(templateField)templateField.classList.add('assignment-system-template-v6120');
     const customerRowV61449=$('assignCustomerWindowRow');
@@ -36194,3 +36197,5 @@ ${names}${extra}
 ;document.documentElement.dataset.fix16v='ATTENDANCE_ORG_COMPACT_SUBLINE';
 
 /* FIX16X Schedule Readiness UX: modal preflight before ta_assign_shift_with_work_plan_v6144 */
+
+/* FIX16Y Shift Assignment Modal Minimal: planning context separated from shift selection */
