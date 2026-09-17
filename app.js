@@ -12752,6 +12752,35 @@ window.tcIsDayShiftCode = value =>
       );
 
       try {
+        // FIX16X: run the canonical Auto Readiness preflight before the write RPC.
+        // This keeps expected business blockers (employment/profile/team readiness)
+        // out of PostgREST HTTP 400 while the DB trigger remains the final authority.
+        const readinessEmpV616X = String(val("assignEmpCode") || "").trim();
+        const readinessDateV616X = String(val("assignWorkDate") || "").slice(0,10);
+        if (readinessEmpV616X && readinessDateV616X) {
+          const readinessResponseV616X = await state.client.rpc(
+            "ta_validate_schedule_readiness_v616t",
+            {
+              p_rows: [{
+                emp_code: readinessEmpV616X,
+                work_date: readinessDateV616X
+              }]
+            }
+          );
+          if (readinessResponseV616X.error) {
+            if (!window.TimeClockShiftAPI?.missingFunction?.(readinessResponseV616X.error)) {
+              throw readinessResponseV616X.error;
+            }
+          } else if (readinessResponseV616X.data?.allowed === false) {
+            const firstBlockV616X = Array.isArray(readinessResponseV616X.data?.blocked)
+              ? readinessResponseV616X.data.blocked[0]
+              : null;
+            const blockerCodeV616X = firstBlockV616X?.code || "SCHEDULE_READINESS_REQUIRED";
+            const blockerMessageV616X = firstBlockV616X?.message || "พนักงานยังไม่พร้อมสำหรับการจัดกะ";
+            throw new Error(`${blockerCodeV616X}: ${blockerMessageV616X}`);
+          }
+        }
+
         const atomicCtxV61510 = window.TimeClockEmployeeRequestAtomicV61510;
         const atomicSpecialV61510 = Boolean(
           atomicCtxV61510
@@ -15203,6 +15232,10 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("TEAM_REQUIRED_FOR_CAR")) return "พนักงานกลุ่มรถยนต์ยังไม่มีทีมที่มีผลในวันที่เลือก กรุณากำหนดทีมก่อนจัดกะ";
       if (msg.includes("TEAM_REQUIRED_FOR_MOTORCYCLE")) return "พนักงานกลุ่มมอเตอร์ไซค์ยังไม่มีทีมที่มีผลในวันที่เลือก กรุณาจัดเข้าทีมก่อนจัดกะ";
       if (msg.includes("TEAM_REQUIRED_FOR_SUPPORT")) return "พนักงานกลุ่มสนับสนุนยังไม่มีทีมที่มีผลในวันที่เลือก กรุณาจัดเข้าทีมก่อนจัดกะ";
+      if (msg.includes("TEAM_NOT_READY_FOR_SCHEDULE")) return "ทีมของพนักงานยังไม่พร้อมใช้งานตามจำนวนสมาชิกหรือสถานะทีมในวันที่เลือก กรุณาตรวจทีมก่อนจัดกะ";
+      if (msg.includes("TEAM_MEMBERSHIP_REQUIRED_BEFORE_SCHEDULE")) return "พนักงานยังไม่มีทีมที่มีผลในวันที่เลือก กรุณาจัดเข้าทีมก่อนจัดกะ";
+      if (msg.includes("SCHEDULE_ROW_INVALID")) return "ข้อมูลพนักงานหรือวันที่จัดกะไม่สมบูรณ์ กรุณาตรวจข้อมูลแล้วลองใหม่";
+      if (msg.includes("SCHEDULE_READINESS_REQUIRED")) return "พนักงานยังไม่พร้อมสำหรับการจัดกะ กรุณาตรวจวันเริ่มงาน/วันลาออก รูปแบบการปฏิบัติงาน และทีม";
       if (msg.includes("EMPLOYEE_RESIGNED") || msg.includes("EMPLOYEE_RESIGN_DATE_REACHED")) return "ไม่สามารถจัดกะตั้งแต่วันที่ลาออกเป็นต้นไป กรุณาตรวจวันที่ลาออกใน Employee Master";
       if (msg.includes("EMPLOYEE_NOT_STARTED")) return "ไม่สามารถจัดกะก่อนวันเริ่มงานพนักงานได้ กรุณาตรวจวันที่เริ่มงานและวันที่ของกะ";
       if (msg.includes("EMPLOYEE_START_DATE_REQUIRED")) return "ไม่พบวันเริ่มงานพนักงาน กรุณาตรวจ Employee Master ก่อนดำเนินการ";
@@ -36159,3 +36192,5 @@ ${names}${extra}
 ;document.documentElement.dataset.fix16u='ATTENDANCE_CANONICAL_ORG_MINIMAL_LAYOUT';
 
 ;document.documentElement.dataset.fix16v='ATTENDANCE_ORG_COMPACT_SUBLINE';
+
+/* FIX16X Schedule Readiness UX: modal preflight before ta_assign_shift_with_work_plan_v6144 */
