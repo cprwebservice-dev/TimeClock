@@ -4007,6 +4007,74 @@ window.tcIsDayShiftCode = value =>
       return rows.map(row=>({...row}));
     }
 
+
+    // FIX16Q — Canonical Organization display/filter binding.
+    // Keep legacy `department` untouched for backward-compatible RPC/business rules;
+    // UI pages use these canonical metadata fields instead.
+    function canonicalScopeEmployeeMetaMapV616Q(rows = []) {
+      const map = new Map();
+      (Array.isArray(rows) ? rows : []).forEach(row => {
+        const empCode = String(row?.emp_code || row?.EmployeeId || '').trim();
+        if (empCode) map.set(empCode,row);
+      });
+      return map;
+    }
+
+    function applyCanonicalOrgMetaV616Q(row,meta) {
+      if (!row || !meta) return row;
+      const orgId=String(meta?.org_id || '').trim();
+      const orgCode=String(meta?.org_code || '').trim();
+      const orgName=String(meta?.org_name || '').trim();
+      const area=String(meta?.area || '').trim();
+      const subArea=String(meta?.sub_area || '').trim();
+      if (orgId) row._canonical_org_id_v616q=orgId;
+      if (orgCode) row._canonical_org_code_v616q=orgCode;
+      if (orgName) row._canonical_org_name_v616q=orgName;
+      if (area) row._canonical_area_v616q=area;
+      if (subArea) row._canonical_sub_area_v616q=subArea;
+      row._canonical_org_label_v616q=[orgCode,orgName].filter(Boolean).join(' · ') || orgName || orgCode || '';
+      return row;
+    }
+
+    function canonicalOrgNameV616Q(row) {
+      return String(
+        row?._canonical_org_name_v616q
+        || row?._team_org_name_v616l
+        || row?.org_name
+        || row?.department
+        || ''
+      ).trim();
+    }
+
+    function canonicalOrgCodeV616Q(row) {
+      return String(
+        row?._canonical_org_code_v616q
+        || row?._team_org_code_v61123
+        || row?.org_code
+        || ''
+      ).trim();
+    }
+
+    function canonicalOrgLabelV616Q(row) {
+      const explicit=String(row?._canonical_org_label_v616q || '').trim();
+      if (explicit) return explicit;
+      const code=canonicalOrgCodeV616Q(row);
+      const name=canonicalOrgNameV616Q(row);
+      return [code,name].filter(Boolean).join(' · ') || name || code || 'ไม่ระบุหน่วยงาน';
+    }
+
+    function canonicalOrgIdentityV616Q(row) {
+      return String(row?._canonical_org_id_v616q || row?.org_id || row?.department || '').trim();
+    }
+
+    function canonicalAreaV616Q(row) {
+      return String(row?._canonical_area_v616q || row?.area || row?.zone || '').trim();
+    }
+
+    function canonicalSubAreaV616Q(row) {
+      return String(row?._canonical_sub_area_v616q || row?.sub_area || '').trim();
+    }
+
     // FIX16K — Scope Contract helpers. UI filters are only a convenience layer;
     // every data RPC remains the final permission boundary. These helpers prevent
     // impossible Area > Sub-area > Department combinations from being selectable.
@@ -6350,7 +6418,9 @@ window.tcIsDayShiftCode = value =>
         );
         state.schedule.forEach(row => {
           const empCode = String(row?.emp_code || '').trim();
-          scheduleMergeEmployeeMeta(row, scheduleEmployeeMetaMapV6129.get(empCode));
+          const employeeMetaV616Q = scheduleEmployeeMetaMapV6129.get(empCode);
+          scheduleMergeEmployeeMeta(row, employeeMetaV616Q);
+          applyCanonicalOrgMetaV616Q(row,employeeMetaV616Q);
         });
 
         const expectedPersonEmployees =
@@ -6918,7 +6988,7 @@ window.tcIsDayShiftCode = value =>
 
     function scheduleUnitLabel(row) {
       return String(
-        row?.department
+        canonicalOrgNameV616Q(row)
         || row?.sub_area
         || row?.area
         || row?.zone
@@ -11769,7 +11839,7 @@ window.tcIsDayShiftCode = value =>
             ? `<span class="schedule-self-readonly-badge" title="ตนเอง • ดูอย่างเดียว — Manager ดูกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง" aria-label="ตนเอง ดูอย่างเดียว"><svg class="schedule-self-readonly-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.75"></circle></svg></span>`
             : "";
 
-        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${borrowWindowBadgeV61529F15L}${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${borrowWindowBadgeV61529F15L}${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(canonicalOrgNameV616Q(obj.meta) || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];
@@ -15019,6 +15089,15 @@ window.tcIsDayShiftCode = value =>
       loadScopedAreaDepartmentOptionsV616K,
       loadAuthorizedOrgContractV616L,
       scopedDepartmentOptionsV616L,
+      loadScopeEmployeeOptionsV616O,
+      canonicalScopeEmployeeMetaMapV616Q,
+      applyCanonicalOrgMetaV616Q,
+      canonicalOrgNameV616Q,
+      canonicalOrgCodeV616Q,
+      canonicalOrgLabelV616Q,
+      canonicalOrgIdentityV616Q,
+      canonicalAreaV616Q,
+      canonicalSubAreaV616Q,
       selectedOrgIdV616M,
       selectedLegacyDepartmentV616M,
       selectedDepartmentDisplayV616M,
@@ -21232,7 +21311,8 @@ ${skippedSummary(compatibility.skipped)}
     const shift=$('employeePatternShiftFilterV61416')?.value||'ALL';
     return (wp.employees||[]).filter(row=>{
       const period=shiftPeriodFromCodeV61416(employeeEffectiveDefaultShiftV61416(row));
-      return (department==='ALL'||String(row.department||'')===department)
+      const orgIdentity=app()?.canonicalOrgIdentityV616Q?.(row)||String(row.department||'');
+      return (department==='ALL'||String(orgIdentity)===department)
         && (pattern==='ALL'||String(row.pattern_code)===pattern)
         && (shift==='ALL'||period===shift);
     });
@@ -21240,10 +21320,16 @@ ${skippedSummary(compatibility.skipped)}
   function fillEmployeePatternDepartmentFilterV61416(){
     const select=$('employeePatternDepartmentFilterV61416');if(!select)return;
     const current=select.value||'ALL';
-    const values=[...new Set((wp.employees||[]).map(r=>String(r.department||'').trim()).filter(Boolean))]
-      .sort((a,b)=>a.localeCompare(b,'th',{numeric:true,sensitivity:'base'}));
-    select.innerHTML='<option value="ALL">ทุกหน่วยงาน</option>'+values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
-    select.value=values.includes(current)?current:'ALL';
+    const optionMap=new Map();
+    (wp.employees||[]).forEach(row=>{
+      const value=String(app()?.canonicalOrgIdentityV616Q?.(row)||row?.department||'').trim();
+      if(!value||optionMap.has(value))return;
+      const label=String(app()?.canonicalOrgLabelV616Q?.(row)||row?.department||value).trim()||value;
+      optionMap.set(value,label);
+    });
+    const options=[...optionMap.entries()].sort((a,b)=>a[1].localeCompare(b[1],'th',{numeric:true,sensitivity:'base'}));
+    select.innerHTML='<option value="ALL">ทุกหน่วยงานใน Scope</option>'+options.map(([value,label])=>`<option value="${esc(value)}">${esc(label)}</option>`).join('');
+    select.value=optionMap.has(current)?current:'ALL';
   }
   function renderEmployeePatternSummaryV61416(rows=currentFilteredEmployeePatternsV61416()){
     const set=(id,v)=>{const n=$(id);if(n)n.textContent=Number(v||0).toLocaleString('th-TH');};
@@ -21282,7 +21368,7 @@ ${skippedSummary(compatibility.skipped)}
       return `<tr class="employee-pattern-row-v61111 employee-pattern-row-v61416 ${r.has_assignment?'is-assigned':'is-unassigned'} ${selected?'is-selected':''}" data-wp-row-emp="${esc(r.emp_code)}">
         <td class="select-col"><input type="checkbox" class="wp-row-check-v61416" data-wp-select-emp="${esc(r.emp_code)}" ${selected?'checked':''} aria-label="เลือก ${esc(r.full_name||r.emp_code)}"></td>
         <td><div class="wp-employee-v61416"><strong>${esc(r.full_name||'-')}</strong><small>${esc(r.emp_code)}</small></div></td>
-        <td><div class="wp-org-v61416"><strong>${esc(r.department||'-')}</strong><small>${esc([r.area,r.sub_area].filter(Boolean).join(' / ')||'')}</small></div></td>
+        <td><div class="wp-org-v61416"><strong>${esc(app()?.canonicalOrgNameV616Q?.(r)||r.department||'-')}</strong><small>${esc([app()?.canonicalOrgCodeV616Q?.(r),app()?.canonicalAreaV616Q?.(r),app()?.canonicalSubAreaV616Q?.(r)].filter(Boolean).join(' • ')||'')}</small></div></td>
         <td><div class="wp-position-v61417"><span>${esc(r.position_name||'-')}</span></div></td>
         <td><div class="employee-pattern-type-v61111"><strong class="wp-pattern-chip-v61416 ${r.pattern_code==='TECH_5D'?'five':'six'}">${esc(patternShortLabelV61416(r.pattern_code))}</strong><span class="assignment-state-v61111 ${assignmentState.cls}">${esc(assignmentState.text)}</span>${String(r.month_consistency_status||'').toUpperCase()==='LEGACY_MIDMONTH'?'<small class="wp-month-legacy-v61419">ข้อมูลเดิมกลางเดือน</small>':''}</div></td>
         <td><div class="wp-shift-chip-v61416 ${period.toLowerCase()}"><span class="icon">${period==='NIGHT'?'☾':'☀'}</span><span><strong>${esc(period==='NIGHT'?'กะดึก':'กะเช้า')} • ${esc(shiftCode)}</strong><small>${esc(shiftInfo.time)} • ${esc(source)}</small></span></div></td>
@@ -21320,6 +21406,27 @@ ${skippedSummary(compatibility.skipped)}
         console.warn('V6.14.19 canonical employee pattern reader unavailable:',readerError);
         if(warning){warning.classList.remove('hidden');warning.textContent='ยังไม่ได้ติดตั้ง SQL V6.14.19 • Reader/Writer แบบรายเดือนยังไม่พร้อม';}
         throw readerError;
+      }
+
+      // FIX16Q: Work Pattern employee list/filter uses the same Canonical
+      // Organization Scope as Schedule/Attendance.  Do not build the Department
+      // selector from legacy Employee.department values.
+      try{
+        const scopeEndV616Q=workPatternMonthEndV61419(referenceMonth)||effectiveDate;
+        const contractV616Q=await app()?.loadAuthorizedOrgContractV616L?.(effectiveDate,scopeEndV616Q);
+        if(contractV616Q?.strict){
+          const scopeRowsV616Q=await app()?.loadScopeEmployeeOptionsV616O?.(null,effectiveDate,scopeEndV616Q)||[];
+          const scopeMapV616Q=app()?.canonicalScopeEmployeeMetaMapV616Q?.(scopeRowsV616Q)||new Map();
+          rows=(rows||[])
+            .filter(r=>scopeMapV616Q.has(String(r?.emp_code||'').trim()))
+            .map(r=>{
+              const copy={...r};
+              app()?.applyCanonicalOrgMetaV616Q?.(copy,scopeMapV616Q.get(String(r?.emp_code||'').trim()));
+              return copy;
+            });
+        }
+      }catch(scopeErrorV616Q){
+        console.warn('Work Pattern Canonical Org binding FIX16Q:',scopeErrorV616Q);
       }
 
       wp.employees=rows.map(r=>({
@@ -21368,7 +21475,7 @@ ${skippedSummary(compatibility.skipped)}
     ensureWpModals();
     const r=wp.employees.find(x=>String(x.emp_code)===String(emp));if(!r)return;
     $('epEmpCode').value=r.emp_code;
-    $('epEmployee').innerHTML=`<strong>${esc(r.emp_code)} • ${esc(r.full_name||'')}</strong><small>${esc([r.department,r.position_name].filter(Boolean).join(' • ')||'-')}</small>`;
+    $('epEmployee').innerHTML=`<strong>${esc(r.emp_code)} • ${esc(r.full_name||'')}</strong><small>${esc([app()?.canonicalOrgNameV616Q?.(r)||r.department,r.position_name].filter(Boolean).join(' • ')||'-')}</small>`;
     const patternCode=r.pattern_code||'TECH_6D';
     $('epPattern').value=patternCode;
     $('epPattern').disabled=false;
@@ -33982,7 +34089,14 @@ ${names}${extra}
   function applyTeamFilter(){
     const q=String($("teamPortalSearchV61482")?.value||"").trim().toLowerCase();
     const st=String($("teamPortalStatusV61482")?.value||"").toUpperCase();
-    team.filtered=team.rows.filter(r=>(!st||String(r.portal_status).toUpperCase()===st)&&(!q||`${r.emp_code||""} ${r.full_name||""} ${r.position_name||""} ${r.department||""} ${r.zone||""} ${r.area||""} ${r.sub_area||""}`.toLowerCase().includes(q)));
+    team.filtered=team.rows.filter(r=>{
+      const orgName=app()?.canonicalOrgNameV616Q?.(r)||r.department||"";
+      const orgCode=app()?.canonicalOrgCodeV616Q?.(r)||"";
+      const area=app()?.canonicalAreaV616Q?.(r)||r.zone||r.area||"";
+      const subArea=app()?.canonicalSubAreaV616Q?.(r)||r.sub_area||"";
+      return (!st||String(r.portal_status).toUpperCase()===st)
+        &&(!q||`${r.emp_code||""} ${r.full_name||""} ${r.position_name||""} ${orgName} ${orgCode} ${area} ${subArea}`.toLowerCase().includes(q));
+    });
     renderTeam();
   }
 
@@ -34003,7 +34117,12 @@ ${names}${extra}
       if(status==="ACTIVE") action=`<button class="btn btn-light btn-sm" data-portal-reset-pin-v61482="${esc(r.emp_code)}">Reset PIN</button>`;
       else if(["READY","ACTIVATION_READY"].includes(status)) action=`<button class="btn btn-primary btn-sm" data-portal-activation-v61482="${esc(r.emp_code)}">${status==="ACTIVATION_READY"?"สร้าง Code ใหม่":"สร้าง Activation Code"}</button>`;
       else action='<span class="portal-action-hint-v61482">รอ HR เปิดสิทธิ์</span>';
-      return `<tr><td><strong>${esc(r.emp_code)}</strong><small>${esc(r.full_name||"-")}</small></td><td><strong>${esc(r.position_name||"-")}</strong><small>${esc(r.department||"-")} • ${esc(r.zone||r.area||"-")} ${r.sub_area?`/ ${esc(r.sub_area)}`:""}</small></td><td>${statusBadge(status)}${r.activation_expires_at&&status==="ACTIVATION_READY"?`<small>หมดอายุ ${esc(fmtDateTime(r.activation_expires_at))}</small>`:""}</td><td>${esc(fmtDateTime(r.last_login_at))}</td><td>${action}</td></tr>`;
+      const orgName=app()?.canonicalOrgNameV616Q?.(r)||r.department||"-";
+      const orgCode=app()?.canonicalOrgCodeV616Q?.(r)||"";
+      const area=app()?.canonicalAreaV616Q?.(r)||r.zone||r.area||"-";
+      const subArea=app()?.canonicalSubAreaV616Q?.(r)||r.sub_area||"";
+      const orgLocation=[orgCode,area,subArea].filter(Boolean).join(' • ');
+      return `<tr><td><strong>${esc(r.emp_code)}</strong><small>${esc(r.full_name||"-")}</small></td><td><strong>${esc(r.position_name||"-")}</strong><small>${esc(orgName)}${orgLocation?` • ${esc(orgLocation)}`:""}</small></td><td>${statusBadge(status)}${r.activation_expires_at&&status==="ACTIVATION_READY"?`<small>หมดอายุ ${esc(fmtDateTime(r.activation_expires_at))}</small>`:""}</td><td>${esc(fmtDateTime(r.last_login_at))}</td><td>${action}</td></tr>`;
     }).join(""):'<tr><td colspan="5" class="fc-empty">ไม่พบสมาชิกทีม</td></tr>';
   }
 
@@ -34012,7 +34131,25 @@ ${names}${extra}
     app()?.showLoading?.("กำลังโหลด Employee Portal ของทีม...");
     try{
       const [rows]=await Promise.all([rpc("ta_portal_get_my_team_v61482"),loadTeamLink(false)]);
-      team.rows=Array.isArray(rows)?rows:[];team.filtered=[];renderTeam();
+      let portalRowsV616Q=Array.isArray(rows)?rows:[];
+      try{
+        const todayV616Q=app()?.calendarTodayISO?.()||new Date().toISOString().slice(0,10);
+        const contractV616Q=await app()?.loadAuthorizedOrgContractV616L?.(todayV616Q,todayV616Q);
+        if(contractV616Q?.strict){
+          const scopeRowsV616Q=await app()?.loadScopeEmployeeOptionsV616O?.(null,todayV616Q,todayV616Q)||[];
+          const scopeMapV616Q=app()?.canonicalScopeEmployeeMetaMapV616Q?.(scopeRowsV616Q)||new Map();
+          portalRowsV616Q=portalRowsV616Q
+            .filter(r=>scopeMapV616Q.has(String(r?.emp_code||'').trim()))
+            .map(r=>{
+              const copy={...r};
+              app()?.applyCanonicalOrgMetaV616Q?.(copy,scopeMapV616Q.get(String(r?.emp_code||'').trim()));
+              return copy;
+            });
+        }
+      }catch(scopeErrorV616Q){
+        console.warn('Portal Canonical Org binding FIX16Q:',scopeErrorV616Q);
+      }
+      team.rows=portalRowsV616Q;team.filtered=[];renderTeam();
     }catch(e){toast(human(e),"error");if($("teamPortalBodyV61482"))$("teamPortalBodyV61482").innerHTML=`<tr><td colspan="5" class="fc-empty">${esc(human(e))}</td></tr>`;}
     finally{app()?.hideLoading?.();}
   }
@@ -34021,7 +34158,9 @@ ${names}${extra}
     team.lastActivation=result||null;
     const modal=$("teamPortalActivationModalV61482");if(!modal)return;
     $("teamPortalActivationTitleV61482").textContent=result?.reset_pin?"Reset PIN • Activation ใหม่":"Activation Code";
-    $("teamPortalActivationPersonV61482").innerHTML=`<strong>${esc(result?.emp_code||"-")} • ${esc(result?.full_name||"-")}</strong><small>${esc(result?.position_name||"")} ${result?.department?`• ${esc(result.department)}`:""}</small>`;
+    const portalRowV616Q=team.rows.find(r=>String(r?.emp_code||'')===String(result?.emp_code||''));
+    const activationOrgV616Q=portalRowV616Q?(app()?.canonicalOrgNameV616Q?.(portalRowV616Q)||portalRowV616Q.department||''):(result?.department||'');
+    $("teamPortalActivationPersonV61482").innerHTML=`<strong>${esc(result?.emp_code||"-")} • ${esc(result?.full_name||"-")}</strong><small>${esc(result?.position_name||"")} ${activationOrgV616Q?`• ${esc(activationOrgV616Q)}`:""}</small>`;
     $("teamPortalActivationCodeV61482").textContent=result?.activation_code||"------";
     $("teamPortalActivationExpireV61482").textContent=`หมดอายุ ${fmtDateTime(result?.activation_expires_at)}`;
     modal.classList.remove("hidden");modal.setAttribute("aria-hidden","false");
@@ -35725,3 +35864,5 @@ ${names}${extra}
   }
   document.addEventListener('DOMContentLoaded',bind);
 })();
+
+;document.documentElement.dataset.orgCanonicalUi='V6.15.29-FIX16Q';
