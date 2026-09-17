@@ -2624,12 +2624,30 @@ window.tcIsDayShiftCode = value =>
       }
 
       const f = data || {};
+      const orgContractV616L = await loadAuthorizedOrgContractV616L(
+        val("dashStart"),
+        val("dashEnd")
+      );
+      const rawZonesV616L = Array.isArray(f.zones) ? f.zones : [];
+      const rawDepartmentsV616L = Array.isArray(f.departments) ? f.departments : [];
+      const zonesV616L = scopedLocationValuesV616L(
+        rawZonesV616L,
+        orgContractV616L,
+        ["zone","area"]
+      );
+      const departmentOptionsV616L = scopedDepartmentOptionsV616L(
+        rawDepartmentsV616L,
+        orgContractV616L
+      );
+      const departmentsV616L = departmentOptionsV616L.map(option => option.value);
+
       let shiftRows = Array.isArray(f.shifts) ? f.shifts : [];
       const shiftResponse = await state.client.rpc("ta_get_shift_master_v651");
       if (!shiftResponse.error && Array.isArray(shiftResponse.data)) shiftRows = shiftResponse.data;
       state.filters = {
-        zones: Array.isArray(f.zones) ? f.zones : [],
-        departments: Array.isArray(f.departments) ? f.departments : [],
+        zones: zonesV616L,
+        departments: departmentsV616L,
+        departmentOptionsV616L,
         employees: Array.isArray(f.employees) ? f.employees : [],
         shifts: shiftRows,
         attendance: state.filters.attendance || {
@@ -2640,7 +2658,9 @@ window.tcIsDayShiftCode = value =>
         }
       };
       ["dashZone","scheduleZone","reportZone"].forEach(id => fillSelect(id, state.filters.zones, "ทุกพื้นที่"));
-      ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id => fillSelect(id, state.filters.departments, "ทุกหน่วยงาน"));
+      ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id =>
+        fillScopedDepartmentSelectV616L(id, departmentOptionsV616L, "ทุกหน่วยงาน")
+      );
       fillShiftSelect();
       populateSharedEmployeeMasterList();
     }
@@ -3399,6 +3419,10 @@ window.tcIsDayShiftCode = value =>
       const oldSubArea = preserve ? String(val("attSubArea") || "") : "";
       const oldDepartment = preserve ? String(val("attDepartment") || "") : "";
       try {
+        const orgContractV616L = await loadAuthorizedOrgContractV616L(
+          val("attStart"),
+          val("attEnd")
+        );
         // Area-level scope first. Do not let a stale Sub-area constrain the parent list.
         let response = await state.client.rpc(
           "ta_get_attendance_filter_options_v61022",
@@ -3419,7 +3443,11 @@ window.tcIsDayShiftCode = value =>
         }
 
         let f = response.data || {};
-        let areas = Array.isArray(f.areas) ? f.areas : [];
+        let areas = scopedLocationValuesV616L(
+          Array.isArray(f.areas) ? f.areas : [],
+          orgContractV616L,
+          ["area","zone"]
+        );
         let effectiveArea = oldArea && areas.some(v => String(v) === oldArea) ? oldArea : "";
 
         // If a manually typed/stale Area is invalid, reload the full authorized Area list.
@@ -3435,10 +3463,18 @@ window.tcIsDayShiftCode = value =>
           );
           if (response.error) throw response.error;
           f = response.data || {};
-          areas = Array.isArray(f.areas) ? f.areas : [];
+          areas = scopedLocationValuesV616L(
+            Array.isArray(f.areas) ? f.areas : [],
+            orgContractV616L,
+            ["area","zone"]
+          );
         }
 
-        let subAreas = Array.isArray(f.sub_areas) ? f.sub_areas : [];
+        let subAreas = scopedLocationValuesV616L(
+          Array.isArray(f.sub_areas) ? f.sub_areas : [],
+          orgContractV616L,
+          ["sub_area"]
+        );
         let departments = Array.isArray(f.departments) ? f.departments : [];
 
         // Employee options are the most concrete scope source for the hierarchy.
@@ -3457,6 +3493,7 @@ window.tcIsDayShiftCode = value =>
           }
         }
 
+        subAreas = scopedLocationValuesV616L(subAreas,orgContractV616L,["sub_area"]);
         let effectiveSubArea = oldSubArea && subAreas.some(v => String(v) === oldSubArea)
           ? oldSubArea
           : "";
@@ -3483,10 +3520,21 @@ window.tcIsDayShiftCode = value =>
           }
         }
 
+        areas = scopedLocationValuesV616L(areas,orgContractV616L,["area","zone"]);
+        subAreas = scopedLocationValuesV616L(subAreas,orgContractV616L,["sub_area"]);
+        effectiveArea = effectiveArea && areas.includes(effectiveArea) ? effectiveArea : "";
+        effectiveSubArea = effectiveSubArea && subAreas.includes(effectiveSubArea) ? effectiveSubArea : "";
+        const attendanceDepartmentOptionsV616L = scopedDepartmentOptionsV616L(
+          departments,
+          orgContractV616L
+        );
+        departments = attendanceDepartmentOptionsV616L.map(option => option.value);
+
         state.filters.attendance = {
           areas,
           sub_areas: subAreas,
           departments,
+          departmentOptionsV616L: attendanceDepartmentOptionsV616L,
           employees: state.filters.attendance.employees || []
         };
         fillSearchableAttendanceFilter("attZone","attZoneOptions",areas,"ทุกพื้นที่");
@@ -3557,6 +3605,138 @@ window.tcIsDayShiftCode = value =>
       }
     }
 
+    // FIX16L — Organization Scope Contract. Organization Structure + Manager/Acting
+    // scope is the UI source of truth. Legacy filter values remain the submitted
+    // values so existing Dashboard/Attendance/Schedule readers stay compatible.
+    const orgScopeContractV616L = {
+      cache: new Map(),
+      ttl: 60000
+    };
+
+    function orgScopeNormalizeV616L(value) {
+      return String(value || "")
+        .trim()
+        .toLocaleLowerCase("th-TH")
+        .replace(/\s+/g," ");
+    }
+
+    function orgScopeTextArrayV616L(value) {
+      if (Array.isArray(value)) return value;
+      if (value == null || value === "") return [];
+      if (typeof value === "string") {
+        const text = value.trim();
+        if (!text) return [];
+        if (text.startsWith("{") && text.endsWith("}")) {
+          return text.slice(1,-1).split(",").map(v => v.replace(/^"|"$/g,"").trim()).filter(Boolean);
+        }
+      }
+      return [value];
+    }
+
+    async function loadAuthorizedOrgContractV616L(startDate,endDate) {
+      const start = String(startDate || todayISO()).slice(0,10);
+      const end = String(endDate || start).slice(0,10);
+      const key = `${start}|${end}`;
+      const cached = orgScopeContractV616L.cache.get(key);
+      if (cached && Date.now() - cached.loadedAt <= orgScopeContractV616L.ttl) {
+        return cached;
+      }
+
+      let response = await state.client.rpc(
+        "ta_get_authorized_org_units_v616l",
+        { p_start_date:start, p_end_date:end }
+      );
+      let strict = true;
+      if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        strict = false;
+        response = await state.client.rpc(
+          "ta_get_schedule_org_units_v61529f15o",
+          { p_start_date:start, p_end_date:end }
+        );
+      }
+      if (response.error) throw response.error;
+
+      const contract = {
+        loadedAt: Date.now(),
+        strict,
+        start,
+        end,
+        units: Array.isArray(response.data) ? response.data : []
+      };
+      orgScopeContractV616L.cache.set(key,contract);
+      return contract;
+    }
+
+    function orgUnitDepartmentAliasesV616L(unit) {
+      return [
+        unit?.org_name,
+        unit?.org_code,
+        ...orgScopeTextArrayV616L(unit?.department_filter_values)
+      ].map(orgScopeNormalizeV616L).filter(Boolean);
+    }
+
+    function scopedDepartmentOptionsV616L(values,contract) {
+      const raw = [...new Set((Array.isArray(values) ? values : [])
+        .map(value => String(value || "").trim()).filter(Boolean))];
+      if (!contract?.strict) {
+        return raw.map(value => ({value,label:value,org_id:null,org_code:null}));
+      }
+      const units = Array.isArray(contract?.units) ? contract.units : [];
+      if (!units.length) return [];
+
+      const aliasMap = new Map();
+      units.forEach(unit => {
+        orgUnitDepartmentAliasesV616L(unit).forEach(alias => {
+          if (!aliasMap.has(alias)) aliasMap.set(alias,[]);
+          aliasMap.get(alias).push(unit);
+        });
+      });
+
+      return raw.map(value => {
+        const matches = aliasMap.get(orgScopeNormalizeV616L(value)) || [];
+        if (!matches.length) return null;
+        const unit = matches[0];
+        const duplicate = matches.length > 1;
+        const name = String(unit?.org_name || value).trim() || value;
+        const code = String(unit?.org_code || "").trim();
+        return {
+          value,
+          label: duplicate && code ? `${name} (${code})` : name,
+          org_id: unit?.org_id || null,
+          org_code: code || null
+        };
+      }).filter(Boolean);
+    }
+
+    function scopedLocationValuesV616L(values,contract,fields=[]) {
+      const raw = [...new Set((Array.isArray(values) ? values : [])
+        .map(value => String(value || "").trim()).filter(Boolean))];
+      if (!contract?.strict) return raw;
+      const units = Array.isArray(contract?.units) ? contract.units : [];
+      const allowed = new Set();
+      units.forEach(unit => fields.forEach(field => {
+        const key = orgScopeNormalizeV616L(unit?.[field]);
+        if (key) allowed.add(key);
+      }));
+      // If the Organization Master has no value for this dimension, keep the
+      // already server-scoped legacy choices rather than hiding a valid scope.
+      if (!allowed.size) return raw;
+      return raw.filter(value => allowed.has(orgScopeNormalizeV616L(value)));
+    }
+
+    function fillScopedDepartmentSelectV616L(id,options,allLabel) {
+      const el = $(id);
+      if (!el) return;
+      const old = el.value;
+      const rows = Array.isArray(options) ? options : [];
+      el.innerHTML = `<option value="">${safe(allLabel)}</option>` + rows.map(option => {
+        const value = String(option?.value ?? option ?? "").trim();
+        const label = String(option?.label ?? value).trim() || value;
+        return `<option value="${safe(value)}" data-org-code="${safe(option?.org_code || "")}" data-org-id="${safe(option?.org_id || "")}">${safe(label)}</option>`;
+      }).join("");
+      if ([...el.options].some(option => option.value === old)) el.value = old;
+    }
+
     // FIX16K — Scope Contract helpers. UI filters are only a convenience layer;
     // every data RPC remains the final permission boundary. These helpers prevent
     // impossible Area > Sub-area > Department combinations from being selectable.
@@ -3621,7 +3801,12 @@ window.tcIsDayShiftCode = value =>
           }
         );
         if (base.error) throw base.error;
-        const areas = Array.isArray(base.data?.areas) ? base.data.areas : [];
+        const orgContractV616L = await loadAuthorizedOrgContractV616L(start,end);
+        const areas = scopedLocationValuesV616L(
+          Array.isArray(base.data?.areas) ? base.data.areas : [],
+          orgContractV616L,
+          ["area","zone"]
+        );
         fillSelect(areaId,areas,"ทุกพื้นที่");
         const area = oldArea && areas.some(v => String(v) === oldArea) ? oldArea : "";
         setVal(areaId,area);
@@ -3640,13 +3825,17 @@ window.tcIsDayShiftCode = value =>
           if (response.error) throw response.error;
           scoped = response.data || {};
         }
-        const departments = Array.isArray(scoped.departments) ? scoped.departments : [];
-        fillSelect(departmentId,departments,"ทุกหน่วยงาน");
+        const departmentOptionsV616L = scopedDepartmentOptionsV616L(
+          Array.isArray(scoped.departments) ? scoped.departments : [],
+          orgContractV616L
+        );
+        const departments = departmentOptionsV616L.map(option => option.value);
+        fillScopedDepartmentSelectV616L(departmentId,departmentOptionsV616L,"ทุกหน่วยงาน");
         const department = oldDepartment && departments.some(v => String(v) === oldDepartment)
           ? oldDepartment
           : "";
         setVal(departmentId,department);
-        return {areas,departments,area,department};
+        return {areas,departments,departmentOptionsV616L,area,department};
       } catch (error) {
         console.warn("Scoped Area/Department options FIX16K:",error);
         return null;
@@ -5389,19 +5578,20 @@ window.tcIsDayShiftCode = value =>
         });
       }
 
-      const zones =
-        Array.isArray(
-          result.zones
-        )
-          ? result.zones
-          : [];
-
-      const departments =
-        Array.isArray(
-          result.departments
-        )
-          ? result.departments
-          : [];
+      const orgContractV616L = await loadAuthorizedOrgContractV616L(
+        period.startDate,
+        period.endDate
+      );
+      const zones = scopedLocationValuesV616L(
+        Array.isArray(result.zones) ? result.zones : [],
+        orgContractV616L,
+        ["zone","area"]
+      );
+      const departmentOptionsV616L = scopedDepartmentOptionsV616L(
+        Array.isArray(result.departments) ? result.departments : [],
+        orgContractV616L
+      );
+      const departments = departmentOptionsV616L.map(option => option.value);
 
       fillSelect(
         "scheduleZone",
@@ -5424,9 +5614,9 @@ window.tcIsDayShiftCode = value =>
           : ""
       );
 
-      fillSelect(
+      fillScopedDepartmentSelectV616L(
         "scheduleDepartment",
-        departments,
+        departmentOptionsV616L,
         "ทุกหน่วยงาน"
       );
 
@@ -6611,16 +6801,22 @@ window.tcIsDayShiftCode = value =>
       if (cache.loadedUnits && cache.loadedKey === cacheKey) return cache.units;
 
       try {
-        const { data, error } = await state.client.rpc(
-          'ta_get_schedule_org_units_v61529f15o',
+        let response = await state.client.rpc(
+          'ta_get_authorized_org_units_v616l',
           {
             p_start_date: startDate,
             p_end_date: endDate
           }
         );
-        if (error) throw error;
+        if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          response = await state.client.rpc(
+            'ta_get_schedule_org_units_v61529f15o',
+            { p_start_date:startDate, p_end_date:endDate }
+          );
+        }
+        if (response.error) throw response.error;
 
-        cache.units = Array.isArray(data) ? data : [];
+        cache.units = Array.isArray(response.data) ? response.data : [];
         cache.byCode.clear();
         cache.byName.clear();
         cache.units.forEach(unit => {
@@ -6771,6 +6967,7 @@ window.tcIsDayShiftCode = value =>
             row._team_manager_names_v61123 = names;
             row._team_org_id_v61123 = request.unit.org_id;
             row._team_org_code_v61123 = request.unit.org_code;
+            row._team_org_name_v616l = request.unit.org_name || row.department || "";
           });
         }));
       }
@@ -14554,6 +14751,8 @@ window.tcIsDayShiftCode = value =>
       enrichAttendanceWorkSegmentsV6118,
       loadAttendanceFilterOptions,
       loadScopedAreaDepartmentOptionsV616K,
+      loadAuthorizedOrgContractV616L,
+      scopedDepartmentOptionsV616L,
       loadAttendanceEmployeeOptions,
       attendanceEmployeeCodesForQuery,
       selectAttendanceEmployees,
