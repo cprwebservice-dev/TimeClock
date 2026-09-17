@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
 window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16u-attendance-canonical-org-minimal";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16v-attendance-org-compact";
 
 
 /* ===== js/config.js ===== */
@@ -5611,6 +5611,30 @@ window.tcIsDayShiftCode = value =>
       return group?.legacy?'':String(group?.label||'').trim();
     }
 
+    // FIX16V — Attendance uses a compact Team label inside the Organization cell.
+    // Do not repeat org_code or long operational instructions in the row subtitle.
+    function attendanceTeamCompactLabelV616V(row){
+      const ctx=scheduleTeamContextMetaV61526(row);
+      if(!ctx)return '';
+      const teamCode=String(ctx.team_code||'').trim();
+      const teamName=String(ctx.team_name||'').trim();
+      if(teamCode||teamName){
+        if(teamCode&&teamName&&teamCode.toLowerCase()!==teamName.toLowerCase())return `${teamCode} · ${teamName}`;
+        return teamName||teamCode;
+      }
+      const state=String(ctx.assignment_state||'').trim().toUpperCase();
+      if(state==='UNCLASSIFIED')return 'รอกำหนดรูปแบบ';
+      if(['CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(state))return 'รอจัดทีม';
+      if(['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(state))return 'ยืมตัว';
+      return '';
+    }
+
+    function attendanceOrgSublineV616V(row){
+      const code=canonicalOrgCodeV616Q(row);
+      const team=attendanceTeamCompactLabelV616V(row);
+      return [code,team].filter(Boolean).join(' • ');
+    }
+
     function teamOptionsFromRowsV616T(rows){
       const groups=new Map();
       (rows||[]).forEach(row=>{
@@ -5887,7 +5911,7 @@ window.tcIsDayShiftCode = value =>
           <td data-att-col="work_date" class="nowrap">${formatDate(r.work_date)}</td>
           <td data-att-col="emp_code">${safe(r.emp_code)}</td>
           <td data-att-col="full_name" class="nowrap">${safe(r.full_name)}</td>
-          <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${safe(canonicalOrgNameV616Q(r)||r.department||'-')}</strong><small>${safe([canonicalOrgCodeV616Q(r),attendanceTeamLabelV616U(r)].filter(Boolean).join(' • ')||'')}</small></div></td>
+          <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${safe(canonicalOrgNameV616Q(r)||r.department||'-')}</strong><small>${safe(attendanceOrgSublineV616V(r)||'')}</small></div></td>
           <td data-att-col="zone" class="${optionalClass("zone").trim()}">${safe(r.zone || r.area)}</td>
           <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${safe(r.sub_area)}</td>
           <td data-att-col="pattern_code">${badge(r.pattern_code||"-","badge-blue")}</td>
@@ -15337,6 +15361,8 @@ window.tcIsDayShiftCode = value =>
       canonicalAreaV616Q,
       canonicalSubAreaV616Q,
       attendanceTeamLabelV616U,
+      attendanceTeamCompactLabelV616V,
+      attendanceOrgSublineV616V,
       selectedOrgIdV616M,
       selectedLegacyDepartmentV616M,
       selectedDepartmentDisplayV616M,
@@ -18045,7 +18071,7 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="work_date" class="nowrap sticky-att-1"><div class="attendance-date-cell-v61462"><strong>${fmtDate(r.work_date)}</strong><small>${new Date(`${String(r.work_date).slice(0,10)}T00:00:00`).toLocaleDateString("th-TH",{weekday:"short"})}</small></div></td>
             <td data-att-col="emp_code" class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td>
             <td data-att-col="full_name" class="nowrap">${esc(r.full_name)}</td>
-            <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${esc(app()?.canonicalOrgNameV616Q?.(r)||r.department||"-")}</strong><small>${esc([app()?.canonicalOrgCodeV616Q?.(r),app()?.attendanceTeamLabelV616U?.(r)].filter(Boolean).join(" • ")||"")}</small></div></td>
+            <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${esc(app()?.canonicalOrgNameV616Q?.(r)||r.department||"-")}</strong><small>${esc(app()?.attendanceOrgSublineV616V?.(r)||"")}</small></div></td>
             <td data-att-col="zone" class="${optionalClass("zone").trim()}">${esc(r.zone||r.area||"-")}</td>
             <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${esc(r.sub_area||"-")}</td>
             <td data-att-col="pattern_code"><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td>
@@ -36131,3 +36157,5 @@ ${names}${extra}
 ;document.documentElement.dataset.fix16t1='AUTO_READINESS_TEAM_CENTRIC_MINIMAL_RUNTIME_FIX';
 
 ;document.documentElement.dataset.fix16u='ATTENDANCE_CANONICAL_ORG_MINIMAL_LAYOUT';
+
+;document.documentElement.dataset.fix16v='ATTENDANCE_ORG_COMPACT_SUBLINE';

@@ -35174,3 +35174,23 @@ body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-employee-org-
   #page-attendance .attendance-filter-actions{grid-column:1/-1}
   #page-attendance .attendance-grid-table{min-width:1500px!important}
 }
+
+
+/* ========================================================================== 
+   V6.15.29 FIX16V — Attendance Organization compact subtitle
+   ========================================================================== */
+#page-attendance .attendance-org-cell-v616u{
+  max-width:190px;
+}
+#page-attendance .attendance-org-cell-v616u small{
+  display:block;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#page-attendance .attendance-grid-table td[data-att-col="department"]{
+  width:190px;
+  min-width:190px;
+  max-width:190px;
+}
