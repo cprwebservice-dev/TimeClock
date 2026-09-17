@@ -743,9 +743,10 @@ window.tcIsDayShiftCode = value =>
   const scheduleReadCacheV61463 = new Map();
   const SCHEDULE_READ_CACHE_TTL_V61463 = 60000;
 
-  // FIX16M — org_id is the canonical Department identity. The existing
-  // Schedule range RPC keeps its stable signature, so a selected org_id is
-  // converted to the exact employee set before the range reader is called.
+  // FIX16N — org_id remains the canonical Department identity, and the
+  // ALL/blank Department state now means "all Organization Units inside the
+  // actor's authorized Scope". It must never fall back to the wider legacy
+  // employee/day list for Manager/Acting runtime reads.
   const scheduleOrgEmployeeCodesCacheV616M = new Map();
   const ORG_UUID_RE_V616M = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -755,16 +756,16 @@ window.tcIsDayShiftCode = value =>
   }
 
   async function scheduleOrgEmployeeCodesV616M(client,orgId,startDate,endDate) {
-    if (!orgId) return null;
-    const key = `${orgId}|${startDate}|${endDate}`;
+    const id = String(orgId || '').trim() || null;
+    const key = `${id || 'ALL_SCOPE'}|${startDate}|${endDate}`;
     const hit = scheduleOrgEmployeeCodesCacheV616M.get(key);
     if (hit && Date.now() - hit.loadedAt <= 60000) return [...hit.codes];
     const {data,error} = await client.rpc('ta_get_org_employee_codes_v616m',{
-      p_org_id:orgId,p_start_date:startDate,p_end_date:endDate
+      p_org_id:id,p_start_date:startDate,p_end_date:endDate
     });
     if (error) {
       if (missingFunction(error)) {
-        throw new Error('ORG_IDENTITY_FILTER_RPC_REQUIRED: กรุณารัน SQL FIX16M');
+        throw new Error('STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N');
       }
       throw error;
     }
@@ -855,27 +856,29 @@ window.tcIsDayShiftCode = value =>
     const orgIdV616M = String(params.p_org_id || scheduleOrgIdentityValueV616M(rawDepartmentV616M) || '').trim() || null;
     let effectiveEmpCodesV616M = params.p_emp_codes ?? null;
 
-    if (orgIdV616M) {
-      const orgCodesV616M = await scheduleOrgEmployeeCodesV616M(
-        client,orgIdV616M,rangeStartDate,rangeEndDate
-      );
-      const allowedV616M = new Set(orgCodesV616M || []);
-      if (Array.isArray(effectiveEmpCodesV616M)) {
-        effectiveEmpCodesV616M = effectiveEmpCodesV616M
-          .map(scheduleText)
-          .filter(code => code && allowedV616M.has(code));
-      } else {
-        effectiveEmpCodesV616M = [...allowedV616M];
-      }
-      // Empty array must never mean ALL employees to a legacy RPC.
-      if (!effectiveEmpCodesV616M.length) return [];
+    // FIX16N: resolve the employee set even when Department is blank/ALL.
+    // The backend returns all employees inside the authorized Organization
+    // Scope for Manager/Acting, while Viewer compatibility remains own-access.
+    const orgCodesV616M = await scheduleOrgEmployeeCodesV616M(
+      client,orgIdV616M,rangeStartDate,rangeEndDate
+    );
+    const allowedV616M = new Set(orgCodesV616M || []);
+    if (Array.isArray(effectiveEmpCodesV616M)) {
+      effectiveEmpCodesV616M = effectiveEmpCodesV616M
+        .map(scheduleText)
+        .filter(code => code && allowedV616M.has(code));
+    } else {
+      effectiveEmpCodesV616M = [...allowedV616M];
     }
+    // Empty array must never mean ALL employees to the canonical Schedule RPC.
+    if (!effectiveEmpCodesV616M.length) return [];
 
     const rpcArgs = {
       p_start_date: rangeStartDate,
       p_end_date: rangeEndDate,
       p_zone: params.p_zone ?? null,
       p_department: orgIdV616M ? null : rawDepartmentV616M,
+      p_org_id: orgIdV616M,
       p_emp_codes: effectiveEmpCodesV616M,
       p_schedule_statuses: params.p_schedule_statuses ?? null
     };
@@ -901,7 +904,7 @@ window.tcIsDayShiftCode = value =>
       from < maxRows;
       from += pageSize
     ) {
-      const scheduleRpcName = "ta_get_schedule_range_light_v61425";
+      const scheduleRpcName = "ta_get_schedule_range_light_v616n";
       let request = client.rpc(scheduleRpcName,rpcArgs);
 
       if (!disableRangePaging) {
@@ -928,7 +931,7 @@ window.tcIsDayShiftCode = value =>
       if(response.error) {
         if(missingFunction(response.error)) {
           throw new Error(
-            "SCHEDULE_DAYOFF_V61425_REQUIRED: กรุณารัน SQL V6.14.25 เพื่อให้ทุกหน้าจัดกะใช้การคำนวณวันหยุดชุดเดียวกัน"
+            "STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N เพื่อให้ Schedule ใช้ Organization Scope เดียวกับ Attendance"
           );
         }
         throw response.error;
@@ -2694,7 +2697,7 @@ window.tcIsDayShiftCode = value =>
       };
       ["dashZone","scheduleZone","reportZone"].forEach(id => fillSelect(id, state.filters.zones, "ทุกพื้นที่"));
       ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id =>
-        fillScopedDepartmentSelectV616L(id, departmentOptionsV616L, "ทุกหน่วยงาน")
+        fillScopedDepartmentSelectV616L(id, departmentOptionsV616L, "ทุกหน่วยงานใน Scope")
       );
       fillShiftSelect();
       populateSharedEmployeeMasterList();
@@ -3288,7 +3291,7 @@ window.tcIsDayShiftCode = value =>
           );
 
           if(response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
-            if (orgIdV616M) throw new Error("ORG_IDENTITY_FILTER_RPC_REQUIRED: กรุณารัน SQL FIX16M");
+            if (orgIdV616M) throw new Error("STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N");
             const legacyArgs = {
               p_start_date:argsV616M.p_start_date,p_end_date:argsV616M.p_end_date,
               p_area:argsV616M.p_area,p_sub_area:argsV616M.p_sub_area,
@@ -3578,14 +3581,19 @@ window.tcIsDayShiftCode = value =>
         fillSearchableAttendanceFilter("attZone","attZoneOptions",areas,"ทุกพื้นที่");
         fillSearchableAttendanceFilter("attSubArea","attSubAreaOptions",subAreas,"ทุกพื้นที่ย่อย");
         fillSearchableDepartmentIdentityV616M(
-          "attDepartment","attDepartmentOptions",attendanceDepartmentOptionsV616L,"ทุกหน่วยงาน"
+          "attDepartment","attDepartmentOptions",attendanceDepartmentOptionsV616L,"ทุกหน่วยงานใน Scope"
         );
 
         setVal("attZone",effectiveArea);
         setVal("attSubArea",effectiveSubArea);
-        const effectiveDepartment = departmentOptionPreservedValueV616M(
+        let effectiveDepartment = departmentOptionPreservedValueV616M(
           oldDepartment,attendanceDepartmentOptionsV616L,{input:true}
         );
+        // When Scope resolves to exactly one Organization Unit, show it
+        // explicitly instead of leaving a misleading blank "all" field.
+        if (!effectiveDepartment && attendanceDepartmentOptionsV616L.length === 1) {
+          effectiveDepartment = String(attendanceDepartmentOptionsV616L[0]?.label || '').trim();
+        }
         setVal("attDepartment",effectiveDepartment);
       } catch (err) {
         toast(`โหลดตัวกรองรายละเอียดเวลาไม่สำเร็จ: ${humanError(err)}`, "error");
@@ -3929,16 +3937,15 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function loadOrgEmployeeCodesV616M(orgId,startDate,endDate) {
-      const id=String(orgId||'').trim();
-      if(!id) return null;
+      const id=String(orgId||'').trim() || null;
       const start=String(startDate||todayISO()).slice(0,10);
       const end=String(endDate||start).slice(0,10);
-      const key=`EMP|${id}|${start}|${end}`;
+      const key=`EMP|${id || 'ALL_SCOPE'}|${start}|${end}`;
       const hit=orgScopeContractV616L.cache.get(key);
       if(hit && Date.now()-hit.loadedAt<=orgScopeContractV616L.ttl) return [...hit.codes];
       const {data,error}=await state.client.rpc('ta_get_org_employee_codes_v616m',{p_org_id:id,p_start_date:start,p_end_date:end});
       if(error) {
-        if(window.TimeClockShiftAPI?.missingFunction?.(error)) throw new Error('ORG_IDENTITY_FILTER_RPC_REQUIRED: กรุณารัน SQL FIX16M');
+        if(window.TimeClockShiftAPI?.missingFunction?.(error)) throw new Error('STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N');
         throw error;
       }
       const codes=[...new Set((data||[]).map(row=>String(row?.emp_code||'').trim()).filter(Boolean))];
@@ -4040,7 +4047,7 @@ window.tcIsDayShiftCode = value =>
           {area}
         );
         const departments = departmentOptionsV616L.map(option => option.value);
-        fillScopedDepartmentSelectV616L(departmentId,departmentOptionsV616L,"ทุกหน่วยงาน");
+        fillScopedDepartmentSelectV616L(departmentId,departmentOptionsV616L,"ทุกหน่วยงานใน Scope");
         const department = departmentOptionPreservedValueV616M(oldDepartment,departmentOptionsV616L);
         setVal(departmentId,department);
         return {areas,departments,departmentOptionsV616L,area,department};
@@ -4680,7 +4687,7 @@ window.tcIsDayShiftCode = value =>
           p_zone:argsV616M.p_zone,p_department:legacyDepartmentV616M
         };
         if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
-          if (orgIdV616M) throw new Error("ORG_IDENTITY_FILTER_RPC_REQUIRED: กรุณารัน SQL FIX16M");
+          if (orgIdV616M) throw new Error("STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N");
           response = await state.client.rpc("ta_get_dashboard_overview_v61463", args);
         }
         if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
@@ -4942,7 +4949,7 @@ window.tcIsDayShiftCode = value =>
           )
       ) {
         if (orgIdV616M) {
-          throw new Error("ORG_IDENTITY_FILTER_RPC_REQUIRED: กรุณารัน SQL FIX16M");
+          throw new Error("STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N");
         }
         const legacyArgs = {
           p_start_date:
@@ -5802,16 +5809,22 @@ window.tcIsDayShiftCode = value =>
       fillScopedDepartmentSelectV616L(
         "scheduleDepartment",
         departmentOptionsV616L,
-        "ทุกหน่วยงาน"
+        "ทุกหน่วยงานใน Scope"
       );
 
-      const preservedDepartmentV616M = departmentOptionPreservedValueV616M(
+      let preservedDepartmentV616M = departmentOptionPreservedValueV616M(
         oldDepartment,departmentOptionsV616L
       );
+      if (!preservedDepartmentV616M && departmentOptionsV616L.length === 1) {
+        preservedDepartmentV616M = String(departmentOptionsV616L[0]?.value || '').trim();
+      }
       setVal("scheduleDepartment",preservedDepartmentV616M);
 
+      // FIX16N: an empty Department selection is ALL authorized orgs, not the
+      // wider legacy User Scope. Always intersect the employee selector with
+      // the strict Organization runtime contract.
       const selectedOrgIdV616MValue = selectedOrgIdV616M("scheduleDepartment");
-      if (selectedOrgIdV616MValue && Array.isArray(result.employees)) {
+      if (Array.isArray(result.employees)) {
         const orgCodesV616M = new Set(await loadOrgEmployeeCodesV616M(
           selectedOrgIdV616MValue,period.startDate,period.endDate
         ));
