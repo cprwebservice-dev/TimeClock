@@ -35015,3 +35015,162 @@ tbody td{font-size:var(--type-table)!important;line-height:1.45!important}
 @media(max-width:980px){.person-team-group-control-v616t{order:2}.attendance-filter-team-v616t{min-width:0}}
 
 #teamEnforcementRolloutModalV61529[data-legacy-only-v616t="true"]{display:none!important}
+
+/* ========================================================================== 
+   V6.15.29 FIX16U — Attendance Canonical Org + Minimal Balance
+   ========================================================================== */
+#page-attendance .attendance-hero-v61462{
+  margin-bottom:10px;
+  padding:14px 16px;
+  gap:16px;
+  border:1px solid var(--slate-200,#e2e8f0);
+  border-radius:14px;
+  background:var(--surface,#fff);
+  box-shadow:none;
+}
+#page-attendance .attendance-hero-eyebrow-v61462{margin-bottom:2px;font-size:9.5px;letter-spacing:.1em}
+#page-attendance .attendance-hero-v61462 h2{font-size:20px;line-height:1.25}
+#page-attendance .attendance-hero-v61462 p{margin-top:4px;font-size:11px;line-height:1.45}
+#page-attendance .attendance-hero-chips-v61462{gap:6px;margin-top:8px}
+#page-attendance .attendance-hero-chips-v61462 span{padding:4px 8px;border-radius:8px;font-size:9.5px;background:var(--slate-50,#f8fafc)}
+#page-attendance .attendance-month-nav-v61462{gap:6px}
+#page-attendance .attendance-month-nav-v61462 .btn{min-height:34px;padding:0 11px;border-radius:8px;font-size:11px}
+
+#page-attendance .attendance-filter-panel-v61462,
+#page-attendance .attendance-enterprise-tools,
+#page-attendance .attendance-table-panel-v61462{
+  border:1px solid var(--slate-200,#e2e8f0);
+  border-radius:14px;
+  box-shadow:none;
+}
+#page-attendance .attendance-filter-panel-v61462>.panel-body{padding:14px 16px}
+#page-attendance .attendance-filter-heading-v61462{margin-bottom:12px;padding-bottom:9px}
+#page-attendance .attendance-filter-heading-v61462 strong{font-size:12px}
+#page-attendance .attendance-filter-heading-v61462 span,
+#page-attendance .attendance-filter-heading-v61462 small{font-size:9.5px}
+#page-attendance .attendance-filter-heading-v61462 small{padding:4px 7px;border-radius:7px;background:var(--slate-50,#f8fafc);color:var(--slate-600,#475569)}
+
+@media(min-width:1451px){
+  #page-attendance .attendance-filter-grid{
+    grid-template-columns:repeat(6,minmax(0,1fr));
+    gap:10px 10px;
+  }
+  #page-attendance .attendance-filter-employee{grid-column:span 3}
+  #page-attendance .attendance-filter-status{grid-column:span 1}
+  #page-attendance .attendance-filter-actions{
+    grid-column:span 2;
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    align-self:end;
+    gap:7px;
+  }
+}
+#page-attendance .attendance-filter-field label,
+#page-attendance .attendance-filter-employee>label{min-height:16px;margin-bottom:5px;font-size:9.5px}
+#page-attendance .attendance-filter-field .input,
+#page-attendance .attendance-filter-field .select,
+#page-attendance .attendance-employee-toggle,
+#page-attendance .attendance-searchable-filter{
+  height:40px;
+  min-height:40px;
+  border-radius:8px;
+  font-size:11.5px;
+  box-shadow:none;
+}
+#page-attendance .attendance-filter-actions{padding-top:0;margin:0}
+#page-attendance .attendance-filter-actions .btn{
+  width:100%;
+  min-width:0;
+  min-height:40px;
+  padding:0 10px;
+  border-radius:8px;
+  font-size:10.5px;
+}
+#page-attendance .attendance-filter-actions #attendancePrintBtn{min-width:0}
+
+#page-attendance .attendance-employee-dropdown{
+  width:min(420px,calc(100vw - 32px));
+  border-radius:11px;
+  box-shadow:0 12px 30px rgba(15,23,42,.14);
+}
+#page-attendance .attendance-employee-search{padding:9px}
+#page-attendance .attendance-employee-actions{gap:5px;padding:7px 9px}
+#page-attendance .attendance-employee-actions .btn{font-size:9.5px}
+#page-attendance .attendance-employee-list{max-height:310px;padding:4px}
+#page-attendance .attendance-employee-option{min-height:54px;padding:7px 8px;border-radius:8px}
+#page-attendance .attendance-employee-primary,
+#page-attendance .attendance-employee-primary b,
+#page-attendance .attendance-employee-primary span{font-size:10.5px!important}
+#page-attendance .attendance-employee-name small{margin-top:3px;font-size:9.5px;line-height:1.3}
+#page-attendance .attendance-employee-org-v616u{color:var(--slate-700,#334155);font-weight:700}
+#page-attendance .attendance-employee-location-v616u{color:var(--slate-400,#94a3b8)}
+#page-attendance .attendance-employee-location-v616u:empty{display:none}
+#page-attendance .attendance-employee-pagination{min-height:42px;padding:6px 9px}
+#page-attendance .attendance-employee-pagination span{font-size:9.5px}
+
+#page-attendance .attendance-enterprise-tools{margin-top:10px}
+#page-attendance .attendance-enterprise-tools>.panel-body{padding:11px 14px}
+#page-attendance .attendance-result-toolbar{align-items:center;margin-bottom:9px}
+#page-attendance .attendance-result-heading h3{font-size:11.5px}
+#page-attendance .attendance-result-heading p{margin-top:2px;font-size:9.5px}
+#page-attendance .attendance-result-toolbar .attendance-page-size-field{flex-basis:122px}
+#page-attendance .attendance-result-toolbar .attendance-page-size-field label{margin-bottom:4px;font-size:9.5px}
+#page-attendance .attendance-result-toolbar .attendance-page-size-field .select{height:36px;min-height:36px;border-radius:7px;font-size:10.5px}
+#page-attendance .attendance-grid-summary{grid-template-columns:repeat(8,minmax(86px,1fr));gap:7px;margin:0}
+#page-attendance .attendance-mini-kpi{
+  min-height:54px;
+  padding:8px 10px;
+  border-radius:9px;
+  box-shadow:none!important;
+  transform:none!important;
+}
+#page-attendance .attendance-mini-kpi:before{width:3px}
+#page-attendance .attendance-mini-kpi span{min-height:auto;font-size:9px;line-height:1.25}
+#page-attendance .attendance-mini-kpi strong{margin-top:4px;font-size:16px;line-height:1}
+
+#page-attendance .attendance-table-panel-v61462{margin-top:10px!important}
+#page-attendance .attendance-table-panel-v61462>.panel-header{padding:10px 14px;background:var(--surface,#fff)}
+#page-attendance .attendance-table-panel-v61462>.panel-header h3{font-size:11.5px}
+#page-attendance .attendance-table-panel-v61462>.panel-header p{font-size:9.5px}
+#page-attendance .attendance-column-controls{gap:6px;padding:7px 12px}
+#page-attendance .attendance-column-controls strong,
+#page-attendance .attendance-column-controls label,
+#page-attendance .attendance-column-controls small{font-size:9px}
+#page-attendance .attendance-column-controls label{padding:4px 7px;border-radius:7px}
+#page-attendance .attendance-table-panel-v61462>.panel-body{padding:0 10px 10px}
+#page-attendance .attendance-table-panel-v61462 .table-wrap{border-radius:10px;max-height:64vh!important}
+#page-attendance .attendance-grid-table{min-width:1640px!important}
+#page-attendance .attendance-grid-table th,
+#page-attendance .attendance-grid-table td{padding:7px 8px;font-size:10px;line-height:1.25}
+#page-attendance .attendance-grid-table thead th{font-size:9.5px;white-space:nowrap}
+#page-attendance .attendance-grid-table td[data-att-col="department"]{min-width:170px;max-width:210px}
+#page-attendance .attendance-grid-table td[data-att-col="full_name"]{min-width:128px;max-width:170px}
+#page-attendance .attendance-grid-table td[data-att-col="work_date"]{min-width:82px}
+#page-attendance .attendance-grid-table .sticky-att-2{left:82px}
+#page-attendance .attendance-org-cell-v616u{display:flex;min-width:0;flex-direction:column;gap:2px}
+#page-attendance .attendance-org-cell-v616u strong{overflow:hidden;color:var(--slate-800,#1e293b);font-size:10px;font-weight:800;text-overflow:ellipsis;white-space:nowrap}
+#page-attendance .attendance-org-cell-v616u small{overflow:hidden;color:var(--slate-500,#64748b);font-size:8.8px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+#page-attendance .attendance-pagination{padding:8px 2px 0}
+#page-attendance .attendance-pagination .btn{min-height:34px;padding:0 10px;border-radius:7px;font-size:9.5px}
+#page-attendance .attendance-pagination .page-info{font-size:9.5px}
+
+html[data-theme="dark"] #page-attendance .attendance-hero-v61462,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-hero-v61462{
+  background:var(--surface,#0f172a);
+  border-color:rgba(148,163,184,.18);
+}
+html[data-theme="dark"] #page-attendance .attendance-org-cell-v616u strong,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-org-cell-v616u strong{color:#e2e8f0}
+html[data-theme="dark"] #page-attendance .attendance-employee-org-v616u,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-employee-org-v616u{color:#cbd5e1}
+
+@media(max-width:1450px){
+  #page-attendance .attendance-filter-grid{gap:9px}
+  #page-attendance .attendance-filter-employee{grid-column:span 2}
+  #page-attendance .attendance-grid-summary{grid-template-columns:repeat(4,minmax(95px,1fr))}
+}
+@media(max-width:920px){
+  #page-attendance .attendance-hero-v61462{align-items:flex-start;flex-direction:column}
+  #page-attendance .attendance-filter-actions{grid-column:1/-1}
+  #page-attendance .attendance-grid-table{min-width:1500px!important}
+}

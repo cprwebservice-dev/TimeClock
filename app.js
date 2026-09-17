@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
 window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16t1-auto-readiness-team-centric-minimal";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16u-attendance-canonical-org-minimal";
 
 
 /* ===== js/config.js ===== */
@@ -2246,8 +2246,9 @@ window.tcIsDayShiftCode = value =>
         ["work_date","วันที่",r => formatDate(r.work_date)],
         ["emp_code","รหัส",r => r.emp_code],
         ["full_name","ชื่อ-นามสกุล",r => r.full_name],
-        ["department","หน่วยงาน",r => r.department],
-        ["zone","พื้นที่",r => r.zone || r.area],
+        ["department","หน่วยงาน",r => canonicalOrgNameV616Q(r) || r.department],
+        ["team","ทีม",r => attendanceTeamLabelV616U(r)],
+        ["zone","พื้นที่",r => canonicalAreaV616Q(r) || r.zone || r.area],
         ["sub_area","พื้นที่ย่อย",r => r.sub_area],
         ["pattern_code","รูปแบบงาน",r => r.pattern_code],
         ["template_code","รูปแบบช่วงงาน",r => workTemplateLabelV6118(r.template_code)],
@@ -2861,13 +2862,17 @@ window.tcIsDayShiftCode = value =>
         return {
           emp_code: item.trim(),
           full_name: "",
+          position_name: "",
           department: "",
           area: "",
-          sub_area: ""
+          sub_area: "",
+          org_id: "",
+          org_code: "",
+          org_name: ""
         };
       }
 
-      return {
+      const row = {
         emp_code: String(
           item?.emp_code
           || item?.employee_id
@@ -2882,18 +2887,16 @@ window.tcIsDayShiftCode = value =>
           || item?.label
           || ""
         ).trim(),
-        department: String(
-          item?.department || ""
-        ).trim(),
-        area: String(
-          item?.area
-          || item?.zone
-          || ""
-        ).trim(),
-        sub_area: String(
-          item?.sub_area || ""
-        ).trim()
+        position_name: String(item?.position_name || "").trim(),
+        department: String(item?.department || item?.org_name || "").trim(),
+        area: String(item?.area || item?.zone || "").trim(),
+        sub_area: String(item?.sub_area || "").trim(),
+        org_id: String(item?.org_id || "").trim(),
+        org_code: String(item?.org_code || "").trim(),
+        org_name: String(item?.org_name || "").trim()
       };
+      applyCanonicalOrgMetaV616Q(row,item);
+      return row;
     }
 
     function attendanceEmployeeFilterKey() {
@@ -2917,7 +2920,7 @@ window.tcIsDayShiftCode = value =>
 
       return attendanceEmployeeFilter.options.filter(
         employee =>
-          `${employee.emp_code} ${employee.full_name}`
+          `${employee.emp_code} ${employee.full_name} ${canonicalOrgNameV616Q(employee)} ${canonicalOrgCodeV616Q(employee)} ${canonicalAreaV616Q(employee)} ${canonicalSubAreaV616Q(employee)}`
             .toLowerCase()
             .includes(term)
       );
@@ -3104,14 +3107,15 @@ window.tcIsDayShiftCode = value =>
                     )}
                   </span>
                 </strong>
-                <small>
+                <small class="attendance-employee-org-v616u">
+                  ${safe(canonicalOrgLabelV616Q(employee) || "-")}
+                </small>
+                <small class="attendance-employee-location-v616u">
                   ${safe(
                     [
-                      employee.department,
-                      employee.area,
-                      employee.sub_area
-                    ].filter(Boolean).join(" • ")
-                    || "-"
+                      canonicalAreaV616Q(employee),
+                      canonicalSubAreaV616Q(employee)
+                    ].filter(Boolean).join(" / ") || ""
                   )}
                 </small>
               </span>
@@ -3286,11 +3290,38 @@ window.tcIsDayShiftCode = value =>
             p_limit: 5000
           };
 
-          let response = await state.client.rpc(
+          // FIX16U: Employee selector uses the same Canonical Organization
+          // contract as Schedule/Portal.  Legacy attendance_workday.department
+          // is not a UI identity and must not leak into the selector.
+          let response = null;
+          try {
+            const contractV616U = await loadAuthorizedOrgContractV616L(
+              argsV616M.p_start_date,
+              argsV616M.p_end_date
+            );
+            if (contractV616U?.strict) {
+              const scopedV616U = await loadScopeEmployeeOptionsV616O(
+                orgIdV616M,
+                argsV616M.p_start_date,
+                argsV616M.p_end_date
+              );
+              const areaV616U = String(argsV616M.p_area || '').trim();
+              const subAreaV616U = String(argsV616M.p_sub_area || '').trim();
+              rows = (scopedV616U || [])
+                .filter(item => !areaV616U || canonicalAreaV616Q(item) === areaV616U)
+                .filter(item => !subAreaV616U || canonicalSubAreaV616Q(item) === subAreaV616U)
+                .map(normalizeAttendanceEmployeeOption)
+                .filter(employee => employee.emp_code);
+            }
+          } catch (canonicalSelectorErrorV616U) {
+            console.warn('Attendance Canonical employee selector FIX16U:',canonicalSelectorErrorV616U);
+          }
+
+          if (!rows) response = await state.client.rpc(
             "ta_get_attendance_employee_options_v616m",argsV616M
           );
 
-          if(response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          if(!rows && response?.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
             if (orgIdV616M) throw new Error("ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O");
             const legacyArgs = {
               p_start_date:argsV616M.p_start_date,p_end_date:argsV616M.p_end_date,
@@ -3305,11 +3336,11 @@ window.tcIsDayShiftCode = value =>
             }
           }
 
-          if(response.error) {
+          if(!rows && response?.error) {
             throw response.error;
           }
 
-          rows = (response.data || [])
+          if(!rows) rows = (response?.data || [])
             .map(normalizeAttendanceEmployeeOption)
             .filter(employee => employee.emp_code);
 
@@ -5536,6 +5567,50 @@ window.tcIsDayShiftCode = value =>
       return list;
     }
 
+    async function enrichAttendanceCanonicalOrgV616U(rows,startDate,endDate) {
+      const list=Array.isArray(rows)?rows:[];
+      if(!list.length||!startDate||!endDate)return list;
+      try{
+        const [contractV616U,scopeRowsV616U]=await Promise.all([
+          loadAuthorizedOrgContractV616L(startDate,endDate),
+          loadScopeEmployeeOptionsV616O(
+            selectedOrgIdV616M("attDepartment"),
+            startDate,
+            endDate
+          )
+        ]);
+        const orgRows=Array.isArray(contractV616U?.units)?contractV616U.units:[];
+        const orgByCode=new Map(orgRows.map(o=>[String(o?.org_code||'').trim().toLowerCase(),o]));
+        const employeeMap=canonicalScopeEmployeeMetaMapV616Q(scopeRowsV616U||[]);
+        list.forEach(row=>{
+          if(!row)return;
+          if(!row._legacy_department_v616u) row._legacy_department_v616u=String(row.department||'').trim();
+          const ctx=scheduleTeamContextMetaV61526(row);
+          const workingOrgCode=String(
+            ctx?.team_org_code
+            || ctx?.destination_org_code
+            || ctx?.employee_org_code
+            || ''
+          ).trim();
+          const pointOrg=workingOrgCode?orgByCode.get(workingOrgCode.toLowerCase()):null;
+          const employeeMeta=employeeMap.get(String(row.emp_code||'').trim());
+          applyCanonicalOrgMetaV616Q(row,pointOrg||employeeMeta);
+          if(workingOrgCode&&!row._canonical_org_code_v616q)row._canonical_org_code_v616q=workingOrgCode;
+          if(ctx?.assignment_state)row._working_assignment_state_v616u=String(ctx.assignment_state);
+        });
+      }catch(error){
+        console.warn('Attendance Canonical Org binding FIX16U:',error);
+      }
+      return list;
+    }
+
+    function attendanceTeamLabelV616U(row){
+      const ctx=scheduleTeamContextMetaV61526(row);
+      if(!ctx)return '';
+      const group=scheduleOperationalTeamGroupV61526(row);
+      return group?.legacy?'':String(group?.label||'').trim();
+    }
+
     function teamOptionsFromRowsV616T(rows){
       const groups=new Map();
       (rows||[]).forEach(row=>{
@@ -5692,6 +5767,7 @@ window.tcIsDayShiftCode = value =>
         state.attendance = mergedAttendanceRowsV61462.slice(0,5000);
 
         await enrichRowsTeamContextV616T(state.attendance,val("attStart"),val("attEnd"));
+        await enrichAttendanceCanonicalOrgV616U(state.attendance,val("attStart"),val("attEnd"));
         fillAttendanceTeamOptionsV616T(state.attendance);
         const attendanceTeamFilterV616T=String(val("attTeamV616T")||'').trim();
         if(attendanceTeamFilterV616T){
@@ -5811,7 +5887,7 @@ window.tcIsDayShiftCode = value =>
           <td data-att-col="work_date" class="nowrap">${formatDate(r.work_date)}</td>
           <td data-att-col="emp_code">${safe(r.emp_code)}</td>
           <td data-att-col="full_name" class="nowrap">${safe(r.full_name)}</td>
-          <td data-att-col="department"><span>${safe(r.department)}</span>${scheduleTeamContextMetaV61526(r)?`<small class="attendance-team-mini-v616t">${safe(scheduleOperationalTeamGroupV61526(r).label)}</small>`:""}</td>
+          <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${safe(canonicalOrgNameV616Q(r)||r.department||'-')}</strong><small>${safe([canonicalOrgCodeV616Q(r),attendanceTeamLabelV616U(r)].filter(Boolean).join(' • ')||'')}</small></div></td>
           <td data-att-col="zone" class="${optionalClass("zone").trim()}">${safe(r.zone || r.area)}</td>
           <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${safe(r.sub_area)}</td>
           <td data-att-col="pattern_code">${badge(r.pattern_code||"-","badge-blue")}</td>
@@ -15260,6 +15336,7 @@ window.tcIsDayShiftCode = value =>
       canonicalOrgIdentityV616Q,
       canonicalAreaV616Q,
       canonicalSubAreaV616Q,
+      attendanceTeamLabelV616U,
       selectedOrgIdV616M,
       selectedLegacyDepartmentV616M,
       selectedDepartmentDisplayV616M,
@@ -17895,7 +17972,7 @@ ${skippedSummary(compatibility.skipped)}
   }
   function attendanceRows(){
     const term=attGrid.search; let rows=[...(app()?.state?.attendance||[])];
-    if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,r.department,r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),statusLabel(attendanceStatus(r))].some(v=>String(v||"").toLowerCase().includes(term)));
+    if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,app()?.canonicalOrgNameV616Q?.(r)||r.department,app()?.canonicalOrgCodeV616Q?.(r),app()?.attendanceTeamLabelV616U?.(r)||"",r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),statusLabel(attendanceStatus(r))].some(v=>String(v||"").toLowerCase().includes(term)));
     const key=attGrid.sortKey,dir=attGrid.sortDir==="asc"?1:-1;
     rows.sort((a,b)=>{let av,bv;if(key==="shift_start"){av=app()?.attendanceShiftTime?.(a,"start");bv=app()?.attendanceShiftTime?.(b,"start");}else if(key==="shift_end"){av=app()?.attendanceShiftTime?.(a,"end");bv=app()?.attendanceShiftTime?.(b,"end");}else if(key==="shift_code"){av=codeOf(a);bv=codeOf(b);}else if(key==="display_status"){av=attendanceStatus(a);bv=attendanceStatus(b);}else{av=a[key];bv=b[key];}if(typeof av==="number"||typeof bv==="number")return (Number(av||0)-Number(bv||0))*dir;return String(av||"").localeCompare(String(bv||""),"th")*dir;});
     return rows;
@@ -17968,7 +18045,7 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="work_date" class="nowrap sticky-att-1"><div class="attendance-date-cell-v61462"><strong>${fmtDate(r.work_date)}</strong><small>${new Date(`${String(r.work_date).slice(0,10)}T00:00:00`).toLocaleDateString("th-TH",{weekday:"short"})}</small></div></td>
             <td data-att-col="emp_code" class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td>
             <td data-att-col="full_name" class="nowrap">${esc(r.full_name)}</td>
-            <td data-att-col="department">${esc(r.department||"-")}</td>
+            <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${esc(app()?.canonicalOrgNameV616Q?.(r)||r.department||"-")}</strong><small>${esc([app()?.canonicalOrgCodeV616Q?.(r),app()?.attendanceTeamLabelV616U?.(r)].filter(Boolean).join(" • ")||"")}</small></div></td>
             <td data-att-col="zone" class="${optionalClass("zone").trim()}">${esc(r.zone||r.area||"-")}</td>
             <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${esc(r.sub_area||"-")}</td>
             <td data-att-col="pattern_code"><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td>
@@ -18441,16 +18518,27 @@ ${skippedSummary(compatibility.skipped)}
         || row.position_name
         || "-"],
       ["หน่วยงาน",
-        employee.department
+        employee.org_name
+        || app()?.canonicalOrgNameV616Q?.(row)
+        || employee.department
         || row.department
+        || "-"],
+      ["รหัสหน่วยงาน",
+        employee.org_code
+        || app()?.canonicalOrgCodeV616Q?.(row)
+        || "-"],
+      ["ทีม",
+        app()?.attendanceTeamLabelV616U?.(row)
         || "-"],
       ["พื้นที่",
         employee.area
+        || app()?.canonicalAreaV616Q?.(row)
         || row.zone
         || row.area
         || "-"],
       ["พื้นที่ย่อย",
         employee.sub_area
+        || app()?.canonicalSubAreaV616Q?.(row)
         || row.sub_area
         || "-"]
     ];
@@ -36041,3 +36129,5 @@ ${names}${extra}
 ;document.documentElement.dataset.orgCanonicalUi='V6.15.29-FIX16Q';
 
 ;document.documentElement.dataset.fix16t1='AUTO_READINESS_TEAM_CENTRIC_MINIMAL_RUNTIME_FIX';
+
+;document.documentElement.dataset.fix16u='ATTENDANCE_CANONICAL_ORG_MINIMAL_LAYOUT';
