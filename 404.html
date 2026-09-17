@@ -454,6 +454,10 @@
 <input autocomplete="off" class="input attendance-searchable-filter" id="attDepartment" list="attDepartmentOptions" placeholder="ทุกหน่วยงาน"/>
 <datalist id="attDepartmentOptions"></datalist>
 </div>
+<div class="field attendance-filter-field attendance-filter-team-v616t">
+<label>ทีมช่างเทคนิค</label>
+<select class="select" id="attTeamV616T"><option value="">ทุกทีม</option></select>
+</div>
 <div class="field attendance-employee-field attendance-filter-employee">
 <label>ชื่อพนักงาน</label>
 <div class="attendance-employee-multi" id="attEmployeeMulti">
@@ -708,6 +712,13 @@
   <div class="person-days-segment-v61412">
     <button type="button" class="person-days-btn-v61412" data-person-days-mode="15D">15 วัน</button>
     <button type="button" class="person-days-btn-v61412" data-person-days-mode="MONTH">เต็มเดือน</button>
+  </div>
+</div>
+<div class="person-team-group-control-v616t" aria-label="การจัดกลุ่มตารางรายบุคคล">
+  <span>จัดกลุ่ม</span>
+  <div class="person-team-group-segment-v616t">
+    <button type="button" class="active" data-person-team-group-v616t="TEAM">ตามทีม</button>
+    <button type="button" data-person-team-group-v616t="FLAT">รวม</button>
   </div>
 </div>
 <div class="schedule-selection-info"><span id="scheduleSelectionCount">ยังไม่ได้เลือกช่อง</span><small id="scheduleClipboardInfo">เลือกช่องแล้วกดกะด่วน</small></div>
@@ -1038,6 +1049,7 @@
 <div class="work-pattern-filterbar-v61111 work-pattern-filterbar-v61416">
 <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="employeePatternSearch" placeholder="รหัสพนักงาน หรือ ชื่อ-นามสกุล"/></div>
 <div class="field"><label>หน่วยงาน</label><select class="select" id="employeePatternDepartmentFilterV61416"><option value="ALL">ทุกหน่วยงาน</option></select></div>
+<div class="field"><label>ทีมช่างเทคนิค</label><select class="select" id="employeePatternTeamFilterV616T"><option value="ALL">ทุกทีม</option></select></div>
 <div class="field"><label>เดือนที่อ้างอิง</label><input class="input" id="employeePatternDate" type="month"/><small class="wp-month-helper-v61419">แสดงค่าที่มีผลตั้งแต่วันที่ 1 ของเดือน</small></div>
 <div class="field"><label>รูปแบบ</label><select class="select" id="employeePatternPatternFilterV61416"><option value="ALL">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option></select></div>
 <div class="field"><label>กะตั้งต้น</label><select class="select" id="employeePatternShiftFilterV61416"><option value="ALL">ทั้งหมด</option><option value="DAY">กะเช้า</option><option value="NIGHT">กะดึก</option></select></div>
@@ -1592,7 +1604,7 @@
     <div class="team-workspace-title-v61528">
       <span class="eyebrow">TEAM WORKSPACE</span>
       <h2>ทีมช่างเทคนิค</h2>
-      <p>จัดรูปแบบ • สร้างทีม • จัดสมาชิก • ตรวจความพร้อม • เปิดใช้งาน</p>
+      <p>จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ</p>
     </div>
     <div class="team-workspace-hero-actions-v61528">
       <div class="field team-workspace-org-filter-v61528"><label>หน่วยงาน</label><select class="select" id="teamMasterOrgFilterV61523"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
@@ -1607,8 +1619,7 @@
     <div data-team-step-v61528="1"><b>1</b><span>กำหนดรูปแบบ</span><small>รถยนต์ / มอเตอร์ไซค์ / สนับสนุน</small></div>
     <i>›</i><div data-team-step-v61528="2"><b>2</b><span>สร้างทีม</span><small>ระบบ Gen ชื่อและ Team Code</small></div>
     <i>›</i><div data-team-step-v61528="3"><b>3</b><span>จัดสมาชิก</span><small>ตาม Policy ของแต่ละประเภท</small></div>
-    <i>›</i><div data-team-step-v61528="4"><b>4</b><span>ตรวจความพร้อม</span><small>ไม่ให้มีคนตกหล่น</small></div>
-    <i>›</i><div data-team-step-v61528="5"><b>5</b><span>เปิดใช้งาน</span><small>HR Admin เปิด Enforcement</small></div>
+    <i>›</i><div data-team-step-v61528="4"><b>4</b><span>พร้อมจัดกะ</span><small>ระบบตรวจ Auto Readiness</small></div>
   </div>
 
   <section class="team-next-action-v61528 section-gap" id="teamNextActionV61528">
@@ -1621,7 +1632,7 @@
     <button type="button" id="teamQuickClassifyV61529F1"><span>01</span><div><strong>จัดรูปแบบ</strong><small>กำหนด / เปลี่ยนประเภท</small></div></button>
     <button type="button" id="teamQuickCreateV61529F1"><span>02</span><div><strong>สร้างทีม</strong><small>สร้าง Team ใหม่</small></div></button>
     <button type="button" id="teamQuickPeopleV61529F1"><span>03</span><div><strong>สมาชิกและทีม</strong><small>เพิ่ม / ย้าย / นำออก</small></div></button>
-    <button type="button" id="teamQuickEnforcementV61529F1"><span>04</span><div><strong>Enforcement</strong><small>พร้อมใช้ / Rollout</small></div></button>
+    <button type="button" id="teamQuickEnforcementV61529F1"><span>04</span><div><strong>ความพร้อม</strong><small>ตรวจ Auto Readiness</small></div></button>
   </div>
 
   <div class="team-workspace-kpis-v61528 section-gap">
@@ -1652,14 +1663,14 @@
 
     <section class="panel team-enforcement-panel-v61525 section-gap team-enforcement-rollout-panel-v61529">
       <div class="panel-header">
-        <div><h3>Team Enforcement</h3><p id="teamEnforcementDetailV61525">เปิดใช้แบบ Pilot รายทีม แล้วค่อยขยายเมื่อแต่ละ Scope พร้อม</p></div>
+        <div><h3>ความพร้อมก่อนจัดกะ</h3><p id="teamEnforcementDetailV61525">ระบบตรวจรูปแบบการปฏิบัติงานและสมาชิกทีมอัตโนมัติ • ไม่ต้องให้ HR เปิดใช้งาน</p></div>
         <div class="team-enforcement-actions-v61525"><span class="badge badge-gray" id="teamEnforcementStatusV61525">กำลังโหลด</span><button class="btn btn-light btn-sm" id="teamEnforcementRefreshV61525">รีเฟรช</button></div>
       </div>
       <div class="panel-body team-enforcement-body-v61525">
         <div class="team-enforcement-rollout-kpis-v61529">
-          <article class="enabled"><span>เปิดใช้งานแล้ว</span><strong id="teamEnforcementEnabledTeamsV61529">0</strong><small>ทีม ณ วันที่ปัจจุบัน</small></article>
-          <article class="ready"><span>พร้อมเปิดเพิ่ม</span><strong id="teamEnforcementReadyTeamsV61529">0</strong><small>ทีมผ่าน Readiness</small></article>
-          <article class="blocked"><span>ยังไม่พร้อม</span><strong id="teamEnforcementNotReadyTeamsV61529">0</strong><small>ทีมที่ต้องจัดข้อมูลก่อน</small></article>
+          <article class="enabled"><span>พร้อมจัดกะ</span><strong id="teamEnforcementEnabledTeamsV61529">0</strong><small>ทีมผ่าน Auto Readiness</small></article>
+          <article class="ready"><span>ยังไม่พร้อม</span><strong id="teamEnforcementReadyTeamsV61529">0</strong><small>ทีมที่ต้องจัดข้อมูลเพิ่ม</small></article>
+          <article class="blocked"><span>รอกำหนดรูปแบบ</span><strong id="teamEnforcementNotReadyTeamsV61529">0</strong><small>พนักงานที่ยังไม่พร้อม</small></article>
           <article class="total"><span>ทีมในขอบเขต</span><strong id="teamEnforcementTotalTeamsV61529">0</strong><small id="teamEnforcementScopeLabelV61529">ตาม Scope ที่เลือก</small></article>
         </div>
         <div class="team-readiness-checklist-v61528 team-enforcement-prep-v61529">
@@ -1669,8 +1680,8 @@
           <div><span id="teamCheckSupportV61528">○</span><p><strong>ทีมสนับสนุนครบ</strong><small id="teamCheckSupportDetailV61528">กำลังตรวจ...</small></p></div>
         </div>
         <div class="team-enforcement-rollout-callout-v61529">
-          <div><strong id="teamEnforcementReadyV61525">กำลังตรวจสอบ Rollout</strong><span id="teamEnforcementRolloutTextV61529">HR Admin สามารถเริ่มจากทีมที่พร้อมก่อน โดยไม่ต้องรอทุกทีม</span></div>
-          <button class="btn btn-primary" id="teamEnforcementToggleV61525">จัดการการเปิดใช้</button>
+          <div><strong id="teamEnforcementReadyV61525">กำลังตรวจสอบความพร้อม</strong><span id="teamEnforcementRolloutTextV61529">เมื่อกำหนดรูปแบบและจัดสมาชิกทีมครบ ระบบจะอนุญาตให้จัดกะอัตโนมัติ</span></div>
+          <button class="btn btn-primary hidden" id="teamEnforcementToggleV61525" aria-hidden="true" tabindex="-1">ไม่ใช้แล้ว</button>
         </div>
         <span class="hidden" id="teamEnforcementMissingV61525">0</span><span class="hidden" id="teamEnforcementSupportMissingV61528">0</span><span class="hidden" id="teamEnforcementUnclassifiedV61527">0</span>
       </div>
@@ -1691,7 +1702,7 @@
           <div class="team-master-toolbar-actions-v61523"><button class="btn btn-light" id="teamMasterSearchBtnV61523">ค้นหา</button></div>
         </div>
         <div class="team-list-compact-meta-v61529f3"><span>รถยนต์ 3–5 คน</span><span>มอเตอร์ไซค์ ≥1 คน</span><span>สนับสนุน ≥1 คน</span><span class="team-master-auto-chip-v61523">AUTO CODE</span></div>
-        <div class="table-wrap team-list-compact-table-v61529f3"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>รูปแบบ</th><th>หน่วยงาน</th><th>สมาชิก</th><th>สถานะ</th><th>Enforcement</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="7" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div>
+        <div class="table-wrap team-list-compact-table-v61529f3"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>รูปแบบ</th><th>หน่วยงาน</th><th>สมาชิก</th><th>สถานะ</th><th>ความพร้อม</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="7" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div>
       </div>
     </section>
   </div>
@@ -1791,7 +1802,7 @@
       <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>Team Code</th><th>รายการ</th><th>ผู้ดำเนินการ</th><th>เหตุผล / หมายเหตุ</th></tr></thead><tbody id="teamMasterAuditBodyV61523"><tr><td colspan="5" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
     </section>
     <section class="panel section-gap">
-      <div class="panel-header"><div><h3>ประวัติ Team Enforcement</h3><p>แสดงผู้เปิด/ปิด ขอบเขต Effective Date และเหตุผลแบบ Audit</p></div></div>
+      <div class="panel-header"><div><h3>ประวัติ Policy เดิม</h3><p>เก็บ Audit การเปิด/ปิด Team Enforcement เดิมเพื่ออ้างอิง • ไม่มีผลต่อ Auto Readiness ปัจจุบัน</p></div></div>
       <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลาบันทึก</th><th>ขอบเขต</th><th>ทีม / หน่วยงาน</th><th>มีผลวันที่</th><th>สถานะ</th><th>ผู้ดำเนินการ</th><th>เหตุผล / หมายเหตุ</th></tr></thead><tbody id="teamEnforcementAuditBodyV61529"><tr><td colspan="7" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
     </section>
   </div>
@@ -2101,8 +2112,8 @@
 </div>
 
 
-<!-- V6.15.29 Scoped Team Enforcement Rollout -->
-<div class="modal-backdrop hidden" id="teamEnforcementRolloutModalV61529" aria-hidden="true">
+<!-- Legacy Team Enforcement Rollout retained in DOM for historical compatibility; FIX16T hides it from operational UI. -->
+<div class="modal-backdrop hidden" id="teamEnforcementRolloutModalV61529" aria-hidden="true" data-legacy-only-v616t="true">
   <div class="modal team-enforcement-rollout-modal-v61529" role="dialog" aria-modal="true">
     <div class="modal-header">
       <div><span class="eyebrow">TEAM ENFORCEMENT</span><h3>เปิด / ปิด Team Enforcement</h3><p>เลือกขอบเขตและวันที่มีผล ระบบจะแสดงเฉพาะรายการที่ดำเนินการได้</p></div>

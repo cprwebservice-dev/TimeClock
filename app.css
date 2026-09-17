@@ -34985,3 +34985,33 @@ tbody td{font-size:var(--type-table)!important;line-height:1.45!important}
   :root{--type-body:13.5px;--type-control:12.5px;--type-table:12px;--type-table-head:11px;--type-page:18px}
   .content{padding-left:14px!important;padding-right:14px!important}
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16T — Minimal Team-Centric Scheduling
+   ========================================================================== */
+.person-team-group-control-v616t{display:flex;align-items:center;gap:8px;min-width:max-content;padding:4px 6px;border:1px solid var(--border,#e2e8f0);border-radius:10px;background:var(--surface,#fff)}
+.person-team-group-control-v616t>span{font-size:11px;color:var(--slate-500,#64748b);font-weight:700}
+.person-team-group-segment-v616t{display:flex;gap:2px;background:var(--slate-100,#f1f5f9);padding:2px;border-radius:8px}
+.person-team-group-segment-v616t button{border:0;background:transparent;color:var(--slate-600,#475569);padding:5px 9px;border-radius:6px;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.person-team-group-segment-v616t button.active{background:var(--surface,#fff);color:var(--navy-700,#1d4ed8);box-shadow:0 1px 2px rgba(15,23,42,.08)}
+.schedule-person-team-section-v616t td{height:34px!important;padding:0!important;background:#f8fafc!important;border-top:1px solid #e2e8f0!important;border-bottom:1px solid #e2e8f0!important;position:relative;z-index:7}
+.schedule-person-team-section-v616t.is-pending td{background:#fffaf0!important}
+.schedule-person-team-toggle-v616t{display:inline-flex;align-items:center;gap:8px;min-height:32px;border:0;background:transparent;padding:0 10px;color:#0f172a;font:inherit;cursor:pointer}
+.schedule-person-team-toggle-v616t .chev{width:14px;color:#64748b;font-size:15px}
+.schedule-person-team-toggle-v616t strong{font-size:12px;font-weight:800}
+.schedule-person-team-toggle-v616t small{font-size:10px;color:#64748b;font-weight:600}
+.schedule-person-team-ready-v616t{display:inline-flex;align-items:center;margin-left:6px;padding:3px 7px;border-radius:999px;background:#ecfdf5;color:#047857;font-size:9px;font-weight:800}
+.schedule-person-team-section-v616t.is-pending .schedule-person-team-ready-v616t{background:#fff7ed;color:#c2410c}
+.team-other-context-day-v616t{background:#fafafa!important}
+.team-other-context-cell-v616t{display:grid!important;place-items:center;color:#cbd5e1!important;background:transparent!important;border:0!important;font-size:14px!important}
+.schedule-readiness-blocked-v616t{opacity:.38;cursor:not-allowed!important;filter:saturate(.5)}
+.attendance-team-mini-v616t,.wp-team-mini-v616t{display:block;margin-top:3px;color:#64748b;font-size:10px;line-height:1.25}
+.attendance-filter-team-v616t{min-width:180px}
+.team-enforcement-panel-v61525{box-shadow:none!important;border-color:#e2e8f0!important}
+.team-enforcement-rollout-callout-v61529{background:#f8fafc!important;border:1px solid #e2e8f0!important;box-shadow:none!important}
+.team-workflow-stepper-v61528{box-shadow:none!important}
+.team-workspace-kpis-v61528 button,.team-quick-actions-v61529f1 button{box-shadow:none!important}
+@media(max-width:980px){.person-team-group-control-v616t{order:2}.attendance-filter-team-v616t{min-width:0}}
+
+#teamEnforcementRolloutModalV61529[data-legacy-only-v616t="true"]{display:none!important}
