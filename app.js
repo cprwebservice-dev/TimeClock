@@ -765,7 +765,7 @@ window.tcIsDayShiftCode = value =>
     });
     if (error) {
       if (missingFunction(error)) {
-        throw new Error('STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N');
+        throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
       }
       throw error;
     }
@@ -931,7 +931,7 @@ window.tcIsDayShiftCode = value =>
       if(response.error) {
         if(missingFunction(response.error)) {
           throw new Error(
-            "STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N เพื่อให้ Schedule ใช้ Organization Scope เดียวกับ Attendance"
+            "ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O เพื่อให้ Schedule ใช้ Organization Scope เดียวกับ Attendance"
           );
         }
         throw response.error;
@@ -3291,7 +3291,7 @@ window.tcIsDayShiftCode = value =>
           );
 
           if(response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
-            if (orgIdV616M) throw new Error("STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N");
+            if (orgIdV616M) throw new Error("ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O");
             const legacyArgs = {
               p_start_date:argsV616M.p_start_date,p_end_date:argsV616M.p_end_date,
               p_area:argsV616M.p_area,p_sub_area:argsV616M.p_sub_area,
@@ -3690,12 +3690,21 @@ window.tcIsDayShiftCode = value =>
         return cached;
       }
 
+      // FIX16O: Organization Scope is resolved directly from Manager/Acting
+      // scope + Org Master. Do not derive the UI contract from legacy
+      // employee/day permission rows.
       let response = await state.client.rpc(
-        "ta_get_authorized_org_units_v616m",
+        "ta_get_authorized_org_units_v616o",
         { p_start_date:start, p_end_date:end }
       );
       let strict = true;
       let identity = true;
+      if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        response = await state.client.rpc(
+          "ta_get_authorized_org_units_v616m",
+          { p_start_date:start, p_end_date:end }
+        );
+      }
       if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
         identity = false;
         response = await state.client.rpc(
@@ -3713,13 +3722,21 @@ window.tcIsDayShiftCode = value =>
       }
       if (response.error) throw response.error;
 
+      const unitsV616O = Array.isArray(response.data) ? response.data : [];
+      // Ordinary VIEWER keeps own-access compatibility. Acting users can still
+      // enter strict mode because their authorized Organization list is non-empty.
+      const runtimeRoleV616O = String(state.profile?._sourceRole || state.profile?.role || "VIEWER").toUpperCase();
+      strict = strict && (
+        ["MANAGER","HR_ADMIN"].includes(runtimeRoleV616O)
+        || unitsV616O.length > 0
+      );
       const contract = {
         loadedAt: Date.now(),
         strict,
         identity,
         start,
         end,
-        units: Array.isArray(response.data) ? response.data : []
+        units: unitsV616O
       };
       orgScopeContractV616L.cache.set(key,contract);
       return contract;
@@ -3832,15 +3849,19 @@ window.tcIsDayShiftCode = value =>
         .map(value => String(value || "").trim()).filter(Boolean))];
       if (!contract?.strict) return raw;
       const units = Array.isArray(contract?.units) ? contract.units : [];
-      const allowed = new Set();
+      const allowedDisplay = new Map();
       units.forEach(unit => fields.forEach(field => {
-        const key = orgScopeNormalizeV616L(unit?.[field]);
-        if (key) allowed.add(key);
+        const display = String(unit?.[field] || "").trim();
+        const key = orgScopeNormalizeV616L(display);
+        if (key && !allowedDisplay.has(key)) allowedDisplay.set(key,display);
       }));
-      // If the Organization Master has no value for this dimension, keep the
-      // already server-scoped legacy choices rather than hiding a valid scope.
-      if (!allowed.size) return raw;
-      return raw.filter(value => allowed.has(orgScopeNormalizeV616L(value)));
+      // FIX16O: Org Contract is the source of the location choices too.
+      // Legacy filter RPC may legitimately return zero rows before a Schedule
+      // exists, so filtering only its values can make Area/Sub-area disappear.
+      if (allowedDisplay.size) {
+        return [...allowedDisplay.values()].sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
+      }
+      return raw;
     }
 
     function fillScopedDepartmentSelectV616L(id,options,allLabel) {
@@ -3945,12 +3966,45 @@ window.tcIsDayShiftCode = value =>
       if(hit && Date.now()-hit.loadedAt<=orgScopeContractV616L.ttl) return [...hit.codes];
       const {data,error}=await state.client.rpc('ta_get_org_employee_codes_v616m',{p_org_id:id,p_start_date:start,p_end_date:end});
       if(error) {
-        if(window.TimeClockShiftAPI?.missingFunction?.(error)) throw new Error('STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N');
+        if(window.TimeClockShiftAPI?.missingFunction?.(error)) throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
         throw error;
       }
       const codes=[...new Set((data||[]).map(row=>String(row?.emp_code||'').trim()).filter(Boolean))];
       orgScopeContractV616L.cache.set(key,{loadedAt:Date.now(),codes});
       return [...codes];
+    }
+
+
+    async function loadScopeEmployeeOptionsV616O(orgId,startDate,endDate) {
+      const id=String(orgId||'').trim() || null;
+      const start=String(startDate||todayISO()).slice(0,10);
+      const end=String(endDate||start).slice(0,10);
+      const key=`EMP_OPTIONS_V616O|${id || 'ALL_SCOPE'}|${start}|${end}`;
+      const hit=orgScopeContractV616L.cache.get(key);
+      if(hit && Date.now()-hit.loadedAt<=orgScopeContractV616L.ttl) return hit.rows.map(row=>({...row}));
+      const {data,error}=await state.client.rpc('ta_get_scope_employee_options_v616o',{
+        p_org_id:id,p_start_date:start,p_end_date:end
+      });
+      if(error) {
+        if(window.TimeClockShiftAPI?.missingFunction?.(error)) {
+          throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
+        }
+        throw error;
+      }
+      const rows=(data||[]).map(row=>({
+        ...row,
+        emp_code:String(row?.emp_code||'').trim(),
+        full_name:String(row?.full_name||'').trim(),
+        position_name:String(row?.position_name||'').trim(),
+        department:String(row?.department||row?.org_name||'').trim(),
+        area:String(row?.area||'').trim(),
+        sub_area:String(row?.sub_area||'').trim(),
+        org_id:String(row?.org_id||'').trim(),
+        org_code:String(row?.org_code||'').trim(),
+        org_name:String(row?.org_name||'').trim()
+      })).filter(row=>row.emp_code);
+      orgScopeContractV616L.cache.set(key,{loadedAt:Date.now(),rows});
+      return rows.map(row=>({...row}));
     }
 
     // FIX16K — Scope Contract helpers. UI filters are only a convenience layer;
@@ -4687,7 +4741,7 @@ window.tcIsDayShiftCode = value =>
           p_zone:argsV616M.p_zone,p_department:legacyDepartmentV616M
         };
         if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
-          if (orgIdV616M) throw new Error("STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N");
+          if (orgIdV616M) throw new Error("ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O");
           response = await state.client.rpc("ta_get_dashboard_overview_v61463", args);
         }
         if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
@@ -4949,7 +5003,7 @@ window.tcIsDayShiftCode = value =>
           )
       ) {
         if (orgIdV616M) {
-          throw new Error("STRICT_ORG_SCOPE_RUNTIME_RPC_REQUIRED: กรุณารัน SQL FIX16N");
+          throw new Error("ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O");
         }
         const legacyArgs = {
           p_start_date:
@@ -5820,11 +5874,19 @@ window.tcIsDayShiftCode = value =>
       }
       setVal("scheduleDepartment",preservedDepartmentV616M);
 
-      // FIX16N: an empty Department selection is ALL authorized orgs, not the
-      // wider legacy User Scope. Always intersect the employee selector with
-      // the strict Organization runtime contract.
+      // FIX16O: Schedule employee options come directly from Organization
+      // Scope Source of Truth. Never start from the legacy filter employee list
+      // because an empty/older Scope interpretation there would erase valid rows.
       const selectedOrgIdV616MValue = selectedOrgIdV616M("scheduleDepartment");
-      if (Array.isArray(result.employees)) {
+      if (orgContractV616L?.strict) {
+        const scopeEmployeesV616O = await loadScopeEmployeeOptionsV616O(
+          selectedOrgIdV616MValue,period.startDate,period.endDate
+        );
+        result = {
+          ...result,
+          employees: scopeEmployeesV616O
+        };
+      } else if (Array.isArray(result.employees)) {
         const orgCodesV616M = new Set(await loadOrgEmployeeCodesV616M(
           selectedOrgIdV616MValue,period.startDate,period.endDate
         ));
