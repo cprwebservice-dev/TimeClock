@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16ab-minimal-time-icons-20260918"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16ac-calendar-icons-time-month-20260918"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -44,7 +44,7 @@
         <button class="portal-primary" type="submit">เข้าสู่ระบบ</button>
         <small class="portal-help">ลืม PIN? ติดต่อ Manager หรือ HR Admin เพื่อ Reset PIN และออก Activation Code ใหม่</small>
       </form>
-      <div class="portal-auth-footer">V6.15.29 FIX16AB • Employee ID + PIN • Device Session<br/>Design by ฝ่ายบริหารระบบข้อมูลบุคคล</div>
+      <div class="portal-auth-footer">V6.15.29 FIX16AC • Employee ID + PIN • Device Session<br/>Design by ฝ่ายบริหารระบบข้อมูลบุคคล</div>
     </div>
   </section>
 
@@ -120,11 +120,26 @@
       </section>
 
       <section id="portalViewTime" class="portal-view">
-        <div class="portal-view-hero portal-time-hero-v616ab">
-          <div><span>ATTENDANCE</span><strong>เวลาทำงาน</strong><small>ข้อมูล 32 วันล่าสุด • เวลาเข้า–ออกและสถานะตามกะ</small></div>
-          <button type="button" class="portal-soft-action-v616ab" id="portalTimeRefreshV616AB"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>อัปเดต</span></button>
+        <div class="portal-view-hero portal-time-hero-v616ab portal-time-hero-v616ac">
+          <div class="portal-time-hero-copy-v616ac">
+            <span>ATTENDANCE</span>
+            <strong>เวลาทำงาน</strong>
+            <small>เลือกเดือนเพื่อดูเวลาเข้า–ออกและสถานะตามกะ</small>
+          </div>
+          <div class="portal-time-month-tools-v616ac">
+            <button type="button" class="portal-month-nav-v616ac" id="portalTimePrevMonthV616AC" aria-label="เดือนก่อน">‹</button>
+            <label class="portal-month-picker-v616ac" aria-label="เลือกเดือนเวลาทำงาน">
+              <svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+              <input type="month" id="portalTimeMonthV616AC"/>
+            </label>
+            <button type="button" class="portal-month-nav-v616ac" id="portalTimeNextMonthV616AC" aria-label="เดือนถัดไป">›</button>
+            <button type="button" class="portal-time-current-v616ac" id="portalTimeThisMonthV616AC">เดือนนี้</button>
+            <button type="button" class="portal-soft-action-v616ab" id="portalTimeRefreshV616AB" aria-label="อัปเดตเวลาทำงาน">
+              <svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>อัปเดต</span>
+            </button>
+          </div>
         </div>
-        <div class="portal-time-loadstate-v616ab" id="portalTimeLoadStateV616AB"><span class="dot"></span><strong>พร้อมแสดงข้อมูลล่าสุด</strong></div>
+        <div class="portal-time-loadstate-v616ab" id="portalTimeLoadStateV616AB"><span class="dot"></span><strong>พร้อมแสดงข้อมูล</strong></div>
         <div class="portal-time-list" id="portalTimeList"></div>
       </section>
 
@@ -218,6 +233,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.15.29-fix16ab-time-loader-20260918"></script>
+  <script src="./portal.js?v=6.15.29-fix16ac-calendar-icons-time-month-20260918"></script>
 </body>
 </html>

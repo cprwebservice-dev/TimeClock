@@ -3562,3 +3562,217 @@ html,body{
 .portal-punch-shift .portal-shift-svg-v616ab{width:15px;height:15px;margin-right:4px}
 .portal-time-title>i .portal-shift-svg-v616ab{width:17px;height:17px}
 .portal-shift-legend i .portal-shift-svg-v616ab{width:15px;height:15px}
+
+
+/* ==========================================================================
+   V6.15.29 FIX16AC — Calendar Original Icons + Clear UI Icons + Time Month
+   ========================================================================== */
+
+/* Keep original colorful calendar symbols — requested UX */
+.portal-cal-day .portal-calendar-original-icon-v616ac{
+  width:20px!important;
+  height:20px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin-right:3px!important;
+  font-size:17px!important;
+  line-height:1!important;
+  font-style:normal!important;
+  font-family:"Segoe UI Symbol","Noto Sans Symbols 2","Noto Sans Thai",sans-serif!important;
+}
+.portal-shift-legend .portal-calendar-legend-original-v616ac{
+  width:21px!important;
+  height:21px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:16px!important;
+  line-height:1!important;
+  font-style:normal!important;
+}
+.portal-cal-day.morning .portal-calendar-original-icon-v616ac,
+.portal-shift-legend.morning .portal-calendar-legend-original-v616ac{color:#0ea5c6}
+.portal-cal-day.night .portal-calendar-original-icon-v616ac,
+.portal-shift-legend.night .portal-calendar-legend-original-v616ac{color:#5d5ab7}
+.portal-cal-day.off .portal-calendar-original-icon-v616ac,
+.portal-shift-legend.off .portal-calendar-legend-original-v616ac{color:#ef5555}
+.portal-cal-day.leave .portal-calendar-original-icon-v616ac,
+.portal-shift-legend.leave .portal-calendar-legend-original-v616ac{color:#d94ca2}
+.portal-cal-day.holiday .portal-calendar-original-icon-v616ac,
+.portal-shift-legend.holiday .portal-calendar-legend-original-v616ac{color:#7957c8}
+
+/* Other icons: thicker, clearer, consistent optical size */
+.portal-ui-icon{
+  width:20px!important;
+  height:20px!important;
+  stroke-width:2.15!important;
+}
+.portal-bottom-nav button i{
+  width:32px!important;
+  height:28px!important;
+  border-radius:9px!important;
+  transition:background .16s ease,color .16s ease,transform .16s ease!important;
+}
+.portal-bottom-nav button.active i{
+  background:#dfeaff!important;
+}
+.portal-bottom-nav button:active i{transform:scale(.94)}
+.portal-bottom-nav button i .portal-ui-icon{
+  width:21px!important;
+  height:21px!important;
+}
+.portal-icon-btn{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.portal-icon-btn .portal-ui-icon{
+  width:19px!important;
+  height:19px!important;
+}
+.portal-quick-grid button>i{
+  width:40px!important;
+  height:40px!important;
+  border-radius:12px!important;
+}
+.portal-quick-grid button>i .portal-ui-icon{
+  width:21px!important;
+  height:21px!important;
+}
+.portal-soft-action-v616ab .portal-ui-icon,
+.portal-text-btn-icon .portal-ui-icon,
+.portal-btn-with-icon .portal-ui-icon{
+  width:17px!important;
+  height:17px!important;
+}
+.portal-punch-shift .portal-shift-svg-v616ab,
+.portal-time-title>i .portal-shift-svg-v616ab{
+  width:18px!important;
+  height:18px!important;
+  stroke-width:2!important;
+}
+.portal-time-title>i{
+  width:34px!important;
+  height:34px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border-radius:10px!important;
+  background:#f2f6fb!important;
+}
+
+/* Time tab month selector */
+.portal-time-hero-v616ac{
+  padding:14px 15px!important;
+}
+.portal-time-hero-copy-v616ac{
+  min-width:0;
+}
+.portal-time-month-tools-v616ac{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.portal-month-nav-v616ac,
+.portal-time-current-v616ac{
+  height:36px;
+  border:1px solid #dce6ef;
+  background:#fff;
+  color:#496b89;
+  border-radius:10px;
+  font-weight:800;
+}
+.portal-month-nav-v616ac{
+  width:36px;
+  padding:0;
+  font-size:20px;
+  line-height:1;
+}
+.portal-month-nav-v616ac:disabled{
+  opacity:.38;
+  cursor:not-allowed;
+}
+.portal-time-current-v616ac{
+  padding:0 10px;
+  font-size:10.5px;
+}
+.portal-month-picker-v616ac{
+  height:36px;
+  min-width:156px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 9px;
+  border:1px solid #dce6ef;
+  border-radius:10px;
+  background:#fff;
+  color:#52708d;
+}
+.portal-month-picker-v616ac .portal-ui-icon{
+  width:16px!important;
+  height:16px!important;
+}
+.portal-month-picker-v616ac input{
+  min-width:0;
+  width:126px;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#1f3b56;
+  font:inherit;
+  font-size:11px;
+  font-weight:700;
+}
+.portal-time-month-tools-v616ac .portal-soft-action-v616ab{
+  height:36px;
+  min-width:82px;
+}
+.portal-time-loadstate-v616ab{
+  margin-top:8px!important;
+}
+
+@media(max-width:720px){
+  .portal-time-hero-v616ac{
+    align-items:stretch!important;
+    flex-direction:column!important;
+  }
+  .portal-time-month-tools-v616ac{
+    justify-content:space-between;
+    width:100%;
+  }
+  .portal-month-picker-v616ac{
+    flex:1 1 150px;
+  }
+  .portal-month-picker-v616ac input{
+    width:100%;
+  }
+  .portal-time-current-v616ac{
+    flex:0 0 auto;
+  }
+}
+
+@media(max-width:430px){
+  .portal-time-month-tools-v616ac{
+    display:grid;
+    grid-template-columns:36px minmax(0,1fr) 36px 42px;
+    gap:6px;
+  }
+  .portal-month-picker-v616ac{
+    min-width:0;
+  }
+  .portal-time-current-v616ac{
+    grid-column:1 / span 2;
+    width:100%;
+  }
+  .portal-time-month-tools-v616ac .portal-soft-action-v616ab{
+    grid-column:3 / span 2;
+    width:100%!important;
+    min-width:0;
+  }
+  .portal-time-month-tools-v616ac .portal-soft-action-v616ab span{
+    display:inline!important;
+  }
+}
