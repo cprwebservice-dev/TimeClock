@@ -32702,7 +32702,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.15.29-FIX16Z';
+  const VERSION='6.15.29-FIX16Z2';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -32727,10 +32727,61 @@ ${names}${extra}
     return 'day';
   }
   const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],workModeOrgOptionsV616Z:[],workModeOrgOptionsSourceV616Z1:'',workModeOrgOptionsErrorV616Z1:'',runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:'',serverGuardV6141:null,serverGuardKeyV61432:'',scopeDraft:new Set(),scopeSearch:'',scopeFilter:'ALL'};
-  async function rpc(name,args={}){
+  function isAuthFailureV616Z2(error){
+    const status=Number(error?.status||error?.statusCode||0);
+    const raw=String(error?.message||error?.details||error?.hint||error||'');
+    return status===401
+      || String(error?.code||'').toUpperCase()==='PGRST301'
+      || /unauthorized|invalid jwt|jwt expired|token.*expired|refresh[_ ]?token/i.test(raw);
+  }
+  async function ensureFreshSessionV616Z2(forceRefresh=false){
+    const a=app();
+    const client=a?.state?.client;
+    if(!client?.auth)throw new Error('SUPABASE_CLIENT_NOT_READY');
+
+    let session=a?.state?.session||null;
+    if(!session?.access_token){
+      const {data,error}=await client.auth.getSession();
+      if(error)throw error;
+      session=data?.session||null;
+    }
+    if(!session?.access_token){
+      throw Object.assign(new Error('AUTH_SESSION_REQUIRED'),{status:401});
+    }
+
+    const expiresAt=Number(session.expires_at||0)*1000;
+    const nearExpiry=expiresAt>0 && expiresAt-Date.now()<90_000;
+    if(forceRefresh||nearExpiry){
+      const {data,error}=await client.auth.refreshSession();
+      if(error||!data?.session?.access_token){
+        throw error||Object.assign(new Error('AUTH_SESSION_EXPIRED'),{status:401});
+      }
+      session=data.session;
+      if(a?.state){
+        a.state.session=session;
+        a.state.user=session.user||null;
+      }
+    }
+
+    if(session?.access_token&&client?.realtime?.setAuth){
+      try{
+        const result=client.realtime.setAuth(session.access_token);
+        if(result?.catch)result.catch(()=>{});
+      }catch(_){ }
+    }
+    return session;
+  }
+  async function rpc(name,args={},retryAuth=true){
     const client=app()?.state?.client;
     if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
-    const {data,error}=await client.rpc(name,args);if(error)throw error;return data;
+    await ensureFreshSessionV616Z2(false);
+    const {data,error}=await client.rpc(name,args);
+    if(error&&retryAuth&&isAuthFailureV616Z2(error)){
+      await ensureFreshSessionV616Z2(true);
+      return rpc(name,args,false);
+    }
+    if(error)throw error;
+    return data;
   }
   const missingRpcV61425=e=>/PGRST202|42883|could not find|does not exist|schema cache/i.test(String(e?.code||'')+' '+String(e?.message||e||''));
   const fmtTime=v=>app()?.formatTime?.(v)||String(v||'-').slice(0,5)||'-';
