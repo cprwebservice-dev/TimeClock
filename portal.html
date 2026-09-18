@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16al-request-layout-stable-20260918"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16am-mobile-request-scroll-20260918"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -206,6 +206,7 @@
     <div class="portal-modal">
       <div class="portal-modal-head"><div><span>คำขอ / แจ้งข้อมูล</span><strong id="portalRequestModalTitle">แจ้งข้อมูล</strong></div><button data-close-request>×</button></div>
       <form id="portalRequestForm" class="portal-modal-body">
+        <div class="portal-request-scroll-v616am" id="portalRequestScrollV616AM">
         <label>ประเภท<select id="portalRequestType"><option value="TIME_ISSUE">ขอรับรองเวลา</option><option value="SPECIAL_WORK">แจ้งทำงานกะพิเศษ</option><option value="DAYOFF_SWAP">วันหยุด / สลับวันหยุด</option><option value="LEAVE_REQUEST">ขอลา</option></select></label>
         <label id="portalRequestDateLabel">วันที่<input type="date" id="portalRequestDate" required/></label>
         <div class="portal-day-evidence" id="portalRequestEvidence">เลือกวันที่เพื่อดูข้อมูลกะ/เวลาในระบบ</div>
@@ -261,11 +262,12 @@
           </div>
         </div>
         <label>เหตุผล / รายละเอียด<textarea id="portalRequestReason" rows="4" maxlength="1000" required placeholder="ระบุเหตุผลให้ Manager ใช้ประกอบการพิจารณา"></textarea></label>
+        </div>
         <div class="portal-modal-actions"><button type="button" class="portal-secondary" data-close-request>ยกเลิก</button><button class="portal-primary" id="portalRequestSubmitBtnV61494" type="submit">ส่งให้ Manager</button></div>
       </form>
     </div>
   </div>
 
-  <script src="./portal.js?v=6.15.29-fix16al-request-layout-stable-20260918"></script>
+  <script src="./portal.js?v=6.15.29-fix16am-mobile-request-scroll-20260918"></script>
 </body>
 </html>

@@ -5239,3 +5239,330 @@ body:not(.theme-dark) #portalRequestForm .portal-modal-actions{
   #portalRequestForm .portal-pin-grid{grid-template-columns:1fr!important}
   #portalRequestForm.request-dayoff-v616al .portal-swap-quota{grid-template-columns:1fr 1fr!important}
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16AM — Request Modal Mobile Stable / One Scroll Viewport
+   Fixes iOS/Android in-app-browser nested scrolling and request form balance.
+   ========================================================================== */
+
+body.portal-modal-open-v616ai{
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+  touch-action:none!important;
+}
+
+#portalRequestModal{
+  position:fixed!important;
+  inset:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+  touch-action:none!important;
+}
+
+#portalRequestModal.hidden{display:none!important}
+
+#portalRequestModal>.portal-modal{
+  width:min(calc(100vw - 24px),680px)!important;
+  height:min(90dvh,820px)!important;
+  max-height:min(90dvh,820px)!important;
+  min-height:0!important;
+  display:grid!important;
+  grid-template-rows:auto minmax(0,1fr)!important;
+  overflow:hidden!important;
+  border-radius:24px!important;
+}
+
+#portalRequestModal .portal-modal-head{
+  position:relative!important;
+  top:auto!important;
+  flex:none!important;
+  min-height:72px!important;
+  padding:14px 16px!important;
+  z-index:4!important;
+  border-bottom-width:1px!important;
+}
+
+#portalRequestForm.portal-modal-body{
+  min-height:0!important;
+  height:100%!important;
+  overflow:hidden!important;
+  display:grid!important;
+  grid-template-rows:minmax(0,1fr) auto!important;
+  gap:0!important;
+  padding:0!important;
+  margin:0!important;
+  touch-action:none!important;
+}
+
+/* The ONLY vertical scroll container inside request modal */
+#portalRequestScrollV616AM{
+  min-width:0!important;
+  min-height:0!important;
+  width:100%!important;
+  height:100%!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+  scrollbar-gutter:auto!important;
+  padding:14px 16px 24px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:14px!important;
+  scroll-behavior:auto!important;
+}
+
+#portalRequestScrollV616AM>*{
+  flex:0 0 auto!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+
+#portalRequestScrollV616AM label,
+#portalRequestScrollV616AM div,
+#portalRequestScrollV616AM small,
+#portalRequestScrollV616AM span,
+#portalRequestScrollV616AM strong{
+  max-width:100%;
+  overflow-wrap:anywhere;
+}
+
+#portalRequestScrollV616AM>label,
+#portalRequestScrollV616AM .portal-special-fields>label,
+#portalRequestScrollV616AM .portal-pin-grid>label{
+  display:grid!important;
+  grid-template-rows:auto auto!important;
+  gap:7px!important;
+  min-width:0!important;
+  margin:0!important;
+}
+
+#portalRequestScrollV616AM :is(input:not([type="hidden"]),select){
+  width:100%!important;
+  min-width:0!important;
+  height:50px!important;
+  min-height:50px!important;
+  max-height:50px!important;
+  padding:0 14px!important;
+  border-radius:14px!important;
+}
+
+#portalRequestScrollV616AM textarea{
+  width:100%!important;
+  min-width:0!important;
+  height:112px!important;
+  min-height:112px!important;
+  max-height:112px!important;
+  padding:12px 14px!important;
+  border-radius:14px!important;
+  resize:none!important;
+}
+
+#portalRequestEvidence{
+  min-height:64px!important;
+  height:auto!important;
+  padding:12px 14px!important;
+  align-items:flex-start!important;
+}
+
+#portalRequestScrollV616AM .portal-special-fields{
+  width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:0!important;
+  padding:14px!important;
+  margin:0!important;
+  gap:14px!important;
+  border-radius:16px!important;
+  overflow:visible!important;
+}
+
+#portalRequestScrollV616AM .portal-special-fields.hidden{
+  display:none!important;
+}
+
+#portalRequestScrollV616AM .portal-pin-grid{
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+}
+
+#portalRequestScrollV616AM .portal-leave-important-v61508,
+#portalRequestScrollV616AM .portal-dayoff-mode-guide,
+#portalRequestScrollV616AM #portalLeaveRuleHintV61508,
+#portalRequestScrollV616AM #portalLeavePreviewV61520{
+  height:auto!important;
+  max-height:none!important;
+}
+
+#portalRequestScrollV616AM .portal-leave-important-v61508{
+  min-height:0!important;
+  padding:12px!important;
+}
+
+#portalRequestScrollV616AM #portalLeaveRuleHintV61508{
+  min-height:58px!important;
+}
+
+#portalRequestScrollV616AM #portalLeavePreviewV61520{
+  min-height:76px!important;
+}
+
+#portalRequestScrollV616AM .portal-swap-toolbar{
+  width:100%!important;
+  min-height:48px!important;
+  grid-template-columns:46px minmax(0,1fr) 46px!important;
+  gap:8px!important;
+}
+
+#portalRequestScrollV616AM .portal-swap-toolbar button{
+  width:46px!important;
+  height:46px!important;
+  min-height:46px!important;
+}
+
+#portalRequestScrollV616AM .portal-swap-quota{
+  width:100%!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:8px!important;
+}
+
+#portalRequestScrollV616AM .portal-swap-quota>*{
+  min-height:78px!important;
+  height:auto!important;
+  padding:10px 8px!important;
+}
+
+/* Footer is OUTSIDE the scroll viewport; no sticky/nested-scroll tricks */
+#portalRequestForm .portal-modal-actions{
+  position:relative!important;
+  inset:auto!important;
+  bottom:auto!important;
+  z-index:5!important;
+  flex:none!important;
+  width:100%!important;
+  margin:0!important;
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom))!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr)!important;
+  gap:10px!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+
+#portalRequestForm .portal-modal-actions button{
+  width:100%!important;
+  height:48px!important;
+  min-height:48px!important;
+  border-radius:14px!important;
+}
+
+/* Make native touch scrolling feel reliable and visible enough on desktop tests */
+#portalRequestScrollV616AM::-webkit-scrollbar{width:5px}
+#portalRequestScrollV616AM::-webkit-scrollbar-track{background:transparent}
+#portalRequestScrollV616AM::-webkit-scrollbar-thumb{
+  background:rgba(93,125,151,.48);
+  border-radius:999px;
+}
+body.theme-dark #portalRequestScrollV616AM::-webkit-scrollbar-thumb{
+  background:rgba(151,178,198,.42);
+}
+
+@media(max-width:560px){
+  #portalRequestModal{
+    align-items:flex-end!important;
+    justify-content:center!important;
+    padding:max(8px,env(safe-area-inset-top)) 0 0!important;
+  }
+
+  #portalRequestModal>.portal-modal{
+    width:100%!important;
+    max-width:100%!important;
+    height:min(94dvh,calc(100dvh - max(8px,env(safe-area-inset-top))))!important;
+    max-height:min(94dvh,calc(100dvh - max(8px,env(safe-area-inset-top))))!important;
+    border-radius:24px 24px 0 0!important;
+  }
+
+  #portalRequestModal .portal-modal-head{
+    min-height:68px!important;
+    padding:12px 16px!important;
+  }
+
+  #portalRequestModal .portal-modal-head button{
+    width:40px!important;
+    height:40px!important;
+    flex:0 0 40px!important;
+  }
+
+  #portalRequestScrollV616AM{
+    padding:12px 16px 20px!important;
+    gap:12px!important;
+  }
+
+  #portalRequestScrollV616AM :is(input:not([type="hidden"]),select){
+    height:48px!important;
+    min-height:48px!important;
+    max-height:48px!important;
+  }
+
+  #portalRequestScrollV616AM textarea{
+    height:104px!important;
+    min-height:104px!important;
+    max-height:104px!important;
+  }
+
+  #portalRequestScrollV616AM .portal-special-fields{
+    padding:12px!important;
+    gap:12px!important;
+  }
+
+  #portalRequestForm .portal-modal-actions{
+    padding:10px 14px calc(10px + env(safe-area-inset-bottom))!important;
+    gap:8px!important;
+  }
+
+  #portalRequestForm .portal-modal-actions button{
+    height:48px!important;
+    min-height:48px!important;
+  }
+}
+
+@media(max-width:390px){
+  #portalRequestScrollV616AM .portal-pin-grid{
+    grid-template-columns:1fr!important;
+  }
+
+  #portalRequestScrollV616AM .portal-swap-quota{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+
+@media(max-width:340px){
+  #portalRequestForm .portal-modal-actions{
+    grid-template-columns:1fr!important;
+  }
+}
+
+/* Dark request modal alignment */
+body.theme-dark #portalRequestModal>.portal-modal,
+body.theme-dark #portalRequestScrollV616AM{
+  background:#0D1E29!important;
+  color:#F4F8FB!important;
+}
+body.theme-dark #portalRequestForm .portal-modal-actions{
+  background:#0B1923!important;
+  border-top:1px solid #2D4659!important;
+}
+body:not(.theme-dark) #portalRequestForm .portal-modal-actions{
+  background:#F9FBFD!important;
+  border-top:1px solid #DEE8F0!important;
+}
