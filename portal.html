@@ -15,15 +15,30 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16ag-text-dark-palette-20260918"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16ah-dark-toggle-20260918"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+  <script>
+    (function(){
+      try{
+        var key='ta_employee_portal_theme_v616ah';
+        var theme=localStorage.getItem(key)||'light';
+        if(theme==='dark')document.body.classList.add('theme-dark');
+        var meta=document.querySelector('meta[name="theme-color"]');
+        if(meta)meta.setAttribute('content',theme==='dark'?'#0F283D':'#123A5A');
+      }catch(_){}
+    })();
+  </script>
   <div id="portalToast" class="portal-toast hidden"></div>
   <div id="portalLoading" class="portal-loading hidden"><div class="portal-spinner"></div><strong id="portalLoadingText">กำลังโหลด...</strong></div>
 
   <section id="portalAuth" class="portal-auth">
     <div class="portal-auth-shell">
+      <button type="button" class="portal-theme-auth-v616ah" id="portalThemeBtnAuthV616AH" aria-label="สลับโหมดสี" title="Dark Mode">
+        <svg class="portal-ui-icon portal-theme-moon-v616ah" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2z"/></svg>
+        <svg class="portal-ui-icon portal-theme-sun-v616ah" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></svg>
+      </button>
       <div class="portal-brand"><div class="portal-brand-mark">TC</div><div><strong>TimeAttendance</strong><span>Employee Portal</span></div></div>
       <div class="portal-team-card" id="portalTeamCard"><span>ช่องทางเข้า Employee Portal</span><strong id="portalTeamName">กำลังตรวจสอบ Link กลาง...</strong><small>QR / Link กลางใช้ร่วมกันทั้งระบบ • ไม่ใช่รหัสผ่าน</small></div>
       <div class="portal-auth-tabs"><button class="active" data-auth-tab="activate">เปิดใช้ครั้งแรก</button><button data-auth-tab="login">เข้าสู่ระบบ</button></div>
@@ -44,7 +59,7 @@
         <button class="portal-primary" type="submit">เข้าสู่ระบบ</button>
         <small class="portal-help">ลืม PIN? ติดต่อ Manager หรือ HR Admin เพื่อ Reset PIN และออก Activation Code ใหม่</small>
       </form>
-      <div class="portal-auth-footer">V6.15.29 FIX16AG • Employee ID + PIN • Device Session<br/>Design by ฝ่ายบริหารระบบข้อมูลบุคคล</div>
+      <div class="portal-auth-footer">V6.15.29 FIX16AH • Employee ID + PIN • Device Session<br/>Design by ฝ่ายบริหารระบบข้อมูลบุคคล</div>
     </div>
   </section>
 
@@ -56,6 +71,10 @@
       </div>
       <div class="portal-top-actions">
         <span class="portal-live-sync-v61513 ready" id="portalLiveSyncV61513" title="ระบบตรวจสอบการเปลี่ยนแปลงจาก Backend อัตโนมัติ"><i></i><b>Live</b><em>พร้อม</em></span>
+        <button class="portal-icon-btn portal-theme-btn-v616ah" id="portalThemeBtnV616AH" type="button" aria-label="เปิด Dark Mode" aria-pressed="false" title="Dark Mode">
+          <svg class="portal-ui-icon portal-theme-moon-v616ah" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2z"/></svg>
+          <svg class="portal-ui-icon portal-theme-sun-v616ah" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/></svg>
+        </button>
         <button class="portal-icon-btn portal-notif-shortcut" data-portal-nav="notifications" aria-label="แจ้งเตือน"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button>
         <button class="portal-icon-btn" id="portalLogoutBtn" aria-label="ออกจากระบบ"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 19V5a2 2 0 0 0-2-2h-6"/></svg></button>
       </div>
@@ -233,6 +252,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.15.29-fix16ag-text-dark-palette-20260918"></script>
+  <script src="./portal.js?v=6.15.29-fix16ah-dark-toggle-20260918"></script>
 </body>
 </html>

@@ -4361,3 +4361,72 @@ body:is(.theme-dark,.dark,.dark-mode) .portal-auth-tabs button.active{
   background:rgba(79,140,255,.14)!important;
   color:#9FC0FF!important;
 }
+
+
+/* ==========================================================================\n   V6.15.29 FIX16AH — Employee Portal Dark Mode Toggle\n   ========================================================================== */
+.portal-auth-shell{position:relative}
+.portal-theme-auth-v616ah{
+  position:absolute;top:14px;right:14px;z-index:3;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;padding:0;border:1px solid #dbe6ef;border-radius:12px;
+  background:#f7fafc;color:#526f8b;cursor:pointer;
+}
+.portal-theme-btn-v616ah{display:inline-flex!important;align-items:center!important;justify-content:center!important}
+.portal-theme-sun-v616ah{display:none!important}
+body.theme-dark .portal-theme-moon-v616ah{display:none!important}
+body.theme-dark .portal-theme-sun-v616ah{display:block!important}
+body.theme-dark .portal-theme-auth-v616ah{
+  background:#202C37!important;border-color:#354555!important;color:#8EB4FF!important;
+}
+body.theme-dark{background:#0B1520!important;color:#E7EEF5!important}
+body.theme-dark .portal-app{background:#0B1520!important}
+body.theme-dark .portal-main{background:#0B1520!important}
+body.theme-dark .portal-profile-card,
+body.theme-dark .portal-same-shift-team-v61509,
+body.theme-dark .portal-view-hero,
+body.theme-dark .portal-schedule-panel,
+body.theme-dark .portal-calendar-shell,
+body.theme-dark .portal-time-item,
+body.theme-dark .portal-request-item,
+body.theme-dark .portal-notification-item{
+  background:#14212D!important;border-color:#27394A!important;color:#E7EEF5!important;
+}
+body.theme-dark .portal-bottom-nav{
+  background:rgba(18,30,41,.98)!important;border-color:#2B3D4E!important;
+}
+body.theme-dark .portal-bottom-nav button{color:#91A5B7!important}
+body.theme-dark .portal-bottom-nav button i{background:#1D2B38!important;color:#9DB2C5!important}
+body.theme-dark .portal-bottom-nav button.active{background:rgba(47,111,237,.16)!important;color:#8EB4FF!important}
+body.theme-dark .portal-bottom-nav button.active i{background:rgba(47,111,237,.22)!important;color:#9BB9FF!important}
+body.theme-dark .portal-topbar .portal-theme-btn-v616ah{background:rgba(255,255,255,.10)!important;border-color:rgba(255,255,255,.18)!important;color:#fff!important}
+body.theme-dark .portal-home-date-toggle-v61509,
+body.theme-dark .portal-request-tabs,
+body.theme-dark .portal-schedule-summary{background:#101D28!important;border-color:#26394A!important}
+body.theme-dark .portal-home-date-toggle-v61509 button,
+body.theme-dark .portal-request-tabs button{color:#91A5B7!important}
+body.theme-dark .portal-home-date-toggle-v61509 button.active,
+body.theme-dark .portal-request-tabs button.active{background:#1C3550!important;color:#8EB4FF!important}
+body.theme-dark .portal-cal-day,
+body.theme-dark .portal-day-chip,
+body.theme-dark .portal-quick-grid button,
+body.theme-dark .portal-att-shift,
+body.theme-dark .portal-time-grid div{
+  background:#14212D!important;border-color:#27394A!important;color:#E7EEF5!important;
+}
+body.theme-dark .portal-cal-day .portal-cal-time,
+body.theme-dark .portal-day-chip small,
+body.theme-dark .portal-profile-card small,
+body.theme-dark .portal-profile-card span{color:#9FB0C0!important}
+body.theme-dark .portal-modal{background:#14212D!important;color:#E7EEF5!important}
+body.theme-dark .portal-modal-head,body.theme-dark .portal-modal-actions{background:#101C27!important;border-color:#27394A!important}
+body.theme-dark .portal-modal-body{background:#14212D!important;color:#E7EEF5!important}
+body.theme-dark .portal-modal-body :is(input,select,textarea){background:#0F1B26!important;color:#E7EEF5!important;border-color:#32485B!important}
+body.theme-dark .portal-auth{background:#0B1520!important}
+body.theme-dark .portal-auth-shell{background:#14212D!important;border-color:#27394A!important;color:#E7EEF5!important}
+body.theme-dark .portal-brand strong,body.theme-dark .portal-form-title strong{color:#E7EEF5!important}
+body.theme-dark .portal-brand span,body.theme-dark .portal-form-title span,body.theme-dark .portal-help,body.theme-dark .portal-auth-footer{color:#9FB0C0!important}
+@media(max-width:420px){
+  .portal-top-actions{gap:5px!important}
+  .portal-topbar .portal-icon-btn{width:40px!important;height:40px!important;border-radius:13px!important}
+  .portal-live-sync-v61513{padding-left:9px!important;padding-right:9px!important}
+}
