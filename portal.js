@@ -39,7 +39,7 @@
   let portalSyncTimerV61513=null;
   let portalSyncBusyV61513=false;
   let portalSyncLastCheckV61513=0;
-  const PORTAL_SYNC_INTERVAL_V61513=20000;
+  const PORTAL_SYNC_INTERVAL_V61513=60000;
 
   let portalHydratedV61514=false;
   let attendanceLoadPromiseV61514=null;
@@ -1618,13 +1618,13 @@
       }
     }
 
-    if(requestChanged){
+    if(requestChanged && active==="requests"){
       jobs.push(
         loadRequests()
       );
     }
 
-    if(notificationChanged){
+    if(notificationChanged && active==="notifications"){
       jobs.push(
         loadNotifications()
       );
@@ -1785,7 +1785,7 @@
 
   async function loadRequests(){requests=await rpc("ta_portal_get_my_requests_v61482",{p_session_token:session(),p_start_date:addDays(today(),-180),p_end_date:addDays(today(),180)})||[];renderRequests();loadMyRequestConsistencyV61515().catch(()=>{});}
   async function loadNotifications(){notifications=await rpc("ta_portal_get_notifications_v61482",{p_session_token:session(),p_limit:100})||[];renderNotifications();}
-  async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{attendanceByDateV61503.clear();attendanceLoadErrorV61504="";timeCalendarRowsV616AB=[];timeTabLastLoadedAtV616AB=0;timeLoadedMonthKeyV616AC="";attendanceLoadedRangeKeyV616AC="";sameShiftTeamCacheV61509.clear();certificationStateCacheV61509.clear();partialLeaveByDateV61511.clear();rawPunchCacheV61501.clear();if(!homeFocusDateV61509)homeFocusDateV61509=today();await Promise.all([loadCalendar(),loadRequests(),loadNotifications()]);await loadSameShiftTeamV61509(homeFocusDateV61509,{force:true});portalHydratedV61514=true;await setPortalSyncBaselineV61513();startPortalSyncV61513();}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);renderToday();renderSameShiftTeamV61509(sameShiftTeamCacheV61509.get(homeFocusDateV61509)||null,homeFocusDateV61509);}}
+  async function refreshAll(){loading(true,"กำลังโหลดข้อมูลของคุณ...");try{attendanceByDateV61503.clear();attendanceLoadErrorV61504="";timeCalendarRowsV616AB=[];timeTabLastLoadedAtV616AB=0;timeLoadedMonthKeyV616AC="";attendanceLoadedRangeKeyV616AC="";sameShiftTeamCacheV61509.clear();certificationStateCacheV61509.clear();partialLeaveByDateV61511.clear();rawPunchCacheV61501.clear();if(!homeFocusDateV61509)homeFocusDateV61509=today();await loadCalendar();await loadSameShiftTeamV61509(homeFocusDateV61509,{force:true});portalHydratedV61514=true;await setPortalSyncBaselineV61513();startPortalSyncV61513();}catch(e){if(String(e?.message||"").includes("PORTAL_SESSION_INVALID")){localStorage.removeItem(SESSION_KEY);showAuth();toast("Session หมดอายุ กรุณาเข้าสู่ระบบใหม่","warning");}else toast(friendly(e),"error");}finally{loading(false);renderToday();renderSameShiftTeamV61509(sameShiftTeamCacheV61509.get(homeFocusDateV61509)||null,homeFocusDateV61509);}}
   function navigate(name){
     document.querySelectorAll(".portal-view").forEach(v=>v.classList.toggle("active",v.id===`portalView${name.charAt(0).toUpperCase()+name.slice(1)}`));
     document.querySelectorAll("[data-portal-nav]").forEach(b=>b.classList.toggle("active",b.dataset.portalNav===name));
@@ -3081,7 +3081,7 @@ $("portalTimeRefreshV616AB")?.addEventListener("click",async()=>{attendanceByDat
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16ao-request-date-time-polish-20260918",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16at-scale-p0-20260918",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }

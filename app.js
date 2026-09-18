@@ -35704,8 +35704,9 @@ ${names}${extra}
       state.orgs=orgs||[];state.teams=teams||[];state.summary=summary||{};renderOrgOptions();renderTeams();renderSummary();
       await loadEnforcement();
       if(allowedRole()){setupChangeRealtime();loadChangeInbox();}
-      loadRuntimeDiagnostic({silent:true});
-    }catch(e){state.lastError=e;toast(human(e),'error');if(body)body.innerHTML=`<tr><td colspan="7" class="fc-empty">โหลด Team Workspace ไม่สำเร็จ: ${esc(human(e))}</td></tr>`;}finally{state.loading=false;}
+      // FIX16AT: runtime diagnostic is intentionally NOT called on every successful Team page load.
+      // It is a troubleshooting RPC and was one of the slowest production calls.
+    }catch(e){state.lastError=e;toast(human(e),'error');if(body)body.innerHTML=`<tr><td colspan="7" class="fc-empty">โหลด Team Workspace ไม่สำเร็จ: ${esc(human(e))}</td></tr>`;loadRuntimeDiagnostic({force:true,silent:true}).catch(()=>{});}finally{state.loading=false;}
   }
 
   function bind(){
