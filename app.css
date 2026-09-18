@@ -35674,3 +35674,31 @@ body.theme-dark .work-mode-canonical-warning-v616z,.dark .work-mode-canonical-wa
   background:#f59e0b;
   box-shadow:0 0 0 2px rgba(255,255,255,.9);
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16AV — PERSON view: current Effective Team grouping
+   ========================================================================== */
+.schedule-person-team-status-v616av{
+  display:inline-flex;
+  align-items:center;
+  min-height:20px;
+  padding:2px 7px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.1;
+  white-space:nowrap;
+}
+.schedule-person-team-status-v616av.is-unassigned{
+  color:#9a5a09;
+  background:#fff4d7;
+  border:1px solid #f8d68a;
+}
+.schedule-person-team-section-v616t.is-pending td{
+  background:#fffaf0!important;
+}
+.schedule-person-team-section-v616t.is-pending .schedule-person-team-ready-v616t{
+  background:#fff0c2!important;
+  color:#9a5a09!important;
+}
