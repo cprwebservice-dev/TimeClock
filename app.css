@@ -35634,3 +35634,10 @@ body.theme-dark #assignModal .assignment-planning-status-v616y .rule-kpi-v6120.o
   #assignModal .assignment-planning-status-v616y{grid-template-columns:1fr!important}
   #assignModal .assignment-planning-status-v616y .rule-kpi-v6120{min-height:0!important}
 }
+
+/* ===== FIX16Z Work Mode Canonical Organization ===== */
+.work-mode-dept-name-v61444{display:flex;flex-direction:column;gap:2px}
+.work-mode-dept-name-v61444>strong{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:inherit;color:inherit}
+.work-mode-dept-name-v61444>small{display:block;color:var(--slate-500);font-size:10px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.work-mode-canonical-warning-v616z{display:block;margin:6px 0 0;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;color:#9a3412;font-size:10px;font-weight:700;line-height:1.35}
+body.theme-dark .work-mode-canonical-warning-v616z,.dark .work-mode-canonical-warning-v616z{border-color:#7c2d12;background:#2b1b14;color:#fdba74}
