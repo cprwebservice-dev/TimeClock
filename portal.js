@@ -3081,7 +3081,7 @@ $("portalTimeRefreshV616AB")?.addEventListener("click",async()=>{attendanceByDat
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16an-request-date-time-balance-20260918",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16ao-request-date-time-polish-20260918",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }
