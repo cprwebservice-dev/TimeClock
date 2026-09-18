@@ -22532,7 +22532,7 @@ ${names}${extra}
 })();
 
 
-/* ===== V6.10.2 Role, Manager Hierarchy & Shift Requests ===== */
+/* ===== V6.15.29 FIX16AS Role, Manager Hierarchy & Shift Requests ===== */
 (function TimeClockV680(){
   "use strict";
 
@@ -22565,6 +22565,8 @@ ${names}${extra}
     app()?.formatDate?.(value) || value || "-";
   const fmtDateTime = value =>
     app()?.formatDateTime?.(value) || value || "-";
+  const fmtTime = value =>
+    app()?.formatTime?.(value) || employeeRequestFormatTimeV61481(value) || "-";
   const safeStatus = value =>
     String(value || "").toUpperCase();
   const statusLabel = value => ({
@@ -34756,7 +34758,14 @@ ${names}${extra}
     $("teamPortalActivationExpireV61482").textContent=`หมดอายุ ${fmtDateTime(result?.activation_expires_at)}`;
     modal.classList.remove("hidden");modal.setAttribute("aria-hidden","false");
   }
-  function closeActivation(){const m=$("teamPortalActivationModalV61482");m?.classList.add("hidden");m?.setAttribute("aria-hidden","true");}
+  function closeActivation(){
+    const m=$("teamPortalActivationModalV61482");
+    if(!m)return;
+    const active=document.activeElement;
+    if(active&&m.contains(active))active.blur();
+    m.classList.add("hidden");
+    m.setAttribute("aria-hidden","true");
+  }
   async function issueActivation(emp,reset=false){
     if(reset){const ok=window.tcConfirm?await window.tcConfirm("Reset PIN จะออกจากระบบทุกอุปกรณ์ของพนักงานและต้อง Activate ใหม่ ยืนยันหรือไม่?"):window.confirm("Reset PIN และให้พนักงาน Activate ใหม่?");if(!ok)return;}
     app()?.showLoading?.(reset?"กำลัง Reset PIN...":"กำลังสร้าง Activation Code...");
