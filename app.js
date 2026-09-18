@@ -21188,7 +21188,7 @@ ${skippedSummary(compatibility.skipped)}
       const samples=[...representatives.entries()].slice(0,80);
       const results=await Promise.allSettled(samples.map(async([department,row])=>({
         department,
-        rows:await loadWorkModesForEmployeeSafeV616AP({
+        rows:await rpc('ta_get_work_modes_for_employee_v616z',{
           p_emp_code:String(row.emp_code),
           p_work_date:referenceDate
         })||[]
@@ -21221,39 +21221,8 @@ ${skippedSummary(compatibility.skipped)}
             access_source:'EMPLOYEE_SCOPE'
           };
         });
-      if(!wp.templateAccessRows.length && workModeEmployeeRpcStateV616AP.disabled){
-        wp.templateAccessRows=WORK_TEMPLATE_MODE_CODES_V61438.map((code,idx)=>({
-          mode_code:code,
-          mode_name:modeDefs[code]?.label||code,
-          is_active:true,
-          is_allowed:true,
-          display_order:idx+1,
-          scope_mode:'ALL',
-          scope_values:[...representatives.keys()],
-          access_source:'EMPLOYEE_SCOPE_FALLBACK'
-        }));
-        wp.templateAccessLoaded=true;
-        wp.templateAccessSource='EMPLOYEE_SCOPE_FALLBACK';
-        return wp.templateAccessRows;
-      }
       wp.templateAccessLoaded=true;
       wp.templateAccessSource='EMPLOYEE_SCOPE';
-      return wp.templateAccessRows;
-    }
-
-    if(workModeEmployeeRpcStateV616AP.disabled){
-      wp.templateAccessLoaded=true;
-      wp.templateAccessSource='NO_SCOPE_FALLBACK';
-      wp.templateAccessRows=WORK_TEMPLATE_MODE_CODES_V61438.map((code,idx)=>({
-        mode_code:code,
-        mode_name:modeDefs[code]?.label||code,
-        is_active:true,
-        is_allowed:true,
-        display_order:idx+1,
-        scope_mode:'ALL',
-        scope_values:[],
-        access_source:'NO_SCOPE_FALLBACK'
-      }));
       return wp.templateAccessRows;
     }
 
@@ -32736,7 +32705,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.15.29-FIX16Z2';
+  const VERSION='6.15.29-FIX16AQ';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -32818,44 +32787,6 @@ ${names}${extra}
     return data;
   }
   const missingRpcV61425=e=>/PGRST202|42883|could not find|does not exist|schema cache/i.test(String(e?.code||'')+' '+String(e?.message||e||''));
-  const workModeEmployeeRpcStateV616AP={disabled:false,reason:'',warned:false};
-  const workModeEmployeeBadRequestV616AP=e=>{
-    const status=Number(e?.status||e?.statusCode||0);
-    const raw=String(e?.code||'')+' '+String(e?.message||e?.details||e?.hint||e||'');
-    return status===400 || /bad request|PGRST202|42883|does not exist|schema cache|function .* does not exist|invalid input syntax|null value/i.test(raw);
-  };
-  function workModeFallbackRowsV616AP(){
-    return Object.keys(modeDefs).map((code,i)=>({
-      mode_code:code,
-      mode_name:modeDefs[code]?.label||code,
-      is_active:true,
-      is_allowed:true,
-      display_order:i+1,
-      scope_label:'Fallback • ใช้ค่ามาตรฐานชั่วคราว'
-    }));
-  }
-  async function loadWorkModesForEmployeeSafeV616AP(args={}){
-    const payload={p_emp_code:String(args?.p_emp_code||'').trim(),p_work_date:String(args?.p_work_date||'').trim()};
-    if(!payload.p_emp_code||!payload.p_work_date)return [];
-    if(workModeEmployeeRpcStateV616AP.disabled)return [];
-    let primaryError=null;
-    try{return await rpc('ta_get_work_modes_for_employee_v616z',payload)||[];}
-    catch(e1){primaryError=e1;}
-    try{return await rpc('ta_get_work_modes_for_employee_v6120',payload)||[];}
-    catch(e2){
-      const fatal=workModeEmployeeBadRequestV616AP(primaryError)||workModeEmployeeBadRequestV616AP(e2);
-      if(fatal){
-        workModeEmployeeRpcStateV616AP.disabled=true;
-        workModeEmployeeRpcStateV616AP.reason=String(e2?.message||primaryError?.message||e2||primaryError||'WORK_MODE_EMPLOYEE_RPC_BAD_REQUEST');
-        if(!workModeEmployeeRpcStateV616AP.warned){
-          console.warn('Work mode employee RPC disabled for this session:',workModeEmployeeRpcStateV616AP.reason);
-          workModeEmployeeRpcStateV616AP.warned=true;
-        }
-        return [];
-      }
-      throw e2;
-    }
-  }
   const fmtTime=v=>app()?.formatTime?.(v)||String(v||'-').slice(0,5)||'-';
   const fmtDate=v=>app()?.formatDate?.(v)||v||'-';
   function isoAddDays(date,days){return window.TimeClockCalendarV61448.addDays(date,days);}
@@ -33344,15 +33275,22 @@ ${names}${extra}
   }
   async function modeOptions(emp){
     try{
-      const args={p_emp_code:String(emp||'').trim(),p_work_date:$('assignWorkDate')?.value||window.TimeClockCalendarV61448.today()};
-      if(!args.p_emp_code||!args.p_work_date)return workModeFallbackRowsV616AP();
-      const rows=await loadWorkModesForEmployeeSafeV616AP(args);
+      const args={p_emp_code:String(emp),p_work_date:$('assignWorkDate')?.value||window.TimeClockCalendarV61448.today()};
+      let rows=[];
+      try{
+        rows=await rpc('ta_get_work_modes_for_employee_v616z',args)||[];
+      }catch(e){
+        if(missingRpcV61425(e)){
+          rows=await rpc('ta_get_work_modes_for_employee_v6120',args)||[];
+        }else{
+          throw e;
+        }
+      }
       const out=Array.isArray(rows)?[...rows]:[];
-      if(!out.length && workModeEmployeeRpcStateV616AP.disabled)return workModeFallbackRowsV616AP();
       if(!out.some(x=>String(x.mode_code||'').toUpperCase()==='LEAVE'))out.push({mode_code:'LEAVE',mode_name:'ลา',is_active:true,is_allowed:true,display_order:95,scope_label:'ใช้ได้เมื่อมีสิทธิ์จัดกะพนักงานรายนี้'});
       return out;
     }
-    catch(e){return workModeFallbackRowsV616AP();}
+    catch(e){return Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:true,is_allowed:true,display_order:i+1,scope_label:'Fallback • กรุณาติดตั้ง FIX16Z'}));}
   }
   function currentTargetConsumesDayoffQuotaV6142(){
     const r=st.current?.row;
