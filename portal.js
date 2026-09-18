@@ -2223,6 +2223,13 @@
   function fillSubtype(){
     const type=$("portalRequestType").value;
     const sel=$("portalRequestSubtype");
+    const form=$("portalRequestForm");
+    if(form){
+      form.dataset.requestType=type;
+      form.classList.remove("request-time-issue-v616al","request-special-work-v616al","request-dayoff-v616al","request-leave-v616al");
+      const cls={TIME_ISSUE:"request-time-issue-v616al",SPECIAL_WORK:"request-special-work-v616al",DAYOFF_SWAP:"request-dayoff-v616al",LEAVE_REQUEST:"request-leave-v616al"}[type];
+      if(cls)form.classList.add(cls);
+    }
     const map={
       TIME_ISSUE:[
         ["MISSING_IN","รับรองเวลา-เข้า"],
@@ -2876,6 +2883,10 @@
     renderEvidence();
     $("portalRequestModal").classList.remove("hidden");
     document.body.classList.add("portal-modal-open-v616ai");
+    requestAnimationFrame(()=>{
+      const body=$("portalRequestForm");
+      if(body)body.scrollTop=0;
+    });
   }
 
   function closeRequest(){$("portalRequestModal").classList.add("hidden");document.body.classList.remove("portal-modal-open-v616ai");editingRequestId=null;editingRequestStatusV61519="";}
