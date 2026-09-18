@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16i-global-typography-20260916"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16ab-minimal-time-icons-20260918"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -29,7 +29,7 @@
       <div class="portal-auth-tabs"><button class="active" data-auth-tab="activate">เปิดใช้ครั้งแรก</button><button data-auth-tab="login">เข้าสู่ระบบ</button></div>
 
       <form id="portalActivateForm" class="portal-auth-form">
-        <div class="portal-form-title"><strong>เปิดใช้ Employee Portal</strong><span>ใช้ Activation Code ที่ได้รับจาก Manager เพียงครั้งแรก</span></div>
+        <div class="portal-form-title"><strong>เปิดใช้ Employee Portal</strong><span>ใช้ Activation Code ที่ได้รับจาก Manager หรือ HR Admin เพียงครั้งแรก</span></div>
         <label>รหัสพนักงาน<input id="portalActivateEmp" inputmode="numeric" autocomplete="username" placeholder="เช่น 7825787" required/></label>
         <label>Activation Code 6 หลัก<input id="portalActivationCode" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" required/></label>
         <div class="portal-pin-grid"><label>ตั้ง PIN ส่วนตัว 6 หลัก<input id="portalNewPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="new-password" placeholder="••••••" required/></label><label>ยืนยัน PIN<input id="portalConfirmPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="new-password" placeholder="••••••" required/></label></div>
@@ -42,9 +42,9 @@
         <label>รหัสพนักงาน<input id="portalLoginEmp" inputmode="numeric" autocomplete="username" required/></label>
         <label>PIN 6 หลัก<input id="portalLoginPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="current-password" required/></label>
         <button class="portal-primary" type="submit">เข้าสู่ระบบ</button>
-        <small class="portal-help">ลืม PIN? ติดต่อ Manager ให้กด <b>Reset PIN</b> และออก Activation Code ใหม่</small>
+        <small class="portal-help">ลืม PIN? ติดต่อ Manager หรือ HR Admin เพื่อ Reset PIN และออก Activation Code ใหม่</small>
       </form>
-      <div class="portal-auth-footer">V6.15.26 • Employee ID + PIN • Device Session<br/>Design by ฝ่ายบริหารระบบข้อมูลบุคคล</div>
+      <div class="portal-auth-footer">V6.15.29 FIX16AB • Employee ID + PIN • Device Session<br/>Design by ฝ่ายบริหารระบบข้อมูลบุคคล</div>
     </div>
   </section>
 
@@ -56,8 +56,8 @@
       </div>
       <div class="portal-top-actions">
         <span class="portal-live-sync-v61513 ready" id="portalLiveSyncV61513" title="ระบบตรวจสอบการเปลี่ยนแปลงจาก Backend อัตโนมัติ"><i></i><b>Live</b><em>พร้อม</em></span>
-        <button class="portal-icon-btn portal-notif-shortcut" data-portal-nav="notifications" aria-label="แจ้งเตือน">♧</button>
-        <button class="portal-icon-btn" id="portalLogoutBtn" aria-label="ออกจากระบบ">↪</button>
+        <button class="portal-icon-btn portal-notif-shortcut" data-portal-nav="notifications" aria-label="แจ้งเตือน"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></button>
+        <button class="portal-icon-btn" id="portalLogoutBtn" aria-label="ออกจากระบบ"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 19V5a2 2 0 0 0-2-2h-6"/></svg></button>
       </div>
     </header>
 
@@ -79,7 +79,7 @@
               <button type="button" data-home-day-v61509="-1">เมื่อวาน</button>
               <button type="button" class="active" data-home-day-v61509="0">วันนี้</button>
             </div>
-            <button class="portal-text-btn" id="portalRefreshBtn">↻ รีเฟรช</button>
+            <button class="portal-text-btn portal-text-btn-icon" id="portalRefreshBtn"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>รีเฟรช</span></button>
           </div>
         </div>
 
@@ -94,13 +94,18 @@
         <div class="portal-section-title"><div><span>กะของฉัน</span><strong>7 วันข้างหน้า</strong></div><button class="portal-text-btn" data-portal-nav="schedule">ดูปฏิทิน</button></div>
         <div class="portal-week-strip" id="portalWeekStrip"></div>
         <div class="portal-quick-title"><span>บริการสำหรับฉัน</span><strong>ทำรายการได้รวดเร็ว</strong></div>
-        <div class="portal-quick-grid"><button data-request-quick="TIME_ISSUE"><i>◷</i><strong>ขอรับรองเวลา</strong><small>รับรองเวลาเข้า / ออก / เต็มวัน</small></button><button data-request-quick="SPECIAL_WORK"><i>☾</i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button><button data-request-quick="DAYOFF_SWAP"><i>⇄</i><strong>วันหยุด</strong><small>สลับวันหยุด / ขอหยุดเพิ่ม</small></button><button data-request-quick="LEAVE_REQUEST"><i>▤</i><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></button></div>
+        <div class="portal-quick-grid">
+      <button data-request-quick="TIME_ISSUE"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></i><strong>ขอรับรองเวลา</strong><small>รับรองเวลาเข้า / ออก / เต็มวัน</small></button>
+      <button data-request-quick="SPECIAL_WORK"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2z"/></svg></i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button>
+      <button data-request-quick="DAYOFF_SWAP"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/><path d="M18 7l-3 3M6 17l3-3"/></svg></i><strong>วันหยุด</strong><small>สลับวันหยุด / ขอหยุดเพิ่ม</small></button>
+      <button data-request-quick="LEAVE_REQUEST"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg></i><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></button>
+    </div>
       </section>
 
       <section id="portalViewSchedule" class="portal-view">
         <div class="portal-schedule-titlebar">
           <div><span>MY SCHEDULE</span><strong>กะของฉัน</strong><small>ดูตารางกะประจำเดือนของคุณ</small><button type="button" class="portal-schedule-sync-v61507" id="portalScheduleSyncV61507" data-schedule-sync-v61507>แตะเพื่ออัปเดต</button></div>
-          <button class="portal-schedule-today-btn" id="portalThisMonth">▣ เดือนนี้</button>
+          <button class="portal-schedule-today-btn" id="portalThisMonth"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/></svg><span>เดือนนี้</span></button>
         </div>
         <div class="portal-schedule-panel">
           <div class="portal-schedule-month-head">
@@ -115,14 +120,18 @@
       </section>
 
       <section id="portalViewTime" class="portal-view">
-        <div class="portal-view-hero"><div><span>ATTENDANCE</span><strong>เวลาทำงาน</strong><small>ประวัติการลงเวลาและสถานะล่าสุด</small></div></div>
+        <div class="portal-view-hero portal-time-hero-v616ab">
+          <div><span>ATTENDANCE</span><strong>เวลาทำงาน</strong><small>ข้อมูล 32 วันล่าสุด • เวลาเข้า–ออกและสถานะตามกะ</small></div>
+          <button type="button" class="portal-soft-action-v616ab" id="portalTimeRefreshV616AB"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>อัปเดต</span></button>
+        </div>
+        <div class="portal-time-loadstate-v616ab" id="portalTimeLoadStateV616AB"><span class="dot"></span><strong>พร้อมแสดงข้อมูลล่าสุด</strong></div>
         <div class="portal-time-list" id="portalTimeList"></div>
       </section>
 
       <section id="portalViewRequests" class="portal-view">
         <div class="portal-view-hero portal-request-hero">
           <div><span>SELF SERVICE</span><strong>คำขอ / แจ้งข้อมูล</strong><small>ติดตามสถานะ แก้ไข หรือยกเลิกคำขอที่ยังรอดำเนินการ</small></div>
-          <button class="portal-primary compact" id="portalNewRequestBtn">＋ สร้างคำขอ</button>
+          <button class="portal-primary compact portal-btn-with-icon" id="portalNewRequestBtn"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>สร้างคำขอ</span></button>
         </div>
         <div class="portal-request-tabs"><button class="active" data-request-filter="">ทั้งหมด</button><button data-request-filter="PENDING">รอดำเนินการ</button><button data-request-filter="DONE">ดำเนินการแล้ว</button></div>
         <div class="portal-request-list" id="portalRequestList"></div>
@@ -137,11 +146,11 @@
     <footer class="portal-app-credit-v61508">Design by ฝ่ายบริหารระบบข้อมูลบุคคล</footer>
 
     <nav class="portal-bottom-nav">
-      <button class="active" data-portal-nav="home"><i>⌂</i><span>หน้าแรก</span></button>
-      <button data-portal-nav="schedule"><i>▦</i><span>กะของฉัน</span></button>
-      <button data-portal-nav="time"><i>◷</i><span>เวลาทำงาน</span></button>
-      <button data-portal-nav="requests"><i>⇄</i><span>คำขอ</span></button>
-      <button data-portal-nav="notifications"><i>♢</i><span>แจ้งเตือน</span><em id="portalNotifBadge" class="hidden">0</em></button>
+      <button class="active" data-portal-nav="home"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg></i><span>หน้าแรก</span></button>
+      <button data-portal-nav="schedule"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01"/></svg></i><span>กะของฉัน</span></button>
+      <button data-portal-nav="time"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></i><span>เวลาทำงาน</span></button>
+      <button data-portal-nav="requests"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></i><span>คำขอ</span></button>
+      <button data-portal-nav="notifications"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg></i><span>แจ้งเตือน</span><b id="portalNotifBadge" class="hidden">0</b></button>
     </nav>
   </section>
 
@@ -209,6 +218,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.15.29-fix16aa-global-portal-20260918"></script>
+  <script src="./portal.js?v=6.15.29-fix16ab-time-loader-20260918"></script>
 </body>
 </html>
