@@ -14435,6 +14435,9 @@ window.tcIsDayShiftCode = value =>
       };
       setText("pageTitle", titles[page]?.[0] || page);
       setText("pageSubtitle", titles[page]?.[1] || "");
+      if(page==="team-portal"){
+        setTimeout(()=>window.TimeClockEmployeePortalV61482?.syncRoleLabels?.(),0);
+      }
       $("sidebar").classList.remove("open");
       $("sidebarScrim")?.classList.remove("active");
       $("mobileMenuBtn")?.setAttribute(
@@ -34498,7 +34501,7 @@ ${names}${extra}
 /* ===== V6.15.29 FIX16AA Employee Portal Global Link + HR Admin Management ===== */
 (function(){
   "use strict";
-  const VERSION="6.15.29 FIX16AA";
+  const VERSION="6.15.29 FIX16AA1";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -34508,6 +34511,33 @@ ${names}${extra}
   const toast=(m,t="info")=>app()?.toast?.(m,t);
   const role=()=>String(app()?.state?.profile?.role||"").toUpperCase();
   const realRole=()=>String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||"").toUpperCase();
+
+  function syncPortalRoleLabelsV616AA1(){
+    const isHr=realRole()==="HR_ADMIN";
+    const nav=$("teamPortalNavV61482");
+    const navText=nav?.querySelector(".nav-text");
+    if(navText)navText.textContent=isHr?"จัดการ Employee Portal":"สมาชิกทีม / Portal";
+
+    const hero=document.querySelector("#page-team-portal .portal-hero-v61482");
+    const heroTitle=hero?.querySelector("h2");
+    const heroDesc=hero?.querySelector("p");
+    if(heroTitle)heroTitle.textContent=isHr?"จัดการ Employee Portal":"สมาชิกทีม / Portal";
+    if(heroDesc)heroDesc.textContent=isHr
+      ?"บริหาร QR/Link กลาง • เปิดสิทธิ์ • Activation Code • Reset PIN สำหรับพนักงาน"
+      :"QR/Link กลางใช้ร่วมกันทั้งระบบ • จัดการสมาชิกเฉพาะใน Manager Scope";
+
+    const memberTitle=document.querySelector("#page-team-portal .panel-header h3");
+    if(memberTitle)memberTitle.textContent=isHr?"พนักงาน Employee Portal":"สมาชิกทีม";
+
+    if(app()?.state?.currentPage==="team-portal"){
+      const pageTitle=$("pageTitle");
+      const pageSubtitle=$("pageSubtitle");
+      if(pageTitle)pageTitle.textContent=isHr?"จัดการ Employee Portal":"สมาชิกทีม / Portal";
+      if(pageSubtitle)pageSubtitle.textContent=isHr
+        ?"บริหารสิทธิ์ Activation Code, Reset PIN และ QR/Link กลางของ Employee Portal"
+        :"จัดการ Activation Code และ Reset PIN ของสมาชิกใน Manager Scope";
+    }
+  }
 
   const team={rows:[],filtered:[],link:null,lastActivation:null};
   const admin={rows:[],filtered:[],selected:new Set()};
@@ -34608,6 +34638,7 @@ ${names}${extra}
   }
 
   async function loadTeam(){
+    syncPortalRoleLabelsV616AA1();
     if(!["MANAGER","HR_ADMIN"].includes(role())&&realRole()!=="HR_ADMIN")return;
     app()?.showLoading?.("กำลังโหลด Employee Portal ของทีม...");
     try{
@@ -34773,10 +34804,21 @@ ${names}${extra}
     });
     $("teamPortalCopyCodeV61482")?.addEventListener("click",async()=>{const c=team.lastActivation?.activation_code;if(!c)return;await copyText(c);toast("คัดลอก Activation Code แล้ว","success");});
     $("teamPortalShareCodeV61482")?.addEventListener("click",()=>{const r=team.lastActivation;if(!r)return;shareText("TimeAttendance Activation",`${r.emp_code} ${r.full_name||""}\nActivation Code: ${r.activation_code}\nใช้รหัสนี้ครั้งเดียว แล้วตั้ง PIN 6 หลักของตนเอง`,teamPortalUrl(team.link?.public_token));});
-    window.addEventListener("ta:session-ready",()=>{const rr=role(),real=realRole();const show=["MANAGER","HR_ADMIN"].includes(rr)||real==="HR_ADMIN";$("teamPortalNavV61482")?.classList.toggle("hidden",!show);});
+    window.addEventListener("ta:session-ready",()=>{
+      const rr=role(),real=realRole();
+      const show=["MANAGER","HR_ADMIN"].includes(rr)||real==="HR_ADMIN";
+      $("teamPortalNavV61482")?.classList.toggle("hidden",!show);
+      syncPortalRoleLabelsV616AA1();
+    });
+    document.addEventListener("timeclock:effective-role-changed",()=>{
+      syncPortalRoleLabelsV616AA1();
+      const rr=role(),real=realRole();
+      const show=["MANAGER","HR_ADMIN"].includes(rr)||real==="HR_ADMIN";
+      $("teamPortalNavV61482")?.classList.toggle("hidden",!show);
+    });
   }
 
-  window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,version:VERSION};
+  window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,syncRoleLabels:syncPortalRoleLabelsV616AA1,version:VERSION};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();
 
