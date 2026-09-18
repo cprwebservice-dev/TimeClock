@@ -34621,7 +34621,7 @@ ${names}${extra}
       const noteV616AC1=totalCardV616AC1.querySelector("small");
       if(labelV616AC1)labelV616AC1.textContent=hrAdminV616AC1?"พนักงานทั้งหมด":"สมาชิกที่มองเห็น";
       if(noteV616AC1)noteV616AC1.textContent=hrAdminV616AC1
-        ?"HR Admin = Employee Portal ทั้งระบบ • ไม่ตัดด้วย Manager Scope"
+        ?"HR Admin = Employee Portal ทั้งระบบ • โหลดครบทุกหน้า • ไม่ตัดด้วย Manager Scope"
         :"ตาม Manager Scope ปัจจุบัน";
     }
 
@@ -34651,12 +34651,60 @@ ${names}${extra}
     }).join(""):'<tr><td colspan="5" class="fc-empty">ไม่พบสมาชิกทีม</td></tr>';
   }
 
+  async function loadPortalTeamRowsV616AD(){
+    const pageSizeV616AD=500;
+    let offsetV616AD=0;
+    let totalV616AD=null;
+    const rowsV616AD=[];
+    const seenV616AD=new Set();
+
+    for(let pageNoV616AD=0;pageNoV616AD<20;pageNoV616AD++){
+      const pageV616AD=await rpc("ta_portal_get_my_team_page_v616ad",{
+        p_limit:pageSizeV616AD,
+        p_offset:offsetV616AD
+      });
+      const arrV616AD=Array.isArray(pageV616AD)?pageV616AD:[];
+      if(totalV616AD===null&&arrV616AD.length){
+        const rawTotalV616AD=Number(arrV616AD[0]?.total_count);
+        totalV616AD=Number.isFinite(rawTotalV616AD)?rawTotalV616AD:null;
+      }
+
+      for(const rowV616AD of arrV616AD){
+        const keyV616AD=String(rowV616AD?.emp_code||"").trim();
+        if(!keyV616AD||seenV616AD.has(keyV616AD))continue;
+        seenV616AD.add(keyV616AD);
+        const copyV616AD={...rowV616AD};
+        delete copyV616AD.total_count;
+        rowsV616AD.push(copyV616AD);
+      }
+
+      if(!arrV616AD.length)break;
+      if(totalV616AD!==null&&rowsV616AD.length>=totalV616AD)break;
+      if(arrV616AD.length<pageSizeV616AD)break;
+      offsetV616AD+=pageSizeV616AD;
+    }
+
+    return rowsV616AD;
+  }
+
   async function loadTeam(){
     syncPortalRoleLabelsV616AA1();
     if(!["MANAGER","HR_ADMIN"].includes(role())&&realRole()!=="HR_ADMIN")return;
     app()?.showLoading?.((realRole()==="HR_ADMIN"||role()==="HR_ADMIN")?"กำลังโหลดพนักงาน Employee Portal ทั้งระบบ...":"กำลังโหลด Employee Portal ของทีม...");
     try{
-      const [rows]=await Promise.all([rpc("ta_portal_get_my_team_v61482"),loadTeamLink(false)]);
+      let rows;
+      try{
+        [rows]=await Promise.all([
+          loadPortalTeamRowsV616AD(),
+          loadTeamLink(false)
+        ]);
+      }catch(pageErrorV616AD){
+        console.warn("Portal paging FIX16AD fallback:",pageErrorV616AD);
+        [rows]=await Promise.all([
+          rpc("ta_portal_get_my_team_v61482"),
+          loadTeamLink(false)
+        ]);
+      }
       let portalRowsV616Q=Array.isArray(rows)?rows:[];
       try{
         const todayV616Q=app()?.calendarTodayISO?.()||new Date().toISOString().slice(0,10);
