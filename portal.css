@@ -4119,3 +4119,245 @@ body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav{background:rgba(25,31,3
 body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button i{background:#232B33!important}
 body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button.active{background:rgba(47,111,237,.15)!important;color:#8EB0FF!important}
 body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button.active i{background:rgba(47,111,237,.18)!important;color:#8EB0FF!important}
+
+
+/* ========================================================================== 
+   FIX16AG — Request text contrast + Light/Dark palette parity
+   ========================================================================== */
+/* Request CTA: keep label/icon high contrast on the royal-blue button. */
+.portal-request-hero #portalNewRequestBtn,
+.portal-request-hero #portalNewRequestBtn span,
+.portal-request-hero #portalNewRequestBtn .portal-ui-icon{
+  color:#FFFFFF!important;
+}
+.portal-request-hero #portalNewRequestBtn .portal-ui-icon{
+  stroke:#FFFFFF!important;
+}
+.portal-request-hero #portalNewRequestBtn:disabled,
+.portal-request-hero #portalNewRequestBtn.disabled{
+  color:#FFFFFF!important;
+}
+.portal-request-hero #portalNewRequestBtn:disabled span,
+.portal-request-hero #portalNewRequestBtn.disabled span{
+  color:#FFFFFF!important;
+}
+
+/* Dark mode uses the same visual hierarchy as Light Mode:
+   deep navy background, royal-blue action, warm orange only as secondary accent. */
+body:is(.theme-dark,.dark,.dark-mode){
+  --pa-navy:#DCEAFF;
+  --pa-navy-2:#C8DDFA;
+  --pa-blue:#4F8CFF;
+  --pa-blue-strong:#79A7FF;
+  --pa-blue-soft:rgba(79,140,255,.16);
+  --pa-orange:#F5A05C;
+  --pa-orange-soft:rgba(245,160,92,.12);
+  --pa-green:#54C495;
+  --pa-green-soft:rgba(84,196,149,.12);
+  --pa-red:#F27483;
+  --pa-red-soft:rgba(242,116,131,.12);
+  --pa-purple:#A992F1;
+  --pa-purple-soft:rgba(169,146,241,.12);
+  --pa-bg:#101820;
+  --pa-surface:#18232D;
+  --pa-surface-2:#202C37;
+  --pa-line:#2E3D4B;
+  --pa-text:#F2F6FA;
+  --pa-muted:#9CAEBE;
+  --pa-shadow:0 12px 30px rgba(0,0,0,.24);
+  --pa-shadow-soft:0 6px 18px rgba(0,0,0,.18);
+  background:var(--pa-bg)!important;
+  color:var(--pa-text)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) :is(html,.portal-app,.portal-main){
+  background:var(--pa-bg)!important;
+  color:var(--pa-text)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-topbar{
+  background:rgba(13,43,69,.98)!important;
+  border-color:rgba(255,255,255,.08)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.24)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-brand-mark.small{
+  background:#F4F8FC!important;
+  color:#123A5A!important;
+  border-color:#F4F8FC!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) :is(
+  .portal-profile-card,.portal-same-shift-team-v61509,.portal-day-chip,
+  .portal-view-hero,.portal-schedule-panel,.portal-calendar-shell,
+  .portal-calendar-punch-detail,.portal-time-item,.portal-att-shift,
+  .portal-request-item,.portal-notification-item,.portal-team-card,
+  .portal-auth-shell,.portal-modal
+){
+  background:var(--pa-surface)!important;
+  border-color:var(--pa-line)!important;
+  color:var(--pa-text)!important;
+  box-shadow:var(--pa-shadow-soft)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) :is(
+  .portal-section-title strong,.portal-profile-copy strong,.portal-view-hero strong,
+  .portal-schedule-titlebar strong,.portal-time-title strong,.portal-request-head strong,
+  .portal-notification-head strong,.portal-quick-grid strong
+){color:var(--pa-text)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(
+  .portal-section-title span,.portal-profile-copy span,.portal-profile-copy small,
+  .portal-view-hero span,.portal-view-hero small,.portal-schedule-titlebar span,
+  .portal-schedule-titlebar small,.portal-time-head span,.portal-request-head span,
+  .portal-notification-head span,.portal-request-item p,.portal-notification-item p,
+  .portal-empty,.portal-quick-grid small
+){color:var(--pa-muted)!important}
+
+body:is(.theme-dark,.dark,.dark-mode) .portal-today-card{
+  background:linear-gradient(145deg,#123A5A,#0D2B45)!important;
+  border-color:#244E6D!important;
+  box-shadow:0 14px 32px rgba(0,0,0,.28)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-today-times div{
+  background:rgba(255,255,255,.07)!important;
+  border-color:rgba(255,255,255,.10)!important;
+}
+
+body:is(.theme-dark,.dark,.dark-mode) .portal-avatar{
+  background:rgba(79,140,255,.15)!important;
+  color:#9FC0FF!important;
+  border-color:rgba(79,140,255,.30)!important;
+  box-shadow:inset 0 0 0 4px rgba(79,140,255,.06)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-user-badge{
+  background:var(--pa-green-soft)!important;
+  color:#82DDB8!important;
+  border-color:rgba(84,196,149,.24)!important;
+}
+
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip{
+  background:var(--pa-surface)!important;
+  border-color:var(--pa-line)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.today{
+  border-color:rgba(79,140,255,.65)!important;
+  box-shadow:inset 0 0 0 1px rgba(79,140,255,.45)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip span,
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip small,
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip .portal-day-chip-time-v616ae span{
+  color:var(--pa-muted)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip strong{color:var(--pa-text)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.off{background:rgba(242,116,131,.07)!important;border-color:rgba(242,116,131,.22)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.off strong,
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.off .portal-calendar-original-icon-v616ac{color:#F58B98!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.leave{background:rgba(169,146,241,.07)!important;border-color:rgba(169,146,241,.22)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.leave strong,
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.leave .portal-calendar-original-icon-v616ac{color:#BBA8F5!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.holiday{background:rgba(84,196,149,.07)!important;border-color:rgba(84,196,149,.22)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.holiday strong,
+body:is(.theme-dark,.dark,.dark-mode) .portal-day-chip.holiday .portal-calendar-original-icon-v616ac{color:#78D7AE!important}
+
+body:is(.theme-dark,.dark,.dark-mode) .portal-quick-grid button{
+  background:var(--pa-surface)!important;
+  border-color:var(--pa-line)!important;
+  color:var(--pa-text)!important;
+  box-shadow:var(--pa-shadow-soft)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-quick-grid button:nth-child(1)>i{background:rgba(79,140,255,.15)!important;color:#8EB4FF!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-quick-grid button:nth-child(2)>i{background:rgba(137,145,255,.13)!important;color:#A9AFFF!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-quick-grid button:nth-child(3)>i{background:rgba(245,160,92,.13)!important;color:#FFC18F!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-quick-grid button:nth-child(4)>i{background:rgba(74,173,225,.13)!important;color:#8FD0F2!important}
+
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-cal-day,.portal-shift-legend,.portal-time-grid div,.portal-att-punch-grid>div,.portal-att-metric){
+  background:var(--pa-surface-2)!important;
+  border-color:var(--pa-line)!important;
+  color:var(--pa-text)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-cal-day.selected{
+  background:rgba(79,140,255,.14)!important;
+  border-color:var(--pa-blue)!important;
+  box-shadow:inset 0 0 0 1px rgba(79,140,255,.55)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-cal-day .portal-cal-time{color:#AFC0D1!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-cal-head{color:#93A6B8!important}
+
+body:is(.theme-dark,.dark,.dark-mode) :is(
+  .portal-month-picker-v616ac,.portal-month-nav-v616ac,.portal-time-current-v616ac,
+  .portal-soft-action-v616ab,.portal-month-nav button,.portal-schedule-today-btn,
+  .portal-icon-btn,.portal-text-btn
+){
+  background:var(--pa-surface-2)!important;
+  border-color:var(--pa-line)!important;
+  color:#B7C7D7!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-month-picker-v616ac input{color:var(--pa-text)!important}
+
+/* Tabs remain blue in dark mode instead of inheriting the old orange accent. */
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-request-tabs,.portal-home-date-toggle-v61509,.portal-schedule-summary){
+  background:#141F29!important;
+  border-color:var(--pa-line)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-request-tabs button,.portal-home-date-toggle-v61509 button){
+  color:#9EAFBF!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-request-tabs button.active,.portal-home-date-toggle-v61509 button.active){
+  background:rgba(79,140,255,.16)!important;
+  color:#9FC0FF!important;
+  box-shadow:inset 0 0 0 1px rgba(79,140,255,.20)!important;
+}
+
+body:is(.theme-dark,.dark,.dark-mode) .portal-request-hero #portalNewRequestBtn,
+body:is(.theme-dark,.dark,.dark-mode) .portal-primary{
+  background:var(--pa-blue)!important;
+  border-color:#407CE4!important;
+  color:#FFFFFF!important;
+  box-shadow:0 9px 22px rgba(0,0,0,.22)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-request-hero #portalNewRequestBtn span,
+body:is(.theme-dark,.dark,.dark-mode) .portal-request-hero #portalNewRequestBtn .portal-ui-icon,
+body:is(.theme-dark,.dark,.dark-mode) .portal-primary *{
+  color:#FFFFFF!important;
+  stroke:#FFFFFF!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-secondary{
+  background:#25313C!important;
+  color:#C3D0DC!important;
+}
+
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav{
+  background:rgba(24,35,45,.97)!important;
+  border-color:var(--pa-line)!important;
+  box-shadow:0 16px 36px rgba(0,0,0,.32)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button{color:#93A5B6!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button i{background:#202C37!important;color:#9AAFC2!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button.active{
+  background:rgba(79,140,255,.15)!important;
+  color:#9FC0FF!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button.active i{
+  background:rgba(79,140,255,.20)!important;
+  color:#A7C5FF!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button.active:before{background:var(--pa-blue)!important}
+
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-modal-head,.portal-modal-actions){
+  background:#151F29!important;
+  border-color:var(--pa-line)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-modal-body input,.portal-modal-body select,.portal-modal-body textarea,.portal-auth-form input){
+  background:#121C25!important;
+  color:var(--pa-text)!important;
+  border-color:var(--pa-line)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-day-evidence,.portal-special-fields,.portal-security-hint,.portal-team-card){
+  background:var(--pa-surface-2)!important;
+  border-color:var(--pa-line)!important;
+  color:#B2C2D0!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-auth{
+  background:linear-gradient(180deg,#101820 0%,#0D151C 100%)!important;
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-auth-tabs{background:#111B24!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-auth-tabs button{color:#92A5B6!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-auth-tabs button.active{
+  background:rgba(79,140,255,.14)!important;
+  color:#9FC0FF!important;
+}
