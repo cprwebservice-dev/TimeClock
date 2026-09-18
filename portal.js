@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.29 FIX16AI";
+  const VERSION="6.15.29 FIX16AK";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -3069,7 +3069,7 @@ $("portalTimeRefreshV616AB")?.addEventListener("click",async()=>{attendanceByDat
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16ai-dark-complete-quick-popup-20260918",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16ak-dark-text-contrast-20260918",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }

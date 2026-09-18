@@ -4457,3 +4457,519 @@ body.theme-dark .portal-quick-launch-v616ai,body.theme-dark .portal-quick-choice
 body.theme-dark .portal-auth{background:linear-gradient(180deg,#0C1620,#08111A)!important}body.theme-dark .portal-auth-shell{background:var(--pd-surface)!important;border-color:var(--pd-line)!important;color:var(--pd-text)!important}body.theme-dark .portal-auth-tabs{background:#101B25!important}body.theme-dark .portal-auth-tabs button{color:var(--pd-muted)!important}body.theme-dark .portal-auth-tabs button.active{background:var(--pd-blue-soft)!important;color:#A6C4FF!important}
 @media(max-width:560px){.portal-quick-choice-backdrop-v616ai{align-items:flex-end!important;padding:0!important}.portal-quick-choice-modal-v616ai{width:100%!important;max-height:82vh!important;border-radius:24px 24px 0 0!important}.portal-quick-choice-body-v616ai{grid-template-columns:1fr 1fr;gap:9px;padding:12px 12px max(18px,env(safe-area-inset-bottom))}.portal-quick-choice-item-v616ai{grid-template-columns:40px minmax(0,1fr);min-height:100px;padding:11px;gap:8px;border-radius:16px}.portal-quick-choice-item-v616ai>i{width:40px;height:40px;border-radius:13px}.portal-quick-choice-item-v616ai>b{display:none}}
 @media(max-width:380px){.portal-quick-choice-body-v616ai{grid-template-columns:1fr}.portal-quick-choice-item-v616ai{min-height:78px}}
+
+
+/* ==========================================================================\n   V6.15.29 FIX16AJ — Employee Portal Dark Mode completeness audit\n   Purpose: one coherent dark palette across every page / popup and readable\n   calendar / attendance text. Appended last intentionally to override legacy.\n   ========================================================================== */
+body.theme-dark{
+  --dj-bg:#07131D;
+  --dj-bg-2:#0A1722;
+  --dj-surface:#10212E;
+  --dj-surface-2:#142837;
+  --dj-surface-3:#193041;
+  --dj-line:#2D485C;
+  --dj-line-soft:#233B4D;
+  --dj-text:#F2F7FB;
+  --dj-text-2:#D2E0EA;
+  --dj-muted:#91A7B8;
+  --dj-dim:#71889A;
+  --dj-blue:#5A93FF;
+  --dj-blue-2:#7BAAFF;
+  --dj-blue-soft:rgba(90,147,255,.16);
+  --dj-blue-soft-2:rgba(90,147,255,.24);
+  --dj-green:#69C89A;
+  --dj-green-soft:rgba(55,179,120,.14);
+  --dj-red:#FF7D84;
+  --dj-red-soft:rgba(255,93,104,.13);
+  --dj-amber:#F3BF68;
+  --dj-amber-soft:rgba(243,191,104,.13);
+  --dj-purple:#B8A1FF;
+  --dj-purple-soft:rgba(184,161,255,.13);
+  color-scheme:dark;
+  background:var(--dj-bg)!important;
+  color:var(--dj-text)!important;
+}
+body.theme-dark :is(.portal-auth,.portal-app,.portal-main){background:var(--dj-bg)!important;color:var(--dj-text)!important}
+body.theme-dark .portal-main{background:linear-gradient(180deg,var(--dj-bg-2),var(--dj-bg))!important}
+
+/* Typography — force readable semantic hierarchy */
+body.theme-dark :is(
+  .portal-profile-card strong,.portal-section-title strong,.portal-view-hero strong,
+  .portal-request-head strong,.portal-notification-head strong,.portal-time-head strong,
+  .portal-form-title strong,.portal-modal-head strong,.portal-same-shift-team-v61509 strong,
+  .portal-working-team-panel-v61529f15r strong,.portal-raw-punch-panel strong,
+  .portal-att-shift-head strong,.portal-leave-preview-v61520 strong
+){color:var(--dj-text)!important}
+body.theme-dark :is(
+  .portal-profile-card span,.portal-profile-card small,.portal-section-title span,.portal-section-title small,
+  .portal-view-hero small,.portal-request-head span,.portal-notification-head span,.portal-time-head span,
+  .portal-form-title span,.portal-modal-head span,.portal-modal-head small,.portal-help,
+  .portal-app-credit-v61508,.portal-auth-footer,.portal-quick-launch-copy-v616ai small,
+  .portal-quick-choice-item-v616ai small
+){color:var(--dj-muted)!important}
+
+/* Auth / login */
+body.theme-dark .portal-auth{background:linear-gradient(180deg,#091722 0%,#06111A 100%)!important}
+body.theme-dark .portal-auth-shell{background:var(--dj-surface)!important;border:1px solid var(--dj-line)!important;box-shadow:0 28px 70px rgba(0,0,0,.34)!important}
+body.theme-dark .portal-auth .portal-brand-mark{
+  background:#173C58!important;color:#EAF3FF!important;border:1px solid #315A76!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)!important;
+}
+body.theme-dark .portal-auth .portal-brand strong{color:var(--dj-text)!important}
+body.theme-dark .portal-auth .portal-brand span{color:var(--dj-muted)!important}
+body.theme-dark .portal-team-card{background:var(--dj-surface-2)!important;border-color:var(--dj-line)!important;color:var(--dj-text-2)!important}
+body.theme-dark .portal-team-card span,body.theme-dark .portal-team-card small{color:var(--dj-muted)!important}
+body.theme-dark .portal-team-card strong{color:var(--dj-text)!important}
+body.theme-dark .portal-auth-tabs{background:#0B1823!important;border:1px solid var(--dj-line-soft)!important}
+body.theme-dark .portal-auth-tabs button{color:var(--dj-muted)!important}
+body.theme-dark .portal-auth-tabs button.active{background:var(--dj-blue-soft)!important;color:#BFD4FF!important;box-shadow:none!important}
+body.theme-dark .portal-theme-auth-v616ah{background:var(--dj-surface-2)!important;border-color:var(--dj-line)!important;color:#B9CBE0!important}
+body.theme-dark .portal-security-hint{background:#122839!important;border-color:#2A485E!important;color:#B8CCD9!important}
+
+/* Topbar / profile */
+body.theme-dark .portal-topbar{background:#103451!important;border-color:#25506B!important;box-shadow:0 8px 24px rgba(0,0,0,.22)!important}
+body.theme-dark .portal-top-brand .portal-brand-mark.small{background:#EAF3FF!important;color:#173B59!important;border-color:#EAF3FF!important}
+body.theme-dark .portal-top-brand strong{color:#fff!important}
+body.theme-dark .portal-top-brand span{color:#BCD1E1!important}
+body.theme-dark .portal-icon-btn{background:#163E5B!important;border-color:#35607A!important;color:#DCEBFA!important}
+body.theme-dark .portal-profile-card{background:var(--dj-surface)!important;border-color:var(--dj-line)!important;box-shadow:none!important}
+body.theme-dark .portal-avatar{background:var(--dj-blue-soft)!important;border-color:#345A89!important;color:#AFC9FF!important}
+body.theme-dark .portal-user-badge{background:var(--dj-green-soft)!important;border:1px solid rgba(105,200,154,.28)!important;color:#8DDBB5!important}
+
+/* Base cards / panels */
+body.theme-dark :is(
+  .portal-view-hero,.portal-schedule-panel,.portal-calendar-shell,.portal-calendar-punch-detail,
+  .portal-time-item,.portal-request-item,.portal-notification-item,.portal-same-shift-team-v61509,
+  .portal-working-team-panel-v61529f15r,.portal-raw-punch-panel,.portal-time-loadstate-v616ab
+){background:var(--dj-surface)!important;border-color:var(--dj-line)!important;color:var(--dj-text)!important;box-shadow:none!important}
+body.theme-dark .portal-today-card{background:linear-gradient(145deg,#113D5C,#164C70)!important;color:#fff!important;border:1px solid #295B78!important;box-shadow:none!important}
+body.theme-dark .portal-today-card :is(strong,b){color:#fff!important}
+body.theme-dark .portal-today-card :is(span,small){color:#C8D9E6!important}
+
+/* 7 day strip */
+body.theme-dark .portal-day-chip{background:var(--dj-surface-2)!important;border-color:var(--dj-line)!important;box-shadow:none!important}
+body.theme-dark .portal-day-chip.today{background:var(--dj-blue-soft)!important;border-color:#4D80D5!important;box-shadow:inset 0 0 0 1px rgba(90,147,255,.24)!important}
+body.theme-dark .portal-day-chip span{color:var(--dj-text-2)!important}
+body.theme-dark .portal-day-chip strong,body.theme-dark .portal-day-chip .portal-day-chip-label-v616ae{color:var(--dj-text)!important}
+body.theme-dark .portal-day-chip small,body.theme-dark .portal-day-chip .portal-day-chip-time-v616ae span{color:#B3C4D1!important}
+body.theme-dark .portal-day-chip.off{background:rgba(255,93,104,.06)!important;border-color:rgba(255,125,132,.25)!important}
+body.theme-dark .portal-day-chip.off :is(strong,.portal-day-chip-label-v616ae,.portal-calendar-original-icon-v616ac){color:var(--dj-red)!important}
+body.theme-dark .portal-day-chip.leave{background:rgba(184,161,255,.06)!important;border-color:rgba(184,161,255,.23)!important}
+body.theme-dark .portal-day-chip.leave :is(strong,.portal-day-chip-label-v616ae,.portal-calendar-original-icon-v616ac){color:var(--dj-purple)!important}
+body.theme-dark .portal-day-chip.holiday{background:rgba(105,200,154,.06)!important;border-color:rgba(105,200,154,.23)!important}
+body.theme-dark .portal-day-chip.holiday :is(strong,.portal-day-chip-label-v616ae,.portal-calendar-original-icon-v616ac){color:var(--dj-green)!important}
+
+/* Calendar — explicit contrast fix for the reported invisible text */
+body.theme-dark .portal-schedule-summary{background:#0D1B26!important;border-color:var(--dj-line)!important}
+body.theme-dark .portal-shift-legend{background:var(--dj-surface-2)!important;border-color:var(--dj-line)!important;color:var(--dj-text-2)!important}
+body.theme-dark .portal-cal-head{color:#B1C2CF!important}
+body.theme-dark .portal-cal-day{background:var(--dj-surface-2)!important;border-color:var(--dj-line)!important;color:var(--dj-text)!important;box-shadow:none!important}
+body.theme-dark .portal-cal-day>span{color:#D6E3EC!important;font-weight:800!important}
+body.theme-dark .portal-cal-day .portal-cal-shift-label{color:#EDF5FB!important;font-weight:900!important}
+body.theme-dark .portal-cal-day .portal-cal-time,body.theme-dark .portal-cal-day .portal-cal-time span{color:#C6D7E4!important;font-weight:800!important}
+body.theme-dark .portal-cal-day .portal-special-line{color:#9FBFFF!important;border-color:#35526A!important}
+body.theme-dark .portal-cal-day.today{background:#142B3B!important;border-color:#548EE9!important;box-shadow:inset 0 0 0 1px rgba(90,147,255,.32)!important}
+body.theme-dark .portal-cal-day.today>span{background:#2867D7!important;color:#fff!important}
+body.theme-dark .portal-cal-day.selected{background:var(--dj-blue-soft)!important;border-color:var(--dj-blue)!important;box-shadow:inset 0 0 0 1px rgba(90,147,255,.35)!important}
+body.theme-dark .portal-cal-day.outside{background:#0C1924!important;border-color:#203747!important;opacity:.55!important}
+body.theme-dark .portal-cal-day.outside>span,body.theme-dark .portal-cal-day.outside .portal-cal-shift-label,body.theme-dark .portal-cal-day.outside .portal-cal-time span{color:#7F95A6!important}
+body.theme-dark .portal-cal-day.off{background:rgba(255,93,104,.055)!important}
+body.theme-dark .portal-cal-day.off .portal-cal-shift-label{color:var(--dj-red)!important}
+body.theme-dark .portal-cal-day.leave{background:rgba(184,161,255,.055)!important}
+body.theme-dark .portal-cal-day.leave .portal-cal-shift-label{color:var(--dj-purple)!important}
+body.theme-dark .portal-cal-day.holiday{background:rgba(105,200,154,.055)!important}
+body.theme-dark .portal-cal-day.holiday .portal-cal-shift-label{color:var(--dj-green)!important}
+body.theme-dark .portal-month-nav button,body.theme-dark .portal-schedule-today-btn{background:var(--dj-surface-2)!important;border-color:var(--dj-line)!important;color:var(--dj-text-2)!important}
+
+/* Attendance — no light child cards inside dark page */
+body.theme-dark .portal-att-day-head{background:#122532!important;border-color:var(--dj-line)!important}
+body.theme-dark .portal-att-day-head .portal-time-title>i{background:var(--dj-blue-soft)!important;color:#8DB4FF!important}
+body.theme-dark .portal-att-day-head .portal-time-title strong{color:var(--dj-text)!important}
+body.theme-dark .portal-att-day-head .portal-time-title small{color:var(--dj-muted)!important}
+body.theme-dark .portal-att-shift{background:var(--dj-surface-2)!important;border-color:var(--dj-line)!important;box-shadow:inset 3px 0 0 #4F8CFF!important}
+body.theme-dark .portal-att-shift.shift-2{background:#172538!important;border-color:#3B4568!important;box-shadow:inset 3px 0 0 #9A85EA!important}
+body.theme-dark .portal-att-shift-head{background:#102330!important;border-color:var(--dj-line)!important}
+body.theme-dark .portal-att-shift.shift-2 .portal-att-shift-head{background:#17243A!important}
+body.theme-dark .portal-att-shift-head>div>span{color:#8FA6B8!important}
+body.theme-dark .portal-att-shift-head>div>strong{color:var(--dj-text)!important}
+body.theme-dark .portal-att-shift-head>div>small{color:#ACC0CF!important}
+body.theme-dark .portal-att-punch-grid>div,body.theme-dark .portal-att-shift.shift-2 .portal-att-punch-grid>div{background:#172B3A!important;border-color:#315064!important}
+body.theme-dark .portal-att-punch-grid span{color:#9DB0C0!important}
+body.theme-dark .portal-att-punch-grid strong{color:#F4F8FB!important}
+body.theme-dark .portal-att-punch-grid small{color:#92A8B9!important}
+body.theme-dark .portal-att-metric{background:#142736!important;border-color:#2D485B!important}
+body.theme-dark .portal-att-metric span{color:#9BAEBD!important}
+body.theme-dark .portal-att-metric strong{color:#EDF4F9!important}
+body.theme-dark .portal-att-metric small{color:#91A5B5!important}
+body.theme-dark .portal-att-metric.active.late{background:var(--dj-amber-soft)!important;border-color:rgba(243,191,104,.30)!important}
+body.theme-dark .portal-att-metric.active.late strong{color:var(--dj-amber)!important}
+body.theme-dark .portal-att-metric.active.absence{background:var(--dj-red-soft)!important;border-color:rgba(255,125,132,.30)!important}
+body.theme-dark .portal-att-metric.active.absence strong{color:var(--dj-red)!important}
+body.theme-dark .portal-att-metric.active.early{background:rgba(240,151,91,.12)!important;border-color:rgba(240,151,91,.30)!important}
+body.theme-dark .portal-att-metric.active.early strong{color:#F0A06A!important}
+body.theme-dark .portal-att-reason.absence{background:var(--dj-red-soft)!important;color:#FF9CA2!important;border:1px solid rgba(255,125,132,.25)!important}
+body.theme-dark .portal-att-reason i{background:rgba(255,125,132,.15)!important;color:#FF9CA2!important}
+body.theme-dark .portal-att-second-note{background:var(--dj-purple-soft)!important;color:#C8B8FF!important}
+body.theme-dark .portal-att-nonwork{background:var(--dj-surface-2)!important;border-color:var(--dj-line)!important}
+body.theme-dark .portal-att-nonwork>i{background:#1A3142!important;color:#A9BDCE!important}
+body.theme-dark .portal-att-nonwork strong{color:var(--dj-text)!important}
+body.theme-dark .portal-att-nonwork span{color:var(--dj-muted)!important}
+body.theme-dark .portal-time-status.normal,body.theme-dark .portal-att-status.normal{background:var(--dj-green-soft)!important;color:#87D9AF!important}
+body.theme-dark .portal-time-status.absence,body.theme-dark .portal-att-status.absence{background:var(--dj-red-soft)!important;color:#FF979D!important}
+body.theme-dark :is(.portal-time-status.late,.portal-time-status.early,.portal-time-status.mixed,.portal-att-status.late,.portal-att-status.early,.portal-att-status.mixed){background:var(--dj-amber-soft)!important;color:#F2C47A!important}
+body.theme-dark .portal-time-status.leave{background:var(--dj-purple-soft)!important;color:#C6B6FF!important}
+body.theme-dark :is(.portal-time-status.off,.portal-time-status.neutral,.portal-att-status.neutral){background:#1A2D3B!important;color:#A7B9C7!important}
+body.theme-dark .portal-time-status.holiday{background:var(--dj-green-soft)!important;color:#85D7AE!important}
+
+/* Request tab / empty states */
+body.theme-dark .portal-request-tabs{background:#0D1B26!important;border-color:var(--dj-line)!important}
+body.theme-dark .portal-request-tabs button{color:#9EB0BE!important}
+body.theme-dark .portal-request-tabs button.active{background:var(--dj-blue-soft)!important;color:#B9D0FF!important;box-shadow:none!important}
+body.theme-dark :is(.portal-empty,.portal-empty-card){background:transparent!important;color:#94A9BA!important;border-color:#2A4659!important}
+body.theme-dark .portal-request-list>.portal-empty-card{background:#0F1F2C!important;border:1px dashed #315064!important;color:#98ADBD!important}
+body.theme-dark .portal-notification-item.unread{background:rgba(90,147,255,.08)!important;border-color:#3F6486!important}
+body.theme-dark .portal-request-detail{background:#152A39!important;border-color:#315064!important;color:#C8D8E4!important}
+body.theme-dark .portal-request-reason{color:#B7C8D5!important}
+body.theme-dark .portal-manager-note{background:#152A39!important;color:#C9D9E5!important}
+
+/* Modal / form foundation — every popup */
+body.theme-dark .portal-modal-backdrop{background:rgba(1,7,12,.76)!important;backdrop-filter:blur(6px)!important}
+body.theme-dark .portal-modal{background:var(--dj-surface)!important;border:1px solid var(--dj-line)!important;color:var(--dj-text)!important;box-shadow:0 30px 74px rgba(0,0,0,.48)!important}
+body.theme-dark .portal-modal-head{background:#0D1C27!important;border-color:var(--dj-line)!important;color:var(--dj-text)!important}
+body.theme-dark .portal-modal-head button{background:#173043!important;border:1px solid #2D4A5F!important;color:#D7E5EF!important}
+body.theme-dark .portal-modal-body{background:var(--dj-surface)!important;color:var(--dj-text)!important}
+body.theme-dark .portal-modal-body label{color:#D5E1E9!important}
+body.theme-dark :is(.portal-modal-body input,.portal-modal-body select,.portal-modal-body textarea,.portal-auth-form input){background:#0D1C27!important;border-color:#335166!important;color:#F4F8FB!important;box-shadow:none!important}
+body.theme-dark :is(.portal-modal-body input,.portal-modal-body select,.portal-modal-body textarea,.portal-auth-form input):focus{border-color:#5A93FF!important;box-shadow:0 0 0 3px rgba(90,147,255,.14)!important}
+body.theme-dark :is(.portal-modal-body input,.portal-modal-body textarea,.portal-auth-form input)::placeholder{color:#6F8799!important;opacity:1!important}
+body.theme-dark .portal-modal-body select option{background:#0D1C27!important;color:#F4F8FB!important}
+body.theme-dark :is(.portal-modal-body input:disabled,.portal-modal-body select:disabled,.portal-modal-body textarea:disabled){background:#101C25!important;color:#708797!important;border-color:#263C4D!important;opacity:.72!important}
+body.theme-dark .portal-modal-actions{background:#0D1C27!important;border-color:var(--dj-line)!important}
+body.theme-dark .portal-secondary{background:#172B3A!important;color:#C3D3DF!important;border:1px solid #2F4C61!important}
+
+/* Day-off / swap popup */
+body.theme-dark .portal-dayoff-request-v61505{background:#0E202C!important;border-color:var(--dj-line)!important}
+body.theme-dark .portal-dayoff-mode-guide{background:#142B3A!important;border-color:#315266!important;color:var(--dj-text-2)!important}
+body.theme-dark .portal-dayoff-mode-guide>i{background:#19364A!important;color:#90B7FF!important;box-shadow:none!important}
+body.theme-dark .portal-dayoff-mode-guide strong{color:var(--dj-text)!important}
+body.theme-dark .portal-dayoff-mode-guide span{color:#A8BCCB!important}
+body.theme-dark .portal-dayoff-mode-guide small{color:#D4AC6C!important}
+body.theme-dark .portal-dayoff-mode-guide.add{background:rgba(55,179,120,.09)!important;border-color:rgba(105,200,154,.30)!important}
+body.theme-dark .portal-dayoff-mode-guide.add>i{background:var(--dj-green-soft)!important;color:#8AD9B1!important}
+body.theme-dark .portal-dayoff-mode-guide.blocked{background:var(--dj-amber-soft)!important;border-color:rgba(243,191,104,.30)!important}
+body.theme-dark .portal-dayoff-mode-guide.blocked>i{background:rgba(243,191,104,.13)!important;color:#F3BF68!important}
+body.theme-dark .portal-dayoff-quota-v61505>span{background:#142938!important;border:1px solid #2E4B60!important;box-shadow:none!important}
+body.theme-dark .portal-dayoff-quota-v61505 em{color:#9EB1C0!important}
+body.theme-dark .portal-dayoff-quota-v61505 b{color:#F1F6FA!important}
+body.theme-dark .portal-dayoff-quota-v61505 .available{background:var(--dj-blue-soft)!important;border-color:rgba(90,147,255,.32)!important}
+body.theme-dark .portal-dayoff-quota-v61505 .available b{color:#9FC0FF!important}
+body.theme-dark .portal-dayoff-quota-v61505 .empty{background:rgba(243,191,104,.08)!important;border-color:rgba(243,191,104,.25)!important}
+body.theme-dark .portal-dayoff-quota-v61505 .empty b{color:#F3BF68!important}
+body.theme-dark .portal-dayoff-quota-v61505>span.unavailable{background:#111F2A!important;border-color:#263F50!important;opacity:.74!important}
+body.theme-dark .portal-swap-toolbar strong{color:#E9F2F8!important}
+body.theme-dark .portal-swap-toolbar button{background:#173043!important;border-color:#36556B!important;color:#C7DAEA!important}
+body.theme-dark .portal-swap-toolbar button:disabled{background:#101D27!important;color:#536B7B!important;border-color:#21394A!important;opacity:1!important}
+body.theme-dark .portal-dayoff-legend-v61505{color:#9EB1C0!important}
+body.theme-dark .portal-dayoff-legend-v61505 .work{color:#74B9FF!important}
+body.theme-dark .portal-dayoff-legend-v61505 .off{color:#F1AF65!important}
+body.theme-dark .portal-dayoff-legend-v61505 .disabled{color:#B4A5D8!important}
+body.theme-dark .portal-swap-day{background:#132635!important;border-color:#29475B!important;color:#D7E4ED!important}
+body.theme-dark .portal-swap-day span{color:#95AABB!important}
+body.theme-dark .portal-swap-day strong{color:#E8F1F7!important}
+body.theme-dark .portal-swap-day small{color:#8FA5B5!important}
+body.theme-dark .portal-swap-day.work{background:#132B3B!important}
+body.theme-dark .portal-swap-day.off{background:#18252E!important}
+body.theme-dark .portal-swap-day.ph{background:rgba(184,161,255,.08)!important}
+body.theme-dark .portal-swap-day.leave{background:rgba(184,161,255,.08)!important}
+body.theme-dark .portal-swap-day.source{background:var(--dj-amber-soft)!important;border-color:#8A6537!important;box-shadow:inset 0 0 0 1px rgba(243,191,104,.20)!important}
+body.theme-dark .portal-swap-day.target{background:var(--dj-green-soft)!important;border-color:#3C7D62!important;box-shadow:inset 0 0 0 1px rgba(105,200,154,.18)!important}
+body.theme-dark .portal-swap-day:disabled,body.theme-dark .portal-swap-day.past-locked,body.theme-dark .portal-swap-day.period-locked{background:#0D1B25!important;color:#637A8B!important;border-color:#203746!important;opacity:.68!important}
+body.theme-dark .portal-swap-preview{background:#132635!important;border-color:var(--dj-line)!important;color:#C5D5E1!important}
+body.theme-dark #portalDayoffFootnoteV61505{color:#8FA6B7!important}
+
+/* Leave popup — replace white/yellow warning with dark semantic amber */
+body.theme-dark .portal-leave-fields-v61508{background:#0E202C!important;border-color:var(--dj-line)!important}
+body.theme-dark .portal-leave-important-v61508{background:rgba(243,191,104,.10)!important;border-color:#72572F!important}
+body.theme-dark .portal-leave-important-v61508>i{background:rgba(243,191,104,.16)!important;color:#F3BF68!important}
+body.theme-dark .portal-leave-important-v61508 strong{color:#F2CF8A!important}
+body.theme-dark .portal-leave-important-v61508 span{color:#D5C3A0!important}
+body.theme-dark .portal-leave-important-v61508 b{color:#FFE3A8!important}
+body.theme-dark .portal-leave-rule-v61508{background:#142938!important;border-color:#2E4B60!important;color:#D8E5EE!important}
+body.theme-dark .portal-leave-rule-v61508 strong{color:#EEF5FA!important}
+body.theme-dark .portal-leave-rule-v61508 span{color:#9EB2C1!important}
+body.theme-dark .portal-leave-rule-v61508.partial{background:rgba(90,147,255,.08)!important;border-color:rgba(90,147,255,.28)!important}
+body.theme-dark .portal-leave-rule-v61508.full-only{background:var(--dj-purple-soft)!important;border-color:rgba(184,161,255,.25)!important}
+body.theme-dark :is(.portal-leave-preview-empty-v61520,.portal-leave-preview-loading-v61520){background:#122532!important;border-color:var(--dj-line)!important;color:#9DB1C0!important}
+body.theme-dark .portal-leave-preview-head-v61520{background:#142938!important;border-color:#2D4A5E!important}
+body.theme-dark .portal-leave-preview-head-v61520 span strong{color:#EDF4F9!important}
+body.theme-dark .portal-leave-preview-head-v61520 span small{color:#91A7B8!important}
+body.theme-dark .portal-leave-preview-head-v61520.pass{background:var(--dj-green-soft)!important;border-color:rgba(105,200,154,.28)!important}
+body.theme-dark .portal-leave-preview-head-v61520.block{background:var(--dj-red-soft)!important;border-color:rgba(255,125,132,.28)!important}
+body.theme-dark .portal-leave-summary-v61520>div,body.theme-dark .portal-leave-days-v61520 article,body.theme-dark .portal-leave-partial-meta-v61520>div{background:#142938!important;border-color:#2D4A5E!important}
+body.theme-dark .portal-leave-summary-v61520 span,body.theme-dark .portal-leave-days-v61520 span,body.theme-dark .portal-leave-partial-meta-v61520 span{color:#91A7B8!important}
+body.theme-dark .portal-leave-summary-v61520 strong,body.theme-dark .portal-leave-days-v61520 strong,body.theme-dark .portal-leave-partial-meta-v61520 strong{color:#EDF4F9!important}
+body.theme-dark .portal-leave-days-v61520 small{color:#8FA6B7!important}
+body.theme-dark .portal-leave-days-v61520 article.apply{background:rgba(105,200,154,.07)!important;border-left-color:#69C89A!important}
+body.theme-dark .portal-leave-days-v61520 article.skip{background:#111F2A!important;border-left-color:#6F8494!important}
+body.theme-dark .portal-leave-partial-card-v61520,body.theme-dark .portal-leave-timeline-v61520{background:#132635!important;border-color:#2D4A5E!important;color:#CFDDE7!important}
+body.theme-dark .portal-leave-issues-v61520 .block{background:var(--dj-red-soft)!important;color:#FF9CA2!important}
+body.theme-dark .portal-leave-issues-v61520 .warn{background:var(--dj-amber-soft)!important;color:#F2CB87!important}
+body.theme-dark .portal-leave-hr-note-v61520{background:#142938!important;border-color:#2F4C60!important;color:#C7D7E2!important}
+body.theme-dark .portal-leave-hr-note-v61520 strong{color:#EAF3F8!important}
+body.theme-dark .portal-leave-hr-note-v61520 small{color:#92A8B9!important}
+
+/* Quick request chooser */
+body.theme-dark .portal-quick-choice-body-v616ai{background:#0B1823!important}
+body.theme-dark .portal-quick-choice-item-v616ai,body.theme-dark .portal-quick-launch-v616ai{background:#132635!important;border-color:#2D485C!important;color:var(--dj-text)!important;box-shadow:none!important}
+body.theme-dark .portal-quick-choice-item-v616ai>i,body.theme-dark .portal-quick-launch-icon-v616ai{background:var(--dj-blue-soft)!important;color:#9FBFFF!important}
+body.theme-dark .portal-quick-choice-item-v616ai strong,body.theme-dark .portal-quick-launch-copy-v616ai strong{color:#EDF4FA!important}
+body.theme-dark .portal-quick-choice-item-v616ai small,body.theme-dark .portal-quick-launch-copy-v616ai small{color:#9FB1BF!important}
+body.theme-dark .portal-quick-choice-item-v616ai>b,body.theme-dark .portal-quick-launch-arrow-v616ai{color:#738B9D!important}
+
+/* Bottom navigation */
+body.theme-dark .portal-bottom-nav{background:rgba(13,28,39,.98)!important;border-color:#2B475A!important;box-shadow:0 18px 38px rgba(0,0,0,.34)!important}
+body.theme-dark .portal-bottom-nav button{color:#91A6B7!important}
+body.theme-dark .portal-bottom-nav button i{background:#172B3A!important;color:#A0B5C5!important}
+body.theme-dark .portal-bottom-nav button.active{background:var(--dj-blue-soft)!important;color:#B6CEFF!important;box-shadow:none!important}
+body.theme-dark .portal-bottom-nav button.active i{background:var(--dj-blue-soft-2)!important;color:#BDD3FF!important}
+body.theme-dark .portal-bottom-nav button.active:before{background:var(--dj-blue)!important}
+
+/* Toast/loading */
+body.theme-dark .portal-loading{background:rgba(5,14,22,.82)!important;color:var(--dj-text)!important}
+body.theme-dark .portal-toast{box-shadow:0 12px 32px rgba(0,0,0,.34)!important}
+
+
+/* ==========================================================================
+   V6.15.29 FIX16AK — Dark Mode Text Contrast Completion
+   Final contrast layer. Keep at end of file so legacy color rules cannot win.
+   ========================================================================== */
+body.theme-dark{
+  --pk-bg:#07131D;
+  --pk-surface:#10202D;
+  --pk-surface-2:#142838;
+  --pk-surface-3:#193043;
+  --pk-line:#355064;
+  --pk-line-strong:#46657B;
+  --pk-text:#F5F9FC;
+  --pk-text-2:#D6E3EC;
+  --pk-muted:#AFC0CE;
+  --pk-subtle:#8FA5B6;
+  --pk-blue:#6EA2FF;
+  --pk-blue-2:#A9C7FF;
+  --pk-green:#86D7AE;
+  --pk-red:#FF9CA3;
+  --pk-amber:#F4C981;
+  --pk-purple:#CBBFFF;
+}
+body.theme-dark,
+body.theme-dark :is(.portal-app,.portal-main,.portal-auth){
+  background:var(--pk-bg)!important;
+  color:var(--pk-text)!important;
+}
+
+/* Global typography — make every common secondary text readable */
+body.theme-dark :is(
+  p,small,label,.portal-help,.portal-auth-footer,
+  .portal-profile-card span,.portal-profile-card small,
+  .portal-section-title span,.portal-view-hero small,
+  .portal-time-head span,.portal-request-head span,.portal-notification-head span,
+  .portal-quick-launch-copy-v616ai small,.portal-quick-choice-item-v616ai small,
+  .portal-day-evidence,.portal-special-fields>small,
+  .portal-team-card span,.portal-team-card small
+){color:var(--pk-muted)!important;opacity:1!important}
+body.theme-dark :is(
+  h1,h2,h3,h4,strong,.portal-form-title strong,.portal-brand strong,
+  .portal-top-brand strong,.portal-profile-card strong,
+  .portal-section-title strong,.portal-view-hero strong,
+  .portal-request-head strong,.portal-time-head strong,.portal-notification-head strong
+){color:var(--pk-text)!important}
+
+/* Inputs / selects / placeholders */
+body.theme-dark :is(input,select,textarea){
+  color:var(--pk-text)!important;
+  caret-color:var(--pk-blue)!important;
+}
+body.theme-dark :is(input,textarea)::placeholder{color:#8FA5B6!important;opacity:1!important}
+body.theme-dark select option{background:#0E1D28!important;color:var(--pk-text)!important}
+body.theme-dark :is(.portal-auth-form label,.portal-modal-body label){color:#C8D7E2!important}
+
+/* Auth/Login page */
+body.theme-dark .portal-auth-shell{background:var(--pk-surface)!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-brand-mark{background:#DCEAFF!important;color:#123A5B!important;border:1px solid #EEF5FF!important}
+body.theme-dark .portal-team-card{background:var(--pk-surface-2)!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-team-card strong{color:var(--pk-text)!important}
+body.theme-dark .portal-auth-tabs{background:#0C1A24!important}
+body.theme-dark .portal-auth-tabs button{color:#B7C7D3!important}
+body.theme-dark .portal-auth-tabs button.active{background:#1B3550!important;color:#D5E3FF!important}
+body.theme-dark .portal-security-hint{background:#15283A!important;border:1px solid #38556D!important;color:#C7D6E2!important}
+
+/* Topbar / profile */
+body.theme-dark .portal-topbar{background:#103A5A!important;border-color:#2C5674!important}
+body.theme-dark .portal-top-brand span{color:#D0DFEA!important}
+body.theme-dark .portal-icon-btn{color:#ECF5FB!important}
+body.theme-dark .portal-live-sync-v61513{color:#ECF5FB!important}
+body.theme-dark .portal-profile-card{background:var(--pk-surface)!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-avatar{background:#1A3550!important;color:#AFCBFF!important;border-color:#31587A!important}
+body.theme-dark .portal-user-badge{background:rgba(67,190,130,.14)!important;color:#9BE0BA!important;border:1px solid rgba(105,200,154,.32)!important}
+
+/* Home / cards */
+body.theme-dark .portal-today-card{background:#103F60!important;color:#fff!important;border:1px solid #2D607F!important}
+body.theme-dark .portal-today-card :is(span,small){color:#D8E8F4!important;opacity:1!important}
+body.theme-dark .portal-today-card strong{color:#fff!important}
+body.theme-dark .portal-today-times div{background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.16)!important}
+body.theme-dark .portal-status-line{color:#DCEBF5!important;border-color:rgba(255,255,255,.18)!important}
+body.theme-dark .portal-text-btn{color:#91B8FF!important}
+
+/* 7-day chips */
+body.theme-dark .portal-day-chip{background:var(--pk-surface-2)!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-day-chip>span{color:#D2DFE9!important}
+body.theme-dark .portal-day-chip strong,
+body.theme-dark .portal-day-chip .portal-day-chip-label-v616ae{color:var(--pk-text)!important}
+body.theme-dark .portal-day-chip .portal-day-chip-time-v616ae,
+body.theme-dark .portal-day-chip .portal-day-chip-time-v616ae span,
+body.theme-dark .portal-day-chip small{color:#C5D5E1!important}
+body.theme-dark .portal-day-chip.off :is(strong,.portal-day-chip-label-v616ae){color:var(--pk-red)!important}
+body.theme-dark .portal-day-chip.leave :is(strong,.portal-day-chip-label-v616ae){color:var(--pk-purple)!important}
+body.theme-dark .portal-day-chip.holiday :is(strong,.portal-day-chip-label-v616ae){color:var(--pk-green)!important}
+
+/* Calendar — highest contrast area from screenshots */
+body.theme-dark .portal-calendar-shell{background:var(--pk-surface)!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-cal-head{color:#D5E2EC!important;font-weight:900!important}
+body.theme-dark .portal-cal-day{
+  background:var(--pk-surface-2)!important;
+  border-color:var(--pk-line)!important;
+  color:var(--pk-text)!important;
+  opacity:1!important;
+}
+body.theme-dark .portal-cal-day>span{color:#E1EAF1!important;font-weight:900!important;opacity:1!important}
+body.theme-dark .portal-cal-day .portal-cal-shift-label{color:#F7FAFC!important;font-weight:900!important;opacity:1!important}
+body.theme-dark .portal-cal-day .portal-cal-time,
+body.theme-dark .portal-cal-day .portal-cal-time span{color:#D6E5EF!important;font-weight:900!important;opacity:1!important}
+body.theme-dark .portal-cal-day .portal-special-line{color:#B8CEFF!important;border-color:#476277!important}
+body.theme-dark .portal-cal-day.outside{background:#0C1A24!important;border-color:#263E50!important;opacity:1!important}
+body.theme-dark .portal-cal-day.outside>span{color:#8097A8!important}
+body.theme-dark .portal-cal-day.outside .portal-cal-shift-label{color:#8FA8BA!important}
+body.theme-dark .portal-cal-day.outside .portal-cal-time,
+body.theme-dark .portal-cal-day.outside .portal-cal-time span{color:#8299AA!important}
+body.theme-dark .portal-cal-day.today{background:#15344A!important;border-color:#6EA2FF!important;box-shadow:inset 0 0 0 1px rgba(110,162,255,.35)!important}
+body.theme-dark .portal-cal-day.today>span{background:#3979E8!important;color:#fff!important}
+body.theme-dark .portal-cal-day.selected{background:#193B58!important;border-color:#7BAAFF!important}
+body.theme-dark .portal-cal-day.off{background:rgba(255,93,104,.08)!important}
+body.theme-dark .portal-cal-day.off .portal-cal-shift-label{color:#FF9CA3!important}
+body.theme-dark .portal-cal-day.leave{background:rgba(193,172,255,.08)!important}
+body.theme-dark .portal-cal-day.leave .portal-cal-shift-label{color:#D0C5FF!important}
+body.theme-dark .portal-cal-day.holiday{background:rgba(105,200,154,.08)!important}
+body.theme-dark .portal-cal-day.holiday .portal-cal-shift-label{color:#9BE0BA!important}
+
+/* Schedule controls */
+body.theme-dark :is(.portal-month-nav button,.portal-schedule-today-btn,.portal-month-nav-v616ac,.portal-time-current-v616ac,.portal-soft-action-v616ab){
+  background:#172B3A!important;border-color:#3A566A!important;color:#D7E5EF!important
+}
+body.theme-dark .portal-month-picker-v616ac{background:#142837!important;border-color:#3A566A!important;color:#D7E5EF!important}
+body.theme-dark .portal-month-picker-v616ac input{color:#F1F6FA!important}
+
+/* Attendance / Work time */
+body.theme-dark .portal-time-item{background:var(--pk-surface)!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-att-day-head{background:#132938!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-att-day-head .portal-time-title strong{color:var(--pk-text)!important}
+body.theme-dark .portal-att-day-head .portal-time-title small{color:#B1C4D2!important}
+body.theme-dark .portal-att-shift{background:#142938!important;border-color:#355064!important}
+body.theme-dark .portal-att-shift-head{background:#102532!important;border-color:#355064!important}
+body.theme-dark .portal-att-shift-head :is(span,small){color:#B5C8D5!important}
+body.theme-dark .portal-att-shift-head strong{color:#F4F8FB!important}
+body.theme-dark .portal-att-punch-grid>div,
+body.theme-dark .portal-att-metric{background:#152A3A!important;border-color:#38566B!important}
+body.theme-dark .portal-att-punch-grid span,
+body.theme-dark .portal-att-metric span{color:#B4C7D4!important}
+body.theme-dark .portal-att-punch-grid strong,
+body.theme-dark .portal-att-metric strong{color:#F7FAFC!important}
+body.theme-dark .portal-att-nonwork{background:#142938!important;border-color:#355064!important}
+body.theme-dark .portal-att-nonwork span{color:#B4C6D3!important}
+
+/* Requests / Notifications / empty states */
+body.theme-dark :is(.portal-request-item,.portal-notification-item){background:var(--pk-surface)!important;border-color:var(--pk-line)!important}
+body.theme-dark :is(.portal-request-item p,.portal-notification-item p){color:#B8CAD7!important}
+body.theme-dark .portal-request-tabs{background:#0D1E29!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-request-tabs button{color:#B7C8D4!important}
+body.theme-dark .portal-request-tabs button.active{background:#1D3C5A!important;color:#C7DAFF!important;border-color:#5277B9!important}
+body.theme-dark .portal-empty,
+body.theme-dark .portal-empty-card{background:#111F2A!important;color:#B9CAD6!important;border-color:#355064!important}
+body.theme-dark .portal-empty :is(strong,span),
+body.theme-dark .portal-empty-card :is(strong,span){color:#C8D8E3!important}
+
+/* Request modal / every popup */
+body.theme-dark .portal-modal{background:var(--pk-surface)!important;border-color:var(--pk-line)!important;color:var(--pk-text)!important}
+body.theme-dark .portal-modal-head,
+body.theme-dark .portal-modal-actions{background:#0D1E29!important;border-color:var(--pk-line)!important}
+body.theme-dark .portal-modal-head span{color:#B2C4D1!important}
+body.theme-dark .portal-modal-head strong{color:#F7FAFC!important}
+body.theme-dark .portal-modal-head button{background:#172D3D!important;color:#E5EFF6!important;border:1px solid #39566A!important}
+body.theme-dark .portal-modal-body{background:var(--pk-surface)!important;color:var(--pk-text)!important}
+body.theme-dark .portal-modal-body :is(input,select,textarea){background:#0D1C27!important;border-color:#3B586D!important;color:#F5F9FC!important}
+body.theme-dark .portal-modal-body :is(input,select,textarea):focus{border-color:#6EA2FF!important;box-shadow:0 0 0 3px rgba(110,162,255,.16)!important}
+body.theme-dark .portal-day-evidence,
+body.theme-dark .portal-special-fields{background:#142938!important;border-color:#355064!important;color:#C8D8E3!important}
+
+/* Day off popup */
+body.theme-dark .portal-dayoff-mode-guide strong{color:#F3F7FA!important}
+body.theme-dark .portal-dayoff-mode-guide span{color:#BECFDA!important}
+body.theme-dark .portal-dayoff-mode-guide small{color:#F0C986!important}
+body.theme-dark .portal-dayoff-quota-v61505 em{color:#B6C8D5!important}
+body.theme-dark .portal-dayoff-quota-v61505 b{color:#F6FAFC!important}
+body.theme-dark .portal-swap-toolbar strong{color:#F6FAFC!important}
+body.theme-dark .portal-dayoff-legend-v61505{color:#B8C9D5!important}
+body.theme-dark .portal-swap-day span{color:#B3C5D2!important}
+body.theme-dark .portal-swap-day strong{color:#F3F8FB!important}
+body.theme-dark .portal-swap-day small{color:#A9BECC!important}
+body.theme-dark .portal-swap-day:disabled,
+body.theme-dark .portal-swap-day.past-locked,
+body.theme-dark .portal-swap-day.period-locked{opacity:.82!important}
+body.theme-dark #portalDayoffFootnoteV61505{color:#AFC2CF!important}
+
+/* Leave popup */
+body.theme-dark .portal-leave-important-v61508{background:rgba(244,201,129,.11)!important;border-color:#806238!important}
+body.theme-dark .portal-leave-important-v61508 strong{color:#F8D79E!important}
+body.theme-dark .portal-leave-important-v61508 span{color:#E2CFAB!important}
+body.theme-dark .portal-leave-important-v61508 b{color:#FFE8B8!important}
+body.theme-dark .portal-leave-rule-v61508{color:#D8E5EE!important}
+body.theme-dark .portal-leave-rule-v61508 strong{color:#F2F7FA!important}
+body.theme-dark .portal-leave-rule-v61508 span{color:#AFC3D1!important}
+body.theme-dark .portal-leave-preview-head-v61520 span strong{color:#F4F8FB!important}
+body.theme-dark .portal-leave-preview-head-v61520 span small{color:#B0C4D2!important}
+body.theme-dark .portal-leave-summary-v61520 span,
+body.theme-dark .portal-leave-days-v61520 span,
+body.theme-dark .portal-leave-partial-meta-v61520 span{color:#B0C3D1!important}
+body.theme-dark .portal-leave-summary-v61520 strong,
+body.theme-dark .portal-leave-days-v61520 strong,
+body.theme-dark .portal-leave-partial-meta-v61520 strong{color:#F3F8FB!important}
+body.theme-dark .portal-leave-days-v61520 small{color:#AFC2CF!important}
+body.theme-dark .portal-leave-hr-note-v61520{color:#D3E0E9!important}
+body.theme-dark .portal-leave-hr-note-v61520 small{color:#AFC2D0!important}
+
+/* Quick request chooser */
+body.theme-dark .portal-quick-choice-item-v616ai,
+body.theme-dark .portal-quick-launch-v616ai{background:#142938!important;border-color:#38566B!important}
+body.theme-dark .portal-quick-choice-item-v616ai strong,
+body.theme-dark .portal-quick-launch-copy-v616ai strong{color:#F4F8FB!important}
+body.theme-dark .portal-quick-choice-item-v616ai small,
+body.theme-dark .portal-quick-launch-copy-v616ai small{color:#B5C7D4!important}
+body.theme-dark .portal-quick-choice-item-v616ai>b,
+body.theme-dark .portal-quick-launch-arrow-v616ai{color:#A0B5C5!important}
+
+/* Buttons */
+body.theme-dark .portal-primary{background:#4F8CFF!important;color:#fff!important}
+body.theme-dark .portal-primary:disabled{background:#294664!important;color:#8EA3B5!important;opacity:1!important}
+body.theme-dark .portal-secondary{background:#172D3D!important;color:#D3E1EA!important;border:1px solid #3A586C!important}
+
+/* Bottom navigation */
+body.theme-dark .portal-bottom-nav{background:rgba(12,27,38,.98)!important;border-color:#355064!important}
+body.theme-dark .portal-bottom-nav button{color:#B0C1CD!important}
+body.theme-dark .portal-bottom-nav button i{background:#172B3A!important;color:#B8C9D5!important}
+body.theme-dark .portal-bottom-nav button.active{background:rgba(79,140,255,.19)!important;color:#C7D8FF!important}
+body.theme-dark .portal-bottom-nav button.active i{background:rgba(79,140,255,.28)!important;color:#D4E1FF!important}
+body.theme-dark .portal-bottom-nav span{color:inherit!important}
+
+/* Credits / minor copy */
+body.theme-dark .portal-app-credit-v61508{color:#9FB4C4!important}
+body.theme-dark .portal-time-loadstate-v616ab{background:#102532!important;border-color:#355064!important;color:#BED0DC!important}
+body.theme-dark .portal-att-fallback-v616ab{background:rgba(244,201,129,.08)!important;border-color:#775D37!important;color:#E5C68D!important}
+body.theme-dark .portal-att-fallback-v616ab small{color:#CDB47E!important}
