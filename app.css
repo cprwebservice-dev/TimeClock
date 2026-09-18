@@ -35646,3 +35646,31 @@ body.theme-dark .work-mode-canonical-warning-v616z,.dark .work-mode-canonical-wa
 .work-mode-org-load-error-v616z1{display:flex;min-height:150px;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;padding:24px}
 .work-mode-org-load-error-v616z1 small{max-width:680px;white-space:normal;overflow-wrap:anywhere;color:var(--muted,#64748b)}
 .work-mode-org-load-error-v616z1 .btn{margin-top:4px}
+
+
+/* ==========================================================================
+   V6.15.29 FIX16AU — Schedule PERSON consistency / strict readiness
+   ========================================================================== */
+.schedule-person-team-section-v616t.is-partial td{
+  background:#fffbeb!important;
+}
+.schedule-person-team-section-v616t.is-partial .schedule-person-team-ready-v616t{
+  background:#fef3c7!important;
+  color:#a16207!important;
+}
+.schedule-cell.schedule-readiness-blocked-v616t{
+  cursor:not-allowed!important;
+}
+.schedule-cell.schedule-readiness-blocked-v616t:not(.disabled){
+  opacity:.78;
+}
+.schedule-cell.schedule-readiness-blocked-v616t::after{
+  content:"";
+  position:absolute;
+  inset:auto 3px 3px auto;
+  width:5px;
+  height:5px;
+  border-radius:999px;
+  background:#f59e0b;
+  box-shadow:0 0 0 2px rgba(255,255,255,.9);
+}
