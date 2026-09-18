@@ -35641,3 +35641,8 @@ body.theme-dark #assignModal .assignment-planning-status-v616y .rule-kpi-v6120.o
 .work-mode-dept-name-v61444>small{display:block;color:var(--slate-500);font-size:10px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .work-mode-canonical-warning-v616z{display:block;margin:6px 0 0;padding:6px 8px;border:1px solid #fed7aa;border-radius:8px;background:#fff7ed;color:#9a3412;font-size:10px;font-weight:700;line-height:1.35}
 body.theme-dark .work-mode-canonical-warning-v616z,.dark .work-mode-canonical-warning-v616z{border-color:#7c2d12;background:#2b1b14;color:#fdba74}
+
+/* FIX16Z1 — Work Mode Organization loader diagnostic */
+.work-mode-org-load-error-v616z1{display:flex;min-height:150px;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;padding:24px}
+.work-mode-org-load-error-v616z1 small{max-width:680px;white-space:normal;overflow-wrap:anywhere;color:var(--muted,#64748b)}
+.work-mode-org-load-error-v616z1 .btn{margin-top:4px}

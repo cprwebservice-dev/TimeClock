@@ -32726,7 +32726,7 @@ ${names}${extra}
     if(code==='LEAVE')return 'lv';
     return 'day';
   }
-  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],workModeOrgOptionsV616Z:[],runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:'',serverGuardV6141:null,serverGuardKeyV61432:'',scopeDraft:new Set(),scopeSearch:'',scopeFilter:'ALL'};
+  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],workModeOrgOptionsV616Z:[],workModeOrgOptionsSourceV616Z1:'',workModeOrgOptionsErrorV616Z1:'',runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:'',serverGuardV6141:null,serverGuardKeyV61432:'',scopeDraft:new Set(),scopeSearch:'',scopeFilter:'ALL'};
   async function rpc(name,args={}){
     const client=app()?.state?.client;
     if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
@@ -34137,6 +34137,7 @@ ${names}${extra}
     $('workModeDeptSearchClearV61444')?.addEventListener('click',()=>{st.scopeSearch='';if($('workModeDeptSearchV61444'))$('workModeDeptSearchV61444').value='';updateScopeSearchClearV61444();renderDeptScope();$('workModeDeptSearchV61444')?.focus();});
     qsa('[data-work-mode-scope-filter-v61444]').forEach(b=>b.addEventListener('click',()=>{st.scopeFilter=String(b.dataset.workModeScopeFilterV61444||'ALL').toUpperCase();renderDeptScope();}));
     $('workModeDeptListV6120')?.addEventListener('change',e=>{const cb=e.target.closest('[data-work-mode-org-v616z]');if(!cb)return;const key=String(cb.dataset.workModeOrgV616z||'').trim();if(!key)return;if(cb.checked)st.scopeDraft.add(key);else st.scopeDraft.delete(key);if(st.scopeFilter!=='ALL')renderDeptScope();else updateScopeSelectionSummaryV61444();});
+    $('workModeDeptListV6120')?.addEventListener('click',async e=>{const retry=e.target.closest('#workModeOrgRetryV616Z1');if(!retry)return;retry.disabled=true;retry.textContent='กำลังโหลด...';await loadWorkModeOrgOptionsV616Z(true);renderDeptScope();});
     $('workModeDeptSelectVisibleV61444')?.addEventListener('click',()=>{scopeVisibleWorkModeOrgsV616Z().forEach(o=>st.scopeDraft.add(o.key));renderDeptScope();});
     $('workModeDeptClearVisibleV61444')?.addEventListener('click',()=>{scopeVisibleWorkModeOrgsV616Z().forEach(o=>st.scopeDraft.delete(o.key));renderDeptScope();});
     $('workModeScopeSaveV6120')?.addEventListener('click',saveScopeModal);
@@ -34151,7 +34152,7 @@ ${names}${extra}
     try{
       try{st.adminRows=await rpc('ta_get_work_mode_admin_v616z',{})||[];}
       catch(e){st.adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];}
-      st.workModeOrgOptionsV616Z=[];
+      st.workModeOrgOptionsV616Z=[];st.workModeOrgOptionsSourceV616Z1='';st.workModeOrgOptionsErrorV616Z1='';
       st.dayoffSettings=await rpc('ta_get_dayoff_settings_v6120',{})||{};
       renderAdminRows();
       if($('dayoffStartMonthV6120'))$('dayoffStartMonthV6120').value=String(st.dayoffSettings.effective_start_month||'2026-07-01').slice(0,7);
@@ -34219,23 +34220,47 @@ ${names}${extra}
   }
   async function loadWorkModeOrgOptionsV616Z(force=false){
     if(st.workModeOrgOptionsV616Z.length&&!force)return st.workModeOrgOptionsV616Z;
-    let rows=[];
-    try{
-      rows=await rpc('ta_get_work_mode_org_options_v616z',{})||[];
-      st.workModeOrgOptionsV616Z=(Array.isArray(rows)?rows:[]).map(r=>({
+    st.workModeOrgOptionsV616Z=[];
+    st.workModeOrgOptionsSourceV616Z1='';
+    st.workModeOrgOptionsErrorV616Z1='';
+
+    const range=currentScopeDateRange();
+    const normalizeRows=(rows,source)=>{
+      const mapped=(Array.isArray(rows)?rows:[]).map(r=>({
         ...r,
         key:workModeOrgOptionKeyV616Z(r),
-        label:workModeOrgOptionLabelV616Z(r)
+        label:workModeOrgOptionLabelV616Z(r),
+        source
       })).filter(r=>r.key&&r.label);
-    }catch(e){
-      const legacy=await loadDepartmentOptions(force);
-      st.workModeOrgOptionsV616Z=(legacy||[]).map(d=>({
-        key:String(d||'').trim(),
-        label:String(d||'').trim(),
-        identity_label:String(d||'').trim(),
-        legacy:true
-      })).filter(r=>r.key);
+      const seen=new Set();
+      return mapped.filter(r=>{
+        if(seen.has(r.key))return false;
+        seen.add(r.key);return true;
+      });
+    };
+    const attempts=[
+      ['WORK_MODE_MASTER',()=>rpc('ta_get_work_mode_org_options_v616z',{})],
+      ['AUTHORIZED_ORG_V616O',()=>rpc('ta_get_authorized_org_units_v616o',{p_start_date:range.start,p_end_date:range.end})],
+      ['AUTHORIZED_ORG_V616M',()=>rpc('ta_get_authorized_org_units_v616m',{p_start_date:range.start,p_end_date:range.end})]
+    ];
+    const errors=[];
+    for(const [source,loader] of attempts){
+      try{
+        const rows=await loader()||[];
+        const mapped=normalizeRows(rows,source);
+        if(mapped.length){
+          st.workModeOrgOptionsV616Z=mapped;
+          st.workModeOrgOptionsSourceV616Z1=source;
+          st.workModeOrgOptionsErrorV616Z1='';
+          return st.workModeOrgOptionsV616Z;
+        }
+        errors.push(`${source}: EMPTY`);
+      }catch(e){
+        errors.push(`${source}: ${String(e?.message||e||'ERROR')}`);
+      }
     }
+    st.workModeOrgOptionsErrorV616Z1=errors.join(' | ');
+    console.warn('Work Mode Organization options FIX16Z1:',st.workModeOrgOptionsErrorV616Z1);
     return st.workModeOrgOptionsV616Z;
   }
   function scopeVisibleWorkModeOrgsV616Z(){
@@ -34303,7 +34328,7 @@ ${names}${extra}
     updateScopeActiveUiV61444();updateScopeSearchClearV61444();updateScopeTypeUiV61444();
     if($('workModeScopeTypeV6120').value==='SELECTED'){
       const box=$('workModeDeptListV6120');if(box)box.innerHTML='<div class="work-mode-dept-loading-v61444">กำลังโหลด Organization Master...</div>';
-      await loadWorkModeOrgOptionsV616Z();
+      await loadWorkModeOrgOptionsV616Z(true);
       if(!st.scopeDraft.size&&Array.isArray(r.scope_values)){
         const wanted=new Set(r.scope_values.map(normalizeDepartmentOption).filter(Boolean));
         (st.workModeOrgOptionsV616Z||[]).forEach(o=>{if(wanted.has(o.label))st.scopeDraft.add(o.key);});
@@ -34322,7 +34347,9 @@ ${names}${extra}
       const checked=st.scopeDraft.has(o.key);
       const meta=[o.org_level_name,o.legacy?'Legacy source':null].filter(Boolean).join(' • ');
       return `<label class="work-mode-dept-row-v61444 ${checked?'selected':''}"><input type="checkbox" data-work-mode-org-v616z="${esc(o.key)}" ${checked?'checked':''}><span class="work-mode-dept-name-v61444" title="${esc(o.label)}"><strong>${esc(o.label)}</strong>${meta?`<small>${esc(meta)}</small>`:''}</span><em>${checked?'ให้สิทธิ์แล้ว':'ยังไม่ให้สิทธิ์'}</em></label>`;
-    }).join(''):`<div class="work-mode-dept-empty-v6122"><strong>${query?'ไม่พบ Organization ที่ตรงกับคำค้น':'ไม่พบ Organization ตามตัวกรองนี้'}</strong><small>${query?'ลองค้นหาด้วยรหัสหรือชื่อหน่วยงานอื่น':'เปลี่ยนตัวกรองเพื่อดูรายการอื่น'}</small></div>`;
+    }).join(''):(st.workModeOrgOptionsV616Z.length===0
+      ?`<div class="work-mode-dept-empty-v6122 work-mode-org-load-error-v616z1"><strong>โหลด Organization Master ไม่สำเร็จ</strong><small>${esc(st.workModeOrgOptionsErrorV616Z1||'ไม่พบ Organization จาก Canonical Organization Contract')}</small><button type="button" class="btn btn-light btn-sm" id="workModeOrgRetryV616Z1">↻ ลองใหม่</button></div>`
+      :`<div class="work-mode-dept-empty-v6122"><strong>${query?'ไม่พบ Organization ที่ตรงกับคำค้น':'ไม่พบ Organization ตามตัวกรองนี้'}</strong><small>${query?'ลองค้นหาด้วยรหัสหรือชื่อหน่วยงานอื่น':'เปลี่ยนตัวกรองเพื่อดูรายการอื่น'}</small></div>`);
     updateScopeSelectionSummaryV61444();
   }
   function closeScopeModal(){$('workModeScopeModalV6120')?.classList.add('hidden');st.scopeSearch='';st.scopeFilter='ALL';}
