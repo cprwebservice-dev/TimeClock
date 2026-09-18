@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16ah-dark-toggle-20260918"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16ai-dark-complete-quick-popup-20260918"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -113,12 +113,11 @@
         <div class="portal-section-title"><div><span>กะของฉัน</span><strong>7 วันข้างหน้า</strong></div><button class="portal-text-btn" data-portal-nav="schedule">ดูปฏิทิน</button></div>
         <div class="portal-week-strip" id="portalWeekStrip"></div>
         <div class="portal-quick-title"><span>บริการสำหรับฉัน</span><strong>ทำรายการได้รวดเร็ว</strong></div>
-        <div class="portal-quick-grid">
-      <button data-request-quick="TIME_ISSUE"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></i><strong>ขอรับรองเวลา</strong><small>รับรองเวลาเข้า / ออก / เต็มวัน</small></button>
-      <button data-request-quick="SPECIAL_WORK"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2z"/></svg></i><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></button>
-      <button data-request-quick="DAYOFF_SWAP"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/><path d="M18 7l-3 3M6 17l3-3"/></svg></i><strong>วันหยุด</strong><small>สลับวันหยุด / ขอหยุดเพิ่ม</small></button>
-      <button data-request-quick="LEAVE_REQUEST"><i><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg></i><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></button>
-    </div>
+        <button type="button" class="portal-quick-launch-v616ai" id="portalQuickRequestLauncherV616AI">
+          <span class="portal-quick-launch-icon-v616ai"><svg class="portal-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="portal-quick-launch-copy-v616ai"><strong>สร้างคำขอ / แจ้งข้อมูล</strong><small>เลือกประเภทคำขอจาก 4 รายการ</small></span>
+          <span class="portal-quick-launch-arrow-v616ai">›</span>
+        </button>
       </section>
 
       <section id="portalViewSchedule" class="portal-view">
@@ -188,6 +187,21 @@
     </nav>
   </section>
 
+  <div id="portalQuickRequestModalV616AI" class="portal-modal-backdrop hidden portal-quick-choice-backdrop-v616ai">
+    <div class="portal-modal portal-quick-choice-modal-v616ai" role="dialog" aria-modal="true" aria-labelledby="portalQuickRequestTitleV616AI">
+      <div class="portal-modal-head portal-quick-choice-head-v616ai">
+        <div><span>SELF SERVICE</span><strong id="portalQuickRequestTitleV616AI">เลือกประเภทคำขอ</strong><small>เลือก 1 รายการเพื่อดำเนินการต่อ</small></div>
+        <button type="button" data-close-quick-request-v616ai aria-label="ปิด">×</button>
+      </div>
+      <div class="portal-quick-choice-body-v616ai">
+        <button type="button" class="portal-quick-choice-item-v616ai" data-request-quick="TIME_ISSUE"><i><svg class="portal-ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></i><span><strong>ขอรับรองเวลา</strong><small>รับรองเวลาเข้า / ออก / เต็มวัน</small></span><b>›</b></button>
+        <button type="button" class="portal-quick-choice-item-v616ai" data-request-quick="SPECIAL_WORK"><i><svg class="portal-ui-icon" viewBox="0 0 24 24"><path d="M20 15.2A8.5 8.5 0 0 1 8.8 4a8.5 8.5 0 1 0 11.2 11.2z"/></svg></i><span><strong>แจ้งงานกะพิเศษ</strong><small>ทำงาน 2 ช่วง / งานลูกค้าช่วงดึก</small></span><b>›</b></button>
+        <button type="button" class="portal-quick-choice-item-v616ai" data-request-quick="DAYOFF_SWAP"><i><svg class="portal-ui-icon" viewBox="0 0 24 24"><path d="M7 7h11l-3-3"/><path d="M17 17H6l3 3"/><path d="M18 7l-3 3M6 17l3-3"/></svg></i><span><strong>วันหยุด</strong><small>สลับวันหยุด / ขอหยุดเพิ่ม</small></span><b>›</b></button>
+        <button type="button" class="portal-quick-choice-item-v616ai" data-request-quick="LEAVE_REQUEST"><i><svg class="portal-ui-icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M8 11h8M8 15h5"/></svg></i><span><strong>ขอลา</strong><small>ลาเต็มวัน / ลาบางส่วน</small></span><b>›</b></button>
+      </div>
+    </div>
+  </div>
+
   <div id="portalRequestModal" class="portal-modal-backdrop hidden">
     <div class="portal-modal">
       <div class="portal-modal-head"><div><span>คำขอ / แจ้งข้อมูล</span><strong id="portalRequestModalTitle">แจ้งข้อมูล</strong></div><button data-close-request>×</button></div>
@@ -252,6 +266,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.15.29-fix16ah-dark-toggle-20260918"></script>
+  <script src="./portal.js?v=6.15.29-fix16ai-dark-complete-quick-popup-20260918"></script>
 </body>
 </html>
