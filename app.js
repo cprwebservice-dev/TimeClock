@@ -34609,11 +34609,25 @@ ${names}${extra}
     const total=team.rows.length,active=team.rows.filter(r=>r.portal_status==="ACTIVE").length;
     const waiting=team.rows.filter(r=>["READY","ACTIVATION_READY"].includes(String(r.portal_status))).length;
     const disabled=team.rows.filter(r=>["NOT_ENABLED","DISABLED"].includes(String(r.portal_status))).length;
+    const hrAdminV616AC1=realRole()==="HR_ADMIN"||role()==="HR_ADMIN";
     if($("teamPortalKpiTotalV61482"))$("teamPortalKpiTotalV61482").textContent=total.toLocaleString("th-TH");
     if($("teamPortalKpiActiveV61482"))$("teamPortalKpiActiveV61482").textContent=active.toLocaleString("th-TH");
     if($("teamPortalKpiWaitingV61482"))$("teamPortalKpiWaitingV61482").textContent=waiting.toLocaleString("th-TH");
     if($("teamPortalKpiDisabledV61482"))$("teamPortalKpiDisabledV61482").textContent=disabled.toLocaleString("th-TH");
-    if($("teamPortalMetaV61482"))$("teamPortalMetaV61482").textContent=`แสดง ${rows.length.toLocaleString("th-TH")} จาก ${total.toLocaleString("th-TH")} คน`;
+
+    const totalCardV616AC1=$("teamPortalKpiTotalV61482")?.closest("article");
+    if(totalCardV616AC1){
+      const labelV616AC1=totalCardV616AC1.querySelector("span");
+      const noteV616AC1=totalCardV616AC1.querySelector("small");
+      if(labelV616AC1)labelV616AC1.textContent=hrAdminV616AC1?"พนักงานทั้งหมด":"สมาชิกที่มองเห็น";
+      if(noteV616AC1)noteV616AC1.textContent=hrAdminV616AC1
+        ?"HR Admin = Employee Portal ทั้งระบบ • ไม่ตัดด้วย Manager Scope"
+        :"ตาม Manager Scope ปัจจุบัน";
+    }
+
+    if($("teamPortalMetaV61482"))$("teamPortalMetaV61482").textContent=hrAdminV616AC1
+      ?`แสดง ${rows.length.toLocaleString("th-TH")} จาก ${total.toLocaleString("th-TH")} คน • HR Admin ทั้งระบบ`
+      :`แสดง ${rows.length.toLocaleString("th-TH")} จาก ${total.toLocaleString("th-TH")} คน`;
     const body=$("teamPortalBodyV61482");if(!body)return;
     body.innerHTML=rows.length?rows.map(r=>{
       const status=String(r.portal_status||"").toUpperCase();
@@ -34640,7 +34654,7 @@ ${names}${extra}
   async function loadTeam(){
     syncPortalRoleLabelsV616AA1();
     if(!["MANAGER","HR_ADMIN"].includes(role())&&realRole()!=="HR_ADMIN")return;
-    app()?.showLoading?.("กำลังโหลด Employee Portal ของทีม...");
+    app()?.showLoading?.((realRole()==="HR_ADMIN"||role()==="HR_ADMIN")?"กำลังโหลดพนักงาน Employee Portal ทั้งระบบ...":"กำลังโหลด Employee Portal ของทีม...");
     try{
       const [rows]=await Promise.all([rpc("ta_portal_get_my_team_v61482"),loadTeamLink(false)]);
       let portalRowsV616Q=Array.isArray(rows)?rows:[];
@@ -34650,13 +34664,23 @@ ${names}${extra}
         if(contractV616Q?.strict){
           const scopeRowsV616Q=await app()?.loadScopeEmployeeOptionsV616O?.(null,todayV616Q,todayV616Q)||[];
           const scopeMapV616Q=app()?.canonicalScopeEmployeeMetaMapV616Q?.(scopeRowsV616Q)||new Map();
-          portalRowsV616Q=portalRowsV616Q
-            .filter(r=>scopeMapV616Q.has(String(r?.emp_code||'').trim()))
-            .map(r=>{
-              const copy={...r};
-              app()?.applyCanonicalOrgMetaV616Q?.(copy,scopeMapV616Q.get(String(r?.emp_code||'').trim()));
-              return copy;
-            });
+          const hrAdminV616AC1=realRole()==="HR_ADMIN"||role()==="HR_ADMIN";
+
+          // FIX16AC1:
+          // HR Admin receives the company-wide Portal population from Backend.
+          // Canonical Org data is enrichment only and MUST NOT remove employees.
+          // Manager still remains restricted to the authorized Canonical Scope.
+          portalRowsV616Q=(hrAdminV616AC1
+            ? portalRowsV616Q
+            : portalRowsV616Q.filter(r=>scopeMapV616Q.has(String(r?.emp_code||'').trim()))
+          ).map(r=>{
+            const copy={...r};
+            const metaV616AC1=scopeMapV616Q.get(String(r?.emp_code||'').trim());
+            if(metaV616AC1){
+              app()?.applyCanonicalOrgMetaV616Q?.(copy,metaV616AC1);
+            }
+            return copy;
+          });
         }
       }catch(scopeErrorV616Q){
         console.warn('Portal Canonical Org binding FIX16Q:',scopeErrorV616Q);
