@@ -5566,3 +5566,157 @@ body:not(.theme-dark) #portalRequestForm .portal-modal-actions{
   background:#F9FBFD!important;
   border-top:1px solid #DEE8F0!important;
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16AN — Request Date / Time Field Mobile Balance
+   Normalize native iOS/Android date/time control intrinsic sizing.
+   ========================================================================== */
+
+/* Every request field uses the same sizing contract */
+#portalRequestScrollV616AM label{
+  min-width:0!important;
+  width:100%!important;
+}
+
+#portalRequestScrollV616AM input[type="date"],
+#portalRequestScrollV616AM input[type="time"]{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  inline-size:100%!important;
+  min-inline-size:0!important;
+  max-inline-size:100%!important;
+  height:50px!important;
+  min-height:50px!important;
+  max-height:50px!important;
+  box-sizing:border-box!important;
+  margin:0!important;
+  padding:0 13px!important;
+  border-radius:14px!important;
+  font-size:16px!important; /* prevents iOS auto zoom */
+  line-height:1!important;
+  text-align:left!important;
+  overflow:hidden!important;
+  vertical-align:middle!important;
+}
+
+/* iOS/Safari date & time internal value can create unwanted width */
+#portalRequestScrollV616AM input[type="date"]::-webkit-date-and-time-value,
+#portalRequestScrollV616AM input[type="time"]::-webkit-date-and-time-value{
+  width:auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  text-align:left!important;
+  line-height:48px!important;
+}
+
+#portalRequestScrollV616AM input[type="date"]::-webkit-datetime-edit,
+#portalRequestScrollV616AM input[type="time"]::-webkit-datetime-edit{
+  min-width:0!important;
+  padding:0!important;
+}
+
+#portalRequestScrollV616AM input[type="date"]::-webkit-calendar-picker-indicator,
+#portalRequestScrollV616AM input[type="time"]::-webkit-calendar-picker-indicator{
+  flex:0 0 20px!important;
+  width:20px!important;
+  height:20px!important;
+  margin:0 0 0 8px!important;
+  padding:0!important;
+  opacity:.82;
+}
+
+/* Special work / partial leave time rows: truly equal columns */
+#portalSpecialFields .portal-pin-grid,
+#portalLeavePartialFieldsV61493.portal-pin-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  align-items:start!important;
+  gap:10px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+
+#portalSpecialFields .portal-pin-grid>label,
+#portalLeavePartialFieldsV61493.portal-pin-grid>label{
+  min-width:0!important;
+  width:100%!important;
+}
+
+/* Main request date and leave end date always occupy the full content width */
+#portalRequestDateLabel,
+#portalLeaveEndV61491{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+
+#portalRequestDate,
+#portalLeaveEndV61491{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+
+/* Prevent long Thai labels from pushing the field wider */
+#portalRequestScrollV616AM label{
+  overflow:hidden!important;
+}
+#portalRequestScrollV616AM label>input,
+#portalRequestScrollV616AM label>select,
+#portalRequestScrollV616AM label>textarea{
+  align-self:stretch!important;
+}
+
+/* Mobile: keep a consistent 48px field height and equal horizontal rhythm */
+@media(max-width:560px){
+  #portalRequestScrollV616AM input[type="date"],
+  #portalRequestScrollV616AM input[type="time"]{
+    height:48px!important;
+    min-height:48px!important;
+    max-height:48px!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+    border-radius:13px!important;
+  }
+
+  #portalRequestScrollV616AM input[type="date"]::-webkit-date-and-time-value,
+  #portalRequestScrollV616AM input[type="time"]::-webkit-date-and-time-value{
+    line-height:46px!important;
+  }
+
+  #portalSpecialFields .portal-pin-grid,
+  #portalLeavePartialFieldsV61493.portal-pin-grid{
+    gap:8px!important;
+  }
+}
+
+/* Very narrow phones: stack time fields instead of squeezing native controls */
+@media(max-width:360px){
+  #portalSpecialFields .portal-pin-grid,
+  #portalLeavePartialFieldsV61493.portal-pin-grid{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+}
+
+/* Dark-mode native picker controls use the same text/border contrast */
+body.theme-dark #portalRequestScrollV616AM input[type="date"],
+body.theme-dark #portalRequestScrollV616AM input[type="time"]{
+  color:#F3F7FA!important;
+  background:#0A1B26!important;
+  border-color:#385469!important;
+  color-scheme:dark!important;
+}
+
+body:not(.theme-dark) #portalRequestScrollV616AM input[type="date"],
+body:not(.theme-dark) #portalRequestScrollV616AM input[type="time"]{
+  color:#17324D!important;
+  background:#FFFFFF!important;
+  border-color:#CFDDE8!important;
+  color-scheme:light!important;
+}
