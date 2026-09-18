@@ -1589,20 +1589,20 @@
 <!-- V6.14.82 Manager Team Portal -->
 <section class="page portal-management-page-v61482" id="page-team-portal">
   <div class="portal-hero-v61482">
-    <div><span class="eyebrow">TEAM EMPLOYEE PORTAL</span><h2>สมาชิกทีม / Portal</h2><p>สร้าง Link/QR ของทีม ออก Activation Code และ Reset PIN ให้เฉพาะลูกทีมใน Scope ของ Manager</p></div>
+    <div><span class="eyebrow">TEAM EMPLOYEE PORTAL</span><h2>สมาชิกทีม / Portal</h2><p>ใช้ QR/Link กลางร่วมกันทั้งระบบ • Manager จัดการสมาชิกใน Scope • HR Admin จัดการได้ทุกคน</p></div>
     <button class="btn btn-light" id="teamPortalRefreshV61482">↻ รีเฟรช</button>
   </div>
   <div class="portal-team-grid-v61482 section-gap">
     <article class="portal-link-card-v61482">
-      <div class="portal-card-head-v61482"><div><span>Team Access</span><strong>QR / Link เข้าระบบของทีม</strong></div><span class="portal-secure-badge-v61482">ไม่ใช่ Password</span></div>
-      <div class="portal-qr-wrap-v61482"><div id="teamPortalQrV61482" class="portal-qr-v61482"></div><div class="portal-link-copy-v61482"><code id="teamPortalLinkTextV61482">กำลังสร้าง Link...</code><div><button class="btn btn-primary btn-sm" id="teamPortalCopyLinkV61482">คัดลอก Link</button><button class="btn btn-light btn-sm" id="teamPortalShareLinkV61482">แชร์</button><button class="btn btn-danger-soft btn-sm" id="teamPortalRotateLinkV61482">เปลี่ยน Link</button></div></div></div>
-      <small>QR เดียวใช้ได้ทั้งทีม • Employee ยังต้องยืนยันรหัสพนักงาน + Activation Code/PIN ของตนเอง</small>
+      <div class="portal-card-head-v61482"><div><span>Portal Access</span><strong>QR / Link กลางเข้า Employee Portal</strong></div><span class="portal-secure-badge-v61482">ลิงก์กลาง</span></div>
+      <div class="portal-qr-wrap-v61482"><div id="teamPortalQrV61482" class="portal-qr-v61482"></div><div class="portal-link-copy-v61482"><code id="teamPortalLinkTextV61482">กำลังสร้าง Link...</code><div><button class="btn btn-primary btn-sm" id="teamPortalCopyLinkV61482">คัดลอก Link</button><button class="btn btn-light btn-sm" id="teamPortalShareLinkV61482">แชร์</button><button class="btn btn-danger-soft btn-sm" id="teamPortalRotateLinkV61482">เปลี่ยน Link กลาง</button></div></div></div>
+      <small>QR/Link เดียวใช้ร่วมกันทั้งระบบ • ไม่ใช่ Password • Employee ยังต้องยืนยันรหัสพนักงาน + Activation Code/PIN ของตนเอง</small>
     </article>
     <div class="portal-team-kpis-v61482">
-      <article><span>ลูกทีมทั้งหมด</span><strong id="teamPortalKpiTotalV61482">0</strong><small>ตาม Manager Scope ปัจจุบัน</small></article>
+      <article><span>สมาชิกที่มองเห็น</span><strong id="teamPortalKpiTotalV61482">0</strong><small>Manager = ตาม Scope • HR Admin = ทั้งระบบ</small></article>
       <article class="success"><span>เปิดใช้แล้ว</span><strong id="teamPortalKpiActiveV61482">0</strong><small>ตั้ง PIN แล้ว</small></article>
       <article class="warning"><span>รอ Activate</span><strong id="teamPortalKpiWaitingV61482">0</strong><small>HR เปิดสิทธิ์แล้ว</small></article>
-      <article class="neutral"><span>HR ยังไม่เปิด</span><strong id="teamPortalKpiDisabledV61482">0</strong><small>Manager ยังสร้าง Code ไม่ได้</small></article>
+      <article class="neutral"><span>ยังไม่เปิดสิทธิ์</span><strong id="teamPortalKpiDisabledV61482">0</strong><small>HR Admin เปิดสิทธิ์และสร้าง Code ได้</small></article>
     </div>
   </div>
   <div class="panel section-gap">
@@ -3362,6 +3362,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16z2-auth-retry-20260918"></script>
+<script src="./app.js?v=6.15.29-fix16aa-global-portal-hr-admin-20260918"></script>
 </body>
 </html>

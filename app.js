@@ -34495,10 +34495,10 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();
 
-/* ===== V6.14.84 Employee Portal >1000 Search + Crypto Fix ===== */
+/* ===== V6.15.29 FIX16AA Employee Portal Global Link + HR Admin Management ===== */
 (function(){
   "use strict";
-  const VERSION="6.14.84";
+  const VERSION="6.15.29 FIX16AA";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -34548,6 +34548,15 @@ ${names}${extra}
     team.link=await rpc("ta_portal_get_team_link_v61482",{p_rotate:Boolean(rotate)});
     const url=teamPortalUrl(team.link?.public_token);
     if($("teamPortalLinkTextV61482"))$("teamPortalLinkTextV61482").textContent=url;
+    const rotateBtn=$("teamPortalRotateLinkV61482");
+    if(rotateBtn){
+      const hr=realRole()==="HR_ADMIN";
+      rotateBtn.classList.toggle("hidden",!hr);
+      rotateBtn.disabled=!hr;
+      rotateBtn.title=hr
+        ?"เปลี่ยน Link กลางของระบบ • Link/QR เดิมจะใช้ Activate ใหม่ไม่ได้"
+        :"เฉพาะ HR Admin เท่านั้นที่เปลี่ยน Link กลางได้";
+    }
     renderQr();
   }
 
@@ -34579,9 +34588,16 @@ ${names}${extra}
     body.innerHTML=rows.length?rows.map(r=>{
       const status=String(r.portal_status||"").toUpperCase();
       let action="";
-      if(status==="ACTIVE") action=`<button class="btn btn-light btn-sm" data-portal-reset-pin-v61482="${esc(r.emp_code)}">Reset PIN</button>`;
-      else if(["READY","ACTIVATION_READY"].includes(status)) action=`<button class="btn btn-primary btn-sm" data-portal-activation-v61482="${esc(r.emp_code)}">${status==="ACTIVATION_READY"?"สร้าง Code ใหม่":"สร้าง Activation Code"}</button>`;
-      else action='<span class="portal-action-hint-v61482">รอ HR เปิดสิทธิ์</span>';
+      const hrAdminV616AA=realRole()==="HR_ADMIN";
+      if(status==="ACTIVE"){
+        action=`<button class="btn btn-light btn-sm" data-portal-reset-pin-v61482="${esc(r.emp_code)}">Reset PIN</button>`;
+      }else if(["READY","ACTIVATION_READY"].includes(status)){
+        action=`<button class="btn btn-primary btn-sm" data-portal-activation-v61482="${esc(r.emp_code)}">${status==="ACTIVATION_READY"?"สร้าง Code ใหม่":"สร้าง Activation Code"}</button>`;
+      }else if(["NOT_ENABLED","DISABLED"].includes(status)&&hrAdminV616AA){
+        action=`<button class="btn btn-primary btn-sm" data-portal-hr-enable-activation-v616aa="${esc(r.emp_code)}">เปิดสิทธิ์ + สร้าง Code</button>`;
+      }else{
+        action='<span class="portal-action-hint-v61482">รอ HR Admin เปิดสิทธิ์</span>';
+      }
       const orgName=app()?.canonicalOrgNameV616Q?.(r)||r.department||"-";
       const orgCode=app()?.canonicalOrgCodeV616Q?.(r)||"";
       const area=app()?.canonicalAreaV616Q?.(r)||r.zone||r.area||"-";
@@ -34592,7 +34608,7 @@ ${names}${extra}
   }
 
   async function loadTeam(){
-    if(!["MANAGER","HR_ADMIN"].includes(role()))return;
+    if(!["MANAGER","HR_ADMIN"].includes(role())&&realRole()!=="HR_ADMIN")return;
     app()?.showLoading?.("กำลังโหลด Employee Portal ของทีม...");
     try{
       const [rows]=await Promise.all([rpc("ta_portal_get_my_team_v61482"),loadTeamLink(false)]);
@@ -34636,6 +34652,27 @@ ${names}${extra}
     app()?.showLoading?.(reset?"กำลัง Reset PIN...":"กำลังสร้าง Activation Code...");
     try{const r=await rpc("ta_portal_issue_activation_v61482",{p_emp_code:String(emp),p_reset_pin:Boolean(reset)});openActivation(r);await loadTeam();}
     catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}
+  }
+
+  async function hrEnableAndIssueActivationV616AA(emp){
+    if(realRole()!=="HR_ADMIN")return toast("เมนูนี้สำหรับ HR Admin เท่านั้น","error");
+    const ok=window.tcConfirm
+      ?await window.tcConfirm("เปิดสิทธิ์ Employee Portal และสร้าง Activation Code ให้พนักงานรายนี้?")
+      :window.confirm("เปิดสิทธิ์และสร้าง Activation Code?");
+    if(!ok)return;
+    app()?.showLoading?.("กำลังเปิดสิทธิ์และสร้าง Activation Code...");
+    try{
+      const r=await rpc("ta_portal_hr_enable_and_issue_activation_v616aa",{
+        p_emp_code:String(emp),
+        p_reset_pin:false
+      });
+      openActivation(r);
+      await loadTeam();
+    }catch(e){
+      toast(human(e),"error");
+    }finally{
+      app()?.hideLoading?.();
+    }
   }
 
   function renderAdmin(){
@@ -34707,8 +34744,8 @@ ${names}${extra}
     $("teamPortalSearchV61482")?.addEventListener("input",applyTeamFilter);
     $("teamPortalStatusV61482")?.addEventListener("change",applyTeamFilter);
     $("teamPortalCopyLinkV61482")?.addEventListener("click",async()=>{const u=teamPortalUrl(team.link?.public_token);await copyText(u);toast("คัดลอก Link แล้ว","success");});
-    $("teamPortalShareLinkV61482")?.addEventListener("click",()=>shareText("TimeAttendance Employee Portal","เข้าระบบ TimeAttendance ของทีม",teamPortalUrl(team.link?.public_token)));
-    $("teamPortalRotateLinkV61482")?.addEventListener("click",async()=>{const ok=window.tcConfirm?await window.tcConfirm("เปลี่ยน Link ทีม? Link/QR เดิมจะใช้เปิดหน้า Activate ใหม่ไม่ได้"):window.confirm("เปลี่ยน Link ทีม?");if(!ok)return;app()?.showLoading?.("กำลังเปลี่ยน Link...");try{await loadTeamLink(true);toast("สร้าง Link ทีมใหม่แล้ว","success");}catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}});
+    $("teamPortalShareLinkV61482")?.addEventListener("click",()=>shareText("TimeAttendance Employee Portal","QR / Link กลางสำหรับเข้า Employee Portal",teamPortalUrl(team.link?.public_token)));
+    $("teamPortalRotateLinkV61482")?.addEventListener("click",async()=>{if(realRole()!=="HR_ADMIN")return toast("เฉพาะ HR Admin เท่านั้นที่เปลี่ยน Link กลางได้","error");const ok=window.tcConfirm?await window.tcConfirm("เปลี่ยน Link กลางของ Employee Portal? Link/QR เดิมจะใช้ Activate ใหม่ไม่ได้ และต้องแจก Link/QR ใหม่ให้ทุกหน่วยงาน"):window.confirm("เปลี่ยน Link กลาง?");if(!ok)return;app()?.showLoading?.("กำลังเปลี่ยน Link กลาง...");try{await loadTeamLink(true);toast("สร้าง Link กลางใหม่แล้ว","success");}catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}});
 
     $("portalAdminRefreshV61482")?.addEventListener("click",loadAdmin);
     $("portalAdminSearchBtnV61482")?.addEventListener("click",loadAdmin);
@@ -34726,6 +34763,7 @@ ${names}${extra}
     $("portalAdminSelectAllV61482")?.addEventListener("change",e=>{const rows=admin.rows;if(e.target.checked)rows.forEach(r=>admin.selected.add(String(r.emp_code)));else rows.forEach(r=>admin.selected.delete(String(r.emp_code)));renderAdmin();});
 
     document.addEventListener("click",async e=>{
+      const h=e.target.closest("[data-portal-hr-enable-activation-v616aa]");if(h){await hrEnableAndIssueActivationV616AA(h.dataset.portalHrEnableActivationV616aa);return;}
       const a=e.target.closest("[data-portal-activation-v61482]");if(a){await issueActivation(a.dataset.portalActivationV61482,false);return;}
       const r=e.target.closest("[data-portal-reset-pin-v61482]");if(r){await issueActivation(r.dataset.portalResetPinV61482,true);return;}
       const sel=e.target.closest("[data-portal-admin-select-v61482]");if(sel){const code=String(sel.dataset.portalAdminSelectV61482);sel.checked?admin.selected.add(code):admin.selected.delete(code);renderAdmin();return;}
@@ -34735,7 +34773,7 @@ ${names}${extra}
     });
     $("teamPortalCopyCodeV61482")?.addEventListener("click",async()=>{const c=team.lastActivation?.activation_code;if(!c)return;await copyText(c);toast("คัดลอก Activation Code แล้ว","success");});
     $("teamPortalShareCodeV61482")?.addEventListener("click",()=>{const r=team.lastActivation;if(!r)return;shareText("TimeAttendance Activation",`${r.emp_code} ${r.full_name||""}\nActivation Code: ${r.activation_code}\nใช้รหัสนี้ครั้งเดียว แล้วตั้ง PIN 6 หลักของตนเอง`,teamPortalUrl(team.link?.public_token));});
-    window.addEventListener("ta:session-ready",()=>{const rr=role();$("teamPortalNavV61482")?.classList.toggle("hidden",rr!=="MANAGER");});
+    window.addEventListener("ta:session-ready",()=>{const rr=role(),real=realRole();const show=["MANAGER","HR_ADMIN"].includes(rr)||real==="HR_ADMIN";$("teamPortalNavV61482")?.classList.toggle("hidden",!show);});
   }
 
   window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,version:VERSION};
