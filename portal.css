@@ -3829,3 +3829,293 @@ html,body{
   .portal-cal-day .portal-shift-icon.portal-calendar-original-icon-v616ac{font-size:18px}
   .portal-cal-day .portal-cal-time{min-height:22px;font-size:9.5px}
 }
+
+
+/* ========================================================================== 
+   FIX16AF — Premium / Modern unified Employee Portal theme
+   Palette: Deep Navy + Royal Blue + Warm Orange + Soft Slate
+   ========================================================================== */
+:root{
+  --pa-navy:#123A5A;
+  --pa-navy-2:#0E2E49;
+  --pa-blue:#2F6FED;
+  --pa-blue-strong:#245DCC;
+  --pa-blue-soft:#EAF1FF;
+  --pa-orange:#F08A3E;
+  --pa-orange-soft:#FFF3E9;
+  --pa-green:#2E9D72;
+  --pa-green-soft:#EAF8F1;
+  --pa-red:#D84B5F;
+  --pa-red-soft:#FFF0F3;
+  --pa-purple:#7559C8;
+  --pa-purple-soft:#F3EFFF;
+  --pa-bg:#F4F7FB;
+  --pa-surface:#FFFFFF;
+  --pa-surface-2:#F8FAFD;
+  --pa-line:#DDE6EF;
+  --pa-text:#16324C;
+  --pa-muted:#6F8295;
+  --pa-shadow:0 10px 30px rgba(24,55,84,.08);
+  --pa-shadow-soft:0 5px 16px rgba(24,55,84,.055);
+}
+
+html,body{background:var(--pa-bg)!important;color:var(--pa-text)!important}
+body{letter-spacing:0}
+.portal-app{background:var(--pa-bg)!important;padding-bottom:110px!important}
+.portal-main{padding-top:16px!important}
+
+/* Top navigation */
+.portal-topbar{
+  background:rgba(18,58,90,.97)!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+  box-shadow:0 6px 20px rgba(14,46,73,.16)!important;
+  backdrop-filter:blur(14px)!important;
+}
+.portal-top-brand strong{color:#fff!important;font-weight:800!important}
+.portal-top-brand span{color:rgba(255,255,255,.72)!important}
+.portal-brand-mark.small{
+  background:#fff!important;color:var(--pa-navy)!important;
+  border:1px solid rgba(255,255,255,.7)!important;
+  box-shadow:none!important;
+}
+.portal-topbar .portal-icon-btn{
+  width:40px!important;height:40px!important;border-radius:14px!important;
+  background:rgba(255,255,255,.08)!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  color:#fff!important;box-shadow:none!important;
+}
+.portal-topbar .portal-icon-btn:hover{background:rgba(255,255,255,.14)!important}
+.portal-live-sync-v61513{
+  border-radius:999px!important;
+  background:rgba(255,255,255,.08)!important;
+  border:1px solid rgba(255,255,255,.16)!important;
+  color:#fff!important;
+}
+.portal-live-sync-v61513 i{background:#39C98A!important;box-shadow:0 0 0 4px rgba(57,201,138,.14)!important}
+
+/* Profile */
+.portal-profile-card{
+  border:1px solid var(--pa-line)!important;
+  border-radius:20px!important;
+  background:var(--pa-surface)!important;
+  box-shadow:var(--pa-shadow-soft)!important;
+  padding:14px!important;
+}
+.portal-avatar{
+  background:var(--pa-blue-soft)!important;
+  color:var(--pa-blue-strong)!important;
+  border:1px solid #D8E4FF!important;
+  box-shadow:inset 0 0 0 4px #F6F9FF!important;
+  border-radius:16px!important;
+}
+.portal-profile-copy>span{color:#8392A3!important}
+.portal-profile-copy>strong{color:var(--pa-text)!important}
+.portal-profile-copy>small{color:var(--pa-muted)!important}
+.portal-user-badge{
+  background:var(--pa-green-soft)!important;color:#247E5D!important;
+  border:1px solid #CFEEDF!important;border-radius:999px!important;
+}
+
+/* Section headers */
+.portal-section-title{margin-top:22px!important;margin-bottom:10px!important}
+.portal-section-title span,.portal-view-hero>div>span{color:#54718B!important;letter-spacing:.11em!important;font-weight:800!important}
+.portal-section-title strong,.portal-view-hero>div>strong{color:var(--pa-navy)!important;font-weight:900!important}
+.portal-text-btn{color:var(--pa-blue-strong)!important}
+
+/* Today card */
+.portal-today-card{
+  background:var(--pa-navy)!important;
+  border:1px solid #0E314D!important;
+  border-radius:22px!important;
+  box-shadow:0 12px 28px rgba(18,58,90,.18)!important;
+  color:#fff!important;
+}
+.portal-today-card .portal-shift-pill{
+  background:rgba(255,255,255,.10)!important;border:1px solid rgba(255,255,255,.14)!important;
+}
+.portal-today-times div{background:rgba(255,255,255,.075)!important;border:1px solid rgba(255,255,255,.09)!important}
+.portal-status-line{border-color:rgba(255,255,255,.12)!important}
+.portal-status-dot{background:#52D59B!important}
+
+/* Same-team panel */
+.portal-same-shift-team-v61509{
+  background:var(--pa-surface)!important;border:1px solid var(--pa-line)!important;
+  border-radius:20px!important;box-shadow:var(--pa-shadow-soft)!important;
+}
+.portal-working-team-chip-v61529f15r.self{background:var(--pa-blue-soft)!important;color:var(--pa-blue-strong)!important}
+.portal-working-team-chip-v61529f15r.borrow{background:var(--pa-orange-soft)!important;color:#B85F1E!important}
+
+/* 7 day strip */
+.portal-day-chip{
+  background:var(--pa-surface)!important;border-color:var(--pa-line)!important;
+  box-shadow:var(--pa-shadow-soft)!important;
+}
+.portal-day-chip.today{border-color:#9DBBFA!important;box-shadow:inset 0 0 0 1px #7EA6F7,0 7px 20px rgba(47,111,237,.10)!important}
+.portal-day-chip span{color:#4B6076!important}
+.portal-day-chip strong{color:var(--pa-navy)!important}
+.portal-day-chip small,.portal-day-chip .portal-day-chip-time-v616ae span{color:var(--pa-muted)!important}
+.portal-day-chip.off{background:#FFF9F7!important;border-color:#F6D7D2!important}
+.portal-day-chip.off strong,.portal-day-chip.off .portal-calendar-original-icon-v616ac{color:var(--pa-red)!important}
+.portal-day-chip.leave{background:#FBF9FF!important;border-color:#E4DBF9!important}
+.portal-day-chip.leave strong,.portal-day-chip.leave .portal-calendar-original-icon-v616ac{color:var(--pa-purple)!important}
+.portal-day-chip.holiday{background:#F7FCF9!important;border-color:#D5EBDF!important}
+.portal-day-chip.holiday strong,.portal-day-chip.holiday .portal-calendar-original-icon-v616ac{color:var(--pa-green)!important}
+
+/* Quick actions */
+.portal-quick-grid{gap:12px!important}
+.portal-quick-grid button{
+  background:var(--pa-surface)!important;border:1px solid var(--pa-line)!important;
+  border-radius:18px!important;box-shadow:var(--pa-shadow-soft)!important;
+  padding:15px!important;min-height:114px!important;
+}
+.portal-quick-grid button:hover{background:#FBFDFF!important;border-color:#C8D7E8!important}
+.portal-quick-grid button>i{border-radius:14px!important;box-shadow:none!important}
+.portal-quick-grid button:nth-child(1)>i{background:var(--pa-blue-soft)!important;color:var(--pa-blue-strong)!important}
+.portal-quick-grid button:nth-child(2)>i{background:#EFF1FF!important;color:#555FD0!important}
+.portal-quick-grid button:nth-child(3)>i{background:var(--pa-orange-soft)!important;color:#C56B27!important}
+.portal-quick-grid button:nth-child(4)>i{background:#ECF7FF!important;color:#2477AE!important}
+.portal-quick-grid strong{color:var(--pa-navy)!important;font-weight:900!important}
+.portal-quick-grid small{color:var(--pa-muted)!important;line-height:1.45!important}
+
+/* View hero */
+.portal-view-hero{
+  background:var(--pa-surface)!important;border:1px solid var(--pa-line)!important;
+  border-radius:20px!important;box-shadow:var(--pa-shadow-soft)!important;
+  padding:16px!important;
+}
+.portal-view-hero small{color:var(--pa-muted)!important}
+
+/* Schedule */
+.portal-schedule-panel,.portal-calendar-shell,.portal-calendar-punch-detail{
+  background:var(--pa-surface)!important;border-color:var(--pa-line)!important;
+  border-radius:20px!important;box-shadow:var(--pa-shadow-soft)!important;
+}
+.portal-month-nav button,.portal-schedule-today-btn{
+  border-color:var(--pa-line)!important;background:#fff!important;color:#49657E!important;
+  border-radius:12px!important;
+}
+.portal-schedule-summary{
+  background:var(--pa-surface-2)!important;border-color:var(--pa-line)!important;
+  border-radius:16px!important;
+}
+.portal-shift-legend{background:#fff!important;border:1px solid var(--pa-line)!important;border-radius:12px!important}
+.portal-cal-head{color:#77899A!important}
+.portal-cal-day{
+  background:#fff!important;border-color:#E0E8F0!important;
+  border-radius:14px!important;box-shadow:none!important;
+}
+.portal-cal-day.today{border-color:#82A8F7!important;box-shadow:inset 0 0 0 1px #82A8F7!important}
+.portal-cal-day.selected{background:#F0F5FF!important;border-color:var(--pa-blue)!important;box-shadow:inset 0 0 0 1px var(--pa-blue)!important}
+.portal-cal-day.off{background:#FFF9F7!important}
+.portal-cal-day.leave{background:#FBF9FF!important}
+.portal-cal-day.holiday{background:#FFF9EE!important}
+.portal-cal-day .portal-cal-time{color:#425B73!important}
+
+/* Attendance */
+.portal-time-loadstate-v616ab{background:#fff!important;border-color:var(--pa-line)!important;border-radius:12px!important}
+.portal-time-item,.portal-att-shift{
+  background:var(--pa-surface)!important;border-color:var(--pa-line)!important;
+  box-shadow:var(--pa-shadow-soft)!important;border-radius:18px!important;
+}
+.portal-time-title>i{background:var(--pa-blue-soft)!important;color:var(--pa-blue-strong)!important}
+.portal-att-punch-grid>div,.portal-att-metric,.portal-time-grid div{background:var(--pa-surface-2)!important;border-color:#E4EBF3!important}
+.portal-month-picker-v616ac,.portal-month-nav-v616ac,.portal-time-current-v616ac,.portal-soft-action-v616ab{
+  background:#fff!important;border-color:var(--pa-line)!important;color:#4C6880!important;border-radius:12px!important;
+}
+
+/* Requests */
+.portal-request-hero #portalNewRequestBtn{
+  background:var(--pa-blue)!important;border:1px solid #255DCE!important;
+  border-radius:16px!important;box-shadow:0 9px 22px rgba(47,111,237,.20)!important;
+}
+.portal-request-tabs{background:#EAF0F6!important;border:1px solid #E2E9F0!important;border-radius:14px!important;padding:4px!important}
+.portal-request-tabs button{border:0!important;background:transparent!important;color:#687C90!important;border-radius:10px!important;padding:8px 12px!important}
+.portal-request-tabs button.active{background:#fff!important;color:var(--pa-blue-strong)!important;box-shadow:0 2px 7px rgba(34,68,102,.09)!important}
+.portal-request-item,.portal-notification-item{
+  background:var(--pa-surface)!important;border-color:var(--pa-line)!important;
+  border-radius:18px!important;box-shadow:var(--pa-shadow-soft)!important;
+}
+.portal-notification-item.unread{background:#F3F7FF!important;border-color:#BFD1F7!important}
+
+/* Primary / secondary controls */
+.portal-primary{
+  background:var(--pa-blue)!important;color:#fff!important;border:1px solid #255DCE!important;
+  box-shadow:0 8px 18px rgba(47,111,237,.18)!important;border-radius:14px!important;
+}
+.portal-primary:hover{background:var(--pa-blue-strong)!important}
+.portal-secondary{background:#EEF2F6!important;color:#526B80!important;border-radius:13px!important}
+.portal-text-btn-icon{border-radius:10px!important}
+
+/* Modals */
+.portal-modal-backdrop{background:rgba(11,31,48,.52)!important;backdrop-filter:blur(6px)!important}
+.portal-modal{
+  background:var(--pa-surface)!important;border:1px solid rgba(255,255,255,.4)!important;
+  box-shadow:0 30px 80px rgba(10,32,49,.28)!important;
+}
+.portal-modal-head{background:#fff!important;border-color:var(--pa-line)!important}
+.portal-modal-head button{background:#F0F4F8!important;color:#546D83!important;border-radius:12px!important}
+.portal-modal-body input,.portal-modal-body select,.portal-modal-body textarea,
+.portal-auth-form input{
+  border-color:#D4DFE9!important;border-radius:12px!important;background:#fff!important;
+}
+.portal-modal-body input:focus,.portal-modal-body select:focus,.portal-modal-body textarea:focus,
+.portal-auth-form input:focus{border-color:#81A9F7!important;box-shadow:0 0 0 3px rgba(47,111,237,.10)!important}
+.portal-day-evidence,.portal-special-fields,.portal-security-hint{
+  background:var(--pa-surface-2)!important;border-color:var(--pa-line)!important;color:#5E7387!important;
+}
+
+/* Bottom navigation */
+.portal-bottom-nav{
+  background:rgba(255,255,255,.97)!important;border:1px solid rgba(213,224,235,.95)!important;
+  box-shadow:0 14px 36px rgba(17,50,76,.16)!important;
+  backdrop-filter:blur(18px)!important;
+}
+.portal-bottom-nav button{color:#7B8E9F!important}
+.portal-bottom-nav button i{background:#F1F5F9!important;color:#7A8DA0!important}
+.portal-bottom-nav button.active{background:var(--pa-blue-soft)!important;color:var(--pa-blue-strong)!important;border-radius:18px!important;box-shadow:none!important}
+.portal-bottom-nav button.active i{background:#DCE8FF!important;color:var(--pa-blue-strong)!important}
+.portal-bottom-nav button.active:before{background:var(--pa-blue)!important}
+
+/* Auth */
+.portal-auth{background:linear-gradient(180deg,#F4F7FB 0%,#EEF3F8 100%)!important}
+.portal-auth-shell{
+  background:#fff!important;border:1px solid var(--pa-line)!important;border-radius:24px!important;
+  box-shadow:0 24px 70px rgba(22,50,76,.12)!important;
+}
+.portal-auth .portal-brand-mark{background:var(--pa-navy)!important;color:#fff!important;box-shadow:none!important}
+.portal-auth .portal-brand strong{color:var(--pa-navy)!important}
+.portal-team-card{background:#F7FAFD!important;border-color:var(--pa-line)!important;border-radius:16px!important}
+.portal-auth-tabs{background:#EBF0F5!important;border-radius:14px!important}
+.portal-auth-tabs button.active{color:var(--pa-blue-strong)!important}
+
+/* Premium mobile spacing */
+@media(max-width:560px){
+  .portal-main{padding:12px!important}
+  .portal-profile-card{border-radius:18px!important;padding:13px!important}
+  .portal-section-title{margin-top:20px!important}
+  .portal-today-card{border-radius:20px!important;padding:15px!important}
+  .portal-quick-grid{gap:10px!important}
+  .portal-quick-grid button{min-height:110px!important;border-radius:17px!important;padding:14px!important}
+  .portal-view-hero{border-radius:18px!important;padding:14px!important}
+  .portal-calendar-shell{border-radius:18px!important}
+  .portal-cal-day{border-radius:12px!important}
+  .portal-time-item,.portal-request-item,.portal-notification-item{border-radius:16px!important}
+  .portal-bottom-nav{left:8px!important;right:8px!important;bottom:6px!important;border-radius:24px!important}
+  .portal-bottom-nav button{min-height:62px!important;border-radius:16px!important}
+  .portal-bottom-nav button i{width:38px!important;height:38px!important;border-radius:13px!important}
+  .portal-bottom-nav button i .portal-ui-icon{width:20px!important;height:20px!important}
+  .portal-bottom-nav span{font-size:10px!important}
+}
+
+/* Keep premium palette aligned in dark mode */
+body:is(.theme-dark,.dark,.dark-mode){
+  --pa-bg:#14191E;--pa-surface:#1A2026;--pa-surface-2:#20272E;--pa-line:#2B343D;
+  --pa-text:#EAF0F5;--pa-muted:#95A3AF;--pa-blue-soft:rgba(71,126,240,.15);
+}
+body:is(.theme-dark,.dark,.dark-mode) .portal-topbar{background:rgba(15,40,61,.98)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-profile-card,.portal-same-shift-team-v61509,.portal-day-chip,.portal-view-hero,.portal-schedule-panel,.portal-calendar-shell,.portal-calendar-punch-detail,.portal-time-item,.portal-att-shift,.portal-request-item,.portal-notification-item,.portal-modal){background:var(--pa-surface)!important;border-color:var(--pa-line)!important;color:var(--pa-text)!important}
+body:is(.theme-dark,.dark,.dark-mode) :is(.portal-quick-grid button,.portal-cal-day,.portal-shift-legend,.portal-month-picker-v616ac,.portal-month-nav-v616ac,.portal-time-current-v616ac,.portal-soft-action-v616ab){background:var(--pa-surface-2)!important;border-color:var(--pa-line)!important;color:var(--pa-text)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav{background:rgba(25,31,37,.97)!important;border-color:var(--pa-line)!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button i{background:#232B33!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button.active{background:rgba(47,111,237,.15)!important;color:#8EB0FF!important}
+body:is(.theme-dark,.dark,.dark-mode) .portal-bottom-nav button.active i{background:rgba(47,111,237,.18)!important;color:#8EB0FF!important}
