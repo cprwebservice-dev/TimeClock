@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.29 FIX15R";
+  const VERSION="6.15.29 FIX16AE";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
@@ -408,6 +408,20 @@
     return `<span class="portal-shift-fallback-v616ab">${esc(key||"•")}</span>`;
   }
 
+  function portalOriginalShiftIconMarkupV616AE(icon){
+    return `<i class="portal-shift-icon portal-calendar-original-icon-v616ac">${esc(icon||"•")}</i>`;
+  }
+
+  function portalCompactTimeHtmlV616AE(value){
+    const raw=String(value||"").trim();
+    if(!raw)return"";
+    if(/^\d{2}:\d{2}[–-]\d{2}:\d{2}$/.test(raw)){
+      const parts=raw.split(/[–-]/);
+      return `<span>${esc(parts[0])}–</span><span>${esc(parts[1])}</span>`;
+    }
+    return `<span>${esc(raw)}</span>`;
+  }
+
   function shiftVisual(r={}){
     const m=dayMeta(r),code=String(r.effective_shift_code||"-"),mode=String(r.work_mode_code||"").toUpperCase(),display=primaryShiftLabel(r);
     if(m.tone==="leave")return{icon:"▤",display,code,label:"ลา",time:"",metaCode:code};
@@ -433,7 +447,7 @@
     const box=$("portalWeekStrip"),days=[];
     for(let i=0;i<7;i++){
       const d=addDays(today(),i),r=row(d)||{},v=shiftVisual(r),dt=new Date(`${d}T00:00:00`),second=specialSecondLine(r),partial=partialLeaveTextV61511(r);
-      days.push(`<div class="portal-day-chip ${dayMeta(r).tone} ${d===today()?"today":""}"><span>${dt.toLocaleDateString("th-TH",{weekday:"short"})} ${dt.getDate()}</span><strong><i class="portal-shift-icon">${shiftIconSvgV616AB(v.icon)}</i>${esc(v.display||v.code)}</strong><small>${esc(v.time||v.label)}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}${partial?`<small class="portal-partial-leave-line-v61511">${esc(partial)}</small>`:""}</div>`);
+      days.push(`<div class="portal-day-chip ${dayMeta(r).tone} ${d===today()?"today":""}"><span>${dt.toLocaleDateString("th-TH",{weekday:"short"})} ${dt.getDate()}</span><strong>${portalOriginalShiftIconMarkupV616AE(v.icon)}<span class="portal-day-chip-label-v616ae">${esc(v.display||v.code)}</span></strong><small class="portal-day-chip-time-v616ae">${portalCompactTimeHtmlV616AE(v.time||v.label)}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}${partial?`<small class="portal-partial-leave-line-v61511">${esc(partial)}</small>`:""}</div>`);
     }
     box.innerHTML=days.join("");
   }
@@ -473,7 +487,7 @@
       const dt=new Date(firstDate);dt.setDate(firstDate.getDate()+i);
       const date=iso(dt),r=row(date)||{},m=dayMeta(r),v=shiftVisual(r),special=calendarSpecialCompact(r);
       const inMonth=date.slice(0,7)===b.start.slice(0,7);
-      html+=`<button type="button" class="portal-cal-day ${m.tone} ${inMonth?"":"outside"} ${date===today()?"today":""} ${date===selectedCalendarDate?"selected":""}" data-calendar-date="${date}"><span>${dt.getDate()}</span><strong class="portal-cal-shift-label"><i class="portal-shift-icon portal-calendar-original-icon-v616ac">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small class="portal-cal-time">${esc(v.time||v.label)}</small>${special?`<small class="portal-special-line">${esc(special)}</small>`:""}</button>`;
+      html+=`<button type="button" class="portal-cal-day ${m.tone} ${inMonth?"":"outside"} ${date===today()?"today":""} ${date===selectedCalendarDate?"selected":""}" data-calendar-date="${date}"><span>${dt.getDate()}</span><strong class="portal-cal-shift-label"><i class="portal-shift-icon portal-calendar-original-icon-v616ac">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small class="portal-cal-time">${portalCompactTimeHtmlV616AE(v.time||v.label)}</small>${special?`<small class="portal-special-line">${esc(special)}</small>`:""}</button>`;
     }
     $("portalCalendar").innerHTML=html;
     renderScheduleSummary();
@@ -3021,7 +3035,7 @@ $("portalTimeRefreshV616AB")?.addEventListener("click",async()=>{attendanceByDat
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.26a",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16ae-home-nav-calendar-20260918",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }
