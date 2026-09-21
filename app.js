@@ -10988,16 +10988,18 @@ window.tcIsDayShiftCode = value =>
         );
       }
       if (key === 'dayoff') {
+        // FIX16BD: Day-off filter follows the effective Schedule. A real working
+        // shift (STD/S043/S134/S135, etc.) overrides a natural weekly-off flag,
+        // so a worked Sunday must not be highlighted as a day-off.
+        const dayoffSourceV616bd = scheduleRow || canonical?.merged || attendanceRow || null;
+        const workingShiftOverrideV616bd = Boolean(
+          dayoffSourceV616bd
+          && attendanceHasWorkingShiftOverrideV61155(dayoffSourceV616bd)
+        );
         return Boolean(
           !publicHoliday
-          && (
-            flags?.dayOff
-            || shift?.tone === 'off'
-            || scheduleRow?.is_weekly_off
-            || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(
-              String(scheduleRow?.day_type || '').trim().toUpperCase()
-            )
-          )
+          && !workingShiftOverrideV616bd
+          && employeeMonthConsumesDayoffFallbackV61426(dayoffSourceV616bd)
         );
       }
       if (key === 'leave') return Boolean(flags?.leave);
@@ -35291,7 +35293,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX16AZ OPERATIONAL EFFECTIVE CORRECTION';
+  const VERSION='6.15.29 FIX16BD DAYOFF FILTER';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
