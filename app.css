@@ -36091,3 +36091,332 @@ body.theme-dark #schedulePersonWorkspace .month-copy-status-idle-v61413>small,
 .dark #schedulePersonWorkspace .month-copy-status-idle-v61413>small{
   color:#91a6b8;
 }
+
+/* ========================================================================== */
+/* FIX16BJ — Minimal UI Polish                                                */
+/* Visual-only pass: flatter surfaces, tighter spacing, clearer hierarchy.    */
+/* No scheduling / attendance / permission business logic is changed.         */
+/* ========================================================================== */
+
+:root{
+  --tc-min-border:#dfe7ef;
+  --tc-min-border-strong:#cfdbe6;
+  --tc-min-surface:#ffffff;
+  --tc-min-soft:#f7f9fc;
+  --tc-min-muted:#6f8295;
+  --tc-min-text:#17324d;
+  --tc-min-accent:#1769aa;
+  --tc-min-radius:12px;
+}
+
+/* Main workspace — remove decorative depth, keep hierarchy with borders. */
+.page .panel,
+.page .filter-panel,
+.page .enterprise-filterbar,
+.page .schedule-workspace{
+  border-color:var(--tc-min-border)!important;
+  border-radius:var(--tc-min-radius)!important;
+  box-shadow:none!important;
+}
+.page .panel-header{
+  padding:12px 14px!important;
+  border-bottom-color:#e8eef4!important;
+  background:var(--tc-min-surface)!important;
+}
+.page .panel-header h3{font-size:14px!important;letter-spacing:-.01em}
+.page .panel-header p{margin-top:2px!important;color:#8292a2!important}
+
+/* Buttons — calmer by default; primary action remains obvious. */
+.page .btn,
+.modal .btn,
+.employee-month-modal-v61121 .btn{
+  min-height:34px;
+  border-radius:9px!important;
+  box-shadow:none!important;
+  transition:background-color .14s ease,border-color .14s ease,color .14s ease!important;
+}
+.page .btn:hover,
+.modal .btn:hover,
+.employee-month-modal-v61121 .btn:hover{transform:none!important}
+.page .btn-light,
+.modal .btn-light,
+.employee-month-modal-v61121 .btn-light{
+  background:#fff!important;
+  border-color:#dbe5ee!important;
+  color:#496174!important;
+}
+.page .btn-light:hover,
+.modal .btn-light:hover,
+.employee-month-modal-v61121 .btn-light:hover{
+  background:#f5f8fb!important;
+  border-color:#cbd9e5!important;
+}
+
+/* Tabs/chips — compact segmented-control look. */
+.page .segmented,
+.page .tabs,
+.page .filter-tabs{
+  box-shadow:none!important;
+}
+.page .badge,
+.page .chip{
+  box-shadow:none!important;
+}
+
+/* Schedule — use one neutral toolbar surface and compact commands. */
+#page-schedule .schedule-commandbar{
+  gap:8px!important;
+  padding:8px 10px!important;
+  border-color:#e5ecf2!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+#page-schedule .schedule-command-actions{gap:5px!important}
+#page-schedule .schedule-command-actions .btn{
+  min-height:32px!important;
+  padding:0 10px!important;
+  font-size:10.5px!important;
+}
+#page-schedule .schedule-summary-strip{
+  gap:6px!important;
+  padding:7px 10px!important;
+  background:#fbfcfe!important;
+  border-color:#e6edf3!important;
+}
+#page-schedule .schedule-summary-strip span{
+  padding:4px 7px!important;
+  border-radius:8px!important;
+  box-shadow:none!important;
+}
+#page-schedule .schedule-selection-info span{font-size:11px!important}
+#page-schedule .schedule-selection-info small{color:#8b9aaa!important}
+#page-schedule .enterprise-schedule-table thead th{
+  background:#f7f9fc!important;
+  border-color:#e5ebf1!important;
+  color:#577087!important;
+}
+#page-schedule .enterprise-schedule-table thead th.weekend{
+  background:#fff9f3!important;
+  color:#a86630!important;
+}
+#page-schedule .enterprise-schedule-table .sticky-col-1,
+#page-schedule .enterprise-schedule-table .sticky-col-2{box-shadow:none!important}
+#page-schedule .schedule-data-cell{padding:2px!important}
+#page-schedule .schedule-cell{
+  border-radius:7px!important;
+  box-shadow:none!important;
+  transition:border-color .12s ease,background-color .12s ease!important;
+}
+#page-schedule .schedule-cell:hover{transform:none!important;box-shadow:0 0 0 1px #b7cee2!important}
+#page-schedule .schedule-data-cell.cell-selected,
+#page-schedule .schedule-data-cell.cell-range{background:#edf6ff!important}
+#page-schedule .schedule-data-cell.cell-selected:after{border-color:#5b9bd5!important}
+#page-schedule .schedule-context-menu{
+  border-radius:10px!important;
+  box-shadow:0 14px 34px rgba(15,23,42,.16)!important;
+}
+#schedulePersonWorkspace .person-month-copy-workflow-v61413{
+  border-color:#dbe8f2!important;
+  background:#f8fbfe!important;
+  border-radius:9px!important;
+}
+#schedulePersonWorkspace .month-copy-status-idle-v61413{
+  background:#fff!important;
+  border-color:#d8e3ec!important;
+}
+
+/* Monthly Personal Overview — flat header, compact KPI strip, calmer cards. */
+.employee-month-modal-backdrop-v61121{
+  padding:10px!important;
+  background:rgba(15,23,42,.48)!important;
+  backdrop-filter:blur(2px)!important;
+}
+.employee-month-modal-v61121{
+  width:min(1520px,98vw)!important;
+  max-width:min(1520px,98vw)!important;
+  height:min(940px,96vh)!important;
+  max-height:96vh!important;
+  border-radius:15px!important;
+  border-color:#d8e3ec!important;
+  background:#fff!important;
+  box-shadow:0 20px 48px rgba(15,23,42,.18)!important;
+}
+.employee-month-modal-header-v61121{
+  padding:12px 16px!important;
+  background:#fff!important;
+  border-bottom-color:#e7edf3!important;
+}
+.employee-month-modal-header-v61121 .eyebrow{
+  margin-bottom:2px!important;
+  color:#8191a1!important;
+  font-size:10px!important;
+  letter-spacing:.10em!important;
+}
+.employee-month-modal-header-v61121 h3{font-size:19px!important;color:#183650!important}
+.employee-month-modal-header-v61121 p{margin-top:2px!important;color:#7e8f9f!important}
+.employee-month-toolbar-v61121{
+  gap:8px!important;
+  padding:8px 12px!important;
+  border-bottom-color:#e8eef4!important;
+  background:#fbfcfe!important;
+}
+.employee-month-current-v61121{
+  min-width:160px!important;
+  padding:6px 9px!important;
+  border-radius:9px!important;
+  border-color:#dae4ed!important;
+  background:#fff!important;
+}
+.employee-month-modal-body-v61121{
+  padding:9px 10px 12px!important;
+  background:#f7f9fc!important;
+}
+.employee-month-summary-v61121{gap:6px!important;margin-bottom:7px!important}
+.month-overview-kpi{
+  padding:7px 9px!important;
+  border-radius:9px!important;
+  border-color:#e0e7ee!important;
+  background:#fff!important;
+  box-shadow:none!important;
+}
+.month-overview-kpi strong{font-size:18px!important}
+.month-overview-kpi span,.month-overview-kpi small{font-size:10px!important}
+.month-overview-kpi.danger,
+.month-overview-kpi.late,
+.month-overview-kpi.early,
+.month-overview-kpi.split{background:#fff!important}
+.employee-month-legend-v61121{
+  gap:8px!important;
+  margin-bottom:6px!important;
+  padding:4px 5px!important;
+}
+.employee-month-grid-v61121{gap:5px!important}
+.employee-month-dow{
+  padding:6px 4px!important;
+  border-radius:7px!important;
+  background:#f2f6fa!important;
+  border-color:#e1e8ef!important;
+}
+.employee-month-dow.weekend{background:#fff8f1!important}
+.employee-month-day{
+  min-height:139px!important;
+  padding:7px!important;
+  border-radius:10px!important;
+  border-color:#e0e7ee!important;
+  box-shadow:none!important;
+}
+.employee-month-day:not(.is-blank):hover{
+  transform:none!important;
+  border-color:#a9c7df!important;
+  box-shadow:0 0 0 1px rgba(68,132,184,.08)!important;
+}
+.employee-month-day-head{margin-bottom:4px!important}
+.employee-month-day-head>strong{
+  width:24px!important;
+  height:24px!important;
+  border-radius:7px!important;
+  background:#f1f6fa!important;
+}
+.employee-month-shift{
+  min-height:37px!important;
+  padding:5px 6px!important;
+  border-radius:8px!important;
+  background:#f8fbfd!important;
+}
+.employee-month-punch{margin-top:4px!important}
+.employee-month-anomalies{margin-top:4px!important;padding-bottom:24px!important}
+.month-anomaly{
+  min-height:16px!important;
+  padding:1px 5px!important;
+  font-size:10px!important;
+}
+.employee-month-edit-btn{
+  right:6px!important;
+  bottom:6px!important;
+  height:22px!important;
+  border-radius:7px!important;
+}
+.employee-month-modal-footer-v61121{
+  padding:8px 12px!important;
+  border-top-color:#e7edf3!important;
+}
+
+/* Attendance Detail — lighter filter panel and KPI/result surfaces. */
+#page-attendance .attendance-filter-panel-v61462>.panel-body{padding:10px 12px 11px!important}
+#page-attendance .attendance-filter-heading-v61462{margin-bottom:7px!important;padding-bottom:6px!important}
+#page-attendance .attendance-filter-actions{gap:6px!important}
+#page-attendance .attendance-filter-actions .btn{min-height:34px!important}
+#page-attendance .attendance-grid-table thead th{
+  box-shadow:none!important;
+}
+#page-attendance .attendance-grid-table tbody tr:hover{background:#f8fbfd!important}
+
+/* Generic modal polish — keep high elevation only where needed. */
+.modal{
+  border-radius:14px!important;
+  border-color:#dbe4ec!important;
+  box-shadow:0 20px 50px rgba(15,23,42,.18)!important;
+}
+.modal-header{border-bottom-color:#e8edf2!important}
+.modal-footer{border-top-color:#e8edf2!important}
+
+/* Scrollbars — subtle and consistent. */
+#page-schedule .schedule-grid-wrap,
+.employee-month-modal-body-v61121{
+  scrollbar-color:#cbd8e3 transparent;
+  scrollbar-width:thin;
+}
+#page-schedule .schedule-grid-wrap::-webkit-scrollbar,
+.employee-month-modal-body-v61121::-webkit-scrollbar{width:8px;height:8px}
+#page-schedule .schedule-grid-wrap::-webkit-scrollbar-thumb,
+.employee-month-modal-body-v61121::-webkit-scrollbar-thumb{
+  background:#cbd8e3;
+  border:2px solid transparent;
+  border-radius:999px;
+  background-clip:padding-box;
+}
+
+/* Dark mode — preserve the same flat/minimal hierarchy. */
+body.theme-dark .page .panel,
+body.dark .page .panel,
+body.theme-dark .employee-month-modal-v61121,
+body.dark .employee-month-modal-v61121{
+  border-color:#2a3d50!important;
+  box-shadow:none!important;
+}
+body.theme-dark #page-schedule .schedule-commandbar,
+body.dark #page-schedule .schedule-commandbar,
+body.theme-dark .employee-month-modal-header-v61121,
+body.dark .employee-month-modal-header-v61121,
+body.theme-dark .employee-month-toolbar-v61121,
+body.dark .employee-month-toolbar-v61121,
+body.theme-dark .employee-month-modal-footer-v61121,
+body.dark .employee-month-modal-footer-v61121{
+  background:#101b29!important;
+  border-color:#26394b!important;
+}
+body.theme-dark .employee-month-modal-body-v61121,
+body.dark .employee-month-modal-body-v61121{background:#0c1622!important}
+body.theme-dark .month-overview-kpi,
+body.dark .month-overview-kpi,
+body.theme-dark .employee-month-day,
+body.dark .employee-month-day,
+body.theme-dark .employee-month-current-v61121,
+body.dark .employee-month-current-v61121{
+  background:#111e2c!important;
+  border-color:#2a3d50!important;
+  box-shadow:none!important;
+}
+body.theme-dark #page-schedule .schedule-summary-strip,
+body.dark #page-schedule .schedule-summary-strip,
+body.theme-dark #schedulePersonWorkspace .person-month-copy-workflow-v61413,
+body.dark #schedulePersonWorkspace .person-month-copy-workflow-v61413{
+  background:#0e1a27!important;
+  border-color:#26394b!important;
+}
+
+@media(max-width:900px){
+  .employee-month-modal-backdrop-v61121{padding:0!important}
+  .employee-month-modal-v61121{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important}
+  .employee-month-summary-v61121{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
