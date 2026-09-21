@@ -16790,8 +16790,10 @@ ${skippedSummary(compatibility.skipped)}
         status.classList.remove('hidden');
         status.innerHTML=`<div class="month-copy-status-source-v61413 candidate"><span>ต้นทางที่เลือก</span><strong>${monthCopyEscV61413(sourceMeta.emp_code)} • ${monthCopyEscV61413(sourceMeta.full_name||'-')}</strong><small>กด “คัดลอกทั้งเดือน” เพื่อเข้าสู่ขั้นเลือกปลายทาง</small></div>`;
       }else{
-        status.classList.add('hidden');
-        status.innerHTML='';
+        // FIX16BE: keep a compact status slot visible at all times so entering
+        // month-copy mode never pushes the schedule table down.
+        status.classList.remove('hidden');
+        status.innerHTML=`<div class="month-copy-status-idle-v61413"><span>คัดลอกทั้งเดือน</span><small>เลือก Checkbox พนักงานต้นทาง 1 คน แล้วกด “คัดลอกทั้งเดือน”</small></div>`;
       }
     }
 

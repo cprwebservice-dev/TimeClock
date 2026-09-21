@@ -36015,3 +36015,79 @@ body.dark-mode #page-attendance .attendance-org-cell-v616u .attendance-current-t
 
 .team-operational-head-actions-v616az{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 @media(max-width:700px){.team-operational-head-actions-v616az{width:100%;justify-content:stretch}.team-operational-head-actions-v616az .btn{flex:1}}
+
+/* ========================================================================== */
+/* FIX16BE — Person full-month command bar / month-copy layout stability       */
+/* Prevent action buttons and schedule rows from jumping when copy mode opens. */
+/* ========================================================================== */
+#page-schedule .schedule-command-actions{
+  flex-wrap:nowrap!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  min-height:33px!important;
+  align-content:center!important;
+  scrollbar-width:none!important;
+}
+#page-schedule .schedule-command-actions::-webkit-scrollbar{
+  width:0!important;
+  height:0!important;
+}
+/* Reserve the cancel-copy slot so revealing it does not reflow sibling buttons. */
+#page-schedule #scheduleCancelMonthCopyBtnV61413.hidden{
+  display:inline-flex!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+/* Keep the month-copy status row present at a stable compact height. */
+#schedulePersonWorkspace .person-month-copy-workflow-v61413{
+  min-height:46px!important;
+  box-sizing:border-box!important;
+  align-items:center!important;
+  padding:6px 10px!important;
+}
+#schedulePersonWorkspace .person-month-copy-workflow-v61413.hidden{
+  display:flex!important;
+  visibility:visible!important;
+}
+#schedulePersonWorkspace .month-copy-status-idle-v61413{
+  width:100%;
+  min-width:0;
+  min-height:32px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:5px 9px;
+  border:1px dashed #d5e1eb;
+  border-radius:9px;
+  background:#fbfdff;
+  color:#708397;
+  box-sizing:border-box;
+}
+#schedulePersonWorkspace .month-copy-status-idle-v61413>span{
+  flex:0 0 auto;
+  font-size:10.5px;
+  font-weight:900;
+  color:#476784;
+}
+#schedulePersonWorkspace .month-copy-status-idle-v61413>small{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:10.5px;
+  color:#8495a6;
+}
+body.theme-dark #schedulePersonWorkspace .month-copy-status-idle-v61413,
+.dark #schedulePersonWorkspace .month-copy-status-idle-v61413{
+  background:#132638;
+  border-color:#385269;
+  color:#a9b9c7;
+}
+body.theme-dark #schedulePersonWorkspace .month-copy-status-idle-v61413>span,
+.dark #schedulePersonWorkspace .month-copy-status-idle-v61413>span{
+  color:#c2d8e9;
+}
+body.theme-dark #schedulePersonWorkspace .month-copy-status-idle-v61413>small,
+.dark #schedulePersonWorkspace .month-copy-status-idle-v61413>small{
+  color:#91a6b8;
+}
