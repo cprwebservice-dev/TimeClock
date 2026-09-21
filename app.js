@@ -12206,7 +12206,7 @@ window.tcIsDayShiftCode = value =>
         const readyToV616AW=String(obj?._personTeamReadyToV616AW||'');
         const blockedFromV616AW=String(obj?._personTeamBlockedFromV616AW||'');
         const periodMixedReadinessBadgeV616AW = readyToV616AW && blockedFromV616AW
-          ? `<span class="schedule-person-effective-window-v616aw" title="สิทธิ์จัดกะตรวจ Effective Team รายวัน">มีทีมถึง ${safe(formatDate(readyToV616AW))} • ล็อกตั้งแต่ ${safe(formatDate(blockedFromV616AW))}</span>`
+          ? `<span class="schedule-person-effective-window-v616aw" title="${safe(`มี Effective Team ถึง ${formatDate(readyToV616AW)} • ล็อกตั้งแต่ ${formatDate(blockedFromV616AW)} • สิทธิ์จัดกะตรวจรายวัน`)}">ทีมถึง ${safe(formatDate(readyToV616AW).slice(0,5))} • ล็อก ${safe(formatDate(blockedFromV616AW).slice(0,5))}</span>`
           : '';
 
         const managerOwnBadge =
@@ -35055,7 +35055,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX15Q TEAM MEMBERS BORROW OVERLAY';
+  const VERSION='6.15.29 FIX16AX TEAM LOAD + EFFECTIVE DATE';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -35071,7 +35071,7 @@ ${names}${extra}
     opPool:[],opTeams:[],opSelected:new Set(),opLeftPicked:new Set(),opRightPicked:new Set(),opPreview:null,opLoading:false,opMode:'ASSIGN',opPendingSearch:'',
     changeRows:[],enforcementAudit:[],changeChannel:null,changeTimer:null,
     closureTeam:null,closurePreview:null,closureTempImpact:null,closureMoves:new Map(),closurePicked:new Set(),closureLoading:false,closureReturnFocus:null,
-    loading:false,lastError:null
+    loading:false,reloadRequested:false,lastError:null
   };
   const RUNTIME_TTL=5*60*1000;
   let membershipPreviewTimer=null,operationalPreviewTimer=null;
@@ -35155,6 +35155,7 @@ ${names}${extra}
   function teamLifecycle(t){const s=String(t?.team_status||'').toUpperCase();if(['ACTIVE','DRAFT','INACTIVE'].includes(s))return s;if(t?.is_active===false)return'INACTIVE';const p=policy(t?.team_category),n=Number(t?.active_member_count||0);return n>=p.min&&(p.max==null||n<=p.max)?'ACTIVE':'DRAFT';}
   function statusBadge(t){const s=teamLifecycle(t);return s==='ACTIVE'?'<span class="badge badge-green">ใช้งาน</span>':s==='DRAFT'?'<span class="badge badge-amber">รอสมาชิก</span>':'<span class="badge badge-gray">ปิดใช้งาน</span>';}
   function selectedOrgId(){return $('teamMasterOrgFilterV61523')?.value||'';}
+  function teamWorkspaceReferenceDateV616AX(){return $('teamMasterReferenceDateV616AX')?.value||today();}
   function orgById(id){return state.orgs.find(o=>String(o.org_id)===String(id))||null;}
   function human(error){
     const raw=String(app()?.humanError?.(error)||error?.message||error||'เกิดข้อผิดพลาด');
@@ -35604,7 +35605,7 @@ ${names}${extra}
     $('teamMembershipCategoryV61524')&&($('teamMembershipCategoryV61524').textContent=`${catIcon(t.team_category)} ${catLabel(t.team_category)}`);
     $('teamMembershipEffectiveV61524')&&($('teamMembershipEffectiveV61524').value=today());
     $('teamMembershipSearchV61524')&&($('teamMembershipSearchV61524').value='');$('teamMembershipSourceFilterV61528F1')&&($('teamMembershipSourceFilterV61528F1').value='ALL');
-    const p=policy(t.team_category);$('teamMembershipPolicyV61524')&&($('teamMembershipPolicyV61524').innerHTML=`<div><strong>${catIcon(t.team_category)} ${catLabel(t.team_category)}</strong><span>${esc(p.label)}${t.team_category==='MOTORCYCLE'?' · ต้องมีทีมก่อนจัดกะ':''}</span></div><small>สมาชิกยืมตัวจะแสดงตามวันที่อ้างอิงแบบอ่านอย่างเดียว · การแก้ช่วงยืมทำที่เมนูยืมตัวช่าง</small>`);
+    const p=policy(t.team_category);$('teamMembershipPolicyV61524')&&($('teamMembershipPolicyV61524').innerHTML=`<div><strong>${catIcon(t.team_category)} ${catLabel(t.team_category)}</strong><span>${esc(p.label)}${t.team_category==='MOTORCYCLE'?' · ต้องมีทีมก่อนจัดกะ':''}</span></div><small><b>วันที่มีผล</b> ด้านบนเป็นวันที่เริ่มสมาชิก/ย้ายทีม • เปลี่ยนได้ก่อนบันทึก • สมาชิกยืมตัวอ่านอย่างเดียวและแก้ช่วงที่เมนูยืมตัวช่าง</small>`);
     $('teamMembershipModalV61524')?.classList.remove('hidden');await loadMembershipCandidates();
   }
   function closeMembership(){
@@ -35616,7 +35617,7 @@ ${names}${extra}
       app()?.showLoading?.('กำลังโหลดสมาชิก...');const d=$('teamMembershipEffectiveV61524')?.value||today();
       state.members=await rpc('ta_get_team_membership_candidates_v61524',{p_team_id:state.activeTeam.team_id,p_effective_date:d})||[];
       try{state.workingMembers=await rpc('ta_get_team_working_members_v61529f15q',{p_team_id:state.activeTeam.team_id,p_work_date:d})||[];}catch(overlayError){state.workingMembers=[];console.warn('[FIX15Q] Working member overlay unavailable:',overlayError);toast('โหลดสมาชิกประจำได้แล้ว แต่ข้อมูลยืมตัวของทีมยังโหลดไม่สำเร็จ','warning');}
-      state.initialMembership=new Set(state.members.filter(r=>r.is_current_member).map(r=>String(r.emp_code)));state.selected=new Set(state.initialMembership);state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;renderMemberList();$('teamMembershipMetaV61524')&&($('teamMembershipMetaV61524').textContent=`${catLabel(state.activeTeam.team_category)} • สมาชิกประจำ + สมาชิกยืมตัว ณ ${fmtDate(d)} • เลือกซ้าย → ย้ายเข้าขวา`);renderMembershipPreview();
+      state.initialMembership=new Set(state.members.filter(r=>r.is_current_member).map(r=>String(r.emp_code)));state.selected=new Set(state.initialMembership);state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;renderMemberList();$('teamMembershipMetaV61524')&&($('teamMembershipMetaV61524').textContent=`${catLabel(state.activeTeam.team_category)} • ตรวจสถานะสมาชิก ณ วันที่มีผล ${fmtDate(d)} • เลือกซ้าย → ย้ายเข้าขวา`);renderMembershipPreview();
     }catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
   }
   async function saveMembership(){
@@ -35827,30 +35828,75 @@ ${names}${extra}
   async function loadAudit(){try{const [teamAudit,enfAudit]=await Promise.all([rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:150}),rpc('ta_get_team_enforcement_audit_v61529',{p_limit:150})]);state.audit=teamAudit||[];state.enforcementAudit=enfAudit||[];renderAudit();}catch(e){console.warn(e);}}
 
   async function load(){
-    if(!allowedRole()||state.loading)return;
+    if(!allowedRole())return;
+    if(state.loading){
+      state.reloadRequested=true;
+      return;
+    }
     if(!baseTeamRole()&&actingTeamAccess()){
       syncNav();setTab('ASSIGNMENTS');window.TimeClockTemporaryAssignmentV61529F14B?.load?.();return;
     }
-    state.loading=true;syncNav();
-    const body=$('teamMasterBodyV61523');if(body)body.innerHTML='<tr><td colspan="7" class="fc-empty">กำลังโหลดทีม...</td></tr>';
+
+    state.loading=true;
+    state.reloadRequested=false;
+    syncNav();
+
+    const body=$('teamMasterBodyV61523');
+    if(body)body.innerHTML='<tr><td colspan="7" class="fc-empty">กำลังโหลดทีม...</td></tr>';
+
     try{
-      const orgId=selectedOrgId()||null,search=null;
-      const [orgs,teams,summary]=await Promise.all([
-        rpc('ta_get_team_org_options_v61524',{p_include_inactive:false}),
-        rpc('ta_get_team_master_v61526',{p_org_id:orgId,p_include_inactive:true,p_search:search,p_work_date:today()}),
-        rpc('ta_get_team_workspace_summary_v61528',{p_org_id:orgId,p_work_date:today()})
+      const workDate=teamWorkspaceReferenceDateV616AX();
+
+      // FIX16AX: load Scope organizations first. This prevents a stale org_id
+      // from the previous session/page from limiting the first Team query.
+      const orgs=await rpc('ta_get_team_org_options_v61524',{p_include_inactive:false});
+      state.orgs=orgs||[];
+      renderOrgOptions();
+
+      const orgId=selectedOrgId()||null;
+      const search=null;
+
+      const [teams,summary]=await Promise.all([
+        rpc('ta_get_team_master_v61526',{
+          p_org_id:orgId,
+          p_include_inactive:true,
+          p_search:search,
+          p_work_date:workDate
+        }),
+        rpc('ta_get_team_workspace_summary_v61528',{
+          p_org_id:orgId,
+          p_work_date:workDate
+        })
       ]);
-      state.orgs=orgs||[];state.teams=teams||[];state.summary=summary||{};renderOrgOptions();renderTeams();renderSummary();
+
+      state.teams=teams||[];
+      state.summary=summary||{};
+      renderTeams();
+      renderSummary();
+
       await loadEnforcement();
-      if(allowedRole()){setupChangeRealtime();loadChangeInbox();}
-      // FIX16AT: runtime diagnostic is intentionally NOT called on every successful Team page load.
-      // It is a troubleshooting RPC and was one of the slowest production calls.
-    }catch(e){state.lastError=e;toast(human(e),'error');if(body)body.innerHTML=`<tr><td colspan="7" class="fc-empty">โหลด Team Workspace ไม่สำเร็จ: ${esc(human(e))}</td></tr>`;loadRuntimeDiagnostic({force:true,silent:true}).catch(()=>{});}finally{state.loading=false;}
+      if(allowedRole()){
+        setupChangeRealtime();
+        loadChangeInbox();
+      }
+    }catch(e){
+      state.lastError=e;
+      toast(human(e),'error');
+      if(body)body.innerHTML=`<tr><td colspan="7" class="fc-empty">โหลด Team Workspace ไม่สำเร็จ: ${esc(human(e))}</td></tr>`;
+      loadRuntimeDiagnostic({force:true,silent:true}).catch(()=>{});
+    }finally{
+      state.loading=false;
+      if(state.reloadRequested && document.querySelector('#page-team-master.active')){
+        state.reloadRequested=false;
+        setTimeout(load,0);
+      }
+    }
   }
 
   function bind(){
     syncNav();setTab('OVERVIEW');
-    $('teamMasterRefreshV61523')?.addEventListener('click',load);$('teamMasterOrgFilterV61523')?.addEventListener('change',load);$('teamMasterCreateV61523')?.addEventListener('click',openCreate);$('teamMasterCreatePeopleV61528')?.addEventListener('click',openCreate);$('teamMasterSearchBtnV61523')?.addEventListener('click',renderTeams);$('teamMasterCategoryFilterV61524')?.addEventListener('change',renderTeams);$('teamMasterStatusFilterV61523')?.addEventListener('change',renderTeams);$('teamMasterSearchV61523')?.addEventListener('input',renderTeams);$('teamMasterCreateOrgV61523')?.addEventListener('change',updateCreatePreview);$('teamMasterCreateCategoryV61524')?.addEventListener('change',updateCreatePreview);$('teamMasterCreateConfirmV61523')?.addEventListener('click',createTeam);
+    const refDateV616AX=$('teamMasterReferenceDateV616AX');if(refDateV616AX&&!refDateV616AX.value)refDateV616AX.value=today();
+    $('teamMasterRefreshV61523')?.addEventListener('click',load);$('teamMasterOrgFilterV61523')?.addEventListener('change',load);$('teamMasterReferenceDateV616AX')?.addEventListener('change',load);$('teamMasterCreateV61523')?.addEventListener('click',openCreate);$('teamMasterCreatePeopleV61528')?.addEventListener('click',openCreate);$('teamMasterSearchBtnV61523')?.addEventListener('click',renderTeams);$('teamMasterCategoryFilterV61524')?.addEventListener('change',renderTeams);$('teamMasterStatusFilterV61523')?.addEventListener('change',renderTeams);$('teamMasterSearchV61523')?.addEventListener('input',renderTeams);$('teamMasterCreateOrgV61523')?.addEventListener('change',updateCreatePreview);$('teamMasterCreateCategoryV61524')?.addEventListener('change',updateCreatePreview);$('teamMasterCreateConfirmV61523')?.addEventListener('click',createTeam);
     $('teamEnforcementRefreshV61525')?.addEventListener('click',()=>loadEnforcement());$('teamEnforcementToggleV61525')?.addEventListener('click',toggleEnforcement);$('teamNextActionBtnV61528')?.addEventListener('click',handleNextAction);$('teamQuickClassifyV61529F1')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));$('teamQuickCreateV61529F1')?.addEventListener('click',openCreate);$('teamQuickPeopleV61529F1')?.addEventListener('click',()=>setTab('PEOPLE'));$('teamQuickEnforcementV61529F1')?.addEventListener('click',()=>{setTab('OVERVIEW');$('teamEnforcementStatusV61525')?.scrollIntoView({behavior:'smooth',block:'center'});});
     $('teamEnforcementEffectiveV61529')?.addEventListener('change',loadEnforcementModal);$('teamEnforcementOrgV61529')?.addEventListener('change',loadEnforcementModal);$('teamEnforcementActionV61529')?.addEventListener('change',()=>{state.enforcementSelected.clear();const f=$('teamEnforcementTeamStatusV61529');if(f)f.value=enforcementAction()==='ENABLE'?'READY':'ENABLED';renderEnforcementModal();});$('teamEnforcementTeamStatusV61529')?.addEventListener('change',renderEnforcementModal);$('teamEnforcementSelectReadyV61529')?.addEventListener('click',selectReadyEnforcementTeams);$('teamEnforcementNoteV61529')?.addEventListener('input',renderEnforcementModal);$('teamEnforcementApplyV61529')?.addEventListener('click',applyEnforcementScope);
     $('teamOperationalProfileOpenV61527')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));$('teamOperationalProfileOpenPeopleV61528')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));document.querySelectorAll('[data-operational-mode-v61529f5]').forEach(btn=>btn.addEventListener('click',()=>setOperationalMode(btn.dataset.operationalModeV61529f5)));$('teamOperationalProfileOrgV61527')?.addEventListener('change',loadOpPool);$('teamOperationalProfileEffectiveV61527')?.addEventListener('change',async()=>{validateOperationalEffectiveDate({autoCorrect:true,showToast:true});state.opPreview=null;await loadOpPool();});$('teamOperationalProfileShowV61527')?.addEventListener('change',()=>{renderOperationalTargetTypeOptions();loadOpPool();});$('teamOperationalProfileTargetV61527')?.addEventListener('change',()=>{state.opPreview=null;renderOpTeamOptions();});$('teamOperationalProfileTeamV61527')?.addEventListener('change',()=>{state.opPreview=null;renderOpPool();scheduleOperationalPreview();});$('teamOperationalProfileSearchBtnV61527')?.addEventListener('click',renderOpPool);$('teamOperationalProfileSearchV61527')?.addEventListener('input',renderOpPool);$('teamOperationalProfileSearchV61527')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();renderOpPool();}});$('teamOperationalProfileSelectAllLeftV61528F2')?.addEventListener('click',selectAllOperationalLeft);$('teamOperationalProfileMoveRightV61528F2')?.addEventListener('click',moveOperationalRight);$('teamOperationalProfileMoveLeftV61528F2')?.addEventListener('click',moveOperationalLeft);$('teamOperationalProfileNoteV61527')?.addEventListener('input',renderOperationalPreview);$('teamOperationalProfileSaveV61527')?.addEventListener('click',saveOperational);

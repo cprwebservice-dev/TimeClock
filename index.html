@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix16aw-date-aware-lock-clarity-20260918" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix16ax-team-load-reference-20260921" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1621,6 +1621,7 @@
     </div>
     <div class="team-workspace-hero-actions-v61528">
       <div class="field team-workspace-org-filter-v61528"><label>หน่วยงาน</label><select class="select" id="teamMasterOrgFilterV61523"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
+      <div class="field team-workspace-reference-date-v616ax"><label>วันที่อ้างอิง</label><input class="input" type="date" id="teamMasterReferenceDateV616AX"/></div>
       <button class="btn btn-light" id="teamMasterRefreshV61523">↻ รีเฟรช</button>
       <button class="btn btn-primary btn-secondary-emphasis-v61528" id="teamMasterCreateV61523">＋ สร้างทีม</button>
     </div>
@@ -1942,7 +1943,7 @@
     <div class="modal-body">
       <div class="team-membership-summary-v61524 team-membership-summary-modern-v61528f1 team-membership-summary-v61529f15q team-membership-summary-v61529f15v">
         <div><span>รูปแบบทีม</span><strong id="teamMembershipCategoryV61524">-</strong></div>
-        <div class="team-membership-date-card-v61529f15v"><span>วันที่อ้างอิง / มีผล</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/></div>
+        <div class="team-membership-date-card-v61529f15v"><span>วันที่มีผลการจัด / ย้ายทีม</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/><small>แก้วันที่นี้ก่อนบันทึก • ใช้ตรวจสมาชิกและ Team ต้นทาง/ปลายทาง ณ วันนั้น</small></div>
         <div><span>สมาชิกประจำ</span><strong id="teamMembershipCurrentV61528F1">0 คน</strong><small>ก่อนแก้ไข</small></div>
         <div class="borrow-stat-v61529f15v"><span>ยืมเข้า</span><strong id="teamMembershipBorrowedInV61529F15Q">0 คน</strong><small>อ่านอย่างเดียว</small></div>
         <div class="working-stat-v61529f15v"><span>ปฏิบัติงาน ณ วันนั้น</span><strong id="teamMembershipWorkingNowV61529F15Q">0 คน</strong><small>รวมยืมเข้า − ยืมออก</small></div>
@@ -3362,6 +3363,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16aw-date-aware-lock-clarity-20260918"></script>
+<script src="./app.js?v=6.15.29-fix16ax-team-load-reference-20260921"></script>
 </body>
 </html>

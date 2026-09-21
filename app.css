@@ -35727,3 +35727,62 @@ body.dark-mode .schedule-person-effective-window-v616aw,
   border-color:#76571e;
   color:#ffd47a;
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16AX — Employee name visibility + Team reference date
+   ========================================================================== */
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-name-main-v61121{
+  flex-wrap:wrap!important;
+  overflow:visible!important;
+  align-content:center!important;
+  row-gap:2px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-name-main-v61121>strong{
+  flex:1 0 100%!important;
+  width:100%!important;
+  max-width:100%!important;
+  order:0!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-name-main-v61121>:not(strong){
+  order:1;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-emp-name{
+  min-width:180px!important;
+}
+#schedulePersonWorkspace .monthly-person-schedule-table-v61146 .schedule-person-effective-window-v616aw{
+  max-width:120px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#page-team-master .team-workspace-reference-date-v616ax{
+  width:150px;
+  min-width:150px;
+  margin:0;
+}
+#page-team-master .team-workspace-reference-date-v616ax label{
+  font-size:11.5px;
+  font-weight:800;
+}
+#page-team-master .team-workspace-reference-date-v616ax .input{
+  min-height:40px;
+  height:40px;
+  border-radius:10px;
+  font-size:12px;
+  padding:0 10px;
+}
+#teamMembershipModalV61524 .team-membership-date-card-v61529f15v small{
+  display:block;
+  margin-top:5px;
+  color:var(--text-muted,#64748b);
+  font-size:10.5px;
+  line-height:1.35;
+}
+@media(max-width:680px){
+  #page-team-master .team-workspace-reference-date-v616ax{
+    min-width:0;
+    width:100%;
+    grid-column:1/-1;
+  }
+}
