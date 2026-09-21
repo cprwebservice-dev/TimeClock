@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix16ax-team-load-reference-20260921" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix16ay-transaction-same-manager-20260921" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1811,7 +1811,22 @@
   </div>
 
   <div class="hidden" data-team-workspace-pane-v61528="HISTORY">
-    <section class="panel">
+    <section class="panel team-employee-timeline-panel-v616ay">
+      <div class="panel-header">
+        <div><span class="eyebrow">EMPLOYEE TRANSACTION TIMELINE</span><h3>ประวัติความเคลื่อนไหวรายพนักงาน</h3><p>รวม รูปแบบการปฏิบัติงาน • เข้าทีม / ย้ายทีม • ยืมตัว • การแก้วันที่มีผล ใน Timeline เดียว</p></div>
+        <button class="btn btn-light btn-sm" id="teamEmployeeTimelineRefreshV616AY">↻ รีเฟรช</button>
+      </div>
+      <div class="panel-body">
+        <div class="team-timeline-search-v616ay">
+          <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamEmployeeTimelineSearchV616AY" placeholder="รหัสพนักงาน"/></div>
+          <button class="btn btn-primary" id="teamEmployeeTimelineLoadV616AY">ดู Timeline</button>
+          <div class="team-timeline-rule-v616ay"><strong>หลักสิทธิ์จัดกะ</strong><span>ต้องมีรูปแบบ + มี Team ปัจจุบัน • การย้ายทีมภายใต้ Manager เดียวกันไม่ล็อกกะตาม Effective Team • ข้าม Manager / ยืมตัวใช้ Authority ตามวันที่</span></div>
+        </div>
+        <div id="teamEmployeeTimelineSummaryV616AY" class="team-timeline-summary-v616ay hidden"></div>
+        <div id="teamEmployeeTimelineBodyV616AY" class="team-employee-timeline-v616ay"><div class="fc-empty">กรอกรหัสพนักงานเพื่อดูประวัติ</div></div>
+      </div>
+    </section>
+    <section class="panel section-gap">
       <div class="panel-header"><div><h3>ประวัติ Team Master</h3><p>Audit การสร้างทีม ปิดทีม และกำหนดสมาชิก</p></div><button class="btn btn-light btn-sm" id="teamMasterAuditRefreshV61523">รีเฟรชประวัติ</button></div>
       <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>Team Code</th><th>รายการ</th><th>ผู้ดำเนินการ</th><th>เหตุผล / หมายเหตุ</th></tr></thead><tbody id="teamMasterAuditBodyV61523"><tr><td colspan="5" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
     </section>
@@ -1819,6 +1834,28 @@
       <div class="panel-header"><div><h3>ประวัติ Policy เดิม</h3><p>เก็บ Audit การเปิด/ปิด Team Enforcement เดิมเพื่ออ้างอิง • ไม่มีผลต่อ Auto Readiness ปัจจุบัน</p></div></div>
       <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลาบันทึก</th><th>ขอบเขต</th><th>ทีม / หน่วยงาน</th><th>มีผลวันที่</th><th>สถานะ</th><th>ผู้ดำเนินการ</th><th>เหตุผล / หมายเหตุ</th></tr></thead><tbody id="teamEnforcementAuditBodyV61529"><tr><td colspan="7" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
     </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="teamEffectiveCorrectionModalV616AY" aria-hidden="true">
+    <div class="modal team-effective-correction-modal-v616ay" role="dialog" aria-modal="true" aria-labelledby="teamEffectiveCorrectionTitleV616AY">
+      <div class="modal-header">
+        <div><span class="eyebrow">EFFECTIVE DATE CORRECTION</span><h3 id="teamEffectiveCorrectionTitleV616AY">แก้วันที่มีผลของการจัด / ย้ายทีม</h3><p>ระบบไม่ลบ Transaction เดิม • จะสร้าง Correction Audit และปรับช่วง Team ให้ต่อเนื่อง</p></div>
+        <button class="btn btn-light btn-icon" data-team-effective-correction-close-v616ay>×</button>
+      </div>
+      <div class="modal-body">
+        <div id="teamEffectiveCorrectionContextV616AY" class="team-effective-correction-context-v616ay"></div>
+        <div class="team-effective-correction-grid-v616ay">
+          <div class="field"><label>วันที่มีผลเดิม</label><input class="input" id="teamEffectiveCorrectionOldV616AY" disabled/></div>
+          <div class="field"><label>วันที่มีผลใหม่ <span class="required-mark">*</span></label><input class="input" type="date" id="teamEffectiveCorrectionNewV616AY"/></div>
+        </div>
+        <div class="field"><label>เหตุผลการแก้ไข <span class="required-mark">*</span></label><textarea class="input" id="teamEffectiveCorrectionReasonV616AY" rows="3" maxlength="500" placeholder="เช่น บันทึกวันที่ย้ายทีมผิดจากเอกสารจริง"></textarea></div>
+        <div id="teamEffectiveCorrectionImpactV616AY" class="team-effective-correction-impact-v616ay"><div class="fc-empty">เลือกวันที่ใหม่เพื่อดู Impact Preview</div></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-team-effective-correction-close-v616ay>ยกเลิก</button>
+        <button class="btn btn-primary" id="teamEffectiveCorrectionSaveV616AY" disabled>บันทึก Correction</button>
+      </div>
+    </div>
   </div>
 
   <!-- compatibility host; no longer shown as a large Scope card -->
@@ -3363,6 +3400,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16ax-team-load-reference-20260921"></script>
+<script src="./app.js?v=6.15.29-fix16ay-transaction-same-manager-20260921"></script>
 </body>
 </html>
