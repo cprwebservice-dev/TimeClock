@@ -770,16 +770,15 @@
         <div class="month-copy-route-card-v61413 target" id="scheduleMonthCopyTargetSummaryV61413"><span>ปลายทาง</span><strong>-</strong></div>
       </div>
       <div class="month-copy-warning-v61413">
-        <strong>ตรวจสอบก่อนวางกะ</strong>
-        <span>ลา (LV) และ HOL จะไม่ถูกคัดลอก • กะพิเศษที่มีช่วงเวลารายบุคคลจะถูกข้าม • ก่อนวางระบบตรวจ Operational Profile + Team + สิทธิ์ตาม Work Date แล้วจึงตรวจ Work Pattern, พักขั้นต่ำ 6 ชม., Night Sequence, 48 ชม. และโควต้าวันหยุด</span>
+        <strong>คัดลอกทั้งเดือน = วางทับทั้งเดือน</strong>
+        <span>ระบบตรวจหลักว่าต้นทางและปลายทางเป็นรูปแบบเดียวกัน 5D ↔ 5D หรือ 6D ↔ 6D • กะพิเศษคัดลอกพร้อมรายละเอียดช่วงเวลา • LV ของปลายทางจะไม่ถูกทับ • LV ของต้นทางไม่คัดลอก • HOL/วันที่ว่างของต้นทางจะล้างกะเดิมเพื่อกลับไปใช้ปฏิทินระบบ</span>
       </div>
-      <label class="month-copy-mode-v61413"><span>วิธีวาง</span><select class="select" id="scheduleMonthCopyModeV61413"><option value="EMPTY_ONLY" selected>เฉพาะวันที่ปลายทางยังไม่ได้จัดกะเอง (แนะนำ)</option><option value="OVERWRITE">วางทับกะที่มีอยู่แล้ว</option></select></label>
       <div class="month-copy-preview-v61412 month-copy-preview-v61413" id="scheduleMonthCopyPreviewV61413">กำลังเตรียมตัวอย่าง...</div>
       <div class="month-copy-target-list-v61413" id="scheduleMonthCopyTargetListV61413"></div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-light" id="scheduleMonthCopyCancelV61413">ยกเลิก</button>
-      <button type="button" class="btn btn-primary" id="scheduleMonthCopyApplyV61413">ยืนยันวางกะ</button>
+      <button type="button" class="btn btn-primary" id="scheduleMonthCopyApplyV61413">ยืนยันและวางทับทั้งเดือน</button>
     </div>
   </div>
 </div>
@@ -3353,6 +3352,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16bf-copy-paste-final-guard-20260921"></script>
+<script src="./app.js?v=6.15.29-fix16bg-month-copy-overwrite-20260921"></script>
 </body>
 </html>
