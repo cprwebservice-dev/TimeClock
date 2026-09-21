@@ -16641,6 +16641,108 @@ window.tcIsDayShiftCode = value =>
   function selectByEmp(emp){ selected.clear(); wrap()?.querySelectorAll(`[data-schedule-cell][data-emp="${escapeCss(emp)}"]`).forEach(c=>selected.add(keyOf(c))); activeKey=[...selected][0]||null; anchorKey=activeKey; refreshSelectionUI(); }
   function selectByDate(date){ selected.clear(); wrap()?.querySelectorAll(`[data-schedule-cell][data-date="${escapeCss(date)}"]`).forEach(c=>selected.add(keyOf(c))); activeKey=[...selected][0]||null; anchorKey=activeKey; refreshSelectionUI(); }
 
+  function scheduleReadinessMessageV616BF(blocked=[]){
+    const rows=Array.isArray(blocked)?blocked:[];
+    if(!rows.length)return '';
+    const groups=new Map();
+    rows.forEach(item=>{
+      const message=String(item?.message||'ยังไม่พร้อมสำหรับการจัดกะ').trim();
+      groups.set(message,(groups.get(message)||0)+1);
+    });
+    const lines=[...groups.entries()].slice(0,4).map(([message,count])=>`• ${message}: ${count.toLocaleString('th-TH')} ช่อง`);
+    if(groups.size>4)lines.push(`• อื่น ๆ อีก ${(groups.size-4).toLocaleString('th-TH')} เงื่อนไข`);
+    return lines.join('\n');
+  }
+
+  async function schedulePreflightV616BF(payload=[], {silent=false}={}){
+    const rows=(Array.isArray(payload)?payload:[])
+      .map(item=>({
+        emp_code:String(item?.emp_code||'').trim(),
+        work_date:String(item?.work_date||'').slice(0,10),
+        shift_code:item?.shift_code==null||item?.shift_code===''?null:window.tcShiftCode(item.shift_code)
+      }))
+      .filter(item=>item.emp_code&&item.work_date&&item.shift_code);
+    if(!rows.length)return {allowed:true,blocked:[],blockedKeys:new Set()};
+
+    const client=app()?.state?.client;
+    if(!client)return {allowed:true,blocked:[],blockedKeys:new Set()};
+
+    const blocked=[];
+    const blockedKeys=new Set();
+    const addBlocked=(item)=>{
+      const emp=String(item?.emp_code||'').trim();
+      const date=String(item?.work_date||'').slice(0,10);
+      if(emp&&date)blockedKeys.add(`${emp}|${date}`);
+      blocked.push(item||{});
+    };
+
+    // FIX16BF: Operational Profile + CURRENT Team prerequisite before any
+    // assignment is sent to the schedule writer.  Batch the canonical RPC so
+    // Copy/Paste, Copy Month, Undo/Redo and quick actions all share one guard.
+    try{
+      for(let i=0;i<rows.length;i+=400){
+        const batch=rows.slice(i,i+400).map(x=>({emp_code:x.emp_code,work_date:x.work_date}));
+        const response=await client.rpc('ta_validate_schedule_readiness_v616t',{p_rows:batch});
+        if(response.error)throw response.error;
+        const result=response.data||{};
+        if(result.allowed===false){
+          (Array.isArray(result.blocked)?result.blocked:[]).forEach(addBlocked);
+        }
+      }
+    }catch(error){
+      if(!silent)app()?.toast(`ตรวจ Operational Profile / Team ก่อนจัดกะไม่สำเร็จ: ${app()?.humanError?.(error)||error?.message||error}`,'error');
+      return {allowed:false,blocked:[{message:'ตรวจ Operational Profile / Team ไม่สำเร็จ'}],blockedKeys,error};
+    }
+
+    // FIX16BF: Date-aware edit authority (Manager / Acting / Borrow destination).
+    // Keep batches small because the context RPC returns one row per employee/day.
+    try{
+      const byEmp=new Map();
+      rows.forEach(item=>{
+        if(!byEmp.has(item.emp_code))byEmp.set(item.emp_code,[]);
+        byEmp.get(item.emp_code).push(item.work_date);
+      });
+      const emps=[...byEmp.keys()];
+      for(let i=0;i<emps.length;i+=12){
+        const batchEmps=emps.slice(i,i+12);
+        const dates=batchEmps.flatMap(emp=>byEmp.get(emp)||[]).sort();
+        if(!dates.length)continue;
+        const response=await client.rpc('ta_get_schedule_working_team_context_v61529f14b',{
+          p_emp_codes:batchEmps,
+          p_start_date:dates[0],
+          p_end_date:dates[dates.length-1]
+        });
+        if(response.error)throw response.error;
+        const map=new Map((Array.isArray(response.data)?response.data:[]).map(x=>[
+          `${String(x?.emp_code||'').trim()}|${String(x?.work_date||'').slice(0,10)}`,
+          x
+        ]));
+        rows.filter(x=>batchEmps.includes(x.emp_code)).forEach(item=>{
+          const key=`${item.emp_code}|${item.work_date}`;
+          if(blockedKeys.has(key))return;
+          const ctx=map.get(key);
+          if(ctx&&ctx.can_edit_schedule===false){
+            addBlocked({
+              emp_code:item.emp_code,
+              work_date:item.work_date,
+              code:'SCHEDULE_EDIT_PERMISSION_DENIED',
+              message:'ไม่มีสิทธิ์แก้ไขกะตาม Work Date'
+            });
+          }
+        });
+      }
+    }catch(error){
+      // The database writer remains the final authority.  If this older
+      // context RPC is unavailable, do not create a false-negative preflight.
+      console.warn('FIX16BF schedule authority preflight fallback:',error);
+    }
+
+    if(blocked.length&&!silent){
+      app()?.toast(`มีรายการที่ยังวางกะไม่ได้ ${blocked.length.toLocaleString('th-TH')} ช่อง\n${scheduleReadinessMessageV616BF(blocked)}`,'error');
+    }
+    return {allowed:blocked.length===0,blocked,blockedKeys};
+  }
+
   async function savePayload(payload, reason, confirmNow=false, historyLabel="แก้ไขกะ"){
     if(!payload.length) return false;
 
@@ -16676,6 +16778,9 @@ ${skippedSummary(compatibility.skipped)}
       return false;
     }
 
+    const readinessV616BF=await schedulePreflightV616BF(validPayload,{silent:false});
+    if(readinessV616BF.allowed===false)return false;
+
     const ruleGuardV6120=await window.TimeClockSchedulingRulesV6120?.validateBulk?.(validPayload);
     if(ruleGuardV6120&&ruleGuardV6120.allowed===false)return false;
 
@@ -16700,9 +16805,31 @@ ${skippedSummary(compatibility.skipped)}
     }catch(err){app().toast(app().humanError(err),"error");return false;}finally{app().hideLoading();}
   }
   async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
+  function specialCellCopyMetaV616BF(row){
+    const mode=String(row?.schedule_rule_mode||row?.work_mode_code||'').trim().toUpperCase();
+    const isSpecial=['HOUR_BASED','SPLIT_WAIT_NIGHT','NORMAL_LATE_CUSTOMER'].includes(mode)
+      || Boolean(row?.shift_2_planned_start_at)
+      || Boolean(row?.customer_window_start)
+      || Boolean(row?.custom_start_time);
+    if(!isSpecial)return null;
+    const label=mode==='HOUR_BASED'?'กะนับชั่วโมง'
+      : mode==='SPLIT_WAIT_NIGHT'?'กะเช้า + รอเข้ากะดึก'
+      : mode==='NORMAL_LATE_CUSTOMER'?'กะปกติ + งานลูกค้าช่วงดึก'
+      : 'กะพิเศษ';
+    return {mode:mode||'SPECIAL',label};
+  }
+
   function copySelection(){
     const rows=selectedRows();
     if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการคัดลอก","error");
+    const special=rows.map(x=>({item:x,meta:specialCellCopyMetaV616BF(x.row)})).filter(x=>x.meta);
+    if(special.length){
+      const first=special[0];
+      return app()?.toast(
+        `คัดลอกแบบช่องไม่ได้: พบกะพิเศษ ${special.length.toLocaleString('th-TH')} ช่อง (${first.meta.label}) • กรุณาเปิดวันนั้นแล้วจัดกะพิเศษใหม่ เพื่อให้ Work Mode และช่วงเวลาครบถ้วน`,
+        'warning'
+      );
+    }
     clipboard=rows.map(x=>currentCode(x.row)||null);
     refreshSelectionUI();
     app().toast(`คัดลอก ${clipboard.length.toLocaleString("th-TH")} ช่องแล้ว • เลือกปลายทางแล้วกด วาง`,"success");
@@ -16715,7 +16842,18 @@ ${skippedSummary(compatibility.skipped)}
       const ok=await window.tcConfirm(`คลิปบอร์ดมี ${clipboard.length.toLocaleString("th-TH")} ช่อง แต่เลือกปลายทาง ${targets.length.toLocaleString("th-TH")} ช่อง\n\nระบบจะวางตามลำดับจากซ้ายไปขวาและวนซ้ำเมื่อจำนวนไม่เท่ากัน ต้องการดำเนินการต่อหรือไม่?`);
       if(!ok)return;
     }
-    await savePayload(targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"})),"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");
+    const payload=targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"}));
+    const destructiveBlank=targets.filter((x,i)=>{
+      const incoming=clipboard[i%clipboard.length];
+      return (incoming===null||incoming===undefined||incoming==='') && Boolean(currentCode(x.row));
+    });
+    if(destructiveBlank.length){
+      const ok=await window.tcConfirm(
+        `พบช่องว่างในคลิปบอร์ดที่จะล้างกะปลายทาง ${destructiveBlank.length.toLocaleString('th-TH')} ช่อง\n\nการวางครั้งนี้จะลบกะที่มีอยู่ในช่องดังกล่าว ต้องการดำเนินการต่อหรือไม่?`
+      );
+      if(!ok)return;
+    }
+    await savePayload(payload,"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");
   }
 
   const monthCopyEscV61413 = value => String(value??'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':'&quot;',"'":"&#39;"}[c]));
@@ -16920,11 +17058,11 @@ ${skippedSummary(compatibility.skipped)}
       const employees=monthCopyEmployeeListV61413();
       const payload=[];
       const targetSummary=[];
-      const total={workCount:0,offCount:0,skipLeave:0,skipHol:0,skipLegacyOff:0,skipEmployment:0,skipExisting:0,skipSpecial:0};
+      const total={workCount:0,offCount:0,skipLeave:0,skipHol:0,skipLegacyOff:0,skipEmployment:0,skipExisting:0,skipSpecial:0,skipReadiness:0};
       for(const target of targets){
         const targetMeta=employees.find(e=>e.emp_code===target)||{};
         const targetByDate=rowsByTarget.get(target)||new Map();
-        const q={emp_code:target,full_name:targetMeta.full_name||'',ready:0,workCount:0,offCount:0,skipLeave:0,skipHol:0,skipLegacyOff:0,skipEmployment:0,skipExisting:0,skipSpecial:0};
+        const q={emp_code:target,full_name:targetMeta.full_name||'',ready:0,workCount:0,offCount:0,skipLeave:0,skipHol:0,skipLegacyOff:0,skipEmployment:0,skipExisting:0,skipSpecial:0,skipReadiness:0};
         for(const row of sourceRows){
           const date=String(row.work_date||'').slice(0,10);
           let code=currentCode(row);
@@ -16944,17 +17082,51 @@ ${skippedSummary(compatibility.skipped)}
           q.ready++;
           payload.push({emp_code:target,work_date:date,shift_code:code,note:`คัดลอกรูปแบบกะทั้งเดือนจาก ${source}`});
         }
-        ['workCount','offCount','skipLeave','skipHol','skipLegacyOff','skipEmployment','skipExisting','skipSpecial'].forEach(k=>total[k]+=q[k]);
+        ['workCount','offCount','skipLeave','skipHol','skipLegacyOff','skipEmployment','skipExisting','skipSpecial','skipReadiness'].forEach(k=>total[k]+=q[k]);
         targetSummary.push(q);
       }
-      return {payload,source,targets,month,mode,summary:{...total,targetCount:targets.length,ready:payload.length},targetSummary};
+
+      // FIX16BF: Readiness + date-aware authority are checked BEFORE the
+      // Preview is confirmed. Invalid employee/date rows are excluded from the
+      // paste plan instead of waiting for the database writer to reject them.
+      const preflightV616BF=await schedulePreflightV616BF(payload,{silent:true});
+      if(preflightV616BF.blockedKeys?.size){
+        const qByEmp=new Map(targetSummary.map(q=>[String(q.emp_code||''),q]));
+        const payloadByKey=new Map(payload.map(item=>[`${String(item.emp_code||'')}|${String(item.work_date||'').slice(0,10)}`,item]));
+        preflightV616BF.blockedKeys.forEach(key=>{
+          const item=payloadByKey.get(key);
+          if(!item)return;
+          const q=qByEmp.get(String(item.emp_code||''));
+          const sm=configuredShift(item.shift_code);
+          if(q){
+            q.skipReadiness=(q.skipReadiness||0)+1;
+            q.ready=Math.max(0,Number(q.ready||0)-1);
+            if(sm?.is_workday===false)q.offCount=Math.max(0,Number(q.offCount||0)-1);
+            else q.workCount=Math.max(0,Number(q.workCount||0)-1);
+          }
+          total.skipReadiness=(total.skipReadiness||0)+1;
+          if(sm?.is_workday===false)total.offCount=Math.max(0,Number(total.offCount||0)-1);
+          else total.workCount=Math.max(0,Number(total.workCount||0)-1);
+        });
+        for(let i=payload.length-1;i>=0;i--){
+          const key=`${String(payload[i].emp_code||'')}|${String(payload[i].work_date||'').slice(0,10)}`;
+          if(preflightV616BF.blockedKeys.has(key))payload.splice(i,1);
+        }
+      }
+
+      return {
+        payload,source,targets,month,mode,
+        summary:{...total,targetCount:targets.length,ready:payload.length},
+        targetSummary,
+        readinessBlocked:preflightV616BF.blocked||[]
+      };
     }finally{if(showLoading)app()?.hideLoading();}
   }
 
   function renderMonthCopyTargetListV61413(plan){
     const host=$('scheduleMonthCopyTargetListV61413');if(!host)return;
     host.innerHTML=(plan?.targetSummary||[]).map(q=>{
-      const skipped=q.skipLeave+q.skipHol+q.skipLegacyOff+q.skipEmployment+q.skipExisting+q.skipSpecial;
+      const skipped=q.skipLeave+q.skipHol+q.skipLegacyOff+q.skipEmployment+q.skipExisting+q.skipSpecial+(q.skipReadiness||0);
       return `<div class="month-copy-target-item-v61413"><div><strong>${monthCopyEscV61413(q.emp_code)} • ${monthCopyEscV61413(q.full_name||'-')}</strong><small>พร้อมวาง ${q.ready.toLocaleString('th-TH')} วัน${skipped?` • ข้าม ${skipped.toLocaleString('th-TH')} วัน`:''}</small></div><span class="${skipped?'has-skip':''}">${q.ready.toLocaleString('th-TH')}</span></div>`;
     }).join('')||'<div class="muted">ยังไม่ได้เลือกพนักงานปลายทาง</div>';
   }
@@ -16966,8 +17138,8 @@ ${skippedSummary(compatibility.skipped)}
       const plan=await buildMonthCopyPlanV61413(false);
       if(plan.reason){box.textContent=plan.reason;renderMonthCopyTargetListV61413(plan);return;}
       const q=plan.summary;
-      const skipped=q.skipLeave+q.skipHol+q.skipLegacyOff+q.skipEmployment+q.skipExisting+q.skipSpecial;
-      box.innerHTML=`<div class="month-copy-preview-grid-v61413"><span><b>${q.targetCount.toLocaleString('th-TH')}</b><small>พนักงานปลายทาง</small></span><span><b>${q.ready.toLocaleString('th-TH')}</b><small>รายการที่จะวาง</small></span><span><b>${q.workCount.toLocaleString('th-TH')}</b><small>กะทำงาน</small></span><span><b>${q.offCount.toLocaleString('th-TH')}</b><small>วันหยุด</small></span><span><b>${skipped.toLocaleString('th-TH')}</b><small>รายการข้าม</small></span></div><small>ข้ามรวม: ลา ${q.skipLeave} • HOL ${q.skipHol} • กะพิเศษ ${q.skipSpecial} • ก่อนเริ่ม/หลังลาออก ${q.skipEmployment} • มีการจัดกะเดิม ${q.skipExisting}</small>`;
+      const skipped=q.skipLeave+q.skipHol+q.skipLegacyOff+q.skipEmployment+q.skipExisting+q.skipSpecial+(q.skipReadiness||0);
+      box.innerHTML=`<div class="month-copy-preview-grid-v61413"><span><b>${q.targetCount.toLocaleString('th-TH')}</b><small>พนักงานปลายทาง</small></span><span><b>${q.ready.toLocaleString('th-TH')}</b><small>รายการที่จะวาง</small></span><span><b>${q.workCount.toLocaleString('th-TH')}</b><small>กะทำงาน</small></span><span><b>${q.offCount.toLocaleString('th-TH')}</b><small>วันหยุด</small></span><span><b>${skipped.toLocaleString('th-TH')}</b><small>รายการข้าม</small></span></div><small>ข้ามรวม: ลา ${q.skipLeave} • HOL ${q.skipHol} • กะพิเศษ ${q.skipSpecial} • ก่อนเริ่ม/หลังลาออก ${q.skipEmployment} • มีการจัดกะเดิม ${q.skipExisting} • รูปแบบ/Team/สิทธิ์ตามวันที่ ${q.skipReadiness||0}</small>${(plan.readinessBlocked||[]).length?`<small class="text-danger">ตรวจความพร้อมล่วงหน้า: ${monthCopyEscV61413(scheduleReadinessMessageV616BF(plan.readinessBlocked))}</small>`:''}`;
       renderMonthCopyTargetListV61413(plan);
     }catch(e){box.textContent=app()?.humanError?.(e)||e.message||String(e);}
   }
