@@ -1448,8 +1448,8 @@ window.tcIsDayShiftCode = value =>
       const personSubtitleV61412 = document.getElementById('schedulePersonSubtitleV61412');
       if (personTitleV61412) personTitleV61412.textContent = `ตารางกะรายบุคคล • ${range.personDisplayMode === '15D' ? '15 วัน' : 'เต็มเดือน'}`;
       if (personSubtitleV61412) personSubtitleV61412.textContent = range.personDisplayMode === '15D'
-        ? 'แสดงช่วงประมาณ 15 วัน • ซ่อนคอลัมน์วันเริ่มงาน • Label แสดงเฉพาะ Icon • คัดลอก/วางกะได้เหมือนเดิม'
-        : `แสดงทุกวันของเดือนในตารางเดียว • ${scheduleViewState.personTeamGroupMode==='TEAM'?'แบ่งตาม Working Team':'แสดงรายชื่อรวม'} • Label ใช้ Icon แบบ Minimal`;
+        ? 'แสดงช่วงประมาณ 15 วัน • สิทธิ์แก้ไขตรวจ Effective Team ของแต่ละวัน • วันที่ไม่มีทีมจะถูกล็อก'
+        : `แสดงทุกวันของเดือนในตารางเดียว • ${scheduleViewState.personTeamGroupMode==='TEAM'?'จัดกลุ่มตามสถานะทีม ณ วันที่อ้างอิง':'แสดงรายชื่อรวม'} • สิทธิ์แก้ไขตรวจ Effective Team รายวัน`;
 
       return range;
     };
@@ -6985,6 +6985,8 @@ window.tcIsDayShiftCode = value =>
       list.forEach(([emp,obj]) => {
         const contextKeysV616AV=new Set();
         const historicalTeamsV616AV=[];
+        const readyDatesV616AW=[];
+        const blockedDatesV616AW=[];
         let unreadyDaysV616AV=0;
 
         (period?.dates || []).forEach(date => {
@@ -6993,7 +6995,12 @@ window.tcIsDayShiftCode = value =>
           const g=scheduleOperationalTeamGroupV61526(row);
           contextKeysV616AV.add(String(g?.key||''));
           if(g?.teamId && !historicalTeamsV616AV.some(x=>x.teamId===g.teamId))historicalTeamsV616AV.push(g);
-          if(!scheduleTeamReadyV616T(row))unreadyDaysV616AV+=1;
+          if(scheduleTeamReadyV616T(row)){
+            readyDatesV616AW.push(date);
+          }else{
+            blockedDatesV616AW.push(date);
+            unreadyDaysV616AV+=1;
+          }
         });
 
         // The section represents status at the reference date. Historical
@@ -7017,7 +7024,11 @@ window.tcIsDayShiftCode = value =>
           _personTeamReferenceDateV616AV:String(referenceGroupV616AV?.referenceDate||''),
           _personTeamReferenceStateV616AV:String(referenceGroupV616AV?.state||''),
           _personTeamReferenceTeamIdV616AV:String(referenceGroupV616AV?.teamId||''),
-          _personTeamPreviousLabelV616AV:String(previousTeamV616AV?.label||previousTeamV616AV?.name||previousTeamV616AV?.code||'')
+          _personTeamPreviousLabelV616AV:String(previousTeamV616AV?.label||previousTeamV616AV?.name||previousTeamV616AV?.code||''),
+          _personTeamReadyFromV616AW:String(readyDatesV616AW[0]||''),
+          _personTeamReadyToV616AW:String(readyDatesV616AW[readyDatesV616AW.length-1]||''),
+          _personTeamBlockedFromV616AW:String(blockedDatesV616AW[0]||''),
+          _personTeamBlockedToV616AW:String(blockedDatesV616AW[blockedDatesV616AW.length-1]||'')
         }]);
       });
 
@@ -7040,11 +7051,14 @@ window.tcIsDayShiftCode = value =>
       const partial=!pendingStateV616AV && !ready;
       const category=String(section?.category||'UNCLASSIFIED').toUpperCase();
       const categoryLabel=category==='CAR'?'CAR':category==='MOTORCYCLE'?'MOTORCYCLE':category==='SUPPORT'?'SUPPORT':'รอจัดข้อมูล';
+      const referenceIsTodayV616AW=referenceDateV616AV===todayISO();
       const statusTextV616AV = pendingStateV616AV
-        ? `ห้ามจัดกะ • สถานะ ณ ${referenceDateV616AV?formatDate(referenceDateV616AV):'วันที่อ้างอิง'}`
+        ? `${referenceIsTodayV616AW?'ปัจจุบันยังไม่ได้จัดทีม':'ปลายช่วงยังไม่ได้จัดทีม'} • สิทธิ์แก้ไขตรวจตามแต่ละวัน`
         : ready
-          ? (transitionEmployeesV616AV>0 ? `พร้อม • มีประวัติเปลี่ยนทีม ${formatNumber(transitionEmployeesV616AV)} คน` : 'พร้อมจัดกะ')
-          : `บางวันรอรูปแบบ/ทีม ${formatNumber(unreadyDaysV616AV)} วัน`;
+          ? (transitionEmployeesV616AV>0
+              ? `พร้อมตามวันที่ • มีประวัติเปลี่ยนทีม ${formatNumber(transitionEmployeesV616AV)} คน`
+              : (referenceIsTodayV616AW?'พร้อมจัดกะ':'พร้อมในช่วงที่แสดง'))
+          : `พร้อมบางวัน • ล็อก ${formatNumber(unreadyDaysV616AV)} วันตาม Effective Team`;
       const rowClassV616AV = ready ? 'is-ready' : partial ? 'is-partial' : 'is-pending';
       return `<tr class="schedule-person-team-section-v616t ${rowClassV616AV}" data-person-team-section-v616t="${safe(key)}"><td colspan="${Number(colspan)||1}"><button type="button" class="schedule-person-team-toggle-v616t" data-person-team-toggle-v616t="${safe(key)}" aria-expanded="${collapsed?'false':'true'}"><span class="chev">${collapsed?'›':'⌄'}</span><strong>${safe(section?.label||'ไม่ระบุทีม')}</strong><small>${safe(categoryLabel)} · ${formatNumber(count)} คน</small></button><span class="schedule-person-team-ready-v616t">${safe(statusTextV616AV)}</span></td></tr>`;
     }
@@ -12187,7 +12201,12 @@ window.tcIsDayShiftCode = value =>
         const personPendingStateV616AV=['UNCLASSIFIED','CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(String(obj?._personTeamReferenceStateV616AV||'').toUpperCase()) || !String(obj?._personTeamReferenceTeamIdV616AV||'').trim();
         const previousTeamLabelV616AV=String(obj?._personTeamPreviousLabelV616AV||'').trim();
         const personTeamStatusBadgeV616AV = personPendingStateV616AV
-          ? `<span class="schedule-person-team-status-v616av is-unassigned" title="${safe(previousTeamLabelV616AV?`เคยอยู่ ${previousTeamLabelV616AV} ในช่วงที่แสดง • ปัจจุบันยังไม่ได้จัดทีม`:'ยังไม่ได้จัด Effective Team ในวันที่อ้างอิง')}">ยังไม่ได้จัดทีม</span>`
+          ? `<span class="schedule-person-team-status-v616av is-unassigned" title="${safe(previousTeamLabelV616AV?`เคยอยู่ ${previousTeamLabelV616AV} ในช่วงที่แสดง • วันที่อ้างอิงยังไม่ได้จัดทีม`:'ยังไม่ได้จัด Effective Team ในวันที่อ้างอิง')}">ยังไม่ได้จัดทีม</span>`
+          : '';
+        const readyToV616AW=String(obj?._personTeamReadyToV616AW||'');
+        const blockedFromV616AW=String(obj?._personTeamBlockedFromV616AW||'');
+        const periodMixedReadinessBadgeV616AW = readyToV616AW && blockedFromV616AW
+          ? `<span class="schedule-person-effective-window-v616aw" title="สิทธิ์จัดกะตรวจ Effective Team รายวัน">มีทีมถึง ${safe(formatDate(readyToV616AW))} • ล็อกตั้งแต่ ${safe(formatDate(blockedFromV616AW))}</span>`
           : '';
 
         const managerOwnBadge =
@@ -12195,7 +12214,7 @@ window.tcIsDayShiftCode = value =>
             ? `<span class="schedule-self-readonly-badge" title="ตนเอง • ดูอย่างเดียว — Manager ดูกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง" aria-label="ตนเอง ดูอย่างเดียว"><svg class="schedule-self-readonly-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.75"></circle></svg></span>`
             : "";
 
-        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${personTeamStatusBadgeV616AV}${borrowWindowBadgeV61529F15L}${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(canonicalOrgNameV616Q(obj.meta) || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${personTeamStatusBadgeV616AV}${periodMixedReadinessBadgeV616AW}${borrowWindowBadgeV61529F15L}${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(canonicalOrgNameV616Q(obj.meta) || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
         for (const date of period.dates) {
           const r = obj.days[date];

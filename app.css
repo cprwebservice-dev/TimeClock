@@ -35702,3 +35702,28 @@ body.theme-dark .work-mode-canonical-warning-v616z,.dark .work-mode-canonical-wa
   background:#fff0c2!important;
   color:#9a5a09!important;
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16AW — Date-aware lock clarity
+   ========================================================================== */
+.schedule-person-effective-window-v616aw{
+  display:inline-flex;
+  align-items:center;
+  min-height:20px;
+  padding:2px 7px;
+  border:1px solid #f0d28d;
+  border-radius:999px;
+  background:#fff8e8;
+  color:#986500;
+  font-size:10px;
+  font-weight:700;
+  line-height:1.2;
+  white-space:nowrap;
+}
+body.dark-mode .schedule-person-effective-window-v616aw,
+[data-theme="dark"] .schedule-person-effective-window-v616aw{
+  background:#3a2d13;
+  border-color:#76571e;
+  color:#ffd47a;
+}
