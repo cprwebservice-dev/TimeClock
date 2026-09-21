@@ -33622,7 +33622,26 @@ ${names}${extra}
       || String(sm?.shift_name||'').toLowerCase().includes('กลางคืน')
       || (start!=null&&start>=18*60);
   }
+  /* FIX16BI: Night Sequence month boundary — cross-month Auto/Default rows do not block; explicit schedules still enforce. */
+  function sameCalendarMonthV616BI(a,b){
+    return String(a||'').slice(0,7)===String(b||'').slice(0,7);
+  }
+  function explicitScheduleRowV616BI(r){
+    if(!r)return false;
+    if(r._boundary_explicit_v616bi===true)return true;
+    if(r?._night_state_v61437?.is_explicit_schedule===true)return true;
+    const assigned=String(r.assigned_shift_code||'').trim().toUpperCase();
+    if(assigned)return true;
+    const status=String(r.schedule_status||'').trim().toUpperCase();
+    return ['ASSIGNED','CONFIRMED'].includes(status);
+  }
+  function nightBoundaryNeighborV616BI(row,targetDate,neighborDate){
+    if(!row)return null;
+    if(sameCalendarMonthV616BI(targetDate,neighborDate))return row;
+    return explicitScheduleRowV616BI(row)?row:null;
+  }
   function transitionAgainstPreviousV61431(prev,date,targetStart,targetCode,targetEnd=null){
+    prev=nightBoundaryNeighborV616BI(prev,date,isoAddDays(date,-1));
     if(!prev||isOffRow(prev))return {hardBlock:false,restMinutes:null,nightToMorning:false,nightSequenceBlock:false};
     const pw=rowWindow(prev);
     const prevStart=pw?.secondStart||pw?.start;
@@ -33716,6 +33735,8 @@ ${names}${extra}
     return {exists:Boolean(code),code,night,dayoff,leave,dayWork:Boolean(code)&&!leave&&!dayoff&&!night,start,end};
   }
   function transitionAgainstNeighborsV61435(prev,next,date,targetStart,targetCode,targetEnd=null){
+    prev=nightBoundaryNeighborV616BI(prev,date,isoAddDays(date,-1));
+    next=nightBoundaryNeighborV616BI(next,date,isoAddDays(date,1));
     const base=transitionAgainstPreviousV61431(prev,date,targetStart,targetCode,targetEnd);
     const previous=rowNightStateV61435(prev);
     const target=proposedNightStateV61435(targetCode,targetStart,targetEnd);
@@ -33824,14 +33845,16 @@ ${names}${extra}
     if(!item)return null;
     const target=side==='previous'?isoAddDays(date,-1):side==='next'?isoAddDays(date,1):date;
     if(String(item.emp_code||emp)!==String(emp)||String(item.work_date||'').slice(0,10)!==target)return null;
+    const explicitV616BI=item.is_explicit_schedule===true;
     return {
       emp_code:String(emp),work_date:target,
       effective_shift_code:item.state_code||item.existing_code||'',
-      assigned_shift_code:item.state_code==='LV'?'LV':null,
+      assigned_shift_code:explicitV616BI?(item.state_code||item.existing_code||null):(item.state_code==='LV'?'LV':null),
       shift_start_time:item.start_time||null,shift_end_time:item.end_time||null,
       day_type:item.is_full_day_leave?'LEAVE':item.is_dayoff?'DAY_OFF':'WORKDAY',
       day_override_type:item.is_full_day_leave?'LEAVE':null,
       leave_units:item.is_full_day_leave?1:0,
+      _boundary_explicit_v616bi:explicitV616BI,
       _night_state_v61437:item
     };
   }
@@ -34493,7 +34516,9 @@ ${names}${extra}
   function bulkContinuousBefore(map,emp,date){
     let total=0;
     for(let i=1;i<=31;i++){
-      const r=map.get(`${String(emp)}|${isoAddDays(date,-i)}`);
+      const previousDate=isoAddDays(date,-i);
+      const raw=map.get(`${String(emp)}|${previousDate}`);
+      const r=nightBoundaryNeighborV616BI(raw,date,previousDate);
       if(!r||isOffRow(r))break;
       total+=rowPlannedMinutes(r);
     }
