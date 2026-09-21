@@ -36006,3 +36006,12 @@ body.dark-mode #page-attendance .attendance-org-cell-v616u .attendance-current-t
 #page-attendance .attendance-org-cell-v616u small:empty{
   display:none;
 }
+
+/* V6.15.29 FIX16AZ — Operational Profile Effective-Date Correction */
+.team-correction-preview-v616ay li.blocked{color:#b91c1c;font-weight:750}
+.team-effective-correction-context-v616ay strong{display:block}
+.team-effective-correction-context-v616ay span{display:block;margin-top:3px;line-height:1.45}
+[data-theme="dark"] .team-correction-preview-v616ay li.blocked{color:#fca5a5}
+
+.team-operational-head-actions-v616az{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+@media(max-width:700px){.team-operational-head-actions-v616az{width:100%;justify-content:stretch}.team-operational-head-actions-v616az .btn{flex:1}}

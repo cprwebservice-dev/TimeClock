@@ -1671,7 +1671,7 @@
 
   <div data-team-workspace-pane-v61528="OVERVIEW">
     <section class="panel team-operational-cards-panel-v61528">
-      <div class="panel-header"><div><h3>รูปแบบการปฏิบัติงาน</h3><p>Manager กำหนดประเภทงานให้พนักงานก่อนจัด Team และตารางกะ</p></div><button class="btn btn-primary" id="teamOperationalProfileOpenV61527">กำหนดรูปแบบพนักงาน</button></div>
+      <div class="panel-header"><div><h3>รูปแบบการปฏิบัติงาน</h3><p>Manager กำหนดประเภทงานให้พนักงานก่อนจัด Team และตารางกะ</p></div><div class="team-operational-head-actions-v616az"><button class="btn btn-light" id="teamOperationalEffectiveFixOpenV616AZ">แก้วันที่มีผล</button><button class="btn btn-primary" id="teamOperationalProfileOpenV61527">กำหนดรูปแบบพนักงาน</button></div></div>
       <div class="panel-body team-operational-type-cards-v61528">
         <article class="car"><div class="team-type-icon-v61528">🚗</div><div><h4>รถยนต์</h4><p>งานภาคสนามด้วยรถยนต์</p><strong>ต้องอยู่ทีม · 3–5 คน/ทีม</strong></div></article>
         <article class="motorcycle"><div class="team-type-icon-v61528">🏍️</div><div><h4>มอเตอร์ไซค์</h4><p>งานภาคสนามด้วยมอเตอร์ไซค์</p><strong>ต้องอยู่ Team ก่อนจัดกะ · ขั้นต่ำ 1 คน</strong></div></article>
@@ -1824,7 +1824,7 @@
         <div class="team-timeline-search-v616ay">
           <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamEmployeeTimelineSearchV616AY" placeholder="รหัสพนักงาน"/></div>
           <button class="btn btn-primary" id="teamEmployeeTimelineLoadV616AY">ดู Timeline</button>
-          <div class="team-timeline-rule-v616ay"><strong>หลักสิทธิ์จัดกะ</strong><span>ต้องมีรูปแบบ + มี Team ปัจจุบัน • การย้ายทีมภายใต้ Manager เดียวกันไม่ล็อกกะตาม Effective Team • ข้าม Manager / ยืมตัวใช้ Authority ตามวันที่</span></div>
+          <div class="team-timeline-rule-v616ay"><strong>แก้วันที่มีผล</strong><span>ค้นหารหัสพนักงาน → ที่รายการ “รูปแบบการปฏิบัติงาน” กด <b>แก้วันที่มีผล</b> • ระบบจะตรวจ Schedule/Team และเก็บ Correction Transaction ก่อนบันทึก</span></div>
         </div>
         <div id="teamEmployeeTimelineSummaryV616AY" class="team-timeline-summary-v616ay hidden"></div>
         <div id="teamEmployeeTimelineBodyV616AY" class="team-employee-timeline-v616ay"><div class="fc-empty">กรอกรหัสพนักงานเพื่อดูประวัติ</div></div>
@@ -1843,7 +1843,7 @@
   <div class="modal-backdrop hidden" id="teamEffectiveCorrectionModalV616AY" aria-hidden="true">
     <div class="modal team-effective-correction-modal-v616ay" role="dialog" aria-modal="true" aria-labelledby="teamEffectiveCorrectionTitleV616AY">
       <div class="modal-header">
-        <div><span class="eyebrow">EFFECTIVE DATE CORRECTION</span><h3 id="teamEffectiveCorrectionTitleV616AY">แก้วันที่มีผลของการจัด / ย้ายทีม</h3><p>ระบบไม่ลบ Transaction เดิม • จะสร้าง Correction Audit และปรับช่วง Team ให้ต่อเนื่อง</p></div>
+        <div><span class="eyebrow">EFFECTIVE DATE CORRECTION</span><h3 id="teamEffectiveCorrectionTitleV616AY">แก้วันที่มีผล</h3><p id="teamEffectiveCorrectionSubtitleV616AZ">ระบบตรวจผลกระทบก่อนบันทึก และเก็บ Correction Transaction โดยไม่ลบประวัติเดิม</p></div>
         <button class="btn btn-light btn-icon" data-team-effective-correction-close-v616ay>×</button>
       </div>
       <div class="modal-body">

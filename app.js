@@ -35291,7 +35291,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX16AZ TEAM TRANSACTION BIND SCOPE FIX';
+  const VERSION='6.15.29 FIX16AZ OPERATIONAL EFFECTIVE CORRECTION';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -36091,7 +36091,8 @@ ${names}${extra}
       sum.innerHTML=`<div><span>พนักงาน</span><strong>${esc(emp.emp_code||'-')} · ${esc(emp.full_name||'-')}</strong></div><div><span>หน่วยงาน</span><strong>${esc(emp.org_code||'-')} · ${esc(emp.org_name||'-')}</strong></div><div><span>สถานะ Team ปัจจุบัน</span><strong>${data.current_team?.has_current_team?`${esc(data.current_team.team_code||'-')} · ${esc(data.current_team.team_name||'')}`:'ยังไม่ได้จัด Team'}</strong></div>`;
     }
     host.innerHTML=rows.length?rows.map(r=>{
-      const canCorrect=r.can_correct===true&&String(r.transaction_type||'').toUpperCase()==='TEAM_MEMBERSHIP';
+      const txType=String(r.transaction_type||'').toUpperCase();
+      const canCorrect=r.can_correct===true&&['TEAM_MEMBERSHIP','OPERATIONAL_PROFILE'].includes(txType);
       const effTo=r.effective_to?` – ${fmtDate(r.effective_to)}`:'';
       const flow=r.from_label||r.to_label?`<div class="team-timeline-flow-v616ay"><span>${esc(r.from_label||'—')}</span><b>→</b><strong>${esc(r.to_label||'—')}</strong></div>`:'';
       return `<article class="team-timeline-item-v616ay type-${esc(String(r.transaction_type||'').toLowerCase())}">
@@ -36101,7 +36102,7 @@ ${names}${extra}
           ${flow}
           <div class="team-timeline-meta-v616ay"><span>บันทึก ${esc(fmtDateTime(r.recorded_at||r.created_at))}</span><span>โดย ${esc(r.actor_email||'-')}</span>${r.status?`<span>${esc(r.status)}</span>`:''}</div>
           ${r.reason?`<p>${esc(r.reason)}</p>`:''}
-          <div class="team-timeline-actions-v616ay">${canCorrect?`<button class="btn btn-light btn-sm" data-team-effective-correct-v616ay="${esc(r.source_id)}" data-emp-code="${esc(emp.emp_code||'')}" data-old-date="${esc(String(r.effective_from||'').slice(0,10))}">แก้วันที่มีผล</button>`:''}${r.action_hint?`<small>${esc(r.action_hint)}</small>`:''}</div>
+          <div class="team-timeline-actions-v616ay">${canCorrect?`<button class="btn btn-light btn-sm" data-effective-correct-v616az="${esc(r.source_id)}" data-correction-kind="${esc(txType)}" data-emp-code="${esc(emp.emp_code||'')}" data-old-date="${esc(String(r.effective_from||'').slice(0,10))}" data-operational-type="${esc(r.meta?.operational_type||'')}">แก้วันที่มีผล</button>`:''}${r.action_hint?`<small>${esc(r.action_hint)}</small>`:''}</div>
         </div>
       </article>`;
     }).join(''):'<div class="fc-empty">ยังไม่มี Transaction ของพนักงานรายนี้</div>';
@@ -36124,17 +36125,27 @@ ${names}${extra}
     state.effectiveCorrection=null;state.effectiveCorrectionPreview=null;
   }
   async function openEffectiveCorrectionV616AY(btn){
-    const membershipId=String(btn?.dataset?.teamEffectiveCorrectV616ay||'').trim();
+    const sourceId=String(btn?.dataset?.effectiveCorrectV616az||btn?.dataset?.teamEffectiveCorrectV616ay||'').trim();
+    const kind=String(btn?.dataset?.correctionKind||'TEAM_MEMBERSHIP').toUpperCase();
     const emp=String(btn?.dataset?.empCode||'').trim();
     const oldDate=String(btn?.dataset?.oldDate||'').slice(0,10);
-    if(!membershipId)return;
-    state.effectiveCorrection={membershipId,emp,oldDate};
+    const opType=String(btn?.dataset?.operationalType||'').toUpperCase();
+    if(!sourceId)return;
+    state.effectiveCorrection={sourceId,kind,emp,oldDate,opType};
     state.effectiveCorrectionPreview=null;
     $('teamEffectiveCorrectionOldV616AY')&&($('teamEffectiveCorrectionOldV616AY').value=oldDate?fmtDate(oldDate):'-');
     $('teamEffectiveCorrectionNewV616AY')&&($('teamEffectiveCorrectionNewV616AY').value=oldDate);
     $('teamEffectiveCorrectionReasonV616AY')&&($('teamEffectiveCorrectionReasonV616AY').value='');
-    $('teamEffectiveCorrectionContextV616AY')&&($('teamEffectiveCorrectionContextV616AY').innerHTML=`<strong>${esc(emp)}</strong><span>แก้เฉพาะ Effective Date ของ Team Membership • ไม่ลบ Transaction เดิม</span>`);
-    $('teamEffectiveCorrectionImpactV616AY')&&($('teamEffectiveCorrectionImpactV616AY').innerHTML='<div class="fc-empty">เปลี่ยนวันที่เพื่อดู Impact Preview</div>');
+    const isProfile=kind==='OPERATIONAL_PROFILE';
+    const title=$('teamEffectiveCorrectionTitleV616AY'),subtitle=$('teamEffectiveCorrectionSubtitleV616AZ'),reason=$('teamEffectiveCorrectionReasonV616AY');
+    if(title)title.textContent=isProfile?'แก้วันที่มีผลรูปแบบการปฏิบัติงาน':'แก้วันที่มีผลของการจัด / ย้ายทีม';
+    if(subtitle)subtitle.textContent=isProfile?'วันที่นี้เป็นวันเริ่มใช้รูปแบบกับการจัดกะ • ระบบจะตรวจ Schedule และ Team ที่เกี่ยวข้องก่อนบันทึก':'ระบบไม่ลบ Transaction เดิม • จะสร้าง Correction Audit และปรับช่วง Team ให้ต่อเนื่อง';
+    if(reason)reason.placeholder=isProfile?'เช่น วันที่เริ่มใช้รถยนต์ที่บันทึกไว้ไม่ตรงเอกสารจริง':'เช่น บันทึกวันที่ย้ายทีมผิดจากเอกสารจริง';
+    const typeText=opType?`${catIcon(opType)} ${catLabel(opType)}`:'รูปแบบการปฏิบัติงาน';
+    $('teamEffectiveCorrectionContextV616AY')&&($('teamEffectiveCorrectionContextV616AY').innerHTML=isProfile
+      ?`<strong>${esc(emp)} · ${esc(typeText)}</strong><span>แก้เฉพาะ Effective Date ของ Operational Profile • หากมี Team ที่สร้างพร้อมกัน ระบบจะปรับวันที่ Team ให้สอดคล้องกัน</span>`
+      :`<strong>${esc(emp)}</strong><span>แก้เฉพาะ Effective Date ของ Team Membership • ไม่ลบ Transaction เดิม</span>`);
+    $('teamEffectiveCorrectionImpactV616AY')&&($('teamEffectiveCorrectionImpactV616AY').innerHTML='<div class="fc-empty">กำลังตรวจ Impact Preview...</div>');
     $('teamEffectiveCorrectionSaveV616AY')&&($('teamEffectiveCorrectionSaveV616AY').disabled=true);
     const modal=$('teamEffectiveCorrectionModalV616AY');modal?.classList.remove('hidden');modal?.setAttribute('aria-hidden','false');
     await previewEffectiveCorrectionV616AY();
@@ -36145,15 +36156,19 @@ ${names}${extra}
     const reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';
     const box=$('teamEffectiveCorrectionImpactV616AY'),save=$('teamEffectiveCorrectionSaveV616AY');
     if(!newDate){if(save)save.disabled=true;return;}
+    const isProfile=state.effectiveCorrection.kind==='OPERATIONAL_PROFILE';
     try{
-      const p=await rpc('ta_preview_team_effective_correction_v616ay',{
-        p_membership_id:state.effectiveCorrection.membershipId,
-        p_new_effective_from:newDate
-      });
+      const p=isProfile
+        ?await rpc('ta_preview_operational_effective_correction_v616az',{p_profile_id:state.effectiveCorrection.sourceId,p_new_effective_from:newDate})
+        :await rpc('ta_preview_team_effective_correction_v616ay',{p_membership_id:state.effectiveCorrection.sourceId,p_new_effective_from:newDate});
       state.effectiveCorrectionPreview=p;
       const allowed=p?.allowed===true;
       if(save)save.disabled=!(allowed&&reason.length>=3);
-      if(box)box.innerHTML=`<div class="team-correction-preview-v616ay ${allowed?'ok':'blocked'}"><div><strong>${allowed?'✓ แก้ไขได้':'✕ ยังแก้ไขไม่ได้'}</strong><span>${esc(p?.employee_name||state.effectiveCorrection.emp||'-')}</span></div><div class="team-correction-flow-v616ay"><span>${esc(fmtDate(p?.old_effective_from))}</span><b>→</b><strong>${esc(fmtDate(p?.new_effective_from))}</strong></div><ul>${(p?.messages||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+      const messages=Array.isArray(p?.messages)?p.messages:[];
+      const blockers=Array.isArray(p?.blockers)?p.blockers:[];
+      const linked=isProfile&&p?.linked_team_membership_id?`<li>Team ที่ผูกกับการกำหนดรูปแบบจะปรับตาม: ${esc(p.linked_team_code||'-')}</li>`:'';
+      const scheduleLine=isProfile?`<li>กะในช่วงวันที่ได้รับผล: ${Number(p?.schedule_rows_in_affected_window||0).toLocaleString('th-TH')} รายการ</li>`:'';
+      if(box)box.innerHTML=`<div class="team-correction-preview-v616ay ${allowed?'ok':'blocked'}"><div><strong>${allowed?'✓ แก้ไขได้':'✕ ยังแก้ไขไม่ได้'}</strong><span>${esc(p?.employee_name||state.effectiveCorrection.emp||'-')}</span></div><div class="team-correction-flow-v616ay"><span>${esc(fmtDate(p?.old_effective_from))}</span><b>→</b><strong>${esc(fmtDate(p?.new_effective_from))}</strong></div><ul>${scheduleLine}${linked}${messages.map(x=>`<li>${esc(x)}</li>`).join('')}${blockers.map(x=>`<li class="blocked">${esc(x?.message||x?.code||x)}</li>`).join('')}</ul></div>`;
     }catch(e){state.effectiveCorrectionPreview=null;if(save)save.disabled=true;if(box)box.innerHTML=`<div class="team-correction-preview-v616ay blocked">ตรวจ Impact ไม่สำเร็จ: ${esc(human(e))}</div>`;}
   }
   async function saveEffectiveCorrectionV616AY(){
@@ -36161,18 +36176,19 @@ ${names}${extra}
     const newDate=$('teamEffectiveCorrectionNewV616AY')?.value;
     const reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';
     if(reason.length<3)return toast('กรุณาระบุเหตุผลการแก้ไข','warning');
-    const ok=await window.tcConfirm?.({title:'ยืนยันแก้วันที่มีผล',message:[`พนักงาน: ${state.effectiveCorrection.emp}`,`เดิม: ${fmtDate(state.effectiveCorrection.oldDate)}`,`ใหม่: ${fmtDate(newDate)}`,'ระบบจะเก็บ Correction Transaction และไม่ลบประวัติเดิม'].join('\n'),confirmText:'บันทึก Correction',tone:'primary'});
+    const isProfile=state.effectiveCorrection.kind==='OPERATIONAL_PROFILE';
+    const ok=await window.tcConfirm?.({title:isProfile?'ยืนยันแก้วันที่มีผลรูปแบบ':'ยืนยันแก้วันที่มีผล Team',message:[`พนักงาน: ${state.effectiveCorrection.emp}`,`เดิม: ${fmtDate(state.effectiveCorrection.oldDate)}`,`ใหม่: ${fmtDate(newDate)}`,isProfile?'วันที่ใหม่จะเป็นวันเริ่มใช้รูปแบบในการจัดกะ':'Effective Team ใช้สำหรับประวัติ/การจัดกลุ่ม','ระบบจะเก็บ Correction Transaction และไม่ลบประวัติเดิม'].join('\n'),confirmText:'บันทึก Correction',tone:'primary'});
     if(!ok)return;
     try{
       app()?.showLoading?.('กำลังบันทึก Correction...');
-      await rpc('ta_correct_team_effective_date_v616ay',{
-        p_membership_id:state.effectiveCorrection.membershipId,
-        p_new_effective_from:newDate,
-        p_reason:reason
-      });
+      if(isProfile){
+        await rpc('ta_correct_operational_effective_date_v616az',{p_profile_id:state.effectiveCorrection.sourceId,p_new_effective_from:newDate,p_reason:reason});
+      }else{
+        await rpc('ta_correct_team_effective_date_v616ay',{p_membership_id:state.effectiveCorrection.sourceId,p_new_effective_from:newDate,p_reason:reason});
+      }
       const emp=state.effectiveCorrection.emp;
       closeEffectiveCorrectionV616AY();
-      toast('แก้วันที่มีผลและบันทึก Transaction เรียบร้อย','success');
+      toast(isProfile?'แก้วันที่มีผลรูปแบบและบันทึก Transaction เรียบร้อย':'แก้วันที่มีผล Team และบันทึก Transaction เรียบร้อย','success');
       await Promise.all([loadEmployeeTimelineV616AY(emp),load()]);
     }catch(e){toast(human(e),'error');}
     finally{app()?.hideLoading?.();}
@@ -36253,7 +36269,7 @@ ${names}${extra}
     $('teamMasterRefreshV61523')?.addEventListener('click',load);$('teamMasterOrgFilterV61523')?.addEventListener('change',load);$('teamMasterReferenceDateV616AX')?.addEventListener('change',load);$('teamMasterCreateV61523')?.addEventListener('click',openCreate);$('teamMasterCreatePeopleV61528')?.addEventListener('click',openCreate);$('teamMasterSearchBtnV61523')?.addEventListener('click',renderTeams);$('teamMasterCategoryFilterV61524')?.addEventListener('change',renderTeams);$('teamMasterStatusFilterV61523')?.addEventListener('change',renderTeams);$('teamMasterSearchV61523')?.addEventListener('input',renderTeams);$('teamMasterCreateOrgV61523')?.addEventListener('change',updateCreatePreview);$('teamMasterCreateCategoryV61524')?.addEventListener('change',updateCreatePreview);$('teamMasterCreateConfirmV61523')?.addEventListener('click',createTeam);
     $('teamEnforcementRefreshV61525')?.addEventListener('click',()=>loadEnforcement());$('teamEnforcementToggleV61525')?.addEventListener('click',toggleEnforcement);$('teamNextActionBtnV61528')?.addEventListener('click',handleNextAction);$('teamQuickClassifyV61529F1')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));$('teamQuickCreateV61529F1')?.addEventListener('click',openCreate);$('teamQuickPeopleV61529F1')?.addEventListener('click',()=>setTab('PEOPLE'));$('teamQuickEnforcementV61529F1')?.addEventListener('click',()=>{setTab('OVERVIEW');$('teamEnforcementStatusV61525')?.scrollIntoView({behavior:'smooth',block:'center'});});
     $('teamEnforcementEffectiveV61529')?.addEventListener('change',loadEnforcementModal);$('teamEnforcementOrgV61529')?.addEventListener('change',loadEnforcementModal);$('teamEnforcementActionV61529')?.addEventListener('change',()=>{state.enforcementSelected.clear();const f=$('teamEnforcementTeamStatusV61529');if(f)f.value=enforcementAction()==='ENABLE'?'READY':'ENABLED';renderEnforcementModal();});$('teamEnforcementTeamStatusV61529')?.addEventListener('change',renderEnforcementModal);$('teamEnforcementSelectReadyV61529')?.addEventListener('click',selectReadyEnforcementTeams);$('teamEnforcementNoteV61529')?.addEventListener('input',renderEnforcementModal);$('teamEnforcementApplyV61529')?.addEventListener('click',applyEnforcementScope);
-    $('teamOperationalProfileOpenV61527')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));$('teamOperationalProfileOpenPeopleV61528')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));document.querySelectorAll('[data-operational-mode-v61529f5]').forEach(btn=>btn.addEventListener('click',()=>setOperationalMode(btn.dataset.operationalModeV61529f5)));$('teamOperationalProfileOrgV61527')?.addEventListener('change',loadOpPool);$('teamOperationalProfileEffectiveV61527')?.addEventListener('change',async()=>{validateOperationalEffectiveDate({autoCorrect:true,showToast:true});state.opPreview=null;await loadOpPool();});$('teamOperationalProfileShowV61527')?.addEventListener('change',()=>{renderOperationalTargetTypeOptions();loadOpPool();});$('teamOperationalProfileTargetV61527')?.addEventListener('change',()=>{state.opPreview=null;renderOpTeamOptions();});$('teamOperationalProfileTeamV61527')?.addEventListener('change',()=>{state.opPreview=null;renderOpPool();scheduleOperationalPreview();});$('teamOperationalProfileSearchBtnV61527')?.addEventListener('click',renderOpPool);$('teamOperationalProfileSearchV61527')?.addEventListener('input',renderOpPool);$('teamOperationalProfileSearchV61527')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();renderOpPool();}});$('teamOperationalProfileSelectAllLeftV61528F2')?.addEventListener('click',selectAllOperationalLeft);$('teamOperationalProfileMoveRightV61528F2')?.addEventListener('click',moveOperationalRight);$('teamOperationalProfileMoveLeftV61528F2')?.addEventListener('click',moveOperationalLeft);$('teamOperationalProfileNoteV61527')?.addEventListener('input',renderOperationalPreview);$('teamOperationalProfileSaveV61527')?.addEventListener('click',saveOperational);
+    $('teamOperationalEffectiveFixOpenV616AZ')?.addEventListener('click',()=>{setTab('HISTORY');setTimeout(()=>{$('teamEmployeeTimelineSearchV616AY')?.focus();$('teamEmployeeTimelineSearchV616AY')?.scrollIntoView?.({behavior:'smooth',block:'center'});},80);});$('teamOperationalProfileOpenV61527')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));$('teamOperationalProfileOpenPeopleV61528')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));document.querySelectorAll('[data-operational-mode-v61529f5]').forEach(btn=>btn.addEventListener('click',()=>setOperationalMode(btn.dataset.operationalModeV61529f5)));$('teamOperationalProfileOrgV61527')?.addEventListener('change',loadOpPool);$('teamOperationalProfileEffectiveV61527')?.addEventListener('change',async()=>{validateOperationalEffectiveDate({autoCorrect:true,showToast:true});state.opPreview=null;await loadOpPool();});$('teamOperationalProfileShowV61527')?.addEventListener('change',()=>{renderOperationalTargetTypeOptions();loadOpPool();});$('teamOperationalProfileTargetV61527')?.addEventListener('change',()=>{state.opPreview=null;renderOpTeamOptions();});$('teamOperationalProfileTeamV61527')?.addEventListener('change',()=>{state.opPreview=null;renderOpPool();scheduleOperationalPreview();});$('teamOperationalProfileSearchBtnV61527')?.addEventListener('click',renderOpPool);$('teamOperationalProfileSearchV61527')?.addEventListener('input',renderOpPool);$('teamOperationalProfileSearchV61527')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();renderOpPool();}});$('teamOperationalProfileSelectAllLeftV61528F2')?.addEventListener('click',selectAllOperationalLeft);$('teamOperationalProfileMoveRightV61528F2')?.addEventListener('click',moveOperationalRight);$('teamOperationalProfileMoveLeftV61528F2')?.addEventListener('click',moveOperationalLeft);$('teamOperationalProfileNoteV61527')?.addEventListener('input',renderOperationalPreview);$('teamOperationalProfileSaveV61527')?.addEventListener('click',saveOperational);
     $('teamMembershipEffectiveV61524')?.addEventListener('change',loadMembershipCandidates);$('teamMembershipSearchV61524')?.addEventListener('input',renderMemberList);$('teamMembershipSourceFilterV61528F1')?.addEventListener('change',renderMemberList);$('teamMembershipMoveRightV61528F1')?.addEventListener('click',moveMembershipRight);$('teamMembershipMoveLeftV61528F1')?.addEventListener('click',moveMembershipLeft);$('teamMembershipSelectAllLeftV61528F1')?.addEventListener('click',selectAllMembershipLeft);$('teamMembershipSaveV61524')?.addEventListener('click',saveMembership);
     $('teamClosureSelectAllV61529F12')?.addEventListener('click',selectAllClosureMembers);$('teamClosureBulkTargetV61529F12')?.addEventListener('change',()=>{const b=$('teamClosureApplyBulkV61529F12');if(b)b.disabled=state.closurePicked.size===0||!$('teamClosureBulkTargetV61529F12')?.value;});$('teamClosureApplyBulkV61529F12')?.addEventListener('click',applyClosureBulkTarget);$('teamClosureReasonV61529F12')?.addEventListener('input',renderTeamClosure);$('teamClosureConfirmV61529F12')?.addEventListener('click',confirmTeamClosure);
     $('teamMasterAuditRefreshV61523')?.addEventListener('click',loadAudit);$('teamEmployeeTimelineRefreshV616AY')?.addEventListener('click',()=>loadEmployeeTimelineV616AY());$('teamEmployeeTimelineLoadV616AY')?.addEventListener('click',()=>loadEmployeeTimelineV616AY());$('teamEmployeeTimelineSearchV616AY')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadEmployeeTimelineV616AY();}});$('teamEffectiveCorrectionNewV616AY')?.addEventListener('change',previewEffectiveCorrectionV616AY);$('teamEffectiveCorrectionReasonV616AY')?.addEventListener('input',()=>{const p=state.effectiveCorrectionPreview,reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';$('teamEffectiveCorrectionSaveV616AY')&&($('teamEffectiveCorrectionSaveV616AY').disabled=!(p?.allowed===true&&reason.length>=3));});$('teamEffectiveCorrectionSaveV616AY')?.addEventListener('click',saveEffectiveCorrectionV616AY);$('teamChangeRefreshV61528')?.addEventListener('click',loadChangeInbox);$('teamChangeStatusV61528')?.addEventListener('change',loadChangeInbox);$('teamBrowserNotificationV61528')?.addEventListener('click',enableBrowserNotification);
@@ -36262,7 +36278,7 @@ ${names}${extra}
       const scope=e.target.closest('[data-enforcement-scope-v61529]');if(scope){setEnforcementScope(scope.dataset.enforcementScopeV61529);loadEnforcementModal();return;}if(e.target.closest('[data-team-enforcement-close-v61529]')){closeEnforcementRollout();return;}if(e.target.closest('[data-team-closure-close-v61529f12]')){closeTeamClosure();return;}
       const tab=e.target.closest('[data-team-workspace-tab-v61528]');if(tab){setTab(tab.dataset.teamWorkspaceTabV61528);return;}
       const k=e.target.closest('[data-team-kpi-action-v61528]');if(k){const a=k.dataset.teamKpiActionV61528;if(a==='UNCLASSIFIED')openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'});else{setTab('PEOPLE');if(['CAR','MOTORCYCLE','SUPPORT'].includes(a)&&$('teamMasterCategoryFilterV61524'))$('teamMasterCategoryFilterV61524').value=a;renderTeams();}return;}
-      const correction=e.target.closest('[data-team-effective-correct-v616ay]');if(correction){openEffectiveCorrectionV616AY(correction);return;}if(e.target.closest('[data-team-effective-correction-close-v616ay]')){closeEffectiveCorrectionV616AY();return;}const mem=e.target.closest('[data-team-membership-v61524]');if(mem){openMembership(mem.dataset.teamMembershipV61524);return;}
+      const correction=e.target.closest('[data-effective-correct-v616az],[data-team-effective-correct-v616ay]');if(correction){openEffectiveCorrectionV616AY(correction);return;}if(e.target.closest('[data-team-effective-correction-close-v616ay]')){closeEffectiveCorrectionV616AY();return;}const mem=e.target.closest('[data-team-membership-v61524]');if(mem){openMembership(mem.dataset.teamMembershipV61524);return;}
       const de=e.target.closest('[data-team-master-deactivate-v61523]');if(de){deactivateTeam(de.dataset.teamMasterDeactivateV61523);return;}
       const ack=e.target.closest('[data-team-change-ack-v61528]');if(ack){acknowledgeChange(ack.dataset.teamChangeAckV61528);return;}
       if(e.target.closest('[data-team-master-close-v61523]')){closeCreate();return;}if(e.target.closest('[data-team-membership-close-v61524]')){closeMembership();return;}if(e.target.closest('[data-operational-profile-close-v61527]')){closeOperationalProfile();return;}if(e.target.closest('.nav-item[data-page="team-master"]'))setTimeout(load,0);
