@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
 window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16bb-attendance-historical-current-context";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16bc-attendance-minimal-balance";
 
 
 /* ===== js/config.js ===== */
@@ -5808,10 +5808,11 @@ window.tcIsDayShiftCode = value =>
       return attendanceHistoricalTeamLabelV616BA(row);
     }
 
+    // FIX16BC — Attendance Organization cell stays minimal:
+    // show Organization name on the first line and historical Team context only
+    // on the second line. Organization code remains available for filters/search/export.
     function attendanceOrgSublineV616V(row){
-      const code=canonicalOrgCodeV616Q(row);
-      const team=attendanceTeamCompactLabelV616V(row);
-      return [code,team].filter(Boolean).join(' • ');
+      return attendanceTeamCompactLabelV616V(row);
     }
 
     function teamOptionsFromRowsV616T(rows){

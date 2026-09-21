@@ -35959,3 +35959,50 @@ body.dark-mode #page-attendance .attendance-org-cell-v616u .attendance-current-t
     gap:12px 10px;
   }
 }
+
+/* ==========================================================================
+   V6.15.29 FIX16BC — Attendance Minimal Filter Balance
+   Wide desktop: first row = 7 context filters, second row = employee/status/actions.
+   Keeps the page compact while removing the large unused area on row 2.
+   ========================================================================== */
+@media(min-width:1451px){
+  #page-attendance .attendance-filter-grid{
+    grid-template-columns:
+      minmax(145px,.80fr)
+      minmax(145px,.80fr)
+      minmax(135px,.76fr)
+      minmax(135px,.76fr)
+      minmax(190px,1.06fr)
+      minmax(205px,1.14fr)
+      minmax(205px,1.14fr);
+    gap:10px;
+    align-items:end;
+  }
+  #page-attendance .attendance-filter-employee{
+    grid-column:span 3;
+  }
+  #page-attendance .attendance-filter-status{
+    grid-column:span 1;
+  }
+  #page-attendance .attendance-filter-actions{
+    grid-column:span 3;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    width:100%;
+    align-self:end;
+  }
+}
+#page-attendance .attendance-filter-panel-v61462>.panel-body{
+  padding:13px 16px 14px;
+}
+#page-attendance .attendance-filter-heading-v61462{
+  margin-bottom:10px;
+  padding-bottom:8px;
+}
+#page-attendance .attendance-filter-actions .btn{
+  box-shadow:none!important;
+}
+#page-attendance .attendance-org-cell-v616u small:empty{
+  display:none;
+}
