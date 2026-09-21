@@ -20546,123 +20546,6 @@ ${skippedSummary(compatibility.skipped)}
 
   async function loadAudit(){try{app()?.showLoading?.("กำลังโหลด Audit Log...");auditRows=await rpc("ta_get_system_audit",{p_start_date:$("auditStart")?.value,p_end_date:$("auditEnd")?.value,p_action_type:$("auditType")?.value||null,p_search:$("auditSearch")?.value||null,p_limit:2000})||[];renderAudit();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
 
-  function teamTimelineTypeLabelV616AY(type){
-    const t=String(type||'').toUpperCase();
-    if(t==='OPERATIONAL_PROFILE')return 'รูปแบบการปฏิบัติงาน';
-    if(t==='TEAM_MEMBERSHIP')return 'จัด / ย้ายทีม';
-    if(t==='BORROW')return 'ยืมตัว';
-    if(t==='CORRECTION')return 'แก้วันที่มีผล';
-    return t||'-';
-  }
-  function teamTimelineActionLabelV616AY(action){
-    const a=String(action||'').toUpperCase();
-    const map={
-      PROFILE_ASSIGNMENT:'กำหนดรูปแบบ',TEAM_ASSIGNMENT:'เข้าทีม',TEAM_TRANSFER:'ย้ายทีม',
-      BORROW_REQUEST:'ยืมตัว',CORRECT_EFFECTIVE_DATE:'แก้วันที่มีผล'
-    };
-    return map[a]||a||'-';
-  }
-  function renderEmployeeTimelineV616AY(){
-    const host=$('teamEmployeeTimelineBodyV616AY'),sum=$('teamEmployeeTimelineSummaryV616AY');
-    if(!host)return;
-    const data=state.employeeTimeline;
-    if(!data){
-      host.innerHTML='<div class="fc-empty">กรอกรหัสพนักงานเพื่อดูประวัติ</div>';
-      sum?.classList.add('hidden');return;
-    }
-    const emp=data.employee||{},rows=Array.isArray(data.rows)?data.rows:[];
-    if(sum){
-      sum.classList.remove('hidden');
-      sum.innerHTML=`<div><span>พนักงาน</span><strong>${esc(emp.emp_code||'-')} · ${esc(emp.full_name||'-')}</strong></div><div><span>หน่วยงาน</span><strong>${esc(emp.org_code||'-')} · ${esc(emp.org_name||'-')}</strong></div><div><span>สถานะ Team ปัจจุบัน</span><strong>${data.current_team?.has_current_team?`${esc(data.current_team.team_code||'-')} · ${esc(data.current_team.team_name||'')}`:'ยังไม่ได้จัด Team'}</strong></div>`;
-    }
-    host.innerHTML=rows.length?rows.map(r=>{
-      const canCorrect=r.can_correct===true&&String(r.transaction_type||'').toUpperCase()==='TEAM_MEMBERSHIP';
-      const effTo=r.effective_to?` – ${fmtDate(r.effective_to)}`:'';
-      const flow=r.from_label||r.to_label?`<div class="team-timeline-flow-v616ay"><span>${esc(r.from_label||'—')}</span><b>→</b><strong>${esc(r.to_label||'—')}</strong></div>`:'';
-      return `<article class="team-timeline-item-v616ay type-${esc(String(r.transaction_type||'').toLowerCase())}">
-        <div class="team-timeline-dot-v616ay"></div>
-        <div class="team-timeline-card-v616ay">
-          <div class="team-timeline-head-v616ay"><div><span>${esc(teamTimelineTypeLabelV616AY(r.transaction_type))}</span><strong>${esc(teamTimelineActionLabelV616AY(r.action_type))}</strong></div><time>มีผล ${esc(fmtDate(r.effective_from))}${esc(effTo)}</time></div>
-          ${flow}
-          <div class="team-timeline-meta-v616ay"><span>บันทึก ${esc(fmtDateTime(r.recorded_at||r.created_at))}</span><span>โดย ${esc(r.actor_email||'-')}</span>${r.status?`<span>${esc(r.status)}</span>`:''}</div>
-          ${r.reason?`<p>${esc(r.reason)}</p>`:''}
-          <div class="team-timeline-actions-v616ay">${canCorrect?`<button class="btn btn-light btn-sm" data-team-effective-correct-v616ay="${esc(r.source_id)}" data-emp-code="${esc(emp.emp_code||'')}" data-old-date="${esc(String(r.effective_from||'').slice(0,10))}">แก้วันที่มีผล</button>`:''}${r.action_hint?`<small>${esc(r.action_hint)}</small>`:''}</div>
-        </div>
-      </article>`;
-    }).join(''):'<div class="fc-empty">ยังไม่มี Transaction ของพนักงานรายนี้</div>';
-  }
-  async function loadEmployeeTimelineV616AY(empCode=null){
-    const input=$('teamEmployeeTimelineSearchV616AY');
-    const emp=String(empCode||input?.value||'').trim();
-    if(!emp)return toast('กรุณาระบุรหัสพนักงาน','warning');
-    if(input)input.value=emp;
-    const host=$('teamEmployeeTimelineBodyV616AY');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลด Timeline...</div>';
-    try{
-      state.employeeTimeline=await rpc('ta_get_employee_transaction_timeline_v616ay',{p_emp_code:emp,p_limit:300});
-      renderEmployeeTimelineV616AY();
-    }catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลด Timeline ไม่สำเร็จ: ${esc(human(e))}</div>`;}
-  }
-  function closeEffectiveCorrectionV616AY(){
-    const modal=$('teamEffectiveCorrectionModalV616AY');
-    const active=document.activeElement;if(active&&modal?.contains(active))active.blur();
-    modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');
-    state.effectiveCorrection=null;state.effectiveCorrectionPreview=null;
-  }
-  async function openEffectiveCorrectionV616AY(btn){
-    const membershipId=String(btn?.dataset?.teamEffectiveCorrectV616ay||'').trim();
-    const emp=String(btn?.dataset?.empCode||'').trim();
-    const oldDate=String(btn?.dataset?.oldDate||'').slice(0,10);
-    if(!membershipId)return;
-    state.effectiveCorrection={membershipId,emp,oldDate};
-    state.effectiveCorrectionPreview=null;
-    $('teamEffectiveCorrectionOldV616AY')&&($('teamEffectiveCorrectionOldV616AY').value=oldDate?fmtDate(oldDate):'-');
-    $('teamEffectiveCorrectionNewV616AY')&&($('teamEffectiveCorrectionNewV616AY').value=oldDate);
-    $('teamEffectiveCorrectionReasonV616AY')&&($('teamEffectiveCorrectionReasonV616AY').value='');
-    $('teamEffectiveCorrectionContextV616AY')&&($('teamEffectiveCorrectionContextV616AY').innerHTML=`<strong>${esc(emp)}</strong><span>แก้เฉพาะ Effective Date ของ Team Membership • ไม่ลบ Transaction เดิม</span>`);
-    $('teamEffectiveCorrectionImpactV616AY')&&($('teamEffectiveCorrectionImpactV616AY').innerHTML='<div class="fc-empty">เปลี่ยนวันที่เพื่อดู Impact Preview</div>');
-    $('teamEffectiveCorrectionSaveV616AY')&&($('teamEffectiveCorrectionSaveV616AY').disabled=true);
-    const modal=$('teamEffectiveCorrectionModalV616AY');modal?.classList.remove('hidden');modal?.setAttribute('aria-hidden','false');
-    await previewEffectiveCorrectionV616AY();
-  }
-  async function previewEffectiveCorrectionV616AY(){
-    if(!state.effectiveCorrection)return;
-    const newDate=$('teamEffectiveCorrectionNewV616AY')?.value;
-    const reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';
-    const box=$('teamEffectiveCorrectionImpactV616AY'),save=$('teamEffectiveCorrectionSaveV616AY');
-    if(!newDate){if(save)save.disabled=true;return;}
-    try{
-      const p=await rpc('ta_preview_team_effective_correction_v616ay',{
-        p_membership_id:state.effectiveCorrection.membershipId,
-        p_new_effective_from:newDate
-      });
-      state.effectiveCorrectionPreview=p;
-      const allowed=p?.allowed===true;
-      if(save)save.disabled=!(allowed&&reason.length>=3);
-      if(box)box.innerHTML=`<div class="team-correction-preview-v616ay ${allowed?'ok':'blocked'}"><div><strong>${allowed?'✓ แก้ไขได้':'✕ ยังแก้ไขไม่ได้'}</strong><span>${esc(p?.employee_name||state.effectiveCorrection.emp||'-')}</span></div><div class="team-correction-flow-v616ay"><span>${esc(fmtDate(p?.old_effective_from))}</span><b>→</b><strong>${esc(fmtDate(p?.new_effective_from))}</strong></div><ul>${(p?.messages||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
-    }catch(e){state.effectiveCorrectionPreview=null;if(save)save.disabled=true;if(box)box.innerHTML=`<div class="team-correction-preview-v616ay blocked">ตรวจ Impact ไม่สำเร็จ: ${esc(human(e))}</div>`;}
-  }
-  async function saveEffectiveCorrectionV616AY(){
-    if(!state.effectiveCorrection||state.effectiveCorrectionPreview?.allowed!==true)return;
-    const newDate=$('teamEffectiveCorrectionNewV616AY')?.value;
-    const reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';
-    if(reason.length<3)return toast('กรุณาระบุเหตุผลการแก้ไข','warning');
-    const ok=await window.tcConfirm?.({title:'ยืนยันแก้วันที่มีผล',message:[`พนักงาน: ${state.effectiveCorrection.emp}`,`เดิม: ${fmtDate(state.effectiveCorrection.oldDate)}`,`ใหม่: ${fmtDate(newDate)}`,'ระบบจะเก็บ Correction Transaction และไม่ลบประวัติเดิม'].join('\n'),confirmText:'บันทึก Correction',tone:'primary'});
-    if(!ok)return;
-    try{
-      app()?.showLoading?.('กำลังบันทึก Correction...');
-      await rpc('ta_correct_team_effective_date_v616ay',{
-        p_membership_id:state.effectiveCorrection.membershipId,
-        p_new_effective_from:newDate,
-        p_reason:reason
-      });
-      const emp=state.effectiveCorrection.emp;
-      closeEffectiveCorrectionV616AY();
-      toast('แก้วันที่มีผลและบันทึก Transaction เรียบร้อย','success');
-      await Promise.all([loadEmployeeTimelineV616AY(emp),load()]);
-    }catch(e){toast(human(e),'error');}
-    finally{app()?.hideLoading?.();}
-  }
-
   function renderAudit(){const body=$("auditBody");if(!body)return;body.innerHTML=auditRows.length?auditRows.map(r=>`<tr><td>${fmtDateTime(r.event_at)}</td><td><span class="fc-badge info">${esc(r.event_type)}</span></td><td>${esc(r.action_type||"-")}</td><td>${esc(r.actor_email||"-")}</td><td>${esc(r.entity_key||"-")}</td><td>${esc(r.detail||"-")}</td></tr>`).join(""):`<tr><td colspan="6" class="fc-empty">ไม่พบ Audit Log</td></tr>`;$("auditCount").textContent=`${auditRows.length.toLocaleString("th-TH")} รายการ`;}
   function exportAudit(){const rows=[["วันเวลา","ประเภท","การทำงาน","ผู้ดำเนินการ","รายการ","รายละเอียด"],...auditRows.map(r=>[fmtDateTime(r.event_at),r.event_type,r.action_type,r.actor_email,r.entity_key,r.detail])];exportExcel(`Audit_Log_${$("auditStart")?.value}_${$("auditEnd")?.value}.xls`,rows,"Audit Log");}
 
@@ -35221,7 +35104,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX16AY TRANSACTION + SAME MANAGER CONTINUITY';
+  const VERSION='6.15.29 FIX16AZ TEAM TRANSACTION BIND SCOPE FIX';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -35991,6 +35874,123 @@ ${names}${extra}
   }
 
 
+  function teamTimelineTypeLabelV616AY(type){
+    const t=String(type||'').toUpperCase();
+    if(t==='OPERATIONAL_PROFILE')return 'รูปแบบการปฏิบัติงาน';
+    if(t==='TEAM_MEMBERSHIP')return 'จัด / ย้ายทีม';
+    if(t==='BORROW')return 'ยืมตัว';
+    if(t==='CORRECTION')return 'แก้วันที่มีผล';
+    return t||'-';
+  }
+  function teamTimelineActionLabelV616AY(action){
+    const a=String(action||'').toUpperCase();
+    const map={
+      PROFILE_ASSIGNMENT:'กำหนดรูปแบบ',TEAM_ASSIGNMENT:'เข้าทีม',TEAM_TRANSFER:'ย้ายทีม',
+      BORROW_REQUEST:'ยืมตัว',CORRECT_EFFECTIVE_DATE:'แก้วันที่มีผล'
+    };
+    return map[a]||a||'-';
+  }
+  function renderEmployeeTimelineV616AY(){
+    const host=$('teamEmployeeTimelineBodyV616AY'),sum=$('teamEmployeeTimelineSummaryV616AY');
+    if(!host)return;
+    const data=state.employeeTimeline;
+    if(!data){
+      host.innerHTML='<div class="fc-empty">กรอกรหัสพนักงานเพื่อดูประวัติ</div>';
+      sum?.classList.add('hidden');return;
+    }
+    const emp=data.employee||{},rows=Array.isArray(data.rows)?data.rows:[];
+    if(sum){
+      sum.classList.remove('hidden');
+      sum.innerHTML=`<div><span>พนักงาน</span><strong>${esc(emp.emp_code||'-')} · ${esc(emp.full_name||'-')}</strong></div><div><span>หน่วยงาน</span><strong>${esc(emp.org_code||'-')} · ${esc(emp.org_name||'-')}</strong></div><div><span>สถานะ Team ปัจจุบัน</span><strong>${data.current_team?.has_current_team?`${esc(data.current_team.team_code||'-')} · ${esc(data.current_team.team_name||'')}`:'ยังไม่ได้จัด Team'}</strong></div>`;
+    }
+    host.innerHTML=rows.length?rows.map(r=>{
+      const canCorrect=r.can_correct===true&&String(r.transaction_type||'').toUpperCase()==='TEAM_MEMBERSHIP';
+      const effTo=r.effective_to?` – ${fmtDate(r.effective_to)}`:'';
+      const flow=r.from_label||r.to_label?`<div class="team-timeline-flow-v616ay"><span>${esc(r.from_label||'—')}</span><b>→</b><strong>${esc(r.to_label||'—')}</strong></div>`:'';
+      return `<article class="team-timeline-item-v616ay type-${esc(String(r.transaction_type||'').toLowerCase())}">
+        <div class="team-timeline-dot-v616ay"></div>
+        <div class="team-timeline-card-v616ay">
+          <div class="team-timeline-head-v616ay"><div><span>${esc(teamTimelineTypeLabelV616AY(r.transaction_type))}</span><strong>${esc(teamTimelineActionLabelV616AY(r.action_type))}</strong></div><time>มีผล ${esc(fmtDate(r.effective_from))}${esc(effTo)}</time></div>
+          ${flow}
+          <div class="team-timeline-meta-v616ay"><span>บันทึก ${esc(fmtDateTime(r.recorded_at||r.created_at))}</span><span>โดย ${esc(r.actor_email||'-')}</span>${r.status?`<span>${esc(r.status)}</span>`:''}</div>
+          ${r.reason?`<p>${esc(r.reason)}</p>`:''}
+          <div class="team-timeline-actions-v616ay">${canCorrect?`<button class="btn btn-light btn-sm" data-team-effective-correct-v616ay="${esc(r.source_id)}" data-emp-code="${esc(emp.emp_code||'')}" data-old-date="${esc(String(r.effective_from||'').slice(0,10))}">แก้วันที่มีผล</button>`:''}${r.action_hint?`<small>${esc(r.action_hint)}</small>`:''}</div>
+        </div>
+      </article>`;
+    }).join(''):'<div class="fc-empty">ยังไม่มี Transaction ของพนักงานรายนี้</div>';
+  }
+  async function loadEmployeeTimelineV616AY(empCode=null){
+    const input=$('teamEmployeeTimelineSearchV616AY');
+    const emp=String(empCode||input?.value||'').trim();
+    if(!emp)return toast('กรุณาระบุรหัสพนักงาน','warning');
+    if(input)input.value=emp;
+    const host=$('teamEmployeeTimelineBodyV616AY');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลด Timeline...</div>';
+    try{
+      state.employeeTimeline=await rpc('ta_get_employee_transaction_timeline_v616ay',{p_emp_code:emp,p_limit:300});
+      renderEmployeeTimelineV616AY();
+    }catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลด Timeline ไม่สำเร็จ: ${esc(human(e))}</div>`;}
+  }
+  function closeEffectiveCorrectionV616AY(){
+    const modal=$('teamEffectiveCorrectionModalV616AY');
+    const active=document.activeElement;if(active&&modal?.contains(active))active.blur();
+    modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');
+    state.effectiveCorrection=null;state.effectiveCorrectionPreview=null;
+  }
+  async function openEffectiveCorrectionV616AY(btn){
+    const membershipId=String(btn?.dataset?.teamEffectiveCorrectV616ay||'').trim();
+    const emp=String(btn?.dataset?.empCode||'').trim();
+    const oldDate=String(btn?.dataset?.oldDate||'').slice(0,10);
+    if(!membershipId)return;
+    state.effectiveCorrection={membershipId,emp,oldDate};
+    state.effectiveCorrectionPreview=null;
+    $('teamEffectiveCorrectionOldV616AY')&&($('teamEffectiveCorrectionOldV616AY').value=oldDate?fmtDate(oldDate):'-');
+    $('teamEffectiveCorrectionNewV616AY')&&($('teamEffectiveCorrectionNewV616AY').value=oldDate);
+    $('teamEffectiveCorrectionReasonV616AY')&&($('teamEffectiveCorrectionReasonV616AY').value='');
+    $('teamEffectiveCorrectionContextV616AY')&&($('teamEffectiveCorrectionContextV616AY').innerHTML=`<strong>${esc(emp)}</strong><span>แก้เฉพาะ Effective Date ของ Team Membership • ไม่ลบ Transaction เดิม</span>`);
+    $('teamEffectiveCorrectionImpactV616AY')&&($('teamEffectiveCorrectionImpactV616AY').innerHTML='<div class="fc-empty">เปลี่ยนวันที่เพื่อดู Impact Preview</div>');
+    $('teamEffectiveCorrectionSaveV616AY')&&($('teamEffectiveCorrectionSaveV616AY').disabled=true);
+    const modal=$('teamEffectiveCorrectionModalV616AY');modal?.classList.remove('hidden');modal?.setAttribute('aria-hidden','false');
+    await previewEffectiveCorrectionV616AY();
+  }
+  async function previewEffectiveCorrectionV616AY(){
+    if(!state.effectiveCorrection)return;
+    const newDate=$('teamEffectiveCorrectionNewV616AY')?.value;
+    const reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';
+    const box=$('teamEffectiveCorrectionImpactV616AY'),save=$('teamEffectiveCorrectionSaveV616AY');
+    if(!newDate){if(save)save.disabled=true;return;}
+    try{
+      const p=await rpc('ta_preview_team_effective_correction_v616ay',{
+        p_membership_id:state.effectiveCorrection.membershipId,
+        p_new_effective_from:newDate
+      });
+      state.effectiveCorrectionPreview=p;
+      const allowed=p?.allowed===true;
+      if(save)save.disabled=!(allowed&&reason.length>=3);
+      if(box)box.innerHTML=`<div class="team-correction-preview-v616ay ${allowed?'ok':'blocked'}"><div><strong>${allowed?'✓ แก้ไขได้':'✕ ยังแก้ไขไม่ได้'}</strong><span>${esc(p?.employee_name||state.effectiveCorrection.emp||'-')}</span></div><div class="team-correction-flow-v616ay"><span>${esc(fmtDate(p?.old_effective_from))}</span><b>→</b><strong>${esc(fmtDate(p?.new_effective_from))}</strong></div><ul>${(p?.messages||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    }catch(e){state.effectiveCorrectionPreview=null;if(save)save.disabled=true;if(box)box.innerHTML=`<div class="team-correction-preview-v616ay blocked">ตรวจ Impact ไม่สำเร็จ: ${esc(human(e))}</div>`;}
+  }
+  async function saveEffectiveCorrectionV616AY(){
+    if(!state.effectiveCorrection||state.effectiveCorrectionPreview?.allowed!==true)return;
+    const newDate=$('teamEffectiveCorrectionNewV616AY')?.value;
+    const reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';
+    if(reason.length<3)return toast('กรุณาระบุเหตุผลการแก้ไข','warning');
+    const ok=await window.tcConfirm?.({title:'ยืนยันแก้วันที่มีผล',message:[`พนักงาน: ${state.effectiveCorrection.emp}`,`เดิม: ${fmtDate(state.effectiveCorrection.oldDate)}`,`ใหม่: ${fmtDate(newDate)}`,'ระบบจะเก็บ Correction Transaction และไม่ลบประวัติเดิม'].join('\n'),confirmText:'บันทึก Correction',tone:'primary'});
+    if(!ok)return;
+    try{
+      app()?.showLoading?.('กำลังบันทึก Correction...');
+      await rpc('ta_correct_team_effective_date_v616ay',{
+        p_membership_id:state.effectiveCorrection.membershipId,
+        p_new_effective_from:newDate,
+        p_reason:reason
+      });
+      const emp=state.effectiveCorrection.emp;
+      closeEffectiveCorrectionV616AY();
+      toast('แก้วันที่มีผลและบันทึก Transaction เรียบร้อย','success');
+      await Promise.all([loadEmployeeTimelineV616AY(emp),load()]);
+    }catch(e){toast(human(e),'error');}
+    finally{app()?.hideLoading?.();}
+  }
+
   function renderAudit(){const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=state.audit.length?state.audit.map(a=>`<tr><td class="nowrap">${esc(fmtDateTime(a.created_at))}</td><td><code>${esc(a.team_code||'-')}</code></td><td>${esc(a.action_type||'-')}</td><td>${esc(a.actor_email||'-')}</td><td>${esc(a.reason||'-')}</td></tr>`).join(''):'<tr><td colspan="5" class="fc-empty">ยังไม่มีประวัติ</td></tr>';const e=$('teamEnforcementAuditBodyV61529');if(e)e.innerHTML=state.enforcementAudit.length?state.enforcementAudit.map(a=>`<tr><td class="nowrap">${esc(fmtDateTime(a.created_at))}</td><td><span class="badge badge-gray">${esc(a.scope_type||'-')}</span></td><td><strong>${esc(a.scope_code||'-')}</strong><small class="team-master-sub-v61523">${esc(a.scope_name||'')}</small></td><td>${esc(fmtDate(a.effective_from))}</td><td>${a.enabled?'<span class="badge badge-green">เปิด</span>':'<span class="badge badge-red">ปิด</span>'}</td><td>${esc(a.actor_email||'-')}</td><td>${esc(a.note||'-')}</td></tr>`).join(''):'<tr><td colspan="7" class="fc-empty">ยังไม่มีประวัติ Enforcement</td></tr>';}
   async function loadAudit(){try{const [teamAudit,enfAudit]=await Promise.all([rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:150}),rpc('ta_get_team_enforcement_audit_v61529',{p_limit:150})]);state.audit=teamAudit||[];state.enforcementAudit=enfAudit||[];renderAudit();}catch(e){console.warn(e);}}
 
@@ -36080,7 +36080,7 @@ ${names}${extra}
       const ack=e.target.closest('[data-team-change-ack-v61528]');if(ack){acknowledgeChange(ack.dataset.teamChangeAckV61528);return;}
       if(e.target.closest('[data-team-master-close-v61523]')){closeCreate();return;}if(e.target.closest('[data-team-membership-close-v61524]')){closeMembership();return;}if(e.target.closest('[data-operational-profile-close-v61527]')){closeOperationalProfile();return;}if(e.target.closest('.nav-item[data-page="team-master"]'))setTimeout(load,0);
     });
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCreate();closeMembership();closeOperationalProfile();closeEnforcementRollout();closeTeamClosure();}});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCreate();closeMembership();closeOperationalProfile();closeEnforcementRollout();closeTeamClosure();closeEffectiveCorrectionV616AY();}});
     document.addEventListener('timeclock:effective-role-changed',()=>{syncNav();if(document.querySelector('#page-team-master.active'))setTimeout(load,0);});window.addEventListener('ta:session-ready',()=>{syncNav();if(document.querySelector('#page-team-master.active'))setTimeout(load,0);});
     window.addEventListener('timeclock:auth-signed-out',()=>{stopChangeRealtime();});
     window.addEventListener('timeclock:auth-refreshed',()=>{if(document.querySelector('#page-team-master.active')&&allowedRole()){stopChangeRealtime();setTimeout(()=>{setupChangeRealtime();loadChangeInbox();},50);}});
