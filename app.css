@@ -35879,3 +35879,83 @@ body.dark-mode .team-timeline-meta-v616ay,
 body.dark-mode .team-timeline-card-v616ay p,
 body.dark-mode .team-effective-correction-context-v616ay span{color:#a7bdcc}
 body.dark-mode .team-timeline-flow-v616ay{background:#0c1d2a}
+
+
+/* ==========================================================================
+   V6.15.29 FIX16BA — Attendance uses CURRENT permanent Team as primary label
+   ========================================================================== */
+.attendance-current-team-hint-v616ba{
+  display:inline-flex;
+  margin-left:4px;
+  padding:1px 6px;
+  border-radius:999px;
+  background:#eef6ff;
+  border:1px solid #d2e6fb;
+  color:#3772a9;
+  font-size:9px;
+  font-weight:800;
+  vertical-align:middle;
+}
+body.dark-mode .attendance-current-team-hint-v616ba,
+[data-theme="dark"] .attendance-current-team-hint-v616ba{
+  background:#173049;
+  border-color:#315879;
+  color:#9dcef3;
+}
+
+
+/* ==========================================================================
+   V6.15.29 FIX16BB — Attendance historical Team + current Team context
+   ========================================================================== */
+.attendance-history-team-hint-v616bb{
+  display:inline-flex;
+  margin-left:4px;
+  padding:1px 6px;
+  border-radius:999px;
+  background:#f4f6f8;
+  border:1px solid #dde3e8;
+  color:#5e6d7a;
+  font-size:9px;
+  font-weight:800;
+  vertical-align:middle;
+}
+#page-attendance .attendance-filter-current-team-v616bb{
+  min-width:0;
+}
+#page-attendance .attendance-org-cell-v616u .attendance-history-team-v616bb{
+  color:#667789;
+}
+#page-attendance .attendance-org-cell-v616u .attendance-current-team-secondary-v616bb{
+  display:block;
+  margin-top:2px;
+  color:#2b6fa7;
+  font-size:9.5px;
+  font-weight:700;
+  line-height:1.15;
+}
+body.dark-mode .attendance-history-team-hint-v616bb,
+[data-theme="dark"] .attendance-history-team-hint-v616bb{
+  background:#182a38;
+  border-color:#30495b;
+  color:#b5c7d5;
+}
+body.dark-mode #page-attendance .attendance-org-cell-v616u .attendance-current-team-secondary-v616bb,
+[data-theme="dark"] #page-attendance .attendance-org-cell-v616u .attendance-current-team-secondary-v616bb{
+  color:#8fc8f0;
+}
+
+/* 8 filter controls on wide screen; wraps naturally on smaller widths. */
+@media(min-width:1451px){
+  #page-attendance .attendance-filter-grid{
+    grid-template-columns:
+      minmax(135px,.8fr)
+      minmax(135px,.8fr)
+      minmax(125px,.75fr)
+      minmax(125px,.75fr)
+      minmax(170px,1.05fr)
+      minmax(190px,1.15fr)
+      minmax(190px,1.15fr)
+      minmax(235px,1.35fr);
+    gap:12px 10px;
+  }
+}

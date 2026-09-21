@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
 window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16v-attendance-org-compact";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16bb-attendance-historical-current-context";
 
 
 /* ===== js/config.js ===== */
@@ -5635,29 +5635,177 @@ window.tcIsDayShiftCode = value =>
       return list;
     }
 
-    function attendanceTeamLabelV616U(row){
+    async function enrichAttendanceCurrentTeamV616BA(rows){
+      const list=Array.isArray(rows)?rows:[];
+      const empCodes=[...new Set(list.map(r=>String(r?.emp_code||'').trim()).filter(Boolean))];
+      if(!list.length||!empCodes.length||!state.client)return list;
+
+      try{
+        const all=[];
+        for(let i=0;i<empCodes.length;i+=250){
+          const chunk=empCodes.slice(i,i+250);
+          const response=await state.client.rpc(
+            'ta_get_schedule_membership_readiness_v616ay',
+            {p_emp_codes:chunk}
+          );
+          if(response.error)throw response.error;
+          all.push(...(Array.isArray(response.data)?response.data:[]));
+        }
+
+        const map=new Map(
+          all.map(x=>[String(x.emp_code||'').trim(),x])
+        );
+
+        list.forEach(row=>{
+          row._attendance_current_team_v616ba=
+            map.get(String(row?.emp_code||'').trim())||null;
+        });
+      }catch(error){
+        // Keep Attendance usable when the new readiness RPC is unavailable.
+        // Historical Effective Team remains the fallback.
+        console.warn('Attendance Current Team FIX16BA:',error);
+      }
+      return list;
+    }
+
+    function attendanceCurrentTeamMetaV616BA(row){
+      return row?._attendance_current_team_v616ba
+        || row?._membership_readiness_v616ay
+        || null;
+    }
+
+    function attendanceCurrentTeamGroupV616BA(row){
+      const current=attendanceCurrentTeamMetaV616BA(row);
+      const historical=scheduleTeamContextMetaV61526(row);
+      const orgCode=String(
+        canonicalOrgCodeV616Q(row)
+        || current?.current_team_org_code
+        || historical?.employee_org_code
+        || ''
+      ).trim();
+
+      if(current?.has_current_team===true && current?.current_team_id){
+        const teamCode=String(current.current_team_code||'').trim();
+        const teamName=String(current.current_team_name||'').trim();
+        const label=teamName||teamCode||'ทีมปัจจุบัน';
+        return {
+          key:`CURRENT_TEAM:${String(current.current_team_id)}`,
+          label:orgCode ? `${orgCode} · ${label}` : label,
+          compactLabel:label,
+          teamId:String(current.current_team_id||''),
+          teamCode,
+          teamName,
+          category:String(current.current_team_category||current.current_operational_type||'UNCLASSIFIED').toUpperCase(),
+          state:'CURRENT_TEAM',
+          hasCurrentTeam:true
+        };
+      }
+
+      // Current Team is the primary status in Attendance Detail. This avoids
+      // showing "รอกำหนดรูปแบบ" for old attendance dates after the employee
+      // has already been classified/assigned in the current operating model.
+      const category=String(
+        current?.current_operational_type
+        || historical?.car_category
+        || 'UNCLASSIFIED'
+      ).toUpperCase();
+
+      const waitingLabel =
+        category==='CAR' ? 'ยังไม่ได้จัดทีมปัจจุบัน • รถยนต์'
+        : category==='MOTORCYCLE' ? 'ยังไม่ได้จัดทีมปัจจุบัน • มอเตอร์ไซค์'
+        : category==='SUPPORT' ? 'ยังไม่ได้จัดทีมปัจจุบัน • สนับสนุน'
+        : 'รอกำหนดรูปแบบปัจจุบัน';
+
+      return {
+        key:`CURRENT_UNASSIGNED:${category}:${orgCode||'-'}`,
+        label:orgCode ? `${orgCode} · ${waitingLabel}` : waitingLabel,
+        compactLabel:waitingLabel,
+        teamId:'',
+        teamCode:'',
+        teamName:'',
+        category,
+        state:'CURRENT_UNASSIGNED',
+        hasCurrentTeam:false
+      };
+    }
+
+    function attendanceHistoricalTeamGroupV616BB(row){
       const ctx=scheduleTeamContextMetaV61526(row);
-      if(!ctx)return '';
+      const orgCode=String(
+        canonicalOrgCodeV616Q(row)
+        || ctx?.team_org_code
+        || ctx?.destination_org_code
+        || ctx?.employee_org_code
+        || ''
+      ).trim();
+
+      if(!ctx){
+        return {
+          key:`HIST:NO_CONTEXT:${orgCode||'-'}`,
+          label:orgCode ? `${orgCode} · ไม่มีข้อมูล Team ณ วันที่ทำงาน` : 'ไม่มีข้อมูล Team ณ วันที่ทำงาน',
+          compactLabel:'ไม่มีข้อมูล Team ณ วันที่ทำงาน',
+          teamId:'',
+          teamCode:'',
+          teamName:'',
+          state:'NO_CONTEXT',
+          historical:true
+        };
+      }
+
       const group=scheduleOperationalTeamGroupV61526(row);
-      return group?.legacy?'':String(group?.label||'').trim();
+      const state=String(ctx.assignment_state||group?.state||'').trim().toUpperCase();
+      const teamCode=String(ctx.team_code||group?.code||'').trim();
+      const teamName=String(ctx.team_name||group?.name||'').trim();
+      const teamId=String(ctx.team_id||group?.teamId||'').trim();
+
+      if(teamId || teamCode || teamName){
+        const compact=
+          teamCode && teamName && teamCode.toLowerCase()!==teamName.toLowerCase()
+            ? `${teamCode} · ${teamName}`
+            : (teamName||teamCode||'ทีม');
+        return {
+          key:String(group?.key||`HIST:TEAM:${teamId||compact}`),
+          label:orgCode ? `${orgCode} · ${compact}` : compact,
+          compactLabel:compact,
+          teamId,teamCode,teamName,
+          state:state||'TEAM',
+          historical:true
+        };
+      }
+
+      let compact='ยังไม่มี Team ณ วันที่ทำงาน';
+      if(state==='UNCLASSIFIED') compact='ยังไม่มีรูปแบบ ณ วันที่ทำงาน';
+      else if(['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(state)) compact='ยืมตัว ณ วันที่ทำงาน';
+      else if(['CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(state)) compact='ยังไม่มี Team ณ วันที่ทำงาน';
+
+      return {
+        key:String(group?.key||`HIST:${state||'UNASSIGNED'}:${orgCode||'-'}`),
+        label:orgCode ? `${orgCode} · ${compact}` : compact,
+        compactLabel:compact,
+        teamId:'',teamCode:'',teamName:'',
+        state:state||'UNASSIGNED',
+        historical:true
+      };
+    }
+
+    function attendanceHistoricalTeamLabelV616BA(row){
+      return String(attendanceHistoricalTeamGroupV616BB(row)?.compactLabel||'').trim();
+    }
+
+    function attendanceCurrentTeamCompactLabelV616BB(row){
+      const current=attendanceCurrentTeamGroupV616BA(row);
+      return String(current?.compactLabel||'').trim();
+    }
+
+    function attendanceTeamLabelV616U(row){
+      // Attendance is historical: the Team effective on work_date is primary.
+      return attendanceHistoricalTeamLabelV616BA(row);
     }
 
     // FIX16V — Attendance uses a compact Team label inside the Organization cell.
     // Do not repeat org_code or long operational instructions in the row subtitle.
     function attendanceTeamCompactLabelV616V(row){
-      const ctx=scheduleTeamContextMetaV61526(row);
-      if(!ctx)return '';
-      const teamCode=String(ctx.team_code||'').trim();
-      const teamName=String(ctx.team_name||'').trim();
-      if(teamCode||teamName){
-        if(teamCode&&teamName&&teamCode.toLowerCase()!==teamName.toLowerCase())return `${teamCode} · ${teamName}`;
-        return teamName||teamCode;
-      }
-      const state=String(ctx.assignment_state||'').trim().toUpperCase();
-      if(state==='UNCLASSIFIED')return 'รอกำหนดรูปแบบ';
-      if(['CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(state))return 'รอจัดทีม';
-      if(['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(state))return 'ยืมตัว';
-      return '';
+      return attendanceHistoricalTeamLabelV616BA(row);
     }
 
     function attendanceOrgSublineV616V(row){
@@ -5669,14 +5817,26 @@ window.tcIsDayShiftCode = value =>
     function teamOptionsFromRowsV616T(rows){
       const groups=new Map();
       (rows||[]).forEach(row=>{
-        const g=scheduleOperationalTeamGroupV61526(row);
-        if(g.legacy)return;
+        const g=attendanceHistoricalTeamGroupV616BB(row);
+        if(!g?.key)return;
+        if(!groups.has(g.key))groups.set(g.key,g);
+      });
+      return [...groups.values()].sort(
+        (a,b)=>String(a.label||'').localeCompare(String(b.label||''),'th',{numeric:true,sensitivity:'base'})
+      );
+    }
+
+    function currentTeamOptionsFromRowsV616BB(rows){
+      const groups=new Map();
+      (rows||[]).forEach(row=>{
+        const g=attendanceCurrentTeamGroupV616BA(row);
+        if(!g?.key)return;
         if(!groups.has(g.key))groups.set(g.key,g);
       });
       return [...groups.values()].sort((a,b)=>{
-        const aw=['TEAM','BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(a.state)?1:9;
-        const bw=['TEAM','BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(b.state)?1:9;
-        return aw-bw||a.label.localeCompare(b.label,'th',{numeric:true,sensitivity:'base'});
+        const aw=a.hasCurrentTeam?1:9;
+        const bw=b.hasCurrentTeam?1:9;
+        return aw-bw||String(a.label||'').localeCompare(String(b.label||''),'th',{numeric:true,sensitivity:'base'});
       });
     }
 
@@ -5685,6 +5845,14 @@ window.tcIsDayShiftCode = value =>
       const current=String(select.value||'');
       const groups=teamOptionsFromRowsV616T(rows);
       select.innerHTML='<option value="">ทุกทีม</option>'+groups.map(g=>`<option value="${safe(g.key)}">${safe(g.label)}</option>`).join('');
+      if(groups.some(g=>g.key===current))select.value=current;else select.value='';
+    }
+
+    function fillAttendanceCurrentTeamOptionsV616BB(rows){
+      const select=$('attCurrentTeamV616BB');if(!select)return;
+      const current=String(select.value||'');
+      const groups=currentTeamOptionsFromRowsV616BB(rows);
+      select.innerHTML='<option value="">ทุกทีมปัจจุบัน</option>'+groups.map(g=>`<option value="${safe(g.key)}">${safe(g.label)}</option>`).join('');
       if(groups.some(g=>g.key===current))select.value=current;else select.value='';
     }
 
@@ -5822,11 +5990,24 @@ window.tcIsDayShiftCode = value =>
         state.attendance = mergedAttendanceRowsV61462.slice(0,5000);
 
         await enrichRowsTeamContextV616T(state.attendance,val("attStart"),val("attEnd"));
+        await enrichAttendanceCurrentTeamV616BA(state.attendance);
         await enrichAttendanceCanonicalOrgV616U(state.attendance,val("attStart"),val("attEnd"));
+
         fillAttendanceTeamOptionsV616T(state.attendance);
+        fillAttendanceCurrentTeamOptionsV616BB(state.attendance);
+
         const attendanceTeamFilterV616T=String(val("attTeamV616T")||'').trim();
         if(attendanceTeamFilterV616T){
-          state.attendance=state.attendance.filter(row=>scheduleOperationalTeamGroupV61526(row).key===attendanceTeamFilterV616T);
+          state.attendance=state.attendance.filter(
+            row=>attendanceHistoricalTeamGroupV616BB(row).key===attendanceTeamFilterV616T
+          );
+        }
+
+        const attendanceCurrentTeamFilterV616BB=String(val("attCurrentTeamV616BB")||'').trim();
+        if(attendanceCurrentTeamFilterV616BB){
+          state.attendance=state.attendance.filter(
+            row=>attendanceCurrentTeamGroupV616BA(row).key===attendanceCurrentTeamFilterV616BB
+          );
         }
 
         await enrichAttendanceWorkSegmentsV6118(
@@ -5942,7 +6123,7 @@ window.tcIsDayShiftCode = value =>
           <td data-att-col="work_date" class="nowrap">${formatDate(r.work_date)}</td>
           <td data-att-col="emp_code">${safe(r.emp_code)}</td>
           <td data-att-col="full_name" class="nowrap">${safe(r.full_name)}</td>
-          <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${safe(canonicalOrgNameV616Q(r)||r.department||'-')}</strong><small>${safe(attendanceOrgSublineV616V(r)||'')}</small></div></td>
+          <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${safe(canonicalOrgNameV616Q(r)||r.department||'-')}</strong><small class="attendance-history-team-v616bb" title="${safe(`ข้อมูล ณ วันที่ทำงาน ${formatDate(r.work_date)}`)}">${safe(attendanceOrgSublineV616V(r)||'')}</small>${(()=>{const h=attendanceHistoricalTeamLabelV616BA(r),c=attendanceCurrentTeamCompactLabelV616BB(r);return c&&c!==h?`<small class="attendance-current-team-secondary-v616bb" title="ข้อมูลประกอบ ไม่ใช้แทนประวัติ ณ วันที่ทำงาน">ปัจจุบัน: ${safe(c)}</small>`:'';})()}</div></td>
           <td data-att-col="zone" class="${optionalClass("zone").trim()}">${safe(r.zone || r.area)}</td>
           <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${safe(r.sub_area)}</td>
           <td data-att-col="pattern_code">${badge(r.pattern_code||"-","badge-blue")}</td>
@@ -14757,6 +14938,7 @@ window.tcIsDayShiftCode = value =>
         }
       );
       $("attTeamV616T")?.addEventListener("change",()=>loadAttendance());
+      $("attCurrentTeamV616BB")?.addEventListener("change",()=>loadAttendance());
       $("attStart")?.addEventListener(
         "change",
         () => loadAttendanceFilterOptions(true)
@@ -15590,6 +15772,10 @@ window.tcIsDayShiftCode = value =>
       attendanceTeamLabelV616U,
       attendanceTeamCompactLabelV616V,
       attendanceOrgSublineV616V,
+      attendanceHistoricalTeamLabelV616BA,
+      attendanceHistoricalTeamGroupV616BB,
+      attendanceCurrentTeamCompactLabelV616BB,
+      attendanceCurrentTeamGroupV616BA,
       selectedOrgIdV616M,
       selectedLegacyDepartmentV616M,
       selectedDepartmentDisplayV616M,
@@ -18225,7 +18411,7 @@ ${skippedSummary(compatibility.skipped)}
   }
   function attendanceRows(){
     const term=attGrid.search; let rows=[...(app()?.state?.attendance||[])];
-    if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,app()?.canonicalOrgNameV616Q?.(r)||r.department,app()?.canonicalOrgCodeV616Q?.(r),app()?.attendanceTeamLabelV616U?.(r)||"",r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),statusLabel(attendanceStatus(r))].some(v=>String(v||"").toLowerCase().includes(term)));
+    if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,app()?.canonicalOrgNameV616Q?.(r)||r.department,app()?.canonicalOrgCodeV616Q?.(r),app()?.attendanceTeamLabelV616U?.(r)||"",app()?.attendanceCurrentTeamCompactLabelV616BB?.(r)||"",r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),statusLabel(attendanceStatus(r))].some(v=>String(v||"").toLowerCase().includes(term)));
     const key=attGrid.sortKey,dir=attGrid.sortDir==="asc"?1:-1;
     rows.sort((a,b)=>{let av,bv;if(key==="shift_start"){av=app()?.attendanceShiftTime?.(a,"start");bv=app()?.attendanceShiftTime?.(b,"start");}else if(key==="shift_end"){av=app()?.attendanceShiftTime?.(a,"end");bv=app()?.attendanceShiftTime?.(b,"end");}else if(key==="shift_code"){av=codeOf(a);bv=codeOf(b);}else if(key==="display_status"){av=attendanceStatus(a);bv=attendanceStatus(b);}else{av=a[key];bv=b[key];}if(typeof av==="number"||typeof bv==="number")return (Number(av||0)-Number(bv||0))*dir;return String(av||"").localeCompare(String(bv||""),"th")*dir;});
     return rows;
