@@ -21080,6 +21080,23 @@ ${skippedSummary(compatibility.skipped)}
     const drawer=$("notificationDrawer");
     const body=qs("#notificationDrawer .drawer-body");
     if(!body)return;
+
+    // FIX16BP: Notification Feed must never fire before Supabase has restored
+    // an authenticated session/profile. The previous unconditional startup call
+    // could hit PostgREST as anon during boot and produce a harmless but noisy
+    // HTTP 401 in DevTools even though the user session became valid moments later.
+    const c=client();
+    if(!c?.auth)return;
+    const appState=app()?.state;
+    if(!appState?.session?.access_token || !appState?.profile){
+      try{
+        const {data,error}=await c.auth.getSession();
+        if(error || !data?.session?.access_token || !app()?.state?.profile)return;
+      }catch(_){
+        return;
+      }
+    }
+
     try{
       const start=window.TimeClockCalendarV61448.addDays(window.TimeClockCalendarV61448.today(),-7);
       const end=window.TimeClockCalendarV61448.today();
@@ -21328,7 +21345,11 @@ ${skippedSummary(compatibility.skipped)}
     if(isEmployeeDirectoryAdmin()){
       loadEmployeeDirectoryFilters().catch(()=>{});
     }
-    loadNotifications();
+    // FIX16BP: profile-ready is the canonical trigger. Keep this delayed
+    // fallback only when authentication/profile are already fully ready.
+    if(app()?.state?.session?.access_token && app()?.state?.profile){
+      loadNotifications();
+    }
   },1800);}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 
