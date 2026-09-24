@@ -37335,17 +37335,26 @@ ${names}${extra}
 /* FIX16Y Shift Assignment Modal Minimal: planning context separated from shift selection */
 
 
-/* ===== FIX16BK — Smart Overflow Tooltip (global, main app + portal) ===== */
+/* ===== FIX16BO — Smart Overflow Tooltip containment fix (global, main app + portal) ===== */
 (() => {
   "use strict";
-  if (window.TimeClockOverflowTooltipV616BK) return;
+  if (window.TimeClockOverflowTooltipV616BO) return;
 
   const TOOLTIP_ID = "tcOverflowTooltipV616BK";
   const MAX_ANCESTORS = 5;
   const MIN_TEXT_LENGTH = 3;
+  const MAX_AUTO_TEXT_LENGTH = 360;
+  const BLOCKED_CONTAINER_TAGS = new Set([
+    "HTML","BODY","MAIN","SECTION","ARTICLE","NAV","ASIDE","TABLE","THEAD","TBODY","TFOOT","TR","UL","OL","DL","FORM","FIELDSET"
+  ]);
   const state = { target:null, oldDescribedBy:null, oldTitle:null };
 
   const normalize = value => String(value ?? "").replace(/\s+/g, " ").trim();
+  const hasExplicitText = el => Boolean(
+    el?.dataset?.fullText ||
+    el?.dataset?.tooltipFull ||
+    normalize(el?.getAttribute?.("title"))
+  );
   const isVisible = el => {
     if (!(el instanceof HTMLElement)) return false;
     const rect = el.getBoundingClientRect();
@@ -37377,14 +37386,44 @@ ${names}${extra}
     }
     return (el.scrollWidth > el.clientWidth + 1) || (el.scrollHeight > el.clientHeight + 1);
   };
+  const isScrollableContainer = el => {
+    if (!(el instanceof HTMLElement)) return false;
+    const style = getComputedStyle(el);
+    const scrollableX = /^(auto|scroll)$/.test(style.overflowX);
+    const scrollableY = /^(auto|scroll)$/.test(style.overflowY);
+    return (scrollableX && el.scrollWidth > el.clientWidth + 1) ||
+           (scrollableY && el.scrollHeight > el.clientHeight + 1);
+  };
+  const isComplexAutoCandidate = (el, text) => {
+    if (!(el instanceof HTMLElement) || hasExplicitText(el)) return false;
+    if (BLOCKED_CONTAINER_TAGS.has(el.tagName)) return true;
+    if (el.matches('[role="grid"],[role="table"],[role="row"],[role="tree"],[role="list"],[role="region"]')) return true;
+    if (isScrollableContainer(el)) return true;
+    if (el.querySelector(':scope > table,:scope > [role="table"],:scope > [role="grid"]')) return true;
+
+    // A tooltip should describe one field/cell, never a whole card/table/panel.
+    // Keep TD/TH usable because many screens truncate data directly in a cell.
+    const descendantCount = el.querySelectorAll('*').length;
+    if (!el.matches('td,th') && descendantCount > 8) return true;
+    if (text.length > MAX_AUTO_TEXT_LENGTH && !el.matches('td,th')) return true;
+    if (el.matches('td,th') && descendantCount > 12 && text.length > MAX_AUTO_TEXT_LENGTH) return true;
+    return false;
+  };
   const candidate = start => {
-    let el = start instanceof Element ? start : null;
+    const startEl = start instanceof Element ? start : null;
+    if (!startEl) return null;
+
+    // Dedicated schedule tooltip already owns this interaction.
+    if (startEl.closest('[data-shift-tooltip]')) return null;
+
+    let el = startEl;
     for (let depth = 0; el && el !== document.body && depth < MAX_ANCESTORS; depth++, el = el.parentElement) {
       if (!(el instanceof HTMLElement)) continue;
       if (el.id === TOOLTIP_ID || el.closest(`#${TOOLTIP_ID}`)) return null;
       if (el.dataset?.noOverflowTooltip === "1") continue;
       const text = fullText(el);
       if (text.length < MIN_TEXT_LENGTH) continue;
+      if (isComplexAutoCandidate(el, text)) continue;
       if (isClipped(el)) return { el, text };
     }
     return null;
@@ -37449,7 +37488,6 @@ ${names}${extra}
     tip.textContent = result.text;
     tip.classList.add("show");
     tip.setAttribute("aria-hidden", "false");
-    tip.id = TOOLTIP_ID;
     result.el.setAttribute("aria-describedby", TOOLTIP_ID);
     requestAnimationFrame(() => position(result.el, tip));
   };
@@ -37476,5 +37514,9 @@ ${names}${extra}
     if (state.target && tip?.classList.contains("show")) position(state.target, tip);
   }, { passive:true });
 
-  window.TimeClockOverflowTooltipV616BK = Object.freeze({ version:"FIX16BK", inspect, hide });
+  // Compatibility alias for any older code that may reference FIX16BK name.
+  const api = Object.freeze({ version:"FIX16BO", inspect, hide });
+  window.TimeClockOverflowTooltipV616BO = api;
+  window.TimeClockOverflowTooltipV616BK = api;
 })();
+
