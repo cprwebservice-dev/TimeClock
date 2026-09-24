@@ -19018,34 +19018,6 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
 
-  async function openAttendanceCalendar(key){
-    const row=attendanceDetailRow(key);
-    if(!row)return;
-
-    const emp=String(row.emp_code);
-    const date=String(row.work_date).slice(0,10);
-
-    $("attendanceDetailDrawer")
-      ?.classList.remove("open");
-
-    app()?.switchPage?.("schedule");
-
-    if($("scheduleSearch")){
-      $("scheduleSearch").value=emp;
-    }
-
-    const start=
-      window.TimeClockSchedulePeriod
-        ?.blockStartForDate?.(date)
-      || date;
-
-    if($("schedulePeriodStart")){
-      $("schedulePeriodStart").value=start;
-    }
-
-    window.TimeClockSchedulePeriod?.sync?.();
-    await app()?.loadSchedule?.();
-  }
 
   function moveAttendanceDetail(delta){
     const rows=attendanceDetailRows();
@@ -19619,10 +19591,7 @@ ${skippedSummary(compatibility.skipped)}
                   ? "ยกเลิกการรับรอง"
                   : "รับรองเวลาทำงาน"
               }</button>
-              <button
-                class="btn btn-light"
-                data-detail-open-calendar="${esc(detailKey)}"
-              >เปิดปฏิทินสัปดาห์</button>`
+`
             : ""
         }
         ${
@@ -19832,15 +19801,6 @@ ${skippedSummary(compatibility.skipped)}
           return;
         }
 
-        const calendar=event.target.closest(
-          "[data-detail-open-calendar]"
-        );
-        if(calendar){
-          await openAttendanceCalendar(
-            calendar.dataset.detailOpenCalendar
-          );
-          return;
-        }
 
         const rec=event.target.closest(
           "[data-detail-recalculate]"
@@ -37373,3 +37333,148 @@ ${names}${extra}
 /* FIX16X Schedule Readiness UX: modal preflight before ta_assign_shift_with_work_plan_v6144 */
 
 /* FIX16Y Shift Assignment Modal Minimal: planning context separated from shift selection */
+
+
+/* ===== FIX16BK — Smart Overflow Tooltip (global, main app + portal) ===== */
+(() => {
+  "use strict";
+  if (window.TimeClockOverflowTooltipV616BK) return;
+
+  const TOOLTIP_ID = "tcOverflowTooltipV616BK";
+  const MAX_ANCESTORS = 5;
+  const MIN_TEXT_LENGTH = 3;
+  const state = { target:null, oldDescribedBy:null, oldTitle:null };
+
+  const normalize = value => String(value ?? "").replace(/\s+/g, " ").trim();
+  const isVisible = el => {
+    if (!(el instanceof HTMLElement)) return false;
+    const rect = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+  };
+  const fullText = el => {
+    if (!(el instanceof HTMLElement)) return "";
+    if (el.dataset?.fullText) return normalize(el.dataset.fullText);
+    if (el.dataset?.tooltipFull) return normalize(el.dataset.tooltipFull);
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return normalize(el.value || el.placeholder);
+    if (el instanceof HTMLSelectElement) return normalize(el.selectedOptions?.[0]?.textContent || el.value);
+    const title = normalize(el.getAttribute("title"));
+    if (title) return title;
+    return normalize(el.textContent);
+  };
+  const isClipped = el => {
+    if (!(el instanceof HTMLElement) || !isVisible(el)) return false;
+    if (el.dataset?.alwaysFullTooltip === "1") return true;
+    if (el instanceof HTMLSelectElement) {
+      const text = fullText(el);
+      if (!text) return false;
+      const style = getComputedStyle(el);
+      const canvas = isClipped._canvas || (isClipped._canvas = document.createElement("canvas"));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return false;
+      ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      return ctx.measureText(text).width > Math.max(0, el.clientWidth - 38);
+    }
+    return (el.scrollWidth > el.clientWidth + 1) || (el.scrollHeight > el.clientHeight + 1);
+  };
+  const candidate = start => {
+    let el = start instanceof Element ? start : null;
+    for (let depth = 0; el && el !== document.body && depth < MAX_ANCESTORS; depth++, el = el.parentElement) {
+      if (!(el instanceof HTMLElement)) continue;
+      if (el.id === TOOLTIP_ID || el.closest(`#${TOOLTIP_ID}`)) return null;
+      if (el.dataset?.noOverflowTooltip === "1") continue;
+      const text = fullText(el);
+      if (text.length < MIN_TEXT_LENGTH) continue;
+      if (isClipped(el)) return { el, text };
+    }
+    return null;
+  };
+  const ensureTooltip = () => {
+    let tip = document.getElementById(TOOLTIP_ID);
+    if (tip) return tip;
+    tip = document.createElement("div");
+    tip.id = TOOLTIP_ID;
+    tip.className = "tc-overflow-tooltip-v616bk";
+    tip.setAttribute("role", "tooltip");
+    tip.setAttribute("aria-hidden", "true");
+    document.body.appendChild(tip);
+    return tip;
+  };
+  const position = (target, tip) => {
+    if (!target || !tip) return;
+    const rect = target.getBoundingClientRect();
+    const tipRect = tip.getBoundingClientRect();
+    const gap = 8;
+    const margin = 10;
+    let left = rect.left + rect.width / 2 - tipRect.width / 2;
+    left = Math.max(margin, Math.min(left, window.innerWidth - tipRect.width - margin));
+    let top = rect.top - tipRect.height - gap;
+    let placement = "top";
+    if (top < margin) {
+      top = rect.bottom + gap;
+      placement = "bottom";
+    }
+    if (top + tipRect.height > window.innerHeight - margin) {
+      top = Math.max(margin, window.innerHeight - tipRect.height - margin);
+    }
+    tip.dataset.placement = placement;
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(top)}px`;
+  };
+  const hide = () => {
+    const tip = document.getElementById(TOOLTIP_ID);
+    if (tip) {
+      tip.classList.remove("show");
+      tip.setAttribute("aria-hidden", "true");
+    }
+    if (state.target) {
+      if (state.oldDescribedBy == null) state.target.removeAttribute("aria-describedby");
+      else state.target.setAttribute("aria-describedby", state.oldDescribedBy);
+      if (state.oldTitle == null) state.target.removeAttribute("title");
+      else state.target.setAttribute("title", state.oldTitle);
+    }
+    state.target = null;
+    state.oldDescribedBy = null;
+    state.oldTitle = null;
+  };
+  const show = result => {
+    if (!result?.el || !result.text) return hide();
+    if (state.target === result.el) return;
+    hide();
+    const tip = ensureTooltip();
+    state.target = result.el;
+    state.oldDescribedBy = result.el.getAttribute("aria-describedby");
+    state.oldTitle = result.el.getAttribute("title");
+    if (state.oldTitle != null) result.el.removeAttribute("title");
+    tip.textContent = result.text;
+    tip.classList.add("show");
+    tip.setAttribute("aria-hidden", "false");
+    tip.id = TOOLTIP_ID;
+    result.el.setAttribute("aria-describedby", TOOLTIP_ID);
+    requestAnimationFrame(() => position(result.el, tip));
+  };
+  const inspect = target => {
+    const found = candidate(target);
+    if (found) show(found); else hide();
+  };
+
+  document.addEventListener("pointerover", event => inspect(event.target), true);
+  document.addEventListener("pointerout", event => {
+    if (!state.target) return;
+    const next = event.relatedTarget;
+    if (next instanceof Node && state.target.contains(next)) return;
+    hide();
+  }, true);
+  document.addEventListener("focusin", event => inspect(event.target), true);
+  document.addEventListener("focusout", hide, true);
+  window.addEventListener("scroll", () => {
+    const tip = document.getElementById(TOOLTIP_ID);
+    if (state.target && tip?.classList.contains("show")) position(state.target, tip);
+  }, true);
+  window.addEventListener("resize", () => {
+    const tip = document.getElementById(TOOLTIP_ID);
+    if (state.target && tip?.classList.contains("show")) position(state.target, tip);
+  }, { passive:true });
+
+  window.TimeClockOverflowTooltipV616BK = Object.freeze({ version:"FIX16BK", inspect, hide });
+})();
