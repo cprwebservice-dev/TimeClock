@@ -2400,6 +2400,8 @@ window.tcIsDayShiftCode = value =>
         }
 
         if (event === "SIGNED_OUT") {
+          state.profile = null;
+          window.__tcProfileReadyKey = "";
           window.dispatchEvent(new CustomEvent("timeclock:auth-signed-out"));
           showLogin();
         } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
@@ -2571,8 +2573,17 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function loadProfile() {
-      const { data, error } = await state.client.from("ta_user_profiles").select("*").eq("user_id", state.user.id).maybeSingle();
-      if (error) throw error;
+      // FIX16BQ: Frontend profile loading uses the same canonical actor
+      // contract as the backend: UID first, active JWT e-mail fallback.
+      const { data, error } = await state.client.rpc("ta_get_my_profile_v616bq");
+      if (error) {
+        const msg = String(error?.message || error?.details || error?.hint || "");
+        if (/PGRST202|42883|Could not find the function|does not exist/i.test(msg)) {
+          throw new Error("PROFILE_RUNTIME_CONTRACT_REQUIRED: กรุณารัน SQL FIX16BQ ก่อน Deploy Frontend");
+        }
+        throw error;
+      }
+
       state.profile = data || { user_id: state.user.id, email: state.user.email, display_name: state.user.email, role: "VIEWER", is_active: false };
       // FIX16K Scope Contract: USER is the technician/Portal role and must never
       // be promoted to MANAGER by the browser. Keep legacy Manager-Web access
@@ -2629,6 +2640,21 @@ window.tcIsDayShiftCode = value =>
           realRole: p._realRole || p.role || "VIEWER"
         }
       }));
+
+      // FIX16BQ: emit profile-ready from the actual auth/profile completion point.
+      if (state.session?.access_token && state.user?.id && p?.is_active) {
+        const readyKey = `${state.user.id}|${String(p.email || state.user.email || "").toLowerCase()}|${String(p._realRole || p.role || "VIEWER").toUpperCase()}`;
+        window.__tcProfileReadyKey = readyKey;
+        document.dispatchEvent(new CustomEvent("timeclock:profile-ready", {
+          detail: {
+            userId: state.user.id,
+            email: p.email || state.user.email || "",
+            effectiveRole: p.role || "VIEWER",
+            realRole: p._realRole || p.role || "VIEWER",
+            authReady: true
+          }
+        }));
+      }
     }
 
     async function loadFilterOptions() {
@@ -17927,7 +17953,7 @@ ${skippedSummary(compatibility.skipped)}
 (() => {
   "use strict";
   const $=id=>document.getElementById(id),q=(s,r=document)=>r.querySelector(s),qa=(s,r=document)=>[...r.querySelectorAll(s)];
-  const VERSION="6.4.0";
+  const VERSION="6.15.29 FIX16BQ";
   const menuItems=[
     ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["team-master","ทีมช่างเทคนิค","Team Master แบบ Auto Generate","◉"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
     ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
@@ -17939,7 +17965,7 @@ ${skippedSummary(compatibility.skipped)}
   const name=()=>($("sidebarUserName")?.textContent||email()).trim();
   function go(page){const el=q(`.nav-item[data-page="${page}"]`);if(el&&!el.classList.contains("hidden"))el.click();else app()?.switchPage?.(page);closeCommand();}
 
-  function mountStatus(){if($("platformStatusbar"))return;const bar=document.createElement("div");bar.id="platformStatusbar";bar.className="platform-statusbar";bar.innerHTML=`<span id="sbConnDot" class="dot"></span><span id="sbEnv" class="status-pill">PROD</span><span id="sbRole">VIEWER</span><span id="sbEmail" class="hide-mobile">-</span><span class="status-spacer"></span><span id="sbRpc" class="hide-mobile">Supabase Ready</span><span>v${VERSION}</span>`;document.body.appendChild(bar);setInterval(()=>{if($("sbRole"))$("sbRole").textContent=role();if($("sbEmail"))$("sbEmail").textContent=email();const online=navigator.onLine;$("sbConnDot")?.classList.toggle("offline",!online);const key=`${role()}|${email()}`;if(email()!=="-"&&key!==lastProfileKey){lastProfileKey=key;document.dispatchEvent(new CustomEvent("timeclock:profile-ready",{detail:{role:role(),email:email()}}));}},700);}
+  function mountStatus(){if($("platformStatusbar"))return;const bar=document.createElement("div");bar.id="platformStatusbar";bar.className="platform-statusbar";bar.innerHTML=`<span id="sbConnDot" class="dot"></span><span id="sbEnv" class="status-pill">PROD</span><span id="sbRole">VIEWER</span><span id="sbEmail" class="hide-mobile">-</span><span class="status-spacer"></span><span id="sbRpc" class="hide-mobile">Supabase Ready</span><span>v${VERSION}</span>`;document.body.appendChild(bar);setInterval(()=>{if($("sbRole"))$("sbRole").textContent=role();if($("sbEmail"))$("sbEmail").textContent=email();const online=navigator.onLine;$("sbConnDot")?.classList.toggle("offline",!online);const s=app()?.state;if(!s?.session?.access_token||!s?.profile||!s?.user?.id)return;const key=`${s.user.id}|${String(s.profile.email||s.user.email||"").toLowerCase()}|${String(s.profile._realRole||s.profile.role||"VIEWER").toUpperCase()}`;lastProfileKey=key;},700);}
   function mountCommand(){if($("commandBackdrop"))return;const el=document.createElement("div");el.id="commandBackdrop";el.className="command-backdrop hidden";el.innerHTML=`<div class="command-panel"><div class="command-input-wrap"><span>⌕</span><input id="commandInput" class="command-input" placeholder="ค้นหาเมนู รหัส หรือชื่อพนักงาน..." autocomplete="off"><span class="command-kbd">ESC</span></div><div id="commandResults" class="command-results"></div></div>`;document.body.appendChild(el);el.addEventListener("click",e=>{if(e.target===el)closeCommand()});$("commandInput").addEventListener("input",renderCommand);$("commandInput").addEventListener("keydown",e=>{const items=qa(".command-item",$("commandResults"));if(e.key==="ArrowDown"){e.preventDefault();selected=Math.min(selected+1,items.length-1);renderActive(items);}else if(e.key==="ArrowUp"){e.preventDefault();selected=Math.max(selected-1,0);renderActive(items);}else if(e.key==="Enter"&&items[selected])items[selected].click();});}
   function renderActive(items){items.forEach((x,i)=>x.classList.toggle("active",i===selected));items[selected]?.scrollIntoView({block:"nearest"});}
   function employeeItems(term){if(term.length<2)return[];const raw=app()?.state?.filters?.employees||[];return raw.map(x=>typeof x==="string"?{emp_code:x,full_name:""}:x).filter(x=>`${x.emp_code||x.employee_id||x.EmployeeId||""} ${x.full_name||x.name||""}`.toLowerCase().includes(term)).slice(0,8).map(x=>({emp:String(x.emp_code||x.employee_id||x.EmployeeId||""),name:String(x.full_name||x.name||"")}));}
@@ -21076,26 +21102,49 @@ ${skippedSummary(compatibility.skipped)}
     </button>`;
   }
 
+  let notificationAuthVerifiedAtV616BQ=0;
+  async function ensureNotificationAuthReadyV616BQ(){
+    const c=client();
+    const s=app()?.state;
+    if(!c?.auth || !s?.profile)return false;
+
+    if(
+      s?.session?.access_token
+      && s?.user?.id
+      && Date.now()-notificationAuthVerifiedAtV616BQ < 30000
+    ) return true;
+
+    try{
+      let sessionResult=await c.auth.getSession();
+      if(sessionResult.error || !sessionResult.data?.session?.access_token)return false;
+
+      let session=sessionResult.data.session;
+      let userResult=await c.auth.getUser();
+
+      if(userResult.error || !userResult.data?.user?.id){
+        const refreshed=await c.auth.refreshSession();
+        if(refreshed.error || !refreshed.data?.session?.access_token)return false;
+        session=refreshed.data.session;
+        userResult=await c.auth.getUser();
+        if(userResult.error || !userResult.data?.user?.id)return false;
+      }
+
+      s.session=session;
+      s.user=userResult.data.user;
+      notificationAuthVerifiedAtV616BQ=Date.now();
+      return true;
+    }catch(_){
+      return false;
+    }
+  }
+
   async function loadNotifications(){
     const drawer=$("notificationDrawer");
     const body=qs("#notificationDrawer .drawer-body");
     if(!body)return;
 
-    // FIX16BP: Notification Feed must never fire before Supabase has restored
-    // an authenticated session/profile. The previous unconditional startup call
-    // could hit PostgREST as anon during boot and produce a harmless but noisy
-    // HTTP 401 in DevTools even though the user session became valid moments later.
-    const c=client();
-    if(!c?.auth)return;
-    const appState=app()?.state;
-    if(!appState?.session?.access_token || !appState?.profile){
-      try{
-        const {data,error}=await c.auth.getSession();
-        if(error || !data?.session?.access_token || !app()?.state?.profile)return;
-      }catch(_){
-        return;
-      }
-    }
+    // FIX16BQ: validate the server-side token before protected notification RPCs.
+    if(!await ensureNotificationAuthReadyV616BQ())return;
 
     try{
       const start=window.TimeClockCalendarV61448.addDays(window.TimeClockCalendarV61448.today(),-7);
@@ -21330,6 +21379,13 @@ ${skippedSummary(compatibility.skipped)}
     $("assistantSendBtn")?.addEventListener("click",()=>{const q=$("assistantInput")?.value;askAssistant(q);$("assistantInput").value="";});$("assistantInput")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("assistantSendBtn")?.click();}});qsa(".assistant-prompt").forEach(b=>b.addEventListener("click",()=>askAssistant(b.textContent)));
     document.addEventListener("click",e=>{const b=e.target.closest('[data-admin-open="admin-employees"],[data-admin-open="admin-audit"]');if(!b)return;setTimeout(()=>{const page=b.dataset.adminOpen;const titles={"admin-employees":["ข้อมูลพนักงาน","ค้นหาและตรวจสอบข้อมูลพนักงาน"],"admin-audit":["Audit Log","ประวัติการเปลี่ยนแปลงและการใช้งานระบบ"]};if($("pageTitle"))$("pageTitle").textContent=titles[page][0];if($("pageSubtitle"))$("pageSubtitle").textContent=titles[page][1];page==="admin-employees"?loadEmployees():loadAudit();},0);});
     document.addEventListener("timeclock:profile-ready",loadNotifications);
+    window.addEventListener("timeclock:auth-refreshed",()=>{
+      notificationAuthVerifiedAtV616BQ=0;
+      if(app()?.state?.profile)loadNotifications();
+    });
+    window.addEventListener("timeclock:auth-signed-out",()=>{
+      notificationAuthVerifiedAtV616BQ=0;
+    });
     setTimeout(
       () => {
         if (isEmployeeDirectoryAdmin()) {

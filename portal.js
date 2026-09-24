@@ -1,6 +1,6 @@
 (function(){
   "use strict";
-  const VERSION="6.15.29 FIX16AK";
+  const VERSION="6.15.29 FIX16BQ";
   const CFG_KEY="ta_supabase_config_v1";
   const SESSION_KEY="ta_employee_portal_session_v61482";
   const TEAM_KEY="ta_employee_portal_team_v61482";
