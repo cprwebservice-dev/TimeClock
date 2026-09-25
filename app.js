@@ -5611,7 +5611,7 @@ window.tcIsDayShiftCode = value =>
         for(let i=0;i<empCodes.length;i+=250){
           const args={p_emp_codes:empCodes.slice(i,i+250),p_start_date:startDate,p_end_date:endDate};
           let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
-          if(response.error&&missingFunction(response.error))response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
+          if(response.error&&window.TimeClockShiftAPI?.missingFunction?.(response.error))response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
           if(response.error)throw response.error;
           all.push(...(Array.isArray(response.data)?response.data:[]));
         }
@@ -7404,7 +7404,7 @@ window.tcIsDayShiftCode = value =>
           const chunk=empCodes.slice(i,i+chunkSize);
           const args={p_emp_codes:chunk,p_start_date:period.startDate,p_end_date:period.endDate};
           let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
-          if (response.error && missingFunction(response.error)) {
+          if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
             response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
           }
           if (response.error) throw response.error;
