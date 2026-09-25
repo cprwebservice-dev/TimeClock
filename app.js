@@ -2627,7 +2627,11 @@ window.tcIsDayShiftCode = value =>
       $("adminNavGroup").classList.toggle("hidden", p.role !== "HR_ADMIN" && p._realRole !== "HR_ADMIN");
       qsa("#adminNavGroup .nav-item:not(#systemSettingsNav)").forEach(el => el.classList.toggle("hidden", p.role !== "HR_ADMIN"));
       $("systemSettingsNav")?.classList.toggle("hidden", p._realRole !== "HR_ADMIN");
-      $("teamPortalNavV61482")?.classList.toggle("hidden", String(p.role||"").toUpperCase()!=="MANAGER");
+      const actingManagerV616CB = window.TimeClockTemporaryAssignmentV61529F14B?.hasActingAuthority?.() === true;
+      $("teamPortalNavV61482")?.classList.toggle(
+        "hidden",
+        !["MANAGER","HR_ADMIN"].includes(String(p.role||"").toUpperCase()) && !actingManagerV616CB
+      );
       $("teamMasterNavV61523")?.classList.toggle(
         "hidden",
         !["MANAGER","HR_ADMIN"].includes(String(p.role||"").toUpperCase())
@@ -14807,7 +14811,7 @@ window.tcIsDayShiftCode = value =>
       }
       const actingOperationalAuthority =
         window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.() === true;
-      const actingOperationalPages = new Set(["schedule","team-master"]);
+      const actingOperationalPages = new Set(["schedule","team-master","team-portal","work-patterns"]);
       const actingPageAllowed =
         actingOperationalAuthority
         && actingOperationalPages.has(page);
@@ -23428,8 +23432,10 @@ ${names}${extra}
     || "VIEWER"
   ).toUpperCase();
   const isHR = () => role() === "HR_ADMIN";
-  const isManager = () => role() === "MANAGER";
-  const isViewer = () => role() === "VIEWER";
+  const isActingManager = () =>
+    window.TimeClockTemporaryAssignmentV61529F14B?.hasActingAuthority?.() === true;
+  const isManager = () => role() === "MANAGER" || isActingManager();
+  const isViewer = () => role() === "VIEWER" && !isActingManager();
   const canManage = () => isHR() || isManager();
   const fmtDate = value =>
     app()?.formatDate?.(value) || value || "-";
@@ -23658,7 +23664,7 @@ ${names}${extra}
       const nav = document.querySelector(
         `.nav-item[data-page="${page}"]`
       );
-      const actingAllowed = page === "schedule" && actingOperationalAuthorityV616K;
+      const actingAllowed = actingOperationalAuthorityV616K;
       nav?.classList.toggle(
         "hidden",
         !["HR_ADMIN","MANAGER"].includes(
@@ -35593,7 +35599,8 @@ ${names}${extra}
 
   async function loadTeam(){
     syncPortalRoleLabelsV616AA1();
-    if(!["MANAGER","HR_ADMIN"].includes(role())&&realRole()!=="HR_ADMIN")return;
+    const actingManagerV616CB=window.TimeClockTemporaryAssignmentV61529F14B?.hasActingAuthority?.()===true;
+    if(!["MANAGER","HR_ADMIN"].includes(role())&&realRole()!=="HR_ADMIN"&&!actingManagerV616CB)return;
     app()?.showLoading?.((realRole()==="HR_ADMIN"||role()==="HR_ADMIN")?"กำลังโหลดพนักงาน Employee Portal ทั้งระบบ...":"กำลังโหลด Employee Portal ของทีม...");
     try{
       let rows;
@@ -36928,7 +36935,9 @@ ${names}${extra}
 
     const baseAllowed=isHr()||baseManager();
     document.querySelector('.nav-item[data-page="schedule"]')?.classList.toggle('hidden',!baseAllowed);
+    document.querySelector('.nav-item[data-page="work-patterns"]')?.classList.toggle('hidden',!baseAllowed);
     $('teamMasterNavV61523')?.classList.toggle('hidden',!baseAllowed);
+    $('teamPortalNavV61482')?.classList.toggle('hidden',!baseAllowed);
     $('teamTemporaryTabV61529F14B')?.classList.toggle('hidden',!baseAllowed);
     $('teamActingPanelV61529F14B')?.classList.toggle('hidden',!isHr());
     $('teamTempCreateV61529F14B')?.classList.add('hidden');
@@ -37027,7 +37036,9 @@ ${names}${extra}
     // session only. No one-way remove('hidden') that can leak to the next user.
     $('teamTemporaryTabV61529F14B')?.classList.toggle('hidden',!can);
     $('teamMasterNavV61523')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
+    $('teamPortalNavV61482')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
     document.querySelector('.nav-item[data-page="schedule"]')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
+    document.querySelector('.nav-item[data-page="work-patterns"]')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
     $('teamActingPanelV61529F14B')?.classList.toggle('hidden',!isHr());
     $('teamTempCreateV61529F14B')?.classList.toggle('hidden',isHr()||!operational);
 
@@ -37040,22 +37051,27 @@ ${names}${extra}
     }
 
     const page=$('page-team-master');
-    page?.classList.toggle('acting-only-v61529f14b',acting);
-    if(acting){
-      document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>{
-        if(b.dataset.teamWorkspaceTabV61528!=='ASSIGNMENTS')b.classList.add('acting-base-hidden-v61529f14b');
-      });
-      const title=page?.querySelector('.team-workspace-title-v61528 h2');
-      const desc=page?.querySelector('.team-workspace-title-v61528 p');
-      if(title)title.textContent='ยืมตัวช่างเทคนิค';
-      if(desc)desc.textContent='Acting Manager · ร้องขอหรืออนุมัติการยืมตัวตาม Scope และช่วงวันที่ที่ได้รับมอบหมาย';
-    }else{
-      document.querySelectorAll('.acting-base-hidden-v61529f14b').forEach(b=>b.classList.remove('acting-base-hidden-v61529f14b'));
-      const title=page?.querySelector('.team-workspace-title-v61528 h2');
-      const desc=page?.querySelector('.team-workspace-title-v61528 p');
-      if(title)title.textContent='ทีมช่างเทคนิค';
-      if(desc)desc.textContent='จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ';
+    // FIX16CB: Acting is Manager-equivalent inside delegated Scope/Effective Date.
+    // Do not collapse Team Workspace to Borrow-only mode.
+    page?.classList.remove('acting-only-v61529f14b');
+    document.querySelectorAll('.acting-base-hidden-v61529f14b').forEach(b=>b.classList.remove('acting-base-hidden-v61529f14b'));
+    const title=page?.querySelector('.team-workspace-title-v61528 h2');
+    const desc=page?.querySelector('.team-workspace-title-v61528 p');
+    if(title)title.textContent='ทีมช่างเทคนิค';
+    if(desc)desc.textContent=acting
+      ? 'Acting Manager • สิทธิ์เทียบเท่า Manager เฉพาะ Scope และช่วงวันที่ที่ได้รับมอบหมาย'
+      : 'จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ';
+
+    const roleBadge=document.getElementById('roleBadge');
+    if(roleBadge&&acting){
+      roleBadge.textContent='ACTING MANAGER';
+      roleBadge.title=`Base Role ${String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'VIEWER').toUpperCase()} • Operational Manager ตาม Scope/Effective Date`;
+    }else if(roleBadge){
+      const base=String(app()?.state?.profile?.role||'VIEWER').toUpperCase();
+      roleBadge.textContent=base;
     }
+
+    window.TimeClockV680?.applyRoleUI?.();
   }
 
   function ensureAssignmentTabVisible(){
@@ -37293,7 +37309,7 @@ ${names}${extra}
       if(e.target.closest('[data-team-temp-close-v61529f14b]')){closeCreate();return;}if(e.target.closest('[data-team-temp-action-close-v61529f14b]')){closeAction();return;}if(e.target.closest('[data-team-acting-close-v61529f14b]')){closeActing();return;}
     });
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCreate();closeAction();closeActing();}});
-    const init=async()=>{const a=await loadAccess();if(actingOnly()&&document.querySelector('#page-team-master.active')){ensureAssignmentTabVisible();load();}return a;};
+    const init=async()=>{const a=await loadAccess();if(document.querySelector('#page-team-master.active')){load();}return a;};
     window.addEventListener('timeclock:auth-signed-out',()=>{
       resetActingSessionState();
     });
