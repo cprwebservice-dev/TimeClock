@@ -36819,7 +36819,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX15I';
+  const VERSION='6.15.29 FIX16CA';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -36898,11 +36898,46 @@ ${names}${extra}
     const actor=String(state.access?.actor_email||'').trim().toLowerCase();
     return !!current && !!actor && current===actor;
   }
+  // FIX16CA: keep Acting authority separate from normal Manager authority.
+  // is_operational_actor is true for both Manager and Acting, so it must never
+  // be used as an Acting flag for menu/DOM decisions.
+  function hasActingAuthority(){
+    return accessBelongsToCurrentIdentity()
+      && state.access?.is_acting===true
+      && !isHr()
+      && !baseManager();
+  }
   function hasOperationalAuthority(){
     return accessBelongsToCurrentIdentity()
-      && (state.access?.is_operational_actor===true||state.access?.is_acting===true);
+      && state.access?.is_operational_actor===true;
+  }
+  function restoreActingUiBaseline({resetTab=false}={}){
+    const page=$('page-team-master');
+    page?.classList.remove('acting-only-v61529f14b');
+    document.querySelectorAll('.acting-base-hidden-v61529f14b').forEach(el=>el.classList.remove('acting-base-hidden-v61529f14b'));
+
+    const title=page?.querySelector('.team-workspace-title-v61528 h2');
+    const desc=page?.querySelector('.team-workspace-title-v61528 p');
+    if(title)title.textContent='ทีมช่างเทคนิค';
+    if(desc)desc.textContent='จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ';
+
+    if(resetTab){
+      document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>b.classList.toggle('active',b.dataset.teamWorkspaceTabV61528==='OVERVIEW'));
+      document.querySelectorAll('[data-team-workspace-pane-v61528]').forEach(p=>p.classList.toggle('hidden',p.dataset.teamWorkspacePaneV61528!=='OVERVIEW'));
+    }
+
+    const baseAllowed=isHr()||baseManager();
+    document.querySelector('.nav-item[data-page="schedule"]')?.classList.toggle('hidden',!baseAllowed);
+    $('teamMasterNavV61523')?.classList.toggle('hidden',!baseAllowed);
+    $('teamTemporaryTabV61529F14B')?.classList.toggle('hidden',!baseAllowed);
+    $('teamActingPanelV61529F14B')?.classList.toggle('hidden',!isHr());
+    $('teamTempCreateV61529F14B')?.classList.add('hidden');
+
+    const badge=$('teamTempAuthorityBadgeV61529F14B');
+    if(badge){badge.textContent='กำลังตรวจสอบสิทธิ์';badge.className='badge badge-gray';}
   }
   function resetActingSessionState(){
+    const shouldResetTab=actingOnly() || $('page-team-master')?.classList.contains('acting-only-v61529f14b');
     state.access=null;
     state.accessLoading=false;
     state.loaded=false;
@@ -36920,8 +36955,9 @@ ${names}${extra}
     state.actingEdit=null;
     state.identityKey='';
     if(app()?.state?.profile)app().state.profile._actingTeamAuthority=false;
+    restoreActingUiBaseline({resetTab:shouldResetTab});
   }
-  function actingOnly(){return !isHr()&&!baseManager()&&hasOperationalAuthority();}
+  function actingOnly(){return hasActingAuthority();}
   const actorEmail=()=>String(accessBelongsToCurrentIdentity()?state.access?.actor_email:(app()?.state?.profile?.email||'' )).trim().toLowerCase();
   function isoDayDiff(fromIso,toIso){
     const a=String(fromIso||'').slice(0,10),b=String(toIso||'').slice(0,10);
@@ -36974,7 +37010,7 @@ ${names}${extra}
       // A slow response from User A must never be committed after User B signs in.
       if(currentIdentityKey()!==identityKey)return null;
       state.access=data||{};
-      if(app()?.state?.profile)app().state.profile._actingTeamAuthority=hasOperationalAuthority();
+      if(app()?.state?.profile)app().state.profile._actingTeamAuthority=hasActingAuthority();
       syncAccessUI();
       return state.access;
     }catch(e){if(!silent)toast(human(e),'error');return null;}finally{
@@ -36983,26 +37019,42 @@ ${names}${extra}
   }
 
   function syncAccessUI(){
-    const can=state.access?.can_access===true||isHr()||baseManager();
+    const acting=hasActingAuthority();
+    const operational=hasOperationalAuthority();
+    const can=state.access?.can_access===true||isHr()||baseManager()||acting;
+
+    // Idempotent navigation: every sync computes visibility from the CURRENT
+    // session only. No one-way remove('hidden') that can leak to the next user.
     $('teamTemporaryTabV61529F14B')?.classList.toggle('hidden',!can);
-    if(can)$('teamMasterNavV61523')?.classList.remove('hidden');
-    if(hasOperationalAuthority())document.querySelector('.nav-item[data-page="schedule"]')?.classList.remove('hidden');
+    $('teamMasterNavV61523')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
+    document.querySelector('.nav-item[data-page="schedule"]')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
     $('teamActingPanelV61529F14B')?.classList.toggle('hidden',!isHr());
-    $('teamTempCreateV61529F14B')?.classList.toggle('hidden',isHr()||!hasOperationalAuthority());
+    $('teamTempCreateV61529F14B')?.classList.toggle('hidden',isHr()||!operational);
+
     const badge=$('teamTempAuthorityBadgeV61529F14B');
     if(badge){
       if(isHr()){badge.textContent='HR Admin · Audit / Acting';badge.className='badge badge-blue';}
-      else if(state.access?.is_acting){badge.textContent='Acting Manager · Operational Authority';badge.className='badge badge-purple';}
+      else if(acting){badge.textContent='Acting Manager · Operational Authority';badge.className='badge badge-purple';}
       else if(baseManager()){badge.textContent='Manager · Operational Authority';badge.className='badge badge-green';}
       else{badge.textContent='ไม่มี Operational Authority';badge.className='badge badge-gray';}
     }
-    const page=$('page-team-master');page?.classList.toggle('acting-only-v61529f14b',actingOnly());
-    if(actingOnly()){
-      document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>{if(b.dataset.teamWorkspaceTabV61528!=='ASSIGNMENTS')b.classList.add('acting-base-hidden-v61529f14b');});
-      const title=page?.querySelector('.team-workspace-title-v61528 h2'),desc=page?.querySelector('.team-workspace-title-v61528 p');
-      if(title)title.textContent='ยืมตัวช่างเทคนิค';if(desc)desc.textContent='Acting Manager · ร้องขอหรืออนุมัติการยืมตัวตาม Scope และช่วงวันที่ที่ได้รับมอบหมาย';
+
+    const page=$('page-team-master');
+    page?.classList.toggle('acting-only-v61529f14b',acting);
+    if(acting){
+      document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>{
+        if(b.dataset.teamWorkspaceTabV61528!=='ASSIGNMENTS')b.classList.add('acting-base-hidden-v61529f14b');
+      });
+      const title=page?.querySelector('.team-workspace-title-v61528 h2');
+      const desc=page?.querySelector('.team-workspace-title-v61528 p');
+      if(title)title.textContent='ยืมตัวช่างเทคนิค';
+      if(desc)desc.textContent='Acting Manager · ร้องขอหรืออนุมัติการยืมตัวตาม Scope และช่วงวันที่ที่ได้รับมอบหมาย';
     }else{
       document.querySelectorAll('.acting-base-hidden-v61529f14b').forEach(b=>b.classList.remove('acting-base-hidden-v61529f14b'));
+      const title=page?.querySelector('.team-workspace-title-v61528 h2');
+      const desc=page?.querySelector('.team-workspace-title-v61528 p');
+      if(title)title.textContent='ทีมช่างเทคนิค';
+      if(desc)desc.textContent='จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ';
     }
   }
 
@@ -37254,7 +37306,7 @@ ${names}${extra}
     document.addEventListener('timeclock:effective-role-changed',()=>setTimeout(init,0));
     setTimeout(init,450);
   }
-  window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,openCreate,openActingAdmin,openFromNotification,state,version:VERSION};
+  window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,hasActingAuthority,openCreate,openActingAdmin,openFromNotification,state,version:VERSION};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 
