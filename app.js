@@ -17548,7 +17548,7 @@ ${skippedSummary(compatibility.skipped)}
   const app=()=>window.TimeClockApp;
   const safe=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
   const STORAGE_KEY="timeclock_report_jobs_v60";
-  const names={attendance:"รายละเอียดเวลาทำงาน",schedule:"ตารางจัดกะรายเดือน",summary:"สรุปภาพรวมรายช่วงเวลา",late:"ความผิดปกติเวลาเข้า–ออก"};
+  const names={attendance:"รายละเอียดเวลาทำงาน",schedule:"ตารางจัดกะรายเดือน",summary:"สรุปภาพรวมรายช่วงเวลา",late:"ความผิดปกติเวลาเข้า–ออก",overtime:"OT / ทำงานวันหยุด / เวลารอ",punch:"ลงเวลาไม่ครบ / จุดต้องตรวจ",leave:"ลา / วันหยุด / โควต้า",requests:"คำขอ / รับรองเวลา"};
   const downloads=new Map();
   const val=id=>$(id)?.value||"";
   const client=()=>app()?.state?.client||null;
@@ -17570,33 +17570,156 @@ ${skippedSummary(compatibility.skipped)}
       startId:"reportStart",endId:"reportEnd",areaId:"reportZone",departmentId:"reportDepartment",preserve:true
     });
   }
+
+  async function fetchReportAttendanceRowsV616BW(start,end,zone,orgId,dept){
+    return await rpc(
+      orgId ? "ta_get_attendance_detail_v616m" : "ta_get_attendance_detail_v61463",
+      orgId ? {
+        p_start_date:start,p_end_date:end,p_area:zone,p_sub_area:null,
+        p_department:null,p_org_id:orgId,p_emp_codes:null,
+        p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
+      } : {
+        p_start_date:start,p_end_date:end,p_area:zone,p_sub_area:null,
+        p_department:dept,p_emp_codes:null,p_attendance_statuses:null,
+        p_schedule_statuses:null,p_limit:5000
+      }
+    );
+  }
+
+  function reportAttendanceBaseColumnsV616BW(rows){
+    const shiftTime=(r,side)=>app()?.attendanceShiftTime?.(r,side)||r[side==="start"?"shift_start_time":"shift_end_time"];
+    return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","ประเภทวัน","กะ","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","ทำงานวันหยุด","สาย(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...(rows||[]).map(r=>[
+      fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.day_type,
+      r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),
+      fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),
+      app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0)??"0.00",
+      app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0)??"0.00",
+      app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0)??"0.00",
+      app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0)??"0.00",
+      app()?.attendanceMinutesToHourMinuteV61457?.(r.offday_work_minutes||0)??"0.00",
+      r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,
+      app()?.attendanceDisplayLabel?.(r)||(r.calculation_status||r.attendance_result||r.attendance_status)
+    ])];
+  }
+
+  function reportApprovalDurationV616BW(startAt,endAt){
+    if(!startAt||!endAt)return "-";
+    const a=new Date(startAt),b=new Date(endAt);
+    if(Number.isNaN(a.getTime())||Number.isNaN(b.getTime())||b<a)return "-";
+    const mins=Math.round((b-a)/60000);
+    if(mins<60)return `${mins} นาที`;
+    const hours=Math.floor(mins/60),rest=mins%60;
+    return rest?`${hours} ชม. ${rest} นาที`:`${hours} ชม.`;
+  }
+
+  function reportRequestTypeLabelV616BW(value){
+    const key=String(value||'').toUpperCase();
+    return ({SHIFT_CHANGE:'แก้ไขกะ',TIME_ISSUE:'ปัญหาเวลา',SPECIAL_WORK:'งานกะพิเศษ',DAYOFF_SWAP:'สลับวันหยุด',DAYOFF_ADD:'ขอวันหยุดเพิ่ม',LEAVE:'ลา',TIME_CERTIFICATION:'รับรองเวลา'})[key]||key||'-';
+  }
+
+  function reportRequestSubtypeLabelV616BW(value){
+    const key=String(value||'').toUpperCase();
+    return ({MISSING_IN:'ไม่พบเวลาเข้า',MISSING_OUT:'ไม่พบเวลาออก',WRONG_TIME:'เวลาไม่ถูกต้อง',NORMAL_LATE_CUSTOMER:'กะปกติ + งานลูกค้าช่วงดึก',SPLIT_WAIT_NIGHT:'กะเช้า + รอเข้ากะดึก',HOUR_BASED:'กะนับชั่วโมง',FULL_DAY:'เต็มวัน',HOURLY:'รายชั่วโมง'})[key]||key||'-';
+  }
   async function build(type){
     await refreshReportScopeOptionsV616K();
     const start=val("reportStart"),end=val("reportEnd"),zone=val("reportZone")||null;
     const orgId=app()?.selectedOrgIdV616M?.("reportDepartment")||null;
     const dept=app()?.selectedLegacyDepartmentV616M?.("reportDepartment")||null;
     if(!start||!end)throw new Error("กรุณาเลือกช่วงวันที่");
-    if(type==="attendance"||type==="late"){
-      const data=await rpc(
-        orgId ? "ta_get_attendance_detail_v616m" : "ta_get_attendance_detail_v61463",
-        orgId ? {
-          p_start_date:start,p_end_date:end,p_area:zone,p_sub_area:null,
-          p_department:null,p_org_id:orgId,p_emp_codes:null,
-          p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
-        } : {
-          p_start_date:start,p_end_date:end,p_area:zone,p_sub_area:null,
-          p_department:dept,p_emp_codes:null,p_attendance_statuses:null,
-          p_schedule_statuses:null,p_limit:5000
+    if(["attendance","late","overtime","punch","leave"].includes(type)){
+      const data=await fetchReportAttendanceRowsV616BW(start,end,zone,orgId,dept);
+      if(type==="attendance"){
+        const shiftTime=(r,side)=>app()?.attendanceShiftTime?.(r,side)||r[side==="start"?"shift_start_time":"shift_end_time"];
+        return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","เข้าหลังเริ่มกะ(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,r.day_type,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0)??"0.00",(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,app()?.attendanceDisplayLabel?.(r)||(r.calculation_status||r.attendance_result||r.attendance_status)])];
+      }
+      if(type==="late"){
+        const filtered=data.filter(r=>{const f=app()?.attendancePolicyFlagsV61428?.(r);return f ? (f.late||f.absenceByLate||f.early) : (Number(r.late_minutes||0)>0||Number(r.early_leave_minutes||0)>0);});
+        return reportAttendanceBaseColumnsV616BW(filtered);
+      }
+      if(type==="overtime"){
+        const filtered=data.filter(r=>Number(r.overtime_minutes||0)>0||Number(r.waiting_minutes||0)>0||Number(r.offday_work_minutes||0)>0||r.comp_off_earned===true);
+        return reportAttendanceBaseColumnsV616BW(filtered);
+      }
+      if(type==="punch"){
+        const rows=[];
+        for(const r of data){
+          const inAt=r.actual_in_at||r.first_in||null;
+          const outAt=r.actual_out_at||r.last_out||null;
+          const day=String(r.day_type||r.calculation_day_type||'').toUpperCase();
+          const shift=String(r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code||'').toUpperCase();
+          const expected=r.expected_day==null?!['LEAVE','LV','HOLIDAY','WEEKLY_OFF','OFF','COMP_OFF'].includes(day)&&!['LV','OFF'].includes(shift):Number(r.expected_day||0)>0;
+          const multiSegment=Number(r.paid_segment_count||0)>1||Boolean(r.shift_2_planned_start_at||r.shift_2_actual_in_at||r.shift_2_actual_out_at);
+          const reasons=[];
+          if(expected&&!inAt&&!outAt)reasons.push('ไม่ลงเวลาเข้า–ออก');
+          else if(expected&&!inAt)reasons.push('ไม่พบเวลาเข้า');
+          else if(expected&&!outAt)reasons.push('ไม่พบเวลาออก');
+          if(multiSegment)reasons.push('หลายช่วงงาน/ควรตรวจ Punch');
+          if(!reasons.length)continue;
+          rows.push([fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.pattern_code,day||'-',shift||'-',fmtTime(inAt),fmtTime(outAt),reasons.join(' • '),app()?.attendanceDisplayLabel?.(r)||(r.calculation_status||r.attendance_result||r.attendance_status)||'-']);
         }
-      );
-      const filtered=type==="late"?data.filter(r=>{const f=app()?.attendancePolicyFlagsV61428?.(r);return f ? (f.late||f.absenceByLate||f.early) : (Number(r.late_minutes||0)>0||Number(r.early_leave_minutes||0)>0);}):data;
-      const shiftTime=(r,side)=>app()?.attendanceShiftTime?.(r,side)||r[side==="start"?"shift_start_time":"shift_end_time"];
-      return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","พื้นที่ย่อย","รูปแบบงาน","Template","ประเภทวัน","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","กะ","เวลาเข้า","เวลาออก","ชั่วโมงสุทธิ","ชั่วโมงปกติ","OT","รอคอย","พัก","เข้าหลังเริ่มกะ(นาที)","กลับก่อน(นาที)","วันหยุดชดเชยคงเหลือ","สถานะ"],...filtered.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.sub_area,r.pattern_code,r.template_code,r.day_type,fmtTime(shiftTime(r,"start")),fmtTime(shiftTime(r,"end")),r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code,fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0)??"0.00",(Number(r.break_deducted_minutes||0)/60).toFixed(2),r.late_minutes||0,r.early_leave_minutes||0,r.comp_off_balance??0,app()?.attendanceDisplayLabel?.(r)||(r.calculation_status||r.attendance_result||r.attendance_status)])];
+        return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","รูปแบบงาน","ประเภทวัน","กะ","เวลาเข้า","เวลาออก","จุดที่ต้องตรวจ","สถานะ"],...rows];
+      }
+      if(type==="leave"){
+        const filtered=data.filter(r=>{
+          const day=String(r.day_type||r.calculation_day_type||'').toUpperCase();
+          const shift=String(r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code||'').toUpperCase();
+          return ['LEAVE','LV','HOLIDAY','WEEKLY_OFF','OFF','COMP_OFF'].includes(day)||['LV','OFF'].includes(shift)||Boolean(r.leave_request_id||r.leave_type_code||r.comp_off_earned)||Number(r.offday_work_minutes||0)>0;
+        });
+        return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","รูปแบบงาน","ประเภทวัน","กะ","ประเภทลา","เวลาเข้า","เวลาออก","ทำงานวันหยุด","วันหยุดชดเชยคงเหลือ","ได้รับวันหยุดชดเชย","สถานะ"],...filtered.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.pattern_code,r.day_type||r.calculation_day_type||'-',r.effective_shift_code||r.assigned_shift_code||r.shift_code||r.auto_shift_code||'-',r.leave_type_name||r.leave_type_code||'-',fmtTime(r.actual_in_at||r.first_in),fmtTime(r.actual_out_at||r.last_out),app()?.attendanceMinutesToHourMinuteV61457?.(r.offday_work_minutes||0)??'0.00',r.comp_off_balance??0,r.comp_off_earned?'ได้รับ':'-',app()?.attendanceDisplayLabel?.(r)||(r.calculation_status||r.attendance_result||r.attendance_status)||'-'])];
+      }
     }
     if(type==="schedule"){
       const month=`${start.slice(0,7)}-01`;const data=await window.TimeClockShiftAPI.getMonthlySchedule(app(),{p_month:month,p_start_date:start,p_end_date:end,p_zone:zone,p_department:orgId||dept,p_org_id:orgId,p_emp_codes:null,p_schedule_statuses:null});
       return [["วันที่","รหัสพนักงาน","ชื่อ-นามสกุล","หน่วยงาน","พื้นที่","ประเภทวัน","รูปแบบงาน","รูปแบบช่วงงาน","กะอัตโนมัติ","กะแนะนำ","กะที่กำหนด","กะใช้งาน","เริ่มงานลูกค้า","สิ้นสุดงานลูกค้า","สถานะ","แหล่งการจัดกะ","เวลาเริ่มกะ","เวลาสิ้นสุดกะ","ชั่วโมงสุทธิ","OT","รอคอย","ทำงานวันหยุด","วันหยุดชดเชย","สถานะคำนวณ"],...data.map(r=>[fmtDate(r.work_date),r.emp_code,r.full_name,r.department,r.zone||r.area,r.calculation_day_type||r.day_type||"WORKDAY",r.pattern_code,app()?.workTemplateLabelV6118?.(r.template_code||r.effective_work_template_code)||r.template_code||r.effective_work_template_code||"-",r.auto_shift_code,r.suggested_shift_code,r.assigned_shift_code,r.effective_shift_code,fmtTime(r.customer_window_start),r.customer_window_end?fmtTime(r.customer_window_end):(String(r.template_code||r.effective_work_template_code||'').toUpperCase()==='SPLIT_FLEX'?"ตามเวลาออก":""),r.schedule_status,r.assigned_shift_code?"หัวหน้างานบันทึก":"กะมาตรฐานอัตโนมัติ",fmtTime(r.shift_start_time),fmtTime(r.shift_end_time),app()?.attendanceMinutesToHourMinuteV61457?.(r.paid_work_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0)??"0.00",app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0)??"0.00",(Number(r.offday_work_minutes||0)/60).toFixed(2),r.comp_off_earned?"ได้รับ":"",r.calculation_status])];
     }
+    if(type==="requests"){
+      const attendance=await fetchReportAttendanceRowsV616BW(start,end,zone,orgId,dept);
+      const scopeCodes=[...new Set((attendance||[]).map(r=>String(r.emp_code||'').trim()).filter(Boolean))];
+      const scopeSet=new Set(scopeCodes);
+      const hasScopeFilter=Boolean(zone||orgId||dept);
+      const [generic,legacy]=await Promise.all([
+        rpc("ta_get_employee_requests_v61481",{p_start_date:start,p_end_date:end,p_statuses:null,p_request_types:null,p_search:null,p_limit:5000}),
+        rpc("ta_get_shift_change_requests_v680",{p_start_date:start,p_end_date:end,p_statuses:null,p_search:null,p_limit:3000}).catch(()=>[])
+      ]);
+      const requestRows=[
+        ...(generic||[]).map(r=>({...r,_kind:'REQUEST'})),
+        ...(legacy||[]).map(r=>({...r,_kind:'REQUEST',request_type:'SHIFT_CHANGE',request_subtype:'SHIFT_CHANGE'}))
+      ].filter(r=>!hasScopeFilter||scopeSet.has(String(r.emp_code||'').trim()));
+
+      const certRows=[];
+      for(let i=0;i<scopeCodes.length;i+=200){
+        const chunk=scopeCodes.slice(i,i+200);
+        try{
+          const part=await rpc('ta_get_time_certification_range_v61139',{p_start_date:start,p_end_date:end,p_emp_codes:chunk});
+          certRows.push(...(Array.isArray(part)?part:[]));
+        }catch(error){
+          if(!window.TimeClockShiftAPI?.missingFunction?.(error))throw error;
+          break;
+        }
+      }
+      const namesByEmp=new Map((attendance||[]).map(r=>[String(r.emp_code||'').trim(),r.full_name||'']));
+      const rows=[];
+      requestRows.forEach(r=>{
+        const completed=r.decided_at||r.resolved_at||null;
+        rows.push([
+          'คำขอ/แจ้งข้อมูล',r.request_no||r.request_id||'-',fmtDate(r.work_date),r.emp_code,r.full_name||namesByEmp.get(String(r.emp_code||'').trim())||'-',
+          reportRequestTypeLabelV616BW(r.request_type),reportRequestSubtypeLabelV616BW(r.request_subtype),r.status||'-',
+          fmtDateTime(r.requested_at||r.created_at),fmtDateTime(completed),reportApprovalDurationV616BW(r.requested_at||r.created_at,completed),
+          r.decided_by_email||r.manager_email||'-',r.reason||'-',r.decision_note||'-'
+        ]);
+      });
+      certRows.forEach(r=>{
+        rows.push([
+          'รับรองเวลา','-',fmtDate(r.work_date),r.emp_code,namesByEmp.get(String(r.emp_code||'').trim())||'-',
+          'รับรองเวลา',r.certification_reason_name||r.certification_reason_code||'-',r.certification_status||r.status||'-',
+          '-',fmtDateTime(r.certified_at),'-',r.certified_by_email||r.certifier_email||'-',r.certification_note||r.note||'-','-'
+        ]);
+      });
+      rows.sort((a,b)=>String(b[2]||'').localeCompare(String(a[2]||''))||String(a[3]||'').localeCompare(String(b[3]||''),'th',{numeric:true}));
+      return [["ประเภทข้อมูล","เลขที่คำขอ","วันที่อ้างอิง","รหัสพนักงาน","ชื่อ-นามสกุล","ประเภท","ประเภทย่อย/เหตุผลรับรอง","สถานะ","วันที่แจ้ง","วันที่พิจารณา/รับรอง","ระยะเวลาดำเนินการ","ผู้พิจารณา/ผู้รับรอง","เหตุผล","หมายเหตุพิจารณา"],...rows];
+    }
+
     if(type==="summary"){
       let raw;
       if(orgId){
@@ -18093,6 +18216,12 @@ ${skippedSummary(compatibility.skipped)}
       ["summary","▦","สรุปภาพรวมรายช่วงเวลา","สรุปกำลังคน สถานะเวลา ชั่วโมงปกติ OT และวันหยุด","ภาพรวม"],
       ["late","◴","ความผิดปกติเวลาเข้า–ออก","รวมรายการสาย ขาดงานจากการมาสาย และกลับก่อน","ติดตาม"],
     ];
+    const operationCards=[
+      ["overtime","◷","OT / ทำงานวันหยุด / เวลารอ","รวม OT เวลารอ และชั่วโมงทำงานในวันหยุดสำหรับตรวจต้นทุนกำลังคน","ชั่วโมงพิเศษ"],
+      ["punch","≋","ลงเวลาไม่ครบ / จุดต้องตรวจ","รวมไม่พบเวลาเข้า ไม่พบเวลาออก และวันหลายช่วงงานที่ควรตรวจ Punch เพิ่มเติม","ตรวจสอบ"],
+      ["leave","▤","ลา / วันหยุด / โควต้า","สรุปวันลา วันหยุด การทำงานวันหยุด และวันหยุดชดเชยคงเหลือ","วันหยุด"],
+      ["requests","⌁","คำขอ / รับรองเวลา","ติดตามคำขอ สถานะ ผู้พิจารณา ระยะเวลาดำเนินการ และการรับรองเวลา","Workflow"],
+    ];
     return `<section id="page-report" class="page report-center-page">
       <div class="report-minimal-head">
         <div class="report-minimal-title">
@@ -18112,8 +18241,11 @@ ${skippedSummary(compatibility.skipped)}
         </div>
       </div>
 
-      <div class="report-section-head section-gap"><div><h3>รายงานใช้งานประจำ</h3><p>เน้นรายงานที่ Manager และ HR Admin ใช้ตรวจสอบการทำงานจริง</p></div><span>${cards.length} รายงาน</span></div>
+      <div class="report-section-head section-gap"><div><h3>รายงานใช้งานประจำ</h3><p>ข้อมูลหลักสำหรับตรวจเวลา จัดกะ และสรุปภาพรวม</p></div><span>${cards.length} รายงาน</span></div>
       <div class="report-card-grid">${cards.map(c=>`<article class="report-type-card report-type-card-minimal"><div class="report-card-top"><div class="report-icon">${c[1]}</div><span class="report-category-chip">${c[4]}</span></div><div class="report-card-copy"><h3>${c[2]}</h3><p>${c[3]}</p></div><div class="report-format-actions report-format-actions-minimal"><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-light" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div>
+
+      <div class="report-section-head section-gap"><div><h3>ติดตามเชิงปฏิบัติการ</h3><p>ช่วย Manager และ HR Admin หาเรื่องที่ต้องติดตามต่อได้เร็วขึ้น</p></div><span>${operationCards.length} รายงาน</span></div>
+      <div class="report-card-grid">${operationCards.map(c=>`<article class="report-type-card report-type-card-minimal"><div class="report-card-top"><div class="report-icon">${c[1]}</div><span class="report-category-chip">${c[4]}</span></div><div class="report-card-copy"><h3>${c[2]}</h3><p>${c[3]}</p></div><div class="report-format-actions report-format-actions-minimal"><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-light" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div>
 
       <details class="report-history-details section-gap">
         <summary><div><strong>ประวัติการส่งออก</strong><span>เปิดดูไฟล์ที่เคยสร้างใน Browser นี้</span></div><span class="report-history-chevron">⌄</span></summary>
