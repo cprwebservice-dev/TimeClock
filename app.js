@@ -17820,6 +17820,20 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
   document.addEventListener("click",e=>{
+    const acting=e.target.closest("[data-admin-acting-open]");
+    if(acting){
+      const api=window.TimeClockTemporaryAssignmentV61529F14B;
+      if(api?.openActingAdmin){
+        api.openActingAdmin();
+      }else{
+        app()?.switchPage?.("team-master");
+        setTimeout(()=>{
+          document.querySelector('[data-team-workspace-tab-v61528="ASSIGNMENTS"]')?.click();
+          document.getElementById("teamActingPanelV61529F14B")?.scrollIntoView?.({behavior:"smooth",block:"start"});
+        },250);
+      }
+      return;
+    }
     const open=e.target.closest("[data-admin-open]");
     if(open)app()?.switchPage?.(open.dataset.adminOpen);
   });
@@ -18084,7 +18098,7 @@ ${skippedSummary(compatibility.skipped)}
 (() => {
   "use strict";
   const $=id=>document.getElementById(id),q=(s,r=document)=>r.querySelector(s),qa=(s,r=document)=>[...r.querySelectorAll(s)];
-  const VERSION="6.15.29 FIX16BQ";
+  const VERSION="6.15.29 FIX16BX";
   const menuItems=[
     ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["team-master","ทีมช่างเทคนิค","Team Master แบบ Auto Generate","◉"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
     ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
@@ -18189,6 +18203,12 @@ ${skippedSummary(compatibility.skipped)}
     const adminCards=qs("#page-admin-center .admin-module-grid");
     if(adminCards && !qs('[data-admin-open="admin-employees"]',adminCards)){
       adminCards.insertAdjacentHTML("afterbegin",`<button class="admin-module-card" data-admin-open="admin-employees"><span class="admin-module-icon">♟</span><div><strong>ข้อมูลพนักงาน</strong><small>ค้นหาและตรวจสอบสถานะพนักงานจากฐานข้อมูล</small></div><em>เปิด ›</em></button><button class="admin-module-card" data-admin-open="admin-audit"><span class="admin-module-icon">⌁</span><div><strong>Audit Log</strong><small>ประวัติการจัดกะ การล็อกเดือน และการใช้งานระบบ</small></div><em>เปิด ›</em></button>`);
+    }
+    if(adminCards && !qs('[data-admin-acting-open]',adminCards)){
+      const userScopeCard=qs('[data-admin-open="admin-users"]',adminCards);
+      const actingCard=`<button class="admin-module-card admin-acting-shortcut-v616bx" data-admin-acting-open type="button"><span class="admin-module-icon">A</span><div><strong>จัดการ Acting Manager</strong><small>มอบอำนาจ Manager ชั่วคราวตามหน่วยงานและช่วงวันที่ โดยไม่เปลี่ยน Role / PCgrade</small></div><em>จัดการ ›</em></button>`;
+      if(userScopeCard) userScopeCard.insertAdjacentHTML("afterend",actingCard);
+      else adminCards.insertAdjacentHTML("beforeend",actingCard);
     }
 
     const content=qs(".content"); if(!content) return;
@@ -37123,6 +37143,22 @@ ${names}${extra}
   function closeActing(){const m=$('teamActingModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.actingEdit=null;}
   async function saveActing(){if(!isHr())return;const person=$('teamActingPersonV61529F14B'),email=person?.value||'',emp=person?.selectedOptions?.[0]?.dataset?.emp||'',org=$('teamActingOrgV61529F14B')?.value||'',from=$('teamActingFromV61529F14B')?.value||'',to=$('teamActingToV61529F14B')?.value||'',reason=String($('teamActingReasonV61529F14B')?.value||'').trim(),active=$('teamActingActiveV61529F14B')?.checked!==false;if(!email||!org||!from||!to)return toast('กรุณาระบุผู้รักษาการ หน่วยงาน และช่วงวันที่','warning');if(to<from)return toast('วันที่สิ้นสุดต้องไม่น้อยกว่าวันเริ่ม','warning');if(reason.length<3)return toast('กรุณาระบุเหตุผลการรักษาการ','warning');try{app()?.showLoading?.('กำลังบันทึก Acting Manager...');await rpc('ta_set_acting_manager_assignment_v61529f14',{p_acting_id:state.actingEdit?.acting_id||null,p_acting_email:email,p_acting_emp_code:emp||null,p_org_id:org,p_include_descendants:$('teamActingDescendantsV61529F14B')?.checked===true,p_effective_from:from,p_effective_to:to,p_reason:reason,p_is_active:active});closeActing();toast('บันทึก Acting Manager เรียบร้อย','success');await loadActing();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
 
+  async function openActingAdmin(){
+    if(!isHr())return toast('เมนู Acting Manager สำหรับ HR Admin เท่านั้น','error');
+    app()?.switchPage?.('team-master');
+    await loadAccess({silent:false});
+    ensureAssignmentTabVisible();
+    await load();
+    await loadActing();
+    requestAnimationFrame(()=>{
+      const panel=$('teamActingPanelV61529F14B');
+      panel?.classList.remove('hidden');
+      panel?.scrollIntoView?.({behavior:'smooth',block:'start'});
+      panel?.classList.add('team-acting-focus-v616bx');
+      setTimeout(()=>panel?.classList.remove('team-acting-focus-v616bx'),1800);
+    });
+  }
+
   async function openFromNotification(context={}){
     const assignmentId=String(context.assignmentId||'');
     const from=String(context.effectiveFrom||'').slice(0,10);
@@ -37164,7 +37200,7 @@ ${names}${extra}
     const init=async()=>{const a=await loadAccess();if(actingOnly()&&document.querySelector('#page-team-master.active')){ensureAssignmentTabVisible();load();}return a;};
     window.addEventListener('ta:session-ready',()=>setTimeout(init,0));document.addEventListener('timeclock:effective-role-changed',()=>setTimeout(init,0));setTimeout(init,450);
   }
-  window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,openCreate,openFromNotification,state,version:VERSION};
+  window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,openCreate,openActingAdmin,openFromNotification,state,version:VERSION};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 

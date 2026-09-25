@@ -36487,3 +36487,26 @@ body.dark-mode .tc-overflow-tooltip-v616bk,
 @media(max-width:1250px){.report-center-page .report-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:780px){.report-center-page .report-minimal-head{align-items:flex-start;flex-direction:column}.report-scope-note{max-width:none;width:100%}.report-center-page .report-card-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.report-center-page .report-card-grid,.report-center-page .report-filter-grid{grid-template-columns:1fr}.report-section-head{align-items:flex-start;flex-direction:column}.report-format-actions.report-format-actions-minimal{grid-template-columns:1fr 1fr 1fr}}
+
+/* ===== V6.15.29 FIX16BX — HR Admin Acting Manager discoverability ===== */
+.admin-acting-shortcut-v616bx .admin-module-icon{
+  background:#f3e8ff;
+  color:#7e22ce;
+  font-weight:900;
+}
+.admin-acting-shortcut-v616bx:hover{
+  border-color:#c4b5fd;
+}
+.team-acting-focus-v616bx{
+  animation:teamActingFocusV616BX 1.6s ease-out 1;
+}
+@keyframes teamActingFocusV616BX{
+  0%{box-shadow:0 0 0 4px rgba(124,58,237,.18),0 14px 34px rgba(15,23,42,.08)}
+  100%{box-shadow:0 0 0 0 rgba(124,58,237,0),0 0 0 rgba(15,23,42,0)}
+}
+body.theme-dark .admin-acting-shortcut-v616bx .admin-module-icon,
+body.dark .admin-acting-shortcut-v616bx .admin-module-icon,
+body.dark-mode .admin-acting-shortcut-v616bx .admin-module-icon{
+  background:#3b2754;
+  color:#d8b4fe;
+}
