@@ -17548,7 +17548,7 @@ ${skippedSummary(compatibility.skipped)}
   const app=()=>window.TimeClockApp;
   const safe=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
   const STORAGE_KEY="timeclock_report_jobs_v60";
-  const names={attendance:"รายละเอียดเวลาทำงาน",schedule:"ตารางจัดกะรายเดือน",summary:"สรุป Dashboard",late:"ความผิดปกติเวลาเข้า–ออก"};
+  const names={attendance:"รายละเอียดเวลาทำงาน",schedule:"ตารางจัดกะรายเดือน",summary:"สรุปภาพรวมรายช่วงเวลา",late:"ความผิดปกติเวลาเข้า–ออก"};
   const downloads=new Map();
   const val=id=>$(id)?.value||"";
   const client=()=>app()?.state?.client||null;
@@ -17633,6 +17633,14 @@ ${skippedSummary(compatibility.skipped)}
     $("reportZone")?.addEventListener("change",async()=>{if($("reportDepartment"))$("reportDepartment").value="";await refreshReportScopeOptionsV616K();});
     $("reportRefreshJobsBtn")?.addEventListener("click",renderJobs);
     $("reportClearJobsBtn")?.addEventListener("click",()=>{localStorage.removeItem(STORAGE_KEY);renderJobs();});
+    $("reportResetFiltersBtn")?.addEventListener("click",async()=>{
+      const now=new Date();
+      if($("reportStart"))$("reportStart").value=window.TimeClockCalendarV61448.monthStart(now);
+      if($("reportEnd"))$("reportEnd").value=window.TimeClockCalendarV61448.localISO(now);
+      if($("reportZone"))$("reportZone").value="";
+      if($("reportDepartment"))$("reportDepartment").value="";
+      await refreshReportScopeOptionsV616K();
+    });
   }
 
   document.addEventListener("click",e=>{const b=e.target.closest("[data-run-report-format]");if(b){const [type,format]=b.dataset.runReportFormat.split("|");run(type,format);}const legacy=e.target.closest("[data-run-report]");if(legacy)run(legacy.dataset.runReport,"csv");const r=e.target.closest("[data-redownload]");if(r){const url=downloads.get(r.dataset.redownload);if(url){const a=document.createElement("a");a.href=url;a.download=r.dataset.redownload;a.click();}else app()?.toast?.("ไฟล์เดิมไม่ได้อยู่ในหน่วยความจำ กรุณาสร้างรายงานใหม่","error");}});
@@ -18080,12 +18088,38 @@ ${skippedSummary(compatibility.skipped)}
 
   function reportPageHtml(){
     const cards=[
-      ["attendance","◷","รายละเอียดเวลาทำงาน","เวลาเข้า–ออก กะ ชั่วโมงสุทธิ สาย และกลับก่อน"],
-      ["schedule","▣","ตารางจัดกะรายเดือน","กะอัตโนมัติ กะที่หัวหน้างานบันทึก รูปแบบช่วงงาน และประเภทวัน"],
-      ["summary","▦","สรุป Dashboard","สรุปจำนวนพนักงานและสถานะสำคัญ"],
-      ["late","◴","ความผิดปกติเวลาเข้า–ออก","สาย 1–29 นาที / เข้าช้า ≥30 นาที / กลับก่อน"]
+      ["attendance","◷","รายละเอียดเวลาทำงาน","เวลาเข้า–ออก กะ ชั่วโมงสุทธิ สาย กลับก่อน และ OT","เวลาทำงาน"],
+      ["schedule","▣","ตารางจัดกะรายเดือน","ดูแผนกะ กะที่กำหนด รูปแบบงาน และประเภทวัน","การจัดกะ"],
+      ["summary","▦","สรุปภาพรวมรายช่วงเวลา","สรุปกำลังคน สถานะเวลา ชั่วโมงปกติ OT และวันหยุด","ภาพรวม"],
+      ["late","◴","ความผิดปกติเวลาเข้า–ออก","รวมรายการสาย ขาดงานจากการมาสาย และกลับก่อน","ติดตาม"],
     ];
-    return `<section id="page-report" class="page report-center-page"><div class="report-hero"><div><span class="eyebrow">ENTERPRISE REPORT CENTER</span><h2>ศูนย์รายงาน Time-Clock</h2><p>สร้างรายงาน CSV, Excel และ Print/PDF โดยไม่กระทบหน้าการทำงานหลัก</p></div><button id="reportRefreshJobsBtn" class="btn btn-light">รีเฟรชประวัติ</button></div><div class="panel section-gap"><div class="panel-body"><div class="report-filter-grid"><div class="field"><label>วันที่เริ่มต้น</label><input id="reportStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="reportEnd" class="input" type="date"></div><div class="field"><label>พื้นที่</label><select id="reportZone" class="select"><option value="">ทุกพื้นที่</option></select></div><div class="field"><label>หน่วยงาน</label><select id="reportDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div></div></div></div><div class="report-card-grid section-gap">${cards.map(c=>`<article class="report-type-card"><div class="report-icon">${c[1]}</div><h3>${c[2]}</h3><p>${c[3]}</p><div class="report-format-actions"><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-orange" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div><div class="panel section-gap"><div class="panel-header"><div><h3>ประวัติการส่งออก</h3><p>เก็บประวัติใน Browser และบันทึก Log ใน Supabase เมื่อพร้อมใช้งาน</p></div><button id="reportClearJobsBtn" class="btn btn-danger-soft">ล้างประวัติ</button></div><div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>รายงาน</th><th>ช่วงข้อมูล</th><th>จำนวนแถว</th><th>สถานะ</th><th>ไฟล์</th></tr></thead><tbody id="reportJobsBody"></tbody></table></div></div></div></section>`;
+    return `<section id="page-report" class="page report-center-page">
+      <div class="report-minimal-head">
+        <div class="report-minimal-title">
+          <span class="report-minimal-icon">▤</span>
+          <div><span class="eyebrow">REPORT CENTER</span><h2>ศูนย์รายงาน</h2><p>เลือกช่วงข้อมูลครั้งเดียว แล้วส่งออกเฉพาะข้อมูลที่อยู่ใน Scope ของคุณ</p></div>
+        </div>
+        <div class="report-scope-note"><span>●</span><div><strong>Scope-based</strong><small>Manager เห็นเฉพาะทีม/หน่วยงานที่มีสิทธิ์ • HR Admin ตามสิทธิ์องค์กร</small></div></div>
+      </div>
+
+      <div class="report-filter-shell section-gap">
+        <div class="report-filter-head"><div><strong>ตัวกรองรายงาน</strong><span>ใช้ร่วมกับทุกรายงานด้านล่าง</span></div><button id="reportResetFiltersBtn" class="btn btn-light report-reset-btn">↺ รีเซ็ต</button></div>
+        <div class="report-filter-grid">
+          <div class="field"><label>วันที่เริ่มต้น</label><input id="reportStart" class="input" type="date"></div>
+          <div class="field"><label>วันที่สิ้นสุด</label><input id="reportEnd" class="input" type="date"></div>
+          <div class="field"><label>พื้นที่</label><select id="reportZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
+          <div class="field"><label>หน่วยงาน</label><select id="reportDepartment" class="select"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
+        </div>
+      </div>
+
+      <div class="report-section-head section-gap"><div><h3>รายงานใช้งานประจำ</h3><p>เน้นรายงานที่ Manager และ HR Admin ใช้ตรวจสอบการทำงานจริง</p></div><span>${cards.length} รายงาน</span></div>
+      <div class="report-card-grid">${cards.map(c=>`<article class="report-type-card report-type-card-minimal"><div class="report-card-top"><div class="report-icon">${c[1]}</div><span class="report-category-chip">${c[4]}</span></div><div class="report-card-copy"><h3>${c[2]}</h3><p>${c[3]}</p></div><div class="report-format-actions report-format-actions-minimal"><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-light" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div>
+
+      <details class="report-history-details section-gap">
+        <summary><div><strong>ประวัติการส่งออก</strong><span>เปิดดูไฟล์ที่เคยสร้างใน Browser นี้</span></div><span class="report-history-chevron">⌄</span></summary>
+        <div class="report-history-content"><div class="report-history-tools"><button id="reportRefreshJobsBtn" class="btn btn-light">↻ รีเฟรช</button><button id="reportClearJobsBtn" class="btn btn-danger-soft">ล้างประวัติ</button></div><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>รายงาน</th><th>ช่วงข้อมูล</th><th>จำนวนแถว</th><th>สถานะ</th><th>ไฟล์</th></tr></thead><tbody id="reportJobsBody"></tbody></table></div></div>
+      </details>
+    </section>`;
   }
   function employeePageHtml(){
     return `
