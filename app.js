@@ -36884,9 +36884,45 @@ ${names}${extra}
   }
   function directionText(v){return v==='INBOUND'?'ยืมเข้าทีม':v==='OUTBOUND'?'ถูกยืมออก':v==='BOTH'?'เกี่ยวข้องทั้ง 2 ฝั่ง':v==='AUDIT'?'HR Audit':'-';}
   function authorityLabel(v){return String(v||'').toUpperCase()==='ACTING_MANAGER'?'Acting Manager':String(v||'').toUpperCase()==='MANAGER'?'Manager':String(v||'').toUpperCase()==='SOURCE_AND_DESTINATION'?'Manager ทั้ง 2 ฝั่ง':'-';}
-  function hasOperationalAuthority(){return state.access?.is_operational_actor===true||state.access?.is_acting===true;}
+  // FIX16BY: Acting authority is session-bound. Never reuse access state from a
+  // previously signed-in account in the same browser tab.
+  const currentIdentityKey=()=>{
+    const a=app()?.state||{};
+    const uid=String(a.user?.id||'').trim().toLowerCase();
+    const email=String(a.profile?.email||a.user?.email||'').trim().toLowerCase();
+    return uid||email?`${uid}|${email}`:'';
+  };
+  const currentProfileEmail=()=>String(app()?.state?.profile?.email||app()?.state?.user?.email||'').trim().toLowerCase();
+  function accessBelongsToCurrentIdentity(){
+    const current=currentProfileEmail();
+    const actor=String(state.access?.actor_email||'').trim().toLowerCase();
+    return !!current && !!actor && current===actor;
+  }
+  function hasOperationalAuthority(){
+    return accessBelongsToCurrentIdentity()
+      && (state.access?.is_operational_actor===true||state.access?.is_acting===true);
+  }
+  function resetActingSessionState(){
+    state.access=null;
+    state.accessLoading=false;
+    state.loaded=false;
+    state.loading=false;
+    state.rows=[];
+    state.summary={};
+    state.candidates=[];
+    state.destinations=[];
+    state.preview=null;
+    state.selectedEmployee='';
+    state.action=null;
+    state.actingRows=[];
+    state.actingCandidates=[];
+    state.actingOrgs=[];
+    state.actingEdit=null;
+    state.identityKey='';
+    if(app()?.state?.profile)app().state.profile._actingTeamAuthority=false;
+  }
   function actingOnly(){return !isHr()&&!baseManager()&&hasOperationalAuthority();}
-  const actorEmail=()=>String(state.access?.actor_email||app()?.state?.profile?.email||'').trim().toLowerCase();
+  const actorEmail=()=>String(accessBelongsToCurrentIdentity()?state.access?.actor_email:(app()?.state?.profile?.email||'' )).trim().toLowerCase();
   function isoDayDiff(fromIso,toIso){
     const a=String(fromIso||'').slice(0,10),b=String(toIso||'').slice(0,10);
     if(!/^\d{4}-\d{2}-\d{2}$/.test(a)||!/^\d{4}-\d{2}-\d{2}$/.test(b))return null;
@@ -36926,16 +36962,24 @@ ${names}${extra}
   }
 
   async function loadAccess({silent=true}={}){
+    const identityKey=currentIdentityKey();
+    if(!identityKey)return null;
+    if(state.identityKey && state.identityKey!==identityKey)resetActingSessionState();
+    state.identityKey=identityKey;
     if(state.accessLoading)return state.access;
     if(!app()?.state?.client)return null;
     state.accessLoading=true;
     try{
       const data=await rpc('ta_get_my_temporary_assignment_access_v61529f14b',{});
+      // A slow response from User A must never be committed after User B signs in.
+      if(currentIdentityKey()!==identityKey)return null;
       state.access=data||{};
       if(app()?.state?.profile)app().state.profile._actingTeamAuthority=hasOperationalAuthority();
       syncAccessUI();
       return state.access;
-    }catch(e){if(!silent)toast(human(e),'error');return null;}finally{state.accessLoading=false;}
+    }catch(e){if(!silent)toast(human(e),'error');return null;}finally{
+      if(currentIdentityKey()===identityKey)state.accessLoading=false;
+    }
   }
 
   function syncAccessUI(){
@@ -37198,7 +37242,17 @@ ${names}${extra}
     });
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCreate();closeAction();closeActing();}});
     const init=async()=>{const a=await loadAccess();if(actingOnly()&&document.querySelector('#page-team-master.active')){ensureAssignmentTabVisible();load();}return a;};
-    window.addEventListener('ta:session-ready',()=>setTimeout(init,0));document.addEventListener('timeclock:effective-role-changed',()=>setTimeout(init,0));setTimeout(init,450);
+    window.addEventListener('timeclock:auth-signed-out',()=>{
+      resetActingSessionState();
+    });
+    document.addEventListener('timeclock:profile-ready',()=>{
+      const next=currentIdentityKey();
+      if(state.identityKey && state.identityKey!==next)resetActingSessionState();
+      setTimeout(init,0);
+    });
+    window.addEventListener('ta:session-ready',()=>setTimeout(init,0));
+    document.addEventListener('timeclock:effective-role-changed',()=>setTimeout(init,0));
+    setTimeout(init,450);
   }
   window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,openCreate,openActingAdmin,openFromNotification,state,version:VERSION};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
