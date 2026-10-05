@@ -36959,6 +36959,7 @@ ${names}${extra}
     state.selectedEmployee='';
     state.action=null;
     state.actingRows=[];
+    state.actingRequest=null; // FIX16CD: invalidate responses from the previous session.
     state.actingCandidates=[];
     state.actingOrgs=[];
     state.actingEdit=null;
@@ -37163,13 +37164,14 @@ ${names}${extra}
   async function load(){
     await loadAccess();if(!(state.access?.can_access||isHr()||baseManager()))return;
     if(state.loading)return;state.loading=true;setDefaultRange();const host=$('teamTempListV61529F14B');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลดรายการยืมตัว...</div>';
+    const actingTask=isHr()?loadActing():Promise.resolve(); // FIX16CD: independent of Borrow RPC success.
     try{
       const range=listRange();const data=await rpc('ta_get_borrow_workspace_v61529f15',{p_from:range.from||null,p_to:range.to||null,p_org_id:null});
       state.rows=Array.isArray(data?.rows)?data.rows:[];state.summary=data?.summary||{};state.loaded=true;
       if(isHr()&&state.workflowFilter==='ACTION')state.workflowFilter='ALL';
       renderWorkspace();
-      if(isHr())await loadActing();
-    }catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;toast(human(e),'error');}finally{state.loading=false;}
+
+    }catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;toast(human(e),'error');}finally{state.loading=false;await actingTask;}
   }
 
   function selectedCandidate(){return state.candidates.find(r=>String(r.emp_code)===String($('teamTempEmployeeV61529F14B')?.value||''))||null;}
@@ -37246,9 +37248,39 @@ ${names}${extra}
   function closeAction(){const m=$('teamTempActionModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.action=null;}
   async function confirmAction(){const a=state.action;if(!a)return;const reason=String($('teamTempActionReasonV61529F14B')?.value||'').trim();if(reason.length<3)return toast('กรุณาระบุเหตุผล','warning');try{app()?.showLoading?.('กำลังบันทึก...');if(a.mode==='REJECT')await rpc('ta_decide_borrow_request_v61529f15',{p_assignment_id:a.id,p_decision:'REJECT',p_note:reason});else{const end=a.mode==='END'?$('teamTempActionEndDateV61529F14B')?.value:today();if(a.mode==='END'&&!end)return toast('กรุณาระบุวันที่สิ้นสุดใหม่','warning');await rpc('ta_end_borrow_request_v61529f15',{p_assignment_id:a.id,p_effective_to:end,p_reason:reason});}closeAction();toast(a.mode==='REJECT'?'บันทึกไม่อนุมัติแล้ว':a.mode==='CANCEL'?'ยกเลิกรายการแล้ว':'ปรับวันสิ้นสุดเรียบร้อย','success');await load();window.TimeClockFunctional?.loadNotifications?.();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
 
-  async function loadActing(){if(!isHr())return;try{const range=listRange();state.actingRows=await rpc('ta_get_acting_manager_assignments_v61529f14b',{p_from:range.from||null,p_to:range.to||null,p_org_id:null})||[];renderActing();}catch(e){console.warn('Acting reader',e);}}
+  // FIX16CD: HR Acting history is independent of the Borrow date filter.
+  // This reader never grants authority or changes assignment effective dates.
+  async function loadActing(){
+    if(!isHr())return;
+    const identity=currentIdentityKey();
+    if(state.actingRequest?.identity===identity)return state.actingRequest.promise;
+    const request={identity,promise:null};
+    state.actingRequest=request;
+    const body=$('teamActingBodyV61529F14B');
+    if(body)body.innerHTML='<tr><td colspan="6" class="fc-empty">กำลังโหลดรายการ Acting ทุกช่วงวันที่...</td></tr>';
+    const isCurrent=()=>state.actingRequest===request&&currentIdentityKey()===identity&&isHr();
+    request.promise=(async()=>{
+      try{
+        const data=await rpc('ta_get_acting_manager_assignments_v61529f14b',{
+          p_from:null,p_to:null,p_org_id:null
+        });
+        if(!isCurrent())return;
+        if(data!=null&&!Array.isArray(data))throw new Error('รูปแบบข้อมูล Acting ไม่ถูกต้อง กรุณาส่งรายละเอียดให้ผู้ดูแลระบบ');
+        state.actingRows=data||[];
+        renderActing();
+      }catch(e){
+        if(!isCurrent())return;
+        state.actingRows=[];
+        console.warn('Acting reader FIX16CD',e);
+        if(body)body.innerHTML=`<tr><td colspan="6" class="fc-empty" role="alert">โหลดข้อมูล Acting ไม่สำเร็จ: ${esc(human(e))}<br>กดรีเฟรชเพื่อลองใหม่ หากยังพบปัญหา กรุณาส่งข้อความนี้ให้ผู้ดูแลระบบ</td></tr>`;
+      }finally{
+        if(state.actingRequest===request)state.actingRequest=null;
+      }
+    })();
+    return request.promise;
+  }
   function actingStatus(r){return String(r.lifecycle_status||'').toUpperCase()==='ACTIVE'?'<span class="badge badge-green">กำลังรักษาการ</span>':String(r.lifecycle_status||'').toUpperCase()==='SCHEDULED'?'<span class="badge badge-blue">รอเริ่ม</span>':String(r.lifecycle_status||'').toUpperCase()==='COMPLETED'?'<span class="badge badge-gray">สิ้นสุดแล้ว</span>':'<span class="badge badge-red">ปิดใช้งาน</span>';}
-  function renderActing(){const b=$('teamActingBodyV61529F14B');if(!b)return;b.innerHTML=state.actingRows.length?state.actingRows.map(r=>`<tr><td><strong>${esc(r.acting_name||r.acting_email)}</strong><small class="team-master-sub-v61523">${esc(r.acting_emp_code||'-')} · ${esc(r.acting_email)}</small></td><td><strong>${esc(r.org_code||'-')}</strong><small class="team-master-sub-v61523">${esc(r.org_name||'')}${r.include_descendants?' · รวมหน่วยงานย่อย':''}</small></td><td>${esc(fmtDate(r.effective_from))}<small class="team-master-sub-v61523">ถึง ${esc(fmtDate(r.effective_to))}</small></td><td>${actingStatus(r)}</td><td>${esc(r.reason||'-')}</td><td><button class="btn btn-light btn-sm" data-acting-edit-v61529f14b="${esc(r.acting_id)}">แก้ไข</button></td></tr>`).join(''):'<tr><td colspan="6" class="fc-empty">ยังไม่มี Acting Assignment ในช่วงวันที่นี้</td></tr>';}
+  function renderActing(){const b=$('teamActingBodyV61529F14B');if(!b)return;b.innerHTML=state.actingRows.length?state.actingRows.map(r=>`<tr><td><strong>${esc(r.acting_name||r.acting_email)}</strong><small class="team-master-sub-v61523">${esc(r.acting_emp_code||'-')} · ${esc(r.acting_email)}</small></td><td><strong>${esc(r.org_code||'-')}</strong><small class="team-master-sub-v61523">${esc(r.org_name||'')}${r.include_descendants?' · รวมหน่วยงานย่อย':''}</small></td><td>${esc(fmtDate(r.effective_from))}<small class="team-master-sub-v61523">ถึง ${esc(fmtDate(r.effective_to))}</small></td><td>${actingStatus(r)}</td><td>${esc(r.reason||'-')}</td><td><button class="btn btn-light btn-sm" data-acting-edit-v61529f14b="${esc(r.acting_id)}">แก้ไข</button></td></tr>`).join(''):'<tr><td colspan="6" class="fc-empty">ไม่พบรายการ Acting ที่บันทึกไว้</td></tr>';}
   async function loadActingOptions(search=''){if(!isHr())return;const [people,orgs]=await Promise.all([rpc('ta_get_acting_manager_candidates_v61529f14b',{p_search:search||null,p_limit:500}),state.actingOrgs.length?Promise.resolve(state.actingOrgs):rpc('ta_get_acting_org_options_v61529f14b',{})]);state.actingCandidates=people||[];state.actingOrgs=orgs||[];renderActingOptions();}
   function renderActingOptions(){const p=$('teamActingPersonV61529F14B'),o=$('teamActingOrgV61529F14B');if(p){const old=p.value;p.innerHTML='<option value="">— เลือกผู้รักษาการ —</option>'+state.actingCandidates.map(r=>`<option value="${esc(r.email)}" data-emp="${esc(r.emp_code||'')}">${esc(r.display_name||r.email)} · ${esc(r.email)}${r.emp_code?` · ${esc(r.emp_code)}`:''}</option>`).join('');if([...p.options].some(x=>x.value===old))p.value=old;}if(o){const old=o.value;o.innerHTML='<option value="">— เลือกหน่วยงาน —</option>'+state.actingOrgs.map(r=>`<option value="${esc(r.org_id)}">${esc(r.org_code)} · ${esc(r.org_name)}</option>`).join('');if([...o.options].some(x=>x.value===old))o.value=old;}}
   async function openActing(id=null){if(!isHr())return;state.actingEdit=id?(state.actingRows.find(r=>String(r.acting_id)===String(id))||null):null;const modal=$('teamActingModalV61529F14B');if(!modal)return;await loadActingOptions('');const r=state.actingEdit;$('teamActingModalTitleV61529F14B').textContent=r?'แก้ไข Acting Manager':'กำหนด Acting Manager';if(r&&!state.actingCandidates.some(x=>String(x.email).toLowerCase()===String(r.acting_email).toLowerCase()))state.actingCandidates.unshift({email:r.acting_email,emp_code:r.acting_emp_code,display_name:r.acting_name,role:'-'});renderActingOptions();if($('teamActingPersonV61529F14B'))$('teamActingPersonV61529F14B').value=r?.acting_email||'';if($('teamActingOrgV61529F14B'))$('teamActingOrgV61529F14B').value=r?.org_unit_id||'';$('teamActingDescendantsV61529F14B')&&($('teamActingDescendantsV61529F14B').checked=r?.include_descendants===true);$('teamActingFromV61529F14B')&&($('teamActingFromV61529F14B').value=r?.effective_from||today());$('teamActingToV61529F14B')&&($('teamActingToV61529F14B').value=r?.effective_to||addDays(today(),7));$('teamActingReasonV61529F14B')&&($('teamActingReasonV61529F14B').value=r?.reason||'');$('teamActingActiveV61529F14B')&&($('teamActingActiveV61529F14B').checked=r?r.is_active!==false:true);modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');}
