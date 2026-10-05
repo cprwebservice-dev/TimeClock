@@ -30601,9 +30601,53 @@ ${names}${extra}
     return app()?.state?.client;
   }
 
+  function isSystemPeriodAuthFailureV616CQ(error){
+    const status=Number(error?.status||error?.statusCode||0);
+    const raw=String(error?.message||error?.details||error?.hint||error||"");
+    return status===401
+      || String(error?.code||"").toUpperCase()==="PGRST301"
+      || /unauthorized|invalid jwt|jwt expired|token.*expired|refresh[_ ]?token/i.test(raw);
+  }
+
+  async function ensureSystemPeriodSessionV616CQ(forceRefresh=false){
+    const a=app();
+    const c=a?.state?.client;
+    if(!c?.auth){
+      throw new Error("SUPABASE_CLIENT_NOT_READY");
+    }
+
+    let session=a?.state?.session||null;
+    if(!session?.access_token){
+      const {data,error}=await c.auth.getSession();
+      if(error) throw error;
+      session=data?.session||null;
+    }
+
+    if(!session?.access_token){
+      throw Object.assign(new Error("AUTH_SESSION_REQUIRED"),{status:401});
+    }
+
+    const expiresAt=Number(session.expires_at||0)*1000;
+    const nearExpiry=expiresAt>0 && expiresAt-Date.now()<90_000;
+    if(forceRefresh||nearExpiry){
+      const {data,error}=await c.auth.refreshSession();
+      if(error||!data?.session?.access_token){
+        throw error||Object.assign(new Error("AUTH_SESSION_EXPIRED"),{status:401});
+      }
+      session=data.session;
+      if(a?.state){
+        a.state.session=session;
+        a.state.user=session.user||null;
+      }
+    }
+
+    return session;
+  }
+
   async function rpc(
     name,
-    args={}
+    args={},
+    retryAuth=true
   ){
     const c=client();
     if(!c){
@@ -30611,6 +30655,9 @@ ${names}${extra}
         "ยังไม่ได้เชื่อมต่อ Supabase"
       );
     }
+
+    await ensureSystemPeriodSessionV616CQ(false);
+
     const {
       data,
       error
@@ -30618,6 +30665,12 @@ ${names}${extra}
       name,
       args
     );
+
+    if(error && retryAuth && isSystemPeriodAuthFailureV616CQ(error)){
+      await ensureSystemPeriodSessionV616CQ(true);
+      return rpc(name,args,false);
+    }
+
     if(error) throw error;
     return data;
   }
