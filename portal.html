@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16cn-request-manager-snapshot-20261005"/>
+  <link rel="stylesheet" href="./portal.css?v=6.15.29-fix16cp-employee-id-guideline-20261005"/>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -45,7 +45,10 @@
 
       <form id="portalActivateForm" class="portal-auth-form">
         <div class="portal-form-title"><strong>เปิดใช้ Employee Portal</strong><span>ใช้ Activation Code ที่ได้รับจาก Manager หรือ HR Admin เพียงครั้งแรก</span></div>
-        <label>รหัสพนักงาน<input id="portalActivateEmp" inputmode="numeric" autocomplete="username" placeholder="เช่น 7825787" required/></label>
+        <label>รหัสพนักงาน
+          <input id="portalActivateEmp" name="portal_employee_id_activate" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" pattern="[0-9]+" maxlength="20" placeholder="เช่น 7825787" required/>
+          <small class="portal-field-guideline">กรอกเฉพาะรหัสพนักงานตัวเลข • ไม่ใช่อีเมล</small>
+        </label>
         <label>Activation Code 6 หลัก<input id="portalActivationCode" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="••••••" required/></label>
         <div class="portal-pin-grid"><label>ตั้ง PIN ส่วนตัว 6 หลัก<input id="portalNewPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="new-password" placeholder="••••••" required/></label><label>ยืนยัน PIN<input id="portalConfirmPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="new-password" placeholder="••••••" required/></label></div>
         <div class="portal-security-hint">PIN เป็นของพนักงานเท่านั้น • Manager/HR จะไม่เห็น PIN • ห้ามใช้ 123456 หรือเลขซ้ำง่าย ๆ</div>
@@ -54,12 +57,15 @@
 
       <form id="portalLoginForm" class="portal-auth-form hidden">
         <div class="portal-form-title"><strong>เข้าสู่ Employee Portal</strong><span>ใช้รหัสพนักงานและ PIN 6 หลักที่ตั้งไว้</span></div>
-        <label>รหัสพนักงาน<input id="portalLoginEmp" inputmode="numeric" autocomplete="username" required/></label>
+        <label>รหัสพนักงาน
+          <input id="portalLoginEmp" name="portal_employee_id_login" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" pattern="[0-9]+" maxlength="20" placeholder="เช่น 7825787" required/>
+          <small class="portal-field-guideline">กรอกเฉพาะรหัสพนักงานตัวเลข • ไม่ใช่อีเมล</small>
+        </label>
         <label>PIN 6 หลัก<input id="portalLoginPin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" autocomplete="current-password" required/></label>
         <button class="portal-primary" type="submit">เข้าสู่ระบบ</button>
         <small class="portal-help">ลืม PIN? ติดต่อ Manager หรือ HR Admin เพื่อ Reset PIN และออก Activation Code ใหม่</small>
       </form>
-      <div class="portal-auth-footer">V6.15.29 FIX16CK • Employee ID + PIN • Device Session<br/>Design by ฝ่ายบริหารระบบข้อมูลบุคคล</div>
+      <div class="portal-auth-footer">V6.15.29 FIX16CP • Employee ID + PIN • Device Session<br/>Design by ฝ่ายบริหารระบบข้อมูลบุคคล</div>
     </div>
   </section>
 
@@ -268,6 +274,6 @@
     </div>
   </div>
 
-  <script src="./portal.js?v=6.15.29-fix16cn-request-manager-snapshot-20261005"></script>
+  <script src="./portal.js?v=6.15.29-fix16cp-employee-id-guideline-20261005"></script>
 </body>
 </html>

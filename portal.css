@@ -6080,3 +6080,14 @@ body.theme-dark .portal-week-strip .portal-day-chip.night .portal-day-chip-label
   .portal-week-strip .portal-day-chip .portal-day-chip-label-v616ae{font-size:14px!important}
 }
 
+
+/* FIX16CP - Employee ID field guideline / autofill clarity */
+.portal-field-guideline{
+  display:block;
+  margin-top:7px;
+  font-size:12px;
+  line-height:1.35;
+  font-weight:600;
+  color:var(--portal-muted,#7890a6);
+}
+.theme-dark .portal-field-guideline{color:#9db4c7;}
