@@ -35818,7 +35818,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX16BD DAYOFF FILTER';
+  const VERSION='6.15.29 FIX16CF ACTING TEAM SCOPE';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -36730,10 +36730,10 @@ ${names}${extra}
       state.reloadRequested=true;
       return;
     }
-    if(!baseTeamRole()&&actingTeamAccess()){
-      syncNav();setTab('ASSIGNMENTS');window.TimeClockTemporaryAssignmentV61529F14B?.load?.();return;
-    }
-
+    // FIX16CF: Acting Manager has full Manager-equivalent Team Workspace access
+    // inside delegated Scope/Effective Date. Do not short-circuit Team Master
+    // loading to the Temporary Assignment pane, otherwise state.orgs remains
+    // empty and the UI incorrectly shows "ไม่พบหน่วยงานใน Scope".
     state.loading=true;
     state.reloadRequested=false;
     syncNav();
