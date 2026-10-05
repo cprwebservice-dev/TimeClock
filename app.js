@@ -35818,7 +35818,7 @@ ${names}${extra}
    ============================================================================ */
 (()=>{
   'use strict';
-  const VERSION='6.15.29 FIX16CF ACTING TEAM SCOPE';
+  const VERSION='6.15.29 FIX16CG BORROW MONTH-START BACKDATE';
   const $=id=>document.getElementById(id);
   const app=()=>window.TimeClockApp;
   const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -36866,7 +36866,7 @@ ${names}${extra}
       ['DESTINATION_TEAM_NOT_ACTIVE_ON_EFFECTIVE_DATE','Team ปลายทางยังไม่พร้อมใช้งานในวันที่เริ่ม'],
       ['BORROW_OPERATIONAL_TYPE_MISMATCH','ช่างอยู่ต่างประเภทกับ Team ปลายทาง ระบบแสดงรายชื่อให้ตรวจสอบได้ แต่ Policy ปัจจุบันยังไม่อนุญาตให้ส่งคำขอ'],
       ['DESTINATION_TEAM_CATEGORY_MISMATCH','รูปแบบการปฏิบัติงานของพนักงานไม่ตรงกับประเภท Team ปลายทาง จึงยังส่งคำขอยืมไม่ได้'],
-      ['TEMP_ASSIGNMENT_BACKDATE_NOT_ALLOWED','ไม่สามารถสร้างรายการย้อนหลังได้'],
+      ['TEMP_ASSIGNMENT_BACKDATE_NOT_ALLOWED','วันที่เริ่มยืมย้อนหลังได้ไม่เกินวันที่ 1 ของเดือนปัจจุบัน'],
       ['TEMP_ASSIGNMENT_BEFORE_EMPLOYEE_START_DATE','วันที่เริ่มยืม/ไปช่วยต้องไม่ก่อนวันเริ่มงาน'],
       ['TEMP_ASSIGNMENT_AFTER_EMPLOYEE_RESIGN_DATE','วันที่สิ้นสุดต้องไม่เกินวันลาออก'],
       ['TEMP_ASSIGNMENT_SAME_TEAM','Team ปลายทางต้องไม่ใช่ Home Team เดิม'],
@@ -36974,6 +36974,36 @@ ${names}${extra}
     if(!/^\d{4}-\d{2}-\d{2}$/.test(a)||!/^\d{4}-\d{2}-\d{2}$/.test(b))return null;
     const [ay,am,ad]=a.split('-').map(Number),[by,bm,bd]=b.split('-').map(Number);
     return Math.round((Date.UTC(by,bm-1,bd)-Date.UTC(ay,am-1,ad))/86400000);
+  }
+  // FIX16CG: Borrow may start retrospectively only within the current calendar month.
+  // Backend remains authoritative; this helper keeps the browser Date Picker and warning in sync.
+  function syncBorrowBackdatePolicyV616CG({showToast=false}={}){
+    const f=$('teamTempCreateFromV61529F14B'),t=$('teamTempCreateToV61529F14B'),w=$('teamTempBackdateWarningV616CG');
+    if(!f)return {valid:false,earliest:monthStart(today()),from:''};
+    const now=today(),earliest=monthStart(now),from=String(f.value||'');
+    f.min=earliest;
+    if(t){
+      const endMin=(from&&from>now)?from:now;
+      t.min=endMin;
+      if(t.value&&t.value<endMin)t.value=endMin;
+    }
+    const tooEarly=!!from&&from<earliest;
+    const backdated=!!from&&from<now&&!tooEarly;
+    if(w){
+      if(backdated){
+        const days=Math.max(0,Number(isoDayDiff(from,now)||0));
+        w.classList.remove('hidden');
+        w.innerHTML=`<strong>⚠ มีผลย้อนหลัง ${days.toLocaleString('th-TH')} วัน</strong><span>เมื่อได้รับอนุมัติ ระบบจะใช้ Team ปลายทางย้อนหลังตั้งแต่ ${esc(fmtDate(from))} • เลือกย้อนหลังได้ไม่เกิน ${esc(fmtDate(earliest))}</span>`;
+      }else if(tooEarly){
+        w.classList.remove('hidden');
+        w.innerHTML=`<strong>✕ วันที่เริ่มอยู่นอกช่วงที่อนุญาต</strong><span>วันที่เริ่มย้อนหลังได้ไม่เกินวันที่ 1 ของเดือนปัจจุบัน (${esc(fmtDate(earliest))})</span>`;
+      }else{
+        w.classList.add('hidden');
+        w.innerHTML='';
+      }
+    }
+    if(tooEarly&&showToast)toast(`วันที่เริ่มย้อนหลังได้ไม่เกิน ${fmtDate(earliest)}`,'warning');
+    return {valid:!tooEarly,earliest,from,backdated};
   }
   function isMyRequest(r){const me=actorEmail();return !!me&&String(r?.requested_by_email||'').trim().toLowerCase()===me;}
   function isExpiringSoon(r){
@@ -37226,19 +37256,22 @@ ${names}${extra}
     save.disabled=!allowed||note.length<3;save.textContent='ส่งคำขอยืมตัว';
   }
   async function preview(){
-    clearTimeout(state.previewTimer);const emp=$('teamTempEmployeeV61529F14B')?.value||'',dest=$('teamTempDestinationV61529F14B')?.value||'',from=$('teamTempCreateFromV61529F14B')?.value||'',to=$('teamTempCreateToV61529F14B')?.value||'';if(!emp||!dest||!from||!to){state.preview=null;renderPreview();return;}
+    clearTimeout(state.previewTimer);const emp=$('teamTempEmployeeV61529F14B')?.value||'',dest=$('teamTempDestinationV61529F14B')?.value||'',from=$('teamTempCreateFromV61529F14B')?.value||'',to=$('teamTempCreateToV61529F14B')?.value||'';
+    const datePolicy=syncBorrowBackdatePolicyV616CG();
+    if(!emp||!dest||!from||!to){state.preview=null;renderPreview();return;}
+    if(!datePolicy.valid){state.preview={allowed:false,blockers:[{code:'TEMP_ASSIGNMENT_BACKDATE_NOT_ALLOWED'}]};renderPreview();return;}
     if(to<from){state.preview={allowed:false,blockers:[{code:'TEMP_ASSIGNMENT_DATE_RANGE_INVALID'}]};renderPreview();return;}
     try{state.preview=await rpc('ta_preview_borrow_request_v61529f15',{p_emp_code:emp,p_destination_team_id:dest,p_effective_from:from,p_effective_to:to});renderPreview();}catch(e){state.preview={allowed:false,blockers:[{code:human(e)}]};renderPreview();}
   }
   function schedulePreview(){clearTimeout(state.previewTimer);state.previewTimer=setTimeout(preview,180);}
   async function openCreate(){
     await loadAccess({silent:false});if(isHr())return toast('HR Admin ใช้หน้านี้เพื่อตรวจสอบและกำหนด Acting แต่ไม่ใช่ผู้ร้องขอ/อนุมัติยืมตัว','warning');if(!hasOperationalAuthority())return toast('ไม่มี Operational Authority สำหรับร้องขอยืมตัว','error');
-    const modal=$('teamTempCreateModalV61529F14B');if(!modal)return;const f=$('teamTempCreateFromV61529F14B'),t=$('teamTempCreateToV61529F14B');if(f){f.value=today();f.min=today();}if(t){t.value=addDays(today(),7);t.min=today();}$('teamTempCandidateSearchV61529F14B')&&($('teamTempCandidateSearchV61529F14B').value='');$('teamTempNoteV61529F14B')&&($('teamTempNoteV61529F14B').value='');state.preview=null;state.destinations=[];state.candidates=[];modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');await loadDestinations();renderCandidateOptions();renderHomeCard();renderPreview();
+    const modal=$('teamTempCreateModalV61529F14B');if(!modal)return;const f=$('teamTempCreateFromV61529F14B'),t=$('teamTempCreateToV61529F14B');if(f){f.value=today();f.min=monthStart(today());}if(t){t.value=addDays(today(),7);t.min=today();}syncBorrowBackdatePolicyV616CG();$('teamTempCandidateSearchV61529F14B')&&($('teamTempCandidateSearchV61529F14B').value='');$('teamTempNoteV61529F14B')&&($('teamTempNoteV61529F14B').value='');state.preview=null;state.destinations=[];state.candidates=[];modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');await loadDestinations();renderCandidateOptions();renderHomeCard();renderPreview();
   }
   function closeCreate(){const m=$('teamTempCreateModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.preview=null;state.destinations=[];state.candidates=[];}
   async function createAssignment(){
     const emp=$('teamTempEmployeeV61529F14B')?.value||'',dest=$('teamTempDestinationV61529F14B')?.value||'',from=$('teamTempCreateFromV61529F14B')?.value||'',to=$('teamTempCreateToV61529F14B')?.value||'',note=String($('teamTempNoteV61529F14B')?.value||'').trim();if(state.preview?.allowed!==true)return toast('กรุณาตรวจ Preview ให้ผ่านก่อนส่งคำขอ','warning');if(note.length<3)return toast('กรุณาระบุเหตุผล / รายละเอียดงาน','warning');
-    const sm=state.preview?.source_manager?.email||'-',dm=state.preview?.destination_manager?.email||'-';const ok=await window.tcConfirm?.({title:'ส่งคำขอยืมช่าง?',message:[`${emp} · ยืมตัว`,`Manager ต้นทาง: ${sm}`,`Manager ปลายทาง: ${dm}`,`${state.preview?.source_org?.org_code||'-'} → ${state.preview?.destination_org?.org_code||'-'}`,`${fmtDate(from)} – ${fmtDate(to)}`,'เมื่อส่งแล้ว ระบบจะรอ Manager / Acting ต้นทางอนุมัติ'].join('\n'),confirmText:'ส่งคำขอยืมตัว',tone:'primary'});if(!ok)return;
+    const sm=state.preview?.source_manager?.email||'-',dm=state.preview?.destination_manager?.email||'-',backdated=from<today();const ok=await window.tcConfirm?.({title:'ส่งคำขอยืมช่าง?',message:[`${emp} · ยืมตัว`,`Manager ต้นทาง: ${sm}`,`Manager ปลายทาง: ${dm}`,`${state.preview?.source_org?.org_code||'-'} → ${state.preview?.destination_org?.org_code||'-'}`,`${fmtDate(from)} – ${fmtDate(to)}`,backdated?`⚠ เมื่ออนุมัติ Team ปลายทางจะมีผลย้อนหลังตั้งแต่ ${fmtDate(from)}`:'','เมื่อส่งแล้ว ระบบจะรอ Manager / Acting ต้นทางอนุมัติ'].filter(Boolean).join('\n'),confirmText:'ส่งคำขอยืมตัว',tone:'primary'});if(!ok)return;
     try{app()?.showLoading?.('กำลังส่งคำขอยืมตัว...');await rpc('ta_create_borrow_request_v61529f15',{p_emp_code:emp,p_destination_team_id:dest,p_effective_from:from,p_effective_to:to,p_note:note});closeCreate();toast('ส่งคำขอให้ Manager ต้นทางอนุมัติแล้ว','success');await load();window.TimeClockFunctional?.loadNotifications?.();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
   }
 
@@ -37331,7 +37364,7 @@ ${names}${extra}
     $('teamBorrowBrowserNotificationV61529F15G')?.addEventListener('click',()=>window.TimeClockBorrowNotificationsV61529F15G?.requestPermission?.());
     $('teamTempRefreshV61529F14B')?.addEventListener('click',load);$('teamTempCreateV61529F14B')?.addEventListener('click',openCreate);$('teamTempStatusV61529F14B')?.addEventListener('change',()=>{state.workflowFilter='ALL';syncWorkflowFilterUI();renderWorkspace();});$('teamTempSearchV61529F14B')?.addEventListener('input',renderWorkspace);$('teamTempFromV61529F14B')?.addEventListener('change',load);$('teamTempToV61529F14B')?.addEventListener('change',load);
     $('teamTempCandidateSearchBtnV61529F14B')?.addEventListener('click',loadCandidates);$('teamTempCandidateSearchV61529F14B')?.addEventListener('input',()=>{clearTimeout(state.candidateTimer);state.candidateTimer=setTimeout(loadCandidates,280);});$('teamTempCandidateSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadCandidates();}});
-    $('teamTempDestinationV61529F14B')?.addEventListener('change',async()=>{if($('teamTempEmployeeV61529F14B'))$('teamTempEmployeeV61529F14B').value='';await loadCandidates();schedulePreview();});$('teamTempEmployeeV61529F14B')?.addEventListener('change',()=>{renderHomeCard();schedulePreview();});$('teamTempCreateFromV61529F14B')?.addEventListener('change',async e=>{if($('teamTempCreateToV61529F14B')&&$('teamTempCreateToV61529F14B').value<e.target.value)$('teamTempCreateToV61529F14B').value=e.target.value;if($('teamTempDestinationV61529F14B'))$('teamTempDestinationV61529F14B').value='';await loadDestinations();await loadCandidates();schedulePreview();});$('teamTempCreateToV61529F14B')?.addEventListener('change',schedulePreview);$('teamTempNoteV61529F14B')?.addEventListener('input',renderPreview);$('teamTempCreateConfirmV61529F14B')?.addEventListener('click',createAssignment);$('teamTempActionConfirmV61529F14B')?.addEventListener('click',confirmAction);
+    $('teamTempDestinationV61529F14B')?.addEventListener('change',async()=>{if($('teamTempEmployeeV61529F14B'))$('teamTempEmployeeV61529F14B').value='';await loadCandidates();schedulePreview();});$('teamTempEmployeeV61529F14B')?.addEventListener('change',()=>{renderHomeCard();schedulePreview();});$('teamTempCreateFromV61529F14B')?.addEventListener('change',async e=>{const policy=syncBorrowBackdatePolicyV616CG({showToast:true});if(!policy.valid){e.target.value=policy.earliest;syncBorrowBackdatePolicyV616CG();}if($('teamTempCreateToV61529F14B')&&$('teamTempCreateToV61529F14B').value<e.target.value)$('teamTempCreateToV61529F14B').value=e.target.value;if($('teamTempDestinationV61529F14B'))$('teamTempDestinationV61529F14B').value='';await loadDestinations();await loadCandidates();schedulePreview();});$('teamTempCreateToV61529F14B')?.addEventListener('change',()=>{syncBorrowBackdatePolicyV616CG();schedulePreview();});$('teamTempNoteV61529F14B')?.addEventListener('input',renderPreview);$('teamTempCreateConfirmV61529F14B')?.addEventListener('click',createAssignment);$('teamTempActionConfirmV61529F14B')?.addEventListener('click',confirmAction);
     $('teamActingRefreshV61529F14B')?.addEventListener('click',loadActing);$('teamActingCreateV61529F14B')?.addEventListener('click',()=>openActing(null));$('teamActingSearchBtnV61529F14B')?.addEventListener('click',()=>loadActingOptions($('teamActingSearchV61529F14B')?.value||''));$('teamActingSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadActingOptions(e.target.value||'');}});$('teamActingSaveV61529F14B')?.addEventListener('click',saveActing);
     document.addEventListener('click',e=>{
       const wf=e.target.closest('[data-borrow-workflow-filter-v61529f15f]');if(wf){setWorkflowFilter(wf.dataset.borrowWorkflowFilterV61529f15f||'ALL');return;}

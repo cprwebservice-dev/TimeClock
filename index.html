@@ -1875,7 +1875,8 @@
   <div class="modal team-temp-create-modal-v61529f14b" role="dialog" aria-modal="true" aria-labelledby="teamTempCreateTitleV61529F14B">
     <div class="modal-header"><div><span class="eyebrow">DESTINATION REQUEST · BORROW</span><h3 id="teamTempCreateTitleV61529F14B">ขอยืมช่างเทคนิค</h3><p>ปลายทางเลือก Team ของตนก่อน · ระบบจะแสดงช่างภายในฝ่ายเดียวกันที่อยู่ภายใต้ Manager คนอื่น โดยไม่ซ่อนรายชื่อตามประเภท Team ปลายทาง</p></div><button class="btn btn-light btn-icon" data-team-temp-close-v61529f14b>×</button></div>
     <div class="modal-body">
-      <div class="team-temp-date-grid-v61529f14b"><div class="field"><label>วันที่เริ่ม <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateFromV61529F14B"/></div><div class="field"><label>วันที่สิ้นสุด <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateToV61529F14B"/></div></div>
+      <div class="team-temp-date-grid-v61529f14b"><div class="field"><label>วันที่เริ่ม <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateFromV61529F14B"/><small class="field-hint">เลือกย้อนหลังได้ถึงวันที่ 1 ของเดือนปัจจุบัน</small></div><div class="field"><label>วันที่สิ้นสุด <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateToV61529F14B"/><small class="field-hint">วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม และยังต้องผ่านรอบระบบ</small></div></div>
+      <div class="team-temp-backdate-warning-v616cg hidden" id="teamTempBackdateWarningV616CG" role="status" aria-live="polite"></div>
       <div class="field"><label>1. Team ปลายทางของคุณ <span class="required-mark">*</span></label><select class="select" id="teamTempDestinationV61529F14B"><option value="">— เลือก Team ปลายทาง —</option></select><small class="field-hint" id="teamTempDestinationHintV61529F14B">เลือก Team ที่ต้องการรับช่างเข้ามาช่วยชั่วคราว</small></div>
       <div class="field"><label>2. เลือกช่างจาก Manager อื่นภายในฝ่ายเดียวกัน</label><div class="team-temp-search-line-v61529f14b"><input class="input" id="teamTempCandidateSearchV61529F14B" placeholder="รหัสพนักงาน / ชื่อ / หน่วยงาน / Manager / ประเภทงาน"/><button class="btn btn-light" id="teamTempCandidateSearchBtnV61529F14B" type="button">ค้นหา</button></div><small class="field-hint">แสดงทุก Operational Type ภายใต้ Manager อื่นในฝ่ายเดียวกัน · หากประเภทงานไม่ตรง Team ปลายทาง ระบบจะแจ้งเตือนใน Preview</small></div>
       <div class="field"><label>3. ช่างที่ต้องการยืม <span class="required-mark">*</span></label><select class="select" id="teamTempEmployeeV61529F14B" disabled><option value="">— เลือก Team ปลายทางก่อน —</option></select><small class="field-hint">ระบบไม่แสดงช่างที่อยู่ภายใต้ Manager เดียวกับปลายทาง เพราะกรณีนั้นให้ใช้ “ย้ายทีม” · ช่างต่างประเภท Team ยังแสดงให้เลือกเพื่อตรวจสอบ Preview</small></div>
@@ -3404,6 +3405,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16cf-acting-team-scope-20261005"></script>
+<script src="./app.js?v=6.15.29-fix16cg-borrow-month-start-20261005"></script>
 </body>
 </html>
