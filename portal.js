@@ -470,8 +470,12 @@
   function renderWeek(){
     const box=$("portalWeekStrip"),days=[];
     for(let i=0;i<7;i++){
-      const d=addDays(today(),i),r=row(d)||{},v=shiftVisual(r),dt=new Date(`${d}T00:00:00`),second=specialSecondLine(r),partial=partialLeaveTextV61511(r);
-      days.push(`<div class="portal-day-chip ${dayMeta(r).tone} ${d===today()?"today":""}"><span>${dt.toLocaleDateString("th-TH",{weekday:"short"})} ${dt.getDate()}</span><strong>${portalOriginalShiftIconMarkupV616AE(v.icon)}<span class="portal-day-chip-label-v616ae">${esc(v.display||v.code)}</span></strong><small class="portal-day-chip-time-v616ae">${portalCompactTimeHtmlV616AE(v.time||v.label)}</small>${second?`<small class="portal-special-line">${esc(second)}</small>`:""}${partial?`<small class="portal-partial-leave-line-v61511">${esc(partial)}</small>`:""}</div>`);
+      const d=addDays(today(),i),r=row(d)||{},v=shiftVisual(r),dt=new Date(`${d}T00:00:00`),partial=partialLeaveTextV61511(r);
+      const shiftTone=calendarShiftToneV616CJ(r,v);
+      const mode=String(r.work_mode_code||"").toUpperCase();
+      const compactSpecial=mode==="NORMAL_LATE_CUSTOMER"?"งานลูกค้าช่วงดึก":mode==="SPLIT_WAIT_NIGHT"?"กะ 2":"";
+      const title=[v.display||v.code,v.time||v.label,compactSpecial,partial].filter(Boolean).join(" • ");
+      days.push(`<div class="portal-day-chip ${dayMeta(r).tone} ${shiftTone} ${d===today()?"today":""}"${title?` title="${esc(title)}"`:""}><span>${dt.toLocaleDateString("th-TH",{weekday:"short"})} ${dt.getDate()}</span><strong>${portalOriginalShiftIconMarkupV616AE(v.icon)}<span class="portal-day-chip-label-v616ae">${esc(v.display||v.code)}</span></strong>${compactSpecial?`<small class="portal-special-line">${esc(compactSpecial)}</small>`:""}${partial?`<small class="portal-partial-leave-line-v61511">${esc(partial)}</small>`:""}</div>`);
     }
     box.innerHTML=days.join("");
   }
@@ -3090,7 +3094,7 @@ $("portalTimeRefreshV616AB")?.addEventListener("click",async()=>{attendanceByDat
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16at-scale-p0-20260918",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16ck-home-week-20261005",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }
