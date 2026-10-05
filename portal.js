@@ -85,7 +85,7 @@
   async function checkTeam(){if(!teamToken){$("portalTeamName").textContent="เปิดจาก QR / Link กลางเพื่อ Activate ครั้งแรก";return false;}try{const d=await rpc("ta_portal_team_public_v61482",{p_team_token:teamToken});if(d?.valid){$("portalTeamName").textContent=String(d.link_scope||"").toUpperCase()==="GLOBAL"?"Employee Portal • ลิงก์กลาง":`ช่องทางเดิมของ ${d.manager_display_name||"Manager"}`;return true;}$("portalTeamName").textContent="Link ไม่ถูกต้องหรือถูกเปลี่ยนแล้ว";return false;}catch(e){$("portalTeamName").textContent="ตรวจสอบ Link ไม่สำเร็จ";return false;}}
   function showAuth(){stopPortalSyncV61513();portalHydratedV61514=false;attendanceLoadPromiseV61514=null;timeTabLoadPromiseV616AB=null;timeCalendarRowsV616AB=[];timeTabLastLoadedAtV616AB=0;timeMonthV616AC=new Date(new Date().getFullYear(),new Date().getMonth(),1);timeLoadedMonthKeyV616AC="";attendanceLoadedRangeKeyV616AC="";sameShiftLoadPromiseV61514=null;me=null;$("portalApp").classList.add("hidden");$("portalAuth").classList.remove("hidden");}
   function showApp(){renderProfile();$("portalAuth").classList.add("hidden");$("portalApp").classList.remove("hidden");navigate("home");}
-  function renderProfile(){const name=me?.full_name||me?.emp_code||"พนักงาน";$("portalEmployeeName").textContent=name;$("portalEmployeeMeta").textContent=[me?.emp_code,me?.position_name,me?.department].filter(Boolean).join(" • ");$("portalAvatar").textContent=String(name).replace(/\s+/g,"").slice(0,2)||"พน";if(!homeFocusDateV61509)homeFocusDateV61509=today();renderHomeDateHeaderV61509();}
+  function renderProfile(){const name=me?.full_name||me?.emp_code||"พนักงาน";const orgLabel=String(me?.org_label||[me?.org_code,me?.org_name].filter(Boolean).join(" · ")||me?.department||"").trim();$("portalEmployeeName").textContent=name;$("portalEmployeeMeta").textContent=[me?.emp_code,me?.position_name,orgLabel].filter(Boolean).join(" • ");$("portalAvatar").textContent=String(name).replace(/\s+/g,"").slice(0,2)||"พน";if(!homeFocusDateV61509)homeFocusDateV61509=today();renderHomeDateHeaderV61509();}
   async function restore(){const t=session();if(!t)return false;try{me=await rpc("ta_portal_me_v61482",{p_session_token:t});showApp();await refreshAll();return true;}catch(e){localStorage.removeItem(SESSION_KEY);showAuth();return false;}}
   async function activate(e){e.preventDefault();if(!teamToken)return toast("กรุณาเปิดจาก QR / Link กลางของ Employee Portal","warning");const pin=$("portalNewPin").value,confirm=$("portalConfirmPin").value;if(pin!==confirm)return toast("PIN และยืนยัน PIN ไม่ตรงกัน","error");loading(true,"กำลังเปิดใช้งาน Employee Portal...");try{const r=await rpc("ta_portal_activate_v61482",{p_team_token:teamToken,p_emp_code:$("portalActivateEmp").value.trim(),p_activation_code:$("portalActivationCode").value.trim(),p_new_pin:pin,p_device_label:deviceLabel()});localStorage.setItem(SESSION_KEY,r.session_token);me=r;toast("เปิดใช้งานเรียบร้อย","success");showApp();await refreshAll();}catch(err){toast(friendly(err),"error");}finally{loading(false);}}
   async function login(e){e.preventDefault();loading(true,"กำลังเข้าสู่ระบบ...");try{const r=await rpc("ta_portal_login_v61482",{p_team_token:null,p_emp_code:$("portalLoginEmp").value.trim(),p_pin:$("portalLoginPin").value.trim(),p_device_label:deviceLabel()});localStorage.setItem(SESSION_KEY,r.session_token);me=r;showApp();await refreshAll();}catch(err){toast(friendly(err),"error");}finally{loading(false);}}
@@ -288,6 +288,7 @@
     const total=Number(data.total_members||members.length||0);
     const categoryLabel=workingTeamCategoryLabelV61529F15R(data.team_category);
     const teamLabel=[data.team_code,data.team_name].filter(Boolean).join(" • ")||"ยังไม่กำหนดทีม";
+    const teamOrgLabel=String(data.team_org_label||[data.team_org_code,data.team_org_name].filter(Boolean).join(" · ")||data.team_org_code||"").trim();
     const selfBorrow=Boolean(data.self_is_temporary);
 
     const memberHtml=members.map(m=>{
@@ -298,6 +299,7 @@
       const borrowNote=m.is_temporary
         ? `<span class="portal-working-team-borrow-note-v61529f15r">จาก ${esc(m.source_team_code||m.home_team_code||"ทีมต้นทาง")} • ${esc(fmtDate(m.borrow_effective_from))}–${esc(fmtDate(m.borrow_effective_to))}</span>`
         :"";
+      const memberOrgLabel=String(m.working_org_label||[m.working_org_code,m.working_org_name].filter(Boolean).join(" · ")||m.department||"").trim();
       return `
         <div class="portal-same-shift-member-v61509 ${m.is_self?"is-self-v61529f15r":""} ${m.is_temporary?"is-borrow-v61529f15r":""}">
           <span class="portal-same-shift-avatar-v61509">${esc(sameShiftInitialsV61509(m.full_name))}</span>
@@ -306,7 +308,7 @@
               <strong>${esc(m.full_name||m.emp_code||"-")}</strong>
               ${tags.length?`<span class="portal-working-team-tags-v61529f15r">${tags.join("")}</span>`:""}
             </div>
-            <small>${esc([m.position_name,m.department].filter(Boolean).join(" • ")||"สมาชิกทีม")}</small>
+            <small>${esc([m.position_name,memberOrgLabel].filter(Boolean).join(" • ")||"สมาชิกทีม")}</small>
             ${borrowNote}
           </div>
           <div class="portal-working-team-shift-v61529f15r">
@@ -333,7 +335,7 @@
         <div>
           <span>ทีมปฏิบัติงาน</span>
           <strong>${esc(categoryLabel)}</strong>
-          <small>${esc(fmtDate(focus))} • ${esc(teamLabel)}${data.team_org_code?` • ${esc(data.team_org_code)}`:""}</small>
+          <small>${esc(fmtDate(focus))} • ${esc(teamLabel)}${teamOrgLabel?` • ${esc(teamOrgLabel)}`:""}</small>
         </div>
         <b>${total} คน</b>
       </div>
