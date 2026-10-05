@@ -5933,3 +5933,63 @@ body.dark-mode .tc-overflow-tooltip-v616bk,
   color:#f8fafc;
   box-shadow:0 10px 28px rgba(0,0,0,.34);
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16CJ — My Shift Calendar: distinct day/night + no shift time
+   ========================================================================== */
+.portal-cal-day{
+  min-height:96px!important;
+  padding:7px 4px!important;
+}
+.portal-cal-day .portal-cal-shift-label{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:4px!important;
+  min-height:52px!important;
+  margin-top:5px!important;
+  font-size:13px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  color:#173F66!important;
+}
+.portal-cal-day .portal-shift-icon.portal-calendar-original-icon-v616ac{
+  width:auto!important;
+  height:auto!important;
+  margin:0!important;
+  font-size:29px!important;
+  line-height:.95!important;
+}
+.portal-cal-day .portal-cal-shift-name-v616cj{
+  display:block!important;
+  font-size:13px!important;
+  line-height:1.08!important;
+  font-weight:900!important;
+}
+.portal-cal-day .portal-cal-time{display:none!important}
+
+/* Morning and night must remain immediately distinguishable at a glance. */
+.portal-cal-day.morning .portal-calendar-original-icon-v616ac,
+.portal-shift-legend.morning .portal-calendar-legend-original-v616ac{color:#F28C28!important}
+.portal-cal-day.night .portal-calendar-original-icon-v616ac,
+.portal-shift-legend.night .portal-calendar-legend-original-v616ac{color:#6259C8!important}
+
+/* Keep special-mode notes subordinate to the primary shift icon/name. */
+.portal-cal-day .portal-special-line{
+  margin-top:2px!important;
+  font-size:9px!important;
+  line-height:1.15!important;
+}
+
+@media (max-width:560px){
+  .portal-cal-day{min-height:92px!important;padding:6px 2px!important}
+  .portal-cal-day .portal-cal-shift-label{min-height:48px!important;gap:3px!important}
+  .portal-cal-day .portal-shift-icon.portal-calendar-original-icon-v616ac{font-size:27px!important}
+  .portal-cal-day .portal-cal-shift-name-v616cj{font-size:12.5px!important}
+}
+
+body.theme-dark .portal-cal-day .portal-cal-shift-name-v616cj{color:#F7FAFC!important}
+body.theme-dark .portal-cal-day.morning .portal-calendar-original-icon-v616ac{color:#FFB24A!important}
+body.theme-dark .portal-cal-day.night .portal-calendar-original-icon-v616ac{color:#A9A4FF!important}

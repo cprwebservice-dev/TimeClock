@@ -490,14 +490,21 @@
   function calendarSpecialCompact(r={}){
     const items=[];
     const mode=String(r.work_mode_code||"").toUpperCase();
-    if(mode==="NORMAL_LATE_CUSTOMER"){
-      const s=r.customer_window_start||r.schedule?.customer_window_start;
-      const e=r.customer_window_end||r.schedule?.customer_window_end;
-      items.push(s?`กะพิเศษ ${fmtTime(s)}–${e?fmtTime(e):"ตาม OUT"}`:"กะพิเศษ");
-    }else if(mode==="SPLIT_WAIT_NIGHT")items.push(`กะพิเศษ ${fmtTime(r.second_segment_start)}–${fmtTime(r.second_segment_planned_end)}`);
-    else if(mode==="HOUR_BASED")items.push("กะพิเศษ • นับชั่วโมง");
+    // FIX16CJ: keep the monthly calendar visually light. Shift clock times belong
+    // in day detail / attendance views, not inside every calendar cell.
+    if(mode==="NORMAL_LATE_CUSTOMER")items.push("งานลูกค้าช่วงดึก");
+    else if(mode==="SPLIT_WAIT_NIGHT")items.push("กะ 2");
+    else if(mode==="HOUR_BASED")items.push("นับชั่วโมง");
     const partial=partialLeaveTextV61511(r);if(partial)items.push(partial);
     return items.join(" · ");
+  }
+
+  function calendarShiftToneV616CJ(r={},v={}){
+    const tone=String(dayMeta(r)?.tone||"");
+    if(["off","leave","holiday"].includes(tone))return "";
+    if(String(v?.icon||"")==="☾")return "night";
+    if(String(v?.icon||"")==="☀")return "morning";
+    return "";
   }
 
   function renderCalendar(){
@@ -509,9 +516,9 @@
     firstDate.setDate(firstDate.getDate()-b.first);
     for(let i=0;i<totalCells;i++){
       const dt=new Date(firstDate);dt.setDate(firstDate.getDate()+i);
-      const date=iso(dt),r=row(date)||{},m=dayMeta(r),v=shiftVisual(r),special=calendarSpecialCompact(r);
+      const date=iso(dt),r=row(date)||{},m=dayMeta(r),v=shiftVisual(r),special=calendarSpecialCompact(r),shiftTone=calendarShiftToneV616CJ(r,v);
       const inMonth=date.slice(0,7)===b.start.slice(0,7);
-      html+=`<button type="button" class="portal-cal-day ${m.tone} ${inMonth?"":"outside"} ${date===today()?"today":""} ${date===selectedCalendarDate?"selected":""}" data-calendar-date="${date}"><span>${dt.getDate()}</span><strong class="portal-cal-shift-label"><i class="portal-shift-icon portal-calendar-original-icon-v616ac">${esc(v.icon)}</i>${esc(v.display||v.code)}</strong><small class="portal-cal-time">${portalCompactTimeHtmlV616AE(v.time||v.label)}</small>${special?`<small class="portal-special-line">${esc(special)}</small>`:""}</button>`;
+      html+=`<button type="button" class="portal-cal-day ${m.tone} ${shiftTone} ${inMonth?"":"outside"} ${date===today()?"today":""} ${date===selectedCalendarDate?"selected":""}" data-calendar-date="${date}"><span>${dt.getDate()}</span><strong class="portal-cal-shift-label"><i class="portal-shift-icon portal-calendar-original-icon-v616ac">${esc(v.icon)}</i><span class="portal-cal-shift-name-v616cj">${esc(v.display||v.code)}</span></strong>${special?`<small class="portal-special-line">${esc(special)}</small>`:""}</button>`;
     }
     $("portalCalendar").innerHTML=html;
     renderScheduleSummary();
