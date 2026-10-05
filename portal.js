@@ -2416,12 +2416,24 @@
     }
 
     const isPartial=subtypeEl?.value==="PARTIAL_DAY";
+    const leaveStartTimeEl=$("portalLeaveStartV61491");
+    const leaveEndTimeEl=$("portalLeaveEndTimeV61491");
 
     if(endEl){
       if(isPartial&&startDate){
         endEl.value=startDate;
       }
       endEl.disabled=isPartial;
+    }
+
+    // FIX16CL: Full-day leave must not retain or submit stale partial-leave times.
+    if(leaveStartTimeEl){
+      leaveStartTimeEl.disabled=!isPartial;
+      if(!isPartial)leaveStartTimeEl.value="";
+    }
+    if(leaveEndTimeEl){
+      leaveEndTimeEl.disabled=!isPartial;
+      if(!isPartial)leaveEndTimeEl.value="";
     }
 
     $("portalLeavePartialFieldsV61493")?.classList.toggle("hidden",!isPartial);
@@ -2982,8 +2994,9 @@
       detail.leave_type=normalizeLeaveTypeV61508($("portalLeaveTypeV61491")?.value);
       detail.leave_type_label=leaveTypeLabelV61508(detail.leave_type);
       detail.end_date=$("portalLeaveEndV61491")?.value||workDate;
-      detail.leave_start_time=$("portalLeaveStartV61491")?.value||null;
-      detail.leave_end_time=$("portalLeaveEndTimeV61491")?.value||null;
+      const isPartialLeave=String($("portalRequestSubtype")?.value||"").toUpperCase()==="PARTIAL_DAY";
+      detail.leave_start_time=isPartialLeave?($("portalLeaveStartV61491")?.value||null):null;
+      detail.leave_end_time=isPartialLeave?($("portalLeaveEndTimeV61491")?.value||null):null;
       Object.assign(detail,leavePreview.submit_detail_patch||{});
       detail.leave_preview_snapshot={
         allowed:true,
