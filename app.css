@@ -36518,3 +36518,103 @@ body.dark-mode .admin-acting-shortcut-v616bx .admin-module-icon{
 .team-temp-backdate-warning-v616cg span{font-weight:600}
 html[data-theme="dark"] .team-temp-backdate-warning-v616cg,body.theme-dark .team-temp-backdate-warning-v616cg,body.dark .team-temp-backdate-warning-v616cg,body.dark-mode .team-temp-backdate-warning-v616cg{background:rgba(245,158,11,.12);color:#fde68a;border-color:rgba(245,158,11,.30)}
 html[data-theme="dark"] .team-temp-backdate-warning-v616cg strong,body.theme-dark .team-temp-backdate-warning-v616cg strong,body.dark .team-temp-backdate-warning-v616cg strong,body.dark-mode .team-temp-backdate-warning-v616cg strong{color:#fcd34d}
+
+/* ========================================================================== 
+   V6.15.29 FIX16CI — Schedule Calm Lock Range UX
+   Reduce visual noise in monthly PERSON grid without changing permission rules.
+   Consecutive out-of-scope days render as one compact range instead of a lock
+   repeated in every day cell.
+   ========================================================================== */
+#scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-scope-range-v616ci{
+  min-width:46px;
+  height:46px;
+  padding:0 8px!important;
+  background:#f8fafc!important;
+  cursor:not-allowed!important;
+  vertical-align:middle;
+  border-right:1px solid #e8edf4!important;
+}
+#scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-scope-range-v616ci.borrow-out-of-scope-day-v61529f15l{
+  background:#fffaf2!important;
+}
+#scheduleTableWrap .schedule-scope-range-content-v616ci{
+  min-height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  color:#94a3b8;
+  font-size:10px;
+  font-weight:750;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  letter-spacing:.01em;
+}
+#scheduleTableWrap .schedule-scope-range-content-v616ci svg{
+  width:13px;
+  height:13px;
+  flex:0 0 13px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.8;
+  opacity:.8;
+}
+#scheduleTableWrap .schedule-scope-range-content-v616ci.is-borrow{
+  color:#b96b20;
+}
+#scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-section-v616t td{
+  height:30px!important;
+  background:#fafcff!important;
+}
+#scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-section-v616t.is-pending td{
+  background:#fffaf2!important;
+}
+#scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-toggle-v616t{
+  min-height:28px;
+  gap:6px;
+  padding:0 9px;
+}
+#scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-toggle-v616t strong{
+  font-size:11.5px;
+}
+#scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-toggle-v616t small{
+  font-size:9.5px;
+}
+#scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-ready-v616t{
+  padding:2px 6px;
+  font-size:8.5px;
+  opacity:.9;
+}
+#scheduleTableWrap .monthly-person-schedule-table-v61146 th,
+#scheduleTableWrap .monthly-person-schedule-table-v61146 td{
+  border-right-color:#edf1f6;
+  border-bottom-color:#edf1f6;
+}
+
+body.theme-dark #scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-scope-range-v616ci,
+[data-theme="dark"] #scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-scope-range-v616ci{
+  background:#111b2a!important;
+  border-right-color:#263448!important;
+}
+body.theme-dark #scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-scope-range-v616ci.borrow-out-of-scope-day-v61529f15l,
+[data-theme="dark"] #scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-scope-range-v616ci.borrow-out-of-scope-day-v61529f15l{
+  background:#211b13!important;
+}
+body.theme-dark #scheduleTableWrap .schedule-scope-range-content-v616ci,
+[data-theme="dark"] #scheduleTableWrap .schedule-scope-range-content-v616ci{
+  color:#718198;
+}
+body.theme-dark #scheduleTableWrap .schedule-scope-range-content-v616ci.is-borrow,
+[data-theme="dark"] #scheduleTableWrap .schedule-scope-range-content-v616ci.is-borrow{
+  color:#d49a5d;
+}
+body.theme-dark #scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-section-v616t td,
+[data-theme="dark"] #scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-section-v616t td{
+  background:#132035!important;
+}
+body.theme-dark #scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-section-v616t.is-pending td,
+[data-theme="dark"] #scheduleTableWrap .monthly-person-schedule-table-v61146 .schedule-person-team-section-v616t.is-pending td{
+  background:#211c15!important;
+}

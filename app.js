@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
 window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16bc-attendance-minimal-balance";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16ci-schedule-calm-lock-range";
 
 
 /* ===== js/config.js ===== */
@@ -12478,7 +12478,28 @@ window.tcIsDayShiftCode = value =>
 
         html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${personTeamStatusBadgeV616AV}${periodMixedReadinessBadgeV616AW}${borrowWindowBadgeV61529F15L}${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(canonicalOrgNameV616Q(obj.meta) || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
-        for (const date of period.dates) {
+        const scopeGapDateV616CI = candidateDate => {
+          const candidate = String(candidateDate || '').slice(0,10);
+          if (!candidate || obj.days[candidate]) return false;
+          if (employeeStartDate && candidate < employeeStartDate) return false;
+          if (employeeResignDate && candidate >= employeeResignDate) return false;
+          if (obj._personTeamGroupV616T) return false;
+          return true;
+        };
+        const compactScheduleRangeV616CI = (fromDate,toDate) => {
+          const from=parseLocalISO(fromDate);
+          const to=parseLocalISO(toDate);
+          if(!from || Number.isNaN(from.getTime()) || !to || Number.isNaN(to.getTime())) return `${fromDate || ''}–${toDate || ''}`;
+          if(from.getFullYear()===to.getFullYear() && from.getMonth()===to.getMonth()){
+            return from.getDate()===to.getDate()
+              ? `${from.getDate()} ${thaiMonths[from.getMonth()]}`
+              : `${from.getDate()}–${to.getDate()} ${thaiMonths[from.getMonth()]}`;
+          }
+          return `${from.getDate()} ${thaiMonths[from.getMonth()]}–${to.getDate()} ${thaiMonths[to.getMonth()]}`;
+        };
+
+        for (let dateIndexV616CI=0; dateIndexV616CI<period.dates.length; dateIndexV616CI++) {
+          const date = period.dates[dateIndexV616CI];
           const r = obj.days[date];
 
           const beforeEmployment =
@@ -12508,12 +12529,35 @@ window.tcIsDayShiftCode = value =>
               html += `<td class="day-col empty-schedule-day team-other-context-day-v616t" title="วันที่นี้อยู่ใน Working Team อื่น"><span class="schedule-cell disabled team-other-context-cell-v616t">·</span></td>`;
               continue;
             }
+
+            // FIX16CI Schedule UX: collapse consecutive locked dates into one calm range.
+            // This removes repeated lock icons/text in every day cell while preserving
+            // the exact permission boundary in the tooltip and accessible label.
+            let gapEndIndexV616CI=dateIndexV616CI;
+            while(
+              gapEndIndexV616CI+1<period.dates.length
+              && scopeGapDateV616CI(period.dates[gapEndIndexV616CI+1])
+            ){
+              gapEndIndexV616CI+=1;
+            }
+            const gapFromV616CI=date;
+            const gapToV616CI=period.dates[gapEndIndexV616CI];
+            const gapCountV616CI=gapEndIndexV616CI-dateIndexV616CI+1;
+            const gapRangeV616CI=compactScheduleRangeV616CI(gapFromV616CI,gapToV616CI);
             const borrowGapV61529F15L=Boolean(borrowWindowV61529F15L);
+            const afterBorrowV616CI=borrowGapV61529F15L && gapFromV616CI>borrowWindowV61529F15L.to;
+            const beforeBorrowV616CI=borrowGapV61529F15L && gapToV616CI<borrowWindowV61529F15L.from;
             const scopeLabelV61529F15L=borrowGapV61529F15L?'นอกช่วงยืมตัว':'นอกขอบเขตการดูแล';
             const scopeTitleV61529F15L=borrowGapV61529F15L
-              ? `นอกช่วงยืมตัว • Manager ปลายทางจัดกะได้ ${formatDate(borrowWindowV61529F15L.from)}–${formatDate(borrowWindowV61529F15L.to)}`
-              : 'ไม่มีสิทธิ์ดูหรือจัดกะในวันที่นี้';
-            html += `<td class="day-col empty-schedule-day out-of-scope-day ${borrowGapV61529F15L?'borrow-out-of-scope-day-v61529f15l':''}" title="${safe(scopeTitleV61529F15L)}"><span class="schedule-cell disabled out-of-scope-cell out-of-scope-cell-v61529f15l" aria-label="${safe(scopeLabelV61529F15L)}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg><span class="sr-only">${safe(scopeLabelV61529F15L)}</span></span></td>`;
+              ? `นอกช่วงยืมตัว • Manager ปลายทางจัดกะได้ ${formatDate(borrowWindowV61529F15L.from)}–${formatDate(borrowWindowV61529F15L.to)} • ล็อก ${gapRangeV616CI}`
+              : `ไม่มีสิทธิ์ดูหรือจัดกะช่วง ${gapRangeV616CI}`;
+            const rangeTextV616CI=afterBorrowV616CI
+              ? `สิ้นสุดช่วงยืม ${formatDate(borrowWindowV61529F15L.to)} • ล็อก ${gapRangeV616CI}`
+              : beforeBorrowV616CI
+                ? `ช่วงยืมเริ่ม ${formatDate(borrowWindowV61529F15L.from)} • ล็อก ${gapRangeV616CI}`
+                : `ล็อก ${gapRangeV616CI}`;
+            html += `<td colspan="${gapCountV616CI}" class="day-col empty-schedule-day out-of-scope-day schedule-scope-range-v616ci ${borrowGapV61529F15L?'borrow-out-of-scope-day-v61529f15l':''}" title="${safe(scopeTitleV61529F15L)}"><div class="schedule-scope-range-content-v616ci ${borrowGapV61529F15L?'is-borrow':''}" aria-label="${safe(scopeLabelV61529F15L)} ${safe(gapRangeV616CI)}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg><span>${safe(rangeTextV616CI)}</span></div></td>`;
+            dateIndexV616CI=gapEndIndexV616CI;
             continue;
           }
 
