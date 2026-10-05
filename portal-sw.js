@@ -1,8 +1,8 @@
-const CACHE='timeattendance-portal-v61529-fix16cm';
+const CACHE='timeattendance-portal-v61529-fix16cn';
 const SHELL=[
   './portal.html',
-  './portal.css?v=6.15.29-fix16cm-home-week-definitive-20261005',
-  './portal.js?v=6.15.29-fix16cm-home-week-definitive-20261005',
+  './portal.css?v=6.15.29-fix16cn-request-manager-snapshot-20261005',
+  './portal.js?v=6.15.29-fix16cn-request-manager-snapshot-20261005',
   './favicon.svg'
 ];
 
