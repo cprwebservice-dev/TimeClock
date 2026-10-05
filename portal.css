@@ -5993,7 +5993,6 @@ body.dark-mode .tc-overflow-tooltip-v616bk,
 body.theme-dark .portal-cal-day .portal-cal-shift-name-v616cj{color:#F7FAFC!important}
 body.theme-dark .portal-cal-day.morning .portal-calendar-original-icon-v616ac{color:#FFB24A!important}
 body.theme-dark .portal-cal-day.night .portal-calendar-original-icon-v616ac{color:#A9A4FF!important}
-\n\n/* ==========================================================================\n   V6.15.29 FIX16CK — Home 7-day strip aligned with monthly Shift Calendar\n   - Morning = orange, Night = purple\n   - Remove repeated shift clock time from Home strip\n   - Larger balanced icon + shift name, same visual language as calendar\n   ========================================================================== */\n.portal-week-strip .portal-day-chip{\n  min-height:124px;\n  padding:11px 7px 10px;\n}\n.portal-week-strip .portal-day-chip>span{\n  font-size:11.5px;\n  font-weight:900;\n}\n.portal-week-strip .portal-day-chip>strong{\n  min-height:64px;\n  margin:9px 0 4px;\n  gap:5px;\n  justify-content:center;\n}\n.portal-week-strip .portal-day-chip .portal-shift-icon{\n  font-size:32px;\n  line-height:1;\n}\n.portal-week-strip .portal-day-chip .portal-day-chip-label-v616ae{\n  font-size:15px;\n  line-height:1.05;\n  font-weight:900;\n  letter-spacing:0;\n}\n.portal-week-strip .portal-day-chip.morning>strong,\n.portal-week-strip .portal-day-chip.morning .portal-shift-icon,\n.portal-week-strip .portal-day-chip.morning .portal-day-chip-label-v616ae{\n  color:#ef8100;\n}\n.portal-week-strip .portal-day-chip.night>strong,\n.portal-week-strip .portal-day-chip.night .portal-shift-icon,\n.portal-week-strip .portal-day-chip.night .portal-day-chip-label-v616ae{\n  color:#4023a8;\n}\n.portal-week-strip .portal-day-chip .portal-day-chip-time-v616ae{\n  display:none!important;\n}\n.portal-week-strip .portal-day-chip .portal-special-line,\n.portal-week-strip .portal-day-chip .portal-partial-leave-line-v61511{\n  margin-top:4px;\n  padding-top:4px;\n  font-size:10px;\n  line-height:1.2;\n}\n@media (max-width:560px){\n  .portal-week-strip .portal-day-chip{min-height:116px;padding:10px 5px 8px}\n  .portal-week-strip .portal-day-chip>strong{min-height:58px;margin:8px 0 3px;gap:4px}\n  .portal-week-strip .portal-day-chip .portal-shift-icon{font-size:30px}\n  .portal-week-strip .portal-day-chip .portal-day-chip-label-v616ae{font-size:14px}\n}\n
 
 /* ==========================================================================
    V6.15.29 FIX16CL — Full-day Leave hides partial-time fields
@@ -6004,3 +6003,80 @@ body.theme-dark .portal-cal-day.night .portal-calendar-original-icon-v616ac{colo
 #portalLeavePartialFieldsV61493.portal-pin-grid.hidden{
   display:none!important;
 }
+
+/* ==========================================================================
+   V6.15.29 FIX16CM — Portal Home 7-day Shift UI definitive override
+   Root cause fixed: FIX16CK CSS was appended with literal "\\n" text, so the
+   browser did not parse that block as intended. This block uses valid CSS and
+   wins over older !important theme rules.
+   ========================================================================== */
+.portal-week-strip .portal-day-chip{
+  min-height:124px!important;
+  padding:11px 7px 10px!important;
+}
+.portal-week-strip .portal-day-chip>span{
+  font-size:11.5px!important;
+  font-weight:900!important;
+}
+.portal-week-strip .portal-day-chip>strong{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-height:64px!important;
+  margin:9px 0 4px!important;
+  gap:5px!important;
+}
+.portal-week-strip .portal-day-chip .portal-shift-icon.portal-calendar-original-icon-v616ac{
+  width:auto!important;
+  height:auto!important;
+  margin:0!important;
+  font-size:32px!important;
+  line-height:1!important;
+}
+.portal-week-strip .portal-day-chip .portal-day-chip-label-v616ae{
+  display:block!important;
+  font-size:15px!important;
+  line-height:1.05!important;
+  font-weight:900!important;
+  letter-spacing:0!important;
+}
+/* Morning = orange, Night = purple. Override older navy rules. */
+.portal-week-strip .portal-day-chip.morning>strong,
+.portal-week-strip .portal-day-chip.morning .portal-shift-icon.portal-calendar-original-icon-v616ac,
+.portal-week-strip .portal-day-chip.morning .portal-day-chip-label-v616ae{
+  color:#F28C28!important;
+}
+.portal-week-strip .portal-day-chip.night>strong,
+.portal-week-strip .portal-day-chip.night .portal-shift-icon.portal-calendar-original-icon-v616ac,
+.portal-week-strip .portal-day-chip.night .portal-day-chip-label-v616ae{
+  color:#6259C8!important;
+}
+/* Clock time is intentionally omitted from the Home 7-day cards. */
+.portal-week-strip .portal-day-chip .portal-day-chip-time-v616ae{
+  display:none!important;
+}
+.portal-week-strip .portal-day-chip .portal-special-line,
+.portal-week-strip .portal-day-chip .portal-partial-leave-line-v61511{
+  margin-top:4px!important;
+  padding-top:4px!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+}
+body.theme-dark .portal-week-strip .portal-day-chip.morning>strong,
+body.theme-dark .portal-week-strip .portal-day-chip.morning .portal-shift-icon.portal-calendar-original-icon-v616ac,
+body.theme-dark .portal-week-strip .portal-day-chip.morning .portal-day-chip-label-v616ae{
+  color:#FFB24A!important;
+}
+body.theme-dark .portal-week-strip .portal-day-chip.night>strong,
+body.theme-dark .portal-week-strip .portal-day-chip.night .portal-shift-icon.portal-calendar-original-icon-v616ac,
+body.theme-dark .portal-week-strip .portal-day-chip.night .portal-day-chip-label-v616ae{
+  color:#A9A4FF!important;
+}
+@media (max-width:560px){
+  .portal-week-strip .portal-day-chip{min-height:116px!important;padding:10px 5px 8px!important}
+  .portal-week-strip .portal-day-chip>strong{min-height:58px!important;margin:8px 0 3px!important;gap:4px!important}
+  .portal-week-strip .portal-day-chip .portal-shift-icon.portal-calendar-original-icon-v616ac{font-size:30px!important}
+  .portal-week-strip .portal-day-chip .portal-day-chip-label-v616ae{font-size:14px!important}
+}
+

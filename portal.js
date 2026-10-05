@@ -3107,7 +3107,7 @@ $("portalTimeRefreshV616AB")?.addEventListener("click",async()=>{attendanceByDat
     if(!(await restore())){showAuth();setAuthTab(teamToken?"activate":"login");}
     if("serviceWorker" in navigator){
       try{
-        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16ck-home-week-20261005",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./portal-sw.js?v=6.15.29-fix16cm-home-week-definitive-20261005",{updateViaCache:"none"});
         await reg.update();
       }catch(_){}
     }
