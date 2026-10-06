@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix16dn-final-ux-ui-20261006" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix16do-manager-dashboard-20261006" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -156,10 +156,10 @@
 
 <div class="dashboard-view-tabs-v616h" role="tablist" aria-label="มุมมอง Dashboard">
 <button type="button" class="dashboard-view-tab-v616h active" id="dashboardOverviewTabV616H" data-dashboard-view-v616h="overview" role="tab" aria-selected="true" aria-controls="dashboardViewOverviewV616H">
-<span class="dashboard-tab-icon-v616h">▦</span><span><b>ภาพรวม</b><small>สถานะรวม • KPI • ประเด็นสำคัญ</small></span>
+<span class="dashboard-tab-icon-v616h">▦</span><span><b>ภาพรวมผู้จัดการ</b><small>งานที่ต้องทำ • KPI • จุดตัดสินใจ</small></span>
 </button>
 <button type="button" class="dashboard-view-tab-v616h" id="dashboardDailyTabV616H" data-dashboard-view-v616h="daily" role="tab" aria-selected="false" aria-controls="dashboardViewDailyV616H">
-<span class="dashboard-tab-icon-v616h">⌁</span><span><b>รายวัน / สะสม</b><small>แนวโน้มรายวัน • ผลสะสมตามช่วงวันที่</small></span>
+<span class="dashboard-tab-icon-v616h">⌁</span><span><b>แนวโน้ม</b><small>รายวัน • สะสม • รายละเอียดเพิ่มเติม</small></span>
 </button>
 </div>
 
@@ -186,6 +186,70 @@
 </div>
 
 <div id="dashboardViewOverviewV616H" class="dashboard-view-panel-v616h active" role="tabpanel" aria-labelledby="dashboardOverviewTabV616H">
+
+<section class="manager-focus-dashboard-v616do" id="dashboardManagerFocusV616DO" aria-label="ภาพรวมเพื่อการตัดสินใจ">
+  <div class="manager-focus-head-v616do">
+    <div>
+      <span class="eyebrow">MANAGER DECISION CENTER</span>
+      <h3>ภาพรวมเพื่อการตัดสินใจ</h3>
+      <p id="dashboardFocusScopeV616DO">สรุปเฉพาะข้อมูลใน Scope ที่คุณเข้าถึงได้</p>
+    </div>
+    <div class="manager-focus-head-meta-v616do">
+      <span id="dashboardFocusUpdatedV616DO">อัปเดต --:--</span>
+      <button type="button" class="btn btn-light btn-sm" data-go-page="shift-requests">คำขอ / แจ้งข้อมูล</button>
+    </div>
+  </div>
+
+  <section class="manager-action-strip-v616do" id="dashboardActionStripV616DO" aria-label="งานที่ควรดำเนินการ"></section>
+
+  <div class="manager-section-title-v616do">
+    <div><strong>KPI หลัก</strong><span>ดูภาพรวมในไม่กี่วินาที</span></div>
+  </div>
+  <section class="manager-kpi-grid-v616do" id="dashboardKpiStripV616DO" aria-label="ตัวชี้วัดหลัก"></section>
+
+  <section class="manager-decision-grid-v616do section-gap">
+    <article class="panel manager-quality-panel-v616do">
+      <div class="panel-header">
+        <div><h3>คุณภาพการลงเวลา</h3><p>อัตราลงเวลาครบในช่วงที่เลือก</p></div>
+        <button type="button" class="btn btn-light btn-sm" data-go-page="attendance">ดูรายละเอียด</button>
+      </div>
+      <div class="panel-body manager-quality-body-v616do">
+        <div class="manager-quality-ring-v616do" id="dashboardFocusRingV616DO">
+          <div><strong id="dashboardFocusRateV616DO">0%</strong><span>ลงเวลาครบ</span></div>
+        </div>
+        <div class="manager-quality-stats-v616do" id="dashboardFocusQualityStatsV616DO"></div>
+      </div>
+    </article>
+
+    <article class="panel manager-priority-panel-v616do">
+      <div class="panel-header">
+        <div><h3>ประเด็นที่ควรจัดการก่อน</h3><p>เรียงตามสัดส่วนผลกระทบจากข้อมูลชุดล่าสุด</p></div>
+      </div>
+      <div class="panel-body manager-priority-list-v616do" id="dashboardFocusPrioritiesV616DO"></div>
+    </article>
+  </section>
+
+  <article class="panel manager-hours-panel-v616do section-gap">
+    <div class="panel-header">
+      <div><h3>ภาระงานและชั่วโมง</h3><p>ดู OT / Waiting / งานวันหยุด เทียบกับชั่วโมงสุทธิ เพื่อใช้ตัดสินใจเรื่องกำลังคนและกะ</p></div>
+      <button type="button" class="btn btn-light btn-sm" data-go-page="report">เปิดศูนย์รายงาน</button>
+    </div>
+    <div class="panel-body manager-hours-body-v616do">
+      <div class="manager-hours-total-v616do">
+        <span>ชั่วโมงสุทธิ</span>
+        <strong id="dashboardFocusPaidHoursV616DO">0 <em>ชม.</em></strong>
+      </div>
+      <div class="manager-hours-bars-v616do" id="dashboardFocusHoursV616DO"></div>
+    </div>
+  </article>
+
+  <nav class="manager-quick-nav-v616do section-gap" aria-label="ทางลัดการจัดการ">
+    <button type="button" data-go-page="attendance"><span>◷</span><b>รายละเอียดเวลาทำงาน</b><small>ตรวจ Punch / สาย / ขาด / กลับก่อน</small></button>
+    <button type="button" data-go-page="schedule"><span>▣</span><b>ปฏิทินจัดกะ</b><small>ปรับกะและบริหารทีม</small></button>
+    <button type="button" data-go-page="shift-requests"><span>⇄</span><b>คำขอ / แจ้งข้อมูล</b><small>พิจารณาคิวที่ต้องดำเนินการ</small></button>
+  </nav>
+</section>
+
 <div class="dashboard-section-heading-v616h section-gap"><div><span class="eyebrow">OVERVIEW</span><h3>ภาพรวมตามช่วงวันที่</h3><p>แสดงเฉพาะตัวชี้วัดที่มีอยู่จริงจาก Dashboard RPC และ Scope ที่ผู้ใช้เข้าถึงได้</p></div></div>
 <div class="kpi-grid enterprise-kpis dashboard-primary-kpis-v616h" id="dashboardKpis"></div>
 <div class="dashboard-ops-metrics-v616h section-gap" id="dashboardOpsMetricsV616H"></div>
@@ -3405,6 +3469,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16dn-final-ux-ui-20261006"></script>
+<script src="./app.js?v=6.15.29-fix16do-manager-dashboard-20261006"></script>
 </body>
 </html>

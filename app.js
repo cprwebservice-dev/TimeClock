@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DN Final UX UI Stabilization";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dn-final-ux-ui";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DO Manager Dashboard Focused Decision";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16do-manager-dashboard";
 
 
 /* ===== js/config.js ===== */
@@ -38984,4 +38984,188 @@ ${names}${extra}
     attendance(); schedule(); team(); adminNav(); assistant();
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init,{once:true}); else init();
+})();
+
+
+/* ==========================================================================
+   V6.15.29 FIX16DO • MANAGER DASHBOARD FOCUSED DECISION
+   Frontend-only dashboard composition.
+   Reads TimeClockApp.state.dashboard after the canonical Dashboard RPC.
+   No new RPC, no permission/scope/routing/calculation changes.
+   ========================================================================== */
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const fmt = value => Number(value || 0).toLocaleString("th-TH", {maximumFractionDigits:1});
+  const pct = (value,total) => total > 0 ? Math.max(0, Math.min(100, Number(value||0) / Number(total||1) * 100)) : 0;
+
+  function toneByRatio(ratio, warn=.02, bad=.05){
+    return ratio >= bad ? "bad" : ratio >= warn ? "warn" : "good";
+  }
+
+  function scopeText(){
+    const zone = $("dashZone")?.selectedOptions?.[0]?.textContent?.trim() || "ทุกพื้นที่";
+    const dept = $("dashDepartment")?.selectedOptions?.[0]?.textContent?.trim() || "ทุกหน่วยงาน";
+    const start = $("dashStart")?.value || "-";
+    const end = $("dashEnd")?.value || "-";
+    return `${start} ถึง ${end} • ${zone} • ${dept}`;
+  }
+
+  function actionCard({tone,icon,value,unit,label,sub,page}){
+    return `<button type="button" class="manager-action-card-v616do ${tone}" data-go-page="${page}">
+      <span class="manager-action-icon-v616do">${icon}</span>
+      <div class="manager-action-copy-v616do">
+        <small>${tone==="bad"?"ต้องรีบตรวจ":tone==="warn"?"ควรตรวจสอบ":"อยู่ในเกณฑ์"}</small>
+        <div><strong>${fmt(value)}</strong><em>${unit||""}</em></div>
+        <b>${label}</b>
+        <span>${sub}</span>
+      </div>
+      <i>›</i>
+    </button>`;
+  }
+
+  function kpiCard({label,value,unit,note,tone="neutral",icon}){
+    return `<article class="manager-kpi-v616do ${tone}">
+      <div class="manager-kpi-top-v616do"><span>${label}</span><i>${icon}</i></div>
+      <div class="manager-kpi-value-v616do"><strong>${value}</strong><em>${unit||""}</em></div>
+      <small>${note}</small>
+    </article>`;
+  }
+
+  function priorityRow(item,index){
+    return `<button type="button" class="manager-priority-row-v616do ${item.tone}" data-go-page="${item.page}">
+      <span class="manager-priority-rank-v616do">${index+1}</span>
+      <div><strong>${item.title}</strong><small>${item.action}</small></div>
+      <div class="manager-priority-value-v616do"><b>${fmt(item.value)}</b><span>${item.unit}</span></div>
+      <i>›</i>
+    </button>`;
+  }
+
+  function hourRow(label,value,paid,tone){
+    const ratio = paid > 0 ? Math.min(100, Number(value||0)/paid*100) : 0;
+    return `<div class="manager-hour-row-v616do ${tone}">
+      <div><span>${label}</span><strong>${fmt(value)} <em>ชม.</em></strong></div>
+      <div class="manager-hour-track-v616do"><i style="width:${Math.max(value?2:0,ratio)}%"></i></div>
+      <small>${ratio.toFixed(1)}% ของชั่วโมงสุทธิ</small>
+    </div>`;
+  }
+
+  function render(){
+    const d = window.TimeClockApp?.state?.dashboard || {};
+    const total = Number(d.total_rows||0);
+    const employees = Number(d.total_employees||0);
+    if(!total && !employees) return;
+
+    const complete = Number(d.complete_time_rows||0);
+    const incomplete = Number(d.missing_in_rows||0) + Number(d.missing_out_rows||0);
+    const absent = Number(d.absent_rows||0);
+    const late = Number(d.late_rows||0);
+    const early = Number(d.early_leave_rows||0);
+    const discipline = late + early;
+    const paid = Number(d.paid_work_hours||0);
+    const regular = Number(d.regular_hours||0);
+    const ot = Number(d.overtime_hours||0);
+    const waiting = Number(d.waiting_hours||0);
+    const offday = Number(d.offday_work_hours||0);
+
+    const completeRate = pct(complete,total);
+    const incompleteRatio = incomplete/Math.max(1,total);
+    const absentRatio = absent/Math.max(1,total);
+    const disciplineRatio = discipline/Math.max(1,total);
+    const otRatio = ot/Math.max(1,paid);
+
+    if($("dashboardFocusScopeV616DO")) $("dashboardFocusScopeV616DO").textContent = scopeText();
+    if($("dashboardFocusUpdatedV616DO")) $("dashboardFocusUpdatedV616DO").textContent =
+      `อัปเดต ${new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})} น.`;
+
+    if($("dashboardActionStripV616DO")) $("dashboardActionStripV616DO").innerHTML = [
+      {
+        tone:toneByRatio(incompleteRatio,.01,.04), icon:"…", value:incomplete, unit:"รายการ",
+        label:"เวลาเข้า–ออกไม่ครบ", sub:"ตรวจ Punch / รับรองเวลา", page:"attendance"
+      },
+      {
+        tone:toneByRatio(absentRatio,.01,.03), icon:"×", value:absent, unit:"รายการ",
+        label:"ขาดงาน", sub:"ตรวจวันลา กะ และสาเหตุ", page:"attendance"
+      },
+      {
+        tone:toneByRatio(disciplineRatio,.02,.06), icon:"!", value:discipline, unit:"รายการ",
+        label:"สาย / กลับก่อน", sub:`สาย ${fmt(late)} • กลับก่อน ${fmt(early)}`, page:"attendance"
+      },
+      {
+        tone:toneByRatio(otRatio,.08,.15), icon:"＋", value:ot, unit:"ชม.",
+        label:"OT", sub:`${(otRatio*100).toFixed(1)}% ของชั่วโมงสุทธิ`, page:"report"
+      }
+    ].map(actionCard).join("");
+
+    const rateTone = completeRate >= 90 ? "good" : completeRate >= 75 ? "warn" : "bad";
+    if($("dashboardKpiStripV616DO")) $("dashboardKpiStripV616DO").innerHTML = [
+      {label:"พนักงานใน Scope",value:fmt(employees),unit:"คน",note:"ตามสิทธิ์และตัวกรองปัจจุบัน",tone:"neutral",icon:"♙"},
+      {label:"อัตราลงเวลาครบ",value:`${completeRate.toFixed(1)}`,unit:"%",note:`${fmt(complete)} จาก ${fmt(total)} รายการ`,tone:rateTone,icon:"✓"},
+      {label:"ขาดงาน",value:fmt(absent),unit:"รายการ",note:`${pct(absent,total).toFixed(1)}% ของรายการทั้งหมด`,tone:toneByRatio(absentRatio,.01,.03),icon:"×"},
+      {label:"มาสาย",value:fmt(late),unit:"รายการ",note:"เข้าหลังเริ่มกะ 1–29 นาที",tone:toneByRatio(late/Math.max(1,total),.01,.04),icon:"!"},
+      {label:"OT",value:fmt(ot),unit:"ชม.",note:`${(otRatio*100).toFixed(1)}% ของชั่วโมงสุทธิ`,tone:toneByRatio(otRatio,.08,.15),icon:"＋"}
+    ].map(kpiCard).join("");
+
+    if($("dashboardFocusRingV616DO")) {
+      $("dashboardFocusRingV616DO").style.setProperty("--focus-angle",`${completeRate*3.6}deg`);
+      $("dashboardFocusRingV616DO").className = `manager-quality-ring-v616do ${rateTone}`;
+    }
+    if($("dashboardFocusRateV616DO")) $("dashboardFocusRateV616DO").textContent = `${completeRate.toFixed(1)}%`;
+    if($("dashboardFocusQualityStatsV616DO")) $("dashboardFocusQualityStatsV616DO").innerHTML = [
+      ["ลงเวลาครบ",complete,"good"],
+      ["เวลาไม่ครบ",incomplete,incomplete ? "warn":"good"],
+      ["ขาดงาน",absent,absent ? "bad":"good"],
+      ["รายการทั้งหมด",total,"neutral"]
+    ].map(([label,value,tone])=>`<div class="${tone}"><span>${label}</span><strong>${fmt(value)}</strong></div>`).join("");
+
+    const priorities = [
+      {title:"เวลาเข้า–ออกไม่ครบ",value:incomplete,unit:"รายการ",ratio:incompleteRatio,tone:toneByRatio(incompleteRatio,.01,.04),action:"ตรวจ Punch และรายการที่ต้องรับรองเวลา",page:"attendance"},
+      {title:"ขาดงาน",value:absent,unit:"รายการ",ratio:absentRatio,tone:toneByRatio(absentRatio,.01,.03),action:"ตรวจวันลา กะ และสถานะพนักงาน",page:"attendance"},
+      {title:"สาย / กลับก่อน",value:discipline,unit:"รายการ",ratio:disciplineRatio,tone:toneByRatio(disciplineRatio,.02,.06),action:"ติดตามวินัยเวลาและรูปแบบกะ",page:"attendance"},
+      {title:"OT",value:ot,unit:"ชม.",ratio:otRatio,tone:toneByRatio(otRatio,.08,.15),action:"ตรวจภาระงานและการกระจายกะ",page:"report"}
+    ].filter(x=>x.value>0).sort((a,b)=>b.ratio-a.ratio).slice(0,3);
+
+    if($("dashboardFocusPrioritiesV616DO")) $("dashboardFocusPrioritiesV616DO").innerHTML =
+      priorities.length
+        ? priorities.map(priorityRow).join("")
+        : `<div class="manager-priority-empty-v616do"><span>✓</span><div><strong>ไม่พบประเด็นสำคัญในช่วงที่เลือก</strong><small>สามารถเปิดแนวโน้มเพื่อดูรายละเอียดรายวันได้</small></div></div>`;
+
+    if($("dashboardFocusPaidHoursV616DO")) $("dashboardFocusPaidHoursV616DO").innerHTML = `${fmt(paid)} <em>ชม.</em>`;
+    if($("dashboardFocusHoursV616DO")) $("dashboardFocusHoursV616DO").innerHTML = [
+      ["ชั่วโมงปกติ",regular,"regular"],
+      ["OT",ot,"ot"],
+      ["Waiting",waiting,"waiting"],
+      ["ทำงานวันหยุด",offday,"offday"]
+    ].map(x=>hourRow(x[0],x[1],paid,x[2])).join("");
+  }
+
+  function mountDailyDetailToggle(){
+    const page=$("page-dashboard");
+    const meta=document.querySelector("#dashboardViewDailyV616H .dashboard-daily-meta-v616h");
+    if(!page||!meta||$("dashboardDailyMoreToggleV616DO")) return;
+    const b=document.createElement("button");
+    b.type="button";
+    b.id="dashboardDailyMoreToggleV616DO";
+    b.className="btn btn-light btn-sm";
+    b.textContent="ดูรายละเอียดเพิ่มเติม";
+    meta.appendChild(b);
+    b.addEventListener("click",()=>{
+      const open=page.classList.toggle("dashboard-daily-detail-expanded-v616do");
+      b.textContent=open?"ซ่อนรายละเอียดเพิ่มเติม":"ดูรายละเอียดเพิ่มเติม";
+      b.setAttribute("aria-expanded",String(open));
+    });
+  }
+
+  function init(){
+    document.documentElement.dataset.dashboardFocusVersion="FIX16DO";
+    mountDailyDetailToggle();
+    render();
+    ["dashStart","dashEnd","dashZone","dashDepartment"].forEach(id=>$(id)?.addEventListener("change",()=>{
+      if($("dashboardFocusScopeV616DO")) $("dashboardFocusScopeV616DO").textContent=scopeText();
+    }));
+    document.addEventListener("timeclock:dashboard-rendered-v616h",render);
+  }
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init,{once:true});
+  else init();
 })();
