@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DQ Attendance Worker Resilience";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dq-attendance-worker-resilience";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DU Attendance Two Lane Worker";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16du-attendance-two-lane-worker";
 
 
 /* ===== js/config.js ===== */
@@ -23817,6 +23817,21 @@ ${names}${extra}
     finally{$("attRebuildStartBtn").disabled=false;app()?.hideLoading?.();}
   }
 
+  async function workerStepV616DU(jobId){
+    const c=client();
+    if(!c)throw new Error("ยังไม่ได้เชื่อมต่อ Supabase");
+    let {data,error}=await c.rpc("ta_process_attendance_rebuild_step_v616dt",{p_job_id:jobId});
+    if(!error)return data;
+    if(window.tcRpcMissingV616DF?.(error)){
+      return await rpc("ta_process_attendance_rebuild_step",{p_job_id:jobId});
+    }
+    throw error;
+  }
+
+  function workerPoolSizeV616DU(){
+    return 2;
+  }
+
   function workerRetryDelayV616DQ(attempt){
     return Math.min(10000,1000*Math.pow(2,Math.max(0,attempt-1)));
   }
@@ -23831,30 +23846,75 @@ ${names}${extra}
     if(state.worker)return;
     state.worker=true;state.stop=false;state.selectedJobId=jobId;
     let retry=0;
+    const lanes=workerPoolSizeV616DU();
     try{
       while(!state.stop){
-        try{
-          const job=await rpc("ta_process_attendance_rebuild_step",{p_job_id:jobId});
+        const calls=Array.from({length:lanes},()=>workerStepV616DU(jobId));
+        const settled=await Promise.allSettled(calls);
+
+        const jobs=settled
+          .filter(x=>x.status==="fulfilled"&&x.value)
+          .map(x=>x.value)
+          .sort((a,b)=>Number(b.processed_tasks||0)-Number(a.processed_tasks||0));
+
+        const errors=settled
+          .filter(x=>x.status==="rejected")
+          .map(x=>x.reason);
+
+        const fatal=errors.find(e=>!workerTransientErrorV616DQ(e));
+
+        if(fatal)throw fatal;
+
+        if(jobs.length){
           retry=0;
+          const job=jobs[0];
           renderProgress(job);
+
           if(job.status==="RUNNING"&&job.current_work_date){
-            setText("attRebuildLastError","Worker ทำงานปกติ • Pipeline: Rebuild → Calculate → Validate");
+            setText(
+              "attRebuildLastError",
+              errors.length
+                ? `กำลังทำงานแบบ ${lanes} ช่องพร้อมกัน • 1 ช่องสะดุดและจะลองใหม่อัตโนมัติ`
+                : `กำลังทำงานแบบ ${lanes} ช่องพร้อมกัน • Pipeline: Rebuild → Calculate → Validate`
+            );
           }
-          if(Date.now()-state.lastHistoryAt>2500){await loadHistory(false);state.lastHistoryAt=Date.now();}
-          if(Number(job.failed_tasks||0)>0&&Number(job.failed_tasks||0)%5===0)await loadErrors(jobId,false);
+
+          if(Date.now()-state.lastHistoryAt>2500){
+            await loadHistory(false);
+            state.lastHistoryAt=Date.now();
+          }
+
+          if(Number(job.failed_tasks||0)>0&&Number(job.failed_tasks||0)%5===0){
+            await loadErrors(jobId,false);
+          }
+
           if(terminal.has(job.status)||job.status==="PAUSED")break;
-          await sleep(120);
-        }catch(e){
+        }else{
           retry++;
-          const message=human(e);
-          setText("attRebuildLastError",`Worker สะดุด: ${message} • กำลังลองต่ออัตโนมัติ ${retry}/6`);
-          if(!workerTransientErrorV616DQ(e)||retry>6)throw e;
+          const e=errors[0]||new Error("ATTENDANCE_WORKER_NO_RESULT");
+          setText(
+            "attRebuildLastError",
+            `Worker 2 ช่องสะดุด: ${human(e)} • กำลังลองต่ออัตโนมัติ ${retry}/6`
+          );
+          if(retry>6)throw e;
           await sleep(workerRetryDelayV616DQ(retry));
+        }
+
+        if(errors.length&&jobs.length){
+          await sleep(400);
+        }else{
+          await sleep(100);
         }
       }
     }catch(e){
-      setText("attRebuildLastError",`Worker หยุดชั่วคราว: ${human(e)} • กด “ดำเนินการต่อ” เพื่อทำต่อจาก Task ล่าสุด`);
-      toast(`Worker หยุดชั่วคราว: ${human(e)} — ระบบลองต่ออัตโนมัติแล้ว แต่ยังไม่สำเร็จ`,"error");
+      setText(
+        "attRebuildLastError",
+        `Worker หยุดชั่วคราว: ${human(e)} • กด “ดำเนินการต่อ” เพื่อทำต่อจาก Task ล่าสุด`
+      );
+      toast(
+        `Worker หยุดชั่วคราว: ${human(e)} — ระบบลองต่ออัตโนมัติแล้ว แต่ยังไม่สำเร็จ`,
+        "error"
+      );
     }finally{
       state.worker=false;
       await loadHistory(false);
@@ -23862,7 +23922,7 @@ ${names}${extra}
       const latest=state.history.find(x=>x.id===jobId);
       if(latest){
         renderProgress(latest);
-        if(['COMPLETED','COMPLETED_WITH_ERRORS'].includes(String(latest.status||''))) {
+        if(['COMPLETED','COMPLETED_WITH_ERRORS'].includes(String(latest.status||''))){
           window.TimeClockConsistencyV61415?.invalidateAll?.();
         }
       }
@@ -23941,8 +24001,8 @@ ${names}${extra}
   function init(){
     defaultDates();
     bind();
-    document.documentElement.dataset.attendanceRebuildVersion="6.15.29 FIX16DQ";
-    if($("aboutVersion"))$("aboutVersion").textContent="6.15.29 FIX16DQ";
+    document.documentElement.dataset.attendanceRebuildVersion="6.15.29 FIX16DU";
+    if($("aboutVersion"))$("aboutVersion").textContent="6.15.29 FIX16DU";
     window.addEventListener("online",()=>setTimeout(maybeAutoResumeWorkerV616DQ,500));
     window.addEventListener("focus",()=>setTimeout(maybeAutoResumeWorkerV616DQ,800));
     document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(maybeAutoResumeWorkerV616DQ,800);});
