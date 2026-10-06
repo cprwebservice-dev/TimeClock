@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DW Manager Dashboard Final Focus";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dw-manager-dashboard-final-focus";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DX Attendance Read Stability Header Fix";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dx-attendance-read-stability";
 
 
 /* ===== js/config.js ===== */
@@ -2289,27 +2289,69 @@ window.tcIsDayShiftCode = value =>
       }
 
       const metaMap = new Map();
-      const chunks = [];
-      for (let i = 0; i < empCodes.length; i += 30) chunks.push(empCodes.slice(i, i + 30));
 
-      try {
-        for (const chunk of chunks) {
+      // FIX16DX: v61110 scans raw punch windows. A broad range + many employees
+      // can time out during Attendance rebuild. Ask only for the special rows,
+      // one work_date at a time and max 5 employees per request.
+      const specialByDateV616DX = new Map();
+      specialRows.forEach(row => {
+        const date = String(row.work_date || "").slice(0,10);
+        const emp = String(row.emp_code || "").trim();
+        if (!date || !emp) return;
+        if (!specialByDateV616DX.has(date)) {
+          specialByDateV616DX.set(date,new Set());
+        }
+        specialByDateV616DX.get(date).add(emp);
+      });
+
+      let deferredErrorV616DX = null;
+      let requestCountV616DX = 0;
+
+      outerPunchV616DX:
+      for (
+        const [date,empSet]
+        of [...specialByDateV616DX.entries()]
+          .sort((a,b)=>a[0].localeCompare(b[0]))
+      ) {
+        const dateEmployees = [...empSet];
+
+        for (let i = 0; i < dateEmployees.length; i += 5) {
+          const chunk = dateEmployees.slice(i,i+5);
+          requestCountV616DX++;
+
+          // Optional enrichment must never dominate page load.
+          if (requestCountV616DX > 60) break outerPunchV616DX;
+
           const { data, error } = await state.client.rpc(
             "ta_get_attendance_shift_punch_meta_v61110",
-            { p_start_date:startDate, p_end_date:endDate, p_emp_codes:chunk }
+            {
+              p_start_date:date,
+              p_end_date:date,
+              p_emp_codes:chunk
+            }
           );
-          if (error) throw error;
+
+          if (error) {
+            deferredErrorV616DX = error;
+            break outerPunchV616DX;
+          }
+
           (data || []).forEach(meta => {
-            metaMap.set(`${String(meta.emp_code)}|${String(meta.work_date).slice(0,10)}`, meta);
+            metaMap.set(
+              `${String(meta.emp_code)}|${String(meta.work_date).slice(0,10)}`,
+              meta
+            );
           });
         }
-      } catch (error) {
-        // Do not make the whole page unusable when optional Shift-2 punch metadata
-        // times out. Base Attendance remains canonical; special details can retry
-        // when the user opens a narrower employee/day view.
-        console.warn('Attendance special punch metadata V6.14.63 deferred:', error);
-        sanitizeCrossMidnightPunchOwnershipV61452(rows);
-        return rows;
+      }
+
+      if (deferredErrorV616DX) {
+        // Base Attendance rows are canonical. Only optional Shift-2 enrichment
+        // is deferred if the database is temporarily busy.
+        console.warn(
+          'Attendance special punch metadata FIX16DX deferred after narrow request:',
+          deferredErrorV616DX
+        );
       }
 
       specialRows.forEach(row => {
@@ -3598,6 +3640,25 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
+    async function attendanceFilterOptionsRpcV616DX(args) {
+      let response = await state.client.rpc(
+        "ta_get_attendance_filter_options_v616dx",
+        args
+      );
+
+      if (
+        response.error
+        && window.TimeClockShiftAPI?.missingFunction?.(response.error)
+      ) {
+        response = await state.client.rpc(
+          "ta_get_attendance_filter_options_v61022",
+          args
+        );
+      }
+
+      return response;
+    }
+
     async function loadAttendanceFilterOptions(preserve = true) {
       const oldArea = preserve ? String(val("attZone") || "") : "";
       const oldSubArea = preserve ? String(val("attSubArea") || "") : "";
@@ -3608,8 +3669,7 @@ window.tcIsDayShiftCode = value =>
           val("attEnd")
         );
         // Area-level scope first. Do not let a stale Sub-area constrain the parent list.
-        let response = await state.client.rpc(
-          "ta_get_attendance_filter_options_v61022",
+        let response = await attendanceFilterOptionsRpcV616DX(
           {
             p_start_date: val("attStart"),
             p_end_date: val("attEnd"),
@@ -3636,8 +3696,7 @@ window.tcIsDayShiftCode = value =>
 
         // If a manually typed/stale Area is invalid, reload the full authorized Area list.
         if (oldArea && !effectiveArea) {
-          response = await state.client.rpc(
-            "ta_get_attendance_filter_options_v61022",
+          response = await attendanceFilterOptionsRpcV616DX(
             {
               p_start_date: val("attStart"),
               p_end_date: val("attEnd"),
@@ -3689,8 +3748,7 @@ window.tcIsDayShiftCode = value =>
               .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
           } catch (hierarchyError) {
             // Fall back to server filter RPC for the exact hierarchy.
-            const child = await state.client.rpc(
-              "ta_get_attendance_filter_options_v61022",
+            const child = await attendanceFilterOptionsRpcV616DX(
               {
                 p_start_date: val("attStart"),
                 p_end_date: val("attEnd"),
@@ -4273,8 +4331,7 @@ window.tcIsDayShiftCode = value =>
       const oldDepartment = preserve ? String(val(departmentId) || "") : "";
       if (!start || !end) return null;
       try {
-        let base = await state.client.rpc(
-          "ta_get_attendance_filter_options_v61022",
+        let base = await attendanceFilterOptionsRpcV616DX(
           {
             p_start_date: start,
             p_end_date: end,
@@ -4295,8 +4352,7 @@ window.tcIsDayShiftCode = value =>
 
         let scoped = base.data || {};
         if (area) {
-          const response = await state.client.rpc(
-            "ta_get_attendance_filter_options_v61022",
+          const response = await attendanceFilterOptionsRpcV616DX(
             {
               p_start_date: start,
               p_end_date: end,
@@ -39329,3 +39385,12 @@ ${names}${extra}
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init,{once:true});
   else init();
 })();
+
+
+/* V6.15.29 FIX16DX • Attendance Read Stability runtime marker */
+window.TimeClockAttendanceReadV616DX = Object.freeze({
+  version:"V6.15.29 FIX16DX",
+  filterRpc:"ta_get_attendance_filter_options_v616dx",
+  specialPunchStrategy:"ONE_DAY_MAX_5_EMPLOYEES",
+  frozenColumns:2
+});

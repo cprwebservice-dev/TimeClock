@@ -37446,3 +37446,86 @@ html[data-theme="dark"][data-dashboard-focus-version="FIX16DW"] .manager-quick-n
     grid-template-columns:1fr;
   }
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16DX • ATTENDANCE TABLE HEADER / FROZEN COLUMN STABILITY
+   ========================================================================== */
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-table-panel-v61462 .table-wrap{
+  position:relative;
+  isolation:isolate;
+  overflow:auto;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table{
+  border-collapse:separate;
+  border-spacing:0;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table thead{
+  position:relative;
+  z-index:40;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table thead tr{
+  position:relative;
+  z-index:40;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table thead th{
+  position:sticky !important;
+  top:0 !important;
+  z-index:41 !important;
+  height:46px;
+  min-height:46px;
+  vertical-align:middle;
+  background:linear-gradient(180deg,#173b66 0%,#0d2a4d 100%) !important;
+  color:#fff !important;
+  box-shadow:0 1px 0 rgba(255,255,255,.08),0 2px 0 #ef7d22;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table tbody .sticky-att-1,
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table tbody .sticky-att-2{
+  z-index:12 !important;
+  background:var(--surface,#fff) !important;
+  background-clip:padding-box;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table thead .sticky-att-1,
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table thead .sticky-att-2{
+  z-index:60 !important;
+  background:linear-gradient(180deg,#173b66 0%,#0d2a4d 100%) !important;
+  color:#fff !important;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table [data-att-col="work_date"]{
+  width:92px;
+  min-width:92px;
+  max-width:92px;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table .sticky-att-2{
+  left:92px !important;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table [data-att-col="emp_code"]{
+  width:104px;
+  min-width:104px;
+  max-width:104px;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table thead [data-att-col="work_date"],
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table thead [data-att-col="emp_code"]{
+  text-align:left;
+  font-weight:800;
+  white-space:nowrap;
+}
+
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table tbody .sticky-att-2{
+  box-shadow:4px 0 8px rgba(15,23,42,.05);
+}
+
+html[data-theme="dark"][data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table tbody .sticky-att-1,
+html[data-theme="dark"][data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table tbody .sticky-att-2{
+  background:#112a3f !important;
+}
