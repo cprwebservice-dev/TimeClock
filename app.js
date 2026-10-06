@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DX Attendance Read Stability Header Fix";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dx-attendance-read-stability";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DZ Work Pattern Manager Scope Date Fix";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dz-work-pattern-scope-date";
 
 
 /* ===== js/config.js ===== */
@@ -22564,8 +22564,17 @@ ${skippedSummary(compatibility.skipped)}
       $('employeePatternDate')?.value
       || window.TimeClockCalendarV61448.month()
     );
-    return workPatternMonthStartV61419(month)
-      || window.TimeClockCalendarV61448.today();
+    const start=workPatternMonthStartV61419(month);
+    const end=workPatternMonthEndV61419(month);
+    const today=window.TimeClockCalendarV61448.today();
+
+    // FIX16DZ:
+    // Work Pattern itself remains a Monthly Baseline, but this date is used
+    // only to resolve Work-Mode permission for the cards shown on screen.
+    // If the selected month is the current month, use TODAY so a Manager whose
+    // scope started mid-month is not tested against day 1 of the month.
+    if(start&&end&&today>=start&&today<=end)return today;
+    return start||today;
   }
 
   function workTemplateAccessibleDepartmentsV61438(){
@@ -22612,15 +22621,52 @@ ${skippedSummary(compatibility.skipped)}
       }
     }
 
+    const referenceDate=workTemplateReferenceDateV61438();
+    let permissionSampleEmployeesV616DZ=[...(wp.employees||[])];
+
+    // FIX16DZ:
+    // The monthly employee list can legitimately contain an employee whose
+    // Manager scope begins later within the selected month. v616z is strict and
+    // returns HTTP 400 when that employee is queried on a date outside actor
+    // scope. Filter the sample population against the canonical exact-date
+    // Employee Scope first, so the Work Template overview never probes an
+    // employee/date that the Manager cannot view on referenceDate.
+    try{
+      const exactScopeRowsV616DZ=
+        await app()?.loadScopeEmployeeOptionsV616O?.(
+          null,
+          referenceDate,
+          referenceDate
+        )||[];
+
+      const exactCodesV616DZ=new Set(
+        exactScopeRowsV616DZ
+          .map(row=>String(row?.emp_code||'').trim())
+          .filter(Boolean)
+      );
+
+      permissionSampleEmployeesV616DZ=
+        permissionSampleEmployeesV616DZ.filter(
+          row=>exactCodesV616DZ.has(String(row?.emp_code||'').trim())
+        );
+    }catch(scopeErrorV616DZ){
+      // Keep the existing list as a compatibility fallback. Current-month
+      // referenceDate is still TODAY, which already fixes the known mid-month
+      // Manager-scope mismatch.
+      console.warn(
+        'Work Template exact-date scope prefilter FIX16DZ unavailable:',
+        scopeErrorV616DZ
+      );
+    }
+
     const representatives=new Map();
-    (wp.employees||[]).forEach(row=>{
+    permissionSampleEmployeesV616DZ.forEach(row=>{
       const dept=String(row?.department||'').trim();
       const emp=String(row?.emp_code||'').trim();
       if(dept&&emp&&!representatives.has(dept))representatives.set(dept,row);
     });
 
     if(representatives.size){
-      const referenceDate=workTemplateReferenceDateV61438();
       const samples=[...representatives.entries()].slice(0,80);
       const results=await Promise.allSettled(samples.map(async([department,row])=>({
         department,
@@ -39393,4 +39439,13 @@ window.TimeClockAttendanceReadV616DX = Object.freeze({
   filterRpc:"ta_get_attendance_filter_options_v616dx",
   specialPunchStrategy:"ONE_DAY_MAX_5_EMPLOYEES",
   frozenColumns:2
+});
+
+
+/* V6.15.29 FIX16DZ • Work Pattern Manager Scope-Date runtime marker */
+window.TimeClockWorkPatternScopeDateV616DZ = Object.freeze({
+  version:"V6.15.29 FIX16DZ",
+  currentMonthPermissionDate:"TODAY",
+  exactDateScopePrefilter:true,
+  strictWorkModeRpc:"ta_get_work_modes_for_employee_v616z"
 });
