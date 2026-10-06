@@ -14876,7 +14876,7 @@ window.tcIsDayShiftCode = value =>
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
         dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], "team-master":["ทีมช่างเทคนิค","สร้าง Team Master แบบ Auto Generate ตามหน่วยงานใน Scope ของ Manager"], "team-portal":["สมาชิกทีม / Portal","จัดการ QR/Link, Activation Code และ Reset PIN ของลูกทีม"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
-        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-employee-portal":["Employee Portal","เปิด/ระงับสิทธิ์ Portal ให้พนักงานแบบ Bulk โดยไม่ต้องมี Email"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
+        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-health":["System Health","ตรวจสุขภาพระบบและการตั้งค่าหลักแบบ Read-only"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-employee-portal":["Employee Portal","เปิด/ระงับสิทธิ์ Portal ให้พนักงานแบบ Bulk โดยไม่ต้องมี Email"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page);
       setText("pageSubtitle", titles[page]?.[1] || "");
@@ -14917,6 +14917,7 @@ window.tcIsDayShiftCode = value =>
           ?.load?.();
       }
 
+      if (page === "admin-health") window.TimeClockSystemHealthV616CW?.load?.();
       if (page === "admin-periods") window.TimeClockSystemPeriods?.load?.();
       if (page === "admin-shifts") loadShiftMaster();
       if (page === "admin-holidays") loadHolidays();
@@ -18149,7 +18150,7 @@ ${skippedSummary(compatibility.skipped)}
   const VERSION="6.15.29 FIX16BX";
   const menuItems=[
     ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["team-master","ทีมช่างเทคนิค","Team Master แบบ Auto Generate","◉"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
-    ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
+    ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-health","System Health","Configuration Audit และ System Health","♥"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
   ];
   let selected=0,lastProfileKey="";
   const app=()=>window.TimeClockApp;
@@ -38083,3 +38084,338 @@ ${names}${extra}
   window.TimeClockOverflowTooltipV616BK = api;
 })();
 
+
+
+;
+
+/* ===== V6.15.29 FIX16CW · HR Admin System Health / Configuration Audit ===== */
+"use strict";
+(function(){
+  const VERSION="V6.15.29 FIX16CW";
+  const $=id=>document.getElementById(id);
+  const app=()=>window.TimeClockApp;
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const state={rows:[],filter:"ALL",loadedAt:null,loading:false};
+
+  const areaLabels={
+    PROFILE:"User Profile",
+    MANAGER_SCOPE:"Manager Scope",
+    ACTING:"Acting Manager",
+    BORROW:"Borrow / ยืมตัว",
+    TEAM:"Team & Membership",
+    REQUEST:"Request Routing",
+    SYSTEM_PERIOD:"System Period",
+    CONTRACT:"Core Contract",
+    SUMMARY:"Summary"
+  };
+
+  function mount(){
+    const adminGroup=$("adminNavGroup");
+    if(adminGroup && !document.querySelector('.nav-item[data-page="admin-health"]')){
+      const center=document.querySelector('.nav-item[data-page="admin-center"]');
+      const btn=document.createElement("button");
+      btn.className="nav-item";
+      btn.dataset.page="admin-health";
+      btn.innerHTML='<span class="nav-icon">♥</span><span class="nav-text">System Health</span>';
+      btn.addEventListener("click",()=>app()?.switchPage?.("admin-health"));
+      center?.insertAdjacentElement("afterend",btn);
+    }
+
+    if(!$("page-admin-health")){
+      const sec=document.createElement("section");
+      sec.id="page-admin-health";
+      sec.className="page admin-page system-health-page-v616cw";
+      sec.innerHTML=`
+        <div class="health-hero-v616cw">
+          <div>
+            <span class="eyebrow">HR ADMIN • READ-ONLY AUDIT</span>
+            <h2>System Health & Configuration Audit</h2>
+            <p>ตรวจ Profile, Manager Scope, Acting, Borrow, Team, Request Routing, System Period และ Core Contract จากสถานะจริงของระบบ</p>
+          </div>
+          <div class="health-hero-actions-v616cw">
+            <button type="button" class="btn btn-light" id="healthOpenPeriodV616CW">จัดการรอบระบบ</button>
+            <button type="button" class="btn btn-primary" id="healthRefreshV616CW">↻ ตรวจสุขภาพระบบ</button>
+          </div>
+        </div>
+
+        <div class="health-overview-v616cw section-gap">
+          <article class="health-overview-card-v616cw total">
+            <span>Checks</span><strong id="healthTotalV616CW">-</strong><small>รายการตรวจทั้งหมด</small>
+          </article>
+          <article class="health-overview-card-v616cw pass">
+            <span>PASS</span><strong id="healthPassV616CW">-</strong><small>ทำงานถูกต้อง</small>
+          </article>
+          <article class="health-overview-card-v616cw warn">
+            <span>WARN</span><strong id="healthWarnV616CW">-</strong><small>ควรตรวจสอบ</small>
+          </article>
+          <article class="health-overview-card-v616cw fail">
+            <span>FAIL</span><strong id="healthFailV616CW">-</strong><small>ต้องแก้ไข</small>
+          </article>
+        </div>
+
+        <div class="health-status-banner-v616cw section-gap" id="healthBannerV616CW">
+          <div class="health-status-icon-v616cw" id="healthBannerIconV616CW">…</div>
+          <div>
+            <strong id="healthBannerTitleV616CW">พร้อมตรวจสุขภาพระบบ</strong>
+            <span id="healthBannerTextV616CW">กด “ตรวจสุขภาพระบบ” เพื่อโหลดสถานะล่าสุด</span>
+          </div>
+          <small id="healthLastRefreshV616CW">ยังไม่ได้ตรวจ</small>
+        </div>
+
+        <div class="panel section-gap health-filter-panel-v616cw">
+          <div class="panel-body health-toolbar-v616cw">
+            <div class="health-filter-chips-v616cw" role="group" aria-label="กรองสถานะ">
+              <button type="button" class="active" data-health-filter-v616cw="ALL">ทั้งหมด</button>
+              <button type="button" data-health-filter-v616cw="FAIL">FAIL</button>
+              <button type="button" data-health-filter-v616cw="WARN">WARN</button>
+              <button type="button" data-health-filter-v616cw="PASS">PASS</button>
+            </div>
+            <div class="health-toolbar-note-v616cw"><span class="health-readonly-dot-v616cw"></span>Read-only • ไม่แก้ข้อมูล</div>
+          </div>
+        </div>
+
+        <div class="health-attention-v616cw section-gap hidden" id="healthAttentionV616CW">
+          <div>
+            <span class="eyebrow">ATTENTION</span>
+            <strong id="healthAttentionTitleV616CW">มีรายการที่ควรตรวจสอบ</strong>
+            <small id="healthAttentionTextV616CW">-</small>
+          </div>
+          <button type="button" class="btn btn-light btn-sm" id="healthAttentionFilterV616CW">ดูเฉพาะรายการ</button>
+        </div>
+
+        <div class="panel section-gap health-results-panel-v616cw">
+          <div class="panel-header">
+            <div>
+              <h3>Configuration Health</h3>
+              <p id="healthResultMetaV616CW">ยังไม่มีผลการตรวจ</p>
+            </div>
+            <span class="health-version-v616cw">${VERSION}</span>
+          </div>
+          <div class="panel-body health-results-body-v616cw">
+            <div id="healthRowsV616CW" class="health-rows-v616cw">
+              <div class="health-empty-v616cw">กด “ตรวจสุขภาพระบบ” เพื่อเริ่มตรวจสอบ</div>
+            </div>
+          </div>
+        </div>
+      `;
+      document.querySelector(".content")?.appendChild(sec);
+    }
+
+    const cards=document.querySelector("#page-admin-center .admin-module-grid");
+    if(cards && !cards.querySelector('[data-admin-open="admin-health"]')){
+      const period=cards.querySelector('[data-admin-open="admin-periods"]');
+      const healthCard=document.createElement("button");
+      healthCard.className="admin-module-card health-admin-card-v616cw";
+      healthCard.dataset.adminOpen="admin-health";
+      healthCard.innerHTML='<span class="admin-module-icon">♥</span><div><strong>System Health</strong><small>ตรวจ Manager Scope, Acting, Borrow, Team, Request และ Core Contract จากข้อมูลจริง</small></div><em>ตรวจระบบ ›</em>';
+      period?.insertAdjacentElement("afterend",healthCard);
+    }
+
+    const healthPanel=document.querySelector("#page-admin-center .admin-center-columns .panel");
+    if(healthPanel && !$("adminHealthDetailBtnV616CW")){
+      const header=healthPanel.querySelector(".panel-header");
+      const btn=document.createElement("button");
+      btn.type="button";
+      btn.id="adminHealthDetailBtnV616CW";
+      btn.className="btn btn-light btn-sm";
+      btn.textContent="ดูรายละเอียด";
+      btn.addEventListener("click",()=>app()?.switchPage?.("admin-health"));
+      header?.appendChild(btn);
+    }
+
+    bind();
+  }
+
+  function bind(){
+    $("healthRefreshV616CW")?.addEventListener("click",load);
+    $("healthOpenPeriodV616CW")?.addEventListener("click",()=>app()?.switchPage?.("admin-periods"));
+    $("healthAttentionFilterV616CW")?.addEventListener("click",()=>{
+      state.filter="ATTENTION";
+      syncFilterButtons();
+      render();
+    });
+    document.querySelectorAll("[data-health-filter-v616cw]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        state.filter=btn.dataset.healthFilterV616cw||"ALL";
+        syncFilterButtons();
+        render();
+      });
+    });
+    document.addEventListener("click",e=>{
+      const open=e.target.closest('[data-health-open-page-v616cw]');
+      if(open)app()?.switchPage?.(open.dataset.healthOpenPageV616cw);
+    });
+  }
+
+  function syncFilterButtons(){
+    document.querySelectorAll("[data-health-filter-v616cw]").forEach(btn=>{
+      const key=btn.dataset.healthFilterV616cw||"ALL";
+      btn.classList.toggle("active",state.filter===key);
+    });
+  }
+
+  function setLoading(on){
+    state.loading=on;
+    const btn=$("healthRefreshV616CW");
+    if(btn){
+      btn.disabled=on;
+      btn.textContent=on?"กำลังตรวจสอบ...":"↻ ตรวจสุขภาพระบบ";
+    }
+    if(on){
+      const rows=$("healthRowsV616CW");
+      if(rows)rows.innerHTML='<div class="health-empty-v616cw"><span class="health-spinner-v616cw"></span>กำลังตรวจข้อมูลจาก Supabase...</div>';
+      $("healthBannerV616CW")?.classList.remove("is-pass","is-warn","is-fail");
+      if($("healthBannerTitleV616CW"))$("healthBannerTitleV616CW").textContent="กำลังตรวจสุขภาพระบบ";
+      if($("healthBannerTextV616CW"))$("healthBannerTextV616CW").textContent="กำลังอ่าน Configuration และ Runtime Contract";
+      if($("healthBannerIconV616CW"))$("healthBannerIconV616CW").textContent="…";
+    }
+  }
+
+  function statusCounts(){
+    const rows=state.rows.filter(r=>String(r.area||"").toUpperCase()!=="SUMMARY");
+    return {
+      total:rows.length,
+      pass:rows.filter(r=>r.status==="PASS").length,
+      warn:rows.filter(r=>r.status==="WARN").length,
+      fail:rows.filter(r=>r.status==="FAIL").length
+    };
+  }
+
+  function filteredRows(){
+    const base=state.rows.filter(r=>String(r.area||"").toUpperCase()!=="SUMMARY");
+    if(state.filter==="ATTENTION")return base.filter(r=>r.status==="FAIL"||r.status==="WARN");
+    if(state.filter==="ALL")return base;
+    return base.filter(r=>r.status===state.filter);
+  }
+
+  function summaryRow(){
+    return state.rows.find(r=>String(r.area||"").toUpperCase()==="SUMMARY")||null;
+  }
+
+  function render(){
+    const c=statusCounts();
+    if($("healthTotalV616CW"))$("healthTotalV616CW").textContent=c.total.toLocaleString("th-TH");
+    if($("healthPassV616CW"))$("healthPassV616CW").textContent=c.pass.toLocaleString("th-TH");
+    if($("healthWarnV616CW"))$("healthWarnV616CW").textContent=c.warn.toLocaleString("th-TH");
+    if($("healthFailV616CW"))$("healthFailV616CW").textContent=c.fail.toLocaleString("th-TH");
+
+    const summary=summaryRow();
+    const final=summary?.status || (c.fail?"FINAL_FAIL":c.warn?"FINAL_WARN":"FINAL_PASS");
+    const banner=$("healthBannerV616CW");
+    banner?.classList.remove("is-pass","is-warn","is-fail");
+    if(final==="FINAL_FAIL"){
+      banner?.classList.add("is-fail");
+      if($("healthBannerIconV616CW"))$("healthBannerIconV616CW").textContent="!";
+      if($("healthBannerTitleV616CW"))$("healthBannerTitleV616CW").textContent="พบ Configuration ที่ต้องแก้ไข";
+      if($("healthBannerTextV616CW"))$("healthBannerTextV616CW").textContent=`FAIL ${c.fail} • WARN ${c.warn} • PASS ${c.pass}`;
+    }else if(final==="FINAL_WARN"){
+      banner?.classList.add("is-warn");
+      if($("healthBannerIconV616CW"))$("healthBannerIconV616CW").textContent="△";
+      if($("healthBannerTitleV616CW"))$("healthBannerTitleV616CW").textContent="ระบบใช้งานได้ แต่มีรายการควรตรวจสอบ";
+      if($("healthBannerTextV616CW"))$("healthBannerTextV616CW").textContent=`WARN ${c.warn} • PASS ${c.pass} • ไม่มี Critical FAIL`;
+    }else{
+      banner?.classList.add("is-pass");
+      if($("healthBannerIconV616CW"))$("healthBannerIconV616CW").textContent="✓";
+      if($("healthBannerTitleV616CW"))$("healthBannerTitleV616CW").textContent="System Health ผ่านครบ";
+      if($("healthBannerTextV616CW"))$("healthBannerTextV616CW").textContent=`PASS ${c.pass} • ไม่พบ WARN / FAIL`;
+    }
+
+    if($("healthLastRefreshV616CW")){
+      $("healthLastRefreshV616CW").textContent=state.loadedAt
+        ?`ตรวจล่าสุด ${state.loadedAt.toLocaleString("th-TH")}`
+        :"ยังไม่ได้ตรวจ";
+    }
+
+    const attention=c.fail+c.warn;
+    $("healthAttentionV616CW")?.classList.toggle("hidden",attention===0);
+    if(attention){
+      if($("healthAttentionTitleV616CW"))$("healthAttentionTitleV616CW").textContent=
+        c.fail?`มี ${c.fail} รายการที่ต้องแก้ไข`:`มี ${c.warn} รายการที่ควรตรวจสอบ`;
+      if($("healthAttentionTextV616CW"))$("healthAttentionTextV616CW").textContent=
+        c.fail?`FAIL ${c.fail} • WARN ${c.warn}`:`ไม่มี FAIL • WARN ${c.warn}`;
+    }
+
+    const rows=filteredRows();
+    if($("healthResultMetaV616CW")){
+      $("healthResultMetaV616CW").textContent=
+        `${rows.length.toLocaleString("th-TH")} รายการ • แสดง ${state.filter==="ATTENTION"?"WARN / FAIL":state.filter}`;
+    }
+
+    const box=$("healthRowsV616CW");
+    if(!box)return;
+    if(!rows.length){
+      box.innerHTML='<div class="health-empty-v616cw">ไม่พบรายการในตัวกรองนี้</div>';
+      return;
+    }
+
+    box.innerHTML=rows.map(r=>{
+      const st=String(r.status||"INFO").toUpperCase();
+      const area=String(r.area||"GENERAL").toUpperCase();
+      const action=area==="SYSTEM_PERIOD" && st==="WARN"
+        ?'<button type="button" class="btn btn-light btn-sm health-row-action-v616cw" data-health-open-page-v616cw="admin-periods">จัดการรอบระบบ</button>'
+        :"";
+      return `<article class="health-row-v616cw status-${esc(st.toLowerCase())}">
+        <div class="health-row-status-v616cw"><span>${esc(st)}</span></div>
+        <div class="health-row-main-v616cw">
+          <div class="health-row-head-v616cw">
+            <span class="health-area-chip-v616cw">${esc(areaLabels[area]||area)}</span>
+            <strong>${esc(r.check_name||"-")}</strong>
+          </div>
+          <div class="health-row-subject-v616cw">${esc(r.subject||"-")}</div>
+          <div class="health-row-detail-v616cw">${esc(r.detail||"-")}</div>
+          <div class="health-row-recommend-v616cw"><b>แนวทาง:</b> ${esc(r.recommendation||"-")}</div>
+        </div>
+        ${action}
+      </article>`;
+    }).join("");
+  }
+
+  async function load(){
+    if(state.loading)return;
+    const A=app();
+    const realRole=String(A?.state?.profile?._realRole||A?.state?.profile?.role||"").toUpperCase();
+    if(realRole!=="HR_ADMIN"){
+      A?.toast?.("System Health สำหรับ HR Admin เท่านั้น","error");
+      return;
+    }
+    if(!A?.state?.client)return;
+    setLoading(true);
+    try{
+      const {data,error}=await A.state.client.rpc("ta_get_system_health_v616cw");
+      if(error)throw error;
+      state.rows=(data||[]).map(r=>({...r,status:String(r.status||"").toUpperCase()}));
+      state.loadedAt=new Date();
+      render();
+    }catch(err){
+      state.rows=[];
+      const msg=String(err?.message||err?.details||err||"");
+      const missing=/PGRST202|42883|Could not find the function|does not exist/i.test(msg);
+      const box=$("healthRowsV616CW");
+      if(box)box.innerHTML=`<div class="health-rpc-error-v616cw">
+        <strong>${missing?"ยังไม่ได้ติดตั้ง System Health RPC":"โหลด System Health ไม่สำเร็จ"}</strong>
+        <span>${esc(missing?"กรุณารัน SQL V6.15.29 FIX16CW แล้วรีเฟรชหน้านี้":msg)}</span>
+      </div>`;
+      const banner=$("healthBannerV616CW");
+      banner?.classList.remove("is-pass","is-warn");
+      banner?.classList.add("is-fail");
+      if($("healthBannerIconV616CW"))$("healthBannerIconV616CW").textContent="!";
+      if($("healthBannerTitleV616CW"))$("healthBannerTitleV616CW").textContent="ยังตรวจสุขภาพระบบไม่ได้";
+      if($("healthBannerTextV616CW"))$("healthBannerTextV616CW").textContent=missing?"ต้องติดตั้ง FIX16CW Backend RPC ก่อน":"ตรวจสอบ Connection / Permission";
+      A?.toast?.(missing?"กรุณารัน SQL FIX16CW ก่อนใช้งาน System Health":(A.humanError?.(err)||msg),"error");
+    }finally{
+      setLoading(false);
+    }
+  }
+
+  function init(){
+    mount();
+    window.addEventListener("ta:session-ready",()=>{
+      if(document.querySelector("#page-admin-health.active"))load();
+    });
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});
+  else init();
+
+  window.TimeClockSystemHealthV616CW={load,mount,version:VERSION};
+})();
