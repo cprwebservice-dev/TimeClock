@@ -35791,18 +35791,40 @@ ${names}${extra}
     app()?.showLoading?.((realRole()==="HR_ADMIN"||role()==="HR_ADMIN")?"กำลังโหลดพนักงาน Employee Portal ทั้งระบบ...":"กำลังโหลด Employee Portal ของทีม...");
     try{
       let rows;
-      try{
-        [rows]=await Promise.all([
-          loadPortalTeamRowsV616AD(),
-          loadTeamLink(false)
-        ]);
-      }catch(pageErrorV616AD){
-        console.warn("Portal paging FIX16AD fallback:",pageErrorV616AD);
+
+      // V6.15.29 FIX16CZ
+      // FIX16AD paging was introduced for the HR Admin company-wide Portal
+      // population. Formal Manager / Acting Manager scopes are normally much
+      // smaller and the paged wrapper still has to execute the underlying
+      // full team reader before applying LIMIT/OFFSET. Calling that wrapper
+      // for Manager can therefore add unnecessary work and may surface a 500
+      // even though the canonical full team RPC succeeds immediately after.
+      //
+      // Policy:
+      //   HR_ADMIN       -> paged reader (with safe full-RPC fallback)
+      //   MANAGER/ACTING -> canonical full team reader directly
+      const usePagedPortalV616CZ=(realRole()==="HR_ADMIN"||role()==="HR_ADMIN");
+
+      if(usePagedPortalV616CZ){
+        try{
+          [rows]=await Promise.all([
+            loadPortalTeamRowsV616AD(),
+            loadTeamLink(false)
+          ]);
+        }catch(pageErrorV616AD){
+          console.warn("Portal paging FIX16AD fallback:",pageErrorV616AD);
+          [rows]=await Promise.all([
+            rpc("ta_portal_get_my_team_v61482"),
+            loadTeamLink(false)
+          ]);
+        }
+      }else{
         [rows]=await Promise.all([
           rpc("ta_portal_get_my_team_v61482"),
           loadTeamLink(false)
         ]);
       }
+
       let portalRowsV616Q=Array.isArray(rows)?rows:[];
       try{
         const todayV616Q=app()?.calendarTodayISO?.()||new Date().toISOString().slice(0,10);
