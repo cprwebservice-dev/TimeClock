@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DO Manager Dashboard Focused Decision";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16do-manager-dashboard";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DQ Attendance Worker Resilience";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dq-attendance-worker-resilience";
 
 
 /* ===== js/config.js ===== */
@@ -22205,14 +22205,33 @@ ${skippedSummary(compatibility.skipped)}
     const rows=[['EmployeeId','InOutDate','InOutTime','InOutMode','GPSName','GpsLocation'],['0043973','2026-06-02','08:30','เข้า','','สำนักงานใหญ่ วิภาวดี 62'],['0043973','2026-06-02','18:00','ออก','','สำนักงานใหญ่ วิภาวดี 62']];
     download('TextTime_CSV_Template.csv','\uFEFF'+rows.map(x=>x.map(csvCell).join(',')).join('\n'));
   }
+  function csvWorkerRetryDelayV616DQ(attempt){
+    return Math.min(10000,1000*Math.pow(2,Math.max(0,attempt-1)));
+  }
+  function csvWorkerTransientErrorV616DQ(error){
+    const msg=String(error?.message||error||'').toLowerCase();
+    const code=String(error?.code||'').toLowerCase();
+    if(['42501','pgrst301','pgrst302'].includes(code))return false;
+    if(msg.includes('permission')||msg.includes('not authorized')||msg.includes('jwt')||msg.includes('session expired'))return false;
+    return true;
+  }
   async function runAttendanceJob(startDate,endDate,batchId){
     csvProgress(72,'กำลังสร้าง Job ประมวลผล Attendance...');
     const job=await rpc('ta_create_attendance_rebuild_job',{p_start_date:startDate,p_end_date:endDate,p_batch_size:100,p_note:`สร้างจาก CSV Batch ${batchId}`});
     await rpc('ta_link_time_csv_rebuild_job',{p_batch_id:batchId,p_job_id:job.id});
-    let current=job,guard=0;
+    let current=job,guard=0,retry=0;
     while(!['COMPLETED','COMPLETED_WITH_ERRORS','FAILED','CANCELLED'].includes(current.status)&&guard<20000){
-      current=await rpc('ta_process_attendance_rebuild_step',{p_job_id:job.id});guard++;
-      csvProgress(72+(Number(current.progress_percent||0)*.28),`Attendance ${current.processed_tasks||0}/${current.total_tasks||0} Task • ${current.current_work_date?fmtDate(current.current_work_date):''}`);
+      try{
+        current=await rpc('ta_process_attendance_rebuild_step',{p_job_id:job.id});
+        guard++; retry=0;
+        csvProgress(72+(Number(current.progress_percent||0)*.28),`Attendance ${current.processed_tasks||0}/${current.total_tasks||0} Task • ${current.current_work_date?fmtDate(current.current_work_date):''}`);
+      }catch(error){
+        retry++;
+        if(!csvWorkerTransientErrorV616DQ(error)||retry>6)throw error;
+        const wait=csvWorkerRetryDelayV616DQ(retry);
+        csvProgress(72+(Number(current.progress_percent||0)*.28),`การเชื่อมต่อสะดุด • ระบบกำลังลองต่ออัตโนมัติครั้งที่ ${retry}/6`);
+        await new Promise(r=>setTimeout(r,wait));
+      }
     }
     return current;
   }
@@ -23770,7 +23789,10 @@ ${names}${extra}
     setText("attRebuildKpiDeleted",num(job.deleted_rows));
     setText("attRebuildKpiInserted",num(job.inserted_rows));
     setText("attRebuildCurrentDate",fmtDate(job.current_work_date));
-    setText("attRebuildRemaining",`${num(job.remaining_tasks)} Task คงเหลือ`);
+    const remaining=Number.isFinite(Number(job.remaining_tasks))
+      ? Number(job.remaining_tasks)
+      : Math.max(0,Number(job.total_tasks||0)-Number(job.processed_tasks||0));
+    setText("attRebuildRemaining",`${num(remaining)} Task ทั้ง Job คงเหลือ`);
     setText("attRebuildLastError",job.last_error||"ไม่พบ Error ล่าสุด");
     const run=job.status==="RUNNING"||job.status==="QUEUED";
     $("attRebuildPauseBtn")?.classList.toggle("hidden",!run);
@@ -23795,23 +23817,44 @@ ${names}${extra}
     finally{$("attRebuildStartBtn").disabled=false;app()?.hideLoading?.();}
   }
 
+  function workerRetryDelayV616DQ(attempt){
+    return Math.min(10000,1000*Math.pow(2,Math.max(0,attempt-1)));
+  }
+  function workerTransientErrorV616DQ(error){
+    const msg=String(error?.message||error||"").toLowerCase();
+    const code=String(error?.code||"").toLowerCase();
+    if(["42501","pgrst301","pgrst302"].includes(code))return false;
+    if(msg.includes("permission")||msg.includes("not authorized")||msg.includes("jwt")||msg.includes("session expired"))return false;
+    return true;
+  }
   async function runWorker(jobId){
     if(state.worker)return;
     state.worker=true;state.stop=false;state.selectedJobId=jobId;
+    let retry=0;
     try{
       while(!state.stop){
-        const job=await rpc("ta_process_attendance_rebuild_step",{p_job_id:jobId});
-        renderProgress(job);
-        if(job.status==="RUNNING"&&job.current_work_date){
-          setText("attRebuildLastError","Pipeline: Rebuild → Calculate → Validate");
+        try{
+          const job=await rpc("ta_process_attendance_rebuild_step",{p_job_id:jobId});
+          retry=0;
+          renderProgress(job);
+          if(job.status==="RUNNING"&&job.current_work_date){
+            setText("attRebuildLastError","Worker ทำงานปกติ • Pipeline: Rebuild → Calculate → Validate");
+          }
+          if(Date.now()-state.lastHistoryAt>2500){await loadHistory(false);state.lastHistoryAt=Date.now();}
+          if(Number(job.failed_tasks||0)>0&&Number(job.failed_tasks||0)%5===0)await loadErrors(jobId,false);
+          if(terminal.has(job.status)||job.status==="PAUSED")break;
+          await sleep(120);
+        }catch(e){
+          retry++;
+          const message=human(e);
+          setText("attRebuildLastError",`Worker สะดุด: ${message} • กำลังลองต่ออัตโนมัติ ${retry}/6`);
+          if(!workerTransientErrorV616DQ(e)||retry>6)throw e;
+          await sleep(workerRetryDelayV616DQ(retry));
         }
-        if(Date.now()-state.lastHistoryAt>2500){await loadHistory(false);state.lastHistoryAt=Date.now();}
-        if(Number(job.failed_tasks||0)>0&&Number(job.failed_tasks||0)%5===0)await loadErrors(jobId,false);
-        if(terminal.has(job.status)||job.status==="PAUSED")break;
-        await sleep(80);
       }
     }catch(e){
-      toast(`หยุด Worker ชั่วคราว: ${human(e)} — กด “ดำเนินการต่อ” เพื่อทำต่อจาก Task ล่าสุด`,"error");
+      setText("attRebuildLastError",`Worker หยุดชั่วคราว: ${human(e)} • กด “ดำเนินการต่อ” เพื่อทำต่อจาก Task ล่าสุด`);
+      toast(`Worker หยุดชั่วคราว: ${human(e)} — ระบบลองต่ออัตโนมัติแล้ว แต่ยังไม่สำเร็จ`,"error");
     }finally{
       state.worker=false;
       await loadHistory(false);
@@ -23887,7 +23930,23 @@ ${names}${extra}
     document.querySelector('[data-admin-open="admin-attendance-rebuild"]')?.addEventListener("click",()=>setTimeout(()=>loadHistory(),0));
     window.addEventListener("ta:session-ready",()=>{if(app()?.state?.profile?.role==="HR_ADMIN")loadHistory(false);});
   }
-  function init(){defaultDates();bind();document.documentElement.dataset.attendanceRebuildVersion=VERSION;if($("aboutVersion"))$("aboutVersion").textContent=VERSION;}
+  function maybeAutoResumeWorkerV616DQ(){
+    const job=state.activeJob||state.history.find(j=>["RUNNING","QUEUED"].includes(String(j.status||"")));
+    if(!job||state.worker||state.stop||document.hidden)return;
+    if(["RUNNING","QUEUED"].includes(String(job.status||""))){
+      setText("attRebuildLastError","ตรวจพบ Job ที่ยังไม่จบ • กำลังเชื่อม Worker ต่ออัตโนมัติ...");
+      runWorker(job.id);
+    }
+  }
+  function init(){
+    defaultDates();
+    bind();
+    document.documentElement.dataset.attendanceRebuildVersion="6.15.29 FIX16DQ";
+    if($("aboutVersion"))$("aboutVersion").textContent="6.15.29 FIX16DQ";
+    window.addEventListener("online",()=>setTimeout(maybeAutoResumeWorkerV616DQ,500));
+    window.addEventListener("focus",()=>setTimeout(maybeAutoResumeWorkerV616DQ,800));
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(maybeAutoResumeWorkerV616DQ,800);});
+  }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
   window.TimeClockAttendanceRebuild={loadHistory,loadErrors,runWorker};
 })();
