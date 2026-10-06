@@ -20036,8 +20036,20 @@ ${skippedSummary(compatibility.skipped)}
           }
         );
       }catch(error){
-        const messageV61463 = String(error?.message || error || '').toUpperCase();
-        if (!messageV61463.includes('ATTENDANCE_DAY_NOT_FOUND')) {
+        const messageV61463 = String(
+          error?.code || ''
+        ) + ' ' + String(
+          error?.message || error?.details || error || ''
+        );
+        const missingV650V616DE =
+          /PGRST202|42883|could not find the function|function.*does not exist|schema cache/i
+            .test(messageV61463);
+
+        // V6.15.29 FIX16DE:
+        // v650 is the canonical FIX16R Attendance Detail contract.
+        // Only fall back to legacy v640 when v650 is genuinely not installed.
+        // Never bypass a real v650 permission/business/runtime error.
+        if(missingV650V616DE){
           try{
             detail=await rpc(
               "ta_get_attendance_day_detail_v640",
@@ -20047,6 +20059,12 @@ ${skippedSummary(compatibility.skipped)}
               }
             );
           }catch(_){ detail=null; }
+        }else{
+          console.warn(
+            "Attendance Detail canonical v650 failed; legacy fallback blocked",
+            error
+          );
+          detail=null;
         }
       }
     }
@@ -22000,6 +22018,18 @@ ${skippedSummary(compatibility.skipped)}
           {}
         );
       }catch(error){
+        const missingV657V616DE =
+          /PGRST202|42883|could not find the function|function.*does not exist|schema cache/i
+            .test(
+              String(error?.code||'') + ' ' +
+              String(error?.message||error?.details||error||'')
+            );
+
+        // V6.15.29 FIX16DE:
+        // v657 is authoritative. v656 is compatibility-only and must not
+        // override a real authorization/runtime error returned by v657.
+        if(!missingV657V616DE) throw error;
+
         access=await rpc(
           'ta_get_work_pattern_parameter_access_v656',
           {}
@@ -35145,11 +35175,47 @@ ${names}${extra}
     return {allowed:true,blocks,warnings};
   }
   async function saveBulkExtensions(payload=[]){
-    if(!payload.length)return;const items=payload.map(x=>({emp_code:String(x.emp_code||''),work_date:String(x.work_date||'').slice(0,10),shift_code:x.shift_code==null?null:String(x.shift_code).toUpperCase(),note:x.note||null}));
-    try{await rpc('ta_sync_bulk_schedule_rules_v6135',{p_items:items});}
-    catch(e){try{await rpc('ta_sync_bulk_schedule_rules_v6134',{p_items:items});}
-    catch(e2){try{await rpc('ta_sync_bulk_schedule_rules_v6123',{p_items:items});}
-    catch(e3){try{await rpc('ta_sync_bulk_schedule_rules_v6120',{p_items:items});}catch(e4){app()?.toast?.(`บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule บางรายการไม่สำเร็จ: ${e4.message||e4}`,'warning');}}}}
+    if(!payload.length)return;
+    const items=payload.map(x=>({
+      emp_code:String(x.emp_code||''),
+      work_date:String(x.work_date||'').slice(0,10),
+      shift_code:x.shift_code==null?null:String(x.shift_code).toUpperCase(),
+      note:x.note||null
+    }));
+
+    const callSyncV616DE=async(name)=>{
+      try{
+        await rpc(name,{p_items:items});
+        return true;
+      }catch(error){
+        // V6.15.29 FIX16DE:
+        // Older writers are compatibility-only. A real error from the newest
+        // installed writer must never be bypassed by retrying an older writer.
+        if(!missingRpcV61425(error)) throw error;
+        return false;
+      }
+    };
+
+    try{
+      if(await callSyncV616DE('ta_sync_bulk_schedule_rules_v6135')) return;
+      if(await callSyncV616DE('ta_sync_bulk_schedule_rules_v6134')) return;
+      if(await callSyncV616DE('ta_sync_bulk_schedule_rules_v6123')) return;
+      if(await callSyncV616DE('ta_sync_bulk_schedule_rules_v6120')) return;
+
+      app()?.toast?.(
+        'บันทึกตารางกะสำเร็จ แต่ไม่พบ RPC สำหรับซิงก์ Smart OFF/Scheduling Rule กรุณาตรวจสอบ Backend SQL',
+        'warning'
+      );
+    }catch(error){
+      console.warn(
+        'Scheduling Rule canonical sync failed; legacy fallback blocked',
+        error
+      );
+      app()?.toast?.(
+        `บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule ไม่สำเร็จ: ${error?.message||error}`,
+        'warning'
+      );
+    }
   }
   async function enrichScheduleRows(rows=[]){
     if(!rows.length)return;
