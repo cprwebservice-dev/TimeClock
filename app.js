@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DF Frontend RPC Contract Freeze";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16df-rpc-contract-freeze";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DM Smart Assistant Scoped Live Insight";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dm-smart-assistant";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.15.29-fix16df-rpc-contract-
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.15.29 FIX16DF',
+  version: '6.15.29 FIX16DM',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -18867,7 +18867,7 @@ ${skippedSummary(compatibility.skipped)}
     `;
   }
   function auditPageHtml(){return `<section id="page-admin-audit" class="page audit-center-page"><div class="audit-hero"><div><span class="eyebrow">SYSTEM AUDIT CENTER</span><h2>ประวัติการเปลี่ยนแปลง</h2><p>ตรวจสอบการจัดกะ การยืนยัน/ล็อกตาราง และการปิดรายการ Review</p></div><button id="auditExportBtn" class="btn btn-success">Export Excel</button></div><div class="panel section-gap"><div class="panel-body"><div class="fc-toolbar"><div class="field"><label>วันที่เริ่มต้น</label><input id="auditStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="auditEnd" class="input" type="date"></div><div class="field"><label>ประเภท</label><select id="auditType" class="select"><option value="">ทั้งหมด</option><option value="SHIFT_ASSIGNMENT">การจัดกะ</option><option value="SCHEDULE_MONTH">สถานะตารางกะ</option><option value="REVIEW">Review</option></select></div><div class="field"><label>ค้นหา</label><input id="auditSearch" class="input" placeholder="ผู้ดำเนินการ รหัส หรือรายละเอียด"></div><div class="toolbar-actions"><button id="auditLoadBtn" class="btn btn-primary">ค้นหา</button></div></div></div></div><div class="panel section-gap"><div class="panel-header"><div><h3>Audit Log</h3><p id="auditCount">0 รายการ</p></div></div><div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr><th>วันเวลา</th><th>ประเภท</th><th>การทำงาน</th><th>ผู้ดำเนินการ</th><th>รายการ</th><th>รายละเอียด</th></tr></thead><tbody id="auditBody"></tbody></table></div></div></div></section>`;}
-  function assistantPageHtml(){return `<section id="page-smart-assistant" class="page smart-assistant-page"><div class="assistant-hero"><div><span class="eyebrow">SMART DATA ASSISTANT</span><h2>ผู้ช่วยวิเคราะห์ Time-Clock</h2><p>สรุปจากข้อมูลที่ระบบโหลดจริง โดยไม่ส่งข้อมูลออกไปภายนอก</p></div><span class="fc-chip status-PUBLISHED">Local Insight Engine</span></div><div class="assistant-shell section-gap"><div class="assistant-chat"><div id="assistantMessages" class="assistant-messages"><div class="assistant-message bot"><strong>สวัสดีครับ</strong>ถามข้อมูล เช่น “วันนี้ Missing OUT กี่คน”, “หน่วยงานไหนมาสายมากสุด” หรือ “เดือนนี้หัวหน้างานปรับกะกี่รายการ”</div></div><div class="assistant-inputbar"><input id="assistantInput" class="input" placeholder="พิมพ์คำถามเกี่ยวกับข้อมูล Time-Clock"><button id="assistantSendBtn" class="btn btn-primary">ถาม</button></div></div><aside><div class="panel"><div class="panel-header"><div><h3>คำถามแนะนำ</h3><p>กดเพื่อถามได้ทันที</p></div></div><div class="panel-body assistant-prompts"><button class="assistant-prompt">วันนี้ Missing IN กี่คน</button><button class="assistant-prompt">วันนี้ Missing OUT กี่คน</button><button class="assistant-prompt">หน่วยงานไหนมาสายมากที่สุด</button><button class="assistant-prompt">เดือนนี้หัวหน้างานปรับกะกี่รายการ</button><button class="assistant-prompt">สรุปรายการรอตรวจสอบ</button><div class="assistant-disclaimer">รุ่นนี้เป็น Rule-based Insight จากข้อมูลในระบบ ไม่ได้เชื่อมบริการ AI ภายนอก</div></div></div></aside></div></section>`;}
+  function assistantPageHtml(){return `<section id="page-smart-assistant" class="page smart-assistant-page"><div class="assistant-hero"><div><span class="eyebrow">SMART DATA ASSISTANT</span><h2>ผู้ช่วยวิเคราะห์ Time-Clock</h2><p>ดึงข้อมูลล่าสุดจาก Supabase ตามช่วงวันที่และ Scope ที่ผู้ใช้งานได้รับสิทธิ์</p></div><span class="fc-chip status-PUBLISHED">Scoped Live Insight</span></div><div class="assistant-shell section-gap"><div class="assistant-chat"><div id="assistantMessages" class="assistant-messages"><div class="assistant-message bot"><strong>สวัสดีครับ</strong>ถามข้อมูล เช่น “วันนี้ Missing OUT กี่คน”, “หน่วยงานไหนมาสายมากสุด”, “เดือนนี้หัวหน้างานปรับกะกี่รายการ” หรือ “สรุปรายการรอตรวจสอบ”</div></div><div class="assistant-inputbar"><input id="assistantInput" class="input" placeholder="พิมพ์คำถามเกี่ยวกับข้อมูล Time-Clock"><button id="assistantSendBtn" class="btn btn-primary">ถาม</button></div></div><aside><div class="panel"><div class="panel-header"><div><h3>คำถามแนะนำ</h3><p>ทุกคำถามดึงข้อมูลใหม่ตามสิทธิ์ปัจจุบัน</p></div></div><div class="panel-body assistant-prompts"><button class="assistant-prompt">วันนี้ Missing IN กี่คน</button><button class="assistant-prompt">วันนี้ Missing OUT กี่คน</button><button class="assistant-prompt">หน่วยงานไหนมาสายมากที่สุด</button><button class="assistant-prompt">เดือนนี้หัวหน้างานปรับกะกี่รายการ</button><button class="assistant-prompt">สรุปรายการรอตรวจสอบ</button><div class="assistant-disclaimer">FIX16DM • Rule-based Insight • ไม่ส่งข้อมูลไป AI ภายนอก • Backend ยังคงเป็นผู้บังคับ Scope/Permission</div></div></div></aside></div></section>`;}
 
   /* ------------------------------------------------------------------
      Attendance Enterprise Grid
@@ -21396,19 +21396,302 @@ ${skippedSummary(compatibility.skipped)}
   function exportAudit(){const rows=[["วันเวลา","ประเภท","การทำงาน","ผู้ดำเนินการ","รายการ","รายละเอียด"],...auditRows.map(r=>[fmtDateTime(r.event_at),r.event_type,r.action_type,r.actor_email,r.entity_key,r.detail])];exportExcel(`Audit_Log_${$("auditStart")?.value}_${$("auditEnd")?.value}.xls`,rows,"Audit Log");}
 
   /* ------------------------------------------------------------------
-     Assistant
+     Assistant • V6.15.29 FIX16DM
+     Scoped Live Insight:
+     - Fresh read per question; no dependency on a previously opened page.
+     - Backend remains authoritative for Manager / Acting / HR scope.
+     - Compatibility RPC fallback is Missing-RPC-only.
+     - Local rule-based analysis; no external AI service.
      ------------------------------------------------------------------ */
-  function askAssistant(text){const q=String(text||"").trim();if(!q)return;appendAssistant(q,"user");const answer=answerAssistant(q);setTimeout(()=>appendAssistant(answer,"bot"),180);}
-  function appendAssistant(text,type){const box=$("assistantMessages");if(!box)return;const el=document.createElement("div");el.className=`assistant-message ${type}`;el.innerHTML=type==="bot"?`<strong>ผลวิเคราะห์</strong>${esc(text).replace(/\n/g,"<br>")}`:esc(text);box.appendChild(el);box.scrollTop=box.scrollHeight;}
-  function answerAssistant(question){const q=question.toLowerCase();const att=app()?.state?.attendance||[],sch=app()?.state?.schedule||[],dash=app()?.state?.dashboard||{};
-    if(q.includes("missing in")||q.includes("ไม่พบเวลาเข้า")){const n=Number(dash.missing_in_rows||0);return `พบรายการไม่พบเวลาเข้า ${num(n)} รายการ ตามช่วงข้อมูล Dashboard ล่าสุด`;}
-    if(q.includes("missing out")||q.includes("ไม่พบเวลาออก")){const n=Number(dash.missing_out_rows||0);return `พบรายการไม่พบเวลาออก ${num(n)} รายการ ตามช่วงข้อมูล Dashboard ล่าสุด`;}
-    if(q.includes("ขาดงาน")||q.includes("ไม่มีเวลา")||q.includes("absent")){const n=Number(dash.absent_rows||0);return `พบสถานะขาดงาน ${num(n)} รายการ (รวมเวลาไม่ครบ และเข้าเกินกะตั้งแต่ 30 นาทีขึ้นไป)`;}
-    if(q.includes("มาสาย")&&q.includes("หน่วยงาน")){const m={};att.forEach(r=>{const f=app()?.attendancePolicyFlagsV61428?.(r);if(f?.late){const k=r.department||"ไม่ระบุ";m[k]=(m[k]||0)+Number(f.lateMinutes||0);}});const top=Object.entries(m).sort((a,b)=>b[1]-a[1])[0];return top?`หน่วยงานที่มีนาทีมาสาย (1–29 นาที) รวมสูงสุดคือ ${top[0]} จำนวน ${num(top[1])} นาที จากข้อมูลรายละเอียดเวลาที่โหลดล่าสุด`:`ยังไม่มีข้อมูลมาสาย 1–29 นาทีในรายละเอียดเวลาที่โหลดล่าสุด`;}
-    if(q.includes("ยืนยัน")&&q.includes("กะ")){return "ระบบปัจจุบันไม่มีขั้นตอนยืนยันกะแยกต่างหาก เมื่อหัวหน้างานเลือกหรือปรับกะแล้วกดบันทึก ระบบถือว่าเป็นการยืนยันและมีผลทันที ส่วนกะมาตรฐานทำงานอัตโนมัติโดยไม่ต้องบันทึก";}
-    if(q.includes("สรุป")||q.includes("dashboard")){return `พนักงาน ${num(dash.total_employees)} คน • รายการทั้งหมด ${num(dash.total_rows)} • ลงเวลาครบ ${num(dash.complete_time_rows)} • เวลาไม่ครบ ${num(Number(dash.missing_in_rows||0)+Number(dash.missing_out_rows||0))}`;}
-    return "ยังไม่พบรูปแบบคำถามนี้ ลองถามเรื่อง Missing IN, Missing OUT, ไม่มีเวลา, หน่วยงานที่มาสาย, รายการปรับกะ หรือสรุป Dashboard";
+  const assistantStateV616DM={
+    busy:false,
+    lastRefreshAt:null,
+    lastContext:null
+  };
+
+  function assistantTodayV616DM(){
+    return window.TimeClockCalendarV61448?.today?.()
+      || new Date().toLocaleDateString("en-CA");
   }
+
+  function assistantMonthStartV616DM(date){
+    const d=String(date||assistantTodayV616DM()).slice(0,10);
+    return `${d.slice(0,7)}-01`;
+  }
+
+  function assistantQuestionContextV616DM(question){
+    const q=String(question||"").toLowerCase();
+    const today=assistantTodayV616DM();
+    let start=$("dashStart")?.value||today;
+    let end=$("dashEnd")?.value||today;
+    let periodLabel="ช่วง Dashboard ปัจจุบัน";
+
+    if(q.includes("วันนี้")||q.includes("today")){
+      start=today;
+      end=today;
+      periodLabel="วันนี้";
+    }else if(q.includes("เดือนนี้")||q.includes("this month")){
+      start=assistantMonthStartV616DM(today);
+      end=today;
+      periodLabel="เดือนนี้";
+    }
+
+    return {
+      start,
+      end,
+      zone:$("dashZone")?.value||null,
+      department:$("dashDepartment")?.value||null,
+      periodLabel
+    };
+  }
+
+  function assistantMissingRpcV616DM(error){
+    return Boolean(
+      window.TimeClockShiftAPI?.missingFunction?.(error)
+      || window.tcRpcMissingV616DF?.(error)
+    );
+  }
+
+  async function assistantRpcMissingOnlyV616DM(attempts){
+    let lastError=null;
+    for(let i=0;i<attempts.length;i++){
+      const [name,args]=attempts[i];
+      const response=await app()?.state?.client?.rpc(name,args||{});
+      if(!response)throw new Error("SUPABASE_CLIENT_NOT_READY");
+      if(!response.error)return response.data;
+      lastError=response.error;
+      if(i<attempts.length-1&&assistantMissingRpcV616DM(response.error))continue;
+      throw response.error;
+    }
+    throw lastError||new Error("SMART_ASSISTANT_RPC_UNAVAILABLE");
+  }
+
+  async function assistantDashboardV616DM(ctx){
+    const args={
+      p_start_date:ctx.start,
+      p_end_date:ctx.end,
+      p_zone:ctx.zone,
+      p_department:ctx.department
+    };
+    const data=await assistantRpcMissingOnlyV616DM([
+      ["ta_get_dashboard_overview_v61463",args],
+      ["ta_get_dashboard_overview_v650",args],
+      ["ta_get_dashboard_overview_v640",args],
+      ["ta_get_dashboard_overview",args]
+    ]);
+    return Array.isArray(data)?(data[0]||{}):(data||{});
+  }
+
+  async function assistantAttendanceV616DM(ctx){
+    const common={
+      p_start_date:ctx.start,
+      p_end_date:ctx.end,
+      p_emp_codes:null,
+      p_attendance_statuses:null,
+      p_schedule_statuses:null,
+      p_limit:5000
+    };
+    const data=await assistantRpcMissingOnlyV616DM([
+      ["ta_get_attendance_detail_v61463",{
+        ...common,p_area:ctx.zone,p_sub_area:null,p_department:ctx.department
+      }],
+      ["ta_get_attendance_detail_v664",{
+        ...common,p_zone:ctx.zone,p_department:ctx.department
+      }],
+      ["ta_get_attendance_detail_v640",{
+        ...common,p_zone:ctx.zone,p_department:ctx.department
+      }]
+    ]);
+    return Array.isArray(data)?data:[];
+  }
+
+  async function assistantReviewV616DM(ctx){
+    if(!window.TimeClockShiftAPI?.getReview){
+      throw new Error("SMART_ASSISTANT_REVIEW_API_NOT_READY");
+    }
+    return await window.TimeClockShiftAPI.getReview(
+      window.TimeClockApp,
+      {
+        p_start_date:ctx.start,
+        p_end_date:ctx.end,
+        p_zone:ctx.zone,
+        p_department:ctx.department,
+        p_emp_codes:null,
+        p_issue_types:null
+      }
+    )||[];
+  }
+
+  async function assistantScheduleV616DM(ctx){
+    if(!window.TimeClockShiftAPI?.getMonthlySchedule){
+      throw new Error("SMART_ASSISTANT_SCHEDULE_API_NOT_READY");
+    }
+    const month=`${String(ctx.start||assistantTodayV616DM()).slice(0,7)}-01`;
+    return await window.TimeClockShiftAPI.getMonthlySchedule(
+      window.TimeClockApp,
+      {
+        p_month:month,
+        p_start_date:ctx.start,
+        p_end_date:ctx.end,
+        p_zone:ctx.zone,
+        p_department:ctx.department,
+        p_emp_codes:null,
+        p_schedule_statuses:null
+      }
+    )||[];
+  }
+
+  function assistantManualScheduleRowV616DM(row){
+    const assigned=String(row?.assigned_shift_code||"").trim().toUpperCase();
+    const auto=String(row?.auto_shift_code||"").trim().toUpperCase();
+    const dailyTemplate=String(row?.daily_work_template_code||"").trim().toUpperCase();
+    const defaultTemplate=String(row?.employee_default_template_code||"").trim().toUpperCase();
+    const status=String(row?.schedule_status||"").trim().toUpperCase();
+    const shiftChanged=Boolean(assigned&&(!auto||assigned!==auto));
+    const templateChanged=Boolean(dailyTemplate&&defaultTemplate&&dailyTemplate!==defaultTemplate);
+    const explicitlyAssigned=Boolean(
+      assigned&&["ASSIGNED","CONFIRMED"].includes(status)
+    );
+    return shiftChanged||templateChanged||explicitlyAssigned;
+  }
+
+  function assistantContextTextV616DM(ctx){
+    const scope=[
+      ctx.zone?`พื้นที่ ${ctx.zone}`:"ทุกพื้นที่ที่มีสิทธิ์",
+      ctx.department?`หน่วยงาน ${ctx.department}`:"ทุกหน่วยงานที่มีสิทธิ์"
+    ].join(" • ");
+    const t=new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});
+    assistantStateV616DM.lastRefreshAt=new Date().toISOString();
+    assistantStateV616DM.lastContext={...ctx};
+    return `\nข้อมูลล่าสุด ${t} น. • ${ctx.start} ถึง ${ctx.end} • ${scope}`;
+  }
+
+  async function askAssistant(text){
+    const q=String(text||"").trim();
+    if(!q||assistantStateV616DM.busy)return;
+    appendAssistant(q,"user");
+
+    assistantStateV616DM.busy=true;
+    const btn=$("assistantSendBtn");
+    const oldText=btn?.textContent||"ถาม";
+    if(btn){btn.disabled=true;btn.textContent="กำลังวิเคราะห์...";}
+
+    try{
+      const answer=await answerAssistant(q);
+      appendAssistant(answer,"bot");
+    }catch(error){
+      const human=app()?.humanError?.(error)||String(error?.message||error||"เกิดข้อผิดพลาด");
+      appendAssistant(`ไม่สามารถดึงข้อมูลล่าสุดได้: ${human}\nระบบไม่ได้ขยายสิทธิ์เกิน Scope ของผู้ใช้งาน`,"bot");
+    }finally{
+      assistantStateV616DM.busy=false;
+      if(btn){btn.disabled=false;btn.textContent=oldText;}
+    }
+  }
+
+  function appendAssistant(text,type){
+    const box=$("assistantMessages");
+    if(!box)return;
+    const el=document.createElement("div");
+    el.className=`assistant-message ${type}`;
+    el.innerHTML=type==="bot"
+      ? `<strong>ผลวิเคราะห์</strong>${esc(text).replace(/\n/g,"<br>")}`
+      : esc(text);
+    box.appendChild(el);
+    box.scrollTop=box.scrollHeight;
+  }
+
+  async function answerAssistant(question){
+    const q=String(question||"").toLowerCase();
+    const ctx=assistantQuestionContextV616DM(question);
+
+    // Review queue must be resolved BEFORE the generic "สรุป" rule.
+    if(
+      (q.includes("รอตรวจสอบ")||q.includes("review"))
+      && (q.includes("สรุป")||q.includes("รายการ")||q.includes("queue"))
+    ){
+      const rows=await assistantReviewV616DM(ctx);
+      const byType={};
+      rows.forEach(r=>{
+        const key=String(r.issue_type||r.attendance_status||"ไม่ระบุ").trim()||"ไม่ระบุ";
+        byType[key]=(byType[key]||0)+1;
+      });
+      const top=Object.entries(byType).sort((a,b)=>b[1]-a[1]).slice(0,5);
+      const detail=top.length
+        ? top.map(([k,v])=>`${k} ${num(v)}`).join(" • ")
+        : "ไม่มีรายการค้าง";
+      return `รายการรอตรวจสอบ ${num(rows.length)} รายการ • ${detail}${assistantContextTextV616DM(ctx)}`;
+    }
+
+    if(
+      q.includes("ปรับกะ")
+      || q.includes("จัดกะ")
+      || (q.includes("หัวหน้างาน")&&q.includes("กะ"))
+    ){
+      const rows=await assistantScheduleV616DM(ctx);
+      const changed=rows.filter(assistantManualScheduleRowV616DM);
+      const people=new Set(changed.map(r=>String(r.emp_code||"").trim()).filter(Boolean));
+      return `พบรายการที่มีการกำหนด/ปรับกะโดยหัวหน้างาน ${num(changed.length)} รายการ ครอบคลุม ${num(people.size)} คน${assistantContextTextV616DM(ctx)}`;
+    }
+
+    if(q.includes("missing in")||q.includes("ไม่พบเวลาเข้า")){
+      const dash=await assistantDashboardV616DM(ctx);
+      return `พบรายการไม่พบเวลาเข้า ${num(Number(dash.missing_in_rows||0))} รายการ${assistantContextTextV616DM(ctx)}`;
+    }
+
+    if(q.includes("missing out")||q.includes("ไม่พบเวลาออก")){
+      const dash=await assistantDashboardV616DM(ctx);
+      return `พบรายการไม่พบเวลาออก ${num(Number(dash.missing_out_rows||0))} รายการ${assistantContextTextV616DM(ctx)}`;
+    }
+
+    if(q.includes("ขาดงาน")||q.includes("ไม่มีเวลา")||q.includes("absent")){
+      const dash=await assistantDashboardV616DM(ctx);
+      return `พบสถานะขาดงาน ${num(Number(dash.absent_rows||0))} รายการ ตามกติกา Attendance ปัจจุบัน${assistantContextTextV616DM(ctx)}`;
+    }
+
+    if(q.includes("มาสาย")&&q.includes("หน่วยงาน")){
+      const att=await assistantAttendanceV616DM(ctx);
+      const grouped={};
+      att.forEach(r=>{
+        const flags=app()?.attendancePolicyFlagsV61428?.(r);
+        if(!flags?.late)return;
+        const key=String(r.department||"ไม่ระบุ").trim()||"ไม่ระบุ";
+        if(!grouped[key])grouped[key]={count:0,minutes:0};
+        grouped[key].count+=1;
+        grouped[key].minutes+=Number(flags.lateMinutes||0);
+      });
+      const top=Object.entries(grouped)
+        .sort((a,b)=>b[1].count-a[1].count||b[1].minutes-a[1].minutes)[0];
+      return top
+        ? `หน่วยงานที่มีรายการมาสาย 1–29 นาทีมากที่สุดคือ ${top[0]} จำนวน ${num(top[1].count)} รายการ รวม ${num(top[1].minutes)} นาที${assistantContextTextV616DM(ctx)}`
+        : `ไม่พบรายการมาสาย 1–29 นาที${assistantContextTextV616DM(ctx)}`;
+    }
+
+    if(q.includes("ยืนยัน")&&q.includes("กะ")){
+      return "ระบบปัจจุบันไม่มีขั้นตอนยืนยันกะแยกต่างหาก เมื่อหัวหน้างานเลือกหรือปรับกะแล้วบันทึก ระบบถือว่าเป็นการกำหนดกะ ส่วนกะมาตรฐานทำงานอัตโนมัติโดยไม่ต้องบันทึก";
+    }
+
+    if(q.includes("สรุป")||q.includes("dashboard")||q.includes("ภาพรวม")){
+      const dash=await assistantDashboardV616DM(ctx);
+      const incomplete=Number(dash.missing_in_rows||0)+Number(dash.missing_out_rows||0);
+      return `พนักงาน ${num(Number(dash.total_employees||0))} คน • รายการทั้งหมด ${num(Number(dash.total_rows||0))} • ลงเวลาครบ ${num(Number(dash.complete_time_rows||0))} • ขาดงาน ${num(Number(dash.absent_rows||0))} • เวลาไม่ครบ ${num(incomplete)}${assistantContextTextV616DM(ctx)}`;
+    }
+
+    return "ยังไม่พบรูปแบบคำถามนี้ ลองถาม: วันนี้ Missing IN กี่คน, วันนี้ Missing OUT กี่คน, หน่วยงานไหนมาสายมากที่สุด, เดือนนี้หัวหน้างานปรับกะกี่รายการ, สรุปรายการรอตรวจสอบ หรือสรุป Dashboard";
+  }
+
+  window.TimeClockSmartAssistantV616DM=Object.freeze({
+    version:"V6.15.29 FIX16DM",
+    mode:"SCOPED_LIVE_RULE_BASED",
+    externalAI:false,
+    supportedPrompts:Object.freeze([
+      "วันนี้ Missing IN กี่คน",
+      "วันนี้ Missing OUT กี่คน",
+      "หน่วยงานไหนมาสายมากที่สุด",
+      "เดือนนี้หัวหน้างานปรับกะกี่รายการ",
+      "สรุปรายการรอตรวจสอบ"
+    ]),
+    state:assistantStateV616DM
+  });
 
   /* ------------------------------------------------------------------
      Notifications
