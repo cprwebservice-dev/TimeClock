@@ -37135,3 +37135,314 @@ html[data-theme="dark"][data-dashboard-focus-version="FIX16DO"] .manager-priorit
   .manager-hours-bars-v616do{grid-template-columns:1fr}
   html[data-dashboard-focus-version="FIX16DO"] #dashboardDailyKpisV616H{grid-template-columns:repeat(2,1fr)}
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16DW • MANAGER DASHBOARD FINAL FOCUS
+   Dashboard-only visual refinement. No RPC / permission / calculation changes.
+   ========================================================================== */
+
+html[data-dashboard-focus-version="FIX16DW"] #dashboardViewOverviewV616H > :not(#dashboardManagerFocusV616DO){
+  display:none !important;
+}
+
+/* Compact top: title + live context instead of a large hero */
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-welcome-v616dw{
+  padding:14px 16px;
+  min-height:0;
+  display:flex;
+  align-items:center;
+}
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-welcome-v616dw h2{
+  font-size:19px;
+  margin:1px 0 2px;
+}
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-welcome-v616dw p{
+  font-size:12px;
+  margin:0;
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-welcome-actions-v616dw{
+  gap:7px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-contextbar-v616dw{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  margin-top:8px;
+  padding:8px 10px;
+  border:1px solid rgba(148,163,184,.22);
+  border-radius:12px;
+  background:rgba(248,250,252,.72);
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-contextbar-v616dw>span{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:4px 7px;
+  border-radius:8px;
+  font-size:10.5px;
+  color:var(--muted);
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-contextbar-v616dw b{
+  color:var(--text);
+  font-size:10.5px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-contextbar-v616dw em{
+  font-style:normal;
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-context-status-v616dw{
+  margin-left:auto;
+  font-weight:700;
+  border:1px solid transparent;
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-context-status-v616dw.good{
+  color:#177b52;background:rgba(34,160,107,.09);border-color:rgba(34,160,107,.18);
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-context-status-v616dw.warn{
+  color:#a85f00;background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.20);
+}
+html[data-dashboard-focus-version="FIX16DW"] .dashboard-context-status-v616dw.bad{
+  color:#c83636;background:rgba(239,68,68,.09);border-color:rgba(239,68,68,.18);
+}
+
+/* Filters are available, but not permanently occupying the dashboard */
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-filter-panel-v616h{
+  margin-top:8px;
+  transition:max-height .18s ease,opacity .14s ease,margin .18s ease;
+  overflow:hidden;
+}
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-filter-panel-v616h.dashboard-filter-collapsed-v616dw{
+  max-height:0;
+  opacity:0;
+  margin-top:0;
+  border-width:0;
+  pointer-events:none;
+}
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-filter-panel-v616h:not(.dashboard-filter-collapsed-v616dw){
+  max-height:230px;
+  opacity:1;
+}
+
+/* Tabs become a light segmented navigation, not a second hero */
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-view-tabs-v616h{
+  position:relative;
+  top:auto;
+  z-index:auto;
+  margin-top:8px;
+  padding:3px;
+  border-radius:11px;
+  box-shadow:none;
+}
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-view-tab-v616h{
+  min-height:40px;
+  padding:7px 11px;
+}
+html[data-dashboard-focus-version="FIX16DW"] #page-dashboard .dashboard-view-tab-v616h small{
+  display:none;
+}
+
+/* Focus section header */
+html[data-dashboard-focus-version="FIX16DW"] .manager-focus-dashboard-v616do{
+  padding-top:10px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-focus-head-v616do{
+  margin-bottom:8px;
+  align-items:center;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-focus-head-v616do h3{
+  font-size:16px;
+  margin:0;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-focus-head-v616do .eyebrow{
+  display:none;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-focus-head-v616do p{
+  font-size:11px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-focus-head-meta-v616do>span{
+  font-size:10.5px;
+  padding:5px 8px;
+}
+
+/* Action cards: operational priority, compact but readable */
+html[data-dashboard-focus-version="FIX16DW"] .manager-action-strip-v616do{
+  gap:8px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-action-card-v616do{
+  min-height:88px;
+  padding:10px;
+  grid-template-columns:32px 1fr auto;
+  gap:8px;
+  border-radius:12px;
+  box-shadow:none;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-action-icon-v616do{
+  width:30px;height:30px;border-radius:8px;font-size:14px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-action-copy-v616do>div strong{
+  font-size:21px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-action-copy-v616do>b{
+  font-size:11.5px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-action-copy-v616do>span{
+  font-size:10px;
+}
+
+/* Four non-duplicated KPIs */
+html[data-dashboard-focus-version="FIX16DW"] .manager-section-title-v616do{
+  margin:11px 0 6px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-kpi-grid-v616do{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-kpi-v616do{
+  padding:10px 11px;
+  border-radius:12px;
+  min-height:88px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-kpi-top-v616do span{
+  font-size:10.5px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-kpi-value-v616do strong{
+  font-size:22px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-kpi-v616do>small{
+  font-size:9.8px;
+  margin-top:4px;
+}
+
+/* Management decision area */
+html[data-dashboard-focus-version="FIX16DW"] .manager-decision-grid-v616do{
+  grid-template-columns:minmax(300px,.8fr) minmax(420px,1.2fr);
+  gap:9px;
+  margin-top:10px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-decision-grid-v616do .panel-header,
+html[data-dashboard-focus-version="FIX16DW"] .manager-hours-panel-v616do .panel-header{
+  min-height:50px;
+  padding:10px 12px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-decision-grid-v616do .panel-header h3,
+html[data-dashboard-focus-version="FIX16DW"] .manager-hours-panel-v616do .panel-header h3{
+  font-size:13px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-decision-grid-v616do .panel-header p,
+html[data-dashboard-focus-version="FIX16DW"] .manager-hours-panel-v616do .panel-header p{
+  font-size:10px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quality-body-v616do{
+  grid-template-columns:120px 1fr;
+  gap:12px;
+  padding:12px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quality-ring-v616do{
+  width:108px;height:108px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quality-ring-v616do::after{
+  inset:13px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quality-ring-v616do strong{
+  font-size:23px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quality-stats-v616do{
+  gap:5px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quality-stats-v616do>div{
+  padding:6px 8px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-priority-list-v616do{
+  gap:5px;
+  padding:10px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-priority-row-v616do{
+  padding:8px 9px;
+  border-radius:9px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-priority-row-v616do>div:nth-child(2) strong{
+  font-size:11.5px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-priority-row-v616do>div:nth-child(2) small{
+  font-size:10px;
+}
+
+/* Hours: single compact management strip */
+html[data-dashboard-focus-version="FIX16DW"] .manager-hours-panel-v616do{
+  margin-top:9px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-hours-body-v616do{
+  grid-template-columns:150px 1fr;
+  gap:14px;
+  padding:11px 12px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-hours-total-v616do>strong{
+  font-size:23px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-hours-bars-v616do{
+  gap:9px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-hour-track-v616do{
+  height:6px;
+}
+
+/* Quick action nav: understated, one closing row */
+html[data-dashboard-focus-version="FIX16DW"] .manager-quick-nav-v616do{
+  margin-top:8px;
+  gap:7px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quick-nav-v616do button{
+  min-height:54px;
+  padding:8px 10px;
+  border-radius:10px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quick-nav-v616do button>span{
+  width:28px;height:28px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quick-nav-v616do button>b{
+  font-size:11px;
+}
+html[data-dashboard-focus-version="FIX16DW"] .manager-quick-nav-v616do button>small{
+  font-size:9.7px;
+}
+
+/* Trend tab: keep the first two management visuals prominent */
+html[data-dashboard-focus-version="FIX16DW"] #dashboardViewDailyV616H .dashboard-daily-heading-v616h{
+  margin-top:10px;
+}
+html[data-dashboard-focus-version="FIX16DW"] #dashboardViewDailyV616H .dashboard-daily-heading-v616h h3{
+  font-size:16px;
+}
+html[data-dashboard-focus-version="FIX16DW"] #dashboardViewDailyV616H .dashboard-daily-heading-v616h .eyebrow{
+  display:none;
+}
+
+/* Dark mode */
+html[data-theme="dark"][data-dashboard-focus-version="FIX16DW"] .dashboard-contextbar-v616dw{
+  background:rgba(17,42,63,.54);
+}
+html[data-theme="dark"][data-dashboard-focus-version="FIX16DW"] .manager-action-card-v616do,
+html[data-theme="dark"][data-dashboard-focus-version="FIX16DW"] .manager-kpi-v616do,
+html[data-theme="dark"][data-dashboard-focus-version="FIX16DW"] .manager-quick-nav-v616do button{
+  background:rgba(17,42,63,.72);
+}
+
+/* Responsive */
+@media(max-width:1180px){
+  html[data-dashboard-focus-version="FIX16DW"] .manager-kpi-grid-v616do{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+@media(max-width:760px){
+  html[data-dashboard-focus-version="FIX16DW"] .dashboard-context-status-v616dw{
+    margin-left:0;
+  }
+  html[data-dashboard-focus-version="FIX16DW"] .manager-action-strip-v616do,
+  html[data-dashboard-focus-version="FIX16DW"] .manager-kpi-grid-v616do{
+    grid-template-columns:1fr;
+  }
+  html[data-dashboard-focus-version="FIX16DW"] .manager-decision-grid-v616do{
+    grid-template-columns:1fr;
+  }
+}

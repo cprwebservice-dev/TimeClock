@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DU Attendance Two Lane Worker";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16du-attendance-two-lane-worker";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DW Manager Dashboard Final Focus";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dw-manager-dashboard-final-focus";
 
 
 /* ===== js/config.js ===== */
@@ -39197,6 +39197,22 @@ ${names}${extra}
     if($("dashboardFocusUpdatedV616DO")) $("dashboardFocusUpdatedV616DO").textContent =
       `อัปเดต ${new Date().toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"})} น.`;
 
+    const issueCategoryCount=[incomplete,absent,discipline,ot].filter(v=>Number(v||0)>0).length;
+    const start=$("dashStart")?.value||"-";
+    const end=$("dashEnd")?.value||"-";
+    const zone=$("dashZone")?.selectedOptions?.[0]?.textContent?.trim()||"ทุกพื้นที่";
+    const dept=$("dashDepartment")?.selectedOptions?.[0]?.textContent?.trim()||"ทุกหน่วยงาน";
+    if($("dashboardContextRangeV616DW")) $("dashboardContextRangeV616DW").textContent=`${start} → ${end}`;
+    if($("dashboardContextZoneV616DW")) $("dashboardContextZoneV616DW").textContent=zone;
+    if($("dashboardContextDeptV616DW")) $("dashboardContextDeptV616DW").textContent=dept;
+    if($("dashboardContextStatusV616DW")){
+      $("dashboardContextStatusV616DW").textContent=issueCategoryCount
+        ? `มี ${issueCategoryCount} ประเด็นที่ควรตรวจ`
+        : "ไม่พบประเด็นสำคัญ";
+      $("dashboardContextStatusV616DW").className=
+        `dashboard-context-status-v616dw ${issueCategoryCount>=3?"bad":issueCategoryCount?"warn":"good"}`;
+    }
+
     if($("dashboardActionStripV616DO")) $("dashboardActionStripV616DO").innerHTML = [
       {
         tone:toneByRatio(incompleteRatio,.01,.04), icon:"…", value:incomplete, unit:"รายการ",
@@ -39219,10 +39235,9 @@ ${names}${extra}
     const rateTone = completeRate >= 90 ? "good" : completeRate >= 75 ? "warn" : "bad";
     if($("dashboardKpiStripV616DO")) $("dashboardKpiStripV616DO").innerHTML = [
       {label:"พนักงานใน Scope",value:fmt(employees),unit:"คน",note:"ตามสิทธิ์และตัวกรองปัจจุบัน",tone:"neutral",icon:"♙"},
-      {label:"อัตราลงเวลาครบ",value:`${completeRate.toFixed(1)}`,unit:"%",note:`${fmt(complete)} จาก ${fmt(total)} รายการ`,tone:rateTone,icon:"✓"},
-      {label:"ขาดงาน",value:fmt(absent),unit:"รายการ",note:`${pct(absent,total).toFixed(1)}% ของรายการทั้งหมด`,tone:toneByRatio(absentRatio,.01,.03),icon:"×"},
-      {label:"มาสาย",value:fmt(late),unit:"รายการ",note:"เข้าหลังเริ่มกะ 1–29 นาที",tone:toneByRatio(late/Math.max(1,total),.01,.04),icon:"!"},
-      {label:"OT",value:fmt(ot),unit:"ชม.",note:`${(otRatio*100).toFixed(1)}% ของชั่วโมงสุทธิ`,tone:toneByRatio(otRatio,.08,.15),icon:"＋"}
+      {label:"วัน-พนักงาน",value:fmt(total),unit:"รายการ",note:"ฐานข้อมูลที่ใช้วิเคราะห์ในช่วงนี้",tone:"neutral",icon:"▦"},
+      {label:"อัตราลงเวลาครบ",value:`${completeRate.toFixed(1)}`,unit:"%",note:`ครบ ${fmt(complete)} จาก ${fmt(total)} รายการ`,tone:rateTone,icon:"✓"},
+      {label:"ชั่วโมงสุทธิ",value:fmt(paid),unit:"ชม.",note:`OT ${fmt(ot)} ชม. • Waiting ${fmt(waiting)} ชม.`,tone:"neutral",icon:"◷"}
     ].map(kpiCard).join("");
 
     if($("dashboardFocusRingV616DO")) {
@@ -39275,13 +39290,39 @@ ${names}${extra}
     });
   }
 
+  function mountDashboardFilterToggleV616DW(){
+    const panel=document.querySelector("#page-dashboard .dashboard-filter-panel-v616h");
+    const toggle=$("dashboardFilterToggleV616DW");
+    if(!panel||!toggle||toggle.dataset.bound==="1")return;
+    toggle.dataset.bound="1";
+    const apply=open=>{
+      panel.classList.toggle("dashboard-filter-collapsed-v616dw",!open);
+      toggle.setAttribute("aria-expanded",String(open));
+      toggle.textContent=open?"ซ่อนตัวกรอง":"ตัวกรอง";
+    };
+    apply(false);
+    toggle.addEventListener("click",()=>{
+      apply(panel.classList.contains("dashboard-filter-collapsed-v616dw"));
+    });
+  }
+
+  function updateDashboardContextOnlyV616DW(){
+    const start=$("dashStart")?.value||"-";
+    const end=$("dashEnd")?.value||"-";
+    const zone=$("dashZone")?.selectedOptions?.[0]?.textContent?.trim()||"ทุกพื้นที่";
+    const dept=$("dashDepartment")?.selectedOptions?.[0]?.textContent?.trim()||"ทุกหน่วยงาน";
+    if($("dashboardContextRangeV616DW")) $("dashboardContextRangeV616DW").textContent=`${start} → ${end}`;
+    if($("dashboardContextZoneV616DW")) $("dashboardContextZoneV616DW").textContent=zone;
+    if($("dashboardContextDeptV616DW")) $("dashboardContextDeptV616DW").textContent=dept;
+    if($("dashboardFocusScopeV616DO")) $("dashboardFocusScopeV616DO").textContent=scopeText();
+  }
+
   function init(){
-    document.documentElement.dataset.dashboardFocusVersion="FIX16DO";
+    document.documentElement.dataset.dashboardFocusVersion="FIX16DW";
+    mountDashboardFilterToggleV616DW();
     mountDailyDetailToggle();
     render();
-    ["dashStart","dashEnd","dashZone","dashDepartment"].forEach(id=>$(id)?.addEventListener("change",()=>{
-      if($("dashboardFocusScopeV616DO")) $("dashboardFocusScopeV616DO").textContent=scopeText();
-    }));
+    ["dashStart","dashEnd","dashZone","dashDepartment"].forEach(id=>$(id)?.addEventListener("change",updateDashboardContextOnlyV616DW));
     document.addEventListener("timeclock:dashboard-rendered-v616h",render);
   }
 
