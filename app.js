@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX14B FINAL Temporary Assignment + Acting + Working Team Schedule";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16co-keyboard-event-guard";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DF Frontend RPC Contract Freeze";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16df-rpc-contract-freeze";
 
 
 /* ===== js/config.js ===== */
@@ -13,9 +13,91 @@ document.documentElement.dataset.timeClockBuild = "6.15.29-fix16co-keyboard-even
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.15.29 FIX14B FINAL',
+  version: '6.15.29 FIX16DF',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
+});
+
+
+/* ===== V6.15.29 FIX16DF Frontend RPC Contract Freeze =====
+   Contract policy:
+   - primary = authoritative frontend contract.
+   - compatibility = migration compatibility only.
+   - missing-only chains must NEVER bypass a real permission/business/runtime error.
+   - safety-secondary is an intentionally separate safety check, not a version fallback.
+*/
+window.TimeClockRpcContractsV616DF = Object.freeze({
+  bulkSchedule: Object.freeze({
+    primary: 'ta_assign_shifts_bulk_v61424',
+    compatibility: Object.freeze(['ta_assign_shifts_bulk_v6143']),
+    mode: 'missing-only'
+  }),
+  attendanceDayDetail: Object.freeze({
+    primary: 'ta_get_attendance_day_detail_v650',
+    compatibility: Object.freeze(['ta_get_attendance_day_detail_v640']),
+    mode: 'missing-only'
+  }),
+  workPatternParameterAccess: Object.freeze({
+    primary: 'ta_get_work_pattern_parameter_access_v657',
+    compatibility: Object.freeze(['ta_get_work_pattern_parameter_access_v656']),
+    mode: 'missing-only'
+  }),
+  scheduleRuleSync: Object.freeze({
+    primary: 'ta_sync_bulk_schedule_rules_v6135',
+    compatibility: Object.freeze([
+      'ta_sync_bulk_schedule_rules_v6134',
+      'ta_sync_bulk_schedule_rules_v6123',
+      'ta_sync_bulk_schedule_rules_v6120'
+    ]),
+    mode: 'missing-only'
+  }),
+  nightSequence: Object.freeze({
+    primary: 'ta_validate_night_sequence_bulk_v61437',
+    compatibility: Object.freeze(['ta_validate_night_sequence_bulk_v61435']),
+    mode: 'missing-only'
+  }),
+  scheduleGuard: Object.freeze({
+    primary: 'ta_validate_schedule_guard_v6141',
+    compatibility: Object.freeze(['ta_validate_schedule_guard_v6120']),
+    mode: 'safety-secondary'
+  })
+});
+
+window.tcRpcMissingV616DF = error => {
+  const code=String(error?.code||'').toUpperCase();
+  const text=String(error?.message||error?.details||error||'').toLowerCase();
+  return code==='PGRST202'
+    || code==='42883'
+    || text.includes('could not find the function')
+    || (text.includes('function') && text.includes('does not exist'))
+    || text.includes('schema cache');
+};
+
+window.tcRpcContractV616DF = async (contractKey,args,callRpc) => {
+  const contract=window.TimeClockRpcContractsV616DF?.[contractKey];
+  if(!contract) throw new Error(`RPC_CONTRACT_NOT_FOUND:${contractKey}`);
+  if(typeof callRpc!=='function') throw new Error(`RPC_CALLER_REQUIRED:${contractKey}`);
+
+  const names=[contract.primary,...(contract.compatibility||[])].filter(Boolean);
+  let lastError=null;
+  for(let i=0;i<names.length;i++){
+    try{
+      return await callRpc(names[i],args||{});
+    }catch(error){
+      lastError=error;
+      const mayFallback=contract.mode==='missing-only'
+        && i<names.length-1
+        && window.tcRpcMissingV616DF(error);
+      if(!mayFallback) throw error;
+    }
+  }
+  throw lastError||new Error(`RPC_CONTRACT_UNAVAILABLE:${contractKey}`);
+};
+
+window.__TIME_CLOCK_RPC_CONTRACT_FREEZE__ = Object.freeze({
+  version:'V6.15.29 FIX16DF',
+  policy:'CANONICAL_PRIMARY_WITH_EXPLICIT_COMPATIBILITY',
+  contracts:window.TimeClockRpcContractsV616DF
 });
 
 /* ===== V6.14.52 Calendar-Date Safety (retains V61448 utility name) =====
@@ -399,7 +481,8 @@ window.tcIsDayShiftCode = value =>
     // statement timeout / HTTP 500 before the final canonical refresh.
     // V6.14.24 keeps all write guards but defers Attendance to the existing
     // post-extension finalizer.
-    let response = await client.rpc("ta_assign_shifts_bulk_v61424", {
+    const bulkContractV616DF=window.TimeClockRpcContractsV616DF.bulkSchedule;
+    let response = await client.rpc(bulkContractV616DF.primary, {
       p_rows: cleanRows,
       p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
       p_confirm_now: Boolean(confirmNow)
@@ -410,7 +493,7 @@ window.tcIsDayShiftCode = value =>
     // Do not retry old V6.14.3 on a real V6.14.24 database/runtime error,
     // otherwise the same mutation may be attempted twice.
     if (missingFunction(response.error)) {
-      response = await client.rpc("ta_assign_shifts_bulk_v6143", {
+      response = await client.rpc(bulkContractV616DF.compatibility[0], {
         p_rows: cleanRows,
         p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
         p_confirm_now: Boolean(confirmNow)
@@ -20028,44 +20111,20 @@ ${skippedSummary(compatibility.skipped)}
       };
     } else {
       try{
-        detail=await rpc(
-          "ta_get_attendance_day_detail_v650",
+        detail=await window.tcRpcContractV616DF(
+          'attendanceDayDetail',
           {
             p_emp_code:row.emp_code,
             p_work_date:String(row.work_date).slice(0,10)
-          }
+          },
+          rpc
         );
       }catch(error){
-        const messageV61463 = String(
-          error?.code || ''
-        ) + ' ' + String(
-          error?.message || error?.details || error || ''
+        console.warn(
+          'Attendance Detail frozen contract failed',
+          error
         );
-        const missingV650V616DE =
-          /PGRST202|42883|could not find the function|function.*does not exist|schema cache/i
-            .test(messageV61463);
-
-        // V6.15.29 FIX16DE:
-        // v650 is the canonical FIX16R Attendance Detail contract.
-        // Only fall back to legacy v640 when v650 is genuinely not installed.
-        // Never bypass a real v650 permission/business/runtime error.
-        if(missingV650V616DE){
-          try{
-            detail=await rpc(
-              "ta_get_attendance_day_detail_v640",
-              {
-                p_emp_code:row.emp_code,
-                p_work_date:String(row.work_date).slice(0,10)
-              }
-            );
-          }catch(_){ detail=null; }
-        }else{
-          console.warn(
-            "Attendance Detail canonical v650 failed; legacy fallback blocked",
-            error
-          );
-          detail=null;
-        }
+        detail=null;
       }
     }
 
@@ -22011,30 +22070,11 @@ ${skippedSummary(compatibility.skipped)}
     applyWorkPatternParameterVisibility();
 
     try{
-      let access;
-      try{
-        access=await rpc(
-          'ta_get_work_pattern_parameter_access_v657',
-          {}
-        );
-      }catch(error){
-        const missingV657V616DE =
-          /PGRST202|42883|could not find the function|function.*does not exist|schema cache/i
-            .test(
-              String(error?.code||'') + ' ' +
-              String(error?.message||error?.details||error||'')
-            );
-
-        // V6.15.29 FIX16DE:
-        // v657 is authoritative. v656 is compatibility-only and must not
-        // override a real authorization/runtime error returned by v657.
-        if(!missingV657V616DE) throw error;
-
-        access=await rpc(
-          'ta_get_work_pattern_parameter_access_v656',
-          {}
-        );
-      }
+      const access=await window.tcRpcContractV616DF(
+        'workPatternParameterAccess',
+        {},
+        rpc
+      );
 
       wp.canViewParameters=
         access?.can_view_parameters===true
@@ -34648,7 +34688,8 @@ ${names}${extra}
       p_is_off:Boolean(p.off)
     };
     let base=null,sequence=null,sequenceError=null;
-    try{base=await rpc('ta_validate_schedule_guard_v6141',args);}catch(e){}
+    const scheduleGuardContractV616DF=window.TimeClockRpcContractsV616DF.scheduleGuard;
+    try{base=await rpc(scheduleGuardContractV616DF.primary,args);}catch(e){}
     try{
       const sequenceRows=[{
         emp_code:c.empCode,
@@ -34658,13 +34699,11 @@ ${names}${extra}
         proposed_end_time:p.end||null,
         note:'ASSIGNMENT_PREVIEW_V61437'
       }];
-      try{
-        sequence=await rpc('ta_validate_night_sequence_bulk_v61437',{p_rows:sequenceRows});
-      }catch(primaryError){
-        if(missingRpcV61425(primaryError)){
-          sequence=await rpc('ta_validate_night_sequence_bulk_v61435',{p_rows:sequenceRows});
-        }else throw primaryError;
-      }
+      sequence=await window.tcRpcContractV616DF(
+        'nightSequence',
+        {p_rows:sequenceRows},
+        rpc
+      );
     }catch(e){sequenceError=e;}
     if(sequenceError){
       return {...(base||{}),night_sequence_backend_missing:true,night_sequence_backend_error:String(sequenceError?.message||sequenceError||'')};
@@ -34908,7 +34947,7 @@ ${names}${extra}
       // Keep the old endpoint only as a minimum-rest safety fallback. Its 48-hour
       // calculation reads assigned rows only and is not authoritative anymore.
       try{
-        const legacy=await rpc('ta_validate_schedule_guard_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_proposed_shift_code:$('assignShiftCode').value,p_proposed_start_time:p.start||null,p_proposed_end_time:p.end||null,p_proposed_planned_minutes:Number(p.planned||0),p_is_off:Boolean(p.off)});
+        const legacy=await rpc(window.TimeClockRpcContractsV616DF.scheduleGuard.compatibility[0],{p_emp_code:c.empCode,p_work_date:c.workDate,p_proposed_shift_code:$('assignShiftCode').value,p_proposed_start_time:p.start||null,p_proposed_end_time:p.end||null,p_proposed_planned_minutes:Number(p.planned||0),p_is_off:Boolean(p.off)});
         if(legacy?.hard_block===true)server=legacy;
       }catch(e){}
     }
@@ -35010,13 +35049,11 @@ ${names}${extra}
       // Canonical sequence check from Backend, including approved full-day leave.
       let sequence=null;
       try{
-        try{
-          sequence=await rpc('ta_validate_night_sequence_bulk_v61437',{p_rows:remaining});
-        }catch(primaryError){
-          if(missingRpcV61425(primaryError)){
-            sequence=await rpc('ta_validate_night_sequence_bulk_v61435',{p_rows:remaining});
-          }else throw primaryError;
-        }
+        sequence=await window.tcRpcContractV616DF(
+          'nightSequence',
+          {p_rows:remaining},
+          rpc
+        );
       }catch(e){
         app()?.toast?.('ตรวจเงื่อนไขลำดับกะดึกไม่สำเร็จ กรุณารัน SQL V6.14.37 ก่อนจัดกะ','error');
         return {allowed:[],blocked:[...blockedByKey.values()],error:e};
@@ -35139,13 +35176,11 @@ ${names}${extra}
     }
     let nightSequenceGuardV61435=null;
     try{
-      try{
-        nightSequenceGuardV61435=await rpc('ta_validate_night_sequence_bulk_v61437',{p_rows:payload});
-      }catch(primaryError){
-        if(missingRpcV61425(primaryError)){
-          nightSequenceGuardV61435=await rpc('ta_validate_night_sequence_bulk_v61435',{p_rows:payload});
-        }else throw primaryError;
-      }
+      nightSequenceGuardV61435=await window.tcRpcContractV616DF(
+        'nightSequence',
+        {p_rows:payload},
+        rpc
+      );
     }catch(e){
       app()?.toast?.('ตรวจเงื่อนไขลำดับกะดึกไม่สำเร็จ กรุณารัน SQL V6.14.37 ก่อนจัดกะ','error');
       return {allowed:false,blocks,warnings,nightSequenceError:e};
@@ -35183,32 +35218,22 @@ ${names}${extra}
       note:x.note||null
     }));
 
-    const callSyncV616DE=async(name)=>{
-      try{
-        await rpc(name,{p_items:items});
-        return true;
-      }catch(error){
-        // V6.15.29 FIX16DE:
-        // Older writers are compatibility-only. A real error from the newest
-        // installed writer must never be bypassed by retrying an older writer.
-        if(!missingRpcV61425(error)) throw error;
-        return false;
-      }
-    };
-
     try{
-      if(await callSyncV616DE('ta_sync_bulk_schedule_rules_v6135')) return;
-      if(await callSyncV616DE('ta_sync_bulk_schedule_rules_v6134')) return;
-      if(await callSyncV616DE('ta_sync_bulk_schedule_rules_v6123')) return;
-      if(await callSyncV616DE('ta_sync_bulk_schedule_rules_v6120')) return;
-
-      app()?.toast?.(
-        'บันทึกตารางกะสำเร็จ แต่ไม่พบ RPC สำหรับซิงก์ Smart OFF/Scheduling Rule กรุณาตรวจสอบ Backend SQL',
-        'warning'
+      await window.tcRpcContractV616DF(
+        'scheduleRuleSync',
+        {p_items:items},
+        rpc
       );
     }catch(error){
+      if(window.tcRpcMissingV616DF(error)){
+        app()?.toast?.(
+          'บันทึกตารางกะสำเร็จ แต่ไม่พบ RPC สำหรับซิงก์ Smart OFF/Scheduling Rule กรุณาตรวจสอบ Backend SQL',
+          'warning'
+        );
+        return;
+      }
       console.warn(
-        'Scheduling Rule canonical sync failed; legacy fallback blocked',
+        'Scheduling Rule frozen contract failed; compatibility fallback blocked',
         error
       );
       app()?.toast?.(
