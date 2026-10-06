@@ -36694,3 +36694,86 @@ body.theme-dark .health-attention-v616cw strong,body.dark .health-attention-v616
 body.theme-dark .health-attention-v616cw small,body.dark .health-attention-v616cw small{color:#fcd34d}
 @media(max-width:1000px){.health-overview-v616cw{grid-template-columns:repeat(2,minmax(0,1fr))}.health-hero-v616cw{align-items:flex-start;flex-direction:column}.health-hero-actions-v616cw{justify-content:flex-start}}
 @media(max-width:700px){.health-overview-v616cw{grid-template-columns:1fr 1fr}.health-status-banner-v616cw{grid-template-columns:auto 1fr}.health-status-banner-v616cw>small{grid-column:2}.health-toolbar-v616cw{align-items:flex-start;flex-direction:column}.health-row-v616cw{grid-template-columns:1fr;gap:9px}.health-row-action-v616cw{justify-self:start}.health-attention-v616cw{align-items:flex-start;flex-direction:column}}
+
+
+/* V6.15.29 FIX16DN • FINAL UX/UI STABILIZATION LAYER */
+:root{--ux16dn-border:rgba(148,163,184,.28);--ux16dn-soft:#f8fbff;--ux16dn-shadow:0 8px 26px rgba(15,23,42,.055)}
+html[data-ux-version="FIX16DN"] .content{padding-top:18px}
+html[data-ux-version="FIX16DN"] .section-gap{margin-top:16px}
+html[data-ux-version="FIX16DN"] .panel{border-radius:18px;border-color:var(--ux16dn-border);box-shadow:var(--ux16dn-shadow);overflow:clip}
+html[data-ux-version="FIX16DN"] .panel-header{gap:14px;min-height:58px}
+html[data-ux-version="FIX16DN"] .btn,html[data-ux-version="FIX16DN"] .input,html[data-ux-version="FIX16DN"] .select{border-radius:10px}
+html[data-ux-version="FIX16DN"] .btn{min-height:36px}
+html[data-ux-version="FIX16DN"] .table-wrap{border-radius:12px}
+html[data-ux-version="FIX16DN"] .table-wrap table thead th{position:sticky;top:0;z-index:3;backdrop-filter:saturate(130%) blur(5px)}
+html[data-ux-version="FIX16DN"] tbody tr{transition:background-color .12s ease}
+html[data-ux-version="FIX16DN"] tbody tr:hover{background:rgba(59,130,246,.045)}
+
+/* Sidebar */
+html[data-ux-version="FIX16DN"] .nav-item{min-height:40px;border-radius:10px;margin-block:2px}
+html[data-ux-version="FIX16DN"] #adminNavGroup{margin-top:10px;padding-top:7px;border-top:1px solid rgba(148,163,184,.16)}
+html[data-ux-version="FIX16DN"] .ux16dn-admin-nav-toggle{width:100%;border:0;background:transparent;color:inherit;display:grid;grid-template-columns:1fr auto;grid-template-areas:"t i" "s i";text-align:left;padding:9px 10px;border-radius:10px;cursor:pointer}
+html[data-ux-version="FIX16DN"] .ux16dn-admin-nav-toggle:hover{background:rgba(59,130,246,.08)}
+html[data-ux-version="FIX16DN"] .ux16dn-admin-nav-toggle span{grid-area:t;font-size:11px;font-weight:800;letter-spacing:.06em}
+html[data-ux-version="FIX16DN"] .ux16dn-admin-nav-toggle small{grid-area:s;opacity:.64;font-size:10px}
+html[data-ux-version="FIX16DN"] .ux16dn-admin-nav-toggle i{grid-area:i;align-self:center;font-style:normal}
+html[data-ux-version="FIX16DN"] #adminNavGroup:not(.ux16dn-admin-open) .nav-item:not([data-page="admin-center"]){display:none}
+html[data-ux-version="FIX16DN"] #adminNavGroup .nav-item[data-page="admin-center"]{border:1px solid rgba(59,130,246,.16);background:rgba(59,130,246,.055)}
+
+/* Dashboard */
+html[data-ux-version="FIX16DN"] #page-dashboard .dashboard-welcome{border-radius:20px;box-shadow:var(--ux16dn-shadow)}
+html[data-ux-version="FIX16DN"] #page-dashboard .dashboard-view-tabs-v616h{position:sticky;top:66px;z-index:8;backdrop-filter:blur(10px);border-radius:14px}
+html[data-ux-version="FIX16DN"] #page-dashboard [class*="kpi-grid"]{gap:12px}
+
+/* Attendance */
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-filter-heading-v61462{gap:12px;align-items:center}
+html[data-ux-version="FIX16DN"] #page-attendance .ux16dn-filter-toggle{margin-left:auto;white-space:nowrap}
+html[data-ux-version="FIX16DN"] #page-attendance .ux16dn-att-advanced{display:none}
+html[data-ux-version="FIX16DN"] #page-attendance .ux16dn-advanced-open .ux16dn-att-advanced{display:flex}
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-column-controls{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 16px;border-bottom:1px solid var(--ux16dn-border)}
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-column-controls>label,html[data-ux-version="FIX16DN"] #page-attendance .attendance-column-controls>small{display:none}
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-column-controls.ux16dn-columns-open>label{display:inline-flex}
+html[data-ux-version="FIX16DN"] #page-attendance .attendance-column-controls.ux16dn-columns-open>small{display:block;flex-basis:100%}
+html[data-ux-version="FIX16DN"] #page-attendance .ux16dn-column-toggle{margin-left:auto}
+
+/* Schedule */
+html[data-ux-version="FIX16DN"] #page-schedule .schedule-view-shell{border:1px solid var(--ux16dn-border);border-radius:16px;padding:10px 12px;background:var(--ux16dn-soft)}
+html[data-ux-version="FIX16DN"] #page-schedule .schedule-commandbar{position:sticky;top:66px;z-index:9;border:1px solid var(--ux16dn-border);border-radius:14px;box-shadow:0 7px 20px rgba(15,23,42,.05);backdrop-filter:blur(10px)}
+html[data-ux-version="FIX16DN"] #page-schedule .schedule-command-actions .ux16dn-schedule-secondary{display:none}
+html[data-ux-version="FIX16DN"] #page-schedule .schedule-command-actions.ux16dn-tools-open .ux16dn-schedule-secondary{display:inline-flex}
+html[data-ux-version="FIX16DN"] #page-schedule .ux16dn-schedule-more{border-style:dashed}
+html[data-ux-version="FIX16DN"] #page-schedule .schedule-commandbar:not(.ux16dn-has-selection) .schedule-quick-shifts{opacity:.62}
+html[data-ux-version="FIX16DN"] #page-schedule .schedule-kpi-grid{gap:10px}
+
+/* Team */
+html[data-ux-version="FIX16DN"] #page-team-master .team-workspace-hero-v61528{border-radius:20px;box-shadow:var(--ux16dn-shadow)}
+html[data-ux-version="FIX16DN"] #page-team-master .team-workspace-tabs-v61528{position:sticky;top:66px;z-index:8;backdrop-filter:blur(10px)}
+html[data-ux-version="FIX16DN"] #page-team-master.ux16dn-team-compact .team-quick-actions-v61529f1{display:none}
+html[data-ux-version="FIX16DN"] #page-team-master.ux16dn-team-compact .team-workflow-stepper-v61528 small{display:none}
+html[data-ux-version="FIX16DN"] #page-team-master.ux16dn-team-compact .team-operational-type-cards-v61528 article p{display:none}
+html[data-ux-version="FIX16DN"] #page-team-master .team-workspace-kpis-v61528{gap:9px}
+
+/* Admin center / Request */
+html[data-ux-version="FIX16DN"] #page-admin-center .admin-module-grid{gap:10px}
+html[data-ux-version="FIX16DN"] #page-admin-center .admin-module-card{min-height:92px;border-radius:14px;box-shadow:none}
+html[data-ux-version="FIX16DN"] #page-shift-requests .shift-request-kpi-grid-v61529f15s{gap:10px}
+
+/* Assistant context */
+html[data-ux-version="FIX16DN"] .ux16dn-assistant-context{display:flex;flex-wrap:wrap;gap:7px;padding:10px 12px;margin-top:10px;border:1px solid var(--ux16dn-border);border-radius:13px;background:var(--ux16dn-soft)}
+html[data-ux-version="FIX16DN"] .ux16dn-assistant-context span{display:inline-flex;gap:5px;align-items:center;padding:5px 8px;border-radius:999px;background:#fff;border:1px solid rgba(148,163,184,.22);font-size:11px}
+
+/* Dark mode */
+html[data-theme="dark"][data-ux-version="FIX16DN"]{--ux16dn-border:rgba(148,163,184,.20);--ux16dn-soft:rgba(30,41,59,.48);--ux16dn-shadow:0 8px 24px rgba(0,0,0,.14)}
+html[data-theme="dark"][data-ux-version="FIX16DN"] .schedule-view-shell,html[data-theme="dark"][data-ux-version="FIX16DN"] .ux16dn-assistant-context{background-color:rgba(15,23,42,.74)}
+html[data-theme="dark"][data-ux-version="FIX16DN"] .ux16dn-assistant-context span{background:rgba(30,41,59,.9)}
+html[data-theme="dark"][data-ux-version="FIX16DN"] tbody tr:hover{background:rgba(96,165,250,.075)}
+
+@media(max-width:1100px){
+  html[data-ux-version="FIX16DN"] #page-schedule .schedule-commandbar,
+  html[data-ux-version="FIX16DN"] #page-team-master .team-workspace-tabs-v61528,
+  html[data-ux-version="FIX16DN"] #page-dashboard .dashboard-view-tabs-v616h{position:relative;top:auto}
+}
+@media(max-width:760px){
+  html[data-ux-version="FIX16DN"] .content{padding-top:12px}
+  html[data-ux-version="FIX16DN"] .ux16dn-assistant-context{display:grid;grid-template-columns:1fr}
+}

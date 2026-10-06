@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DM Smart Assistant Scoped Live Insight";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dm-smart-assistant";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DN Final UX UI Stabilization";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dn-final-ux-ui";
 
 
 /* ===== js/config.js ===== */
@@ -13,7 +13,7 @@ document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dm-smart-assista
  */
 window.TIME_CLOCK_CONFIG = Object.freeze({
   appName: 'Time-Clock Management',
-  version: '6.15.29 FIX16DM',
+  version: '6.15.29 FIX16DN',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
 });
@@ -38903,4 +38903,85 @@ ${names}${extra}
   else init();
 
   window.TimeClockSystemHealthV616CW={load,mount,version:VERSION};
+})();
+
+
+/* ==========================================================================
+   V6.15.29 FIX16DN • FINAL UX/UI STABILIZATION
+   Frontend-only presentation layer. No RPC/business/permission changes.
+   ========================================================================== */
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const qs = (s, r=document) => r.querySelector(s);
+  const P = "timeclock.fix16dn.";
+  const get = (k,d=false) => { try{const v=localStorage.getItem(P+k);return v==null?d:v==="1";}catch(_){return d;} };
+  const set = (k,v) => { try{localStorage.setItem(P+k,v?"1":"0");}catch(_){} };
+  const btn = t => { const b=document.createElement("button"); b.type="button"; b.className="btn btn-light btn-sm"; b.textContent=t; return b; };
+
+  function attendance(){
+    const panel=qs("#page-attendance .attendance-filter-panel-v61462");
+    const head=panel?.querySelector(".attendance-filter-heading-v61462");
+    if(!panel||!head||panel.dataset.ux16dn)return;
+    panel.dataset.ux16dn="1";
+    ["attZone","attSubArea","attTeamV616T","attCurrentTeamV616BB"].forEach(id=>$(id)?.closest(".field")?.classList.add("ux16dn-att-advanced"));
+
+    const t=btn("＋ ตัวกรองเพิ่มเติม"); t.id="attendanceAdvancedToggleV616DN"; t.classList.add("ux16dn-filter-toggle"); head.appendChild(t);
+    const apply=v=>{panel.classList.toggle("ux16dn-advanced-open",v);t.textContent=v?"− ซ่อนตัวกรองเพิ่มเติม":"＋ ตัวกรองเพิ่มเติม";t.setAttribute("aria-expanded",String(v));set("attAdvanced",v);};
+    apply(get("attAdvanced",false)); t.onclick=()=>apply(!panel.classList.contains("ux16dn-advanced-open"));
+
+    const c=qs("#page-attendance .attendance-column-controls");
+    if(c&&!c.dataset.ux16dn){
+      c.dataset.ux16dn="1";
+      const x=btn("เลือกคอลัมน์"); x.id="attendanceColumnToggleV616DN"; x.classList.add("ux16dn-column-toggle"); c.insertBefore(x,c.children[1]||null);
+      const applyCols=v=>{c.classList.toggle("ux16dn-columns-open",v);x.textContent=v?"ซ่อนตัวเลือกคอลัมน์":"เลือกคอลัมน์";x.setAttribute("aria-expanded",String(v));set("attCols",v);};
+      applyCols(get("attCols",false)); x.onclick=()=>applyCols(!c.classList.contains("ux16dn-columns-open"));
+    }
+  }
+
+  function schedule(){
+    const a=qs("#page-schedule .schedule-command-actions");
+    if(!a||a.dataset.ux16dn)return; a.dataset.ux16dn="1";
+    ["scheduleUndoBtn","scheduleRedoBtn","scheduleCopyMonthBtnV61412","schedulePasteMonthBtnV61413","scheduleCancelMonthCopyBtnV61413","scheduleClearCellsBtn"].forEach(id=>$(id)?.classList.add("ux16dn-schedule-secondary"));
+    const m=btn("••• เครื่องมือเพิ่มเติม"); m.id="scheduleMoreToolsV616DN"; m.classList.add("ux16dn-schedule-more"); a.appendChild(m);
+    const apply=v=>{a.classList.toggle("ux16dn-tools-open",v);m.textContent=v?"ซ่อนเครื่องมือเพิ่มเติม":"••• เครื่องมือเพิ่มเติม";m.setAttribute("aria-expanded",String(v));set("schedTools",v);};
+    apply(get("schedTools",false)); m.onclick=()=>apply(!a.classList.contains("ux16dn-tools-open"));
+
+    const count=$("scheduleSelectionCount"), bar=qs("#page-schedule .schedule-commandbar");
+    if(count&&bar){
+      const u=()=>{const s=String(count.textContent||"");bar.classList.toggle("ux16dn-has-selection",/\d/.test(s)&&!s.startsWith("0")&&!s.includes("ยังไม่ได้"));};
+      u(); new MutationObserver(u).observe(count,{subtree:true,childList:true,characterData:true});
+    }
+  }
+
+  function team(){
+    const p=$("page-team-master"); if(!p||p.dataset.ux16dn)return; p.dataset.ux16dn="1";
+    const h=qs(".team-workspace-hero-actions-v61528",p); if(!h)return;
+    const d=btn("มุมมองกระชับ"); d.id="teamDensityToggleV616DN"; h.appendChild(d);
+    const apply=v=>{p.classList.toggle("ux16dn-team-compact",v);d.textContent=v?"แสดงรายละเอียดเต็ม":"มุมมองกระชับ";d.setAttribute("aria-pressed",String(v));set("teamCompact",v);};
+    apply(get("teamCompact",true)); d.onclick=()=>apply(!p.classList.contains("ux16dn-team-compact"));
+  }
+
+  function adminNav(){
+    const g=$("adminNavGroup"); if(!g||g.dataset.ux16dn)return; g.dataset.ux16dn="1";
+    const old=qs(".nav-label",g), t=document.createElement("button");
+    t.type="button"; t.id="adminNavDisclosureV616DN"; t.className="ux16dn-admin-nav-toggle"; t.innerHTML='<span>HR ADMIN</span><small>เมนูระบบ</small><i>⌄</i>';
+    old?old.replaceWith(t):g.prepend(t);
+    const apply=v=>{g.classList.toggle("ux16dn-admin-open",v);t.setAttribute("aria-expanded",String(v));t.querySelector("i").textContent=v?"⌃":"⌄";set("adminOpen",v);};
+    apply(get("adminOpen",false)); t.onclick=()=>apply(!g.classList.contains("ux16dn-admin-open"));
+  }
+
+  function assistant(){
+    const p=$("page-smart-assistant"); if(!p||p.dataset.ux16dn)return; p.dataset.ux16dn="1";
+    const h=qs(".assistant-hero",p); if(!h)return;
+    const c=document.createElement("div"); c.id="assistantContextV616DN"; c.className="ux16dn-assistant-context"; h.insertAdjacentElement("afterend",c);
+    const u=()=>{const role=String(window.TimeClockApp?.state?.profile?.role||$("roleBadge")?.textContent||"VIEWER").toUpperCase();const start=$("dashStart")?.value||"-",end=$("dashEnd")?.value||"-",zone=$("dashZone")?.value||"ทุกพื้นที่ใน Scope",dept=$("dashDepartment")?.value||"ทุกหน่วยงานใน Scope";c.innerHTML=`<span><b>Scope</b> ${role}</span><span><b>ช่วงข้อมูล</b> ${start} → ${end}</span><span><b>พื้นที่</b> ${zone}</span><span><b>หน่วยงาน</b> ${dept}</span>`;};
+    u(); ["dashStart","dashEnd","dashZone","dashDepartment"].forEach(id=>$(id)?.addEventListener("change",u)); document.addEventListener("timeclock:profile-ready",u);
+  }
+
+  function init(){
+    document.documentElement.dataset.uxVersion="FIX16DN";
+    attendance(); schedule(); team(); adminNav(); assistant();
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init,{once:true}); else init();
 })();
