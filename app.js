@@ -15677,6 +15677,72 @@ window.tcIsDayShiftCode = value =>
     }
     function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",DAY_OFF:"วันหยุด",MISSING_IN:"ไม่ลงเวลาเข้า",MISSING_OUT:"ไม่ลงเวลาออก",MISSING_BOTH:"ไม่ลงเวลาทั้งเข้าและออก",LATE_30_PLUS:"เข้าหลังเริ่มกะ ≥30 นาที",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุด",WORKED_ON_HOLIDAY:"ทำงานนักขัตฯ",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"หยุดสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-"; }
     function emptyRow(cols) { return `<tr><td colspan="${cols}" class="table-empty">ไม่พบข้อมูล</td></tr>`; }
+    const ERROR_GUIDE_V616CX = Object.freeze({
+      SCHEDULE_EDIT_PERMISSION_DENIED: "ไม่มีสิทธิ์แก้ไขกะของพนักงานหรือวันที่นี้ กรุณาตรวจ Manager Scope / Acting และช่วงวันที่มีผล",
+      TEAM_MANAGER_ROLE_REQUIRED: "การจัดการทีมต้องใช้สิทธิ์ Manager หรือ Acting Manager ที่ครอบคลุมหน่วยงานของทีม",
+      TEAM_ORG_PERMISSION_DENIED: "ไม่มีสิทธิ์จัดการทีมในหน่วยงานนี้ กรุณาตรวจ Manager Scope หรือช่วง Acting",
+      TEAM_RUNTIME_ACTOR_NOT_FOUND: "ระบบไม่พบสิทธิ์ผู้ใช้งานปัจจุบัน กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่",
+      TEAM_NOT_FOUND: "ไม่พบทีมที่เลือก กรุณาโหลดข้อมูลทีมใหม่แล้วลองอีกครั้ง",
+      TEAM_NOT_READY: "ทีมยังไม่พร้อมใช้งาน กรุณาตรวจสถานะทีมและจำนวนสมาชิกก่อนดำเนินการ",
+      TEAM_ALREADY_INACTIVE: "ทีมนี้ถูกปิดใช้งานแล้ว ไม่สามารถดำเนินการซ้ำได้",
+      TEAM_CATEGORY_REQUIRED: "กรุณาระบุประเภททีมก่อนบันทึก",
+      TEAM_MEMBER_NOT_FOUND: "ไม่พบสมาชิกทีมที่ต้องการดำเนินการ กรุณาโหลดข้อมูลล่าสุดอีกครั้ง",
+      TEAM_MEMBER_OVERLAP: "พนักงานมีช่วงสมาชิกทีมถาวรซ้อนกัน กรุณาตรวจ Effective Date ของทีมเดิมและทีมใหม่",
+      TEAM_MEMBER_ORG_MISMATCH: "พนักงานและทีมอยู่คนละหน่วยงานตามโครงสร้างองค์กร กรุณาตรวจ Org ของพนักงานและทีม",
+      TEAM_MEMBER_CATEGORY_MISMATCH: "ประเภทการปฏิบัติงานของพนักงานไม่ตรงกับประเภททีมที่เลือก",
+      TEAM_MEMBER_OPERATIONAL_TYPE_MISMATCH: "รูปแบบการปฏิบัติงานของพนักงานไม่ตรงกับทีม กรุณาตรวจ รถยนต์ / มอเตอร์ไซค์ / สนับสนุน",
+      TEAM_MEMBERS_MIN: "จำนวนสมาชิกทีมต่ำกว่าขั้นต่ำที่กำหนด กรุณาเพิ่มสมาชิกก่อนยืนยันทีม",
+      TEAM_MEMBERS_MAX: "จำนวนสมาชิกทีมเกินจำนวนสูงสุดที่กำหนด กรุณาปรับสมาชิกก่อนยืนยันทีม",
+      TEAM_FINAL_MEMBERS_MIN: "หลังดำเนินการแล้วจำนวนสมาชิกทีมจะต่ำกว่าขั้นต่ำที่กำหนด",
+      TEAM_FINAL_MEMBERS_MAX: "หลังดำเนินการแล้วจำนวนสมาชิกทีมจะเกินจำนวนสูงสุดที่กำหนด",
+      TEAM_CLOSE_MEMBERS_MUST_REASSIGN: "ยังมีสมาชิกในทีม กรุณากำหนดทีมปลายทางหรือปิดช่วงสมาชิกให้ครบก่อนปิดทีม",
+      TEAM_CLOSE_MEMBER_PLAN_INCOMPLETE: "แผนย้ายสมาชิกก่อนปิดทีมยังไม่ครบ กรุณากำหนดปลายทางให้สมาชิกทุกคน",
+      TEAM_CLOSE_MEMBER_TARGET_INVALID: "ทีมปลายทางของสมาชิกไม่ถูกต้องหรือไม่พร้อมใช้งาน กรุณาเลือกทีมใหม่",
+      TEAM_CLOSE_TARGET_CAPACITY_INVALID: "ทีมปลายทางมีจำนวนสมาชิกไม่รองรับการย้ายทั้งหมด กรุณาเลือกทีมอื่นหรือกระจายสมาชิก",
+      TEAM_CLOSE_DUPLICATE_MEMBER_PLAN: "พบแผนย้ายสมาชิกซ้ำ กรุณาตรวจรายชื่อก่อนปิดทีม",
+      TEAM_CLOSE_UNKNOWN_MEMBER_PLAN: "พบสมาชิกในแผนปิดทีมที่ไม่ตรงกับข้อมูลล่าสุด กรุณาโหลด Preview ใหม่",
+      TEAM_CLOSE_PREVIEW_BLOCKED: "ยังปิดทีมไม่ได้ตามข้อมูลล่าสุด กรุณาตรวจสมาชิก ทีมปลายทาง และรายการยืมตัวก่อน",
+      TEAM_HAS_TEMPORARY_ASSIGNMENTS: "ทีมยังมีรายการยืมตัวที่มีผล กรุณาตรวจ Borrow ก่อนปิดทีม",
+      OPERATIONAL_TEAM_REQUIRED: "พนักงานต้องมี Home Team ที่มีผลก่อนดำเนินการรายการนี้",
+      HOME_TEAM_REQUIRED_BEFORE_TEMP_ASSIGNMENT: "ต้องกำหนด Home Team ให้พนักงานก่อนสร้างรายการยืมตัว",
+      TEMP_ASSIGNMENT_SAME_TEAM: "ทีมต้นทางและทีมปลายทางต้องเป็นคนละทีม",
+      TEMP_ASSIGNMENT_DATE_RANGE_INVALID: "ช่วงวันที่ยืมตัวไม่ถูกต้อง กรุณาตรวจวันที่เริ่มและวันที่สิ้นสุด",
+      TEMP_ASSIGNMENT_DATE_OVERLAP: "พนักงานมีรายการยืมตัวช่วงวันที่ซ้อนกันอยู่แล้ว",
+      TEMP_ASSIGNMENT_BACKDATE_NOT_ALLOWED: "วันที่เริ่มยืมตัวย้อนหลังเกินช่วงที่ระบบอนุญาต กรุณาเลือกตั้งแต่วันแรกของเดือนปัจจุบันเป็นต้นไป",
+      TEMP_ASSIGNMENT_BEFORE_EMPLOYEE_START_DATE: "วันที่เริ่มยืมตัวต้องไม่ก่อนวันเริ่มงานของพนักงาน",
+      TEMP_ASSIGNMENT_AFTER_EMPLOYEE_RESIGN_DATE: "ช่วงยืมตัวต้องไม่เกินวันที่ลาออกของพนักงาน",
+      TEMP_ASSIGNMENT_AUTHORITY_DENIED: "ไม่มีสิทธิ์ดำเนินการยืมตัวของพนักงานรายนี้ กรุณาตรวจ Scope ของ Manager / Acting",
+      TEMP_ASSIGNMENT_COUNTERPART_AUTHORITY_DENIED: "ไม่มีสิทธิ์ฝั่งหน่วยงานคู่กรณีของรายการยืมตัว กรุณาตรวจ Manager / Acting ของต้นทางและปลายทาง",
+      TEMP_ASSIGNMENT_OPERATIONAL_MANAGER_REQUIRED: "รายการยืมตัวต้องมี Manager หรือ Acting Manager ที่รับผิดชอบ Working Org",
+      BORROW_CROSS_DIVISION_NOT_ALLOWED: "การยืมตัวอนุญาตเฉพาะภายใน Division เดียวกัน",
+      BORROW_DESTINATION_AUTHORITY_REQUIRED: "ไม่พบผู้มีอำนาจฝั่งทีมปลายทาง กรุณาตรวจ Manager Scope หรือ Acting ของหน่วยงานปลายทาง",
+      BORROW_DESTINATION_MANAGER_REQUIRED: "ทีมปลายทางยังไม่มี Manager / Acting ที่รับผิดชอบ กรุณากำหนดสิทธิ์ก่อนยืมตัว",
+      BORROW_SOURCE_MANAGER_APPROVAL_REQUIRED: "รายการยืมตัวต้องได้รับการยืนยันจาก Manager ฝั่งต้นทางก่อน",
+      BORROW_NOT_WAITING_SOURCE: "สถานะรายการยืมตัวไม่อยู่ในขั้นตอนรอฝั่งต้นทางดำเนินการ กรุณาโหลดข้อมูลล่าสุด",
+      BORROW_OPERATIONAL_TYPE_MISMATCH: "รูปแบบการปฏิบัติงานของพนักงานไม่ตรงกับทีมปลายทาง",
+      BORROW_SAME_MANAGER_USE_TEAM_TRANSFER: "ต้นทางและปลายทางอยู่ภายใต้ Manager เดียวกัน กรุณาใช้การย้ายทีมถาวรแทนการยืมตัว",
+      BORROW_PREVIEW_BLOCKED: "รายการยืมตัวยังไม่ผ่านเงื่อนไข Preview กรุณาตรวจทีม ช่วงวันที่ และสิทธิ์ Manager / Acting",
+      SOURCE_MANAGER_NOT_FOUND: "ไม่พบ Manager / Acting ที่รับผิดชอบต้นทาง กรุณาตรวจ Manager Scope หรือ Acting",
+      MANAGER_AUTH_ACCOUNT_NOT_FOUND: "ไม่พบบัญชี Auth ของ Manager ที่กำหนด กรุณาตรวจ User Profile และบัญชีเข้าสู่ระบบ",
+      OUTSIDE_MANAGER_SCOPE: "รายการนี้อยู่นอกขอบเขตสิทธิ์ของ Manager ปัจจุบัน",
+      OUTSIDE_BORROW_WINDOW: "วันที่ที่เลือกอยู่นอกช่วงยืมตัวที่มีผล",
+      REQUEST_ID_REQUIRED: "ไม่พบรหัสคำขอ กรุณาโหลดรายการคำขอใหม่แล้วลองอีกครั้ง",
+      ACTIVE_MANAGER_NOT_FOUND_FOR_EMPLOYEE: "ไม่พบ Manager / Acting ที่รับผิดชอบ Working Team ของพนักงานขณะสร้างคำขอ กรุณาตรวจ Manager Scope, Acting และทีม",
+      ATTENDANCE_DAY_NOT_FOUND: "ไม่พบข้อมูล Attendance Day ของพนักงานในวันที่เลือก กรุณาตรวจตารางกะและประมวลผล Attendance ใหม่",
+      AUTH_SESSION_REQUIRED: "ไม่พบ Session การเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่",
+      AUTH_SESSION_EXPIRED: "Session หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่",
+      PASSWORD_RESET_RATE_LIMIT: "มีการขอรีเซ็ตรหัสผ่านถี่เกินไป กรุณารอสักครู่แล้วลองใหม่",
+      NO_MANAGER_SCOPE: "บัญชี Manager ยังไม่มี Scope ที่มีผล กรุณาให้ HR Admin กำหนดขอบเขตหน่วยงานก่อนใช้งาน"
+    });
+
+    function errorCodeV616CX(err, msg) {
+      const direct = String(err?.code || err?.error_code || "").trim().toUpperCase();
+      if (direct && ERROR_GUIDE_V616CX[direct]) return direct;
+      const text = String(msg || err?.message || err?.error_description || "");
+      const matches = text.match(/\b[A-Z][A-Z0-9_]{5,}\b/g) || [];
+      return matches.find(code => ERROR_GUIDE_V616CX[code]) || matches[0] || direct || "";
+    }
+
     function humanError(err) {
       const msg = err?.message || err?.error_description || String(err || "เกิดข้อผิดพลาด");
       if (msg.includes("TEAM_REQUIRED_FOR_CAR")) return "พนักงานกลุ่มรถยนต์ยังไม่มีทีมที่มีผลในวันที่เลือก กรุณากำหนดทีมก่อนจัดกะ";
@@ -15791,6 +15857,28 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("PERSONAL_LEAVE_PARTIAL_MIN_60_MINUTES")) return "ลากิจบางส่วนกำหนดขั้นต่ำ 1 ชั่วโมง";
       if (msg.includes("VACATION_LEAVE_PARTIAL_MIN_180_MINUTES")) return "ลาพักร้อนบางส่วนกำหนดขั้นต่ำ 3 ชั่วโมง";
       if (msg.includes("LEAVE_NOT_ALLOWED_NON_WORKDAY")) return "ไม่สามารถอนุมัติลาในวันหยุด วันหยุดนักขัตฤกษ์ หรือวันที่ไม่ใช่วันทำงานได้";
+
+      // V6.15.29 FIX16CX · Human-readable error/action guidance layer.
+      const guideCode = errorCodeV616CX(err, msg);
+      if (guideCode && ERROR_GUIDE_V616CX[guideCode]) return ERROR_GUIDE_V616CX[guideCode];
+
+      if (/invalid login credentials/i.test(msg)) return "Email หรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจข้อมูลแล้วลองใหม่";
+      if (/email rate limit exceeded|rate limit/i.test(msg)) return "ระบบจำกัดการส่ง Email ชั่วคราวเนื่องจากมีการเรียกใช้งานถี่เกินไป กรุณารอสักครู่แล้วลองใหม่";
+      if (/jwt.*expired|token.*expired|refresh token.*invalid|session.*expired/i.test(msg)) return "Session หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่";
+      if (/PGRST202|could not find the function|schema cache/i.test(msg)) return "ระบบยังไม่พบ RPC ที่ต้องใช้ กรุณาตรวจว่า Backend SQL ติดตั้งแล้ว และ Reload Schema ของ Supabase";
+      if (/42501|permission denied|not authorized|unauthorized/i.test(msg)) return "บัญชีนี้ไม่มีสิทธิ์ดำเนินการรายการนี้ กรุณาตรวจ Role, Manager Scope หรือ Acting";
+      if (/23505|duplicate key/i.test(msg)) return "พบข้อมูลซ้ำกับรายการที่มีอยู่แล้ว กรุณาโหลดข้อมูลล่าสุดและตรวจรายการก่อนบันทึก";
+      if (/23503|foreign key/i.test(msg)) return "ข้อมูลอ้างอิงที่เลือกไม่พบหรือถูกเปลี่ยนแปลง กรุณาโหลดข้อมูลล่าสุดแล้วลองใหม่";
+      if (/23514|check constraint/i.test(msg)) return "ข้อมูลไม่ผ่านกฎตรวจสอบของระบบ กรุณาตรวจค่าที่กรอกและสถานะข้อมูลล่าสุด";
+      if (/42P01|relation .* does not exist/i.test(msg)) return "Backend ยังขาด Table/View ที่ฟังก์ชันนี้ต้องใช้ กรุณาตรวจลำดับการติดตั้ง SQL";
+      if (/42883|function .* does not exist/i.test(msg)) return "Backend ยังขาด Function/RPC ที่ฟังก์ชันนี้ต้องใช้ กรุณาตรวจลำดับการติดตั้ง SQL";
+      if (/tuple concurrently updated|could not serialize|deadlock detected/i.test(msg)) return "ข้อมูลถูกแก้ไขพร้อมกันจากอีก Session กรุณาโหลดข้อมูลล่าสุดแล้วดำเนินการอีกครั้ง";
+      if (/network|failed to fetch|fetch failed|networkerror/i.test(msg)) return "เชื่อมต่อระบบไม่สำเร็จ กรุณาตรวจ Internet แล้วลองใหม่";
+
+      // Do not show raw backend-code-only messages to end users.
+      if (guideCode && /^[A-Z][A-Z0-9_]{5,}$/.test(guideCode) && msg.trim().toUpperCase().startsWith(guideCode)) {
+        return `ระบบไม่สามารถดำเนินการได้ (${guideCode}) กรุณาโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง หากยังเกิดซ้ำให้แจ้ง HR Admin`;
+      }
       return msg;
     }
 
@@ -15810,6 +15898,7 @@ window.tcIsDayShiftCode = value =>
       showLoading,
       hideLoading,
       humanError,
+      errorCodeV616CX,
       formatNumber,
       formatDate,
       formatDateTime,
