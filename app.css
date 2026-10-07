@@ -37585,3 +37585,117 @@ html[data-theme="dark"] .csv-unmatched-summary-v616eb>div{
   font-size:11px;
   font-weight:700;
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16EH • HR ADMIN SELECTION-FIRST / LAZY LOAD
+   ========================================================================== */
+.hradmin-selection-first-v616eh{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:12px 0;
+  padding:12px 14px;
+  border:1px solid rgba(37,99,235,.18);
+  border-radius:14px;
+  background:rgba(239,246,255,.82);
+  box-shadow:0 6px 18px rgba(15,23,42,.04);
+}
+.hradmin-selection-first-v616eh.hidden{display:none}
+.hradmin-selection-first-v616eh.warning{
+  border-color:rgba(245,158,11,.30);
+  background:rgba(255,247,237,.92);
+}
+.hradmin-selection-first-v616eh.ready{
+  border-color:rgba(16,185,129,.24);
+  background:rgba(236,253,245,.86);
+}
+.hradmin-selection-first-icon-v616eh{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  background:#dbeafe;
+  color:#1d4ed8;
+  font-size:18px;
+  font-weight:800;
+  flex:0 0 auto;
+}
+.hradmin-selection-first-v616eh.warning .hradmin-selection-first-icon-v616eh{
+  background:#ffedd5;
+  color:#c2410c;
+}
+.hradmin-selection-first-v616eh.ready .hradmin-selection-first-icon-v616eh{
+  background:#d1fae5;
+  color:#047857;
+}
+.hradmin-selection-first-copy-v616eh{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.hradmin-selection-first-copy-v616eh strong{
+  color:#0f2f57;
+  font-size:12px;
+  font-weight:800;
+}
+.hradmin-selection-first-copy-v616eh span{
+  color:#64748b;
+  font-size:11px;
+  line-height:1.5;
+}
+.hradmin-selection-first-badge-v616eh{
+  margin-left:auto;
+  flex:0 0 auto;
+  padding:5px 9px;
+  border-radius:999px;
+  background:#eff6ff;
+  color:#1d4ed8;
+  border:1px solid rgba(37,99,235,.16);
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.02em;
+}
+.hradmin-selection-empty-v616eh{
+  min-height:92px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  text-align:center;
+  color:#64748b;
+  background:rgba(248,250,252,.74);
+}
+html[data-theme="dark"] .hradmin-selection-first-v616eh{
+  background:rgba(16,35,57,.88);
+  border-color:rgba(96,165,250,.24);
+}
+html[data-theme="dark"] .hradmin-selection-first-v616eh.warning{
+  background:rgba(69,39,13,.72);
+  border-color:rgba(251,146,60,.28);
+}
+html[data-theme="dark"] .hradmin-selection-first-v616eh.ready{
+  background:rgba(6,78,59,.38);
+  border-color:rgba(52,211,153,.24);
+}
+html[data-theme="dark"] .hradmin-selection-first-copy-v616eh strong{
+  color:#dbeafe;
+}
+html[data-theme="dark"] .hradmin-selection-first-copy-v616eh span,
+html[data-theme="dark"] .hradmin-selection-empty-v616eh{
+  color:#cbd5e1;
+}
+html[data-theme="dark"] .hradmin-selection-empty-v616eh{
+  background:rgba(15,23,42,.48);
+}
+@media(max-width:720px){
+  .hradmin-selection-first-v616eh{
+    align-items:flex-start;
+    flex-wrap:wrap;
+  }
+  .hradmin-selection-first-badge-v616eh{
+    margin-left:46px;
+  }
+}

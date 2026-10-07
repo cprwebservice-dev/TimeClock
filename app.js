@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16EG Attendance 1-Lane Adaptive IO Throttle";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16eg-attendance-1lane-adaptive-io";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16EH HR Admin Selection-First Lazy Loading";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16eh-hradmin-selection-first";
 
 
 /* ===== js/config.js ===== */
@@ -2666,6 +2666,197 @@ window.tcIsDayShiftCode = value =>
     }
     function showApp() { $("loginScreen").classList.add("hidden"); $("appShell").classList.remove("hidden"); }
 
+
+    const hrAdminLazyV616EH = {
+      loaded: {
+        attendance: false,
+        schedule: false
+      },
+      prepared: {
+        attendance: false,
+        schedule: false
+      }
+    };
+
+    function isHrAdminSelectionFirstV616EH() {
+      return String(
+        state.profile?.role
+        || state.profile?._realRole
+        || ""
+      ).toUpperCase() === "HR_ADMIN";
+    }
+
+    function ensureHrAdminSelectionNoticeV616EH(page) {
+      if (!isHrAdminSelectionFirstV616EH()) return null;
+
+      const host = document.getElementById(`page-${page}`);
+      if (!host) return null;
+
+      let box = host.querySelector(
+        `[data-hradmin-selection-first-v616eh="${page}"]`
+      );
+      if (box) return box;
+
+      box = document.createElement("div");
+      box.className = "hradmin-selection-first-v616eh";
+      box.dataset.hradminSelectionFirstV616eh = page;
+      box.innerHTML = `
+        <div class="hradmin-selection-first-icon-v616eh">⌕</div>
+        <div class="hradmin-selection-first-copy-v616eh">
+          <strong>HR Admin • Selection-first</strong>
+          <span>เลือกขอบเขตข้อมูลก่อน แล้วกดแสดงข้อมูล เพื่อไม่โหลดทั้งองค์กรโดยอัตโนมัติ</span>
+        </div>
+        <span class="hradmin-selection-first-badge-v616eh">Lazy Load</span>
+      `;
+
+      const anchor = page === "attendance"
+        ? host.querySelector(".attendance-filter-panel-v61462")
+        : host.querySelector(".schedule-control-panel-v61529f15m");
+
+      if (anchor?.parentNode) {
+        anchor.insertAdjacentElement("afterend", box);
+      } else {
+        host.prepend(box);
+      }
+
+      return box;
+    }
+
+    function setHrAdminSelectionNoticeV616EH(page, message, tone="info") {
+      const box = ensureHrAdminSelectionNoticeV616EH(page);
+      if (!box) return;
+
+      box.classList.remove("hidden","ready","warning","info");
+      box.classList.add(tone);
+
+      const text = box.querySelector(
+        ".hradmin-selection-first-copy-v616eh span"
+      );
+      if (text && message) text.textContent = message;
+    }
+
+    function hideHrAdminSelectionNoticeV616EH(page) {
+      const box = document.querySelector(
+        `[data-hradmin-selection-first-v616eh="${page}"]`
+      );
+      box?.classList.add("hidden");
+    }
+
+    function attendanceHasExplicitScopeV616EH() {
+      if (!isHrAdminSelectionFirstV616EH()) return true;
+
+      return Boolean(
+        String(val("attZone") || "").trim()
+        || String(val("attSubArea") || "").trim()
+        || String(
+          selectedOrgIdV616M("attDepartment")
+          || val("attDepartment")
+          || ""
+        ).trim()
+        || attendanceEmployeeFilter.selected.size > 0
+      );
+    }
+
+    function scheduleHasExplicitScopeV616EH() {
+      if (!isHrAdminSelectionFirstV616EH()) return true;
+
+      const search = String(val("scheduleSearch") || "").trim();
+      const exactEmployee = /^\d{4,20}$/.test(search);
+
+      return Boolean(
+        String(val("scheduleZone") || "").trim()
+        || String(
+          selectedOrgIdV616M("scheduleDepartment")
+          || val("scheduleDepartment")
+          || ""
+        ).trim()
+        || String(val("scheduleOperationalTeamV61526") || "").trim()
+        || exactEmployee
+      );
+    }
+
+    async function prepareAttendanceSelectionFirstV616EH() {
+      if (!isHrAdminSelectionFirstV616EH()) return;
+
+      setHrAdminSelectionNoticeV616EH(
+        "attendance",
+        hrAdminLazyV616EH.loaded.attendance
+          ? "ข้อมูลเดิมยังคงแสดงอยู่ • หากเปลี่ยนตัวกรอง ให้กด “ค้นหา” เพื่อโหลดใหม่"
+          : "เลือกพื้นที่ / พื้นที่ย่อย / หน่วยงาน หรือพนักงานก่อน แล้วกด “ค้นหา”",
+        hrAdminLazyV616EH.loaded.attendance ? "ready" : "info"
+      );
+
+      if (!hrAdminLazyV616EH.prepared.attendance) {
+        hrAdminLazyV616EH.prepared.attendance = true;
+        await loadAttendanceFilterOptions(false);
+      }
+
+      if (!hrAdminLazyV616EH.loaded.attendance) {
+        state.attendance = [];
+        setText("attendanceCount","รอเลือกขอบเขตข้อมูล");
+        setText("attendanceCoverageV61462","ยังไม่ได้โหลดข้อมูล");
+        if ($("attendanceBody")) {
+          $("attendanceBody").innerHTML =
+            '<tr><td colspan="30" class="table-empty hradmin-selection-empty-v616eh">กรุณาเลือกขอบเขตข้อมูลด้านบน แล้วกด “ค้นหา”</td></tr>';
+        }
+      }
+    }
+
+    async function prepareScheduleSelectionFirstV616EH() {
+      if (!isHrAdminSelectionFirstV616EH()) return;
+
+      setHrAdminSelectionNoticeV616EH(
+        "schedule",
+        hrAdminLazyV616EH.loaded.schedule
+          ? "ตารางเดิมยังคงแสดงอยู่ • หากเปลี่ยนเงื่อนไข ให้กด “โหลดตารางกะ”"
+          : "เลือกพื้นที่ / หน่วยงาน / ทีม หรือค้นหารหัสพนักงานก่อน แล้วกด “โหลดตารางกะ”",
+        hrAdminLazyV616EH.loaded.schedule ? "ready" : "info"
+      );
+
+      if (!hrAdminLazyV616EH.prepared.schedule) {
+        hrAdminLazyV616EH.prepared.schedule = true;
+        const period = syncSchedulePeriodUI();
+        try {
+          await loadScheduleFilterOptions(period);
+        } catch (error) {
+          console.warn(
+            "FIX16EH schedule filter preparation:",
+            error
+          );
+        }
+      }
+
+      if (!hrAdminLazyV616EH.loaded.schedule) {
+        state.schedule = [];
+        setScheduleLoadStatus(
+          "info",
+          "HR Admin: กรุณาเลือกขอบเขตข้อมูลก่อนโหลดตารางกะ"
+        );
+        if ($("scheduleTeamWrap")) {
+          $("scheduleTeamWrap").innerHTML =
+            '<div class="hradmin-selection-empty-v616eh">เลือกขอบเขตข้อมูลด้านบน แล้วกด “โหลดตารางกะ”</div>';
+        }
+        if ($("scheduleTableWrap")) {
+          $("scheduleTableWrap").innerHTML =
+            '<div class="hradmin-selection-empty-v616eh">เลือกขอบเขตข้อมูลด้านบน แล้วกด “โหลดตารางกะ”</div>';
+        }
+      }
+    }
+
+    function markHrAdminSelectionDirtyV616EH(page) {
+      if (!isHrAdminSelectionFirstV616EH()) return;
+
+      const message = page === "attendance"
+        ? "ตัวกรองเปลี่ยนแล้ว • กด “ค้นหา” เพื่อแสดงข้อมูลตามเงื่อนไขใหม่"
+        : "ตัวกรองเปลี่ยนแล้ว • กด “โหลดตารางกะ” เพื่อแสดงข้อมูลตามเงื่อนไขใหม่";
+
+      setHrAdminSelectionNoticeV616EH(
+        page,
+        message,
+        "warning"
+      );
+    }
+
     async function enterApp() {
       showLoading("กำลังโหลดสิทธิ์ผู้ใช้งาน...");
       try {
@@ -2687,7 +2878,9 @@ window.tcIsDayShiftCode = value =>
 
         showApp();
         await loadFilterOptions();
-        await loadAttendanceFilterOptions(false);
+        if (!isHrAdminSelectionFirstV616EH()) {
+          await loadAttendanceFilterOptions(false);
+        }
         await loadDashboard();
       } catch (err) {
         toast(humanError(err), "error");
@@ -6027,6 +6220,24 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function loadAttendance() {
+      if (
+        isHrAdminSelectionFirstV616EH()
+        && !attendanceHasExplicitScopeV616EH()
+      ) {
+        setHrAdminSelectionNoticeV616EH(
+          "attendance",
+          "กรุณาเลือกพื้นที่ / พื้นที่ย่อย / หน่วยงาน หรือพนักงานอย่างน้อย 1 เงื่อนไขก่อนค้นหา",
+          "warning"
+        );
+        state.attendance = [];
+        setText("attendanceCount","รอเลือกขอบเขตข้อมูล");
+        if ($("attendanceBody")) {
+          $("attendanceBody").innerHTML =
+            '<tr><td colspan="30" class="table-empty hradmin-selection-empty-v616eh">ยังไม่โหลดข้อมูลทั้งองค์กร • กรุณาเลือกขอบเขตแล้วกด “ค้นหา”</td></tr>';
+        }
+        return;
+      }
+
       const requestId =
         ++attendanceLoadRequestId;
 
@@ -6232,6 +6443,11 @@ window.tcIsDayShiftCode = value =>
           activeEmployeeCodes;
 
         renderAttendance();
+
+        if (isHrAdminSelectionFirstV616EH()) {
+          hrAdminLazyV616EH.loaded.attendance = true;
+          hideHrAdminSelectionNoticeV616EH("attendance");
+        }
 
         document.dispatchEvent(
           new CustomEvent(
@@ -6716,6 +6932,22 @@ window.tcIsDayShiftCode = value =>
     let scheduleLoadQueuedV61151 = false;
 
     async function loadSchedule() {
+      if (
+        isHrAdminSelectionFirstV616EH()
+        && !scheduleHasExplicitScopeV616EH()
+      ) {
+        setHrAdminSelectionNoticeV616EH(
+          "schedule",
+          "กรุณาเลือกพื้นที่ / หน่วยงาน / ทีม หรือระบุรหัสพนักงานก่อนโหลดตารางกะ",
+          "warning"
+        );
+        setScheduleLoadStatus(
+          "warning",
+          "HR Admin: ยังไม่โหลดตารางทั้งองค์กร • กรุณาเลือกขอบเขตข้อมูล"
+        );
+        return;
+      }
+
       if (scheduleLoadInFlightV61151) {
         scheduleLoadQueuedV61151 = true;
         return;
@@ -6938,6 +7170,11 @@ window.tcIsDayShiftCode = value =>
           const date=String(row.work_date||"").slice(0,10);
           return date>=period.startDate&&date<=period.endDate;
         });
+
+        if (isHrAdminSelectionFirstV616EH()) {
+          hrAdminLazyV616EH.loaded.schedule = true;
+          hideHrAdminSelectionNoticeV616EH("schedule");
+        }
 
         // V6.13.5: start/resign dates now come from the lightweight Grid RPC directly; Scope metadata remains a fallback.
         // Reuse it instead of making the base schedule RPC join extra historical tables.
@@ -15031,18 +15268,38 @@ window.tcIsDayShiftCode = value =>
       document.body.classList.remove(
         "sidebar-mobile-open"
       );
-      if (page === "attendance" && !state.attendance.length) loadAttendance();
+      if (page === "attendance") {
+        if (isHrAdminSelectionFirstV616EH()) {
+          prepareAttendanceSelectionFirstV616EH().catch(error =>
+            console.warn("FIX16EH Attendance selection-first:",error)
+          );
+          if (hrAdminLazyV616EH.loaded.attendance) {
+            renderAttendance();
+          }
+        } else if (!state.attendance.length) {
+          loadAttendance();
+        }
+      }
       if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
       if (page === "team-master") window.TimeClockTeamMasterV61523?.load?.();
       if (page === "schedule") {
-        const personNeedsFullMonth =
-          scheduleCurrentView() === "PERSON"
-          && !schedulePersonLoadMatchesV61149();
-
-        if (!state.schedule.length || personNeedsFullMonth) {
-          loadSchedule();
+        if (isHrAdminSelectionFirstV616EH()) {
+          prepareScheduleSelectionFirstV616EH().catch(error =>
+            console.warn("FIX16EH Schedule selection-first:",error)
+          );
+          if (hrAdminLazyV616EH.loaded.schedule) {
+            renderSchedule();
+          }
         } else {
-          renderSchedule();
+          const personNeedsFullMonth =
+            scheduleCurrentView() === "PERSON"
+            && !schedulePersonLoadMatchesV61149();
+
+          if (!state.schedule.length || personNeedsFullMonth) {
+            loadSchedule();
+          } else {
+            renderSchedule();
+          }
         }
       }
 
@@ -15135,6 +15392,9 @@ window.tcIsDayShiftCode = value =>
           setVal("attSubArea","");
           setVal("attDepartment","");
           await loadAttendanceFilterOptions(true);
+          if (isHrAdminSelectionFirstV616EH()) {
+            markHrAdminSelectionDirtyV616EH("attendance");
+          }
         }
       );
       $("attSubArea")?.addEventListener(
@@ -15143,6 +15403,9 @@ window.tcIsDayShiftCode = value =>
           attendanceRejectOutOfScopeValueV616K("attSubArea","พื้นที่ย่อย");
           setVal("attDepartment","");
           await loadAttendanceFilterOptions(true);
+          if (isHrAdminSelectionFirstV616EH()) {
+            markHrAdminSelectionDirtyV616EH("attendance");
+          }
         }
       );
       $("attDepartment")?.addEventListener(
@@ -15152,17 +15415,42 @@ window.tcIsDayShiftCode = value =>
           invalidateAttendanceEmployeeOptions(
             true
           );
+          if (isHrAdminSelectionFirstV616EH()) {
+            markHrAdminSelectionDirtyV616EH("attendance");
+          }
         }
       );
-      $("attTeamV616T")?.addEventListener("change",()=>loadAttendance());
-      $("attCurrentTeamV616BB")?.addEventListener("change",()=>loadAttendance());
+      $("attTeamV616T")?.addEventListener("change",()=>{
+        if (isHrAdminSelectionFirstV616EH()) {
+          markHrAdminSelectionDirtyV616EH("attendance");
+        } else {
+          loadAttendance();
+        }
+      });
+      $("attCurrentTeamV616BB")?.addEventListener("change",()=>{
+        if (isHrAdminSelectionFirstV616EH()) {
+          markHrAdminSelectionDirtyV616EH("attendance");
+        } else {
+          loadAttendance();
+        }
+      });
       $("attStart")?.addEventListener(
         "change",
-        () => loadAttendanceFilterOptions(true)
+        async () => {
+          await loadAttendanceFilterOptions(true);
+          if (isHrAdminSelectionFirstV616EH()) {
+            markHrAdminSelectionDirtyV616EH("attendance");
+          }
+        }
       );
       $("attEnd")?.addEventListener(
         "change",
-        () => loadAttendanceFilterOptions(true)
+        async () => {
+          await loadAttendanceFilterOptions(true);
+          if (isHrAdminSelectionFirstV616EH()) {
+            markHrAdminSelectionDirtyV616EH("attendance");
+          }
+        }
       );
 
       $("attEmployeeToggle")?.addEventListener(
@@ -15335,7 +15623,9 @@ window.tcIsDayShiftCode = value =>
               val("scheduleZone")
             );
 
-            if (scheduleCurrentView() === "PERSON") {
+            if (isHrAdminSelectionFirstV616EH()) {
+              markHrAdminSelectionDirtyV616EH("schedule");
+            } else if (scheduleCurrentView() === "PERSON") {
               await loadSchedule();
             } else {
               renderSchedule();
@@ -15351,7 +15641,9 @@ window.tcIsDayShiftCode = value =>
 
       $("scheduleDepartment")?.addEventListener("change", async () => {
         setVal("scheduleTeamFocus", selectedOrgIdV616M("scheduleDepartment") ? "" : val("scheduleDepartment"));
-        if (scheduleCurrentView() === "PERSON") {
+        if (isHrAdminSelectionFirstV616EH()) {
+          markHrAdminSelectionDirtyV616EH("schedule");
+        } else if (scheduleCurrentView() === "PERSON") {
           await loadSchedule();
         } else {
           renderSchedule();
@@ -15379,7 +15671,13 @@ window.tcIsDayShiftCode = value =>
       });
       $("schedulePatternFilter")?.addEventListener("change", renderSchedule);
       $("scheduleTeamFocus")?.addEventListener("change", renderSchedule);
-      $("scheduleOperationalTeamV61526")?.addEventListener("change", renderSchedule);
+      $("scheduleOperationalTeamV61526")?.addEventListener("change",()=>{
+        if (isHrAdminSelectionFirstV616EH()) {
+          markHrAdminSelectionDirtyV616EH("schedule");
+        } else {
+          renderSchedule();
+        }
+      });
       document.querySelectorAll('[data-person-team-group-v616t]').forEach(btn=>btn.addEventListener('click',()=>{
         scheduleViewState.personTeamGroupMode=String(btn.dataset.personTeamGroupV616t||'TEAM').toUpperCase()==='FLAT'?'FLAT':'TEAM';
         try{localStorage.setItem('timeclock.schedule.personTeamGroupMode',scheduleViewState.personTeamGroupMode);}catch(_){}
@@ -15404,7 +15702,11 @@ window.tcIsDayShiftCode = value =>
         }
 
         if (changed) {
-          await loadSchedule();
+          if (isHrAdminSelectionFirstV616EH()) {
+            markHrAdminSelectionDirtyV616EH("schedule");
+          } else {
+            await loadSchedule();
+          }
         }
       });
       $("scheduleTeamWrap")?.addEventListener("click", async event => {
@@ -16097,7 +16399,18 @@ window.tcIsDayShiftCode = value =>
       applyProfile,
       switchPage,
       openTimeCertificationModalV61139,
-      loadTimeCertificationReasonsV61139
+      loadTimeCertificationReasonsV61139,
+      isHrAdminSelectionFirstV616EH,
+      markHrAdminSelectionDirtyV616EH,
+      prepareAttendanceSelectionFirstV616EH,
+      prepareScheduleSelectionFirstV616EH
+    });
+
+    window.TimeClockHrAdminLazyV616EH = Object.freeze({
+      version:"V6.15.29 FIX16EH",
+      isActive:()=>isHrAdminSelectionFirstV616EH(),
+      markDirty:page=>markHrAdminSelectionDirtyV616EH(page),
+      state:hrAdminLazyV616EH
     });
 
     document.addEventListener("DOMContentLoaded", boot);
@@ -19095,7 +19408,12 @@ ${skippedSummary(compatibility.skipped)}
       const lastDate=new Date(base.getFullYear(),base.getMonth()+1,0);
       const last=`${lastDate.getFullYear()}-${String(lastDate.getMonth()+1).padStart(2,"0")}-${String(lastDate.getDate()).padStart(2,"0")}`;
       if($("attStart"))$("attStart").value=first;if($("attEnd"))$("attEnd").value=last;
-      $("loadAttendanceBtn")?.click();
+      if (window.TimeClockHrAdminLazyV616EH?.isActive?.()) {
+        await app()?.loadAttendanceFilterOptions?.(true);
+        window.TimeClockHrAdminLazyV616EH?.markDirty?.("attendance");
+      } else {
+        $("loadAttendanceBtn")?.click();
+      }
     };
     $("attendancePrevMonthV61462")?.addEventListener("click",()=>setAttendanceMonthV61462(-1));
     $("attendanceThisMonthV61462")?.addEventListener("click",()=>setAttendanceMonthV61462(0));
@@ -23375,8 +23693,151 @@ ${skippedSummary(compatibility.skipped)}
     updateBulkWorkPatternControlsV61416();
   }
 
+
+  const workPatternLazyV616EH={
+    loaded:false,
+    prepared:false
+  };
+
+  function workPatternSelectionFirstV616EH(){
+    return String(
+      app()?.state?.profile?.role
+      || app()?.state?.profile?._realRole
+      || ""
+    ).toUpperCase()==='HR_ADMIN';
+  }
+
+  function ensureWorkPatternSelectionNoticeV616EH(){
+    if(!workPatternSelectionFirstV616EH())return null;
+    const page=$('page-work-patterns');
+    if(!page)return null;
+
+    let box=page.querySelector(
+      '[data-hradmin-selection-first-v616eh="work-patterns"]'
+    );
+    if(box)return box;
+
+    box=document.createElement('div');
+    box.className='hradmin-selection-first-v616eh';
+    box.dataset.hradminSelectionFirstV616eh='work-patterns';
+    box.innerHTML=`
+      <div class="hradmin-selection-first-icon-v616eh">⌕</div>
+      <div class="hradmin-selection-first-copy-v616eh">
+        <strong>HR Admin • Selection-first</strong>
+        <span>เลือกหน่วยงาน หรือค้นหาพนักงานก่อน แล้วกด “ค้นหา” เพื่อไม่โหลดพนักงานทั้งองค์กร</span>
+      </div>
+      <span class="hradmin-selection-first-badge-v616eh">Lazy Load</span>
+    `;
+
+    const panel=page.querySelector('.employee-pattern-bulk-panel-v61416');
+    panel?.insertAdjacentElement('beforebegin',box);
+    return box;
+  }
+
+  function showWorkPatternSelectionNoticeV616EH(message,tone='info'){
+    const box=ensureWorkPatternSelectionNoticeV616EH();
+    if(!box)return;
+    box.classList.remove('hidden','ready','warning','info');
+    box.classList.add(tone);
+    const text=box.querySelector('.hradmin-selection-first-copy-v616eh span');
+    if(text&&message)text.textContent=message;
+  }
+
+  function hideWorkPatternSelectionNoticeV616EH(){
+    $('page-work-patterns')
+      ?.querySelector('[data-hradmin-selection-first-v616eh="work-patterns"]')
+      ?.classList.add('hidden');
+  }
+
+  function workPatternHasExplicitScopeV616EH(){
+    if(!workPatternSelectionFirstV616EH())return true;
+    const department=String(
+      $('employeePatternDepartmentFilterV61416')?.value||'ALL'
+    );
+    const search=String(
+      $('employeePatternSearch')?.value||''
+    ).trim();
+
+    return department!=='ALL'||search.length>=2;
+  }
+
+  async function prepareWorkPatternSelectionV616EH({force=false}={}){
+    if(!workPatternSelectionFirstV616EH())return;
+
+    if(!workPatternLazyV616EH.loaded){
+      const body=$('employeePatternBody');
+      if(body){
+        body.innerHTML=
+          '<tr><td colspan="10" class="table-empty hradmin-selection-empty-v616eh">กรุณาเลือกหน่วยงาน หรือค้นหารหัส/ชื่อพนักงาน แล้วกด “ค้นหา”</td></tr>';
+      }
+    }
+
+    showWorkPatternSelectionNoticeV616EH(
+      workPatternLazyV616EH.loaded
+        ? 'ข้อมูลเดิมยังคงแสดงอยู่ • เปลี่ยนเงื่อนไขแล้วกด “ค้นหา” เพื่อโหลดใหม่'
+        : 'เลือกหน่วยงาน หรือพิมพ์รหัส/ชื่อพนักงานอย่างน้อย 2 ตัวอักษรก่อน แล้วกด “ค้นหา”',
+      workPatternLazyV616EH.loaded?'ready':'info'
+    );
+
+    if(workPatternLazyV616EH.prepared&&!force)return;
+
+    const month=workPatternMonthValueV61419(
+      $('employeePatternDate')?.value
+      ||window.TimeClockCalendarV61448.month()
+    );
+    const start=workPatternMonthStartV61419(month)
+      ||window.TimeClockCalendarV61448.today();
+    const end=workPatternMonthEndV61419(month)||start;
+
+    const select=$('employeePatternDepartmentFilterV61416');
+    const previous=select?.value||'ALL';
+
+    try{
+      const contract=await app()
+        ?.loadAuthorizedOrgContractV616L?.(start,end);
+
+      const options=app()
+        ?.scopedDepartmentOptionsV616L?.([],contract,{})
+        ||[];
+
+      if(select){
+        select.innerHTML=
+          '<option value="ALL">กรุณาเลือกหน่วยงาน</option>'
+          +options.map(option=>{
+            const value=String(option?.value||'').trim();
+            const label=String(option?.label||value).trim();
+            return `<option value="${esc(value)}">${esc(label)}</option>`;
+          }).join('');
+
+        select.value=options.some(
+          option=>String(option?.value||'')===previous
+        )?previous:'ALL';
+      }
+    }catch(error){
+      console.warn(
+        'FIX16EH Work Pattern selection options:',
+        error
+      );
+    }
+
+    workPatternLazyV616EH.prepared=true;
+  }
+
   async function loadEmployeePatterns(){
     const body=$('employeePatternBody');if(!body)return;
+
+    if(
+      workPatternSelectionFirstV616EH()
+      && !workPatternHasExplicitScopeV616EH()
+    ){
+      showWorkPatternSelectionNoticeV616EH(
+        'กรุณาเลือกหน่วยงาน หรือพิมพ์รหัส/ชื่อพนักงานอย่างน้อย 2 ตัวอักษรก่อนค้นหา',
+        'warning'
+      );
+      body.innerHTML=
+        '<tr><td colspan="10" class="table-empty hradmin-selection-empty-v616eh">ยังไม่โหลดพนักงานทั้งองค์กร • เลือกขอบเขตก่อนแล้วกด “ค้นหา”</td></tr>';
+      return;
+    }
     const warning=$('workPatternMetaWarningV61111');
     if(warning){warning.classList.add('hidden');warning.textContent='';}
     body.innerHTML='<tr><td colspan="10" class="table-empty">กำลังโหลด...</td></tr>';
@@ -23443,6 +23904,11 @@ ${skippedSummary(compatibility.skipped)}
       fillEmployeePatternDepartmentFilterV61416();
       renderEmployeePatternsV61416();
       await refreshWorkTemplateCardsV61438({force:true});
+
+      if(workPatternSelectionFirstV616EH()){
+        workPatternLazyV616EH.loaded=true;
+        hideWorkPatternSelectionNoticeV616EH();
+      }
     }catch(e){
       const message=app()?.humanError?.(e)||e.message||String(e);
       body.innerHTML=`<tr><td colspan="10" class="table-empty">${esc(message)}</td></tr>`;
@@ -23908,14 +24374,40 @@ ${names}${extra}
         Number(button.dataset.csvUnmatchedCount||0)
       );
     });
-    $('workPatternRefreshBtn')?.addEventListener('click',async()=>{await loadWorkPatterns();await loadEmployeePatterns();});
+    $('workPatternRefreshBtn')?.addEventListener('click',async()=>{
+      await loadWorkPatterns();
+      if(workPatternSelectionFirstV616EH()){
+        workPatternLazyV616EH.prepared=false;
+        await prepareWorkPatternSelectionV616EH({force:true});
+      }else{
+        await loadEmployeePatterns();
+      }
+    });
     $('workPatternNewBtn')?.addEventListener('click',()=>openPattern(null));
     $('employeePatternLoadBtn')?.addEventListener('click',loadEmployeePatterns);
     $('employeePatternSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')loadEmployeePatterns();});
-    $('employeePatternDepartmentFilterV61416')?.addEventListener('change',()=>{wp.selectedEmployees.clear();renderEmployeePatternsV61416();});
+    $('employeePatternDepartmentFilterV61416')?.addEventListener('change',()=>{
+      wp.selectedEmployees.clear();
+      if(workPatternSelectionFirstV616EH()){
+        showWorkPatternSelectionNoticeV616EH(
+          'เลือกขอบเขตแล้ว • กด “ค้นหา” เพื่อโหลดข้อมูลพนักงาน',
+          'warning'
+        );
+      }
+      renderEmployeePatternsV61416();
+    });
     $('employeePatternPatternFilterV61416')?.addEventListener('change',()=>{wp.selectedEmployees.clear();renderEmployeePatternsV61416();});
     $('employeePatternShiftFilterV61416')?.addEventListener('change',()=>{wp.selectedEmployees.clear();renderEmployeePatternsV61416();});
-    $('employeePatternDate')?.addEventListener('change',()=>{const month=workPatternMonthValueV61419($('employeePatternDate').value);if($('wpBulkEffectiveDateV61416'))$('wpBulkEffectiveDateV61416').value=month;loadEmployeePatterns();});
+    $('employeePatternDate')?.addEventListener('change',async()=>{
+      const month=workPatternMonthValueV61419($('employeePatternDate').value);
+      if($('wpBulkEffectiveDateV61416'))$('wpBulkEffectiveDateV61416').value=month;
+      if(workPatternSelectionFirstV616EH()){
+        workPatternLazyV616EH.prepared=false;
+        await prepareWorkPatternSelectionV616EH({force:true});
+      }else{
+        await loadEmployeePatterns();
+      }
+    });
     $('wpBulkEffectiveDateV61416')?.addEventListener('change',e=>validateWorkPatternEffectiveDateV61417(e.target.value,{input:e.target,showToast:true,autoCorrect:true}));
     $('epFrom')?.addEventListener('change',e=>validateWorkPatternEffectiveDateV61417(e.target.value,{input:e.target,showToast:true,autoCorrect:true}));
     $('epPattern')?.addEventListener('change',updateEmployeeShiftPreviewV61416);
@@ -24012,6 +24504,12 @@ ${names}${extra}
 
   async function loadWorkPatternWorkspace(){
     await loadWorkPatterns();
+
+    if(workPatternSelectionFirstV616EH()){
+      await prepareWorkPatternSelectionV616EH();
+      return;
+    }
+
     await loadEmployeePatterns();
   }
 
@@ -24028,7 +24526,7 @@ ${names}${extra}
   };
 
   window.TimeClockCsvImport = {
-    version:'6.15.29 FIX16EB',
+    version:'6.15.29 FIX16EH',
     load:loadCsvImportWorkspace,
     loadHistory:loadCsvHistory,
     inspect:inspectCsv,
@@ -39692,4 +40190,16 @@ window.TimeClockAttendanceThrottleV616EG=Object.freeze({
   maxInterTaskDelayMs:1800,
   mode:"DISK_IO_SAFE",
   resumeExistingJob:true
+});
+
+
+/* V6.15.29 FIX16EH • HR Admin Selection-First Lazy Loading */
+window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
+  version:"V6.15.29 FIX16EH",
+  pages:["attendance","schedule","work-patterns"],
+  behavior:"HR_ADMIN_EXPLICIT_SCOPE_BEFORE_HEAVY_LOAD",
+  managerBehavior:"UNCHANGED",
+  attendanceRequires:["area/sub-area","organization","employee"],
+  scheduleRequires:["area","organization","team","exact employee code"],
+  workPatternRequires:["organization","search >= 2 chars"]
 });
