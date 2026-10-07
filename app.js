@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16EB CSV Unmatched Employee Detail";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16eb-csv-unmatched-detail";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16EG Attendance 1-Lane Adaptive IO Throttle";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16eg-attendance-1lane-adaptive-io";
 
 
 /* ===== js/config.js ===== */
@@ -22278,9 +22278,25 @@ ${skippedSummary(compatibility.skipped)}
     let current=job,guard=0,retry=0;
     while(!['COMPLETED','COMPLETED_WITH_ERRORS','FAILED','CANCELLED'].includes(current.status)&&guard<20000){
       try{
-        current=await rpc('ta_process_attendance_rebuild_step',{p_job_id:job.id});
+        const cycleStartedAt=Date.now();
+        try{
+          current=await rpc('ta_process_attendance_rebuild_step_v616dt',{p_job_id:job.id});
+        }catch(stepError){
+          if(window.tcRpcMissingV616DF?.(stepError)){
+            current=await rpc('ta_process_attendance_rebuild_step',{p_job_id:job.id});
+          }else{
+            throw stepError;
+          }
+        }
         guard++; retry=0;
-        csvProgress(72+(Number(current.progress_percent||0)*.28),`Attendance ${current.processed_tasks||0}/${current.total_tasks||0} Task • ${current.current_work_date?fmtDate(current.current_work_date):''}`);
+        csvProgress(72+(Number(current.progress_percent||0)*.28),`Attendance ${current.processed_tasks||0}/${current.total_tasks||0} Task • โหมดถนอม Disk IO`);
+        const cycleDurationMs=Date.now()-cycleStartedAt;
+        await new Promise(r=>setTimeout(
+          r,
+          cycleDurationMs>=30000?1400:
+          cycleDurationMs>=15000?1000:
+          cycleDurationMs>=7000?700:500
+        ));
       }catch(error){
         retry++;
         if(!csvWorkerTransientErrorV616DQ(error)||retry>6)throw error;
@@ -24126,7 +24142,17 @@ ${names}${extra}
   }
 
   function workerPoolSizeV616DU(){
-    return 2;
+    // FIX16EG: Production default = one lane to reduce sustained Disk IO,
+    // WAL/index write amplification and connection pressure.
+    return 1;
+  }
+
+  function workerAdaptiveDelayV616EG(durationMs,{hadError=false}={}){
+    if(hadError)return 1800;
+    if(durationMs>=30000)return 1400;
+    if(durationMs>=15000)return 1000;
+    if(durationMs>=7000)return 700;
+    return 500;
   }
 
   function workerRetryDelayV616DQ(attempt){
@@ -24146,6 +24172,7 @@ ${names}${extra}
     const lanes=workerPoolSizeV616DU();
     try{
       while(!state.stop){
+        const cycleStartedAt=Date.now();
         const calls=Array.from({length:lanes},()=>workerStepV616DU(jobId));
         const settled=await Promise.allSettled(calls);
 
@@ -24171,8 +24198,8 @@ ${names}${extra}
             setText(
               "attRebuildLastError",
               errors.length
-                ? `กำลังทำงานแบบ ${lanes} ช่องพร้อมกัน • 1 ช่องสะดุดและจะลองใหม่อัตโนมัติ`
-                : `กำลังทำงานแบบ ${lanes} ช่องพร้อมกัน • Pipeline: Rebuild → Calculate → Validate`
+                ? `โหมดถนอม Disk IO • 1 ช่อง • การเชื่อมต่อสะดุดและจะลองใหม่อัตโนมัติ`
+                : `โหมดถนอม Disk IO • 1 ช่อง • Pipeline: Rebuild → Calculate → Validate`
             );
           }
 
@@ -24191,17 +24218,19 @@ ${names}${extra}
           const e=errors[0]||new Error("ATTENDANCE_WORKER_NO_RESULT");
           setText(
             "attRebuildLastError",
-            `Worker 2 ช่องสะดุด: ${human(e)} • กำลังลองต่ออัตโนมัติ ${retry}/6`
+            `Worker 1 ช่องสะดุด: ${human(e)} • กำลังพักและลองต่ออัตโนมัติ ${retry}/6`
           );
           if(retry>6)throw e;
           await sleep(workerRetryDelayV616DQ(retry));
         }
 
-        if(errors.length&&jobs.length){
-          await sleep(400);
-        }else{
-          await sleep(100);
-        }
+        const cycleDurationMs=Date.now()-cycleStartedAt;
+        await sleep(
+          workerAdaptiveDelayV616EG(
+            cycleDurationMs,
+            {hadError:errors.length>0}
+          )
+        );
       }
     }catch(e){
       setText(
@@ -39652,4 +39681,15 @@ window.TimeClockCsvUnmatchedV616EB=Object.freeze({
   recordRpc:"ta_record_time_csv_unmatched_v616eb",
   summaryRpc:"ta_get_time_csv_unmatched_summary_v616eb",
   historicalDetail:"NOT_AVAILABLE_BEFORE_FIX16EB"
+});
+
+
+/* V6.15.29 FIX16EG • Attendance 1-Lane Adaptive IO Throttle */
+window.TimeClockAttendanceThrottleV616EG=Object.freeze({
+  version:"V6.15.29 FIX16EG",
+  defaultLanes:1,
+  minInterTaskDelayMs:500,
+  maxInterTaskDelayMs:1800,
+  mode:"DISK_IO_SAFE",
+  resumeExistingJob:true
 });
