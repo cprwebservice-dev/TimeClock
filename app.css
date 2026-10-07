@@ -37529,3 +37529,49 @@ html[data-theme="dark"][data-ux-version="FIX16DN"] #page-attendance .attendance-
 html[data-theme="dark"][data-ux-version="FIX16DN"] #page-attendance .attendance-grid-table tbody .sticky-att-2{
   background:#112a3f !important;
 }
+
+
+/* ==========================================================================
+   V6.15.29 FIX16EB • CSV UNMATCHED EMPLOYEE DETAIL
+   ========================================================================== */
+.csv-unmatched-link-v616eb{
+  appearance:none;border:0;background:transparent;color:#b45309;
+  font:inherit;font-weight:800;padding:0;cursor:pointer;
+  text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;
+}
+.csv-unmatched-link-v616eb:hover{color:#d65f00}
+.csv-unmatched-modal-v616eb{width:min(860px,92vw);max-height:min(760px,88vh)}
+.csv-unmatched-summary-v616eb{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;margin-bottom:12px;
+}
+.csv-unmatched-summary-v616eb>div{
+  border:1px solid var(--border);border-radius:12px;padding:11px 12px;
+  background:var(--surface-soft,#f8fafc);
+}
+.csv-unmatched-summary-v616eb span,.csv-unmatched-summary-v616eb small{
+  display:block;color:var(--muted);font-size:10.5px;
+}
+.csv-unmatched-summary-v616eb strong{
+  display:inline-block;margin:3px 5px 0 0;font-size:22px;
+}
+.csv-unmatched-legacy-note-v616eb{
+  display:flex;gap:8px;align-items:flex-start;padding:10px 12px;margin-bottom:12px;
+  border:1px solid rgba(245,158,11,.28);background:rgba(245,158,11,.08);
+  border-radius:10px;
+}
+.csv-unmatched-legacy-note-v616eb strong{color:#a85f00;white-space:nowrap}
+.csv-unmatched-legacy-note-v616eb span{color:var(--muted);font-size:11px}
+.csv-unmatched-table-wrap-v616eb{
+  max-height:430px;overflow:auto;border:1px solid var(--border);border-radius:12px;
+}
+.csv-unmatched-table-v616eb thead th{
+  position:sticky;top:0;z-index:2;background:#0d2a4d;color:#fff;
+}
+.csv-unmatched-footer-v616eb{display:flex;justify-content:flex-end;gap:8px}
+html[data-theme="dark"] .csv-unmatched-summary-v616eb>div{
+  background:rgba(17,42,63,.72);
+}
+@media(max-width:720px){
+  .csv-unmatched-summary-v616eb{grid-template-columns:1fr}
+}

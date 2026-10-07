@@ -1,7 +1,7 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16DZ Work Pattern Manager Scope Date Fix";
-document.documentElement.dataset.timeClockBuild = "6.15.29-fix16dz-work-pattern-scope-date";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16EB CSV Unmatched Employee Detail";
+document.documentElement.dataset.timeClockBuild = "6.15.29-fix16eb-csv-unmatched-detail";
 
 
 /* ===== js/config.js ===== */
@@ -22291,6 +22291,182 @@ ${skippedSummary(compatibility.skipped)}
     }
     return current;
   }
+
+  const csvUnmatchedV616EB={
+    batchId:null,
+    fileName:'',
+    expectedRows:0,
+    rows:[]
+  };
+
+  async function recordCsvUnmatchedV616EB(batchId,chunk){
+    try{
+      return await rpc(
+        'ta_record_time_csv_unmatched_v616eb',
+        {p_batch_id:batchId,p_rows:chunk}
+      );
+    }catch(error){
+      console.warn('FIX16EB unmatched detail logging deferred:',error);
+      return null;
+    }
+  }
+
+  function ensureCsvUnmatchedModalV616EB(){
+    if($('timeCsvUnmatchedModalV616EB'))return;
+
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      `<div class="modal-backdrop hidden" id="timeCsvUnmatchedModalV616EB">
+        <div class="modal csv-unmatched-modal-v616eb">
+          <div class="modal-header">
+            <div>
+              <span class="work-pattern-section-kicker-v61111">CSV EMPLOYEE MATCH</span>
+              <h3>พนักงานที่ไม่พบใน Employee Master</h3>
+              <p id="timeCsvUnmatchedSubtitleV616EB">-</p>
+            </div>
+            <button type="button" class="btn btn-light btn-icon" id="timeCsvUnmatchedCloseV616EB" aria-label="ปิด">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="csv-unmatched-summary-v616eb" id="timeCsvUnmatchedSummaryV616EB"></div>
+            <div class="csv-unmatched-legacy-note-v616eb hidden" id="timeCsvUnmatchedLegacyV616EB">
+              <strong>Batch รุ่นเก่า</strong>
+              <span>รายการนี้นำเข้าก่อน FIX16EB ระบบเดิมเก็บเฉพาะจำนวน “ไม่พบพนักงาน” จึงไม่มี EmployeeId รายคนในฐานข้อมูลย้อนหลัง</span>
+            </div>
+            <div class="table-wrap csv-unmatched-table-wrap-v616eb">
+              <table class="data-table csv-unmatched-table-v616eb">
+                <thead>
+                  <tr>
+                    <th>EmployeeId</th>
+                    <th>จำนวนรายการ</th>
+                    <th>ช่วงวันที่</th>
+                    <th>แถวแรก</th>
+                    <th>แถวสุดท้าย</th>
+                  </tr>
+                </thead>
+                <tbody id="timeCsvUnmatchedBodyV616EB">
+                  <tr><td colspan="5" class="table-empty">กำลังโหลด...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer csv-unmatched-footer-v616eb">
+            <button type="button" class="btn btn-light" id="timeCsvUnmatchedExportV616EB">Export CSV</button>
+            <button type="button" class="btn btn-primary" id="timeCsvUnmatchedClose2V616EB">ปิด</button>
+          </div>
+        </div>
+      </div>`
+    );
+
+    const close=()=>$('timeCsvUnmatchedModalV616EB')?.classList.add('hidden');
+    $('timeCsvUnmatchedCloseV616EB')?.addEventListener('click',close);
+    $('timeCsvUnmatchedClose2V616EB')?.addEventListener('click',close);
+    $('timeCsvUnmatchedModalV616EB')?.addEventListener('click',event=>{
+      if(event.target?.id==='timeCsvUnmatchedModalV616EB')close();
+    });
+
+    $('timeCsvUnmatchedExportV616EB')?.addEventListener('click',()=>{
+      if(!csvUnmatchedV616EB.rows.length){
+        return app()?.toast?.('Batch นี้ไม่มีรายละเอียด EmployeeId สำหรับ Export','warning');
+      }
+
+      const rows=[
+        ['EmployeeId','EmployeeId ต้นทาง','จำนวนรายการ','วันที่แรก','วันที่สุดท้าย','แถวแรก','แถวสุดท้าย'],
+        ...csvUnmatchedV616EB.rows.map(row=>[
+          row.emp_code||'',
+          row.raw_employee_id||'',
+          Number(row.row_count||0),
+          row.min_date||'',
+          row.max_date||'',
+          row.first_source_row||'',
+          row.last_source_row||''
+        ])
+      ];
+
+      const fileBase=String(csvUnmatchedV616EB.fileName||'TimeCSV')
+        .replace(/\.csv$/i,'')
+        .replace(/[^\wก-๙.-]+/g,'_');
+
+      download(
+        `${fileBase}_Employee_Not_Found.csv`,
+        '\uFEFF'+rows.map(x=>x.map(csvCell).join(',')).join('\n')
+      );
+    });
+  }
+
+  async function openCsvUnmatchedV616EB(batchId,fileName,expectedRows){
+    ensureCsvUnmatchedModalV616EB();
+
+    csvUnmatchedV616EB.batchId=batchId;
+    csvUnmatchedV616EB.fileName=fileName||'';
+    csvUnmatchedV616EB.expectedRows=Number(expectedRows||0);
+    csvUnmatchedV616EB.rows=[];
+
+    const modal=$('timeCsvUnmatchedModalV616EB');
+    const body=$('timeCsvUnmatchedBodyV616EB');
+    const legacy=$('timeCsvUnmatchedLegacyV616EB');
+    const summary=$('timeCsvUnmatchedSummaryV616EB');
+
+    modal?.classList.remove('hidden');
+    if(body)body.innerHTML='<tr><td colspan="5" class="table-empty">กำลังโหลดรายละเอียด...</td></tr>';
+    legacy?.classList.add('hidden');
+    if(summary)summary.innerHTML='';
+
+    if($('timeCsvUnmatchedSubtitleV616EB')){
+      $('timeCsvUnmatchedSubtitleV616EB').textContent=
+        `${fileName||'-'} • ไม่พบพนักงาน ${fmt(expectedRows)} รายการ`;
+    }
+
+    try{
+      const rows=await rpc(
+        'ta_get_time_csv_unmatched_summary_v616eb',
+        {p_batch_id:batchId}
+      )||[];
+
+      csvUnmatchedV616EB.rows=rows;
+
+      const loggedRows=rows.reduce(
+        (sum,row)=>sum+Number(row.row_count||0),
+        0
+      );
+
+      if(summary){
+        summary.innerHTML=
+          `<div><span>EmployeeId ที่ไม่พบ</span><strong>${fmt(rows.length)}</strong><small>รหัส</small></div>
+           <div><span>รายละเอียดที่บันทึก</span><strong>${fmt(loggedRows)}</strong><small>รายการ</small></div>
+           <div><span>ยอดใน Batch</span><strong>${fmt(expectedRows)}</strong><small>รายการ</small></div>`;
+      }
+
+      if(!rows.length&&Number(expectedRows||0)>0){
+        legacy?.classList.remove('hidden');
+        if(body){
+          body.innerHTML=
+            '<tr><td colspan="5" class="table-empty">Batch นี้ไม่มี EmployeeId รายละเอียด เนื่องจากนำเข้าก่อน FIX16EB</td></tr>';
+        }
+        return;
+      }
+
+      if(body){
+        body.innerHTML=rows.length
+          ? rows.map(row=>
+              `<tr>
+                <td><strong>${esc(row.emp_code||row.raw_employee_id||'-')}</strong></td>
+                <td>${fmt(row.row_count)}</td>
+                <td>${fmtDate(row.min_date)}–${fmtDate(row.max_date)}</td>
+                <td>${fmt(row.first_source_row)}</td>
+                <td>${fmt(row.last_source_row)}</td>
+              </tr>`
+            ).join('')
+          : '<tr><td colspan="5" class="table-empty">ไม่พบรายการ</td></tr>';
+      }
+    }catch(error){
+      const message=app()?.humanError?.(error)||error.message||String(error);
+      if(body){
+        body.innerHTML=
+          `<tr><td colspan="5" class="table-empty">${esc(message)}</td></tr>`;
+      }
+    }
+  }
+
   async function runCsvImport(){
     if(!csvState.rows.length||!csvState.stats)return app()?.toast?.('กรุณาตรวจสอบไฟล์ก่อน','error');
     $('timeCsvImportBtn').disabled=true;$('timeCsvPreviewBtn').disabled=true;app()?.showLoading?.('กำลังเริ่มนำเข้า CSV...');
@@ -22300,6 +22476,7 @@ ${skippedSummary(compatibility.skipped)}
       const batchId=begun.id;csvState.batchId=batchId;let uploaded=0,inserted=0,dups=0,unmatched=0,conflicts=0;const size=1000;
       for(let i=0;i<csvState.rows.length;i+=size){
         const chunk=csvState.rows.slice(i,i+size);const r=await rpc('ta_import_time_csv_chunk',{p_batch_id:batchId,p_rows:chunk});
+        await recordCsvUnmatchedV616EB(batchId,chunk);
         uploaded+=chunk.length;inserted+=Number(r.inserted_rows||0);dups+=Number(r.existing_duplicate_rows||0);unmatched+=Number(r.unmatched_employee_rows||0);conflicts+=Number(r.gps_conflict_rows||0);
         csvProgress((uploaded/csvState.rows.length)*70,`ส่งข้อมูล ${fmt(uploaded)} / ${fmt(csvState.rows.length)} รายการ`);
         [['timeCsvUploadedRows',uploaded],['timeCsvInsertedRows',inserted],['timeCsvExistingDuplicates',dups],['timeCsvUnmatchedRows',unmatched],['timeCsvGpsConflicts',conflicts]].forEach(([id,v])=>{if($(id))$(id).textContent=fmt(v)});
@@ -22310,7 +22487,7 @@ ${skippedSummary(compatibility.skipped)}
         window.TimeClockConsistencyV61415?.invalidateAll?.();
       }
       const warn=job?.status==='COMPLETED_WITH_ERRORS'?`<div class="mobileta-import-warning"><strong>Attendance สำเร็จบางส่วน</strong><div>ตรวจ Error Log ที่เมนูประมวลผล Attendance</div></div>`:'';
-      $('timeCsvResultPanel').innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลา CSV เรียบร้อย</h3><p>ใช้ค่าเข้า/ออกจากไฟล์โดยตรง ไม่ต้องจำแนก ALL</p>${warn}<div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(finished.inserted_rows)}</strong></div><div><span>ซ้ำฐานข้อมูล</span><strong>${fmt(finished.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${fmt(finished.unmatched_employee_rows)}</strong></div><div><span>GPS Conflict</span><strong>${fmt(finished.gps_conflict_rows)}</strong></div><div><span>Attendance Job</span><strong>${esc(job?.status||'ไม่ได้ประมวลผล')}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(finished.min_date)}–${fmtDate(finished.max_date)}</strong></div></div></div>`;
+      $('timeCsvResultPanel').innerHTML=`<div class="mobileta-result-card"><h3>นำเข้าข้อมูลลงเวลา CSV เรียบร้อย</h3><p>ใช้ค่าเข้า/ออกจากไฟล์โดยตรง ไม่ต้องจำแนก ALL</p>${warn}<div class="mobileta-result-grid"><div><span>เพิ่มใหม่</span><strong>${fmt(finished.inserted_rows)}</strong></div><div><span>ซ้ำฐานข้อมูล</span><strong>${fmt(finished.existing_duplicate_rows)}</strong></div><div><span>ไม่พบพนักงาน</span><strong>${Number(finished.unmatched_employee_rows||0)>0?`<button type="button" class="csv-unmatched-link-v616eb" data-csv-unmatched-batch="${esc(batchId)}" data-csv-unmatched-file="${esc(csvState.file?.name||'')}" data-csv-unmatched-count="${Number(finished.unmatched_employee_rows||0)}">${fmt(finished.unmatched_employee_rows)}</button>`:fmt(finished.unmatched_employee_rows)}</strong></div><div><span>GPS Conflict</span><strong>${fmt(finished.gps_conflict_rows)}</strong></div><div><span>Attendance Job</span><strong>${esc(job?.status||'ไม่ได้ประมวลผล')}</strong></div><div><span>ช่วงวันที่</span><strong>${fmtDate(finished.min_date)}–${fmtDate(finished.max_date)}</strong></div></div></div>`;
       csvProgress(100,'เสร็จสมบูรณ์');csvStatus('นำเข้าสำเร็จ','ready');app()?.toast?.('นำเข้า CSV และประมวลผลเรียบร้อย','success');await loadCsvHistory();
     }catch(e){$('timeCsvResultPanel').innerHTML=`<div class="mobileta-result-card error"><h3>นำเข้าข้อมูลไม่สำเร็จ</h3><p>${esc(e.message||String(e))}</p></div>`;csvStatus('นำเข้าไม่สำเร็จ','error');app()?.toast?.(e.message||String(e),'error');}
     finally{app()?.hideLoading?.();$('timeCsvImportBtn').disabled=!csvState.rows.length;$('timeCsvPreviewBtn').disabled=false;}
@@ -22331,7 +22508,7 @@ ${skippedSummary(compatibility.skipped)}
         '<tr><td colspan="11" class="table-empty">Supabase Client ยังไม่พร้อม</td></tr>';
       return;
     }
-    try{const rows=await rpc('ta_get_time_csv_import_history',{p_limit:30})||[];body.innerHTML=rows.length?rows.map(r=>`<tr><td>${fmtDateTime(r.created_at)}</td><td><strong>${esc(r.file_name)}</strong></td><td>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</td><td>${fmt(r.raw_rows)}</td><td>${fmt(r.inserted_rows)}</td><td>${fmt(Number(r.file_duplicate_rows||0)+Number(r.existing_duplicate_rows||0))}</td><td>${fmt(r.unmatched_employee_rows)}</td><td>${fmt(r.gps_conflict_rows)}</td><td>${r.attendance_job_id?'<span class="mobileta-row-ok">สร้างแล้ว</span>':'-'}</td><td><span class="mobileta-status-pill ${r.status==='COMPLETED'?'ready':'error'}">${esc(r.status)}</span></td><td>${esc(r.created_by_email||'-')}</td></tr>`).join(''):'<tr><td colspan="11" class="table-empty">ยังไม่มีประวัติ</td></tr>';}
+    try{const rows=await rpc('ta_get_time_csv_import_history',{p_limit:30})||[];body.innerHTML=rows.length?rows.map(r=>`<tr><td>${fmtDateTime(r.created_at)}</td><td><strong>${esc(r.file_name)}</strong></td><td>${fmtDate(r.min_date)}–${fmtDate(r.max_date)}</td><td>${fmt(r.raw_rows)}</td><td>${fmt(r.inserted_rows)}</td><td>${fmt(Number(r.file_duplicate_rows||0)+Number(r.existing_duplicate_rows||0))}</td><td>${Number(r.unmatched_employee_rows||0)>0?`<button type="button" class="csv-unmatched-link-v616eb" data-csv-unmatched-batch="${esc(r.id)}" data-csv-unmatched-file="${esc(r.file_name||'')}" data-csv-unmatched-count="${Number(r.unmatched_employee_rows||0)}">${fmt(r.unmatched_employee_rows)}</button>`:fmt(r.unmatched_employee_rows)}</td><td>${fmt(r.gps_conflict_rows)}</td><td>${r.attendance_job_id?'<span class="mobileta-row-ok">สร้างแล้ว</span>':'-'}</td><td><span class="mobileta-status-pill ${r.status==='COMPLETED'?'ready':'error'}">${esc(r.status)}</span></td><td>${esc(r.created_by_email||'-')}</td></tr>`).join(''):'<tr><td colspan="11" class="table-empty">ยังไม่มีประวัติ</td></tr>';}
     catch(e){
       const message =
         app()?.humanError?.(e)
@@ -23697,6 +23874,24 @@ ${names}${extra}
   function bindV620(){
     ensureWpModals();
     $('timeCsvPreviewBtn')?.addEventListener('click',inspectCsv);$('timeCsvImportBtn')?.addEventListener('click',runCsvImport);$('timeCsvResetBtn')?.addEventListener('click',resetCsv);$('timeCsvTemplateBtn')?.addEventListener('click',downloadCsvTemplate);$('timeCsvDownloadErrorsBtn')?.addEventListener('click',downloadCsvErrors);$('timeCsvRefreshHistoryBtn')?.addEventListener('click',loadCsvHistory);$('timeCsvFile')?.addEventListener('change',()=>csvStatus($('timeCsvFile')?.files?.[0]?.name||'ยังไม่ได้เลือกไฟล์','neutral'));
+    $('timeCsvHistoryBody')?.addEventListener('click',event=>{
+      const button=event.target?.closest?.('[data-csv-unmatched-batch]');
+      if(!button)return;
+      openCsvUnmatchedV616EB(
+        button.dataset.csvUnmatchedBatch,
+        button.dataset.csvUnmatchedFile||'',
+        Number(button.dataset.csvUnmatchedCount||0)
+      );
+    });
+    $('timeCsvResultPanel')?.addEventListener('click',event=>{
+      const button=event.target?.closest?.('[data-csv-unmatched-batch]');
+      if(!button)return;
+      openCsvUnmatchedV616EB(
+        button.dataset.csvUnmatchedBatch,
+        button.dataset.csvUnmatchedFile||'',
+        Number(button.dataset.csvUnmatchedCount||0)
+      );
+    });
     $('workPatternRefreshBtn')?.addEventListener('click',async()=>{await loadWorkPatterns();await loadEmployeePatterns();});
     $('workPatternNewBtn')?.addEventListener('click',()=>openPattern(null));
     $('employeePatternLoadBtn')?.addEventListener('click',loadEmployeePatterns);
@@ -23817,7 +24012,7 @@ ${names}${extra}
   };
 
   window.TimeClockCsvImport = {
-    version:'6.11.15',
+    version:'6.15.29 FIX16EB',
     load:loadCsvImportWorkspace,
     loadHistory:loadCsvHistory,
     inspect:inspectCsv,
@@ -23826,7 +24021,7 @@ ${names}${extra}
   };
 
   document.documentElement.dataset.csvImportModule =
-    '6.11.15-ready';
+    '6.15.29-fix16eb-ready';
 
   document.documentElement.dataset.workPatternModule =
     '6.14.19-ready';
@@ -39448,4 +39643,13 @@ window.TimeClockWorkPatternScopeDateV616DZ = Object.freeze({
   currentMonthPermissionDate:"TODAY",
   exactDateScopePrefilter:true,
   strictWorkModeRpc:"ta_get_work_modes_for_employee_v616z"
+});
+
+
+/* V6.15.29 FIX16EB • CSV unmatched Employee audit marker */
+window.TimeClockCsvUnmatchedV616EB=Object.freeze({
+  version:"V6.15.29 FIX16EB",
+  recordRpc:"ta_record_time_csv_unmatched_v616eb",
+  summaryRpc:"ta_get_time_csv_unmatched_summary_v616eb",
+  historicalDetail:"NOT_AVAILABLE_BEFORE_FIX16EB"
 });
