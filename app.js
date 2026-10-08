@@ -5466,6 +5466,9 @@ window.tcIsDayShiftCode = value =>
         const leavingChart=event.target?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg');
         const enteringChart=event.relatedTarget?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg');
         if(leavingChart&&!enteringChart)hide();
+        const leavingHeatmap=event.target?.closest?.('.dashboard-heatmap-cell-v616fg');
+        const enteringHeatmap=event.relatedTarget?.closest?.('.dashboard-heatmap-cell-v616fg');
+        if(leavingHeatmap&&!enteringHeatmap)hide();
       });
       document.addEventListener('focusin',event=>{const dot=marker(event);if(dot){pinned=false;show(dot);}});
       document.addEventListener('focusout',event=>{if(active&&event.target===active&&!pinned) hide();});
@@ -5624,6 +5627,117 @@ window.tcIsDayShiftCode = value =>
         const cumulative=last?Number(last.cumCompleteRate||0):null;
         return `<article class="dashboard-area-card-v616er"><div class="dashboard-area-card-head-v616er"><div><span class="dashboard-area-zone-v616er">${dashboardManagerSafeV616EQ(area.zone||'ไม่ระบุพื้นที่')}</span><strong>${dashboardManagerSafeV616EQ(area.area||'ไม่ระบุ Sub')}</strong><small>${formatNumber(area.complete||0)} / ${formatNumber(area.total||0)} รายการครบ</small></div><div class="dashboard-area-card-rates-v616er"><span>รายวัน <b>${current===null?'—':current.toFixed(1)+'%'}</b></span><span>สะสม <b>${cumulative===null?'—':cumulative.toFixed(1)+'%'}</b></span></div></div><div class="dashboard-area-mini-chart-v616er dashboard-manager-line-chart-v616eq">${dashboardManagerLineChartV616EQ(rows,true,`area_${i}`)}</div></article>`;
       }).join(''):'<div class="dashboard-manager-empty-v616eq">ไม่มีวันทำงานที่ต้องลงเวลาแยก Area ในช่วงที่เลือก</div>';
+    }
+
+    // FIX16FG • Area chart show/hide + strictly scoped daily attendance heatmap.
+    function installDashboardAreaVisibilityV616FG() {
+      const btn=$('dashboardAreaToggleV616FG'), content=$('dashboardAreaTrendGridV616ER');
+      if(!btn||!content)return;
+      const sync=()=>{
+        const open=state.dashboardAreaExpandedV616FG!==false;
+        content.hidden=!open;
+        btn.setAttribute('aria-expanded',String(open));
+        btn.innerHTML=open?'ซ่อนกราฟ <span aria-hidden="true">⌃</span>':'แสดงกราฟ <span aria-hidden="true">⌄</span>';
+      };
+      if(!btn.dataset.fix16fgBound){
+        btn.dataset.fix16fgBound='1';
+        btn.addEventListener('click',()=>{state.dashboardAreaExpandedV616FG=!(state.dashboardAreaExpandedV616FG!==false);sync();});
+      }
+      sync();
+    }
+
+    function renderDashboardAttendanceHeatmapV616FG(payload) {
+      installDashboardChartTooltipsV616EZ();
+      const host=$('dashboardHeatmapGridV616FG'),status=$('dashboardHeatmapStatusV616FG'),counter=$('dashboardHeatmapCountV616FG');
+      if(!host)return;
+      if(payload?._error){
+        host.innerHTML=`<div class="dashboard-heatmap-message-v616fg">${dashboardManagerSafeV616EQ(payload._error)}</div>`;
+        if(counter)counter.textContent='ไม่พร้อม';
+        if(status)status.textContent='ไม่สามารถโหลด Heatmap ได้';
+        return;
+      }
+      const dates=Array.isArray(payload?.dates)?payload.dates:[];
+      const groups=Array.isArray(payload?.groups)?payload.groups:[];
+      if(counter)counter.textContent=`${formatNumber(groups.length)} กลุ่ม`;
+      if(!dates.length){
+        host.innerHTML='<div class="dashboard-heatmap-message-v616fg">ไม่พบวันที่ในช่วงที่เลือก</div>';
+        if(status)status.textContent='ไม่พบข้อมูล';
+        return;
+      }
+      const visibleStart=dates[0]||'',visibleEnd=dates[dates.length-1]||'';
+      const dateLabel=day=>{
+        const d=new Date(`${day}T12:00:00`);
+        return Number.isNaN(d.getTime())?day:d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+      };
+      const formatPct=v=>v===null?'—':Number(v).toFixed(1)+'%';
+      const safe=dashboardManagerSafeV616EQ;
+      let out='<div class="dashboard-heatmap-corner-v616fg" role="columnheader">กลุ่ม / วัน</div>';
+      dates.forEach((date,i)=>{
+        const mark=i===0||i===dates.length-1||i%4===0;
+        out+=`<div class="dashboard-heatmap-day-v616fg" role="columnheader" title="${safe(dateLabel(date))}">${mark?safe(dateLabel(date)):'·'}</div>`;
+      });
+      groups.forEach((group,index)=>{
+        const rows=new Map((Array.isArray(group.daily)?group.daily:[]).map(d=>[String(d.date),d]));
+        const label=String(group.label||'ไม่ระบุ');
+        const prefix=String(group.zone||'');
+        const groupMode=String(payload.group_by||'AREA');
+        const groupSubheading=groupMode==='AREA'?prefix:groupMode==='SUB_AREA'?String(group.area||''):String(group.sub_area||'');
+        const groupTitle=groupSubheading?`${label} (${groupSubheading})`:label;
+        const tone=Number(group.total||0)>0?`${formatPct(group.complete*100/group.total)} สะสม`:'ไม่มีฐานคำนวณ';
+        out+=`<div class="dashboard-heatmap-row-name-v616fg" role="rowheader" title="${safe(groupTitle)} • ${safe(tone)}"><strong>${safe(label)}</strong>${groupSubheading?`<small>${safe(groupSubheading)}</small>`:''}</div>`;
+        dates.forEach(date=>{
+          const d=rows.get(String(date))||{};
+          const total=Number(d.total||0),complete=Number(d.complete||0);
+          const pct=total>0?complete*100/total:null;
+          const cat=pct===null?'empty':pct>=90?'good':pct>=75?'warn':'bad';
+          const info={title:`${groupTitle} • ลงเวลาครบ`,date:dateLabel(date),value:formatPct(pct),counts:total>0?`ครบ ${formatNumber(complete)} จาก ${formatNumber(total)} วัน-พนักงาน`:'ไม่มีวัน-พนักงานที่ต้องลงเวลา',note:'ไม่นับวันหยุดและวันลาเต็มวัน',color:{good:'#16a779',warn:'#e99b29',bad:'#ee7272',empty:'#93a4ba'}[cat]};
+          const encoded=encodeURIComponent(JSON.stringify(info));
+          const aria=safe(`${groupTitle}, ${dateLabel(date)}, ${formatPct(pct)}, ${complete} จาก ${total}`);
+          out+=`<button type="button" class="dashboard-heatmap-cell-v616fg ${cat}" aria-label="${aria}" data-chart-tip-v616ez="${encoded}"></button>`;
+        });
+      });
+      host.style.setProperty('--dashboard-heatmap-day-count-v616fg',String(dates.length));
+      host.innerHTML=out;
+      if(status)status.textContent=`${dateLabel(visibleStart)} – ${dateLabel(visibleEnd)} • ${formatNumber(groups.length)} กลุ่ม${payload.truncated?' • แสดง 31 วันล่าสุดของช่วงที่เลือก':''} • ชี้หรือแตะช่องสีเพื่อดูรายละเอียด`;
+      // Scrolling the result into view must not move the page when the group mode changes.
+      const scroll=$('dashboardHeatmapScrollV616FG');
+      if(scroll)scroll.scrollLeft=0;
+    }
+
+    async function loadDashboardAttendanceHeatmapV616FG() {
+      const host=$('dashboardHeatmapGridV616FG'),modeInput=$('dashboardHeatmapModeV616FG'),status=$('dashboardHeatmapStatusV616FG');
+      if(!host||!state.client)return;
+      const mode=['AREA','SUB_AREA','ORG'].includes(modeInput?.value)?modeInput.value:'AREA';
+      const args={...dashboardManagerArgsV616EQ(),p_group_by:mode};
+      const fingerprint=JSON.stringify(args);
+      const cache=state.dashboardHeatmapCacheV616FG=state.dashboardHeatmapCacheV616FG||new Map();
+      const req=state.dashboardHeatmapRequestV616FG=(state.dashboardHeatmapRequestV616FG||0)+1;
+      const prior=cache.get(fingerprint);
+      if(prior){renderDashboardAttendanceHeatmapV616FG(prior);return;}
+      host.innerHTML='<div class="dashboard-heatmap-message-v616fg">กำลังโหลดข้อมูลรายวัน…</div>';
+      if(status)status.textContent=`กำลังโหลดระดับ ${mode==='ORG'?'หน่วยงาน':mode==='SUB_AREA'?'Sub Area':'Area'}…`;
+      try{
+        const {data,error}=await state.client.rpc('ta_get_manager_dashboard_heatmap_v616fg',args);
+        if(req!==state.dashboardHeatmapRequestV616FG)return;
+        if(error)throw error;
+        const payload=data||{dates:[],groups:[]};
+        cache.set(fingerprint,payload);
+        renderDashboardAttendanceHeatmapV616FG(payload);
+      }catch(error){
+        if(req!==state.dashboardHeatmapRequestV616FG)return;
+        renderDashboardAttendanceHeatmapV616FG({_error:window.TimeClockShiftAPI?.missingFunction?.(error)
+          ?'กรุณารัน SQL FIX16FG เพื่อเปิด Heatmap ตาม Area / Sub Area / หน่วยงาน'
+          :`โหลด Heatmap ไม่สำเร็จ: ${humanError(error)}`});
+      }
+    }
+
+    function installDashboardHeatmapControlsV616FG() {
+      const selector=$('dashboardHeatmapModeV616FG');
+      if(selector&&!selector.dataset.fix16fgBound){
+        selector.dataset.fix16fgBound='1';
+        selector.addEventListener('change',()=>loadDashboardAttendanceHeatmapV616FG());
+      }
+      installDashboardAreaVisibilityV616FG();
     }
 
     // FIX16EY: one grouping dimension at a time; weighted cumulative rate ascending.
@@ -5879,6 +5993,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function renderManagerDashboardV616EQ(payload) {
+      installDashboardHeatmapControlsV616FG();
       installDashboardChartTooltipsV616EZ();
       state.managerDashboardV616EQ = payload || {};
       renderDashboardExecutiveKpisV616FD(payload);
@@ -5943,6 +6058,8 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function loadDashboard() {
+      state.dashboardHeatmapRequestV616FG=(state.dashboardHeatmapRequestV616FG||0)+1;
+      state.dashboardHeatmapCacheV616FG=new Map();
       showLoading("กำลังโหลด Dashboard...");
       try {
         const filterReadyV616EQ = await loadManagerDashboardFiltersV616EQ(true);
@@ -6013,10 +6130,12 @@ window.tcIsDayShiftCode = value =>
                   : `โหลดกราฟราย Area ไม่สำเร็จ: ${humanError(error)}`
               }:(data||{area_groups:[]});
               renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
+              loadDashboardAttendanceHeatmapV616FG();
             }).catch(error=>{
               if(requestIdV616ER!==state.managerDashboardAreaReqV616ER) return;
               state.managerDashboardAreaV616ER={_error:`โหลดข้อมูลราย Area ไม่สำเร็จ: ${humanError(error)}`};
               renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
+              loadDashboardAttendanceHeatmapV616FG();
             });
             return;
           }

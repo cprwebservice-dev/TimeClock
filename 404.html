@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix16eh-ux1-balanced-layout-20261008" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix16fg-attendance-heatmap-20261008" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -264,10 +264,24 @@
   <article class="panel dashboard-area-trend-panel-v616er section-gap" aria-label="แนวโน้มลงเวลาครบรายพื้นที่">
     <div class="panel-header dashboard-area-trend-header-v616er">
       <div><h3>อัตราลงเวลาครบ by Area</h3><p>รายละเอียดราย Sub (Area) ภายในพื้นที่ที่เลือก • ดูแนวโน้มรายวันและสะสมแยกแต่ละ Area</p></div>
-      <span class="dashboard-area-trend-status-v616er" id="dashboardAreaTrendStatusV616ER">รอข้อมูลรายพื้นที่</span>
+      <div class="dashboard-area-header-actions-v616fg"><span class="dashboard-area-trend-status-v616er" id="dashboardAreaTrendStatusV616ER">รอข้อมูลรายพื้นที่</span><button type="button" class="dashboard-area-toggle-v616fg" id="dashboardAreaToggleV616FG" aria-controls="dashboardAreaTrendGridV616ER" aria-expanded="true">ซ่อนกราฟ <span aria-hidden="true">⌃</span></button></div>
     </div>
     <div class="panel-body">
       <div class="dashboard-area-trend-grid-v616er" id="dashboardAreaTrendGridV616ER"><div class="dashboard-manager-empty-v616eq">กำลังรอข้อมูลแยก Area</div></div>
+    </div>
+  </article>
+
+  <article class="panel dashboard-attendance-heatmap-panel-v616fg section-gap" aria-label="แผนที่ความร้อนการลงเวลาครบแยกตามวัน">
+    <div class="panel-header dashboard-heatmap-header-v616fg">
+      <div><h3>แผนที่ความร้อน: อัตราลงเวลาครบ × วัน</h3><p>ดูวันที่ลงเวลาไม่ครบตาม Area / Sub Area / หน่วยงาน • นับเฉพาะวันทำงานที่ต้องลงเวลา</p></div>
+      <div class="dashboard-heatmap-tools-v616fg"><label for="dashboardHeatmapModeV616FG">แสดงตาม</label><select id="dashboardHeatmapModeV616FG" aria-label="เลือกระดับแถวของแผนที่ความร้อน"><option value="AREA">Area</option><option value="SUB_AREA">Sub Area</option><option value="ORG">หน่วยงาน</option></select><span id="dashboardHeatmapCountV616FG" class="dashboard-heatmap-count-v616fg">รอข้อมูล</span></div>
+    </div>
+    <div class="panel-body dashboard-heatmap-body-v616fg">
+      <div class="dashboard-heatmap-status-v616fg" id="dashboardHeatmapStatusV616FG" role="status" aria-live="polite">กำลังรอข้อมูลแผนที่ความร้อน…</div>
+      <div class="dashboard-heatmap-scroll-v616fg" id="dashboardHeatmapScrollV616FG" tabindex="0" aria-label="เลื่อนดู Heatmap ตามวันและหน่วยงาน">
+        <div id="dashboardHeatmapGridV616FG" class="dashboard-heatmap-grid-v616fg"><div class="dashboard-manager-empty-v616eq">เลือกช่วงวันที่แล้วกดแสดงผล</div></div>
+      </div>
+      <div class="dashboard-heatmap-legend-v616fg" aria-label="เกณฑ์สี"><span><i class="good"></i>≥ 90%</span><span><i class="warn"></i>75–89.9%</span><span><i class="bad"></i>ต่ำกว่า 75%</span><span><i class="empty"></i>ไม่มีวันที่ต้องลงเวลา</span><small>ค่า = ลงเวลาครบ ÷ วัน-พนักงานที่ต้องลงเวลา × 100</small></div>
     </div>
   </article>
 
@@ -3588,6 +3602,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16eh-hradmin-selection-first-20261007"></script>
+<script src="./app.js?v=6.15.29-fix16fg-attendance-heatmap-20261008"></script>
 </body>
 </html>
