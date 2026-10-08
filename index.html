@@ -153,8 +153,10 @@
 <button class="btn btn-primary" data-go-page="attendance">จัดการรายการเวลา</button>
 </div>
 </div>
-<div class="dashboard-contextbar-v616dw" id="dashboardContextBarV616DW">
+<div class="dashboard-contextbar-v616dw dashboard-contextbar-v616eq" id="dashboardContextBarV616DW">
   <span><b>ช่วงข้อมูล</b><em id="dashboardContextRangeV616DW">—</em></span>
+  <span><b>ด้าน</b><em id="dashboardContextSideV616EQ">ทุกด้าน</em></span>
+  <span><b>ฝ่าย</b><em id="dashboardContextDivisionV616EQ">ทุกฝ่าย</em></span>
   <span><b>พื้นที่</b><em id="dashboardContextZoneV616DW">ทุกพื้นที่</em></span>
   <span><b>หน่วยงาน</b><em id="dashboardContextDeptV616DW">ทุกหน่วยงาน</em></span>
   <span class="dashboard-context-status-v616dw" id="dashboardContextStatusV616DW">รอข้อมูล</span>
@@ -178,12 +180,14 @@
 <button type="button" data-dashboard-range-v616h="15D">15 วัน</button>
 <button type="button" data-dashboard-range-v616h="MONTH">เดือนนี้</button>
 </div>
-<div class="toolbar enterprise-filterbar">
-<div class="field"><label>วันที่เริ่มต้น</label><input class="input" id="dashStart" type="date"/></div>
-<div class="field"><label>วันที่สิ้นสุด</label><input class="input" id="dashEnd" type="date"/></div>
+<div class="toolbar enterprise-filterbar dashboard-filter-grid-v616eq">
+<div class="field dashboard-date-field-v616eq"><label>วันที่เริ่มต้น</label><input class="input" id="dashStart" type="date"/></div>
+<div class="field dashboard-date-field-v616eq"><label>วันที่สิ้นสุด</label><input class="input" id="dashEnd" type="date"/></div>
+<div class="field"><label>ด้าน</label><select class="select" id="dashSide"><option value="">ทุกด้าน</option></select></div>
+<div class="field"><label>ฝ่าย</label><select class="select" id="dashDivision"><option value="">ทุกฝ่าย</option></select></div>
 <div class="field"><label>พื้นที่</label><select class="select" id="dashZone"><option value="">ทุกพื้นที่</option></select></div>
-<div class="field"><label>หน่วยงาน</label><select class="select" id="dashDepartment"><option value="">ทุกหน่วยงาน</option></select></div>
-<div class="toolbar-actions">
+<div class="field dashboard-org-field-v616eq"><label>หน่วยงาน</label><select class="select" id="dashDepartment"><option value="">ทุกหน่วยงาน</option></select></div>
+<div class="toolbar-actions dashboard-filter-actions-v616eq">
 <button class="btn btn-light" id="clearDashboardFilterBtn">ล้างตัวกรอง</button>
 <button class="btn btn-primary" id="loadDashboardBtn">แสดงผล</button>
 </div>
@@ -254,6 +258,65 @@
     <button type="button" data-go-page="schedule"><span>▣</span><b>บริหารกะ</b><small>ดูและปรับกะของทีม</small></button>
     <button type="button" data-go-page="shift-requests"><span>⇄</span><b>คิวคำขอ</b><small>พิจารณารายการที่รอดำเนินการ</small></button>
   </nav>
+</section>
+
+<section class="manager-operations-overview-v616eq section-gap" id="dashboardManagerOverviewV616EQ" aria-label="ภาพรวมกำลังคน ทีม และอัตราลงเวลาครบ">
+  <div class="dashboard-section-heading-v616eq">
+    <div>
+      <span class="eyebrow">WORKFORCE + ATTENDANCE</span>
+      <h3>กำลังคน ทีม และคุณภาพการลงเวลา</h3>
+      <p>สรุปตามลำดับตัวกรอง ด้าน → ฝ่าย → พื้นที่ → หน่วยงาน และช่วงวันที่ที่เลือก</p>
+    </div>
+    <span class="dashboard-data-version-v616eq" id="dashboardManagerVersionV616EQ">รอข้อมูล</span>
+  </div>
+
+  <div class="manager-workforce-grid-v616eq">
+    <article class="panel dashboard-workforce-panel-v616eq">
+      <div class="panel-header">
+        <div><h3>จำนวนช่างเทคนิคตามพื้นที่</h3><p>กรุงเทพฯ vs ตจว. แยก รถยนต์ • มอเตอร์ไซค์ • สนับสนุน</p></div>
+        <div class="dashboard-workforce-legend-v616eq" aria-label="คำอธิบายประเภทช่าง">
+          <span class="car">รถยนต์</span><span class="motorcycle">มอเตอร์ไซค์</span><span class="support">สนับสนุน</span>
+        </div>
+      </div>
+      <div class="panel-body" id="dashboardWorkforceAreaChartV616EQ">
+        <div class="dashboard-manager-empty-v616eq">รอโหลดข้อมูลกำลังคน</div>
+      </div>
+    </article>
+
+    <article class="panel dashboard-team-summary-panel-v616eq">
+      <div class="panel-header"><div><h3>สรุปจำนวนทีม</h3><p>นับเฉพาะ Team Lifecycle = ACTIVE ณ วันที่สิ้นสุดที่เลือก</p></div></div>
+      <div class="panel-body dashboard-team-cards-v616eq" id="dashboardTeamSummaryV616EQ">
+        <div class="dashboard-manager-empty-v616eq">รอโหลดข้อมูลทีม</div>
+      </div>
+    </article>
+  </div>
+
+  <article class="panel dashboard-manager-rate-panel-v616eq section-gap">
+    <div class="panel-header">
+      <div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม</h3><p>รายวัน = อัตราของวันนั้น • สะสม = ตั้งแต่วันที่เริ่มต้นจนถึงวันนั้น</p></div>
+      <span class="panel-chip" id="dashboardManagerLatestRateV616EQ">—</span>
+    </div>
+    <div class="panel-body">
+      <div class="dashboard-manager-line-chart-v616eq" id="dashboardManagerRateChartV616EQ">
+        <div class="dashboard-manager-empty-v616eq">เลือกช่วงวันที่แล้วกดแสดงผล</div>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel dashboard-org-comparison-panel-v616eq section-gap">
+    <div class="panel-header dashboard-org-comparison-head-v616eq">
+      <div><h3>เปรียบเทียบอัตราลงเวลาครบรายหน่วยงาน</h3><p>เทียบวันล่าสุดที่มีข้อมูลกับอัตราสะสมในช่วงวันที่เดียวกัน</p></div>
+      <div class="dashboard-table-tools-v616eq"><span id="dashboardOrgComparisonDateV616EQ">วันล่าสุด —</span><span id="dashboardOrgComparisonCountV616EQ">0 หน่วยงาน</span></div>
+    </div>
+    <div class="panel-body">
+      <div class="table-wrap dashboard-org-comparison-wrap-v616eq">
+        <table class="dashboard-org-comparison-table-v616eq">
+          <thead><tr><th>หน่วยงาน</th><th>พื้นที่</th><th class="text-right">พนักงาน</th><th class="text-right">รายวัน</th><th class="text-right">ครบ / ทั้งหมด</th><th class="text-right">สะสม</th><th class="text-right">ครบ / ทั้งหมด</th><th class="text-right">ต่างกัน</th></tr></thead>
+          <tbody id="dashboardOrgComparisonBodyV616EQ"><tr><td colspan="8" class="empty-cell">ยังไม่มีข้อมูล</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </article>
 </section>
 
 <div class="dashboard-section-heading-v616h section-gap"><div><span class="eyebrow">OVERVIEW</span><h3>ภาพรวมตามช่วงวันที่</h3><p>แสดงเฉพาะตัวชี้วัดที่มีอยู่จริงจาก Dashboard RPC และ Scope ที่ผู้ใช้เข้าถึงได้</p></div></div>

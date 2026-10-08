@@ -3048,6 +3048,7 @@ window.tcIsDayShiftCode = value =>
       ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id =>
         fillScopedDepartmentSelectV616L(id, departmentOptionsV616L, "ทุกหน่วยงานใน Scope")
       );
+      await loadManagerDashboardFiltersV616EQ(true);
       fillShiftSelect();
       populateSharedEmployeeMasterList();
     }
@@ -5213,9 +5214,247 @@ window.tcIsDayShiftCode = value =>
       renderShiftPatternSummary();
     }
 
+    const dashboardManagerV616EQ = {
+      filters: { orgs: [] },
+      filtersAvailable: false
+    };
+
+    function dashboardManagerSafeV616EQ(value) {
+      return String(value ?? "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function dashboardFillSimpleSelectV616EQ(id, rows, allLabel) {
+      const el = $(id);
+      if (!el) return;
+      const current = String(el.value || "");
+      el.innerHTML = `<option value="">${dashboardManagerSafeV616EQ(allLabel)}</option>`
+        + rows.map(row => `<option value="${dashboardManagerSafeV616EQ(row.value)}">${dashboardManagerSafeV616EQ(row.label)}</option>`).join("");
+      if ([...el.options].some(option => option.value === current)) el.value = current;
+      else el.value = "";
+    }
+
+    function dashboardManagerOrgRowsV616EQ() {
+      return Array.isArray(dashboardManagerV616EQ.filters?.orgs)
+        ? dashboardManagerV616EQ.filters.orgs
+        : [];
+    }
+
+    function dashboardCascadeFiltersV616EQ(source = "", preserve = true) {
+      const allRows = dashboardManagerOrgRowsV616EQ();
+      if (!allRows.length) return;
+
+      if (!preserve) {
+        if (source === "side") {
+          setVal("dashDivision",""); setVal("dashZone",""); setVal("dashDepartment","");
+        } else if (source === "division") {
+          setVal("dashZone",""); setVal("dashDepartment","");
+        } else if (source === "zone") {
+          setVal("dashDepartment","");
+        }
+      }
+
+      const side = String(val("dashSide") || "");
+      const division = String(val("dashDivision") || "");
+      const zone = String(val("dashZone") || "");
+
+      const sideMap = new Map();
+      allRows.forEach(row => {
+        const id = String(row?.side_id || "");
+        if (!id) return;
+        const label = [row?.side_code,row?.side_name].filter(Boolean).join(" · ") || row?.side_name || row?.side_code || id;
+        if (!sideMap.has(id)) sideMap.set(id,{value:id,label});
+      });
+      dashboardFillSimpleSelectV616EQ("dashSide",[...sideMap.values()].sort((a,b)=>a.label.localeCompare(b.label,"th",{numeric:true})),"ทุกด้าน");
+      if (side && [...$("dashSide").options].some(o=>o.value===side)) setVal("dashSide",side);
+
+      const activeSide = String(val("dashSide") || "");
+      const sideRows = allRows.filter(row => !activeSide || String(row?.side_id || "") === activeSide || String(row?.org_id || "") === activeSide);
+      const divisionMap = new Map();
+      sideRows.forEach(row => {
+        const id = String(row?.division_id || "");
+        if (!id) return;
+        const label = [row?.division_code,row?.division_name].filter(Boolean).join(" · ") || row?.division_name || row?.division_code || id;
+        if (!divisionMap.has(id)) divisionMap.set(id,{value:id,label});
+      });
+      dashboardFillSimpleSelectV616EQ("dashDivision",[...divisionMap.values()].sort((a,b)=>a.label.localeCompare(b.label,"th",{numeric:true})),"ทุกฝ่าย");
+      if (division && [...$("dashDivision").options].some(o=>o.value===division)) setVal("dashDivision",division);
+
+      const activeDivision = String(val("dashDivision") || "");
+      const divisionRows = sideRows.filter(row => !activeDivision || String(row?.division_id || "") === activeDivision || String(row?.org_id || "") === activeDivision);
+      const zoneMap = new Map();
+      divisionRows.forEach(row => {
+        const value = String(row?.area_bucket || "").trim();
+        if (!value || value === "OTHER") return;
+        if (!zoneMap.has(value)) zoneMap.set(value,{value,label:value});
+      });
+      dashboardFillSimpleSelectV616EQ("dashZone",[...zoneMap.values()],"ทุกพื้นที่");
+      if (zone && [...$("dashZone").options].some(o=>o.value===zone)) setVal("dashZone",zone);
+
+      const activeZone = String(val("dashZone") || "");
+      const orgRows = divisionRows
+        .filter(row => !activeZone || String(row?.area_bucket || "") === activeZone)
+        .filter(row => Number(row?.employee_count || 0) > 0)
+        .map(row => ({
+          value:String(row.org_id || ""),
+          label:String(row.identity_label || [row.org_code,row.org_name].filter(Boolean).join(" · ") || row.org_name || row.org_code || ""),
+          org_id:String(row.org_id || ""),
+          org_code:String(row.org_code || ""),
+          legacy_value:String(row.org_name || "")
+        }))
+        .filter(row => row.value)
+        .sort((a,b)=>a.label.localeCompare(b.label,"th",{numeric:true}));
+
+      const dept = $("dashDepartment");
+      if (dept) {
+        const old = String(dept.value || "");
+        dept.innerHTML = `<option value="">ทุกหน่วยงานใน Scope</option>` + orgRows.map(row =>
+          `<option value="${dashboardManagerSafeV616EQ(row.value)}" data-org-id="${dashboardManagerSafeV616EQ(row.org_id)}" data-org-code="${dashboardManagerSafeV616EQ(row.org_code)}" data-legacy-value="${dashboardManagerSafeV616EQ(row.legacy_value)}">${dashboardManagerSafeV616EQ(row.label)}</option>`
+        ).join("");
+        if ([...dept.options].some(option => option.value === old)) dept.value = old;
+        else dept.value = "";
+      }
+
+      ["dashSide","dashDivision","dashZone","dashDepartment"].forEach(id => {
+        const el=$(id); if(el) el.disabled=false;
+      });
+    }
+
+    async function loadManagerDashboardFiltersV616EQ(preserve = true) {
+      const client = state.client;
+      if (!client || !$("dashSide") || !$("dashDivision")) return false;
+      const response = await client.rpc("ta_get_manager_dashboard_filters_v616eq",{
+        p_start_date: val("dashStart"),
+        p_end_date: val("dashEnd")
+      });
+      if (response.error) {
+        if (window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          dashboardManagerV616EQ.filtersAvailable = false;
+          ["dashSide","dashDivision"].forEach(id=>{ const el=$(id); if(el){el.innerHTML=`<option value="">ทุก${id==="dashSide"?"ด้าน":"ฝ่าย"}</option>`;el.disabled=true;} });
+          return false;
+        }
+        throw response.error;
+      }
+      const payload = response.data || {};
+      dashboardManagerV616EQ.filters = payload;
+      dashboardManagerV616EQ.filtersAvailable = true;
+      dashboardCascadeFiltersV616EQ("",preserve);
+      return true;
+    }
+
+    function dashboardManagerArgsV616EQ() {
+      return {
+        p_start_date: val("dashStart"),
+        p_end_date: val("dashEnd"),
+        p_side_id: val("dashSide") || null,
+        p_division_id: val("dashDivision") || null,
+        p_zone: val("dashZone") || null,
+        p_org_id: selectedOrgIdV616M("dashDepartment") || null
+      };
+    }
+
+    function dashboardManagerRateToneV616EQ(rate) {
+      const n = Number(rate || 0);
+      return n >= 90 ? "good" : n >= 75 ? "warn" : "bad";
+    }
+
+    function dashboardManagerLineChartV616EQ(rows) {
+      const points = (Array.isArray(rows) ? rows : []).filter(row => Number(row?.total || 0) > 0);
+      if (!points.length) return '<div class="dashboard-manager-empty-v616eq">ไม่มีข้อมูลการลงเวลาในช่วงวันที่</div>';
+      const W=860,H=250,pL=50,pR=22,pT=18,pB=42,plotW=W-pL-pR,plotH=H-pT-pB;
+      const x=i=>pL+(points.length===1?plotW/2:(i/(points.length-1))*plotW);
+      const y=v=>pT+(100-Math.max(0,Math.min(100,Number(v||0))))/100*plotH;
+      const poly=key=>points.map((r,i)=>`${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`).join(" ");
+      const grid=[0,25,50,75,100].map(v=>`<g><line x1="${pL}" y1="${y(v)}" x2="${W-pR}" y2="${y(v)}" class="grid"/><text x="${pL-10}" y="${y(v)+4}" text-anchor="end">${v}%</text></g>`).join("");
+      const labelCount=Math.min(5,points.length);
+      const idx=[...new Set(Array.from({length:labelCount},(_,i)=>Math.round(i*(points.length-1)/Math.max(1,labelCount-1))))];
+      const shortDate=value=>{const d=new Date(`${value}T12:00:00`);return Number.isNaN(d.getTime())?value:d.toLocaleDateString("th-TH",{day:"numeric",month:"short"});};
+      const labels=idx.map(i=>`<text x="${x(i)}" y="${H-12}" text-anchor="middle">${dashboardManagerSafeV616EQ(shortDate(points[i].date))}</text>`).join("");
+      const dots=points.map((r,i)=>`<circle cx="${x(i)}" cy="${y(r.completeRate)}" r="3" class="daily-dot"><title>${dashboardManagerSafeV616EQ(shortDate(r.date))} • รายวัน ${Number(r.completeRate||0).toFixed(1)}% • สะสม ${Number(r.cumCompleteRate||0).toFixed(1)}%</title></circle>`).join("");
+      return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="อัตราลงเวลาครบรายวันเทียบสะสม"><g class="axis">${grid}${labels}</g><polyline points="${poly("cumCompleteRate")}" class="cum-line"/><polyline points="${poly("completeRate")}" class="daily-line"/>${dots}</svg>`;
+    }
+
+    function renderManagerDashboardV616EQ(payload) {
+      state.managerDashboardV616EQ = payload || {};
+      const workforce = Array.isArray(payload?.workforce) ? payload.workforce : [];
+      const wfHost = $("dashboardWorkforceAreaChartV616EQ");
+      if (wfHost) {
+        const requested = ["กรุงเทพฯ","ตจว."].map(area => workforce.find(row => String(row?.area||"")===area) || {area,car:0,motorcycle:0,support:0,unclassified:0,total:0});
+        const max = Math.max(1,...requested.map(row => Number(row.total||0)));
+        const other = workforce.filter(row=>!["กรุงเทพฯ","ตจว."].includes(String(row?.area||""))).reduce((sum,row)=>sum+Number(row.total||0),0);
+        const unclassified = workforce.reduce((sum,row)=>sum+Number(row.unclassified||0),0);
+        wfHost.innerHTML = `<div class="dashboard-workforce-bars-v616eq">${requested.map(row=>{
+          const total=Number(row.total||0), car=Number(row.car||0), moto=Number(row.motorcycle||0), support=Number(row.support||0);
+          const scale=total/max*100;
+          const carW=total?car/total*scale:0, motoW=total?moto/total*scale:0, supportW=total?support/total*scale:0;
+          return `<div class="dashboard-workforce-row-v616eq"><div class="dashboard-workforce-label-v616eq"><strong>${dashboardManagerSafeV616EQ(row.area)}</strong><span>รวม ${formatNumber(total)} คน</span></div><div class="dashboard-workforce-track-v616eq"><i class="car" style="width:${carW}%" title="รถยนต์ ${formatNumber(car)} คน"></i><i class="motorcycle" style="width:${motoW}%" title="มอเตอร์ไซค์ ${formatNumber(moto)} คน"></i><i class="support" style="width:${supportW}%" title="สนับสนุน ${formatNumber(support)} คน"></i></div><div class="dashboard-workforce-counts-v616eq"><span class="car">รถยนต์ <b>${formatNumber(car)}</b></span><span class="motorcycle">มอเตอร์ไซค์ <b>${formatNumber(moto)}</b></span><span class="support">สนับสนุน <b>${formatNumber(support)}</b></span></div></div>`;
+        }).join("")}</div>${(other||unclassified)?`<div class="dashboard-workforce-note-v616eq">${other?`พื้นที่อื่น/ไม่ระบุ ${formatNumber(other)} คน`:""}${other&&unclassified?" • ":""}${unclassified?`รอกำหนดรูปแบบ ${formatNumber(unclassified)} คน`:""}</div>`:""}`;
+      }
+
+      const teams = payload?.teams || {};
+      const teamHost = $("dashboardTeamSummaryV616EQ");
+      if (teamHost) teamHost.innerHTML = [
+        ["ทีมรถยนต์",teams.car,"C","car"],
+        ["ทีมมอเตอร์ไซค์",teams.motorcycle,"M","motorcycle"],
+        ["ทีมสนับสนุน",teams.support,"S","support"],
+        ["รวมทีมพร้อมใช้งาน",teams.total,"Σ","total"]
+      ].map(([label,value,icon,tone])=>`<article class="dashboard-team-card-v616eq ${tone}"><span>${icon}</span><div><small>${label}</small><strong>${formatNumber(value||0)}<em>ทีม</em></strong></div></article>`).join("");
+
+      const daily = Array.isArray(payload?.daily) ? payload.daily : [];
+      const chart = $("dashboardManagerRateChartV616EQ");
+      if (chart) chart.innerHTML = dashboardManagerLineChartV616EQ(daily);
+      const latest = [...daily].reverse().find(row=>Number(row?.total||0)>0) || null;
+      if ($("dashboardManagerLatestRateV616EQ")) $("dashboardManagerLatestRateV616EQ").textContent = latest ? `รายวัน ${Number(latest.completeRate||0).toFixed(1)}% • สะสม ${Number(latest.cumCompleteRate||0).toFixed(1)}%` : "—";
+
+      const comparison = Array.isArray(payload?.org_comparison) ? payload.org_comparison : [];
+      const body = $("dashboardOrgComparisonBodyV616EQ");
+      if (body) body.innerHTML = comparison.length ? comparison.map(row=>{
+        const dailyRate=Number(row.daily_rate||0), cumulativeRate=Number(row.cumulative_rate||0), diff=dailyRate-cumulativeRate;
+        const diffText=`${diff>0?"+":""}${diff.toFixed(1)} pp`;
+        return `<tr><td><div class="dashboard-org-name-v616eq"><strong>${dashboardManagerSafeV616EQ(row.org_code||"")}</strong><span>${dashboardManagerSafeV616EQ(row.org_name||"")}</span></div></td><td><span class="dashboard-area-pill-v616eq">${dashboardManagerSafeV616EQ(row.area||"-")}</span></td><td class="text-right">${formatNumber(row.employee_count||0)}</td><td class="text-right"><span class="dashboard-rate-pill-v616eq ${dashboardManagerRateToneV616EQ(dailyRate)}">${dailyRate.toFixed(1)}%</span></td><td class="text-right">${formatNumber(row.daily_complete||0)} / ${formatNumber(row.daily_total||0)}</td><td class="text-right"><span class="dashboard-rate-pill-v616eq ${dashboardManagerRateToneV616EQ(cumulativeRate)}">${cumulativeRate.toFixed(1)}%</span></td><td class="text-right">${formatNumber(row.cumulative_complete||0)} / ${formatNumber(row.cumulative_total||0)}</td><td class="text-right"><span class="dashboard-diff-v616eq ${diff>0.05?"up":diff<-0.05?"down":"flat"}">${diffText}</span></td></tr>`;
+      }).join("") : '<tr><td colspan="8" class="empty-cell">ไม่พบข้อมูลรายหน่วยงานในช่วงที่เลือก</td></tr>';
+      if ($("dashboardOrgComparisonCountV616EQ")) $("dashboardOrgComparisonCountV616EQ").textContent=`${formatNumber(comparison.length)} หน่วยงาน`;
+      if ($("dashboardOrgComparisonDateV616EQ")) {
+        const date=String(payload?.latest_attendance_date||"");
+        $("dashboardOrgComparisonDateV616EQ").textContent=date?`วันล่าสุด ${formatDate(date)}`:"วันล่าสุด —";
+      }
+      if ($("dashboardManagerVersionV616EQ")) $("dashboardManagerVersionV616EQ").textContent=String(payload?.version||"V6.15.29 FIX16EQ");
+    }
+
     async function loadDashboard() {
       showLoading("กำลังโหลด Dashboard...");
       try {
+        const filterReadyV616EQ = await loadManagerDashboardFiltersV616EQ(true);
+
+        if (filterReadyV616EQ) {
+          const managerResponseV616EQ = await state.client.rpc(
+            "ta_get_manager_dashboard_v616eq",
+            dashboardManagerArgsV616EQ()
+          );
+
+          if (!managerResponseV616EQ.error) {
+            const payloadV616EQ = managerResponseV616EQ.data || {};
+            payloadV616EQ._filterKeyV616EQ = [
+              val("dashStart"),val("dashEnd"),val("dashSide")||"",val("dashDivision")||"",
+              val("dashZone")||"",selectedOrgIdV616M("dashDepartment")||""
+            ].join("|");
+            state.managerDashboardV616EQ = payloadV616EQ;
+            state.dashboard = payloadV616EQ.summary || {};
+            renderDashboard(state.dashboard);
+            renderManagerDashboardV616EQ(payloadV616EQ);
+            return;
+          }
+
+          if (!window.TimeClockShiftAPI?.missingFunction?.(managerResponseV616EQ.error)) {
+            throw managerResponseV616EQ.error;
+          }
+        }
+
+        // Compatibility fallback for environments that have not run FIX16EQ yet.
         await loadScopedAreaDepartmentOptionsV616K({
           startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true
         });
@@ -5248,7 +5487,12 @@ window.tcIsDayShiftCode = value =>
         if (response.error) throw response.error;
         const data = response.data;
         state.dashboard = Array.isArray(data) ? data[0] : data;
+        state.managerDashboardV616EQ = null;
         renderDashboard(state.dashboard || {});
+        renderManagerDashboardV616EQ({
+          version:"ต้องรัน SQL FIX16EQ",
+          workforce:[],teams:{},daily:[],org_comparison:[]
+        });
       } catch (err) { toast(humanError(err), "error"); }
       finally { hideLoading(); }
     }
@@ -15378,11 +15622,13 @@ window.tcIsDayShiftCode = value =>
       });
       $("loadDashboardBtn").addEventListener("click", loadDashboard);
       ["dashStart","dashEnd"].forEach(id => $(id)?.addEventListener("change", async () => {
-        await loadScopedAreaDepartmentOptionsV616K({startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true});
+        await loadManagerDashboardFiltersV616EQ(true);
       }));
-      $("dashZone")?.addEventListener("change", async () => {
-        setVal("dashDepartment","");
-        await loadScopedAreaDepartmentOptionsV616K({startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true});
+      $("dashSide")?.addEventListener("change", () => dashboardCascadeFiltersV616EQ("side",false));
+      $("dashDivision")?.addEventListener("change", () => dashboardCascadeFiltersV616EQ("division",false));
+      $("dashZone")?.addEventListener("change", () => dashboardCascadeFiltersV616EQ("zone",false));
+      $("dashDepartment")?.addEventListener("change", () => {
+        $("dashboardViewDailyV616H")?.removeAttribute("data-loaded-key");
       });
       $("loadAttendanceBtn").addEventListener("click", loadAttendance);
       $("attZone")?.addEventListener(
@@ -16625,9 +16871,11 @@ window.tcIsDayShiftCode = value =>
       const iso = d => window.TimeClockCalendarV61448.localISO(d);
       if ($('dashStart')) $('dashStart').value = iso(start);
       if ($('dashEnd')) $('dashEnd').value = iso(end);
+      if ($('dashSide')) $('dashSide').value = '';
+      if ($('dashDivision')) $('dashDivision').value = '';
       if ($('dashZone')) $('dashZone').value = '';
       if ($('dashDepartment')) $('dashDepartment').value = '';
-      $('loadDashboardBtn')?.click();
+      loadManagerDashboardFiltersV616EQ(false).finally(()=>$('loadDashboardBtn')?.click());
     });
     $('globalSearch')?.addEventListener('keydown', e => {
       if (e.key !== 'Enter') return;
@@ -18688,7 +18936,7 @@ ${skippedSummary(compatibility.skipped)}
 (() => {
   "use strict";
   const $=id=>document.getElementById(id),q=(s,r=document)=>r.querySelector(s),qa=(s,r=document)=>[...r.querySelectorAll(s)];
-  const VERSION="6.15.29 FIX16BX";
+  const VERSION="6.15.29 FIX16EQ";
   const menuItems=[
     ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["team-master","ทีมช่างเทคนิค","Team Master แบบ Auto Generate","◉"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
     ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-health","System Health","Configuration Audit และ System Health","♥"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
@@ -39281,10 +39529,39 @@ ${names}${extra}
     if(currentView!=='daily') return;
     const start=$('dashStart')?.value,end=$('dashEnd')?.value,zone=$('dashZone')?.value||'',department=$('dashDepartment')?.value||'';
     if(!start||!end||start>end){ window.TimeClockApp?.toast?.('กรุณาเลือกช่วงวันที่ Dashboard ให้ถูกต้อง','error'); return; }
+
+    const managerPayload=window.TimeClockApp?.state?.managerDashboardV616EQ;
+    const managerKey=[start,end,$('dashSide')?.value||'',$('dashDivision')?.value||'',zone,window.TimeClockApp?.selectedOrgIdV616M?.('dashDepartment')||''].join('|');
+    const managerDaily=(managerPayload?._filterKeyV616EQ===managerKey && Array.isArray(managerPayload?.daily))?managerPayload.daily:[];
+    if(managerDaily.length){
+      const rows=managerDaily.map(r=>({
+        date:String(r.date||''),
+        total:Number(r.total||0),
+        employees:0,
+        complete:Number(r.complete||0),
+        completeRate:Number(r.completeRate||0),
+        absent:Number(r.absent||0),
+        late:Number(r.late||0),
+        early:Number(r.early||0),
+        issues:Number(r.absent||0)+Number(r.late||0)+Number(r.early||0),
+        missing:0,
+        paid:0,
+        regular:0,
+        ot:Number(r.otHours||0),
+        waiting:0,
+        offday:0
+      }));
+      let displayRows=rows,displayStart=start;
+      if(displayRows.length>31){displayRows=displayRows.slice(-31);displayStart=displayRows[0]?.date||start;}
+      $('dashboardViewDailyV616H') && ($('dashboardViewDailyV616H').dataset.loadedKey=['FIX16EQ',start,end,zone,department].join('|'));
+      renderDaily(displayRows,start,end,displayStart);
+      return;
+    }
+
     let dates=dateList(start,end); if(!dates.length)return;
     let displayStart=start;
     if(dates.length>31){dates=dates.slice(-31);displayStart=dates[0];}
-    const requestKey=[start,end,displayStart,zone,department].join('|');
+    const requestKey=[start,end,displayStart,$('dashSide')?.value||'',$('dashDivision')?.value||'',zone,department].join('|');
     if(!force && $('dashboardViewDailyV616H')?.dataset.loadedKey===requestKey) return;
     const token=++loadToken;
     $('dashboardDailyLoadStateV616H') && ($('dashboardDailyLoadStateV616H').textContent='กำลังโหลดข้อมูลรายวัน…');
@@ -39306,7 +39583,7 @@ ${names}${extra}
   function bind(){
     document.querySelectorAll('[data-dashboard-view-v616h]').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.dashboardViewV616h,true)));
     document.querySelectorAll('[data-dashboard-range-v616h]').forEach(btn=>btn.addEventListener('click',()=>rangePreset(btn.dataset.dashboardRangeV616h)));
-    ['dashStart','dashEnd','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{ $('dashboardViewDailyV616H')?.removeAttribute('data-loaded-key'); document.querySelectorAll('[data-dashboard-range-v616h]').forEach(b=>b.classList.remove('active')); }));
+    ['dashStart','dashEnd','dashSide','dashDivision','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{ $('dashboardViewDailyV616H')?.removeAttribute('data-loaded-key'); document.querySelectorAll('[data-dashboard-range-v616h]').forEach(b=>b.classList.remove('active')); }));
     $('loadDashboardBtn')?.addEventListener('click',()=>{ $('dashboardViewDailyV616H')?.removeAttribute('data-loaded-key'); });
     document.addEventListener('timeclock:dashboard-rendered-v616h',()=>{ if(currentView==='daily') loadDailySeries(true); });
     setView(localStorage.getItem('tc_dashboard_view_v616h')||'overview',false);
@@ -39947,11 +40224,13 @@ ${names}${extra}
   }
 
   function scopeText(){
+    const side = $("dashSide")?.selectedOptions?.[0]?.textContent?.trim() || "ทุกด้าน";
+    const division = $("dashDivision")?.selectedOptions?.[0]?.textContent?.trim() || "ทุกฝ่าย";
     const zone = $("dashZone")?.selectedOptions?.[0]?.textContent?.trim() || "ทุกพื้นที่";
     const dept = $("dashDepartment")?.selectedOptions?.[0]?.textContent?.trim() || "ทุกหน่วยงาน";
     const start = $("dashStart")?.value || "-";
     const end = $("dashEnd")?.value || "-";
-    return `${start} ถึง ${end} • ${zone} • ${dept}`;
+    return `${start} ถึง ${end} • ${side} • ${division} • ${zone} • ${dept}`;
   }
 
   function actionCard({tone,icon,value,unit,label,sub,page}){
@@ -40024,9 +40303,13 @@ ${names}${extra}
     const issueCategoryCount=[incomplete,absent,discipline,ot].filter(v=>Number(v||0)>0).length;
     const start=$("dashStart")?.value||"-";
     const end=$("dashEnd")?.value||"-";
+    const side=$("dashSide")?.selectedOptions?.[0]?.textContent?.trim()||"ทุกด้าน";
+    const division=$("dashDivision")?.selectedOptions?.[0]?.textContent?.trim()||"ทุกฝ่าย";
     const zone=$("dashZone")?.selectedOptions?.[0]?.textContent?.trim()||"ทุกพื้นที่";
     const dept=$("dashDepartment")?.selectedOptions?.[0]?.textContent?.trim()||"ทุกหน่วยงาน";
     if($("dashboardContextRangeV616DW")) $("dashboardContextRangeV616DW").textContent=`${start} → ${end}`;
+    if($("dashboardContextSideV616EQ")) $("dashboardContextSideV616EQ").textContent=side;
+    if($("dashboardContextDivisionV616EQ")) $("dashboardContextDivisionV616EQ").textContent=division;
     if($("dashboardContextZoneV616DW")) $("dashboardContextZoneV616DW").textContent=zone;
     if($("dashboardContextDeptV616DW")) $("dashboardContextDeptV616DW").textContent=dept;
     if($("dashboardContextStatusV616DW")){
