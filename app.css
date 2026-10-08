@@ -38360,3 +38360,105 @@ html[data-theme="dark"] .dashboard-area-compare-card-v616ev,body.theme-dark .das
 html[data-theme="dark"] .dashboard-area-compare-chip-v616ev,body.theme-dark .dashboard-area-compare-chip-v616ev{background:rgba(15,23,42,.78);border-color:rgba(148,163,184,.25)}
 @media(max-width:1190px){.dashboard-area-compare-chart-v616ev{min-height:320px}.dashboard-manager-line-chart-v616eq.dashboard-rate-chart-v616er{min-height:350px}.dashboard-manager-line-chart-v616eq.dashboard-rate-chart-v616er svg{min-height:350px}}
 @media(max-width:760px){.dashboard-area-compare-head-v616ev{flex-direction:column}.dashboard-area-compare-legend-v616ev{justify-content:flex-start}.dashboard-group-summary-v616ev{display:none}}
+
+/* FIX16EW: dashboard visual refresh / modern charts and rounded colored table headers */
+#page-dashboard .manager-operations-overview-v616eq .panel{
+  border:1px solid color-mix(in srgb,var(--border-color,#dce5ed) 88%, #ffffff 12%);
+  border-radius:20px;
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,250,252,.98));
+  box-shadow:0 12px 30px rgba(15,23,42,.05),0 2px 8px rgba(15,23,42,.03);
+  overflow:hidden;
+}
+#page-dashboard .manager-operations-overview-v616eq .panel-header{
+  background:linear-gradient(180deg,rgba(248,250,252,.96),rgba(241,245,249,.96));
+  border-bottom:1px solid color-mix(in srgb,var(--border-color,#dce5ed) 82%, #fff 18%);
+  padding:18px 20px;
+}
+#page-dashboard .manager-operations-overview-v616eq .panel-header h3{font-size:16px;font-weight:800;letter-spacing:-.02em}
+#page-dashboard .manager-operations-overview-v616eq .panel-header p{font-size:12px;line-height:1.45;color:var(--text-muted,#64748b)}
+.dashboard-section-heading-v616eq{margin-bottom:16px;padding:4px 4px 0}
+.dashboard-data-version-v616eq{border:1px solid color-mix(in srgb,var(--brand,#2563eb) 18%, transparent);background:linear-gradient(180deg,#eff6ff,#f8fbff);color:var(--brand,#2563eb);padding:7px 12px;border-radius:999px;font-weight:700;box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}
+.dashboard-workforce-panel-v616eq .panel-body,.dashboard-team-summary-panel-v616eq .panel-body,.dashboard-manager-rate-panel-v616eq .panel-body,.dashboard-area-trend-panel-v616er .panel-body,.dashboard-org-comparison-panel-v616eq .panel-body{padding:18px 20px}
+.dashboard-workforce-row-v616eq{padding:12px 0;border-bottom:1px dashed rgba(148,163,184,.26)}
+.dashboard-workforce-row-v616eq:last-child{border-bottom:0;padding-bottom:0}
+.dashboard-workforce-track-v616eq{border-radius:999px;background:linear-gradient(180deg,#eef2f7,#f8fafc);height:16px;box-shadow:inset 0 1px 2px rgba(15,23,42,.06)}
+.dashboard-workforce-track-v616eq i{height:16px;box-shadow:inset 0 -1px 0 rgba(255,255,255,.24)}
+.dashboard-workforce-track-v616eq i.car{background:linear-gradient(90deg,#3b82f6,#2563eb)}
+.dashboard-workforce-track-v616eq i.motorcycle{background:linear-gradient(90deg,#14b8a6,#0f766e)}
+.dashboard-workforce-track-v616eq i.support{background:linear-gradient(90deg,#fb923c,#ea580c)}
+.dashboard-team-card-v616eq{border-radius:18px;background:linear-gradient(180deg,#ffffff,#f8fbff);box-shadow:0 8px 20px rgba(37,99,235,.06);border-color:color-mix(in srgb,var(--border-color,#dce5ed) 85%, #fff 15%)}
+.dashboard-team-card-v616eq.car>span,.dashboard-team-card-v616eq>span{box-shadow:0 6px 14px rgba(37,99,235,.16)}
+.dashboard-team-card-v616eq.motorcycle>span{box-shadow:0 6px 14px rgba(8,145,178,.16)}
+.dashboard-team-card-v616eq.support>span{box-shadow:0 6px 14px rgba(217,119,6,.16)}
+.dashboard-team-card-v616eq.total>span{box-shadow:0 6px 14px rgba(79,70,229,.16)}
+.dashboard-manager-line-chart-v616eq{border-radius:18px;background:linear-gradient(180deg,#fbfdff,#f8fbff);padding:6px 10px 2px;border:1px solid rgba(148,163,184,.18)}
+.dashboard-manager-line-chart-v616eq .axis line.grid{stroke:rgba(148,163,184,.18)}
+.dashboard-manager-line-chart-v616eq .daily-line{filter:drop-shadow(0 4px 8px rgba(6,154,117,.18))}
+.dashboard-manager-line-chart-v616eq .cum-line{filter:drop-shadow(0 4px 8px rgba(229,138,31,.14))}
+.dashboard-line-legend-v616er{padding:10px 14px;border-radius:14px;background:linear-gradient(180deg,#f8fafc,#f1f5f9);border:1px solid rgba(148,163,184,.16);margin:2px 0 12px}
+.dashboard-rate-summary-v616er{border-radius:14px;background:linear-gradient(180deg,#ecfdf5,#f4fbf7);border:1px solid rgba(16,185,129,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.dashboard-rate-summary-v616er.below-target{background:linear-gradient(180deg,#fff7ed,#fffaf5);border-color:rgba(245,158,11,.22)}
+.dashboard-area-card-v616er{border-radius:18px;background:linear-gradient(180deg,#ffffff,#fbfdff);box-shadow:0 10px 24px rgba(15,23,42,.045)}
+.dashboard-area-zone-v616er{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;background:#eff6ff;color:#2563eb;font-weight:700;letter-spacing:.01em}
+.dashboard-area-zone-v616er::before{content:"";width:7px;height:7px;border-radius:999px;background:currentColor;opacity:.75}
+.dashboard-area-card-rates-v616er span{border-radius:999px;background:#f8fafc;border:1px solid rgba(148,163,184,.18);padding:6px 10px}
+.dashboard-area-compare-card-v616ev{border-radius:20px;background:linear-gradient(180deg,#ffffff,#f9fbff);box-shadow:0 12px 28px rgba(15,23,42,.05)}
+.dashboard-area-compare-chip-v616ev{background:linear-gradient(180deg,#ffffff,#f8fafc);box-shadow:0 4px 10px rgba(15,23,42,.04)}
+.dashboard-comparison-help-v616et{border-radius:16px;background:linear-gradient(180deg,#eef4ff,#f8fbff);border:1px solid rgba(37,99,235,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.dashboard-org-comparison-wrap-v616eq{border-radius:18px;border:1px solid rgba(148,163,184,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.65);background:#fff}
+.dashboard-org-comparison-table-v616eq{border-spacing:0 0;min-width:1180px}
+.dashboard-org-comparison-table-v616eq thead th{
+  top:10px;
+  z-index:3;
+  background:linear-gradient(180deg,#2563eb,#1d4ed8);
+  color:#ffffff;
+  border-bottom:0;
+  padding:14px 12px 13px;
+  font-size:11.5px;
+  font-weight:800;
+  box-shadow:0 10px 20px rgba(37,99,235,.16), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.dashboard-org-comparison-table-v616eq thead th small{display:block;color:rgba(255,255,255,.82);font-size:10px;font-weight:600;margin-top:4px}
+.dashboard-org-comparison-table-v616eq thead th:first-child{border-top-left-radius:16px}
+.dashboard-org-comparison-table-v616eq thead th:last-child{border-top-right-radius:16px}
+.dashboard-org-comparison-table-v616eq thead tr{position:relative}
+.dashboard-org-comparison-table-v616eq tbody td{padding:12px 12px;border-bottom:1px solid rgba(226,232,240,.95)}
+.dashboard-org-comparison-table-v616eq tbody tr:nth-child(even):not(.dashboard-group-row-v616er) td{background:rgba(248,250,252,.62)}
+.dashboard-org-comparison-table-v616eq tbody tr:hover td{background:rgba(37,99,235,.055)}
+.dashboard-org-comparison-table-v616eq .dashboard-org-name-v616eq strong{color:#1d4ed8}
+.dashboard-rate-pill-v616eq{box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 4px 10px rgba(15,23,42,.04)}
+.dashboard-org-comparison-table-v616eq tfoot th,.dashboard-org-comparison-table-v616eq tfoot td{background:linear-gradient(180deg,#edf4ff,#e8f1ff);border-top:2px solid #2563eb}
+.dashboard-rate-method-button-v616eu{border-radius:12px;padding:7px 8px;transition:all .18s ease}
+.dashboard-rate-method-button-v616eu:hover{background:rgba(255,255,255,.12)}
+.dashboard-rate-help-icon-v616eu{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.22)}
+html[data-theme="dark"] #page-dashboard .manager-operations-overview-v616eq .panel,
+body.theme-dark #page-dashboard .manager-operations-overview-v616eq .panel,
+body.dark #page-dashboard .manager-operations-overview-v616eq .panel{background:linear-gradient(180deg,rgba(15,23,42,.98),rgba(11,18,32,.98));border-color:rgba(71,85,105,.42);box-shadow:none}
+html[data-theme="dark"] #page-dashboard .manager-operations-overview-v616eq .panel-header,
+body.theme-dark #page-dashboard .manager-operations-overview-v616eq .panel-header,
+body.dark #page-dashboard .manager-operations-overview-v616eq .panel-header{background:linear-gradient(180deg,rgba(30,41,59,.96),rgba(15,23,42,.96));border-bottom-color:rgba(71,85,105,.36)}
+html[data-theme="dark"] .dashboard-manager-line-chart-v616eq,
+body.theme-dark .dashboard-manager-line-chart-v616eq,
+body.dark .dashboard-manager-line-chart-v616eq{background:linear-gradient(180deg,rgba(15,23,42,.86),rgba(11,18,32,.9));border-color:rgba(71,85,105,.34)}
+html[data-theme="dark"] .dashboard-line-legend-v616er,
+body.theme-dark .dashboard-line-legend-v616er,
+body.dark .dashboard-line-legend-v616er{background:linear-gradient(180deg,rgba(30,41,59,.86),rgba(15,23,42,.9));border-color:rgba(71,85,105,.34)}
+html[data-theme="dark"] .dashboard-org-comparison-wrap-v616eq,
+body.theme-dark .dashboard-org-comparison-wrap-v616eq,
+body.dark .dashboard-org-comparison-wrap-v616eq{background:#0f172a;border-color:rgba(71,85,105,.36)}
+html[data-theme="dark"] .dashboard-org-comparison-table-v616eq thead th,
+body.theme-dark .dashboard-org-comparison-table-v616eq thead th,
+body.dark .dashboard-org-comparison-table-v616eq thead th{background:linear-gradient(180deg,#1d4ed8,#1e40af);color:#eff6ff}
+html[data-theme="dark"] .dashboard-org-comparison-table-v616eq tbody tr:nth-child(even):not(.dashboard-group-row-v616er) td,
+body.theme-dark .dashboard-org-comparison-table-v616eq tbody tr:nth-child(even):not(.dashboard-group-row-v616er) td,
+body.dark .dashboard-org-comparison-table-v616eq tbody tr:nth-child(even):not(.dashboard-group-row-v616er) td{background:rgba(30,41,59,.38)}
+html[data-theme="dark"] .dashboard-org-comparison-table-v616eq tfoot th,
+html[data-theme="dark"] .dashboard-org-comparison-table-v616eq tfoot td,
+body.theme-dark .dashboard-org-comparison-table-v616eq tfoot th,
+body.theme-dark .dashboard-org-comparison-table-v616eq tfoot td,
+body.dark .dashboard-org-comparison-table-v616eq tfoot th,
+body.dark .dashboard-org-comparison-table-v616eq tfoot td{background:linear-gradient(180deg,rgba(30,58,138,.58),rgba(30,64,175,.54))}
+@media(max-width:760px){
+  .dashboard-org-comparison-table-v616eq thead th{top:6px;padding:12px 10px}
+  .dashboard-workforce-panel-v616eq .panel-body,.dashboard-team-summary-panel-v616eq .panel-body,.dashboard-manager-rate-panel-v616eq .panel-body,.dashboard-area-trend-panel-v616er .panel-body,.dashboard-org-comparison-panel-v616eq .panel-body{padding:14px}
+}
