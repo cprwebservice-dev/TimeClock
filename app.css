@@ -37699,3 +37699,264 @@ html[data-theme="dark"] .hradmin-selection-empty-v616eh{
     margin-left:46px;
   }
 }
+
+/* ========================================================================== 
+   V6.15.29 FIX16EH-UX1 — Balanced Team + Schedule Control Layout
+   Frontend-only UX adjustment requested 2026-10-08.
+   Scope: Team Workspace header controls + Schedule filter/control deck only.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   TEAM WORKSPACE
+   Use the full available width instead of leaving a large empty block on the
+   left. Keep every control in one balanced row on wide screens and wrap at
+   deliberate breakpoints so controls never overlap.
+   -------------------------------------------------------------------------- */
+#page-team-master .team-workspace-hero-v61528{
+  min-height:0!important;
+  padding:13px 15px!important;
+  align-items:stretch!important;
+  justify-content:stretch!important;
+  overflow:visible!important;
+}
+#page-team-master .team-workspace-hero-actions-v61528{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(340px,1fr) 170px 100px 150px 150px!important;
+  grid-template-areas:"org date refresh density create"!important;
+  align-items:end!important;
+  justify-content:stretch!important;
+  gap:10px!important;
+}
+#page-team-master .team-workspace-org-filter-v61528{
+  grid-area:org!important;
+  width:100%!important;
+  min-width:0!important;
+}
+#page-team-master .team-workspace-reference-date-v616ax{
+  grid-area:date!important;
+  width:100%!important;
+  min-width:0!important;
+}
+#page-team-master #teamMasterRefreshV61523{grid-area:refresh!important}
+#page-team-master #teamDensityToggleV616DN{grid-area:density!important}
+#page-team-master #teamMasterCreateV61523{grid-area:create!important}
+#page-team-master .team-workspace-hero-actions-v61528 .field{min-width:0!important}
+#page-team-master .team-workspace-hero-actions-v61528 label{
+  min-height:15px;
+  margin:0 0 5px!important;
+  font-size:11px!important;
+  line-height:1.2!important;
+}
+#page-team-master .team-workspace-hero-actions-v61528 .select,
+#page-team-master .team-workspace-hero-actions-v61528 .input,
+#page-team-master .team-workspace-hero-actions-v61528 .btn{
+  width:100%;
+  min-width:0;
+  height:40px!important;
+  min-height:40px!important;
+  border-radius:10px!important;
+  font-size:12px!important;
+}
+#page-team-master #teamMasterRefreshV61523,
+#page-team-master #teamDensityToggleV616DN{
+  white-space:nowrap;
+}
+#page-team-master #teamMasterCreateV61523{
+  white-space:nowrap;
+  font-weight:850!important;
+}
+
+@media(max-width:1380px){
+  #page-team-master .team-workspace-hero-actions-v61528{
+    grid-template-columns:minmax(280px,1fr) 170px 105px 150px!important;
+    grid-template-areas:
+      "org date refresh create"
+      "org density density density"!important;
+  }
+  #page-team-master #teamDensityToggleV616DN{
+    width:150px!important;
+    justify-self:end!important;
+  }
+}
+@media(max-width:980px){
+  #page-team-master .team-workspace-hero-actions-v61528{
+    grid-template-columns:minmax(0,1fr) 165px!important;
+    grid-template-areas:
+      "org org"
+      "date refresh"
+      "density create"!important;
+  }
+  #page-team-master #teamDensityToggleV616DN,
+  #page-team-master #teamMasterCreateV61523{
+    width:100%!important;
+    justify-self:stretch!important;
+  }
+}
+@media(max-width:620px){
+  #page-team-master .team-workspace-hero-actions-v61528{
+    grid-template-columns:1fr!important;
+    grid-template-areas:
+      "org"
+      "date"
+      "refresh"
+      "density"
+      "create"!important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   SCHEDULE CALENDAR
+   Separate Scope Filters from Period/Load Actions. This removes the compressed
+   single-row layout that caused fields/buttons to collide at common desktop
+   widths. The second row owns the period navigator and the primary CTA.
+   -------------------------------------------------------------------------- */
+#page-schedule .schedule-control-panel-body-v61529f15m{
+  padding:15px 17px 12px!important;
+}
+#page-schedule .schedule-control-heading-v61529f15m{
+  margin-bottom:12px!important;
+}
+#page-schedule .schedule-toolbar-v61529f15m{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:11px!important;
+  align-items:stretch!important;
+  padding:0!important;
+}
+#page-schedule .schedule-filter-group-v61118{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(120px,.75fr) minmax(180px,1.05fr) minmax(190px,1.08fr) minmax(160px,.90fr) minmax(220px,1.20fr)!important;
+  gap:10px!important;
+  align-items:start!important;
+}
+#page-schedule .schedule-filter-group-v61118 .field{
+  min-width:0!important;
+  margin:0!important;
+}
+#page-schedule .schedule-filter-group-v61118 .field label{
+  min-height:15px;
+  margin-bottom:5px!important;
+  line-height:1.2!important;
+}
+#page-schedule .schedule-filter-group-v61118 .select,
+#page-schedule .schedule-filter-group-v61118 .input{
+  width:100%!important;
+  min-width:0!important;
+  height:40px!important;
+}
+#page-schedule .schedule-operational-team-field-v61526 small{
+  margin-top:4px!important;
+  min-height:13px;
+}
+
+#page-schedule .schedule-week-control-v61529f15m{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 150px!important;
+  align-items:stretch!important;
+  gap:9px!important;
+  padding:6px!important;
+}
+#page-schedule .schedule-week-nav-v61118{
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:minmax(112px,auto) minmax(280px,1fr) minmax(120px,auto) minmax(112px,auto)!important;
+  gap:6px!important;
+  min-width:0!important;
+}
+#page-schedule .schedule-week-nav-v61118>*{min-width:0!important}
+#page-schedule .schedule-week-nav-v61118 .btn,
+#page-schedule .schedule-period-field-v61118,
+#page-schedule .schedule-load-btn-v61118{
+  height:40px!important;
+  min-height:40px!important;
+}
+#page-schedule .schedule-load-btn-v61118{
+  width:100%!important;
+  min-width:0!important;
+  margin:0!important;
+  white-space:nowrap;
+}
+#page-schedule .schedule-control-footer-v61529f15m{
+  width:100%;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:10px!important;
+  margin-top:10px!important;
+}
+#page-schedule .schedule-control-footer-v61529f15m .schedule-load-status{
+  min-width:0!important;
+}
+#page-schedule .schedule-control-footer-v61529f15m .schedule-pattern-summary{
+  min-width:0;
+  flex-wrap:wrap!important;
+}
+
+@media(max-width:1280px){
+  #page-schedule .schedule-filter-group-v61118{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  #page-schedule .schedule-search-field-v61529f15m{
+    grid-column:span 2!important;
+  }
+}
+@media(max-width:940px){
+  #page-schedule .schedule-filter-group-v61118{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  #page-schedule .schedule-search-field-v61529f15m{
+    grid-column:span 2!important;
+  }
+  #page-schedule .schedule-week-control-v61529f15m{
+    grid-template-columns:1fr!important;
+  }
+  #page-schedule .schedule-load-btn-v61118{
+    width:100%!important;
+  }
+  #page-schedule .schedule-control-footer-v61529f15m{
+    grid-template-columns:1fr!important;
+    align-items:start!important;
+  }
+  #page-schedule .schedule-control-footer-v61529f15m .schedule-pattern-summary{
+    justify-content:flex-start!important;
+  }
+}
+@media(max-width:700px){
+  #page-schedule .schedule-control-panel-body-v61529f15m{
+    padding:13px 12px 11px!important;
+  }
+  #page-schedule .schedule-filter-group-v61118{
+    grid-template-columns:1fr!important;
+  }
+  #page-schedule .schedule-search-field-v61529f15m{
+    grid-column:auto!important;
+  }
+  #page-schedule .schedule-week-nav-v61118{
+    grid-template-columns:auto minmax(0,1fr) auto!important;
+    grid-template-rows:auto auto!important;
+  }
+  #page-schedule #schedulePrevMonthBtn{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  #page-schedule .schedule-period-field-v61118{
+    grid-column:2!important;
+    grid-row:1!important;
+  }
+  #page-schedule #scheduleNextMonthBtn{
+    grid-column:3!important;
+    grid-row:1!important;
+  }
+  #page-schedule #scheduleTodayBtn{
+    grid-column:1/-1!important;
+    grid-row:2!important;
+    width:100%!important;
+  }
+  #page-schedule .schedule-week-btn-v61118 span{
+    display:none;
+  }
+}
