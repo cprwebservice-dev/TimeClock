@@ -38589,3 +38589,60 @@ body.dark .dashboard-chart-tooltip-v616ez .chart-tip-counts{background:#263a54;c
   .dashboard-chart-tooltip-v616ez{padding:11px 12px;width:min(265px,calc(100vw - 20px))}
   .dashboard-chart-tooltip-v616ez .chart-tip-value{font-size:22px}
 }
+
+/* FIX16FA: compact attendance comparison rows and responsive side-by-side charts */
+#page-dashboard .dashboard-manager-rate-panel-v616eq .dashboard-dual-charts-v616fa{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:16px
+}
+#page-dashboard .dashboard-dual-chart-cell-v616fa{min-width:0;overflow:visible}
+#page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-host-v616ev{margin:0}
+#page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-card-v616ev{height:100%;padding:13px 12px 10px}
+#page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-head-v616ev{display:block}
+#page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-legend-v616ev{justify-content:flex-start;margin-top:10px;gap:5px}
+#page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-chip-v616ev{padding:5px 8px;gap:5px;font-size:10px}
+#page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-chart-v616ev,
+#page-dashboard .dashboard-dual-chart-overall-v616fa .dashboard-rate-chart-v616er{min-height:285px}
+#page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-chart-v616ev svg,
+#page-dashboard .dashboard-dual-chart-overall-v616fa .dashboard-rate-chart-v616er svg{min-height:0!important;max-height:none!important;height:auto!important;aspect-ratio:1240/380}
+#page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-chart-v616ev svg{aspect-ratio:1240/360}
+#page-dashboard .dashboard-dual-chart-overall-v616fa .dashboard-line-legend-v616er{gap:9px;padding:9px;margin:9px 0}
+#page-dashboard .dashboard-dual-chart-overall-v616fa .dashboard-rate-summary-v616er{padding:9px 11px}
+#page-dashboard .dashboard-manager-line-chart-v616eq .dashboard-chart-visible-point-v616fa{pointer-events:none}
+#page-dashboard .dashboard-manager-line-chart-v616eq .dashboard-chart-hit-v616fa{
+  pointer-events:all!important;cursor:crosshair;outline:none;stroke:transparent;stroke-width:0
+}
+#page-dashboard .dashboard-manager-line-chart-v616eq .dashboard-chart-hit-v616fa:focus-visible{stroke:rgba(37,99,235,.55);stroke-width:1.5}
+#page-dashboard .dashboard-org-comparison-table-v616eq tbody td,
+#page-dashboard .dashboard-org-comparison-table-v616eq tfoot td,
+#page-dashboard .dashboard-org-comparison-table-v616eq tfoot th{vertical-align:middle;white-space:nowrap}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er td{padding-top:9px!important;padding-bottom:9px!important}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-rate-inline-v616fa{
+  display:flex!important;align-items:center!important;flex-direction:row!important;gap:7px!important;
+  justify-content:flex-start!important;min-height:30px!important;padding:0!important;white-space:nowrap
+}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-rate-inline-v616fa small{
+  display:inline!important;white-space:nowrap!important;font-size:11px!important;line-height:1.2!important;margin:0!important
+}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-rate-inline-v616fa .dashboard-rate-pill-v616eq{
+  padding:4px 7px!important;font-size:11px!important;min-width:54px!important
+}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-diff-inline-v616fa{
+  display:inline-flex!important;flex-direction:row!important;align-items:center!important;gap:3px;white-space:nowrap;font-size:11px
+}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-rate-inline-empty-v616fa{
+  display:inline!important;white-space:nowrap;font-size:11px;color:var(--text-muted,#64748b)
+}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-org-name-inline-v616fa{
+  display:flex!important;flex-direction:row!important;align-items:center;gap:7px!important;
+  min-width:0;max-width:360px;white-space:nowrap
+}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-org-name-inline-v616fa span{
+  max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap
+}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-group-summary-inline-v616fa{font-size:11px}
+#page-dashboard .dashboard-org-comparison-table-v616eq{min-width:1300px}
+@media(max-width:1360px){
+  #page-dashboard .dashboard-manager-rate-panel-v616eq .dashboard-dual-charts-v616fa{grid-template-columns:1fr;gap:14px}
+  #page-dashboard .dashboard-dual-chart-overall-v616fa .dashboard-rate-chart-v616er,
+  #page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-chart-v616ev{min-height:270px}
+}

@@ -5374,7 +5374,9 @@ window.tcIsDayShiftCode = value =>
     function dashboardRateDotV616EZ(x,y,cls,r,details) {
       const payload=encodeURIComponent(JSON.stringify(details));
       const aria=dashboardManagerSafeV616EQ([details.title,details.date,details.value,details.counts].filter(Boolean).join(' • '));
-      return `<circle class="${cls} dashboard-chart-point-v616ez" cx="${x}" cy="${y}" r="${r}" tabindex="0" role="img" focusable="true" aria-label="${aria}" data-chart-tip-v616ez="${payload}"/>`;
+      const fill=/^#[0-9a-fA-F]{6}$/.test(String(details.color||''))?details.color:'#2563eb';
+      const radius=Math.min(2.65,Math.max(1.8,Number(r||2)*.48));
+      return `<g class="dashboard-chart-marker-v616fa"><circle class="dashboard-chart-visible-point-v616fa ${cls}" cx="${x}" cy="${y}" r="${radius}" fill="${fill}" stroke="var(--panel-bg,#fff)" stroke-width=".9" pointer-events="none"/><circle class="dashboard-chart-point-v616ez dashboard-chart-hit-v616fa" cx="${x}" cy="${y}" r="11" fill="transparent" stroke="none" tabindex="0" role="img" focusable="true" aria-label="${aria}" data-chart-tip-v616ez="${payload}"/></g>`;
     }
 
     function installDashboardChartTooltipsV616EZ() {
@@ -5420,18 +5422,39 @@ window.tcIsDayShiftCode = value =>
         place(target);
       };
       const marker=event=>event.target?.closest?.('[data-chart-tip-v616ez]')||null;
+      const chartUnderPointer=event=>event.target?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg')||null;
+      // Pick the nearest point in screen pixels: users can hover over a line without
+      // trying to hit a tiny circle; distance also differentiates crowded Area lines.
+      const nearest=(svg,event)=>{
+        let match=null,min=Infinity;
+        if(!svg) return null;
+        for(const dot of svg.querySelectorAll('[data-chart-tip-v616ez]')){
+          const box=dot.getBoundingClientRect();
+          const dx=event.clientX-(box.left+box.width/2);
+          const dy=event.clientY-(box.top+box.height/2);
+          const d=dx*dx+dy*dy;
+          if(d<min){min=d;match=dot;}
+        }
+        return min<=38*38?match:null;
+      };
       document.addEventListener('pointerover',event=>{
         if(event.pointerType==='touch'||pinned) return;
-        const dot=marker(event);
+        const svg=chartUnderPointer(event);
+        const dot=marker(event)||nearest(svg,event);
         if(dot&&dot!==active) show(dot);
       });
       document.addEventListener('pointermove',event=>{
         if(event.pointerType==='touch'||pinned) return;
-        const dot=marker(event);
-        if(dot&&dot!==active) show(dot);
+        const svg=chartUnderPointer(event);
+        const dot=nearest(svg,event)||marker(event);
+        if(dot){if(dot!==active)show(dot);}
+        else if(active) hide();
       });
       document.addEventListener('pointerout',event=>{
-        if(!pinned&&active&&event.target===active&&!active.contains(event.relatedTarget)) hide();
+        if(pinned||!active)return;
+        const leavingChart=event.target?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg');
+        const enteringChart=event.relatedTarget?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg');
+        if(leavingChart&&!enteringChart)hide();
       });
       document.addEventListener('focusin',event=>{const dot=marker(event);if(dot){pinned=false;show(dot);}});
       document.addEventListener('focusout',event=>{if(active&&event.target===active&&!pinned) hide();});
@@ -5620,16 +5643,16 @@ window.tcIsDayShiftCode = value =>
       const pill = rate => rate === null ? '—' : `<span class="dashboard-rate-pill-v616eq ${dashboardManagerRateToneV616EQ(rate)}">${rate.toFixed(1)}%</span>`;
       const rateCell = (complete, total) => {
         const c = Number(complete || 0), t = Number(total || 0);
-        if (!t) return '<span class="dashboard-rate-empty-v616et">—<small>ไม่มีวันทำงานที่ต้องลงเวลา</small></span>';
-        return `<div class="dashboard-rate-metric-v616et">${pill(ratio(c,t))}<small>ครบ <b>${formatNumber(c)}</b> จาก <b>${formatNumber(t)}</b></small></div>`;
+        if (!t) return '<span class="dashboard-rate-empty-v616et dashboard-rate-inline-empty-v616fa" title="ไม่มีวันทำงานที่ต้องลงเวลา">— ไม่มีฐาน</span>';
+        return `<div class="dashboard-rate-metric-v616et dashboard-rate-inline-v616fa">${pill(ratio(c,t))}<small>ครบ <b>${formatNumber(c)}</b> / <b>${formatNumber(t)}</b></small></div>`;
       };
       const delta = (a, b) => {
-        if (a === null || b === null) return '<span class="dashboard-diff-empty-v616et">—<small>ไม่มีฐานเปรียบเทียบ</small></span>';
+        if (a === null || b === null) return '<span class="dashboard-diff-empty-v616et dashboard-rate-inline-empty-v616fa">— ไม่มีฐาน</span>';
         const d = a - b;
         const tone = d > .05 ? 'up' : d < -.05 ? 'down' : 'flat';
         const word = tone === 'up' ? 'สูงกว่า' : tone === 'down' ? 'ต่ำกว่า' : 'เท่ากับ';
         const sign = tone === 'up' ? '↑ ' : tone === 'down' ? '↓ ' : '=';
-        return `<span class="dashboard-diff-detail-v616et ${tone}" title="ผลต่าง = อัตราลงเวลาครบวันล่าสุด ลบ อัตราสะสม">${sign}${word}<b>${Math.abs(d).toFixed(1)} จุด%</b></span>`;
+        return `<span class="dashboard-diff-detail-v616et ${tone} dashboard-diff-inline-v616fa" title="ผลต่าง = อัตราลงเวลาครบวันล่าสุด ลบ อัตราสะสม">${sign}${word} <b>${Math.abs(d).toFixed(1)} จุด%</b></span>`;
       };
       const aggregate = list => list.reduce((acc,row) => {
         for (const name of ['employee_count','daily_complete','daily_total','cumulative_complete','cumulative_total']) {
@@ -5652,7 +5675,7 @@ window.tcIsDayShiftCode = value =>
       const makeDataRow = row => {
         const day = ratio(Number(row.daily_complete || 0), Number(row.daily_total || 0));
         const cum = cumulativeRate(row);
-        return `<tr class="dashboard-org-data-row-v616er"><td>${dashboardManagerSafeV616EQ(row._zone)}</td><td>${dashboardManagerSafeV616EQ(row._sub)}</td><td>${dashboardManagerSafeV616EQ(row._subArea)}</td><td><div class="dashboard-org-name-v616eq"><strong>${dashboardManagerSafeV616EQ(row.org_code || '')}</strong><span>${dashboardManagerSafeV616EQ(row.org_name || '')}</span></div></td><td class="text-right">${formatNumber(row.employee_count || 0)}</td><td>${rateCell(row.daily_complete,row.daily_total)}</td><td>${rateCell(row.cumulative_complete,row.cumulative_total)}</td><td>${delta(day,cum)}</td></tr>`;
+        return `<tr class="dashboard-org-data-row-v616er"><td>${dashboardManagerSafeV616EQ(row._zone)}</td><td>${dashboardManagerSafeV616EQ(row._sub)}</td><td>${dashboardManagerSafeV616EQ(row._subArea)}</td><td><div class="dashboard-org-name-v616eq dashboard-org-name-inline-v616fa" title="${dashboardManagerSafeV616EQ([row.org_code,row.org_name].filter(Boolean).join(' · '))}"><strong>${dashboardManagerSafeV616EQ(row.org_code || '')}</strong><span>${dashboardManagerSafeV616EQ(row.org_name || '')}</span></div></td><td class="text-right">${formatNumber(row.employee_count || 0)}</td><td>${rateCell(row.daily_complete,row.daily_total)}</td><td>${rateCell(row.cumulative_complete,row.cumulative_total)}</td><td>${delta(day,cum)}</td></tr>`;
       };
       const makeGroupRow = group => {
         const key = `FIX16EY|${mode}|${group.label}`;
@@ -5662,7 +5685,7 @@ window.tcIsDayShiftCode = value =>
         const cum = cumulativeRate(c);
         const cells = ['', '', ''];
         cells[dimension.column] = `<button type="button" class="dashboard-group-toggle-v616ev" data-group-toggle="${dashboardManagerSafeV616EQ(key)}" aria-expanded="${expanded?'true':'false'}" title="${expanded?'ย่อ':'ขยาย'}กลุ่ม ${dashboardManagerSafeV616EQ(dimension.label)}: ${dashboardManagerSafeV616EQ(group.label)}"><span class="caret" aria-hidden="true">${expanded?'▾':'▸'}</span><span>${dashboardManagerSafeV616EQ(dimension.label)}: ${dashboardManagerSafeV616EQ(group.label)}</span><small class="dashboard-group-count-v616ey">${formatNumber(group.rows.length)} หน่วยงาน</small></button>`;
-        return `<tr class="dashboard-group-row-v616er ${mode} dashboard-group-row-v616ey" data-group-key="${dashboardManagerSafeV616EQ(key)}"><td>${cells[0]}</td><td>${cells[1]}</td><td>${cells[2]}</td><td class="dashboard-group-summary-v616ev">รวมในกลุ่ม</td><td class="text-right">${formatNumber(c.employee_count)}</td><td>${rateCell(c.daily_complete,c.daily_total)}</td><td>${rateCell(c.cumulative_complete,c.cumulative_total)}</td><td>${delta(day,cum)}</td></tr>`;
+        return `<tr class="dashboard-group-row-v616er ${mode} dashboard-group-row-v616ey" data-group-key="${dashboardManagerSafeV616EQ(key)}"><td>${cells[0]}</td><td>${cells[1]}</td><td>${cells[2]}</td><td class="dashboard-group-summary-v616ev dashboard-group-summary-inline-v616fa">รวมในกลุ่ม</td><td class="text-right">${formatNumber(c.employee_count)}</td><td>${rateCell(c.daily_complete,c.daily_total)}</td><td>${rateCell(c.cumulative_complete,c.cumulative_total)}</td><td>${delta(day,cum)}</td></tr>`;
       };
       if (controls && !controls.dataset.bound) {
         controls.dataset.bound='1';

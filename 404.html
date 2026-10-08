@@ -235,12 +235,18 @@
       <div class="dashboard-rate-tools-v616er"><label for="dashboardRateTargetV616ER">เป้าหมาย <input type="number" min="0" max="100" step="1" value="90" id="dashboardRateTargetV616ER" aria-label="เป้าหมายอัตราลงเวลาครบ"> %</label><span class="panel-chip" id="dashboardManagerLatestRateV616EQ">—</span></div>
     </div>
     <div class="panel-body">
-      <div class="dashboard-manager-line-chart-v616eq dashboard-rate-chart-v616er" id="dashboardManagerRateChartV616EQ">
-        <div class="dashboard-manager-empty-v616eq">เลือกช่วงวันที่แล้วกดแสดงผล</div>
+      <div class="dashboard-dual-charts-v616fa" aria-label="เปรียบเทียบกราฟลงเวลารวมและราย Area">
+        <div class="dashboard-dual-chart-cell-v616fa dashboard-dual-chart-overall-v616fa">
+        <div class="dashboard-manager-line-chart-v616eq dashboard-rate-chart-v616er" id="dashboardManagerRateChartV616EQ">
+          <div class="dashboard-manager-empty-v616eq">เลือกช่วงวันที่แล้วกดแสดงผล</div>
+        </div>
+        <div class="dashboard-line-legend-v616er"><span class="daily">รายวัน</span><span class="cumulative">สะสมตั้งแต่ต้นช่วง</span><span class="target">เป้าหมาย</span></div>
+        <div class="dashboard-rate-summary-v616er" id="dashboardRateSummaryV616ER">รอข้อมูลการลงเวลา</div>
+        </div>
+        <div class="dashboard-dual-chart-cell-v616fa dashboard-dual-chart-area-v616fa">
+  <div class="dashboard-area-compare-host-v616ev in-rate-panel" id="dashboardAreaTrendCompareV616EV"><div class="dashboard-manager-empty-v616eq">กำลังรอกราฟเทียบสะสม by Area</div></div>
+        </div>
       </div>
-      <div class="dashboard-line-legend-v616er"><span class="daily">รายวัน</span><span class="cumulative">สะสมตั้งแต่ต้นช่วง</span><span class="target">เป้าหมาย</span></div>
-      <div class="dashboard-rate-summary-v616er" id="dashboardRateSummaryV616ER">รอข้อมูลการลงเวลา</div>
-      <div class="dashboard-area-compare-host-v616ev in-rate-panel" id="dashboardAreaTrendCompareV616EV"><div class="dashboard-manager-empty-v616eq">กำลังรอกราฟเทียบสะสม by Area</div></div>
       <p class="dashboard-rate-definition-v616er">อัตราลงเวลาครบ = จำนวนรายการวัน–พนักงานที่มีเวลาเข้าและออกครบ ÷ รายการวัน–พนักงานทั้งหมด × 100 • วันที่ไม่มีรายการจะไม่ถูกนำไปหาร</p>
     </div>
   </article>
