@@ -5533,7 +5533,8 @@ window.tcIsDayShiftCode = value =>
           if(state.managerDashboardAreaV616ER) renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
         });
       }
-      renderDashboardOrgComparisonV616ER(payload?.org_comparison);
+      const comparison = Array.isArray(payload?.org_comparison) ? payload.org_comparison : [];
+      renderDashboardOrgComparisonV616ER(comparison);
       if ($("dashboardOrgComparisonCountV616EQ")) $("dashboardOrgComparisonCountV616EQ").textContent=`${formatNumber(comparison.length)} หน่วยงาน`;
       if ($("dashboardOrgComparisonDateV616EQ")) {
         const date=String(payload?.latest_attendance_date||"");
