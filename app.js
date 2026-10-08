@@ -5792,9 +5792,96 @@ window.tcIsDayShiftCode = value =>
       }
     }
 
+    // FIX16FD • Six executive KPIs with honest, scoped numbers and real daily history.
+    // Never use mocked sparkline values, invent comparison periods, or silently turn RPC errors into zero.
+    function dashboardExecutiveSparklineV616FD(series,tone,label){
+      const values=series.filter(Number.isFinite).slice(-18);
+      if(values.length<2) return '<span class="dashboard-executive-spark-empty-v616fd" aria-label="ข้อมูลแนวโน้มยังไม่เพียงพอ">—</span>';
+      const W=112,H=52,l=6,r=6,t=8,b=8,lo=Math.min(...values),hi=Math.max(...values);
+      const spread=Math.max(hi-lo,Math.abs(hi)*.08,1);
+      const low=lo-(spread-(hi-lo))/2, high=hi+(spread-(hi-lo))/2;
+      const x=i=>l+i*(W-l-r)/(values.length-1), y=v=>H-b-((v-low)/(high-low))*(H-t-b);
+      const xy=values.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      const end=values.length-1;
+      return `<svg viewBox="0 0 ${W} ${H}" class="dashboard-executive-spark-v616fd ${tone}" role="img" aria-label="${dashboardManagerSafeV616EQ(label)}"><polyline points="${xy}" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(end).toFixed(1)}" cy="${y(values[end]).toFixed(1)}" r="3" fill="currentColor"/></svg>`;
+    }
+
+    function renderDashboardExecutiveKpisV616FD(payload){
+      const host=$('dashboardExecutiveKpisV616FD');
+      if(!host)return;
+      const daily=(Array.isArray(payload?.daily)?payload.daily:[]).filter(r=>Number(r?.total||0)>0);
+      const last=daily[daily.length-1]||null, previous=daily[daily.length-2]||null;
+      const s=payload?.summary||{};
+      const total=daily.reduce((sum,row)=>sum+Number(row.total||0),0);
+      const complete=daily.reduce((sum,row)=>sum+Number(row.complete||0),0);
+      const percent=total>0?100*complete/total:null;
+      const display=(n,digits=0)=>Number.isFinite(n)?n.toLocaleString('th-TH',{minimumFractionDigits:digits,maximumFractionDigits:digits}):'—';
+      const valOrNull=(value)=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
+      const items=[
+        {key:'rate',label:'อัตราลงเวลาครบ',value:percent,unit:'%',digits:1,tone:'blue',series:daily.map(r=>100*Number(r.complete||0)/Number(r.total)),last:last?100*Number(last.complete||0)/Number(last.total):null,prior:previous?100*Number(previous.complete||0)/Number(previous.total):null,kind:'rate',note:total?`ครบ ${display(complete)} จาก ${display(total)} วัน-พนักงาน`:'ไม่มีวันทำงานที่ต้องลงเวลา',tooltip:'นับเฉพาะวัน-พนักงานที่มีกะทำงานและต้องลงเวลา ไม่รวมวันหยุดและลาเต็มวัน'},
+        {key:'absent',label:'ขาดงาน',value:valOrNull(s.absent_rows),unit:'รายการ',tone:'red',series:daily.map(r=>Number(r.absent||0)),last:last?Number(last.absent||0):null,prior:previous?Number(previous.absent||0):null,kind:'count',note:total&&s.absent_rows!=null?`${display(100*Number(s.absent_rows)/total,1)}% ของวัน-พนักงานที่ต้องลงเวลา`:'ตามช่วงวันที่และ Scope ที่เลือก',tooltip:'ยึดสถานะขาดงานของระบบ: เวลาไม่ครบ หรือมาสาย ≥30 นาที'},
+        {key:'late',label:'มาสาย (1–29 นาที)',value:valOrNull(s.late_rows),unit:'รายการ',tone:'orange',series:daily.map(r=>Number(r.late||0)),last:last?Number(last.late||0):null,prior:previous?Number(previous.late||0):null,kind:'count',note:total&&s.late_rows!=null?`${display(100*Number(s.late_rows)/total,1)}% ของวัน-พนักงานที่ต้องลงเวลา`:'ตามช่วงวันที่และ Scope ที่เลือก',tooltip:'เฉพาะรายการลงเวลาครบที่มาสาย 1–29 นาที'},
+        {key:'early',label:'กลับก่อนเวลา',value:valOrNull(s.early_leave_rows),unit:'รายการ',tone:'orange',series:daily.map(r=>Number(r.early||0)),last:last?Number(last.early||0):null,prior:previous?Number(previous.early||0):null,kind:'count',note:total&&s.early_leave_rows!=null?`${display(100*Number(s.early_leave_rows)/total,1)}% ของวัน-พนักงานที่ต้องลงเวลา`:'ตามช่วงวันที่และ Scope ที่เลือก',tooltip:'รายการที่เวลาออกก่อนสิ้นสุดกะ ตามการคำนวณ Attendance'},
+        {key:'ot',label:'ชั่วโมง OT',value:valOrNull(s.overtime_hours),unit:'ชม.',digits:valOrNull(s.overtime_hours)%1===0?0:1,tone:'navy',series:daily.map(r=>Number(r.otHours||0)),last:last?Number(last.otHours||0):null,prior:previous?Number(previous.otHours||0):null,kind:'hours',note:s.paid_work_hours>0?`คิดเป็น ${display(100*Number(s.overtime_hours||0)/Number(s.paid_work_hours),1)}% ของชั่วโมงสุทธิ`:'ยอดชั่วโมง OT ในช่วงที่เลือก',tooltip:'ชั่วโมง OT รวมตามตัวกรอง Dashboard; แนวโน้มแสดงเป็นรายวัน'},
+        {key:'pending',label:'คำขอรอพิจารณา',value:null,unit:'รายการ',tone:'red',series:[],kind:'pending',note:'กำลังโหลดคิวคำขอตามช่วงที่เลือก',tooltip:'คำขอสถานะ PENDING / IN_REVIEW จากคิวคำขอที่ผู้ใช้มีสิทธิ์เห็น'}
+      ];
+      const pending=state.dashboardPendingRequestsV616FD;
+      if(pending && pending.key===payload?._filterKeyV616EQ){
+        const card=items[5];
+        if(pending.status==='ready'){
+          card.value=pending.count;
+          card.note=`คำขอที่รอพิจารณาในช่วงที่เลือก${pending.truncated?' • จำนวนขั้นต่ำ':''}`;
+          card.truncated=!!pending.truncated;
+        }else if(pending.status==='error') card.note='ยังดึงข้อมูลคำขอไม่ได้ • คลิกเปิดคิวคำขอ';
+      }
+      host.innerHTML=items.map(item=>{
+        const numeric=item.value!==null && Number.isFinite(item.value);
+        const rate=item.kind==='rate';
+        let chip='—',dir='neutral',comparison='ต้องมีอย่างน้อย 2 วันที่มีฐานเพื่อเปรียบเทียบ';
+        if(item.last!==null&&item.prior!==null&&Number.isFinite(item.last)&&Number.isFinite(item.prior)){
+          const diff=item.last-item.prior;
+          dir=Math.abs(diff)<.000001?'neutral':(item.kind==='rate'?(diff>0?'good':'bad'):(item.kind==='hours'?'neutral':diff>0?'bad':'good'));
+          chip=`${diff>0?'+':diff<0?'−':''}${display(Math.abs(diff),rate?1:item.kind==='hours'?1:0)} ${rate?'จุด%':item.kind==='hours'?'ชม.':'รายการ'}`;
+          comparison='การเปลี่ยนแปลง: วันล่าสุดเทียบวันก่อนหน้าที่มีวันทำงาน';
+        }
+        const spark=item.kind==='pending'?'<span class="dashboard-executive-pending-icon-v616fd" aria-hidden="true">◷</span>':dashboardExecutiveSparklineV616FD(item.series,item.tone,`แนวโน้ม ${item.label} ในช่วงที่เลือก`);
+        const value=numeric?`${item.truncated?'≥ ':''}${display(item.value,item.digits||0)}`:'—';
+        const main=`<div class="dashboard-executive-kpi-main-v616fd"><div class="dashboard-executive-kpi-value-v616fd"><strong>${value}</strong><em>${item.unit}</em></div>${spark}</div>`;
+        const delta=item.kind==='pending'?'<span class="dashboard-executive-kpi-delta-v616fd neutral">คิวคำขอ</span>':`<span class="dashboard-executive-kpi-delta-v616fd ${dir}" title="${dashboardManagerSafeV616EQ(comparison)}">${chip}</span>`;
+        return `<article class="dashboard-executive-kpi-v616fd ${item.tone}"><div class="dashboard-executive-kpi-title-v616fd" title="${dashboardManagerSafeV616EQ(item.tooltip)}">${dashboardManagerSafeV616EQ(item.label)}</div>${main}<div class="dashboard-executive-kpi-bottom-v616fd">${delta}<small>${dashboardManagerSafeV616EQ(item.kind==='pending'?item.note:item.kind==='rate'?`เป้าหมาย ${display(dashboardTargetV616ER(),0)}% • ${item.note}`:item.note)}</small></div>${item.kind==='pending'?'<button type="button" class="dashboard-executive-kpi-link-v616fd" data-go-page="shift-requests">ดูคิวคำขอ →</button>':''}</article>`;
+      }).join('');
+    }
+
+    // Read the existing scoped request readers asynchronously; do not block charts and avoid
+    // treating permission/network errors as zero pending requests. No new SQL required.
+    function loadDashboardPendingRequestsV616FD(payload){
+      if(!payload?._filterKeyV616EQ||!state.client)return;
+      const key=payload._filterKeyV616EQ;
+      const requestId=state.dashboardPendingRequestSeqV616FD=(state.dashboardPendingRequestSeqV616FD||0)+1;
+      state.dashboardPendingRequestsV616FD={key,status:'loading'};
+      const common={p_start_date:val('dashStart'),p_end_date:val('dashEnd'),p_search:null,p_limit:1000};
+      Promise.all([
+        state.client.rpc('ta_get_shift_change_requests_v680',{...common,p_statuses:['PENDING']}),
+        state.client.rpc('ta_get_employee_requests_v61481',{...common,p_statuses:['PENDING','IN_REVIEW'],p_request_types:null})
+      ]).then(results=>{
+        if(requestId!==state.dashboardPendingRequestSeqV616FD)return;
+        if(results.some(r=>r?.error))throw new Error('REQUEST_QUEUE_READ_FAILED');
+        const a=Array.isArray(results[0]?.data)?results[0].data:[];
+        const b=Array.isArray(results[1]?.data)?results[1].data:[];
+        const pendingRows=[...a,...b].filter(r=>['PENDING','IN_REVIEW'].includes(String(r?.status||'').toUpperCase()));
+        state.dashboardPendingRequestsV616FD={key,status:'ready',count:pendingRows.length,truncated:a.length>=1000||b.length>=1000};
+        if(state.managerDashboardV616EQ?._filterKeyV616EQ===key)renderDashboardExecutiveKpisV616FD(state.managerDashboardV616EQ);
+      }).catch(()=>{
+        if(requestId!==state.dashboardPendingRequestSeqV616FD)return;
+        state.dashboardPendingRequestsV616FD={key,status:'error'};
+        if(state.managerDashboardV616EQ?._filterKeyV616EQ===key)renderDashboardExecutiveKpisV616FD(state.managerDashboardV616EQ);
+      });
+    }
+
     function renderManagerDashboardV616EQ(payload) {
       installDashboardChartTooltipsV616EZ();
       state.managerDashboardV616EQ = payload || {};
+      renderDashboardExecutiveKpisV616FD(payload);
       const workforce = Array.isArray(payload?.workforce) ? payload.workforce : [];
       const wfHost = $("dashboardWorkforceAreaChartV616EQ");
       if (wfHost) {
@@ -5879,6 +5966,7 @@ window.tcIsDayShiftCode = value =>
             state.dashboardOrgManagerLoadingV616FB = true;
             if($("dashboardOrgManagerStatusV616FB")) $("dashboardOrgManagerStatusV616FB").textContent='กำลังโหลด Manager ตาม Scope…';
             renderManagerDashboardV616EQ(payloadV616EQ);
+            loadDashboardPendingRequestsV616FD(payloadV616EQ);
             // FIX16FB: fetch only current authorized Organization managers in one scoped READ RPC.
             // A separate request keeps the original dashboard and charts responsive.
             state.dashboardOrgManagerRequestV616FB=(state.dashboardOrgManagerRequestV616FB||0)+1;

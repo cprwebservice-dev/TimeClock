@@ -38737,3 +38737,42 @@ body.theme-dark #page-dashboard .dashboard-area-comparison-panel-v616fb .dashboa
 @media(max-width:720px){#page-dashboard .dashboard-org-searchfield-v616fc{flex:1 1 100%;max-width:none}#page-dashboard .dashboard-org-search-count-v616fc{margin-left:0}}
 html[data-theme="dark"] #page-dashboard .dashboard-org-searchfield-v616fc,body.theme-dark #page-dashboard .dashboard-org-searchfield-v616fc,body.dark #page-dashboard .dashboard-org-searchfield-v616fc{border-color:#334155;background:#172235;box-shadow:none}
 html[data-theme="dark"] #page-dashboard .dashboard-org-search-clear-v616fc,body.theme-dark #page-dashboard .dashboard-org-search-clear-v616fc,body.dark #page-dashboard .dashboard-org-search-clear-v616fc{background:#1e293b;color:#e2e8f0;border-color:#334155}
+
+/* FIX16FD · Modern six-card executive KPI strip above workforce chart.
+   Only styles the new strip. Existing dashboard visualizations and backend are unchanged. */
+#page-dashboard .dashboard-executive-kpis-v616fd{margin:0 0 18px;min-width:0}
+#page-dashboard .dashboard-executive-kpi-grid-v616fd{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+#page-dashboard .dashboard-executive-kpi-v616fd{position:relative;display:flex;flex-direction:column;min-width:0;min-height:151px;padding:14px 15px 12px;border:1px solid var(--border-color,#dae4ef);border-radius:17px;background:var(--panel-bg,#fff);box-shadow:0 7px 22px rgba(15,36,64,.055);overflow:hidden;--strip:#2563eb;--wash:#eff6ff}
+#page-dashboard .dashboard-executive-kpi-v616fd::before{position:absolute;top:0;left:15px;right:15px;height:2px;border-radius:0 0 8px 8px;background:var(--strip);content:'';opacity:.64}
+#page-dashboard .dashboard-executive-kpi-v616fd.blue{--strip:#2563eb;--wash:#eff6ff}
+#page-dashboard .dashboard-executive-kpi-v616fd.red{--strip:#ef4444;--wash:#fff1f2}
+#page-dashboard .dashboard-executive-kpi-v616fd.orange{--strip:#f97316;--wash:#fff7ed}
+#page-dashboard .dashboard-executive-kpi-v616fd.navy{--strip:#17446a;--wash:#eef5fb}
+#page-dashboard .dashboard-executive-kpi-title-v616fd{font-size:12px;line-height:1.35;font-weight:800;color:var(--text-primary,#1e3854);white-space:normal;min-height:17px}
+#page-dashboard .dashboard-executive-kpi-main-v616fd{display:flex;gap:5px;align-items:center;justify-content:space-between;min-height:60px}
+#page-dashboard .dashboard-executive-kpi-value-v616fd{display:flex;gap:4px;align-items:baseline;min-width:0;white-space:nowrap}
+#page-dashboard .dashboard-executive-kpi-value-v616fd strong{font-family:'Space Grotesk','Noto Sans Thai',sans-serif;font-size:clamp(23px,1.65vw,29px);letter-spacing:-.04em;line-height:1.15;color:var(--text-primary,#152d48);font-weight:800;font-variant-numeric:tabular-nums}
+#page-dashboard .dashboard-executive-kpi-value-v616fd em{font-style:normal;color:var(--text-muted,#64748b);font-size:10.5px;font-weight:700}
+#page-dashboard .dashboard-executive-spark-v616fd{width:38%;max-width:105px;min-width:44px;height:auto;flex-shrink:1;color:var(--strip);overflow:visible}
+#page-dashboard .dashboard-executive-spark-empty-v616fd{color:var(--text-muted,#94a3b8);margin-right:10px}
+#page-dashboard .dashboard-executive-pending-icon-v616fd{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:var(--wash);color:var(--strip);font-size:25px}
+#page-dashboard .dashboard-executive-kpi-bottom-v616fd{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:auto}
+#page-dashboard .dashboard-executive-kpi-delta-v616fd{display:inline-flex;align-items:center;min-height:22px;max-width:100%;padding:3px 9px;border-radius:999px;background:var(--wash);color:var(--strip);font-size:10.5px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+#page-dashboard .dashboard-executive-kpi-delta-v616fd.good{background:#e9f8f0;color:#12864e}
+#page-dashboard .dashboard-executive-kpi-delta-v616fd.bad{background:#ffedf0;color:#dc334b}
+#page-dashboard .dashboard-executive-kpi-delta-v616fd.neutral{background:var(--surface-subtle,#f1f5f9);color:var(--text-muted,#64748b)}
+#page-dashboard .dashboard-executive-kpi-bottom-v616fd small{display:block;font-size:10px;line-height:1.4;color:var(--text-muted,#64748b);max-width:100%;overflow-wrap:anywhere}
+#page-dashboard .dashboard-executive-kpi-link-v616fd{margin:6px 0 0;padding:0;background:none;border:0;font-size:10px;color:var(--strip);font-weight:750;text-align:left;cursor:pointer}
+#page-dashboard .dashboard-executive-kpi-link-v616fd:hover{text-decoration:underline}
+@media(max-width:1490px){#page-dashboard .dashboard-executive-kpi-grid-v616fd{grid-template-columns:repeat(3,minmax(0,1fr))}#page-dashboard .dashboard-executive-kpi-v616fd{min-height:134px}#page-dashboard .dashboard-executive-kpi-value-v616fd strong{font-size:27px}}
+@media(max-width:790px){#page-dashboard .dashboard-executive-kpi-grid-v616fd{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}#page-dashboard .dashboard-executive-kpi-v616fd{padding:12px;min-height:140px}#page-dashboard .dashboard-executive-kpi-value-v616fd strong{font-size:25px}}
+@media(max-width:420px){#page-dashboard .dashboard-executive-kpi-grid-v616fd{grid-template-columns:1fr 1fr}#page-dashboard .dashboard-executive-kpi-main-v616fd{min-height:54px}#page-dashboard .dashboard-executive-spark-v616fd{min-width:30px;width:32%}#page-dashboard .dashboard-executive-kpi-value-v616fd strong{font-size:23px}}
+html[data-theme="dark"] #page-dashboard .dashboard-executive-kpi-v616fd,
+body.theme-dark #page-dashboard .dashboard-executive-kpi-v616fd,
+body.dark #page-dashboard .dashboard-executive-kpi-v616fd{background:var(--panel-bg,#151e2d);border-color:rgba(148,163,184,.22);box-shadow:none}
+html[data-theme="dark"] #page-dashboard .dashboard-executive-kpi-v616fd .dashboard-executive-kpi-value-v616fd strong,
+body.theme-dark #page-dashboard .dashboard-executive-kpi-v616fd .dashboard-executive-kpi-value-v616fd strong,
+body.dark #page-dashboard .dashboard-executive-kpi-v616fd .dashboard-executive-kpi-value-v616fd strong{color:#f8fafc}
+html[data-theme="dark"] #page-dashboard .dashboard-executive-kpi-delta-v616fd,
+body.theme-dark #page-dashboard .dashboard-executive-kpi-delta-v616fd,
+body.dark #page-dashboard .dashboard-executive-kpi-delta-v616fd{background:rgba(71,85,105,.24);color:#dbeafe}
