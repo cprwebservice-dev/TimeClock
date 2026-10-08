@@ -38709,3 +38709,31 @@ html[data-theme="dark"] #page-dashboard .dashboard-area-comparison-panel-v616fb 
 body.theme-dark #page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-card-v616ev{background:transparent}
 
 #page-dashboard .dashboard-org-manager-status-v616fb{display:block;margin:0 0 9px 2px;font-size:11px;color:var(--text-muted,#64748b)}
+
+/* FIX16FC: fill both attendance chart panels, responsive search + reliable chart hit surface. */
+#page-dashboard .dashboard-overall-panel-v616fb .dashboard-rate-chart-v616er,
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-chart-v616ev {
+  width:100%;height:auto;min-height:0!important;max-height:none!important;
+  display:block;padding:4px 2px 0;overflow:visible;
+}
+#page-dashboard .dashboard-overall-panel-v616fb .dashboard-rate-chart-v616er svg,
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-chart-v616ev svg {
+  display:block!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;aspect-ratio:auto!important;
+}
+#page-dashboard .dashboard-overall-panel-v616fb .dashboard-chart-body-v616fb,
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-chart-body-v616fb {padding:12px 14px!important}
+#page-dashboard .dashboard-chart-hover-surface-v616fc{cursor:crosshair}
+#page-dashboard .dashboard-manager-line-chart-v616eq .dashboard-chart-marker-v616fa:focus-within .dashboard-chart-visible-point-v616fa{stroke:#2563eb;stroke-width:2}
+#page-dashboard .dashboard-org-searchbar-v616fc{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px}
+#page-dashboard .dashboard-org-searchfield-v616fc{display:flex;align-items:center;gap:10px;flex:1 1 340px;max-width:600px;height:42px;border-radius:12px;border:1px solid var(--border-color,#d5e1ef);background:var(--panel-bg,#fff);padding:0 13px;box-shadow:0 5px 14px rgba(15,23,42,.035);transition:border-color .18s,box-shadow .18s}
+#page-dashboard .dashboard-org-searchfield-v616fc:focus-within{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+#page-dashboard .dashboard-org-search-icon-v616fc{color:var(--text-muted,#64748b);font-size:25px;line-height:1}
+#page-dashboard .dashboard-org-searchfield-v616fc input{height:100%;width:100%;border:0!important;box-shadow:none!important;outline:0!important;min-width:0;font-family:inherit;font-size:13px;color:var(--text-primary,#0f172a);background:transparent!important}
+#page-dashboard .dashboard-org-searchfield-v616fc input::placeholder{color:var(--text-muted,#94a3b8)}
+#page-dashboard .dashboard-org-search-clear-v616fc{height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--border-color,#dce5ed);background:var(--surface-subtle,#f8fafc);color:var(--text-secondary,#334155);font-weight:700;cursor:pointer}
+#page-dashboard .dashboard-org-search-clear-v616fc[hidden]{display:none!important}
+#page-dashboard .dashboard-org-search-clear-v616fc:hover{border-color:#3b82f6;color:#2563eb}
+#page-dashboard .dashboard-org-search-count-v616fc{color:var(--text-muted,#64748b);font-size:12px;font-weight:700;margin-left:auto;white-space:nowrap}
+@media(max-width:720px){#page-dashboard .dashboard-org-searchfield-v616fc{flex:1 1 100%;max-width:none}#page-dashboard .dashboard-org-search-count-v616fc{margin-left:0}}
+html[data-theme="dark"] #page-dashboard .dashboard-org-searchfield-v616fc,body.theme-dark #page-dashboard .dashboard-org-searchfield-v616fc,body.dark #page-dashboard .dashboard-org-searchfield-v616fc{border-color:#334155;background:#172235;box-shadow:none}
+html[data-theme="dark"] #page-dashboard .dashboard-org-search-clear-v616fc,body.theme-dark #page-dashboard .dashboard-org-search-clear-v616fc,body.dark #page-dashboard .dashboard-org-search-clear-v616fc{background:#1e293b;color:#e2e8f0;border-color:#334155}

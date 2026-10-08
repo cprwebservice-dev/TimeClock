@@ -284,6 +284,15 @@
         </div>
         <span class="dashboard-org-sort-hint-v616ey" title="เรียงจากอัตราลงเวลาครบสะสมที่คำนวณจากยอดรวมครบและยอดต้องลงเวลา">เรียงสะสม ↑ น้อย → มาก · ไม่มีฐานอยู่ท้าย</span>
       </div>
+      <!-- FIX16FC: client-side search over the currently authorized Dashboard rows. -->
+      <div class="dashboard-org-searchbar-v616fc" role="search" aria-label="ค้นหารายการหน่วยงานในตาราง">
+        <label class="dashboard-org-searchfield-v616fc" for="dashboardOrgSearchV616FC">
+          <span aria-hidden="true" class="dashboard-org-search-icon-v616fc">⌕</span>
+          <input type="search" id="dashboardOrgSearchV616FC" placeholder="ค้นหารหัส/ชื่อหน่วยงาน, Manager, พื้นที่, Area, Sub Area" autocomplete="off" spellcheck="false" aria-label="ค้นหารายการหน่วยงานและชื่อ Manager" />
+        </label>
+        <button type="button" id="dashboardOrgSearchClearV616FC" class="dashboard-org-search-clear-v616fc" hidden>ล้างคำค้นหา</button>
+        <span id="dashboardOrgSearchCountV616FC" class="dashboard-org-search-count-v616fc" role="status" aria-live="polite">แสดงทุกหน่วยงาน</span>
+      </div>
       <div class="table-wrap dashboard-org-comparison-wrap-v616eq">
         <table class="dashboard-org-comparison-table-v616eq dashboard-comparison-clarity-v616et">
           <caption class="visually-hidden">เปรียบเทียบการลงเวลาครบในวันล่าสุดกับอัตราสะสมของช่วงวันที่เลือก โดยนับเฉพาะวันทำงานที่ต้องลงเวลา</caption>
