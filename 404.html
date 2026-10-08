@@ -264,11 +264,54 @@
       <div class="table-wrap dashboard-org-comparison-wrap-v616eq">
         <table class="dashboard-org-comparison-table-v616eq dashboard-comparison-clarity-v616et">
           <caption class="visually-hidden">เปรียบเทียบการลงเวลาครบในวันล่าสุดกับอัตราสะสมของช่วงวันที่เลือก โดยนับเฉพาะวันทำงานที่ต้องลงเวลา</caption>
-          <thead><tr><th scope="col">พื้นที่</th><th scope="col">Sub</th><th scope="col">Sub-area</th><th scope="col">หน่วยงาน</th><th scope="col" class="text-right">พนักงาน <small>(คน)</small></th><th scope="col" class="dashboard-rate-col-v616et">วันล่าสุด <small>อัตราลงเวลาครบ</small></th><th scope="col" class="dashboard-rate-col-v616et">สะสมในช่วงที่เลือก <small>อัตราลงเวลาครบ</small></th><th scope="col" class="dashboard-diff-col-v616et">เทียบกับสะสม <small>วันล่าสุด − สะสม</small></th></tr></thead>
+          <thead><tr>
+            <th scope="col">พื้นที่</th><th scope="col">Sub</th><th scope="col">Sub-area</th><th scope="col">หน่วยงาน</th>
+            <th scope="col" class="text-right">พนักงาน <small>(คน)</small></th>
+            <th scope="col" class="dashboard-rate-col-v616et">
+              <button type="button" class="dashboard-rate-method-button-v616eu" popovertarget="dashboardRateDailyMethodV616EU" title="คลิกดูสูตร: ครบในวันล่าสุด ÷ วันที่ต้องลงเวลาในวันล่าสุด × 100" aria-label="ดูวิธีคำนวณอัตราลงเวลาครบวันล่าสุด">
+                <span class="dashboard-rate-heading-v616eu">วันล่าสุด <span class="dashboard-rate-help-icon-v616eu" aria-hidden="true">?</span></span>
+                <small>อัตราลงเวลาครบ</small>
+              </button>
+            </th>
+            <th scope="col" class="dashboard-rate-col-v616et">
+              <button type="button" class="dashboard-rate-method-button-v616eu" popovertarget="dashboardRateCumulativeMethodV616EU" title="คลิกดูสูตร: ยอดครบสะสม ÷ วัน-พนักงานที่ต้องลงเวลาสะสม × 100" aria-label="ดูวิธีคำนวณอัตราลงเวลาครบสะสม">
+                <span class="dashboard-rate-heading-v616eu">สะสมในช่วงที่เลือก <span class="dashboard-rate-help-icon-v616eu" aria-hidden="true">?</span></span>
+                <small>อัตราลงเวลาครบ</small>
+              </button>
+            </th>
+            <th scope="col" class="dashboard-diff-col-v616et">
+              <button type="button" class="dashboard-rate-method-button-v616eu" popovertarget="dashboardRateDifferenceMethodV616EU" title="คลิกดูสูตร: อัตราวันล่าสุด − อัตราสะสม (หน่วยจุดเปอร์เซ็นต์)" aria-label="ดูวิธีคำนวณผลต่างวันล่าสุดเทียบกับสะสม">
+                <span class="dashboard-rate-heading-v616eu">เทียบกับสะสม <span class="dashboard-rate-help-icon-v616eu" aria-hidden="true">?</span></span>
+                <small>วันล่าสุด − สะสม</small>
+              </button>
+            </th>
+          </tr></thead>
           <tbody id="dashboardOrgComparisonBodyV616EQ"><tr><td colspan="8" class="empty-cell">ยังไม่มีข้อมูล</td></tr></tbody>
           <tfoot id="dashboardOrgComparisonTotalV616ER"><tr><td colspan="8">รอสรุปข้อมูล</td></tr></tfoot>
         </table>
       </div>
+      <!-- FIX16EU: native Popover API opens above the scrollable/sticky table; Escape/outside click closes. -->
+      <div id="dashboardRateDailyMethodV616EU" class="dashboard-rate-method-popover-v616eu" popover="auto" role="dialog" aria-labelledby="dashboardRateDailyMethodTitleV616EU">
+        <div class="dashboard-rate-method-top-v616eu"><div><span class="dashboard-rate-method-kicker-v616eu">วิธีคำนวณ • รายวัน</span><h4 id="dashboardRateDailyMethodTitleV616EU">อัตราลงเวลาครบวันล่าสุด</h4></div><button type="button" class="dashboard-rate-method-close-v616eu" popovertarget="dashboardRateDailyMethodV616EU" popovertargetaction="hide" aria-label="ปิดคำอธิบาย">×</button></div>
+        <div class="dashboard-rate-method-formula-v616eu">จำนวนวัน-พนักงานที่ลงเวลาเข้าและออกครบในวันล่าสุด <span>÷</span> จำนวนวัน-พนักงานที่ต้องลงเวลาในวันล่าสุด <strong>× 100</strong></div>
+        <p><b>วันล่าสุด</b> คือวันท้ายสุดภายในช่วงวันที่เลือกที่มีพนักงานต้องลงเวลาอย่างน้อย 1 รายการ ตามขอบเขตข้อมูลที่ได้รับอนุญาต</p>
+        <p><b>ตัวอย่าง:</b> ต้องลงเวลา 10 วัน-พนักงาน ลงเวลาครบ 8 วัน-พนักงาน = <b>80.0%</b></p>
+        <div class="dashboard-rate-method-rule-v616eu">นับเฉพาะวันทำงานที่ต้องลงเวลา ไม่รวม OFF / วันหยุด / วันลาเต็มวัน • วันลาบางส่วนที่ยังต้องทำงานนับรวม • มาสาย/กลับก่อนแต่มีเวลาเข้า–ออกครบยังถือว่า “ลงเวลาครบ”</div>
+      </div>
+      <div id="dashboardRateCumulativeMethodV616EU" class="dashboard-rate-method-popover-v616eu" popover="auto" role="dialog" aria-labelledby="dashboardRateCumulativeMethodTitleV616EU">
+        <div class="dashboard-rate-method-top-v616eu"><div><span class="dashboard-rate-method-kicker-v616eu">วิธีคำนวณ • สะสม</span><h4 id="dashboardRateCumulativeMethodTitleV616EU">อัตราลงเวลาครบสะสม</h4></div><button type="button" class="dashboard-rate-method-close-v616eu" popovertarget="dashboardRateCumulativeMethodV616EU" popovertargetaction="hide" aria-label="ปิดคำอธิบาย">×</button></div>
+        <div class="dashboard-rate-method-formula-v616eu">ผลรวมวัน-พนักงานที่ลงเวลาครบตลอดช่วงวันที่เลือก <span>÷</span> ผลรวมวัน-พนักงานที่ต้องลงเวลาตลอดช่วงวันที่เลือก <strong>× 100</strong></div>
+        <p><b>ตัวอย่าง:</b> รวมทั้งช่วง ต้องลงเวลา 120 วัน-พนักงาน ลงเวลาครบ 108 วัน-พนักงาน = <b>90.0%</b></p>
+        <div class="dashboard-rate-method-rule-v616eu">ใช้ยอดครบและยอดที่ต้องลงเวลารวมจริงจากทุกวัน ไม่ใช่การนำเปอร์เซ็นต์รายวันมาหาค่าเฉลี่ย • แถวรวม Total ใช้สูตรเดียวกัน ไม่เฉลี่ยอัตราของแต่ละหน่วยงาน</div>
+      </div>
+      <div id="dashboardRateDifferenceMethodV616EU" class="dashboard-rate-method-popover-v616eu" popover="auto" role="dialog" aria-labelledby="dashboardRateDifferenceMethodTitleV616EU">
+        <div class="dashboard-rate-method-top-v616eu"><div><span class="dashboard-rate-method-kicker-v616eu">วิธีคำนวณ • เปรียบเทียบ</span><h4 id="dashboardRateDifferenceMethodTitleV616EU">วันล่าสุดเทียบกับสะสม</h4></div><button type="button" class="dashboard-rate-method-close-v616eu" popovertarget="dashboardRateDifferenceMethodV616EU" popovertargetaction="hide" aria-label="ปิดคำอธิบาย">×</button></div>
+        <div class="dashboard-rate-method-formula-v616eu">อัตราลงเวลาครบวันล่าสุด <span>−</span> อัตราลงเวลาครบสะสม <strong>= ผลต่าง (จุด%)</strong></div>
+        <p><b>ตัวอย่าง:</b> วันล่าสุด 80.0% สะสม 90.0% → <b>ต่ำกว่า 10.0 จุดเปอร์เซ็นต์</b></p>
+        <p>ผลบวกหมายถึงวันล่าสุด<b>สูงกว่าสะสม</b> ผลลบหมายถึง<b>ต่ำกว่าสะสม</b> และศูนย์หมายถึง<b>เท่ากัน</b></p>
+        <div class="dashboard-rate-method-rule-v616eu">“จุดเปอร์เซ็นต์” (percentage points) คือผลต่างของอัตราร้อยละ ไม่ใช่อัตราการเปลี่ยนแปลงสัมพัทธ์ • ถ้าฝ่ายใดไม่มีฐานวันทำงานให้คำนวณ ระบบแสดง —</div>
+      </div>
+
     </div>
   </article>
 </section>

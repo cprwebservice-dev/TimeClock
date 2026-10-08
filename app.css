@@ -38241,3 +38241,89 @@ body.dark #page-dashboard .dashboard-diff-detail-v616et.up{color:#86efac}
  #page-dashboard .dashboard-comparison-help-v616et{font-size:11px;padding:9px 10px}
  #page-dashboard .dashboard-comparison-clarity-v616et{min-width:1080px}
 }
+
+
+/* FIX16EU: calculator explanations in Manager Overview comparison table.
+   Uses browser-native Popover API (no new JS/RPC). */
+#page-dashboard .dashboard-rate-method-button-v616eu{
+  display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+  width:100%; min-width:0; margin:0; padding:3px 1px;
+  border:0; border-radius:7px; background:transparent;
+  color:inherit; font:inherit; font-weight:700; text-align:left;
+  line-height:1.3; cursor:help; transition:color .15s ease,background-color .15s ease;
+}
+#page-dashboard .dashboard-rate-method-button-v616eu:hover{
+  color:#2563eb; background:rgba(37,99,235,.045);
+}
+#page-dashboard .dashboard-rate-method-button-v616eu:focus-visible{
+  outline:2px solid #2563eb; outline-offset:3px;
+}
+#page-dashboard .dashboard-rate-heading-v616eu{display:inline-flex;align-items:center;gap:7px;white-space:normal}
+#page-dashboard .dashboard-rate-help-icon-v616eu{
+  display:inline-grid;place-items:center;flex:none;width:18px;height:18px;
+  font-size:11px;line-height:1;font-weight:800;border-radius:50%;
+  background:#e5efff;border:1px solid #bdd3ff;color:#1d4ed8;
+}
+#page-dashboard .dashboard-rate-method-button-v616eu:hover .dashboard-rate-help-icon-v616eu{background:#2563eb;color:#fff}
+#page-dashboard .dashboard-rate-method-button-v616eu small{
+  display:block; font-size:10.5px; font-weight:500; margin-top:4px;
+  color:var(--text-muted,#64748b); white-space:normal;
+}
+#page-dashboard .dashboard-rate-method-popover-v616eu{
+  box-sizing:border-box; position:fixed; inset:50% auto auto 50%;transform:translate(-50%,-50%);
+  margin:0; width:min(490px,calc(100vw - 28px)); max-width:calc(100vw - 28px);
+  max-height:min(82vh,720px);overflow-y:auto; padding:20px 22px;
+  border:1px solid #d4e0f1;border-radius:16px;
+  background:#fff;color:#1e293b; box-shadow:0 22px 70px rgba(15,23,42,.24);
+  font-size:13px;line-height:1.6; z-index:9999;
+}
+#page-dashboard .dashboard-rate-method-popover-v616eu::backdrop{background:rgba(15,23,42,.35)}
+#page-dashboard .dashboard-rate-method-top-v616eu{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+#page-dashboard .dashboard-rate-method-kicker-v616eu{display:block;font-size:10.5px;color:#2563eb;letter-spacing:.02em;font-weight:800}
+#page-dashboard .dashboard-rate-method-popover-v616eu h4{margin:4px 0 0;font-size:17px;line-height:1.35;color:inherit;font-weight:800}
+#page-dashboard .dashboard-rate-method-close-v616eu{
+  width:33px;height:33px;flex:0 0 33px;display:grid;place-items:center;
+  background:#f1f5f9;border:1px solid #dbe3ed;border-radius:10px;
+  font-size:22px;line-height:1;color:#475569;cursor:pointer;
+}
+#page-dashboard .dashboard-rate-method-close-v616eu:hover{background:#e2e8f0}
+#page-dashboard .dashboard-rate-method-close-v616eu:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+#page-dashboard .dashboard-rate-method-formula-v616eu{
+  display:block;margin:0 0 15px;padding:14px 15px;border-radius:11px;
+  background:#eff6ff;border:1px solid #cfe2ff;color:#1e40af;
+  font-size:13px;font-weight:700;line-height:1.85;
+}
+#page-dashboard .dashboard-rate-method-formula-v616eu span{padding:0 4px;font-weight:900}
+#page-dashboard .dashboard-rate-method-formula-v616eu strong{white-space:nowrap;color:#1d4ed8;font-weight:900}
+#page-dashboard .dashboard-rate-method-popover-v616eu p{margin:9px 0;font-size:12.5px;line-height:1.75;color:inherit}
+#page-dashboard .dashboard-rate-method-rule-v616eu{
+  margin-top:15px;padding:12px 13px;border-radius:10px;
+  background:#f8fafc;border-left:3px solid #0ea5e9;color:#475569;
+  font-size:12px;line-height:1.75;
+}
+html[data-theme='dark'] #page-dashboard .dashboard-rate-method-popover-v616eu,
+body.theme-dark #page-dashboard .dashboard-rate-method-popover-v616eu,
+body.dark #page-dashboard .dashboard-rate-method-popover-v616eu{
+  background:#1a2330;color:#e7effa;border-color:#3b4c61;box-shadow:0 25px 75px rgba(0,0,0,.55)
+}
+html[data-theme='dark'] #page-dashboard .dashboard-rate-method-formula-v616eu,
+body.theme-dark #page-dashboard .dashboard-rate-method-formula-v616eu,
+body.dark #page-dashboard .dashboard-rate-method-formula-v616eu{
+  background:#172f51;border-color:#355984;color:#d5e6ff
+}
+html[data-theme='dark'] #page-dashboard .dashboard-rate-method-formula-v616eu strong,
+body.theme-dark #page-dashboard .dashboard-rate-method-formula-v616eu strong,
+body.dark #page-dashboard .dashboard-rate-method-formula-v616eu strong{color:#93c5fd}
+html[data-theme='dark'] #page-dashboard .dashboard-rate-method-rule-v616eu,
+body.theme-dark #page-dashboard .dashboard-rate-method-rule-v616eu,
+body.dark #page-dashboard .dashboard-rate-method-rule-v616eu{background:#212f41;color:#d5e3f4}
+html[data-theme='dark'] #page-dashboard .dashboard-rate-method-close-v616eu,
+body.theme-dark #page-dashboard .dashboard-rate-method-close-v616eu,
+body.dark #page-dashboard .dashboard-rate-method-close-v616eu{background:#2b384a;border-color:#465a73;color:#e5edf9}
+html[data-theme='dark'] #page-dashboard .dashboard-rate-help-icon-v616eu,
+body.theme-dark #page-dashboard .dashboard-rate-help-icon-v616eu,
+body.dark #page-dashboard .dashboard-rate-help-icon-v616eu{background:#243c62;border-color:#41659a;color:#dbeafe}
+@media(max-width:540px){
+  #page-dashboard .dashboard-rate-method-popover-v616eu{padding:16px 17px;border-radius:14px}
+  #page-dashboard .dashboard-rate-method-popover-v616eu h4{font-size:16px}
+}
