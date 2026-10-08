@@ -5646,8 +5646,112 @@ window.tcIsDayShiftCode = value =>
       sync();
     }
 
+    // FIX16FH • Heatmap-specific tooltip: independent from SVG chart pointer tracking.
+    // All user/database values enter textContent, never innerHTML.
+    function dashboardHeatmapGroupLabelV616FH(group, mode) {
+      const raw=String(group?.label||'').trim();
+      if (mode!=='ORG') return raw||'ไม่ระบุ';
+      // FIX16FG SQL formats ORG labels as "org_code · org_name". Keep only the name.
+      const withoutCode=raw.replace(/^\s*[A-Za-z0-9_-]{5,}\s*[·•|]\s*/,'').trim();
+      if (withoutCode && withoutCode!==raw) return withoutCode;
+      return /^[0-9]{5,}$/.test(raw)?'ไม่ระบุชื่อหน่วยงาน':(raw||'ไม่ระบุชื่อหน่วยงาน');
+    }
+
+    function installDashboardHeatmapTooltipV616FH() {
+      if (document.documentElement.dataset.dashboardHeatmapTipV616FH==='1') return;
+      document.documentElement.dataset.dashboardHeatmapTipV616FH='1';
+      const tip=document.createElement('div');
+      tip.id='dashboardHeatmapTooltipV616FH';
+      tip.className='dashboard-heatmap-tooltip-v616fh';
+      tip.setAttribute('role','tooltip');
+      tip.setAttribute('aria-hidden','true');
+      tip.innerHTML='<div class="heatmap-tip-head"><span class="heatmap-tip-kind"></span><strong class="heatmap-tip-rate"></strong></div><strong class="heatmap-tip-name"></strong><span class="heatmap-tip-date"></span><div class="heatmap-tip-count"></div><div class="heatmap-tip-note"></div>';
+      document.body.appendChild(tip);
+      let active=null,pinned=false;
+      const read=target=>{
+        try { return JSON.parse(decodeURIComponent(target.getAttribute('data-heatmap-tip-v616fh')||'')); }
+        catch (_) { return null; }
+      };
+      const place=target=>{
+        if(!target?.isConnected)return;
+        const box=target.getBoundingClientRect();
+        const width=tip.offsetWidth||295,height=tip.offsetHeight||165;
+        const vw=document.documentElement.clientWidth||window.innerWidth;
+        const vh=window.innerHeight;
+        // Fixed positioning against the viewport avoids clipping by Heatmap scrolling.
+        const left=Math.max(8,Math.min(vw-width-8,box.left+box.width/2-width/2));
+        const above=box.top-height-12;
+        const below=box.bottom+12;
+        const top=above>=8?above:below+height<=vh-8?below:Math.max(8,Math.min(vh-height-8,box.top-height/2));
+        tip.style.left=`${Math.round(left)}px`;
+        tip.style.top=`${Math.round(top)}px`;
+      };
+      const hide=()=>{
+        tip.classList.remove('is-visible');
+        tip.setAttribute('aria-hidden','true');
+        if(active)active.removeAttribute('aria-describedby');
+        active=null;pinned=false;
+      };
+      state.dashboardHeatmapHideTooltipV616FH=hide;
+      const show=target=>{
+        if(!target?.isConnected)return;
+        const info=read(target);
+        if(!info)return;
+        if(active&&active!==target)active.removeAttribute('aria-describedby');
+        active=target;
+        tip.style.setProperty('--heat-tip-color',/^(#[0-9a-f]{6})$/i.test(info.color||'')?info.color:'#2563eb');
+        tip.querySelector('.heatmap-tip-kind').textContent=info.kind||'อัตราลงเวลาครบรายวัน';
+        tip.querySelector('.heatmap-tip-rate').textContent=info.value||'—';
+        tip.querySelector('.heatmap-tip-name').textContent=info.name||'ไม่ระบุ';
+        tip.querySelector('.heatmap-tip-date').textContent=info.date||'';
+        tip.querySelector('.heatmap-tip-count').textContent=info.counts||'';
+        const note=tip.querySelector('.heatmap-tip-note');
+        note.textContent=info.note||'';
+        note.hidden=!info.note;
+        target.setAttribute('aria-describedby',tip.id);
+        tip.classList.add('is-visible');
+        tip.setAttribute('aria-hidden','false');
+        place(target);
+      };
+      const targetOf=element=>element?.closest?.('[data-heatmap-tip-v616fh]')||null;
+      document.addEventListener('pointerover',e=>{
+        if(e.pointerType==='touch'||pinned)return;
+        const node=targetOf(e.target);
+        if(node)show(node);
+      });
+      document.addEventListener('pointermove',e=>{
+        if(e.pointerType==='touch'||pinned)return;
+        const node=targetOf(e.target);
+        if(node && active!==node)show(node);
+        else if(!node && active)hide();
+      });
+      document.addEventListener('pointerout',e=>{
+        if(pinned||!active)return;
+        const from=targetOf(e.target);
+        const to=targetOf(e.relatedTarget);
+        if(from&&!to)hide();
+      });
+      document.addEventListener('focusin',e=>{
+        const node=targetOf(e.target);
+        if(node){pinned=false;show(node);}
+      });
+      document.addEventListener('focusout',e=>{
+        if(active && e.target===active && !pinned)hide();
+      });
+      document.addEventListener('click',e=>{
+        const node=targetOf(e.target);
+        if(!node){if(active)hide();return;}
+        if(pinned&&active===node){hide();return;}
+        show(node);pinned=true;
+      });
+      document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});
+      document.addEventListener('scroll',()=>{if(!active)return;if(document.activeElement===active){place(active);return;}hide();},true);
+      window.addEventListener('resize',()=>{if(active)hide();});
+    }
+
     function renderDashboardAttendanceHeatmapV616FG(payload) {
-      installDashboardChartTooltipsV616EZ();
+      installDashboardHeatmapTooltipV616FH();
+      state.dashboardHeatmapHideTooltipV616FH?.();
       const host=$('dashboardHeatmapGridV616FG'),status=$('dashboardHeatmapStatusV616FG'),counter=$('dashboardHeatmapCountV616FG');
       if(!host)return;
       if(payload?._error){
@@ -5670,7 +5774,9 @@ window.tcIsDayShiftCode = value =>
         return Number.isNaN(d.getTime())?day:d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
       };
       const formatPct=v=>v===null?'—':Number(v).toFixed(1)+'%';
+      const fullDate=day=>{const d=new Date(`${day}T12:00:00`);return Number.isNaN(d.getTime())?String(day):d.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'long',year:'numeric'});};
       const safe=dashboardManagerSafeV616EQ;
+      const groupMode=['AREA','SUB_AREA','ORG'].includes(String(payload.group_by||'').toUpperCase())?String(payload.group_by).toUpperCase():'AREA';
       let out='<div class="dashboard-heatmap-corner-v616fg" role="columnheader">กลุ่ม / วัน</div>';
       dates.forEach((date,i)=>{
         const mark=i===0||i===dates.length-1||i%4===0;
@@ -5678,22 +5784,24 @@ window.tcIsDayShiftCode = value =>
       });
       groups.forEach((group,index)=>{
         const rows=new Map((Array.isArray(group.daily)?group.daily:[]).map(d=>[String(d.date),d]));
-        const label=String(group.label||'ไม่ระบุ');
+        const label=dashboardHeatmapGroupLabelV616FH(group,groupMode);
         const prefix=String(group.zone||'');
-        const groupMode=String(payload.group_by||'AREA');
         const groupSubheading=groupMode==='AREA'?prefix:groupMode==='SUB_AREA'?String(group.area||''):String(group.sub_area||'');
         const groupTitle=groupSubheading?`${label} (${groupSubheading})`:label;
-        const tone=Number(group.total||0)>0?`${formatPct(group.complete*100/group.total)} สะสม`:'ไม่มีฐานคำนวณ';
-        out+=`<div class="dashboard-heatmap-row-name-v616fg" role="rowheader" title="${safe(groupTitle)} • ${safe(tone)}"><strong>${safe(label)}</strong>${groupSubheading?`<small>${safe(groupSubheading)}</small>`:''}</div>`;
+        const groupTotal=Number(group.total||0),groupComplete=Number(group.complete||0);
+        const groupRate=groupTotal>0?groupComplete*100/groupTotal:null;
+        const tone=groupTotal>0?`${formatPct(groupRate)} สะสม`:'ไม่มีฐานคำนวณ';
+        const rowTip={kind:'สรุปลงเวลาครบในช่วงที่แสดง',name:groupTitle,value:formatPct(groupRate),date:`${fullDate(visibleStart)} – ${fullDate(visibleEnd)}`,counts:groupTotal>0?`ครบ ${formatNumber(groupComplete)} จาก ${formatNumber(groupTotal)} วัน-พนักงาน`:'ไม่มีวันทำงานที่ต้องลงเวลา',note:'ยอดสะสมคำนวณจากจำนวนวัน-พนักงานจริง ไม่ใช่ค่าเฉลี่ยของเปอร์เซ็นต์',color:'#2563eb'};
+        out+=`<div class="dashboard-heatmap-row-name-v616fg" role="rowheader" tabindex="0" aria-label="${safe(`${groupTitle}, ${tone}`)}" data-heatmap-tip-v616fh="${encodeURIComponent(JSON.stringify(rowTip))}"><strong>${safe(label)}</strong>${groupSubheading?`<small>${safe(groupSubheading)}</small>`:''}</div>`;
         dates.forEach(date=>{
           const d=rows.get(String(date))||{};
           const total=Number(d.total||0),complete=Number(d.complete||0);
           const pct=total>0?complete*100/total:null;
           const cat=pct===null?'empty':pct>=90?'good':pct>=75?'warn':'bad';
-          const info={title:`${groupTitle} • ลงเวลาครบ`,date:dateLabel(date),value:formatPct(pct),counts:total>0?`ครบ ${formatNumber(complete)} จาก ${formatNumber(total)} วัน-พนักงาน`:'ไม่มีวัน-พนักงานที่ต้องลงเวลา',note:'ไม่นับวันหยุดและวันลาเต็มวัน',color:{good:'#16a779',warn:'#e99b29',bad:'#ee7272',empty:'#93a4ba'}[cat]};
+          const info={kind:total>0?'ลงเวลาครบรายวัน':'ไม่มีฐานคำนวณ',name:groupTitle,date:fullDate(date),value:formatPct(pct),counts:total>0?`ลงเวลาครบ ${formatNumber(complete)} จาก ${formatNumber(total)} วัน-พนักงาน`:'ไม่มีพนักงานที่ต้องลงเวลาในวันดังกล่าว',note:total>0?'นับเฉพาะวันที่มีกะทำงานจริง • ไม่รวม OFF / วันหยุด / วันลาเต็มวัน':'ไม่แสดงเป็น 0% เพราะวันนี้ไม่มีฐานสำหรับคำนวณ',color:{good:'#16a779',warn:'#e99b29',bad:'#ee7272',empty:'#93a4ba'}[cat]};
           const encoded=encodeURIComponent(JSON.stringify(info));
-          const aria=safe(`${groupTitle}, ${dateLabel(date)}, ${formatPct(pct)}, ${complete} จาก ${total}`);
-          out+=`<button type="button" class="dashboard-heatmap-cell-v616fg ${cat}" aria-label="${aria}" data-chart-tip-v616ez="${encoded}"></button>`;
+          const aria=safe(`${groupTitle}, ${fullDate(date)}, ${formatPct(pct)}, ${complete} จาก ${total} วัน-พนักงาน`);
+          out+=`<button type="button" class="dashboard-heatmap-cell-v616fg ${cat}" aria-label="${aria}" data-heatmap-tip-v616fh="${encoded}"></button>`;
         });
       });
       host.style.setProperty('--dashboard-heatmap-day-count-v616fg',String(dates.length));
