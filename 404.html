@@ -231,26 +231,40 @@
 
   <article class="panel dashboard-manager-rate-panel-v616eq section-gap">
     <div class="panel-header">
-      <div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม</h3><p>รายวัน = อัตราของวันนั้น • สะสม = ตั้งแต่วันที่เริ่มต้นจนถึงวันนั้น</p></div>
-      <span class="panel-chip" id="dashboardManagerLatestRateV616EQ">—</span>
+      <div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม</h3><p>คุณภาพการลงเวลาเข้า–ออก • เปรียบเทียบกับเป้าหมายและแนวโน้มสะสม</p></div>
+      <div class="dashboard-rate-tools-v616er"><label for="dashboardRateTargetV616ER">เป้าหมาย <input type="number" min="0" max="100" step="1" value="90" id="dashboardRateTargetV616ER" aria-label="เป้าหมายอัตราลงเวลาครบ"> %</label><span class="panel-chip" id="dashboardManagerLatestRateV616EQ">—</span></div>
     </div>
     <div class="panel-body">
-      <div class="dashboard-manager-line-chart-v616eq" id="dashboardManagerRateChartV616EQ">
+      <div class="dashboard-manager-line-chart-v616eq dashboard-rate-chart-v616er" id="dashboardManagerRateChartV616EQ">
         <div class="dashboard-manager-empty-v616eq">เลือกช่วงวันที่แล้วกดแสดงผล</div>
       </div>
+      <div class="dashboard-line-legend-v616er"><span class="daily">รายวัน</span><span class="cumulative">สะสมตั้งแต่ต้นช่วง</span><span class="target">เป้าหมาย</span></div>
+      <div class="dashboard-rate-summary-v616er" id="dashboardRateSummaryV616ER">รอข้อมูลการลงเวลา</div>
+      <p class="dashboard-rate-definition-v616er">อัตราลงเวลาครบ = จำนวนรายการวัน–พนักงานที่มีเวลาเข้าและออกครบ ÷ รายการวัน–พนักงานทั้งหมด × 100 • วันที่ไม่มีรายการจะไม่ถูกนำไปหาร</p>
+    </div>
+  </article>
+
+  <article class="panel dashboard-area-trend-panel-v616er section-gap" aria-label="แนวโน้มลงเวลาครบรายพื้นที่">
+    <div class="panel-header dashboard-area-trend-header-v616er">
+      <div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม by Area</h3><p>เปรียบเทียบราย Sub (Area) ภายในพื้นที่ที่เลือก • สีเส้นและเป้าหมายใช้เกณฑ์เดียวกับกราฟรวม</p></div>
+      <span class="dashboard-area-trend-status-v616er" id="dashboardAreaTrendStatusV616ER">รอข้อมูลรายพื้นที่</span>
+    </div>
+    <div class="panel-body">
+      <div class="dashboard-area-trend-grid-v616er" id="dashboardAreaTrendGridV616ER"><div class="dashboard-manager-empty-v616eq">กำลังรอข้อมูลแยก Area</div></div>
     </div>
   </article>
 
   <article class="panel dashboard-org-comparison-panel-v616eq section-gap">
     <div class="panel-header dashboard-org-comparison-head-v616eq">
-      <div><h3>เปรียบเทียบอัตราลงเวลาครบรายหน่วยงาน</h3><p>เทียบวันล่าสุดที่มีข้อมูลกับอัตราสะสมในช่วงวันที่เดียวกัน</p></div>
+      <div><h3>เปรียบเทียบอัตราลงเวลาครบรายหน่วยงาน</h3><p>จัดกลุ่ม พื้นที่ → Sub → Sub-area → หน่วยงาน • รายวันเทียบวันล่าสุดที่มีข้อมูล และสะสมตามช่วงวันที่เลือก</p></div>
       <div class="dashboard-table-tools-v616eq"><span id="dashboardOrgComparisonDateV616EQ">วันล่าสุด —</span><span id="dashboardOrgComparisonCountV616EQ">0 หน่วยงาน</span></div>
     </div>
     <div class="panel-body">
       <div class="table-wrap dashboard-org-comparison-wrap-v616eq">
         <table class="dashboard-org-comparison-table-v616eq">
-          <thead><tr><th>หน่วยงาน</th><th>พื้นที่</th><th class="text-right">พนักงาน</th><th class="text-right">รายวัน</th><th class="text-right">ครบ / ทั้งหมด</th><th class="text-right">สะสม</th><th class="text-right">ครบ / ทั้งหมด</th><th class="text-right">ต่างกัน</th></tr></thead>
-          <tbody id="dashboardOrgComparisonBodyV616EQ"><tr><td colspan="8" class="empty-cell">ยังไม่มีข้อมูล</td></tr></tbody>
+          <thead><tr><th>พื้นที่</th><th>Sub</th><th>Sub-area</th><th>หน่วยงาน</th><th class="text-right">พนักงาน</th><th class="text-right">รายวัน</th><th class="text-right">ครบ / ทั้งหมด</th><th class="text-right">สะสม</th><th class="text-right">ครบ / ทั้งหมด</th><th class="text-right">ต่างกัน</th></tr></thead>
+          <tbody id="dashboardOrgComparisonBodyV616EQ"><tr><td colspan="10" class="empty-cell">ยังไม่มีข้อมูล</td></tr></tbody>
+          <tfoot id="dashboardOrgComparisonTotalV616ER"><tr><td colspan="10">รอสรุปข้อมูล</td></tr></tfoot>
         </table>
       </div>
     </div>

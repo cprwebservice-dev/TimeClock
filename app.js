@@ -5359,23 +5359,126 @@ window.tcIsDayShiftCode = value =>
 
     function dashboardManagerRateToneV616EQ(rate) {
       const n = Number(rate || 0);
-      return n >= 90 ? "good" : n >= 75 ? "warn" : "bad";
+      const target = dashboardTargetV616ER();
+      return n >= target ? "good" : n >= Math.max(0,target-15) ? "warn" : "bad";
     }
 
-    function dashboardManagerLineChartV616EQ(rows) {
-      const points = (Array.isArray(rows) ? rows : []).filter(row => Number(row?.total || 0) > 0);
-      if (!points.length) return '<div class="dashboard-manager-empty-v616eq">ไม่มีข้อมูลการลงเวลาในช่วงวันที่</div>';
-      const W=860,H=250,pL=50,pR=22,pT=18,pB=42,plotW=W-pL-pR,plotH=H-pT-pB;
-      const x=i=>pL+(points.length===1?plotW/2:(i/(points.length-1))*plotW);
-      const y=v=>pT+(100-Math.max(0,Math.min(100,Number(v||0))))/100*plotH;
-      const poly=key=>points.map((r,i)=>`${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`).join(" ");
-      const grid=[0,25,50,75,100].map(v=>`<g><line x1="${pL}" y1="${y(v)}" x2="${W-pR}" y2="${y(v)}" class="grid"/><text x="${pL-10}" y="${y(v)+4}" text-anchor="end">${v}%</text></g>`).join("");
-      const labelCount=Math.min(5,points.length);
-      const idx=[...new Set(Array.from({length:labelCount},(_,i)=>Math.round(i*(points.length-1)/Math.max(1,labelCount-1))))];
-      const shortDate=value=>{const d=new Date(`${value}T12:00:00`);return Number.isNaN(d.getTime())?value:d.toLocaleDateString("th-TH",{day:"numeric",month:"short"});};
-      const labels=idx.map(i=>`<text x="${x(i)}" y="${H-12}" text-anchor="middle">${dashboardManagerSafeV616EQ(shortDate(points[i].date))}</text>`).join("");
-      const dots=points.map((r,i)=>`<circle cx="${x(i)}" cy="${y(r.completeRate)}" r="3" class="daily-dot"><title>${dashboardManagerSafeV616EQ(shortDate(r.date))} • รายวัน ${Number(r.completeRate||0).toFixed(1)}% • สะสม ${Number(r.cumCompleteRate||0).toFixed(1)}%</title></circle>`).join("");
-      return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="อัตราลงเวลาครบรายวันเทียบสะสม"><g class="axis">${grid}${labels}</g><polyline points="${poly("cumCompleteRate")}" class="cum-line"/><polyline points="${poly("completeRate")}" class="daily-line"/>${dots}</svg>`;
+    // FIX16ER: weighted attendance curves (counts, never averaged percentages).
+    function dashboardTargetV616ER() {
+      const n=Number($("dashboardRateTargetV616ER")?.value??90);
+      return Number.isFinite(n)?Math.max(0,Math.min(100,n)):90;
+    }
+
+    function dashboardManagerLineChartV616EQ(rows, compact=false, id="overall") {
+      const source=Array.isArray(rows)?rows:[];
+      if (!source.some(row=>Number(row?.total||0)>0)) {
+        return '<div class="dashboard-manager-empty-v616eq">ไม่มีรายการลงเวลาในช่วงวันที่เลือก</div>';
+      }
+      const target=dashboardTargetV616ER();
+      const points=source.map(row=>({
+        date:String(row?.date||""),total:Number(row?.total||0),complete:Number(row?.complete||0),
+        daily:Number(row?.total||0)>0?Number(row?.completeRate??row?.complete*100/row?.total):null,
+        cum:Number(row?.cumTotal||0)>0?Number(row?.cumCompleteRate??row?.cumComplete*100/row?.cumTotal):null
+      }));
+      const visible=points.flatMap(row=>[row.daily,row.cum].filter(v=>v!==null&&Number.isFinite(v)));
+      const low=Math.max(0,Math.floor((Math.min(target,...visible)-4)/5)*5);
+      const high=Math.min(100,Math.ceil((Math.max(target,...visible)+3)/5)*5);
+      const maxY=Math.max(low+5,high), W=900,H=compact?235:316;
+      const l=52,r=52,t=compact?22:25,b=compact?41:48;
+      const w=W-l-r,h=H-t-b;
+      const x=i=>l+(points.length===1?w/2:i*w/(points.length-1));
+      const y=value=>t+(maxY-Math.max(low,Math.min(maxY,Number(value))))*h/(maxY-low);
+      const xy=(i,v)=>`${x(i).toFixed(2)},${y(v).toFixed(2)}`;
+      const pathFor=key=>{
+        let d="", drawing=false;
+        points.forEach((row,i)=>{
+          const value=row[key];
+          if(value===null||!Number.isFinite(value)){drawing=false;return;}
+          d+=`${drawing?' L':' M'}${xy(i,value)}`; drawing=true;
+        });
+        return d;
+      };
+      const gradientId=`dashboardDailyFillV616ER_${String(id).replace(/[^a-zA-Z0-9_]/g,'_')}`;
+      const observed=points.map((row,i)=>({row,i})).filter(x=>x.row.daily!==null);
+      const fillPath=observed.length>1?`M ${xy(observed[0].i,low)} L ${observed.map(x=>xy(x.i,x.row.daily)).join(' L ')} L ${xy(observed[observed.length-1].i,low)} Z`:'';
+      const tickCount=compact?4:5;
+      const ticks=Array.from({length:tickCount},(_,i)=>low+(maxY-low)*i/(tickCount-1));
+      const grid=ticks.map(v=>`<g><line x1="${l}" x2="${W-r}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${l-11}" y="${y(v)+4}" text-anchor="end">${v.toFixed(v%1?1:0)}%</text></g>`).join('');
+      const labelCount=Math.min(compact?5:8,points.length);
+      const indexes=[...new Set(Array.from({length:labelCount},(_,i)=>Math.round(i*(points.length-1)/Math.max(labelCount-1,1))))];
+      const dateText=value=>{const d=new Date(`${value}T12:00:00`);return Number.isNaN(d.getTime())?value:d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});};
+      const labels=indexes.map(i=>`<text x="${x(i)}" y="${H-12}" text-anchor="middle">${dashboardManagerSafeV616EQ(dateText(points[i].date))}</text>`).join('');
+      const dotSkip=Math.max(1,Math.ceil(observed.length/(compact?20:45)));
+      const dots=observed.filter((_,i)=>i%dotSkip===0||i===observed.length-1).map(({row,i})=>`<circle class="daily-dot" cx="${x(i)}" cy="${y(row.daily)}" r="${compact?3:3.3}"><title>${dashboardManagerSafeV616EQ(dateText(row.date))}: รายวัน ${row.daily.toFixed(1)}% (${row.complete}/${row.total}) • สะสม ${row.cum===null?'—':row.cum.toFixed(1)+'%'}</title></circle>`).join('');
+      const targetY=y(target),targetLabelY=Math.max(t+10,Math.min(H-b-6,targetY-7));
+      return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="อัตราลงเวลาครบ รายวันสีเขียว สะสมสีส้ม เป้าหมายเส้นประสีแดง" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="${gradientId}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#10a37f" stop-opacity=".17"/><stop offset="100%" stop-color="#10a37f" stop-opacity=".015"/></linearGradient></defs><g class="axis">${grid}${labels}</g>${fillPath?`<path d="${fillPath}" fill="url(#${gradientId})"/>`:''}<line x1="${l}" x2="${W-r}" y1="${targetY}" y2="${targetY}" class="target-line"/><path d="${pathFor('cum')}" class="cum-line"/><path d="${pathFor('daily')}" class="daily-line"/>${dots}<text class="target-label" x="${W-r-1}" y="${targetLabelY}" text-anchor="end">เป้า ${target.toFixed(0)}%</text></svg>`;
+    }
+
+    function renderDashboardAreaTrendV616ER(data) {
+      const grid=$("dashboardAreaTrendGridV616ER");
+      const status=$("dashboardAreaTrendStatusV616ER");
+      if(!grid) return;
+      if(data?._error){
+        grid.innerHTML=`<div class="dashboard-manager-empty-v616eq">${dashboardManagerSafeV616EQ(data._error)}</div>`;
+        if(status) status.textContent='ยังไม่พร้อม';
+        return;
+      }
+      const areas=Array.isArray(data?.area_groups)?data.area_groups:[];
+      if(status) status.textContent=`${formatNumber(areas.length)} Area`;
+      grid.innerHTML=areas.length?areas.map((area,i)=>{
+        const rows=Array.isArray(area.daily)?area.daily:[];
+        const last=[...rows].reverse().find(row=>Number(row?.total||0)>0);
+        const current=last?Number(last.completeRate||0):null;
+        const cumulative=last?Number(last.cumCompleteRate||0):null;
+        return `<article class="dashboard-area-card-v616er"><div class="dashboard-area-card-head-v616er"><div><span class="dashboard-area-zone-v616er">${dashboardManagerSafeV616EQ(area.zone||'ไม่ระบุพื้นที่')}</span><strong>${dashboardManagerSafeV616EQ(area.area||'ไม่ระบุ Sub')}</strong><small>${formatNumber(area.complete||0)} / ${formatNumber(area.total||0)} รายการครบ</small></div><div class="dashboard-area-card-rates-v616er"><span>รายวัน <b>${current===null?'—':current.toFixed(1)+'%'}</b></span><span>สะสม <b>${cumulative===null?'—':cumulative.toFixed(1)+'%'}</b></span></div></div><div class="dashboard-area-mini-chart-v616er dashboard-manager-line-chart-v616eq">${dashboardManagerLineChartV616EQ(rows,true,`area_${i}`)}</div></article>`;
+      }).join(''):'<div class="dashboard-manager-empty-v616eq">ไม่มีข้อมูลการลงเวลาแยก Area ในช่วงที่เลือก</div>';
+    }
+
+    function renderDashboardOrgComparisonV616ER(comparison) {
+      const rows=Array.isArray(comparison)?comparison:[];
+      const body=$("dashboardOrgComparisonBodyV616EQ");
+      const foot=$("dashboardOrgComparisonTotalV616ER");
+      const meta=new Map(dashboardManagerOrgRowsV616EQ().map(o=>[String(o.org_id||''),o]));
+      const mapped=rows.map(row=>{
+        const org=meta.get(String(row.org_id||''))||{};
+        return {...row,
+          _zone:String(row.area||org.area_bucket||'ไม่ระบุพื้นที่'),
+          _sub:String(org.area||'ไม่ระบุ Sub'),
+          _subArea:String(org.sub_area||'ไม่ระบุ Sub-area')};
+      }).sort((a,b)=>[
+        a._zone.localeCompare(b._zone,'th',{numeric:true}),
+        a._sub.localeCompare(b._sub,'th',{numeric:true}),
+        a._subArea.localeCompare(b._subArea,'th',{numeric:true}),
+        String(a.org_code||'').localeCompare(String(b.org_code||''),'th',{numeric:true})
+      ].find(n=>n!==0)||0);
+      const totals=mapped.reduce((acc,row)=>{
+        for(const name of ['employee_count','daily_complete','daily_total','cumulative_complete','cumulative_total']) acc[name]+=Number(row[name]||0);
+        return acc;
+      },{employee_count:0,daily_complete:0,daily_total:0,cumulative_complete:0,cumulative_total:0});
+      const ratio=(a,b)=>b>0?a*100/b:null;
+      const pill=n=>n===null?'—':`<span class="dashboard-rate-pill-v616eq ${dashboardManagerRateToneV616EQ(n)}">${n.toFixed(1)}%</span>`;
+      const delta=(a,b)=>a===null||b===null?'—':`<span class="dashboard-diff-v616eq ${a-b>0.05?'up':a-b<-.05?'down':'flat'}">${a-b>0?'+':''}${(a-b).toFixed(1)} pp</span>`;
+      if(body){
+        let lastZone='',lastSub='',lastSubArea='';
+        body.innerHTML=mapped.length?mapped.map(row=>{
+          let groups='';
+          const newZone=row._zone!==lastZone;
+          const newSub=newZone||row._sub!==lastSub;
+          const newSubArea=newSub||row._subArea!==lastSubArea;
+          if(newZone) groups+=`<tr class="dashboard-group-row-v616er zone"><td colspan="10">พื้นที่: ${dashboardManagerSafeV616EQ(row._zone)}</td></tr>`;
+          if(newSub) groups+=`<tr class="dashboard-group-row-v616er sub"><td colspan="10">Sub: ${dashboardManagerSafeV616EQ(row._sub)}</td></tr>`;
+          if(newSubArea) groups+=`<tr class="dashboard-group-row-v616er subarea"><td colspan="10">Sub-area: ${dashboardManagerSafeV616EQ(row._subArea)}</td></tr>`;
+          lastZone=row._zone;lastSub=row._sub;lastSubArea=row._subArea;
+          const dr=ratio(Number(row.daily_complete||0),Number(row.daily_total||0));
+          const cr=ratio(Number(row.cumulative_complete||0),Number(row.cumulative_total||0));
+          return `${groups}<tr class="dashboard-org-data-row-v616er"><td>${dashboardManagerSafeV616EQ(row._zone)}</td><td>${dashboardManagerSafeV616EQ(row._sub)}</td><td>${dashboardManagerSafeV616EQ(row._subArea)}</td><td><div class="dashboard-org-name-v616eq"><strong>${dashboardManagerSafeV616EQ(row.org_code||'')}</strong><span>${dashboardManagerSafeV616EQ(row.org_name||'')}</span></div></td><td class="text-right">${formatNumber(row.employee_count||0)}</td><td class="text-right">${pill(dr)}</td><td class="text-right">${formatNumber(row.daily_complete||0)} / ${formatNumber(row.daily_total||0)}</td><td class="text-right">${pill(cr)}</td><td class="text-right">${formatNumber(row.cumulative_complete||0)} / ${formatNumber(row.cumulative_total||0)}</td><td class="text-right">${delta(dr,cr)}</td></tr>`;
+        }).join(''):'<tr><td colspan="10" class="empty-cell">ไม่พบข้อมูลรายหน่วยงานในช่วงที่เลือก</td></tr>';
+      }
+      if(foot){
+        const daily=ratio(totals.daily_complete,totals.daily_total);
+        const cum=ratio(totals.cumulative_complete,totals.cumulative_total);
+        foot.innerHTML=`<tr><th colspan="4" scope="row">รวมทั้งหมด <small>${formatNumber(rows.length)} หน่วยงาน • คำนวณจากยอดรวมจริง</small></th><td class="text-right">${formatNumber(totals.employee_count)}</td><td class="text-right">${pill(daily)}</td><td class="text-right">${formatNumber(totals.daily_complete)} / ${formatNumber(totals.daily_total)}</td><td class="text-right">${pill(cum)}</td><td class="text-right">${formatNumber(totals.cumulative_complete)} / ${formatNumber(totals.cumulative_total)}</td><td class="text-right">${delta(daily,cum)}</td></tr>`;
+      }
     }
 
     function renderManagerDashboardV616EQ(payload) {
@@ -5404,19 +5507,33 @@ window.tcIsDayShiftCode = value =>
         ["รวมทีมพร้อมใช้งาน",teams.total,"Σ","total"]
       ].map(([label,value,icon,tone])=>`<article class="dashboard-team-card-v616eq ${tone}"><span>${icon}</span><div><small>${label}</small><strong>${formatNumber(value||0)}<em>ทีม</em></strong></div></article>`).join("");
 
-      const daily = Array.isArray(payload?.daily) ? payload.daily : [];
-      const chart = $("dashboardManagerRateChartV616EQ");
-      if (chart) chart.innerHTML = dashboardManagerLineChartV616EQ(daily);
-      const latest = [...daily].reverse().find(row=>Number(row?.total||0)>0) || null;
-      if ($("dashboardManagerLatestRateV616EQ")) $("dashboardManagerLatestRateV616EQ").textContent = latest ? `รายวัน ${Number(latest.completeRate||0).toFixed(1)}% • สะสม ${Number(latest.cumCompleteRate||0).toFixed(1)}%` : "—";
-
-      const comparison = Array.isArray(payload?.org_comparison) ? payload.org_comparison : [];
-      const body = $("dashboardOrgComparisonBodyV616EQ");
-      if (body) body.innerHTML = comparison.length ? comparison.map(row=>{
-        const dailyRate=Number(row.daily_rate||0), cumulativeRate=Number(row.cumulative_rate||0), diff=dailyRate-cumulativeRate;
-        const diffText=`${diff>0?"+":""}${diff.toFixed(1)} pp`;
-        return `<tr><td><div class="dashboard-org-name-v616eq"><strong>${dashboardManagerSafeV616EQ(row.org_code||"")}</strong><span>${dashboardManagerSafeV616EQ(row.org_name||"")}</span></div></td><td><span class="dashboard-area-pill-v616eq">${dashboardManagerSafeV616EQ(row.area||"-")}</span></td><td class="text-right">${formatNumber(row.employee_count||0)}</td><td class="text-right"><span class="dashboard-rate-pill-v616eq ${dashboardManagerRateToneV616EQ(dailyRate)}">${dailyRate.toFixed(1)}%</span></td><td class="text-right">${formatNumber(row.daily_complete||0)} / ${formatNumber(row.daily_total||0)}</td><td class="text-right"><span class="dashboard-rate-pill-v616eq ${dashboardManagerRateToneV616EQ(cumulativeRate)}">${cumulativeRate.toFixed(1)}%</span></td><td class="text-right">${formatNumber(row.cumulative_complete||0)} / ${formatNumber(row.cumulative_total||0)}</td><td class="text-right"><span class="dashboard-diff-v616eq ${diff>0.05?"up":diff<-0.05?"down":"flat"}">${diffText}</span></td></tr>`;
-      }).join("") : '<tr><td colspan="8" class="empty-cell">ไม่พบข้อมูลรายหน่วยงานในช่วงที่เลือก</td></tr>';
+      const daily=Array.isArray(payload?.daily)?payload.daily:[];
+      const chart=$("dashboardManagerRateChartV616EQ");
+      if(chart) chart.innerHTML=dashboardManagerLineChartV616EQ(daily,false,'overall');
+      const latest=[...daily].reverse().find(row=>Number(row?.total||0)>0)||null;
+      const target=dashboardTargetV616ER();
+      if($("dashboardManagerLatestRateV616EQ")) $("dashboardManagerLatestRateV616EQ").textContent=latest
+        ? `รายวัน ${Number(latest.completeRate||0).toFixed(1)}% · สะสม ${Number(latest.cumCompleteRate||0).toFixed(1)}%`
+        : '—';
+      const rateSummary=$("dashboardRateSummaryV616ER");
+      if(rateSummary){
+        const observed=daily.filter(row=>Number(row?.total||0)>0).length;
+        const gap=latest?Number(latest.completeRate||0)-target:0;
+        rateSummary.classList.toggle('below-target',Boolean(latest&&gap<0));
+        rateSummary.textContent=latest
+          ? `วันล่าสุด ${Number(latest.completeRate||0).toFixed(1)}% • สะสม ${Number(latest.cumCompleteRate||0).toFixed(1)}% • ${gap>=0?'สูงกว่า':'ต่ำกว่า'}เป้าหมาย ${Math.abs(gap).toFixed(1)} pp • มีข้อมูล ${formatNumber(observed)} วัน`
+          : 'ไม่พบรายการลงเวลาในช่วงวันที่เลือก';
+      }
+      const rateTarget=$("dashboardRateTargetV616ER");
+      if(rateTarget&&!rateTarget.dataset.fix16erBound){
+        rateTarget.dataset.fix16erBound='1';
+        rateTarget.addEventListener('change',()=>{
+          rateTarget.value=String(dashboardTargetV616ER());
+          if(state.managerDashboardV616EQ) renderManagerDashboardV616EQ(state.managerDashboardV616EQ);
+          if(state.managerDashboardAreaV616ER) renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
+        });
+      }
+      renderDashboardOrgComparisonV616ER(payload?.org_comparison);
       if ($("dashboardOrgComparisonCountV616EQ")) $("dashboardOrgComparisonCountV616EQ").textContent=`${formatNumber(comparison.length)} หน่วยงาน`;
       if ($("dashboardOrgComparisonDateV616EQ")) {
         const date=String(payload?.latest_attendance_date||"");
@@ -5446,6 +5563,28 @@ window.tcIsDayShiftCode = value =>
             state.dashboard = payloadV616EQ.summary || {};
             renderDashboard(state.dashboard);
             renderManagerDashboardV616EQ(payloadV616EQ);
+            state.managerDashboardAreaV616ER=null;
+            const areaHostV616ER=$("dashboardAreaTrendGridV616ER");
+            if(areaHostV616ER) areaHostV616ER.innerHTML='<div class="dashboard-manager-empty-v616eq">กำลังโหลดแนวโน้มราย Area…</div>';
+            const areaStatusV616ER=$("dashboardAreaTrendStatusV616ER");
+            if(areaStatusV616ER) areaStatusV616ER.textContent='กำลังโหลด';
+            state.managerDashboardAreaReqV616ER=(state.managerDashboardAreaReqV616ER||0)+1;
+            const requestIdV616ER=state.managerDashboardAreaReqV616ER;
+            const areaArgsV616ER=dashboardManagerArgsV616EQ();
+            // Keep primary dashboard responsive while the optional area trend loads.
+            state.client.rpc("ta_get_manager_dashboard_area_trend_v616er",areaArgsV616ER).then(({data,error})=>{
+              if(requestIdV616ER!==state.managerDashboardAreaReqV616ER) return;
+              state.managerDashboardAreaV616ER=error?{
+                _error:window.TimeClockShiftAPI?.missingFunction?.(error)
+                  ? 'กรุณารัน SQL FIX16ER เพื่อเปิดกราฟราย Area'
+                  : `โหลดกราฟราย Area ไม่สำเร็จ: ${humanError(error)}`
+              }:(data||{area_groups:[]});
+              renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
+            }).catch(error=>{
+              if(requestIdV616ER!==state.managerDashboardAreaReqV616ER) return;
+              state.managerDashboardAreaV616ER={_error:`โหลดข้อมูลราย Area ไม่สำเร็จ: ${humanError(error)}`};
+              renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
+            });
             return;
           }
 
@@ -5488,6 +5627,8 @@ window.tcIsDayShiftCode = value =>
         const data = response.data;
         state.dashboard = Array.isArray(data) ? data[0] : data;
         state.managerDashboardV616EQ = null;
+        state.managerDashboardAreaV616ER = {_error:'ต้องรัน SQL FIX16EQ และ FIX16ER ก่อน'};
+        renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
         renderDashboard(state.dashboard || {});
         renderManagerDashboardV616EQ({
           version:"ต้องรัน SQL FIX16EQ",
@@ -18936,7 +19077,7 @@ ${skippedSummary(compatibility.skipped)}
 (() => {
   "use strict";
   const $=id=>document.getElementById(id),q=(s,r=document)=>r.querySelector(s),qa=(s,r=document)=>[...r.querySelectorAll(s)];
-  const VERSION="6.15.29 FIX16EQ-R1";
+  const VERSION="6.15.29 FIX16ER";
   const menuItems=[
     ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["team-master","ทีมช่างเทคนิค","Team Master แบบ Auto Generate","◉"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
     ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-health","System Health","Configuration Audit และ System Health","♥"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]

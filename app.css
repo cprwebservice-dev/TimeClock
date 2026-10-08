@@ -38107,3 +38107,72 @@ html[data-theme="dark"] .dashboard-workforce-note-v616eq,body.theme-dark .dashbo
 /* FIX16EQ-R2: keep requested Manager Overview block visible with legacy focused-dashboard rules */
 html[data-dashboard-focus-version="FIX16DO"] #dashboardManagerOverviewV616EQ,
 html[data-dashboard-focus-version="FIX16DW"] #dashboardManagerOverviewV616EQ{display:block !important;}
+
+/* ========================================================================
+   V6.15.29 FIX16ER | Manager Dashboard modern charts & organization grouping
+   ======================================================================== */
+#page-dashboard .dashboard-manager-rate-panel-v616eq .panel-header,
+#page-dashboard .dashboard-area-trend-panel-v616er .panel-header{align-items:center;flex-wrap:wrap;gap:12px}
+#page-dashboard .dashboard-manager-rate-panel-v616eq .panel-header>div:first-child,
+#page-dashboard .dashboard-area-trend-panel-v616er .panel-header>div:first-child{min-width:0}
+.dashboard-rate-tools-v616er{display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.dashboard-rate-tools-v616er>label{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:12px;color:var(--text-muted,#64748b);white-space:nowrap}
+.dashboard-rate-tools-v616er input{width:66px;min-width:0;height:34px;text-align:center;border:1px solid var(--border-color,#cbd5e1);border-radius:9px;background:var(--panel-bg,var(--surface,#fff));color:var(--text-primary,#0f172a);font:inherit;font-weight:700;padding:4px 5px}
+.dashboard-rate-tools-v616er .panel-chip{max-width:100%;white-space:normal;line-height:1.4}
+.dashboard-rate-chart-v616er{min-height:316px}
+.dashboard-manager-line-chart-v616eq.dashboard-rate-chart-v616er svg{max-height:360px}
+.dashboard-manager-line-chart-v616eq svg{overflow:visible}
+.dashboard-manager-line-chart-v616eq .axis line.grid{stroke:var(--border-color,#dce5ed);stroke-width:1}
+.dashboard-manager-line-chart-v616eq .axis text{fill:var(--text-muted,#64748b);font-size:11.5px;font-family:inherit;font-weight:500}
+.dashboard-manager-line-chart-v616eq .daily-line{stroke:#069a75;stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.dashboard-manager-line-chart-v616eq .cum-line{stroke:#e58a1f;stroke-width:2.8;fill:none;stroke-dasharray:8 6;stroke-linecap:round;stroke-linejoin:round}
+.dashboard-manager-line-chart-v616eq .target-line{stroke:#ec5960;stroke-width:1.9;stroke-dasharray:6 6}
+.dashboard-manager-line-chart-v616eq .target-label{font-size:12px;font-weight:800;fill:#dc434d;paint-order:stroke;stroke:var(--panel-bg,#fff);stroke-width:4px;stroke-linejoin:round}
+.dashboard-manager-line-chart-v616eq .daily-dot{fill:#069a75;stroke:var(--panel-bg,#fff);stroke-width:2}
+.dashboard-line-legend-v616er{display:flex;align-items:center;gap:19px;flex-wrap:wrap;margin:0 2px 12px;color:var(--text-muted,#64748b);font-size:12px;font-weight:600}
+.dashboard-line-legend-v616er span{display:inline-flex;align-items:center;gap:8px}
+.dashboard-line-legend-v616er span::before{content:"";display:block;width:26px;height:0;border-top:3px solid #069a75;border-radius:10px}
+.dashboard-line-legend-v616er .cumulative::before{border-color:#e58a1f;border-top-style:dashed}
+.dashboard-line-legend-v616er .target::before{border-color:#ec5960;border-top-style:dashed;border-top-width:2px}
+.dashboard-rate-summary-v616er{padding:10px 14px;border-radius:11px;background:rgba(6,154,117,.09);color:#077e62;font-size:13px;font-weight:700;line-height:1.5}
+.dashboard-rate-summary-v616er.below-target{background:rgba(236,89,96,.09);color:#c03943}
+.dashboard-rate-definition-v616er{font-size:11px;line-height:1.5;color:var(--text-muted,#64748b);margin:11px 2px 0;border-top:1px dashed var(--border-color,#dbe4ef);padding-top:10px}
+.dashboard-area-trend-status-v616er{display:inline-flex;align-items:center;border-radius:999px;border:1px solid var(--border-color,#dbe4ef);padding:7px 12px;white-space:nowrap;background:var(--surface-subtle,#f8fafc);color:var(--text-muted,#64748b);font-size:12px;font-weight:700}
+.dashboard-area-trend-grid-v616er{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.dashboard-area-card-v616er{padding:16px 16px 7px;border:1px solid var(--border-color,#dce5ed);border-radius:16px;background:var(--panel-bg,#fff);min-width:0;box-shadow:0 2px 14px rgba(27,56,88,.035)}
+.dashboard-area-card-head-v616er{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:5px}
+.dashboard-area-card-head-v616er>div:first-child{display:flex;flex-direction:column;gap:4px;min-width:0}
+.dashboard-area-card-head-v616er strong{color:var(--text-primary,#0f172a);font-size:16px;line-height:1.3}
+.dashboard-area-card-head-v616er small{font-size:11px;color:var(--text-muted,#64748b)}
+.dashboard-area-zone-v616er{align-self:flex-start;display:inline-flex;border-radius:999px;padding:4px 8px;background:rgba(47,105,203,.085);color:var(--brand,#2563eb);font-size:10px;font-weight:800}
+.dashboard-area-card-rates-v616er{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end}
+.dashboard-area-card-rates-v616er span{background:var(--surface-subtle,#f3f6fa);border:1px solid var(--border-color,#e1e8f0);border-radius:9px;padding:5px 8px;font-size:11px;color:var(--text-muted,#64748b);white-space:nowrap}
+.dashboard-area-card-rates-v616er b{color:var(--text-primary,#0f172a);font-weight:800}
+.dashboard-area-mini-chart-v616er{min-height:0;display:block}
+.dashboard-area-mini-chart-v616er svg{height:auto;max-height:245px}
+.dashboard-org-comparison-table-v616eq{min-width:1180px}
+.dashboard-org-comparison-table-v616eq tbody td:nth-child(1),
+.dashboard-org-comparison-table-v616eq tbody td:nth-child(2),
+.dashboard-org-comparison-table-v616eq tbody td:nth-child(3){font-size:11.5px;color:var(--text-muted,#64748b)}
+.dashboard-org-comparison-table-v616eq tbody td:nth-child(4){min-width:220px}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er td{padding:8px 12px!important;font-weight:800;border-bottom:1px solid var(--border-color,#dce5ed);background:var(--surface-subtle,#edf3f9)!important;color:var(--text-primary,#0f172a);font-size:12px!important}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er.zone td{background:rgba(37,99,235,.09)!important;color:var(--brand,#2563eb)}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er.sub td{padding-left:24px!important;background:rgba(37,99,235,.035)!important}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er.subarea td{padding-left:37px!important;background:var(--surface-subtle,#f7f9fc)!important;font-weight:700}
+.dashboard-org-comparison-table-v616eq tfoot th,
+.dashboard-org-comparison-table-v616eq tfoot td{position:sticky;bottom:0;z-index:2;background:var(--surface-subtle,#f0f5fc);border-top:2px solid var(--brand,#2c70cf);font-size:12px;padding:14px 12px;color:var(--text-primary,#0f172a);font-weight:800;white-space:nowrap}
+.dashboard-org-comparison-table-v616eq tfoot th{text-align:left}
+.dashboard-org-comparison-table-v616eq tfoot small{margin-left:10px;font-weight:500;color:var(--text-muted,#64748b)}
+html[data-theme="dark"] .dashboard-rate-summary-v616er,body.theme-dark .dashboard-rate-summary-v616er{color:#6ee7b7;background:rgba(6,154,117,.16)}
+html[data-theme="dark"] .dashboard-rate-summary-v616er.below-target,body.theme-dark .dashboard-rate-summary-v616er.below-target{color:#fda4af;background:rgba(236,89,96,.14)}
+html[data-theme="dark"] .dashboard-area-zone-v616er,body.theme-dark .dashboard-area-zone-v616er{color:#93c5fd;background:rgba(37,99,235,.2)}
+html[data-theme="dark"] .dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er.zone td,body.theme-dark .dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er.zone td{background:rgba(37,99,235,.16)!important;color:#bfdbfe}
+html[data-theme="dark"] .dashboard-area-card-v616er,body.theme-dark .dashboard-area-card-v616er{background:var(--panel-bg,#171c22)}
+@media(max-width:1190px){.dashboard-area-trend-grid-v616er{grid-template-columns:1fr}}
+@media(max-width:640px){
+  .dashboard-rate-tools-v616er{justify-content:flex-start}
+  .dashboard-rate-chart-v616er{min-height:180px}
+  .dashboard-area-card-v616er{padding:12px 9px}
+  .dashboard-rate-summary-v616er{font-size:12px}
+  .dashboard-line-legend-v616er{gap:10px;font-size:11px}
+}
