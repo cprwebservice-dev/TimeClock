@@ -5372,7 +5372,7 @@ window.tcIsDayShiftCode = value =>
     function dashboardManagerLineChartV616EQ(rows, compact=false, id="overall") {
       const source=Array.isArray(rows)?rows:[];
       if (!source.some(row=>Number(row?.total||0)>0)) {
-        return '<div class="dashboard-manager-empty-v616eq">ไม่มีรายการลงเวลาในช่วงวันที่เลือก</div>';
+        return '<div class="dashboard-manager-empty-v616eq">ไม่มีวันทำงานที่ต้องลงเวลาในช่วงวันที่เลือก</div>';
       }
       const target=dashboardTargetV616ER();
       const points=source.map(row=>({
@@ -5431,7 +5431,7 @@ window.tcIsDayShiftCode = value =>
         const current=last?Number(last.completeRate||0):null;
         const cumulative=last?Number(last.cumCompleteRate||0):null;
         return `<article class="dashboard-area-card-v616er"><div class="dashboard-area-card-head-v616er"><div><span class="dashboard-area-zone-v616er">${dashboardManagerSafeV616EQ(area.zone||'ไม่ระบุพื้นที่')}</span><strong>${dashboardManagerSafeV616EQ(area.area||'ไม่ระบุ Sub')}</strong><small>${formatNumber(area.complete||0)} / ${formatNumber(area.total||0)} รายการครบ</small></div><div class="dashboard-area-card-rates-v616er"><span>รายวัน <b>${current===null?'—':current.toFixed(1)+'%'}</b></span><span>สะสม <b>${cumulative===null?'—':cumulative.toFixed(1)+'%'}</b></span></div></div><div class="dashboard-area-mini-chart-v616er dashboard-manager-line-chart-v616eq">${dashboardManagerLineChartV616EQ(rows,true,`area_${i}`)}</div></article>`;
-      }).join(''):'<div class="dashboard-manager-empty-v616eq">ไม่มีข้อมูลการลงเวลาแยก Area ในช่วงที่เลือก</div>';
+      }).join(''):'<div class="dashboard-manager-empty-v616eq">ไม่มีวันทำงานที่ต้องลงเวลาแยก Area ในช่วงที่เลือก</div>';
     }
 
     function renderDashboardOrgComparisonV616ER(comparison) {
@@ -5522,7 +5522,7 @@ window.tcIsDayShiftCode = value =>
         rateSummary.classList.toggle('below-target',Boolean(latest&&gap<0));
         rateSummary.textContent=latest
           ? `วันล่าสุด ${Number(latest.completeRate||0).toFixed(1)}% • สะสม ${Number(latest.cumCompleteRate||0).toFixed(1)}% • ${gap>=0?'สูงกว่า':'ต่ำกว่า'}เป้าหมาย ${Math.abs(gap).toFixed(1)} pp • มีข้อมูล ${formatNumber(observed)} วัน`
-          : 'ไม่พบรายการลงเวลาในช่วงวันที่เลือก';
+          : 'ไม่พบวันทำงานที่ต้องลงเวลาในช่วงวันที่เลือก';
       }
       const rateTarget=$("dashboardRateTargetV616ER");
       if(rateTarget&&!rateTarget.dataset.fix16erBound){
@@ -40481,19 +40481,19 @@ ${names}${extra}
       }
     ].map(actionCard).join("");
 
-    const rateTone = completeRate >= 90 ? "good" : completeRate >= 75 ? "warn" : "bad";
+    const rateTone = total <= 0 ? "neutral" : completeRate >= 90 ? "good" : completeRate >= 75 ? "warn" : "bad";
     if($("dashboardKpiStripV616DO")) $("dashboardKpiStripV616DO").innerHTML = [
       {label:"พนักงานใน Scope",value:fmt(employees),unit:"คน",note:"ตามสิทธิ์และตัวกรองปัจจุบัน",tone:"neutral",icon:"♙"},
       {label:"วัน-พนักงาน",value:fmt(total),unit:"รายการ",note:"ฐานข้อมูลที่ใช้วิเคราะห์ในช่วงนี้",tone:"neutral",icon:"▦"},
-      {label:"อัตราลงเวลาครบ",value:`${completeRate.toFixed(1)}`,unit:"%",note:`ครบ ${fmt(complete)} จาก ${fmt(total)} รายการ`,tone:rateTone,icon:"✓"},
+      {label:"อัตราลงเวลาครบ",value:total>0?`${completeRate.toFixed(1)}`:"—",unit:total>0?"%":"",note:total>0?`ครบ ${fmt(complete)} จาก ${fmt(total)} วัน-พนักงาน`:"ไม่มีวันทำงานที่ต้องลงเวลา",tone:rateTone,icon:"✓"},
       {label:"ชั่วโมงสุทธิ",value:fmt(paid),unit:"ชม.",note:`OT ${fmt(ot)} ชม. • Waiting ${fmt(waiting)} ชม.`,tone:"neutral",icon:"◷"}
     ].map(kpiCard).join("");
 
     if($("dashboardFocusRingV616DO")) {
-      $("dashboardFocusRingV616DO").style.setProperty("--focus-angle",`${completeRate*3.6}deg`);
+      $("dashboardFocusRingV616DO").style.setProperty("--focus-angle",`${total>0?completeRate*3.6:0}deg`);
       $("dashboardFocusRingV616DO").className = `manager-quality-ring-v616do ${rateTone}`;
     }
-    if($("dashboardFocusRateV616DO")) $("dashboardFocusRateV616DO").textContent = `${completeRate.toFixed(1)}%`;
+    if($("dashboardFocusRateV616DO")) $("dashboardFocusRateV616DO").textContent = total>0?`${completeRate.toFixed(1)}%`:'—';
     if($("dashboardFocusQualityStatsV616DO")) $("dashboardFocusQualityStatsV616DO").innerHTML = [
       ["ลงเวลาครบ",complete,"good"],
       ["เวลาไม่ครบ",incomplete,incomplete ? "warn":"good"],
