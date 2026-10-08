@@ -41288,3 +41288,141 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
   scheduleRequires:["area","organization","team","exact employee code"],
   workPatternRequires:["organization","search >= 2 chars"]
 });
+/* FIX16FI: Trend insights — read-only, scope-aware, real data only. */
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const number = n => Number(n||0).toLocaleString('th-TH',{maximumFractionDigits:1});
+  const raw = n => Number(n||0);
+  const percent = (n,d) => raw(d)>0?Math.max(0,Math.min(100,raw(n)*100/raw(d))):null;
+  const fmt = (n,s=1) => n===null?'—':Number(n).toFixed(s)+'%';
+  const thdate = iso => {if(!iso)return '—';const d=new Date(String(iso).slice(0,10)+'T12:00:00');return Number.isNaN(d.getTime())?String(iso):d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});};
+  const empty = msg => `<div class="trend-empty-v616fi">${esc(msg)}</div>`;
+  const app = () => window.TimeClockApp;
+  let token=0, lastKey='', lastData=null;
+  const value = id => $(id)?.value||'';
+  const all = (a) => Array.isArray(a)?a:[];
+  const host = (id,html) => { if($(id)) $(id).innerHTML=html; };
+  function isShown(){return !($('dashboardViewDailyV616H')?.classList.contains('hidden'));}
+  function args(){return {
+    p_start_date:value('dashStart'),p_end_date:value('dashEnd'),
+    p_side_id:value('dashSide')||null,p_division_id:value('dashDivision')||null,
+    p_zone:value('dashZone')||null,
+    p_org_id:app()?.selectedOrgIdV616M?.('dashDepartment')||null
+  };}
+  function chartsReady(){return !!$('dashboardTrendIntelligenceV616FI') && !!app()?.state?.client;}
+  function currentKey(){const a=args();return Object.values(a).map(x=>String(x||'')).join('|');}
+  function setState(text){if($('trendLoadStatusV616FI'))$('trendLoadStatusV616FI').textContent=text;}
+  function statusChart(data){
+    const d=data?.today_status||{}, entries=[
+      ['NORMAL','ปกติ','#1c9b72'],['LATE','มาสาย 1–29 นาที','#f28a17'],
+      ['EARLY','กลับก่อน','#e6ba07'],['ABSENT_OR_INCOMPLETE','ขาด/เวลาไม่ครบ','#df4848'],
+      ['LEAVE','ลา','#8b5cf6'],['NO_PUNCH_REQUIRED','ไม่ต้องลงเวลา','#a7b8cc']
+    ].map(([key,name,color])=>({key,name,color,n:raw(d[key])}));
+    const total=entries.reduce((sum,x)=>sum+x.n,0);
+    const expected=entries.filter(x=>!['LEAVE','NO_PUNCH_REQUIRED'].includes(x.key)).reduce((sum,x)=>sum+x.n,0);
+    const normal=raw(d.NORMAL),complete=raw(data?.today_complete??normal),required=raw(data?.today_expected??expected);let offset=0;
+    const stops=entries.map(x=>{const from=offset;offset+=total?x.n*100/total:0;return `${x.color} ${from.toFixed(3)}% ${offset.toFixed(3)}%`;}).join(',');
+    if($('trendHeadcountDateV616FI'))$('trendHeadcountDateV616FI').textContent=thdate(data?.latest_day);
+    if(!total) return empty('ไม่มีข้อมูลสถานะพนักงานในช่วงวันที่เลือก');
+    return `<div class="trend-status-layout-v616fi"><div class="trend-ring-v616fi" style="background:conic-gradient(${stops})"><div><strong>${required?fmt(percent(complete,required),0):'—'}</strong><small>ลงเวลาครบ</small></div></div><div class="trend-status-list-v616fi">${entries.map(x=>`<div><span><i style="background:${x.color}"></i>${x.name}</span><b>${number(x.n)}</b></div>`).join('')}<div class="trend-status-total-v616fi"><span>วัน-พนักงานในข้อมูล</span><b>${number(total)}</b></div></div></div><div class="trend-note-v616fi">วันล่าสุดที่มีภาระลงเวลา • สถานะจัดหมวดไม่ซ้ำเพื่อให้ยอดรวมตรงกัน</div>`;
+  }
+  function requestsChart(rows){
+    const now=Date.now();
+    const types = new Map([['LEAVE','ขอแก้ไขกะ/ลา'],['TIME_CERTIFICATION','ขอรับรองเวลา'],['CERTIFICATION','ขอรับรองเวลา'],['SPECIAL_WORK','แจ้งทำงานพิเศษ'],['SHIFT_CHANGE','ขอเปลี่ยนกะ']]);
+    const list=all(rows).filter(r=>['PENDING','IN_REVIEW','SUBMITTED','WAITING_APPROVAL'].includes(String(r.status||'').toUpperCase()));
+    const age=r=>{const d=new Date(r.requested_at||r.created_at||'');return Number.isNaN(d.getTime())?null:Math.max(0,(now-d.getTime())/86400000);};
+    if($('trendRequestCountV616FI'))$('trendRequestCountV616FI').textContent=`${number(list.length)} รายการ`;
+    if(!list.length)return empty('ไม่มีคำขอที่รอพิจารณาจาก Workflow ที่โหลดได้');
+    const grouped=new Map();list.forEach(r=>{const k=String(r.request_type||r.request_subtype||'OTHER').toUpperCase(); if(!grouped.has(k))grouped.set(k,{name:types.get(k)||k,green:0,orange:0,red:0,total:0});const g=grouped.get(k);const a=age(r);if(a!==null){if(a<1)g.green++;else if(a<=3)g.orange++;else g.red++;}g.total++;});
+    const typeRows=[...grouped.values()].sort((a,b)=>b.total-a.total).slice(0,7);
+    const max=Math.max(1,...typeRows.map(x=>x.total));
+    const oldest=[...list].sort((a,b)=>(age(b)||0)-(age(a)||0)).slice(0,6);
+    return `<div class="trend-request-list-v616fi">${typeRows.map(r=>`<div class="trend-request-row-v616fi"><span>${esc(r.name)}</span><div class="trend-bar-track-v616fi"><i class="success" style="width:${r.green/max*100}%"></i><i class="warning" style="width:${r.orange/max*100}%"></i><i class="danger" style="width:${r.red/max*100}%"></i></div><strong>${number(r.total)}</strong></div>`).join('')}</div><div class="trend-key-v616fi"><span><i class="success"></i> &lt;1 วัน</span><span><i class="warning"></i>1–3 วัน</span><span><i class="danger"></i>&gt;3 วัน</span></div><div class="trend-subhead-v616fi">คำขอค้างนานสุด (ตามรายการที่โหลดได้)</div><div class="trend-request-queue-v616fi">${oldest.map(r=>`<div><span>${esc(types.get(String(r.request_type||'').toUpperCase())||r.request_type||'คำขอ')} <small>${esc(r.emp_code||r.full_name||'')}</small></span><strong class="${(age(r)||0)>3?'danger':''}">${age(r)===null?'ไม่พบเวลา':age(r).toFixed(1)+' วัน'}</strong></div>`).join('')}</div><div class="trend-note-v616fi">คิวตามสิทธิ์ Workflow ของผู้ใช้ • แสดงสูงสุด 500 รายการ • ช่วงวันที่และสิทธิ์ Workflow อาจไม่ตรงกับการกรองหน่วยงานทั้งหมด</div>`;
+  }
+  function barPeople(rows,threshold){
+    const filtered=all(rows).filter(x=>raw(x.ot)>0).sort((a,b)=>raw(b.ot)-raw(a.ot)).slice(0,8);
+    if(!filtered.length)return empty('ไม่พบชั่วโมง OT รายคนในช่วงวันที่เลือก');
+    const max=Math.max(threshold,1,...filtered.map(r=>raw(r.ot)));
+    return filtered.map(r=>`<div class="trend-ot-row-v616fi"><div class="trend-person-v616fi"><strong title="${esc(r.name)}">${esc(r.name||r.code)}</strong><small>${esc(r.org||r.code||'')}</small></div><div class="trend-track-v616fi"><i style="width:${raw(r.ot)/max*100}%"></i><span style="left:${Math.min(99,threshold/max*100)}%"></span></div><b class="${raw(r.ot)>threshold?'high':''}">${number(r.ot)}</b></div>`).join('')+`<div class="trend-key-v616fi"><span><i class="blue"></i>OT (ชม.)</span><span><i class="dashed"></i>เกณฑ์ ${number(threshold)} ชม.</span></div>`;
+  }
+  function peopleRisk(rows){const list=all(rows).filter(r=>raw(r.absent)+raw(r.late)+raw(r.early)>0)
+    .sort((a,b)=>(raw(b.absent)*3+raw(b.late)+raw(b.early)*.5)-(raw(a.absent)*3+raw(a.late)+raw(a.early)*.5)).slice(0,8);
+    if(!list.length)return empty('ไม่พบรายการมาสาย/ขาด/กลับก่อนตามขอบเขตที่เลือก');
+    return `<table class="trend-risk-table-v616fi"><thead><tr><th>พนักงาน</th><th>สาย</th><th>ขาด/ไม่ครบ</th><th>กลับก่อน</th></tr></thead><tbody>${list.map(r=>`<tr><td><b>${esc(r.name||r.code)}</b><small>${esc(r.org||'')} • ${esc(r.code||'')}</small></td><td>${number(r.late)}</td><td class="danger">${number(r.absent)}</td><td>${number(r.early)}</td></tr>`).join('')}</tbody></table><p class="trend-note-v616fi">จัดลำดับเพื่อคัดกรองเบื้องต้น: ขาด/ไม่ครบ ×3 + สาย ×1 + กลับก่อน ×0.5 (ไม่ใช่คะแนนประเมินพนักงาน)</p>`;
+  }
+  function miniBarChart(rows,fields,opts={}){
+    const list=all(rows).slice(-31);
+    if(!list.length)return empty('ไม่มีข้อมูลรายวันในช่วงวันที่เลือก');
+    const top=Math.max(1,...list.map(r=>fields.reduce((s,f)=>s+raw(r[f.key]),0)));
+    const colors=Object.fromEntries(fields.map(f=>[f.key,f.color]));
+    return `<div class="trend-columns-v616fi">${list.map((r,i)=>{const total=fields.reduce((s,f)=>s+raw(r[f.key]),0);return `<div class="trend-day-column-v616fi" title="${esc(thdate(r.date))}: ${esc(fields.map(f=>f.label+' '+number(r[f.key])).join(' • '))}"><div class="trend-day-column-bars-v616fi">${fields.map(f=>`<i style="height:${Math.max(0,raw(r[f.key])/top*100)}%;background:${colors[f.key]}"></i>`).join('')}</div><span>${i===0||i===list.length-1||i%Math.max(1,Math.ceil(list.length/8))===0?esc(thdate(r.date)):''}</span></div>`;}).join('')}</div><div class="trend-key-v616fi">${fields.map(f=>`<span><i style="background:${f.color}"></i>${esc(f.label)}</span>`).join('')}</div><div class="trend-note-v616fi">${esc(opts.note||'ยึดช่วงวันที่เลือกและสิทธิ์พนักงานใน Scope')}</div>`;
+  }
+  function orgRisk(rows){const list=all(rows).filter(r=>raw(r.expected)>0).sort((a,b)=>percent(b.anomalous,b.expected)-percent(a.anomalous,a.expected)).slice(0,12);
+    if(!list.length)return empty('ไม่พบหน่วยงานที่มีภาระต้องลงเวลาในช่วงที่เลือก');
+    return `${list.map(r=>{const rate=percent(r.anomalous,r.expected),color=rate>=25?'#dc4848':rate>=17?'#f0901a':'#169a6d';return `<div class="trend-org-row-v616fi"><span title="${esc(r.org)}"><strong>${esc(r.org)}</strong><small>${number(r.employees)} คน • ลงเวลาครบ/ไม่ครบตามเกณฑ์</small></span><div class="trend-track-v616fi"><i style="width:${rate.toFixed(1)}%;background:${color}"></i></div><b>${fmt(rate)}</b></div>`;}).join('')}<div class="trend-key-v616fi"><span><i class="success"></i>&lt;17%</span><span><i class="warning"></i>17–24.9%</span><span><i class="danger"></i>≥25%</span></div>`;
+  }
+  function future(rows,threshold){const list=all(rows).slice(0,14);
+    if(!list.length)return empty('ไม่มีข้อมูลแผนกะล่วงหน้าภายใต้ Scope • ตรวจการจัดกะก่อนใช้การประมาณการนี้');
+    const max=Math.max(1,...list.map(r=>raw(r.total)));
+    const flagged=list.filter(r=>raw(r.total)>0 && percent(raw(r.morning)+raw(r.night),r.total)<threshold);
+    return `<div class="trend-forecast-v616fi"><div class="trend-forecast-plot-v616fi">${list.map(r=>{const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned),total=raw(r.total);const ratio=percent(morning+night,total);const flagged=ratio!==null&&ratio<threshold;return `<div class="trend-forecast-day-v616fi" title="${esc(thdate(r.date))}: เช้า ${morning}, ดึก ${night}, ลา ${leave}, หยุด ${off}, ยังไม่มีกะ ${unknown}"><div class="trend-f-bar-v616fi ${flagged?'flagged':''}"><i style="height:${morning/max*100}%;background:#3288c8"></i><i style="height:${night/max*100}%;background:#153957"></i><i style="height:${leave/max*100}%;background:#8759f2"></i><i style="height:${off/max*100}%;background:#adbbc8"></i><i style="height:${unknown/max*100}%;background:#d7e0eb"></i></div><span>${esc(thdate(r.date))}</span>${flagged?'<em>▲</em>':''}</div>`;}).join('')}</div><div class="trend-key-v616fi"><span><i class="blue"></i>กะเช้า</span><span><i style="background:#153957"></i>กะดึก</span><span><i style="background:#8759f2"></i>ลา (ตามรหัสกะ)</span><span><i style="background:#adbbc8"></i>หยุด</span><span><i style="background:#d7e0eb"></i>ยังไม่มีกะ</span></div>${flagged.length?`<div class="trend-alert-v616fi">พบ ${number(flagged.length)} วัน ที่จำนวนมีกะทำงานต่ำกว่า ${number(threshold)}% ของพนักงานใน Scope • วันแรก ${esc(thdate(flagged[0].date))}</div>`:`<div class="trend-note-v616fi">ไม่พบวันที่มีสัดส่วนมีกะทำงานต่ำกว่าเกณฑ์ ${number(threshold)}% ในข้อมูลแผนกะที่มี</div>`}<div class="trend-note-v616fi">เป็นการอ่าน Shift Calendar ที่บันทึกแล้วเท่านั้น • วันที่ยังไม่จัดกะอาจทำให้จำนวนมีกะทำงานต่ำกว่าความเป็นจริง • ไม่ใช่การทำนายการมาปฏิบัติงาน</div></div>`;
+  }
+  function render(data){lastData=data||{};const d=data||{};
+    host('trendHeadcountV616FI',statusChart(d));
+    host('trendTopOtV616FI',barPeople(d.people,raw(value('trendOtThresholdV616FI'))));
+    host('trendPeopleRiskV616FI',peopleRisk(d.people));
+    host('trendDailyIssuesV616FI',miniBarChart(d.daily,[{key:'absent',label:'ขาด/ไม่ครบ',color:'#db4646'},{key:'late',label:'มาสาย',color:'#f58a18'},{key:'early',label:'กลับก่อน',color:'#183e60'}],{note:'หนึ่งวัน-พนักงานอาจมีมากกว่าหนึ่งเหตุผิดปกติ'}));
+    host('trendHoursV616FI',miniBarChart(d.daily,[{key:'regular',label:'ชั่วโมงปกติ',color:'#3288c8'},{key:'ot',label:'OT',color:'#f58a18'}],{note:'ชั่วโมงรวมจาก Attendance Calculations ของพนักงานใน Scope'}));
+    host('trendOrgRiskV616FI',orgRisk(d.org_risk));
+    renderForecast();
+  }
+  function renderForecast(){const target=raw(value('trendStaffThresholdV616FI'))||75; if($('trendStaffTargetV616FI'))$('trendStaffTargetV616FI').textContent=target+'%'; host('trendForecastV616FI',future(lastData?.forecast,target));}
+  async function requests(signal){
+    try{const c=app()?.state?.client;if(!c)return;
+      const end=value('dashEnd')||null,start=value('dashStart')||null;
+      const {data,error}=await c.rpc('ta_get_employee_requests_v61481',{
+        p_start_date:start,p_end_date:end,p_statuses:['PENDING','IN_REVIEW'],p_request_types:null,p_search:null,p_limit:500
+      });
+      if(signal!==token)return;
+      if(error)throw error;
+      host('trendRequestsV616FI',requestsChart(Array.isArray(data)?data:Array.isArray(data?.rows)?data.rows:[]));
+    }catch(e){if(signal!==token)return;
+      if($('trendRequestCountV616FI'))$('trendRequestCountV616FI').textContent='—';
+      host('trendRequestsV616FI',empty('โหลดคิวคำขอไม่สำเร็จ • ตรวจสิทธิ์ Workflow หรือ RPC คำขอ'));
+      console.warn('[FIX16FI request panel]',e?.message||e);
+    }finally{}
+  }
+  async function load(force=false){
+    if(!isShown()||!chartsReady())return;
+    const key=currentKey();if(!force&&key===lastKey&&lastData)return;
+    const p=args();if(!p.p_start_date||!p.p_end_date)return;
+    const current=++token;lastKey=key;setState('กำลังโหลดกราฟ…');
+    try{
+      const response=await app().state.client.rpc('ta_get_manager_dashboard_trend_v616fi',p);
+      if(current!==token)return;
+      if(response.error)throw response.error;
+      render(response.data||{});setState('แสดงข้อมูลตาม Scope');
+    }catch(error){
+      if(current!==token)return;
+      lastData=null;setState('ต้องติดตั้ง SQL / ตรวจสิทธิ์');
+      ['trendHeadcountV616FI','trendTopOtV616FI','trendPeopleRiskV616FI','trendDailyIssuesV616FI','trendHoursV616FI','trendOrgRiskV616FI','trendForecastV616FI'].forEach(id=>host(id,empty('โหลดไม่ได้ • กรุณาติดตั้ง SQL FIX16FI และตรวจสิทธิ์ Manager/Acting')));
+      console.warn('[FIX16FI]',error?.message||error);
+    }
+    requests(current);
+  }
+  function bind(){
+    document.querySelectorAll('[data-dashboard-view-v616h]').forEach(b=>b.addEventListener('click',()=>{
+      if(b.dataset.dashboardViewV616h==='daily')setTimeout(()=>load(),100);
+    }));
+    $('trendOtThresholdV616FI')?.addEventListener('change',()=>{if(lastData)host('trendTopOtV616FI',barPeople(lastData.people,raw(value('trendOtThresholdV616FI'))));});
+    $('trendStaffThresholdV616FI')?.addEventListener('input',renderForecast);
+    ['dashStart','dashEnd','dashSide','dashDivision','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{lastKey='';}));
+    $('loadDashboardBtn')?.addEventListener('click',()=>{lastKey='';setTimeout(()=>load(true),180);});
+    document.addEventListener('timeclock:dashboard-rendered-v616h',()=>{if(isShown())load(true);});
+    if(isShown())setTimeout(()=>load(),250);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+  window.TimeClockTrendV616FI={load,render};
+})();
