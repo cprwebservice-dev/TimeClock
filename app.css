@@ -38176,3 +38176,68 @@ html[data-theme="dark"] .dashboard-area-card-v616er,body.theme-dark .dashboard-a
   .dashboard-rate-summary-v616er{font-size:12px}
   .dashboard-line-legend-v616er{gap:10px;font-size:11px}
 }
+
+
+/* FIX16ET: Dashboard table clarity; no changes to backend or other pages */
+#page-dashboard .dashboard-comparison-help-v616et{
+  display:flex;align-items:flex-start;gap:9px;margin:0 0 12px;
+  padding:10px 13px;border:1px solid rgba(37,99,235,.16);border-radius:12px;
+  background:rgba(37,99,235,.045);color:var(--text-primary,#334155);
+  font-size:12px;line-height:1.6;
+}
+#page-dashboard .dashboard-comparison-help-v616et b{font-weight:750}
+#page-dashboard .dashboard-help-symbol-v616et{
+  flex:0 0 19px;display:grid;place-items:center;margin-top:1px;width:19px;height:19px;
+  border-radius:999px;background:#2563eb;color:#fff;font-size:11px;font-weight:800;font-style:normal;
+}
+#page-dashboard .dashboard-comparison-clarity-v616et{min-width:1120px;table-layout:auto}
+#page-dashboard .dashboard-comparison-clarity-v616et thead th{font-size:12px;padding:13px 11px;line-height:1.3;vertical-align:middle}
+#page-dashboard .dashboard-comparison-clarity-v616et thead th small{
+  display:block;margin-top:5px;font-weight:500;font-size:10.5px;color:var(--text-muted,#64748b);
+}
+#page-dashboard .dashboard-comparison-clarity-v616et tbody td{
+  padding:12px 11px;vertical-align:middle;
+}
+#page-dashboard .dashboard-comparison-clarity-v616et tbody td:nth-child(4){min-width:205px}
+#page-dashboard .dashboard-comparison-clarity-v616et thead th:nth-child(6),
+#page-dashboard .dashboard-comparison-clarity-v616et thead th:nth-child(7){min-width:166px}
+#page-dashboard .dashboard-comparison-clarity-v616et thead th:nth-child(8){min-width:167px}
+#page-dashboard .dashboard-rate-metric-v616et{
+  display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:135px;
+}
+#page-dashboard .dashboard-rate-metric-v616et .dashboard-rate-pill-v616eq{font-size:12px;padding:6px 10px;min-width:66px}
+#page-dashboard .dashboard-rate-metric-v616et small{
+  font-size:11.5px;line-height:1.4;color:var(--text-muted,#64748b);white-space:nowrap;
+}
+#page-dashboard .dashboard-rate-metric-v616et small b{font-weight:800;color:var(--text-primary,#0f172a)}
+#page-dashboard .dashboard-diff-detail-v616et{
+  display:flex;flex-direction:column;align-items:flex-start;gap:4px;
+  font-size:11.5px;font-weight:650;white-space:nowrap;
+}
+#page-dashboard .dashboard-diff-detail-v616et b{font-size:12.5px;font-weight:800}
+#page-dashboard .dashboard-diff-detail-v616et.up{color:#15803d}
+#page-dashboard .dashboard-diff-detail-v616et.down{color:#be123c}
+#page-dashboard .dashboard-diff-detail-v616et.flat{color:var(--text-muted,#64748b)}
+#page-dashboard .dashboard-rate-empty-v616et,
+#page-dashboard .dashboard-diff-empty-v616et{display:flex;flex-direction:column;gap:3px;color:var(--text-muted,#64748b);font-weight:700}
+#page-dashboard .dashboard-rate-empty-v616et small,
+#page-dashboard .dashboard-diff-empty-v616et small{font-size:10.5px;font-weight:500}
+#page-dashboard .dashboard-comparison-clarity-v616et tfoot td{vertical-align:middle;padding:13px 11px}
+#page-dashboard .dashboard-comparison-clarity-v616et tfoot .dashboard-rate-metric-v616et small b{
+  color:var(--text-primary,#0f172a)
+}
+html[data-theme='dark'] #page-dashboard .dashboard-comparison-help-v616et,
+body.theme-dark #page-dashboard .dashboard-comparison-help-v616et,
+body.dark #page-dashboard .dashboard-comparison-help-v616et{
+  color:#d5e3f4;border-color:rgba(96,165,250,.28);background:rgba(37,99,235,.13)
+}
+html[data-theme='dark'] #page-dashboard .dashboard-diff-detail-v616et.down,
+body.theme-dark #page-dashboard .dashboard-diff-detail-v616et.down,
+body.dark #page-dashboard .dashboard-diff-detail-v616et.down{color:#fda4af}
+html[data-theme='dark'] #page-dashboard .dashboard-diff-detail-v616et.up,
+body.theme-dark #page-dashboard .dashboard-diff-detail-v616et.up,
+body.dark #page-dashboard .dashboard-diff-detail-v616et.up{color:#86efac}
+@media(max-width:680px){
+ #page-dashboard .dashboard-comparison-help-v616et{font-size:11px;padding:9px 10px}
+ #page-dashboard .dashboard-comparison-clarity-v616et{min-width:1080px}
+}

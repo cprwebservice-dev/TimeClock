@@ -5457,7 +5457,19 @@ window.tcIsDayShiftCode = value =>
       },{employee_count:0,daily_complete:0,daily_total:0,cumulative_complete:0,cumulative_total:0});
       const ratio=(a,b)=>b>0?a*100/b:null;
       const pill=n=>n===null?'—':`<span class="dashboard-rate-pill-v616eq ${dashboardManagerRateToneV616EQ(n)}">${n.toFixed(1)}%</span>`;
-      const delta=(a,b)=>a===null||b===null?'—':`<span class="dashboard-diff-v616eq ${a-b>0.05?'up':a-b<-.05?'down':'flat'}">${a-b>0?'+':''}${(a-b).toFixed(1)} pp</span>`;
+      const rateCell=(complete,total)=>{
+        const c=Number(complete||0), t=Number(total||0), rate=ratio(c,t);
+        if(!t) return `<span class="dashboard-rate-empty-v616et">—<small>ไม่มีวันทำงานที่ต้องลงเวลา</small></span>`;
+        return `<div class="dashboard-rate-metric-v616et">${pill(rate)}<small>ครบ <b>${formatNumber(c)}</b> จาก <b>${formatNumber(t)}</b></small></div>`;
+      };
+      const delta=(a,b)=>{
+        if(a===null||b===null) return `<span class="dashboard-diff-empty-v616et">—<small>ไม่มีฐานเปรียบเทียบ</small></span>`;
+        const d=a-b;
+        const tone=d>0.05?'up':d<-.05?'down':'flat';
+        const word=tone==='up'?'สูงกว่า':tone==='down'?'ต่ำกว่า':'เท่ากับ';
+        const sign=tone==='up'?'↑ ':tone==='down'?'↓ ':'=';
+        return `<span class="dashboard-diff-detail-v616et ${tone}" title="ผลต่าง = อัตราลงเวลาครบวันล่าสุด ลบ อัตราสะสม">${sign}${word}<b>${Math.abs(d).toFixed(1)} จุด%</b></span>`;
+      };
       if(body){
         let lastZone='',lastSub='',lastSubArea='';
         body.innerHTML=mapped.length?mapped.map(row=>{
@@ -5465,19 +5477,19 @@ window.tcIsDayShiftCode = value =>
           const newZone=row._zone!==lastZone;
           const newSub=newZone||row._sub!==lastSub;
           const newSubArea=newSub||row._subArea!==lastSubArea;
-          if(newZone) groups+=`<tr class="dashboard-group-row-v616er zone"><td colspan="10">พื้นที่: ${dashboardManagerSafeV616EQ(row._zone)}</td></tr>`;
-          if(newSub) groups+=`<tr class="dashboard-group-row-v616er sub"><td colspan="10">Sub: ${dashboardManagerSafeV616EQ(row._sub)}</td></tr>`;
-          if(newSubArea) groups+=`<tr class="dashboard-group-row-v616er subarea"><td colspan="10">Sub-area: ${dashboardManagerSafeV616EQ(row._subArea)}</td></tr>`;
+          if(newZone) groups+=`<tr class="dashboard-group-row-v616er zone"><td colspan="8">พื้นที่: ${dashboardManagerSafeV616EQ(row._zone)}</td></tr>`;
+          if(newSub) groups+=`<tr class="dashboard-group-row-v616er sub"><td colspan="8">Sub: ${dashboardManagerSafeV616EQ(row._sub)}</td></tr>`;
+          if(newSubArea) groups+=`<tr class="dashboard-group-row-v616er subarea"><td colspan="8">Sub-area: ${dashboardManagerSafeV616EQ(row._subArea)}</td></tr>`;
           lastZone=row._zone;lastSub=row._sub;lastSubArea=row._subArea;
           const dr=ratio(Number(row.daily_complete||0),Number(row.daily_total||0));
           const cr=ratio(Number(row.cumulative_complete||0),Number(row.cumulative_total||0));
-          return `${groups}<tr class="dashboard-org-data-row-v616er"><td>${dashboardManagerSafeV616EQ(row._zone)}</td><td>${dashboardManagerSafeV616EQ(row._sub)}</td><td>${dashboardManagerSafeV616EQ(row._subArea)}</td><td><div class="dashboard-org-name-v616eq"><strong>${dashboardManagerSafeV616EQ(row.org_code||'')}</strong><span>${dashboardManagerSafeV616EQ(row.org_name||'')}</span></div></td><td class="text-right">${formatNumber(row.employee_count||0)}</td><td class="text-right">${pill(dr)}</td><td class="text-right">${formatNumber(row.daily_complete||0)} / ${formatNumber(row.daily_total||0)}</td><td class="text-right">${pill(cr)}</td><td class="text-right">${formatNumber(row.cumulative_complete||0)} / ${formatNumber(row.cumulative_total||0)}</td><td class="text-right">${delta(dr,cr)}</td></tr>`;
-        }).join(''):'<tr><td colspan="10" class="empty-cell">ไม่พบข้อมูลรายหน่วยงานในช่วงที่เลือก</td></tr>';
+          return `${groups}<tr class="dashboard-org-data-row-v616er"><td>${dashboardManagerSafeV616EQ(row._zone)}</td><td>${dashboardManagerSafeV616EQ(row._sub)}</td><td>${dashboardManagerSafeV616EQ(row._subArea)}</td><td><div class="dashboard-org-name-v616eq"><strong>${dashboardManagerSafeV616EQ(row.org_code||'')}</strong><span>${dashboardManagerSafeV616EQ(row.org_name||'')}</span></div></td><td class="text-right">${formatNumber(row.employee_count||0)}</td><td>${rateCell(row.daily_complete,row.daily_total)}</td><td>${rateCell(row.cumulative_complete,row.cumulative_total)}</td><td>${delta(dr,cr)}</td></tr>`;
+        }).join(''):'<tr><td colspan="8" class="empty-cell">ไม่พบข้อมูลรายหน่วยงานในช่วงที่เลือก</td></tr>';
       }
       if(foot){
         const daily=ratio(totals.daily_complete,totals.daily_total);
         const cum=ratio(totals.cumulative_complete,totals.cumulative_total);
-        foot.innerHTML=`<tr><th colspan="4" scope="row">รวมทั้งหมด <small>${formatNumber(rows.length)} หน่วยงาน • คำนวณจากยอดรวมจริง</small></th><td class="text-right">${formatNumber(totals.employee_count)}</td><td class="text-right">${pill(daily)}</td><td class="text-right">${formatNumber(totals.daily_complete)} / ${formatNumber(totals.daily_total)}</td><td class="text-right">${pill(cum)}</td><td class="text-right">${formatNumber(totals.cumulative_complete)} / ${formatNumber(totals.cumulative_total)}</td><td class="text-right">${delta(daily,cum)}</td></tr>`;
+        foot.innerHTML=`<tr><th colspan="4" scope="row">รวมทั้งหมด <small>${formatNumber(rows.length)} หน่วยงาน • คำนวณจากยอดรวมจริง</small></th><td class="text-right">${formatNumber(totals.employee_count)}</td><td>${rateCell(totals.daily_complete,totals.daily_total)}</td><td>${rateCell(totals.cumulative_complete,totals.cumulative_total)}</td><td>${delta(daily,cum)}</td></tr>`;
       }
     }
 
