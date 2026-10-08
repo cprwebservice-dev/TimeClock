@@ -38327,3 +38327,36 @@ body.dark #page-dashboard .dashboard-rate-help-icon-v616eu{background:#243c62;bo
   #page-dashboard .dashboard-rate-method-popover-v616eu{padding:16px 17px;border-radius:14px}
   #page-dashboard .dashboard-rate-method-popover-v616eu h4{font-size:16px}
 }
+
+/* FIX16EV: fuller dashboard charts, collapsible grouped comparison rows, and combined cumulative Area chart */
+.dashboard-manager-line-chart-v616eq{min-height:300px}
+.dashboard-manager-line-chart-v616eq.dashboard-rate-chart-v616er{min-height:390px;padding:4px 0 0}
+.dashboard-manager-line-chart-v616eq.dashboard-rate-chart-v616er svg{max-height:none;min-height:390px}
+.dashboard-area-compare-host-v616ev{margin-bottom:16px}
+.dashboard-area-compare-card-v616ev{border:1px solid var(--border-color,#dce5ed);border-radius:16px;background:linear-gradient(180deg,rgba(248,250,252,.98),rgba(255,255,255,.98));padding:14px 16px 12px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
+.dashboard-area-compare-head-v616ev{display:flex;gap:14px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
+.dashboard-area-compare-head-v616ev strong{display:block;font-size:15px;color:var(--text-primary,#0f172a)}
+.dashboard-area-compare-head-v616ev small{display:block;color:var(--text-muted,#64748b);margin-top:3px}
+.dashboard-area-compare-legend-v616ev{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.dashboard-area-compare-chip-v616ev{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border-color,#dce5ed);background:var(--surface-subtle,#fff);border-radius:999px;padding:6px 10px;line-height:1.1}
+.dashboard-area-compare-chip-v616ev i{width:11px;height:11px;border-radius:999px;background:var(--line,#3b82f6);box-shadow:0 0 0 3px color-mix(in srgb,var(--line,#3b82f6) 16%, transparent)}
+.dashboard-area-compare-chip-v616ev b{font-size:12px;color:var(--text-primary,#0f172a)}
+.dashboard-area-compare-chip-v616ev small{font-size:11px;color:var(--text-muted,#64748b)}
+.dashboard-area-compare-chart-v616ev{min-height:350px}
+.dashboard-area-compare-chart-v616ev svg{max-height:none;min-height:350px}
+.dashboard-org-comparison-wrap-v616eq{max-height:620px}
+.dashboard-group-toggle-v616ev{display:inline-flex;align-items:center;gap:8px;background:none;border:0;padding:0;color:inherit;font:inherit;font-weight:800;cursor:pointer;text-align:left}
+.dashboard-group-toggle-v616ev.secondary{font-weight:780}
+.dashboard-group-toggle-v616ev.tertiary{font-weight:730}
+.dashboard-group-toggle-v616ev .caret{display:inline-flex;align-items:center;justify-content:center;width:16px;color:var(--text-muted,#64748b);font-size:12px}
+.dashboard-group-summary-v616ev{color:var(--text-muted,#64748b);font-size:12px;font-weight:700}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er td{vertical-align:middle}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er .dashboard-rate-metric-v616et{padding:4px 0}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er.zone td{background:rgba(37,99,235,.1)!important}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er.sub td{background:rgba(37,99,235,.045)!important}
+.dashboard-org-comparison-table-v616eq .dashboard-group-row-v616er.subarea td{background:rgba(148,163,184,.09)!important}
+.dashboard-org-comparison-table-v616eq .dashboard-org-data-row-v616er td{background:var(--panel-bg,#fff)}
+html[data-theme="dark"] .dashboard-area-compare-card-v616ev,body.theme-dark .dashboard-area-compare-card-v616ev{background:linear-gradient(180deg,rgba(15,23,42,.92),rgba(10,15,28,.95));box-shadow:none}
+html[data-theme="dark"] .dashboard-area-compare-chip-v616ev,body.theme-dark .dashboard-area-compare-chip-v616ev{background:rgba(15,23,42,.78);border-color:rgba(148,163,184,.25)}
+@media(max-width:1190px){.dashboard-area-compare-chart-v616ev{min-height:320px}.dashboard-manager-line-chart-v616eq.dashboard-rate-chart-v616er{min-height:350px}.dashboard-manager-line-chart-v616eq.dashboard-rate-chart-v616er svg{min-height:350px}}
+@media(max-width:760px){.dashboard-area-compare-head-v616ev{flex-direction:column}.dashboard-area-compare-legend-v616ev{justify-content:flex-start}.dashboard-group-summary-v616ev{display:none}}
