@@ -229,25 +229,28 @@
     </article>
   </div>
 
-  <article class="panel dashboard-manager-rate-panel-v616eq section-gap">
+  <article class="panel dashboard-manager-rate-panel-v616eq dashboard-overall-panel-v616fb section-gap">
     <div class="panel-header">
-      <div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม</h3><p>คุณภาพการลงเวลาเข้า–ออก • เปรียบเทียบกับเป้าหมายและแนวโน้มสะสม</p></div>
+      <div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม</h3><p>แนวโน้มอัตราลงเวลาครบของพนักงานที่มีกะทำงานจริง พร้อมเส้นเป้าหมาย</p></div>
       <div class="dashboard-rate-tools-v616er"><label for="dashboardRateTargetV616ER">เป้าหมาย <input type="number" min="0" max="100" step="1" value="90" id="dashboardRateTargetV616ER" aria-label="เป้าหมายอัตราลงเวลาครบ"> %</label><span class="panel-chip" id="dashboardManagerLatestRateV616EQ">—</span></div>
     </div>
-    <div class="panel-body">
-      <div class="dashboard-dual-charts-v616fa" aria-label="เปรียบเทียบกราฟลงเวลารวมและราย Area">
-        <div class="dashboard-dual-chart-cell-v616fa dashboard-dual-chart-overall-v616fa">
-        <div class="dashboard-manager-line-chart-v616eq dashboard-rate-chart-v616er" id="dashboardManagerRateChartV616EQ">
-          <div class="dashboard-manager-empty-v616eq">เลือกช่วงวันที่แล้วกดแสดงผล</div>
-        </div>
-        <div class="dashboard-line-legend-v616er"><span class="daily">รายวัน</span><span class="cumulative">สะสมตั้งแต่ต้นช่วง</span><span class="target">เป้าหมาย</span></div>
-        <div class="dashboard-rate-summary-v616er" id="dashboardRateSummaryV616ER">รอข้อมูลการลงเวลา</div>
-        </div>
-        <div class="dashboard-dual-chart-cell-v616fa dashboard-dual-chart-area-v616fa">
-  <div class="dashboard-area-compare-host-v616ev in-rate-panel" id="dashboardAreaTrendCompareV616EV"><div class="dashboard-manager-empty-v616eq">กำลังรอกราฟเทียบสะสม by Area</div></div>
-        </div>
+    <div class="panel-body dashboard-chart-body-v616fb">
+      <div class="dashboard-manager-line-chart-v616eq dashboard-rate-chart-v616er" id="dashboardManagerRateChartV616EQ">
+        <div class="dashboard-manager-empty-v616eq">เลือกช่วงวันที่แล้วกดแสดงผล</div>
       </div>
-      <p class="dashboard-rate-definition-v616er">อัตราลงเวลาครบ = จำนวนรายการวัน–พนักงานที่มีเวลาเข้าและออกครบ ÷ รายการวัน–พนักงานทั้งหมด × 100 • วันที่ไม่มีรายการจะไม่ถูกนำไปหาร</p>
+      <div class="dashboard-line-legend-v616er"><span class="daily">รายวัน</span><span class="cumulative">สะสมตั้งแต่ต้นช่วง</span><span class="target">เป้าหมาย</span></div>
+      <div class="dashboard-rate-summary-v616er" id="dashboardRateSummaryV616ER">รอข้อมูลการลงเวลา</div>
+      <p class="dashboard-rate-definition-v616er">อัตราลงเวลาครบ = จำนวนวัน–พนักงานที่ต้องลงเวลาและลงเวลาเข้า–ออกครบ ÷ จำนวนวัน–พนักงานที่ต้องลงเวลาทั้งหมด × 100 • ไม่รวมวันหยุดและวันลาเต็มวัน</p>
+    </div>
+  </article>
+
+  <article class="panel dashboard-area-comparison-panel-v616fb section-gap" aria-label="กราฟเปรียบเทียบสะสม by Area">
+    <div class="panel-header">
+      <div><h3>เทียบสะสม by Area</h3><p>แนวโน้มอัตราลงเวลาครบสะสมของแต่ละ Area ในกราฟเดียวกัน • ชี้ที่เส้นเพื่อดูรายละเอียด</p></div>
+      <span class="dashboard-area-trend-status-v616er" id="dashboardAreaTrendCompareStatusV616FB">รอข้อมูล Area</span>
+    </div>
+    <div class="panel-body dashboard-chart-body-v616fb">
+      <div class="dashboard-area-compare-host-v616ev" id="dashboardAreaTrendCompareV616EV"><div class="dashboard-manager-empty-v616eq">กำลังรอกราฟเทียบสะสม by Area</div></div>
     </div>
   </article>
 
@@ -267,7 +270,8 @@
       <div class="dashboard-table-tools-v616eq"><span id="dashboardOrgComparisonDateV616EQ">วันล่าสุด —</span><span id="dashboardOrgComparisonCountV616EQ">0 หน่วยงาน</span></div>
     </div>
     <div class="panel-body">
-      <div class="dashboard-comparison-help-v616et" role="note"><span class="dashboard-help-symbol-v616et" aria-hidden="true">i</span><span><b>วิธีอ่าน:</b> <b>ครบ 0 จาก 1</b> หมายถึง ต้องลงเวลา 1 วัน-พนักงาน แต่ลงเวลาเข้า–ออกไม่ครบ • <b>เทียบกับสะสม</b> เป็นส่วนต่างของเปอร์เซ็นต์ในหน่วย <b>จุด%</b> ไม่ใช่จำนวนคน • ไม่รวมวันหยุดและวันลาเต็มวัน</span></div>
+      <div class="dashboard-comparison-help-v616et" role="note"><span class="dashboard-help-symbol-v616et" aria-hidden="true">i</span><span><b>วิธีอ่าน:</b> <b>ครบ 0 จาก 1</b> หมายถึง ต้องลงเวลา 1 วัน-พนักงาน แต่ลงเวลาเข้า–ออกไม่ครบ • <b>เทียบกับสะสม</b> เป็นส่วนต่างของเปอร์เซ็นต์ในหน่วย <b>จุด%</b> ไม่ใช่จำนวนคน • ไม่รวมวันหยุดและวันลาเต็มวัน • <b>Manager</b> แสดงตาม Scope ที่มีผล ณ วันสิ้นสุดของช่วงที่เลือก</span></div>
+      <div class="dashboard-org-manager-status-v616fb" id="dashboardOrgManagerStatusV616FB" aria-live="polite">Manager แสดงจาก Scope ที่มีผลตามวันที่สิ้นสุดช่วงที่เลือก</div>
       <div class="dashboard-org-group-controls-v616ex" id="dashboardOrgGroupControlsV616EX" aria-label="เลือกการจัดกลุ่มตาราง">
         <span>Group by</span>
         <button type="button" class="dashboard-org-group-btn-v616ex active" data-group-mode="zone" aria-pressed="true">พื้นที่</button>
@@ -284,7 +288,7 @@
         <table class="dashboard-org-comparison-table-v616eq dashboard-comparison-clarity-v616et">
           <caption class="visually-hidden">เปรียบเทียบการลงเวลาครบในวันล่าสุดกับอัตราสะสมของช่วงวันที่เลือก โดยนับเฉพาะวันทำงานที่ต้องลงเวลา</caption>
           <thead><tr>
-            <th scope="col">พื้นที่</th><th scope="col">Area</th><th scope="col">Sub Area</th><th scope="col">หน่วยงาน</th>
+            <th scope="col">พื้นที่</th><th scope="col">Area</th><th scope="col">Sub Area</th><th scope="col">หน่วยงาน</th><th scope="col" class="dashboard-manager-col-v616fb" title="Manager ตาม Scope ที่มีผล ณ วันสิ้นสุดช่วงที่เลือก">Manager</th>
             <th scope="col" class="text-right">พนักงาน <small>(คน)</small></th>
             <th scope="col" class="dashboard-rate-col-v616et">
               <button type="button" class="dashboard-rate-method-button-v616eu" popovertarget="dashboardRateDailyMethodV616EU" title="คลิกดูสูตร: ครบในวันล่าสุด ÷ วันที่ต้องลงเวลาในวันล่าสุด × 100" aria-label="ดูวิธีคำนวณอัตราลงเวลาครบวันล่าสุด">
@@ -305,8 +309,8 @@
               </button>
             </th>
           </tr></thead>
-          <tbody id="dashboardOrgComparisonBodyV616EQ"><tr><td colspan="8" class="empty-cell">ยังไม่มีข้อมูล</td></tr></tbody>
-          <tfoot id="dashboardOrgComparisonTotalV616ER"><tr><td colspan="8">รอสรุปข้อมูล</td></tr></tfoot>
+          <tbody id="dashboardOrgComparisonBodyV616EQ"><tr><td colspan="9" class="empty-cell">ยังไม่มีข้อมูล</td></tr></tbody>
+          <tfoot id="dashboardOrgComparisonTotalV616ER"><tr><td colspan="9">รอสรุปข้อมูล</td></tr></tfoot>
         </table>
       </div>
       <!-- FIX16EU: native Popover API opens above the scrollable/sticky table; Escape/outside click closes. -->
@@ -1148,7 +1152,7 @@
             </tr>
           </thead>
           <tbody id="systemPeriodBody">
-            <tr><td colspan="8" class="table-empty">กำลังโหลดข้อมูล...</td></tr>
+            <tr><td colspan="9" class="table-empty">กำลังโหลดข้อมูล...</td></tr>
           </tbody>
         </table>
       </div>
@@ -2090,7 +2094,7 @@
       <div class="table-wrap borrow-audit-table-wrap-v61529f15i">
         <table class="borrow-audit-table-v61529f15i">
           <thead><tr><th>วันเวลา</th><th>พนักงาน</th><th>เหตุการณ์</th><th>ต้นทาง → ปลายทาง</th><th>ช่วงยืม</th><th>ผู้ดำเนินการ</th><th>Authority</th><th>เหตุผล / หมายเหตุ</th></tr></thead>
-          <tbody id="borrowAuditBodyV61529F15I"><tr><td colspan="8" class="fc-empty">กดค้นหาเพื่อโหลดประวัติ</td></tr></tbody>
+          <tbody id="borrowAuditBodyV61529F15I"><tr><td colspan="9" class="fc-empty">กดค้นหาเพื่อโหลดประวัติ</td></tr></tbody>
         </table>
       </div>
       <div class="borrow-audit-footer-note-v61529f15i" id="borrowAuditFooterV61529F15I">-</div>
@@ -3504,7 +3508,7 @@
 </tr>
 </thead>
 <tbody id="managerScopeUploadBody">
-<tr><td class="fc-empty" colspan="8">ยังไม่มีข้อมูล Preview</td></tr>
+<tr><td class="fc-empty" colspan="9">ยังไม่มีข้อมูล Preview</td></tr>
 </tbody>
 </table>
 </div>

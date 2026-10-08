@@ -38646,3 +38646,66 @@ body.dark .dashboard-chart-tooltip-v616ez .chart-tip-counts{background:#263a54;c
   #page-dashboard .dashboard-dual-chart-overall-v616fa .dashboard-rate-chart-v616er,
   #page-dashboard .dashboard-dual-chart-area-v616fa .dashboard-area-compare-chart-v616ev{min-height:270px}
 }
+
+/* FIX16FB: vertically stacked attendance charts, compact balanced cards, Manager column */
+#page-dashboard .dashboard-overall-panel-v616fb,
+#page-dashboard .dashboard-area-comparison-panel-v616fb{width:100%;margin-top:12px;min-width:0}
+#page-dashboard .dashboard-chart-body-v616fb{padding:13px 18px 15px!important}
+#page-dashboard .dashboard-overall-panel-v616fb .dashboard-rate-chart-v616er{
+  min-height:325px;max-height:400px;padding:0 5px;background:var(--surface-subtle,#fbfdff)
+}
+#page-dashboard .dashboard-overall-panel-v616fb .dashboard-rate-chart-v616er svg{
+  display:block;width:100%;height:auto;min-height:0!important;max-height:390px!important;aspect-ratio:1240/380
+}
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-host-v616ev{margin:0}
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-card-v616ev{
+  box-shadow:none;border:0;background:transparent;padding:2px 4px 5px
+}
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-head-v616ev{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 9px
+}
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-legend-v616ev{gap:5px;justify-content:flex-start}
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-chip-v616ev{padding:5px 8px;gap:5px}
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-chart-v616ev{
+  min-height:310px;padding:0 5px;max-height:400px
+}
+#page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-chart-v616ev svg{
+  display:block;width:100%;height:auto;min-height:0!important;max-height:385px!important;aspect-ratio:1240/360
+}
+#page-dashboard .dashboard-overall-panel-v616fb .dashboard-line-legend-v616er{padding:7px 10px;margin:7px 0}
+#page-dashboard .dashboard-overall-panel-v616fb .dashboard-rate-summary-v616er{padding:9px 12px;margin:3px 0 8px}
+#page-dashboard .dashboard-overall-panel-v616fb .dashboard-rate-definition-v616er{margin:5px 1px 0;line-height:1.55}
+#page-dashboard .manager-workforce-grid-v616eq{align-items:stretch;gap:12px}
+#page-dashboard .dashboard-workforce-panel-v616eq .panel-body{padding:10px 14px}
+#page-dashboard .dashboard-workforce-row-v616eq{
+  display:grid;grid-template-columns:minmax(140px,.7fr) minmax(180px,1.3fr) minmax(180px,.85fr);
+  align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed rgba(148,163,184,.24)
+}
+#page-dashboard .dashboard-workforce-label-v616eq{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+#page-dashboard .dashboard-workforce-total-v616ex{padding:3px 9px;font-size:12px}
+#page-dashboard .dashboard-workforce-total-v616ex b{font-size:21px}
+#page-dashboard .dashboard-workforce-counts-v616eq{justify-content:flex-end;gap:6px 9px;flex-wrap:wrap}
+#page-dashboard .dashboard-team-summary-panel-v616eq .panel-body{padding:12px 13px}
+#page-dashboard .dashboard-team-card-v616eq{min-height:66px;padding:10px 12px}
+#page-dashboard .dashboard-org-comparison-table-v616eq{min-width:1460px}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-manager-col-v616fb{min-width:145px;text-align:left}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-manager-cell-v616fb{max-width:220px;min-width:145px}
+#page-dashboard .dashboard-manager-name-v616fb{display:inline-block;max-width:200px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:11px;font-weight:700;color:var(--text-primary,#0f172a);vertical-align:middle}
+#page-dashboard .dashboard-manager-empty-v616fb,#page-dashboard .dashboard-manager-group-placeholder-v616fb{font-size:11px;color:var(--text-muted,#64748b);font-weight:500}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-group-row-v616ey td{vertical-align:middle}
+@media(max-width:1190px){
+  #page-dashboard .dashboard-workforce-row-v616eq{grid-template-columns:1fr;gap:8px}
+  #page-dashboard .dashboard-workforce-label-v616eq{flex-direction:row;justify-content:space-between;align-items:center}
+  #page-dashboard .dashboard-workforce-counts-v616eq{justify-content:flex-start}
+}
+@media(max-width:720px){
+  #page-dashboard .dashboard-chart-body-v616fb{padding:10px!important}
+  #page-dashboard .dashboard-overall-panel-v616fb .dashboard-rate-chart-v616er,
+  #page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-chart-v616ev{min-height:220px}
+  #page-dashboard .dashboard-overall-panel-v616fb .dashboard-rate-chart-v616er svg,
+  #page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-chart-v616ev svg{max-height:300px!important}
+}
+html[data-theme="dark"] #page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-card-v616ev,
+body.theme-dark #page-dashboard .dashboard-area-comparison-panel-v616fb .dashboard-area-compare-card-v616ev{background:transparent}
+
+#page-dashboard .dashboard-org-manager-status-v616fb{display:block;margin:0 0 9px 2px;font-size:11px;color:var(--text-muted,#64748b)}
