@@ -18936,7 +18936,7 @@ ${skippedSummary(compatibility.skipped)}
 (() => {
   "use strict";
   const $=id=>document.getElementById(id),q=(s,r=document)=>r.querySelector(s),qa=(s,r=document)=>[...r.querySelectorAll(s)];
-  const VERSION="6.15.29 FIX16EQ";
+  const VERSION="6.15.29 FIX16EQ-R1";
   const menuItems=[
     ["dashboard","Dashboard","ภาพรวมการลงเวลา","▦"],["attendance","รายละเอียดเวลาทำงาน","ค้นหาและตรวจเวลาพนักงาน","◷"],["schedule","ปฏิทินจัดกะ","จัดกะรายเดือน","▣"],["team-master","ทีมช่างเทคนิค","Team Master แบบ Auto Generate","◉"],["report","ศูนย์รายงาน","CSV Excel และ Print/PDF","▤"],["smart-assistant","ผู้ช่วยวิเคราะห์","สรุปข้อมูล Time-Clock","✦"],
     ["admin-center","HR Admin Center","ศูนย์บริหารระบบ","◆"],["admin-health","System Health","Configuration Audit และ System Health","♥"],["admin-employees","ข้อมูลพนักงาน","Employee Directory","♟"],["admin-shifts","ตั้งค่ากะทำงาน","Shift Master","◫"],["admin-holidays","วันหยุดนักขัตฤกษ์","Holiday Master","◈"],["admin-accounts","จัดการบัญชีผู้ใช้งาน","สร้าง User และ First Login","♜"],["admin-users","User และ Scope","สิทธิ์ผู้ใช้งาน","♙"],["admin-import","นำเข้าพนักงาน","Import CSV","⇧"],["admin-time-import","นำเข้าข้อมูลลงเวลา","MobileTA Text Import","⇩"],["admin-attendance-rebuild","ประมวลผล Attendance","Progress และ Error Log","↻"],["admin-audit","Audit Log","ประวัติการเปลี่ยนแปลง","⌁"],["system-settings","System Settings","Theme Developer และ Connection","⚙"]
@@ -40407,7 +40407,8 @@ ${names}${extra}
       toggle.setAttribute("aria-expanded",String(open));
       toggle.textContent=open?"ซ่อนตัวกรอง":"ตัวกรอง";
     };
-    apply(false);
+    // FIX16EQ-R1: Dashboard manager filters are primary controls, keep them visible on first load.
+    apply(true);
     toggle.addEventListener("click",()=>{
       apply(panel.classList.contains("dashboard-filter-collapsed-v616dw"));
     });

@@ -37967,7 +37967,8 @@ html[data-theme="dark"] .hradmin-selection-empty-v616eh{
    ========================================================================== */
 #page-dashboard .dashboard-filter-grid-v616eq{
   display:grid!important;
-  grid-template-columns:1.05fr 1.05fr 1.25fr 1.25fr 1.15fr 2.15fr auto;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  grid-template-rows:auto auto;
   gap:12px;
   align-items:end;
   width:100%;
@@ -37976,8 +37977,15 @@ html[data-theme="dark"] .hradmin-selection-empty-v616eh{
 #page-dashboard .dashboard-filter-grid-v616eq .field label{display:block;margin:0 0 6px;font-size:12px;font-weight:700;color:var(--text-muted,#64748b)}
 #page-dashboard .dashboard-filter-grid-v616eq .input,
 #page-dashboard .dashboard-filter-grid-v616eq .select{width:100%;min-width:0;height:42px;text-overflow:ellipsis}
-#page-dashboard .dashboard-filter-actions-v616eq{display:flex;gap:8px;align-items:center;white-space:nowrap}
-#page-dashboard .dashboard-filter-actions-v616eq .btn{height:42px}
+/* FIX16EQ-R1: cascade is always left-to-right: ด้าน → ฝ่าย → พื้นที่ → หน่วยงาน */
+#page-dashboard .dashboard-side-field-v616eq{grid-column:1;grid-row:1}
+#page-dashboard .dashboard-division-field-v616eq{grid-column:2;grid-row:1}
+#page-dashboard .dashboard-zone-field-v616eq{grid-column:3;grid-row:1}
+#page-dashboard .dashboard-org-field-v616eq{grid-column:4;grid-row:1}
+#page-dashboard .dashboard-date-field-v616eq:nth-of-type(1){grid-column:1;grid-row:2}
+#page-dashboard .dashboard-date-field-v616eq:nth-of-type(2){grid-column:2;grid-row:2}
+#page-dashboard .dashboard-filter-actions-v616eq{grid-column:3/5;grid-row:2;display:flex;gap:8px;align-items:center;justify-content:flex-end;white-space:nowrap}
+#page-dashboard .dashboard-filter-actions-v616eq .btn{height:42px;min-width:112px}
 #page-dashboard .dashboard-contextbar-v616eq{display:flex;flex-wrap:wrap;gap:8px}
 #page-dashboard .dashboard-contextbar-v616eq>span{min-width:0}
 #page-dashboard .dashboard-contextbar-v616eq em{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -38077,4 +38085,20 @@ html[data-theme="dark"] .dashboard-workforce-note-v616eq,body.theme-dark .dashbo
   #page-dashboard .dashboard-filter-grid-v616eq .field,#page-dashboard .dashboard-org-field-v616eq{grid-column:1}
   .dashboard-team-cards-v616eq{grid-template-columns:1fr}
   .dashboard-workforce-legend-v616eq{justify-content:flex-start}
+}
+
+/* FIX16EQ-R1 · requested manager overview is the first visual block in the Overview tab */
+#page-dashboard #dashboardViewOverviewV616H>.manager-operations-overview-v616eq{margin-top:12px}
+#page-dashboard #dashboardViewOverviewV616H>.manager-focus-dashboard-v616do{margin-top:18px}
+#page-dashboard .manager-operations-overview-v616eq .dashboard-section-heading-v616eq{padding:2px 2px 0}
+
+@media(max-width:1200px){
+  #page-dashboard .dashboard-filter-grid-v616eq{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto}
+  #page-dashboard .dashboard-side-field-v616eq,#page-dashboard .dashboard-division-field-v616eq,#page-dashboard .dashboard-zone-field-v616eq,#page-dashboard .dashboard-org-field-v616eq,#page-dashboard .dashboard-date-field-v616eq:nth-of-type(1),#page-dashboard .dashboard-date-field-v616eq:nth-of-type(2){grid-column:auto;grid-row:auto}
+  #page-dashboard .dashboard-filter-actions-v616eq{grid-column:1/-1;grid-row:auto;justify-content:flex-end}
+}
+@media(max-width:640px){
+  #page-dashboard .dashboard-filter-grid-v616eq{grid-template-columns:1fr}
+  #page-dashboard .dashboard-filter-actions-v616eq{grid-column:1;justify-content:stretch}
+  #page-dashboard .dashboard-filter-actions-v616eq .btn{flex:1;min-width:0}
 }
