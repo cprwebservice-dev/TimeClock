@@ -257,7 +257,7 @@
 
   <article class="panel dashboard-org-comparison-panel-v616eq section-gap">
     <div class="panel-header dashboard-org-comparison-head-v616eq">
-      <div><h3>อัตราลงเวลาครบรายหน่วยงาน: วันล่าสุดเทียบสะสม</h3><p>เลือก Group by พื้นที่ / Area / Sub Area • เรียงอัตราลงเวลาครบสะสมจากน้อยไปมาก • กดหัวกลุ่มเพื่อขยายหรือย่อ</p></div>
+      <div><h3>อัตราลงเวลาครบรายหน่วยงาน: วันล่าสุดเทียบสะสม</h3><p>เลือก Group by พื้นที่ / Area / Sub Area • เรียงอัตราลงเวลาครบสะสมจากน้อยไปมาก • เริ่มต้นย่อทุกกลุ่ม กดเพื่อดูหน่วยงาน</p></div>
       <div class="dashboard-table-tools-v616eq"><span id="dashboardOrgComparisonDateV616EQ">วันล่าสุด —</span><span id="dashboardOrgComparisonCountV616EQ">0 หน่วยงาน</span></div>
     </div>
     <div class="panel-body">
@@ -267,6 +267,11 @@
         <button type="button" class="dashboard-org-group-btn-v616ex active" data-group-mode="zone" aria-pressed="true">พื้นที่</button>
         <button type="button" class="dashboard-org-group-btn-v616ex" data-group-mode="sub" aria-pressed="false">Area</button>
         <button type="button" class="dashboard-org-group-btn-v616ex" data-group-mode="subarea" aria-pressed="false">Sub Area</button>
+        <div class="dashboard-group-bulk-v616ez" role="group" aria-label="จัดการการแสดงผลกลุ่ม">
+          <button type="button" class="dashboard-group-bulk-button-v616ez" data-group-action-v616ez="expand" aria-label="ขยายทุกกลุ่ม"><span aria-hidden="true">▾</span> ขยายทั้งหมด</button>
+          <button type="button" class="dashboard-group-bulk-button-v616ez" data-group-action-v616ez="collapse" aria-label="ย่อทุกกลุ่ม"><span aria-hidden="true">▸</span> ย่อทั้งหมด</button>
+          <small class="dashboard-group-bulk-status-v616ez" data-group-status-v616ez aria-live="polite">แสดง 0 กลุ่ม</small>
+        </div>
         <span class="dashboard-org-sort-hint-v616ey" title="เรียงจากอัตราลงเวลาครบสะสมที่คำนวณจากยอดรวมครบและยอดต้องลงเวลา">เรียงสะสม ↑ น้อย → มาก · ไม่มีฐานอยู่ท้าย</span>
       </div>
       <div class="table-wrap dashboard-org-comparison-wrap-v616eq">

@@ -5369,6 +5369,83 @@ window.tcIsDayShiftCode = value =>
       return Number.isFinite(n)?Math.max(0,Math.min(100,n)):90;
     }
 
+    // FIX16EZ: custom, accessible tooltip for dashboard SVG series.
+    // Data attributes contain URI-encoded JSON, never user-provided HTML.
+    function dashboardRateDotV616EZ(x,y,cls,r,details) {
+      const payload=encodeURIComponent(JSON.stringify(details));
+      const aria=dashboardManagerSafeV616EQ([details.title,details.date,details.value,details.counts].filter(Boolean).join(' • '));
+      return `<circle class="${cls} dashboard-chart-point-v616ez" cx="${x}" cy="${y}" r="${r}" tabindex="0" role="img" focusable="true" aria-label="${aria}" data-chart-tip-v616ez="${payload}"/>`;
+    }
+
+    function installDashboardChartTooltipsV616EZ() {
+      if (document.documentElement.dataset.dashboardChartTipV616EZ==='1') return;
+      document.documentElement.dataset.dashboardChartTipV616EZ='1';
+      const tip=document.createElement('div');
+      tip.id='dashboardChartTooltipV616EZ';
+      tip.className='dashboard-chart-tooltip-v616ez';
+      tip.setAttribute('role','tooltip');
+      tip.setAttribute('aria-hidden','true');
+      tip.innerHTML='<div class="chart-tip-head"><div><span class="chart-tip-type"></span><strong class="chart-tip-date"></strong></div><strong class="chart-tip-value"></strong></div><div class="chart-tip-counts"></div><div class="chart-tip-note"></div>';
+      document.body.appendChild(tip);
+      let active=null, pinned=false;
+      const place=target=>{
+        if(!target||!target.isConnected) return;
+        const box=target.getBoundingClientRect();
+        const w=tip.offsetWidth||258,h=tip.offsetHeight||130;
+        const vw=window.innerWidth,vh=window.innerHeight;
+        const left=Math.min(Math.max(10,box.left+box.width/2-w/2),Math.max(10,vw-w-10));
+        const above=box.top-h-16;
+        const top=above>=10?above:Math.min(vh-h-10,box.bottom+15);
+        tip.style.left=Math.max(10,left)+'px';
+        tip.style.top=Math.max(8,top)+'px';
+      };
+      const hide=()=>{tip.classList.remove('is-visible');tip.setAttribute('aria-hidden','true');active=null;pinned=false;};
+      const show=target=>{
+        if(!target) return;
+        let info;
+        try{info=JSON.parse(decodeURIComponent(target.getAttribute('data-chart-tip-v616ez')||''));}
+        catch(_){return;}
+        active=target;
+        const color=/^#[0-9a-fA-F]{6}$/.test(String(info.color||''))?info.color:'#2563eb';
+        tip.style.setProperty('--tip-accent',color);
+        tip.querySelector('.chart-tip-type').textContent=String(info.title||'อัตราลงเวลาครบ');
+        tip.querySelector('.chart-tip-date').textContent=String(info.date||'');
+        tip.querySelector('.chart-tip-value').textContent=String(info.value||'—');
+        tip.querySelector('.chart-tip-counts').textContent=String(info.counts||'');
+        const note=tip.querySelector('.chart-tip-note');
+        note.textContent=String(info.note||'');
+        note.hidden=!info.note;
+        tip.classList.add('is-visible');
+        tip.setAttribute('aria-hidden','false');
+        place(target);
+      };
+      const marker=event=>event.target?.closest?.('[data-chart-tip-v616ez]')||null;
+      document.addEventListener('pointerover',event=>{
+        if(event.pointerType==='touch'||pinned) return;
+        const dot=marker(event);
+        if(dot&&dot!==active) show(dot);
+      });
+      document.addEventListener('pointermove',event=>{
+        if(event.pointerType==='touch'||pinned) return;
+        const dot=marker(event);
+        if(dot&&dot!==active) show(dot);
+      });
+      document.addEventListener('pointerout',event=>{
+        if(!pinned&&active&&event.target===active&&!active.contains(event.relatedTarget)) hide();
+      });
+      document.addEventListener('focusin',event=>{const dot=marker(event);if(dot){pinned=false;show(dot);}});
+      document.addEventListener('focusout',event=>{if(active&&event.target===active&&!pinned) hide();});
+      document.addEventListener('click',event=>{
+        const dot=marker(event);
+        if(!dot){hide();return;}
+        if(pinned&&active===dot){hide();return;}
+        show(dot); pinned=true;
+      });
+      document.addEventListener('keydown',event=>{if(event.key==='Escape') hide();});
+      window.addEventListener('scroll',hide,true);
+      window.addEventListener('resize',hide);
+    }
+
     function dashboardManagerLineChartV616EQ(rows, compact=false, id="overall") {
       const source=Array.isArray(rows)?rows:[];
       if (!source.some(row=>Number(row?.total||0)>0)) {
@@ -5377,6 +5454,7 @@ window.tcIsDayShiftCode = value =>
       const target=dashboardTargetV616ER();
       const points=source.map(row=>({
         date:String(row?.date||""),total:Number(row?.total||0),complete:Number(row?.complete||0),
+        cumComplete:Number(row?.cumComplete||0),cumTotal:Number(row?.cumTotal||0),
         daily:Number(row?.total||0)>0?Number(row?.completeRate??row?.complete*100/row?.total):null,
         cum:Number(row?.cumTotal||0)>0?Number(row?.cumCompleteRate??row?.cumComplete*100/row?.cumTotal):null
       }));
@@ -5409,15 +5487,21 @@ window.tcIsDayShiftCode = value =>
       const dateText=value=>{const d=new Date(`${value}T12:00:00`);return Number.isNaN(d.getTime())?value:d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});};
       const labels=indexes.map(i=>`<text x="${x(i)}" y="${H-12}" text-anchor="middle">${dashboardManagerSafeV616EQ(dateText(points[i].date))}</text>`).join('');
       const dotSkip=Math.max(1,Math.ceil(observed.length/(compact?20:45)));
-      const dailyDots=observed.filter((_,i)=>i%dotSkip===0||i===observed.length-1).map(({row,i})=>`<circle class="daily-dot" cx="${x(i)}" cy="${y(row.daily)}" r="${compact?3.2:3.7}"><title>${dashboardManagerSafeV616EQ(dateText(row.date))}
-รายวัน: ${row.daily.toFixed(1)}%
-ลงเวลาครบ: ${formatNumber(row.complete)} / ${formatNumber(row.total)}
-สะสมถึงวันนั้น: ${row.cum===null?'—':row.cum.toFixed(1)+'%'}</title></circle>`).join('');
+      const dailyDots=observed.filter((_,i)=>i%dotSkip===0||i===observed.length-1).map(({row,i})=>dashboardRateDotV616EZ(
+        x(i),y(row.daily),'daily-dot',compact?4.4:5.1,{
+          title:'รายวัน',date:dateText(row.date),value:row.daily.toFixed(1)+'%',
+          counts:`ลงเวลาครบ ${formatNumber(row.complete)} จาก ${formatNumber(row.total)} วัน-พนักงาน`,
+          note:`สะสม ณ วันนั้น ${row.cum===null?'—':row.cum.toFixed(1)+'%'}`,color:'#059669'
+        }
+      )).join('');
       const cumulativeObserved=points.map((row,i)=>({row,i})).filter(x=>x.row.cum!==null);
-      const cumulativeDots=cumulativeObserved.filter((_,i)=>i%dotSkip===0||i===cumulativeObserved.length-1).map(({row,i})=>`<circle class="cum-dot" cx="${x(i)}" cy="${y(row.cum)}" r="${compact?2.9:3.3}"><title>${dashboardManagerSafeV616EQ(dateText(row.date))}
-สะสม: ${row.cum.toFixed(1)}%
-ครบสะสม: ${formatNumber(row.cumComplete||0)} / ${formatNumber(row.cumTotal||0)}
-รายวัน: ${row.daily===null?'—':row.daily.toFixed(1)+'%'}</title></circle>`).join('');
+      const cumulativeDots=cumulativeObserved.filter((_,i)=>i%dotSkip===0||i===cumulativeObserved.length-1).map(({row,i})=>dashboardRateDotV616EZ(
+        x(i),y(row.cum),'cum-dot',compact?4.3:4.8,{
+          title:'สะสมในช่วงที่เลือก',date:dateText(row.date),value:row.cum.toFixed(1)+'%',
+          counts:`ครบสะสม ${formatNumber(row.cumComplete)} จาก ${formatNumber(row.cumTotal)} วัน-พนักงาน`,
+          note:`รายวัน ${row.daily===null?'—':row.daily.toFixed(1)+'%'}`,color:'#ea8b1c'
+        }
+      )).join('');
       const targetY=y(target),targetLabelY=Math.max(t+10,Math.min(H-b-6,targetY-7));
       return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="อัตราลงเวลาครบ รายวันสีเขียว สะสมสีส้ม เป้าหมายเส้นประสีแดง" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="${gradientId}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#10a37f" stop-opacity=".17"/><stop offset="100%" stop-color="#10a37f" stop-opacity=".015"/></linearGradient></defs><g class="axis">${grid}${labels}</g>${fillPath?`<path d="${fillPath}" fill="url(#${gradientId})"/>`:''}<line x1="${l}" x2="${W-r}" y1="${targetY}" y2="${targetY}" class="target-line"/><path d="${pathFor('cum')}" class="cum-line"/><path d="${pathFor('daily')}" class="daily-line"/>${cumulativeDots}${dailyDots}<text class="target-label" x="${W-r-1}" y="${targetLabelY}" text-anchor="end">เป้า ${target.toFixed(0)}%</text></svg>`;
     }
@@ -5431,6 +5515,7 @@ window.tcIsDayShiftCode = value =>
         rows:(Array.isArray(area?.daily)?area.daily:[]).map(row=>({
           date:String(row?.date||''),
           total:Number(row?.total||0),
+          cumComplete:Number(row?.cumComplete||0),cumTotal:Number(row?.cumTotal||0),
           cumRate:Number(row?.cumTotal||0)>0?Number(row?.cumCompleteRate??(Number(row?.cumComplete||0)*100/Number(row?.cumTotal||1))):null
         }))
       })).filter(area=>area.rows.some(row=>row.cumRate!==null&&Number.isFinite(row.cumRate)));
@@ -5461,8 +5546,15 @@ window.tcIsDayShiftCode = value =>
       const lines=rowsByArea.map(area=>{
         const last=[...area.rows].reverse().find(row=>row.cumRate!==null&&Number.isFinite(row.cumRate));
         const lastRate=last?last.cumRate:null;
-        const dots=area.rows.filter((row,idx)=>row.cumRate!==null&&Number.isFinite(row.cumRate)&& (idx%Math.max(1,Math.ceil(area.rows.length/18))===0||idx===area.rows.length-1)).map(row=>{ const i=allDates.indexOf(row.date); return i<0? '': `<circle cx="${x(i)}" cy="${y(row.cumRate)}" r="3.2" fill="${area.color}" opacity=".95"><title>${dashboardManagerSafeV616EQ(area.area)} • ${dashboardManagerSafeV616EQ(dateText(row.date))}
-สะสม ${row.cumRate.toFixed(1)}%</title></circle>`; }).join('');
+        const dots=area.rows.filter((row,idx)=>row.cumRate!==null&&Number.isFinite(row.cumRate)&& (idx%Math.max(1,Math.ceil(area.rows.length/18))===0||idx===area.rows.length-1)).map(row=>{
+          const i=allDates.indexOf(row.date);
+          return i<0?'':dashboardRateDotV616EZ(x(i),y(row.cumRate),'area-dot-v616ez',4.7,{
+            title:`สะสม • ${area.zone} / ${area.area}`,
+            date:dateText(row.date),value:row.cumRate.toFixed(1)+'%',
+            counts:`ครบสะสม ${formatNumber(row.cumComplete)} จาก ${formatNumber(row.cumTotal)} วัน-พนักงาน`,
+            note:'อัตราสะสมภายใน Area ตามตัวกรอง',color:area.color
+          });
+        }).join('');
         return {
           svg:`<path d="${pathFor(area)}" fill="none" stroke="${area.color}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity=".96"/>${dots}`,
           legend:`<span class="dashboard-area-compare-chip-v616ev" style="--line:${area.color}"><i></i><b>${dashboardManagerSafeV616EQ(area.area)}</b><small>${lastRate===null?'—':lastRate.toFixed(1)+'%'}</small></span>`
@@ -5472,6 +5564,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function renderDashboardAreaTrendV616ER(data) {
+      installDashboardChartTooltipsV616EZ();
       const grid=$("dashboardAreaTrendGridV616ER");
       const compare=$("dashboardAreaTrendCompareV616EV");
       const status=$("dashboardAreaTrendStatusV616ER");
@@ -5554,6 +5647,7 @@ window.tcIsDayShiftCode = value =>
       });
       const grouped = [...byGroup.values()].map(group => ({...group, totals: aggregate(group.rows)}));
       grouped.sort((a,b) => compareRates(cumulativeRate(a.totals), cumulativeRate(b.totals)) || textCompare(a.label,b.label));
+      state.dashboardOrgVisibleGroupKeysV616EZ=grouped.map(group=>`FIX16EY|${mode}|${group.label}`);
       const byOrgCumulative = (a,b) => compareRates(cumulativeRate(a),cumulativeRate(b)) || textCompare(a.org_code,b.org_code) || textCompare(a.org_name,b.org_name);
       const makeDataRow = row => {
         const day = ratio(Number(row.daily_complete || 0), Number(row.daily_total || 0));
@@ -5562,7 +5656,7 @@ window.tcIsDayShiftCode = value =>
       };
       const makeGroupRow = group => {
         const key = `FIX16EY|${mode}|${group.label}`;
-        const expanded = !collapsed[key];
+        const expanded = collapsed[key] === false;
         const c = group.totals;
         const day = ratio(c.daily_complete,c.daily_total);
         const cum = cumulativeRate(c);
@@ -5573,12 +5667,20 @@ window.tcIsDayShiftCode = value =>
       if (controls && !controls.dataset.bound) {
         controls.dataset.bound='1';
         controls.addEventListener('click', event => {
-          const button = event.target.closest('[data-group-mode]');
-          if (!button) return;
-          const next = button.getAttribute('data-group-mode');
-          if (!validModes.includes(next)) return;
+          const action=event.target.closest('[data-group-action-v616ez]');
+          if(action){
+            const collapse=action.getAttribute('data-group-action-v616ez')==='collapse';
+            const keys=state.dashboardOrgVisibleGroupKeysV616EZ||[];
+            keys.forEach(key=>{collapsed[key]=collapse;});
+            renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison||[]);
+            return;
+          }
+          const button=event.target.closest('[data-group-mode]');
+          if(!button) return;
+          const next=button.getAttribute('data-group-mode');
+          if(!validModes.includes(next)) return;
           state.dashboardOrgGroupModeV616EX=next;
-          renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison || []);
+          renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison||[]);
         });
       }
       if (controls) {
@@ -5587,19 +5689,25 @@ window.tcIsDayShiftCode = value =>
           button.classList.toggle('active',active);
           button.setAttribute('aria-pressed',String(active));
         });
+        controls.querySelectorAll('[data-group-action-v616ez]').forEach(button=>{button.disabled=grouped.length===0;});
+        const status=controls.querySelector('[data-group-status-v616ez]');
+        if(status){
+          const expanded=grouped.filter(group=>collapsed[`FIX16EY|${mode}|${group.label}`]===false).length;
+          status.textContent=`แสดง ${expanded} จาก ${grouped.length} กลุ่ม`;
+        }
       }
       if (body) {
         const html=[];
         grouped.forEach(group => {
           const key = `FIX16EY|${mode}|${group.label}`;
           html.push(makeGroupRow(group));
-          if (!collapsed[key]) group.rows.slice().sort(byOrgCumulative).forEach(row => html.push(makeDataRow(row)));
+          if (collapsed[key] === false) group.rows.slice().sort(byOrgCumulative).forEach(row => html.push(makeDataRow(row)));
         });
         body.innerHTML = html.length ? html.join('') : '<tr><td colspan="8" class="empty-cell">ไม่พบข้อมูลรายหน่วยงานในช่วงที่เลือก</td></tr>';
         body.querySelectorAll('[data-group-toggle]').forEach(button => {
           button.addEventListener('click',() => {
             const key=button.getAttribute('data-group-toggle');
-            collapsed[key]=!collapsed[key];
+            collapsed[key]=(collapsed[key] === false);
             renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison || []);
           });
         });
@@ -5614,6 +5722,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function renderManagerDashboardV616EQ(payload) {
+      installDashboardChartTooltipsV616EZ();
       state.managerDashboardV616EQ = payload || {};
       const workforce = Array.isArray(payload?.workforce) ? payload.workforce : [];
       const wfHost = $("dashboardWorkforceAreaChartV616EQ");
@@ -5626,7 +5735,7 @@ window.tcIsDayShiftCode = value =>
           const total=Number(row.total||0), car=Number(row.car||0), moto=Number(row.motorcycle||0), support=Number(row.support||0);
           const scale=total/max*100;
           const carW=total?car/total*scale:0, motoW=total?moto/total*scale:0, supportW=total?support/total*scale:0;
-          return `<div class="dashboard-workforce-row-v616eq"><div class="dashboard-workforce-label-v616eq"><strong>${dashboardManagerSafeV616EQ(row.area)}</strong><span class="dashboard-workforce-total-v616ex">รวม <b>${formatNumber(total)}</b> คน</span></div><div class="dashboard-workforce-track-v616eq" title="${dashboardManagerSafeV616EQ(row.area)}: รวม ${formatNumber(total)} คน"><i class="car" style="width:${carW}%" title="รถยนต์ ${formatNumber(car)} คน"></i><i class="motorcycle" style="width:${motoW}%" title="มอเตอร์ไซค์ ${formatNumber(moto)} คน"></i><i class="support" style="width:${supportW}%" title="สนับสนุน ${formatNumber(support)} คน"></i></div><div class="dashboard-workforce-counts-v616eq"><span class="car">รถยนต์ <b>${formatNumber(car)}</b></span><span class="motorcycle">มอเตอร์ไซค์ <b>${formatNumber(moto)}</b></span><span class="support">สนับสนุน <b>${formatNumber(support)}</b></span></div></div>`;
+          return `<div class="dashboard-workforce-row-v616eq"><div class="dashboard-workforce-label-v616eq"><strong>${dashboardManagerSafeV616EQ(row.area)}</strong><span class="dashboard-workforce-total-v616ex">รวม <b>${formatNumber(total)}</b> คน</span></div><div class="dashboard-workforce-track-v616eq" aria-label="${dashboardManagerSafeV616EQ(row.area)}: รวม ${formatNumber(total)} คน"><i class="car" tabindex="0" role="img" aria-label="รถยนต์ ${formatNumber(car)} คน" data-chart-tip-v616ez="${encodeURIComponent(JSON.stringify({title:'ช่างรถยนต์',date:row.area,value:formatNumber(car)+' คน',counts:'ช่างเทคนิคทั้งหมด '+formatNumber(total)+' คน',note:'สัดส่วน '+(total? (car/total*100).toFixed(1):'0.0')+'%',color:'#2563eb'}))}" style="width:${carW}%"></i><i class="motorcycle" tabindex="0" role="img" aria-label="มอเตอร์ไซค์ ${formatNumber(moto)} คน" data-chart-tip-v616ez="${encodeURIComponent(JSON.stringify({title:'ช่างมอเตอร์ไซค์',date:row.area,value:formatNumber(moto)+' คน',counts:'ช่างเทคนิคทั้งหมด '+formatNumber(total)+' คน',note:'สัดส่วน '+(total? (moto/total*100).toFixed(1):'0.0')+'%',color:'#0f766e'}))}" style="width:${motoW}%"></i><i class="support" tabindex="0" role="img" aria-label="สนับสนุน ${formatNumber(support)} คน" data-chart-tip-v616ez="${encodeURIComponent(JSON.stringify({title:'ช่างสนับสนุน',date:row.area,value:formatNumber(support)+' คน',counts:'ช่างเทคนิคทั้งหมด '+formatNumber(total)+' คน',note:'สัดส่วน '+(total? (support/total*100).toFixed(1):'0.0')+'%',color:'#ea580c'}))}" style="width:${supportW}%"></i></div><div class="dashboard-workforce-counts-v616eq"><span class="car">รถยนต์ <b>${formatNumber(car)}</b></span><span class="motorcycle">มอเตอร์ไซค์ <b>${formatNumber(moto)}</b></span><span class="support">สนับสนุน <b>${formatNumber(support)}</b></span></div></div>`;
         }).join("")}</div>${(other||unclassified)?`<div class="dashboard-workforce-note-v616eq">${other?`พื้นที่อื่น/ไม่ระบุ ${formatNumber(other)} คน`:""}${other&&unclassified?" • ":""}${unclassified?`รอกำหนดรูปแบบ ${formatNumber(unclassified)} คน`:""}</div>`:""}`;
       }
 
