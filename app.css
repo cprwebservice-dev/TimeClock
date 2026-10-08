@@ -36786,7 +36786,7 @@ html[data-theme="dark"][data-ux-version="FIX16DN"] tbody tr:hover{background:rgb
    ========================================================================== */
 
 /* Keep legacy overview DOM alive for render compatibility, but not visible. */
-html[data-dashboard-focus-version="FIX16DO"] #dashboardViewOverviewV616H > :not(#dashboardManagerFocusV616DO){
+html[data-dashboard-focus-version="FIX16DO"] #dashboardViewOverviewV616H > :not(#dashboardManagerFocusV616DO):not(#dashboardManagerOverviewV616EQ){
   display:none !important;
 }
 
@@ -37142,7 +37142,7 @@ html[data-theme="dark"][data-dashboard-focus-version="FIX16DO"] .manager-priorit
    Dashboard-only visual refinement. No RPC / permission / calculation changes.
    ========================================================================== */
 
-html[data-dashboard-focus-version="FIX16DW"] #dashboardViewOverviewV616H > :not(#dashboardManagerFocusV616DO){
+html[data-dashboard-focus-version="FIX16DW"] #dashboardViewOverviewV616H > :not(#dashboardManagerFocusV616DO):not(#dashboardManagerOverviewV616EQ){
   display:none !important;
 }
 
@@ -38102,3 +38102,8 @@ html[data-theme="dark"] .dashboard-workforce-note-v616eq,body.theme-dark .dashbo
   #page-dashboard .dashboard-filter-actions-v616eq{grid-column:1;justify-content:stretch}
   #page-dashboard .dashboard-filter-actions-v616eq .btn{flex:1;min-width:0}
 }
+
+
+/* FIX16EQ-R2: keep requested Manager Overview block visible with legacy focused-dashboard rules */
+html[data-dashboard-focus-version="FIX16DO"] #dashboardManagerOverviewV616EQ,
+html[data-dashboard-focus-version="FIX16DW"] #dashboardManagerOverviewV616EQ{display:block !important;}
