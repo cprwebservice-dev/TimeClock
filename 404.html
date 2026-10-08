@@ -240,17 +240,17 @@
       </div>
       <div class="dashboard-line-legend-v616er"><span class="daily">รายวัน</span><span class="cumulative">สะสมตั้งแต่ต้นช่วง</span><span class="target">เป้าหมาย</span></div>
       <div class="dashboard-rate-summary-v616er" id="dashboardRateSummaryV616ER">รอข้อมูลการลงเวลา</div>
+      <div class="dashboard-area-compare-host-v616ev in-rate-panel" id="dashboardAreaTrendCompareV616EV"><div class="dashboard-manager-empty-v616eq">กำลังรอกราฟเทียบสะสม by Area</div></div>
       <p class="dashboard-rate-definition-v616er">อัตราลงเวลาครบ = จำนวนรายการวัน–พนักงานที่มีเวลาเข้าและออกครบ ÷ รายการวัน–พนักงานทั้งหมด × 100 • วันที่ไม่มีรายการจะไม่ถูกนำไปหาร</p>
     </div>
   </article>
 
   <article class="panel dashboard-area-trend-panel-v616er section-gap" aria-label="แนวโน้มลงเวลาครบรายพื้นที่">
     <div class="panel-header dashboard-area-trend-header-v616er">
-      <div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม by Area</h3><p>เปรียบเทียบราย Sub (Area) ภายในพื้นที่ที่เลือก • สีเส้นและเป้าหมายใช้เกณฑ์เดียวกับกราฟรวม</p></div>
+      <div><h3>อัตราลงเวลาครบ by Area</h3><p>รายละเอียดราย Sub (Area) ภายในพื้นที่ที่เลือก • ดูแนวโน้มรายวันและสะสมแยกแต่ละ Area</p></div>
       <span class="dashboard-area-trend-status-v616er" id="dashboardAreaTrendStatusV616ER">รอข้อมูลรายพื้นที่</span>
     </div>
     <div class="panel-body">
-      <div class="dashboard-area-compare-host-v616ev" id="dashboardAreaTrendCompareV616EV"><div class="dashboard-manager-empty-v616eq">กำลังรอกราฟเปรียบเทียบสะสม by Area</div></div>
       <div class="dashboard-area-trend-grid-v616er" id="dashboardAreaTrendGridV616ER"><div class="dashboard-manager-empty-v616eq">กำลังรอข้อมูลแยก Area</div></div>
     </div>
   </article>
@@ -262,6 +262,12 @@
     </div>
     <div class="panel-body">
       <div class="dashboard-comparison-help-v616et" role="note"><span class="dashboard-help-symbol-v616et" aria-hidden="true">i</span><span><b>วิธีอ่าน:</b> <b>ครบ 0 จาก 1</b> หมายถึง ต้องลงเวลา 1 วัน-พนักงาน แต่ลงเวลาเข้า–ออกไม่ครบ • <b>เทียบกับสะสม</b> เป็นส่วนต่างของเปอร์เซ็นต์ในหน่วย <b>จุด%</b> ไม่ใช่จำนวนคน • ไม่รวมวันหยุดและวันลาเต็มวัน</span></div>
+      <div class="dashboard-org-group-controls-v616ex" id="dashboardOrgGroupControlsV616EX" aria-label="เลือกการจัดกลุ่มตาราง">
+        <span>Group by</span>
+        <button type="button" class="dashboard-org-group-btn-v616ex active" data-group-mode="zone">พื้นที่</button>
+        <button type="button" class="dashboard-org-group-btn-v616ex" data-group-mode="sub">Area</button>
+        <button type="button" class="dashboard-org-group-btn-v616ex" data-group-mode="subarea">Sub Area</button>
+      </div>
       <div class="table-wrap dashboard-org-comparison-wrap-v616eq">
         <table class="dashboard-org-comparison-table-v616eq dashboard-comparison-clarity-v616et">
           <caption class="visually-hidden">เปรียบเทียบการลงเวลาครบในวันล่าสุดกับอัตราสะสมของช่วงวันที่เลือก โดยนับเฉพาะวันทำงานที่ต้องลงเวลา</caption>

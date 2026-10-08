@@ -5409,9 +5409,17 @@ window.tcIsDayShiftCode = value =>
       const dateText=value=>{const d=new Date(`${value}T12:00:00`);return Number.isNaN(d.getTime())?value:d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});};
       const labels=indexes.map(i=>`<text x="${x(i)}" y="${H-12}" text-anchor="middle">${dashboardManagerSafeV616EQ(dateText(points[i].date))}</text>`).join('');
       const dotSkip=Math.max(1,Math.ceil(observed.length/(compact?20:45)));
-      const dots=observed.filter((_,i)=>i%dotSkip===0||i===observed.length-1).map(({row,i})=>`<circle class="daily-dot" cx="${x(i)}" cy="${y(row.daily)}" r="${compact?3:3.3}"><title>${dashboardManagerSafeV616EQ(dateText(row.date))}: รายวัน ${row.daily.toFixed(1)}% (${row.complete}/${row.total}) • สะสม ${row.cum===null?'—':row.cum.toFixed(1)+'%'}</title></circle>`).join('');
+      const dailyDots=observed.filter((_,i)=>i%dotSkip===0||i===observed.length-1).map(({row,i})=>`<circle class="daily-dot" cx="${x(i)}" cy="${y(row.daily)}" r="${compact?3.2:3.7}"><title>${dashboardManagerSafeV616EQ(dateText(row.date))}
+รายวัน: ${row.daily.toFixed(1)}%
+ลงเวลาครบ: ${formatNumber(row.complete)} / ${formatNumber(row.total)}
+สะสมถึงวันนั้น: ${row.cum===null?'—':row.cum.toFixed(1)+'%'}</title></circle>`).join('');
+      const cumulativeObserved=points.map((row,i)=>({row,i})).filter(x=>x.row.cum!==null);
+      const cumulativeDots=cumulativeObserved.filter((_,i)=>i%dotSkip===0||i===cumulativeObserved.length-1).map(({row,i})=>`<circle class="cum-dot" cx="${x(i)}" cy="${y(row.cum)}" r="${compact?2.9:3.3}"><title>${dashboardManagerSafeV616EQ(dateText(row.date))}
+สะสม: ${row.cum.toFixed(1)}%
+ครบสะสม: ${formatNumber(row.cumComplete||0)} / ${formatNumber(row.cumTotal||0)}
+รายวัน: ${row.daily===null?'—':row.daily.toFixed(1)+'%'}</title></circle>`).join('');
       const targetY=y(target),targetLabelY=Math.max(t+10,Math.min(H-b-6,targetY-7));
-      return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="อัตราลงเวลาครบ รายวันสีเขียว สะสมสีส้ม เป้าหมายเส้นประสีแดง" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="${gradientId}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#10a37f" stop-opacity=".17"/><stop offset="100%" stop-color="#10a37f" stop-opacity=".015"/></linearGradient></defs><g class="axis">${grid}${labels}</g>${fillPath?`<path d="${fillPath}" fill="url(#${gradientId})"/>`:''}<line x1="${l}" x2="${W-r}" y1="${targetY}" y2="${targetY}" class="target-line"/><path d="${pathFor('cum')}" class="cum-line"/><path d="${pathFor('daily')}" class="daily-line"/>${dots}<text class="target-label" x="${W-r-1}" y="${targetLabelY}" text-anchor="end">เป้า ${target.toFixed(0)}%</text></svg>`;
+      return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="อัตราลงเวลาครบ รายวันสีเขียว สะสมสีส้ม เป้าหมายเส้นประสีแดง" preserveAspectRatio="xMidYMid meet"><defs><linearGradient id="${gradientId}" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#10a37f" stop-opacity=".17"/><stop offset="100%" stop-color="#10a37f" stop-opacity=".015"/></linearGradient></defs><g class="axis">${grid}${labels}</g>${fillPath?`<path d="${fillPath}" fill="url(#${gradientId})"/>`:''}<line x1="${l}" x2="${W-r}" y1="${targetY}" y2="${targetY}" class="target-line"/><path d="${pathFor('cum')}" class="cum-line"/><path d="${pathFor('daily')}" class="daily-line"/>${cumulativeDots}${dailyDots}<text class="target-label" x="${W-r-1}" y="${targetLabelY}" text-anchor="end">เป้า ${target.toFixed(0)}%</text></svg>`;
     }
 
     function dashboardAreaCompareChartV616EV(areas) {
@@ -5453,12 +5461,14 @@ window.tcIsDayShiftCode = value =>
       const lines=rowsByArea.map(area=>{
         const last=[...area.rows].reverse().find(row=>row.cumRate!==null&&Number.isFinite(row.cumRate));
         const lastRate=last?last.cumRate:null;
+        const dots=area.rows.filter((row,idx)=>row.cumRate!==null&&Number.isFinite(row.cumRate)&& (idx%Math.max(1,Math.ceil(area.rows.length/18))===0||idx===area.rows.length-1)).map(row=>{ const i=allDates.indexOf(row.date); return i<0? '': `<circle cx="${x(i)}" cy="${y(row.cumRate)}" r="3.2" fill="${area.color}" opacity=".95"><title>${dashboardManagerSafeV616EQ(area.area)} • ${dashboardManagerSafeV616EQ(dateText(row.date))}
+สะสม ${row.cumRate.toFixed(1)}%</title></circle>`; }).join('');
         return {
-          svg:`<path d="${pathFor(area)}" fill="none" stroke="${area.color}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity=".96"/>`,
+          svg:`<path d="${pathFor(area)}" fill="none" stroke="${area.color}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" opacity=".96"/>${dots}`,
           legend:`<span class="dashboard-area-compare-chip-v616ev" style="--line:${area.color}"><i></i><b>${dashboardManagerSafeV616EQ(area.area)}</b><small>${lastRate===null?'—':lastRate.toFixed(1)+'%'}</small></span>`
         };
       });
-      return `<div class="dashboard-area-compare-card-v616ev"><div class="dashboard-area-compare-head-v616ev"><div><strong>เทียบสะสม by Area</strong><small>เส้นแต่ละสี = อัตราลงเวลาครบสะสมของ Sub (Area) ในช่วงวันที่เลือก</small></div><div class="dashboard-area-compare-legend-v616ev">${lines.map(line=>line.legend).join('')}</div></div><div class="dashboard-area-compare-chart-v616ev dashboard-manager-line-chart-v616eq"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟเปรียบเทียบอัตราลงเวลาครบสะสมราย Area" preserveAspectRatio="xMidYMid meet"><g class="axis">${grid}${labels}</g><line x1="${l}" x2="${W-r}" y1="${targetY}" y2="${targetY}" class="target-line"/>${lines.map(line=>line.svg).join('')}<text class="target-label" x="${W-r-1}" y="${targetLabelY}" text-anchor="end">เป้า ${target.toFixed(0)}%</text></svg></div></div>`;
+      return `<div class="dashboard-area-compare-card-v616ev"><div class="dashboard-area-compare-head-v616ev"><div><strong>เทียบสะสม by Area</strong><small>เส้นแต่ละสี = อัตราลงเวลาครบสะสมของ Sub (Area) ในช่วงวันที่เลือก • ชี้ที่จุดบนกราฟเพื่อดูค่า</small></div><div class="dashboard-area-compare-legend-v616ev">${lines.map(line=>line.legend).join('')}</div></div><div class="dashboard-area-compare-chart-v616ev dashboard-manager-line-chart-v616eq"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="กราฟเปรียบเทียบอัตราลงเวลาครบสะสมราย Area" preserveAspectRatio="xMidYMid meet"><g class="axis">${grid}${labels}</g><line x1="${l}" x2="${W-r}" y1="${targetY}" y2="${targetY}" class="target-line"/>${lines.map(line=>line.svg).join('')}<text class="target-label" x="${W-r-1}" y="${targetLabelY}" text-anchor="end">เป้า ${target.toFixed(0)}%</text></svg></div></div>`;
     }
 
     function renderDashboardAreaTrendV616ER(data) {
@@ -5488,14 +5498,13 @@ window.tcIsDayShiftCode = value =>
       const rows=Array.isArray(comparison)?comparison:[];
       const body=$("dashboardOrgComparisonBodyV616EQ");
       const foot=$("dashboardOrgComparisonTotalV616ER");
+      const controls=$("dashboardOrgGroupControlsV616EX");
       const meta=new Map(dashboardManagerOrgRowsV616EQ().map(o=>[String(o.org_id||''),o]));
       const collapsed=state.dashboardOrgCollapsedV616EV=state.dashboardOrgCollapsedV616EV||{};
+      const mode=state.dashboardOrgGroupModeV616EX||'subarea';
       const mapped=rows.map(row=>{
         const org=meta.get(String(row.org_id||''))||{};
-        return {...row,
-          _zone:String(row.area||org.area_bucket||'ไม่ระบุพื้นที่'),
-          _sub:String(org.area||'ไม่ระบุ Sub'),
-          _subArea:String(org.sub_area||'ไม่ระบุ Sub-area')};
+        return {...row,_zone:String(row.area||org.area_bucket||'ไม่ระบุพื้นที่'),_sub:String(org.area||'ไม่ระบุ Area'),_subArea:String(org.sub_area||'ไม่ระบุ Sub-area')};
       }).sort((a,b)=>[
         a._zone.localeCompare(b._zone,'th',{numeric:true}),
         a._sub.localeCompare(b._sub,'th',{numeric:true}),
@@ -5504,83 +5513,23 @@ window.tcIsDayShiftCode = value =>
       ].find(n=>n!==0)||0);
       const ratio=(a,b)=>b>0?a*100/b:null;
       const pill=n=>n===null?'—':`<span class="dashboard-rate-pill-v616eq ${dashboardManagerRateToneV616EQ(n)}">${n.toFixed(1)}%</span>`;
-      const rateCell=(complete,total)=>{
-        const c=Number(complete||0), t=Number(total||0), rate=ratio(c,t);
-        if(!t) return `<span class="dashboard-rate-empty-v616et">—<small>ไม่มีวันทำงานที่ต้องลงเวลา</small></span>`;
-        return `<div class="dashboard-rate-metric-v616et">${pill(rate)}<small>ครบ <b>${formatNumber(c)}</b> จาก <b>${formatNumber(t)}</b></small></div>`;
-      };
-      const delta=(a,b)=>{
-        if(a===null||b===null) return `<span class="dashboard-diff-empty-v616et">—<small>ไม่มีฐานเปรียบเทียบ</small></span>`;
-        const d=a-b;
-        const tone=d>0.05?'up':d<-.05?'down':'flat';
-        const word=tone==='up'?'สูงกว่า':tone==='down'?'ต่ำกว่า':'เท่ากับ';
-        const sign=tone==='up'?'↑ ':tone==='down'?'↓ ':'=';
-        return `<span class="dashboard-diff-detail-v616et ${tone}" title="ผลต่าง = อัตราลงเวลาครบวันล่าสุด ลบ อัตราสะสม">${sign}${word}<b>${Math.abs(d).toFixed(1)} จุด%</b></span>`;
-      };
-      const aggregate=list=>list.reduce((acc,row)=>{
-        for(const name of ['employee_count','daily_complete','daily_total','cumulative_complete','cumulative_total']) acc[name]+=Number(row[name]||0);
-        return acc;
-      },{employee_count:0,daily_complete:0,daily_total:0,cumulative_complete:0,cumulative_total:0});
+      const rateCell=(complete,total)=>{ const c=Number(complete||0), t=Number(total||0), rate=ratio(c,t); if(!t) return `<span class="dashboard-rate-empty-v616et">—<small>ไม่มีวันทำงานที่ต้องลงเวลา</small></span>`; return `<div class="dashboard-rate-metric-v616et">${pill(rate)}<small>ครบ <b>${formatNumber(c)}</b> จาก <b>${formatNumber(t)}</b></small></div>`; };
+      const delta=(a,b)=>{ if(a===null||b===null) return `<span class="dashboard-diff-empty-v616et">—<small>ไม่มีฐานเปรียบเทียบ</small></span>`; const d=a-b; const tone=d>0.05?'up':d<-.05?'down':'flat'; const word=tone==='up'?'สูงกว่า':tone==='down'?'ต่ำกว่า':'เท่ากับ'; const sign=tone==='up'?'↑ ':tone==='down'?'↓ ':'='; return `<span class="dashboard-diff-detail-v616et ${tone}" title="ผลต่าง = อัตราลงเวลาครบวันล่าสุด ลบ อัตราสะสม">${sign}${word}<b>${Math.abs(d).toFixed(1)} จุด%</b></span>`; };
+      const aggregate=list=>list.reduce((acc,row)=>{ for(const name of ['employee_count','daily_complete','daily_total','cumulative_complete','cumulative_total']) acc[name]+=Number(row[name]||0); return acc; },{employee_count:0,daily_complete:0,daily_total:0,cumulative_complete:0,cumulative_total:0});
       const makeGroupKey=(level,parts)=>`${level}|${parts.join('|')}`;
-      const makeGroupRow=(level,label,parts,agg)=>{
-        const key=makeGroupKey(level,parts);
-        const isOpen=!collapsed[key];
-        const daily=ratio(agg.daily_complete,agg.daily_total);
-        const cum=ratio(agg.cumulative_complete,agg.cumulative_total);
-        const labelCols={zone:[`พื้นที่: ${label}`,'','',''],sub:['',`Sub: ${label}`,'',''],subarea:['','',`Sub-area: ${label}`,'']};
-        const cols=labelCols[level]||['','','',''];
-        return `<tr class="dashboard-group-row-v616er ${level}" data-group-key="${dashboardManagerSafeV616EQ(key)}"><td>${cols[0]?`<button type="button" class="dashboard-group-toggle-v616ev" data-group-toggle="${dashboardManagerSafeV616EQ(key)}" aria-expanded="${isOpen?'true':'false'}"><span class="caret">${isOpen?'▾':'▸'}</span><span>${dashboardManagerSafeV616EQ(cols[0])}</span></button>`:''}</td><td>${cols[1]?`<button type="button" class="dashboard-group-toggle-v616ev secondary" data-group-toggle="${dashboardManagerSafeV616EQ(key)}" aria-expanded="${isOpen?'true':'false'}"><span class="caret">${isOpen?'▾':'▸'}</span><span>${dashboardManagerSafeV616EQ(cols[1])}</span></button>`:''}</td><td>${cols[2]?`<button type="button" class="dashboard-group-toggle-v616ev tertiary" data-group-toggle="${dashboardManagerSafeV616EQ(key)}" aria-expanded="${isOpen?'true':'false'}"><span class="caret">${isOpen?'▾':'▸'}</span><span>${dashboardManagerSafeV616EQ(cols[2])}</span></button>`:''}</td><td class="dashboard-group-summary-v616ev">รวมในกลุ่ม</td><td class="text-right">${formatNumber(agg.employee_count)}</td><td>${rateCell(agg.daily_complete,agg.daily_total)}</td><td>${rateCell(agg.cumulative_complete,agg.cumulative_total)}</td><td>${delta(daily,cum)}</td></tr>`;
-      };
-      const zones=[];
-      const byZone=new Map();
-      mapped.forEach(row=>{
-        let zone=byZone.get(row._zone);
-        if(!zone){ zone={label:row._zone, rows:[], subs:new Map()}; byZone.set(row._zone,zone); zones.push(zone); }
-        zone.rows.push(row);
-        let sub=zone.subs.get(row._sub);
-        if(!sub){ sub={label:row._sub, rows:[], subareas:new Map()}; zone.subs.set(row._sub,sub); }
-        sub.rows.push(row);
-        let subarea=sub.subareas.get(row._subArea);
-        if(!subarea){ subarea={label:row._subArea, rows:[]}; sub.subareas.set(row._subArea,subarea); }
-        subarea.rows.push(row);
-      });
+      const makeGroupRow=(level,label,parts,agg)=>{ const key=makeGroupKey(level,parts); const isOpen=!collapsed[key]; const daily=ratio(agg.daily_complete,agg.daily_total); const cum=ratio(agg.cumulative_complete,agg.cumulative_total); const labelCols={zone:[`พื้นที่: ${label}`,'','',''],sub:['',`Area: ${label}`,'',''],subarea:['','',`Sub-area: ${label}`,'']}; const cols=labelCols[level]||['','','','']; return `<tr class="dashboard-group-row-v616er ${level}" data-group-key="${dashboardManagerSafeV616EQ(key)}"><td>${cols[0]?`<button type="button" class="dashboard-group-toggle-v616ev" data-group-toggle="${dashboardManagerSafeV616EQ(key)}" aria-expanded="${isOpen?'true':'false'}"><span class="caret">${isOpen?'▾':'▸'}</span><span>${dashboardManagerSafeV616EQ(cols[0])}</span></button>`:''}</td><td>${cols[1]?`<button type="button" class="dashboard-group-toggle-v616ev secondary" data-group-toggle="${dashboardManagerSafeV616EQ(key)}" aria-expanded="${isOpen?'true':'false'}"><span class="caret">${isOpen?'▾':'▸'}</span><span>${dashboardManagerSafeV616EQ(cols[1])}</span></button>`:''}</td><td>${cols[2]?`<button type="button" class="dashboard-group-toggle-v616ev tertiary" data-group-toggle="${dashboardManagerSafeV616EQ(key)}" aria-expanded="${isOpen?'true':'false'}"><span class="caret">${isOpen?'▾':'▸'}</span><span>${dashboardManagerSafeV616EQ(cols[2])}</span></button>`:''}</td><td class="dashboard-group-summary-v616ev">รวมในกลุ่ม</td><td class="text-right">${formatNumber(agg.employee_count)}</td><td>${rateCell(agg.daily_complete,agg.daily_total)}</td><td>${rateCell(agg.cumulative_complete,agg.cumulative_total)}</td><td>${delta(daily,cum)}</td></tr>`; };
+      const makeDataRow=row=>{ const dr=ratio(Number(row.daily_complete||0),Number(row.daily_total||0)); const cr=ratio(Number(row.cumulative_complete||0),Number(row.cumulative_total||0)); return `<tr class="dashboard-org-data-row-v616er"><td>${dashboardManagerSafeV616EQ(row._zone)}</td><td>${dashboardManagerSafeV616EQ(row._sub)}</td><td>${dashboardManagerSafeV616EQ(row._subArea)}</td><td><div class="dashboard-org-name-v616eq"><strong>${dashboardManagerSafeV616EQ(row.org_code||'')}</strong><span>${dashboardManagerSafeV616EQ(row.org_name||'')}</span></div></td><td class="text-right">${formatNumber(row.employee_count||0)}</td><td>${rateCell(row.daily_complete,row.daily_total)}</td><td>${rateCell(row.cumulative_complete,row.cumulative_total)}</td><td>${delta(dr,cr)}</td></tr>`; };
+      const zones=[]; const byZone=new Map();
+      mapped.forEach(row=>{ let zone=byZone.get(row._zone); if(!zone){ zone={label:row._zone, rows:[], subs:new Map()}; byZone.set(row._zone,zone); zones.push(zone); } zone.rows.push(row); let sub=zone.subs.get(row._sub); if(!sub){ sub={label:row._sub, rows:[], subareas:new Map()}; zone.subs.set(row._sub,sub); } sub.rows.push(row); let subarea=sub.subareas.get(row._subArea); if(!subarea){ subarea={label:row._subArea, rows:[]}; sub.subareas.set(row._subArea,subarea); } subarea.rows.push(row); });
+      if(controls && !controls.dataset.bound){ controls.dataset.bound='1'; controls.addEventListener('click',e=>{ const btn=e.target.closest('[data-group-mode]'); if(!btn) return; state.dashboardOrgGroupModeV616EX=btn.getAttribute('data-group-mode')||'subarea'; renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison||[]); }); }
+      if(controls){ controls.querySelectorAll('[data-group-mode]').forEach(btn=>btn.classList.toggle('active',(btn.getAttribute('data-group-mode')||'')===mode)); }
       if(body){
         const html=[];
-        zones.forEach(zone=>{
-          const zoneKey=makeGroupKey('zone',[zone.label]);
-          html.push(makeGroupRow('zone',zone.label,[zone.label],aggregate(zone.rows)));
-          if(collapsed[zoneKey]) return;
-          [...zone.subs.values()].forEach(sub=>{
-            const subKey=makeGroupKey('sub',[zone.label,sub.label]);
-            html.push(makeGroupRow('sub',sub.label,[zone.label,sub.label],aggregate(sub.rows)));
-            if(collapsed[subKey]) return;
-            [...sub.subareas.values()].forEach(subarea=>{
-              const subareaKey=makeGroupKey('subarea',[zone.label,sub.label,subarea.label]);
-              html.push(makeGroupRow('subarea',subarea.label,[zone.label,sub.label,subarea.label],aggregate(subarea.rows)));
-              if(collapsed[subareaKey]) return;
-              subarea.rows.forEach(row=>{
-                const dr=ratio(Number(row.daily_complete||0),Number(row.daily_total||0));
-                const cr=ratio(Number(row.cumulative_complete||0),Number(row.cumulative_total||0));
-                html.push(`<tr class="dashboard-org-data-row-v616er"><td>${dashboardManagerSafeV616EQ(row._zone)}</td><td>${dashboardManagerSafeV616EQ(row._sub)}</td><td>${dashboardManagerSafeV616EQ(row._subArea)}</td><td><div class="dashboard-org-name-v616eq"><strong>${dashboardManagerSafeV616EQ(row.org_code||'')}</strong><span>${dashboardManagerSafeV616EQ(row.org_name||'')}</span></div></td><td class="text-right">${formatNumber(row.employee_count||0)}</td><td>${rateCell(row.daily_complete,row.daily_total)}</td><td>${rateCell(row.cumulative_complete,row.cumulative_total)}</td><td>${delta(dr,cr)}</td></tr>`);
-              });
-            });
-          });
-        });
+        zones.forEach(zone=>{ const zoneKey=makeGroupKey('zone',[zone.label]); html.push(makeGroupRow('zone',zone.label,[zone.label],aggregate(zone.rows))); if(collapsed[zoneKey]) return; if(mode==='zone'){ zone.rows.forEach(row=>html.push(makeDataRow(row))); return; } [...zone.subs.values()].forEach(sub=>{ const subKey=makeGroupKey('sub',[zone.label,sub.label]); html.push(makeGroupRow('sub',sub.label,[zone.label,sub.label],aggregate(sub.rows))); if(collapsed[subKey]) return; if(mode==='sub'){ sub.rows.forEach(row=>html.push(makeDataRow(row))); return; } [...sub.subareas.values()].forEach(subarea=>{ const subareaKey=makeGroupKey('subarea',[zone.label,sub.label,subarea.label]); html.push(makeGroupRow('subarea',subarea.label,[zone.label,sub.label,subarea.label],aggregate(subarea.rows))); if(collapsed[subareaKey]) return; subarea.rows.forEach(row=>html.push(makeDataRow(row))); }); }); });
         body.innerHTML=html.length?html.join(''):'<tr><td colspan="8" class="empty-cell">ไม่พบข้อมูลรายหน่วยงานในช่วงที่เลือก</td></tr>';
-        body.querySelectorAll('[data-group-toggle]').forEach(btn=>{
-          btn.addEventListener('click',()=>{
-            const key=btn.getAttribute('data-group-toggle');
-            collapsed[key]=!collapsed[key];
-            renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison||[]);
-          });
-        });
+        body.querySelectorAll('[data-group-toggle]').forEach(btn=>{ btn.addEventListener('click',()=>{ const key=btn.getAttribute('data-group-toggle'); collapsed[key]=!collapsed[key]; renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison||[]); }); });
       }
-      if(foot){
-        const totals=aggregate(mapped);
-        const daily=ratio(totals.daily_complete,totals.daily_total);
-        const cum=ratio(totals.cumulative_complete,totals.cumulative_total);
-        foot.innerHTML=`<tr><th colspan="4" scope="row">รวมทั้งหมด <small>${formatNumber(rows.length)} หน่วยงาน • คำนวณจากยอดรวมจริง</small></th><td class="text-right">${formatNumber(totals.employee_count)}</td><td>${rateCell(totals.daily_complete,totals.daily_total)}</td><td>${rateCell(totals.cumulative_complete,totals.cumulative_total)}</td><td>${delta(daily,cum)}</td></tr>`;
-      }
+      if(foot){ const totals=aggregate(mapped); const daily=ratio(totals.daily_complete,totals.daily_total); const cum=ratio(totals.cumulative_complete,totals.cumulative_total); foot.innerHTML=`<tr><th colspan="4" scope="row">รวมทั้งหมด <small>${formatNumber(rows.length)} หน่วยงาน • คำนวณจากยอดรวมจริง</small></th><td class="text-right">${formatNumber(totals.employee_count)}</td><td>${rateCell(totals.daily_complete,totals.daily_total)}</td><td>${rateCell(totals.cumulative_complete,totals.cumulative_total)}</td><td>${delta(daily,cum)}</td></tr>`; }
     }
 
     function renderManagerDashboardV616EQ(payload) {
@@ -5596,7 +5545,7 @@ window.tcIsDayShiftCode = value =>
           const total=Number(row.total||0), car=Number(row.car||0), moto=Number(row.motorcycle||0), support=Number(row.support||0);
           const scale=total/max*100;
           const carW=total?car/total*scale:0, motoW=total?moto/total*scale:0, supportW=total?support/total*scale:0;
-          return `<div class="dashboard-workforce-row-v616eq"><div class="dashboard-workforce-label-v616eq"><strong>${dashboardManagerSafeV616EQ(row.area)}</strong><span>รวม ${formatNumber(total)} คน</span></div><div class="dashboard-workforce-track-v616eq"><i class="car" style="width:${carW}%" title="รถยนต์ ${formatNumber(car)} คน"></i><i class="motorcycle" style="width:${motoW}%" title="มอเตอร์ไซค์ ${formatNumber(moto)} คน"></i><i class="support" style="width:${supportW}%" title="สนับสนุน ${formatNumber(support)} คน"></i></div><div class="dashboard-workforce-counts-v616eq"><span class="car">รถยนต์ <b>${formatNumber(car)}</b></span><span class="motorcycle">มอเตอร์ไซค์ <b>${formatNumber(moto)}</b></span><span class="support">สนับสนุน <b>${formatNumber(support)}</b></span></div></div>`;
+          return `<div class="dashboard-workforce-row-v616eq"><div class="dashboard-workforce-label-v616eq"><strong>${dashboardManagerSafeV616EQ(row.area)}</strong><span class="dashboard-workforce-total-v616ex">รวม <b>${formatNumber(total)}</b> คน</span></div><div class="dashboard-workforce-track-v616eq" title="${dashboardManagerSafeV616EQ(row.area)}: รวม ${formatNumber(total)} คน"><i class="car" style="width:${carW}%" title="รถยนต์ ${formatNumber(car)} คน"></i><i class="motorcycle" style="width:${motoW}%" title="มอเตอร์ไซค์ ${formatNumber(moto)} คน"></i><i class="support" style="width:${supportW}%" title="สนับสนุน ${formatNumber(support)} คน"></i></div><div class="dashboard-workforce-counts-v616eq"><span class="car">รถยนต์ <b>${formatNumber(car)}</b></span><span class="motorcycle">มอเตอร์ไซค์ <b>${formatNumber(moto)}</b></span><span class="support">สนับสนุน <b>${formatNumber(support)}</b></span></div></div>`;
         }).join("")}</div>${(other||unclassified)?`<div class="dashboard-workforce-note-v616eq">${other?`พื้นที่อื่น/ไม่ระบุ ${formatNumber(other)} คน`:""}${other&&unclassified?" • ":""}${unclassified?`รอกำหนดรูปแบบ ${formatNumber(unclassified)} คน`:""}</div>`:""}`;
       }
 
