@@ -38482,3 +38482,15 @@ html[data-theme="dark"] .dashboard-org-group-btn-v616ex,body.theme-dark .dashboa
 html[data-theme="dark"] .dashboard-org-group-btn-v616ex.active,body.theme-dark .dashboard-org-group-btn-v616ex.active,body.dark .dashboard-org-group-btn-v616ex.active{background:linear-gradient(180deg,#2563eb,#1d4ed8);color:#fff;border-color:#2563eb}
 html[data-theme="dark"] .dashboard-workforce-total-v616ex,body.theme-dark .dashboard-workforce-total-v616ex,body.dark .dashboard-workforce-total-v616ex{background:linear-gradient(180deg,rgba(30,58,138,.38),rgba(30,64,175,.25));border-color:rgba(96,165,250,.18);color:#bfdbfe}
 html[data-theme="dark"] .dashboard-workforce-total-v616ex b,body.theme-dark .dashboard-workforce-total-v616ex b,body.dark .dashboard-workforce-total-v616ex b{color:#fff}
+
+/* FIX16EY Group by truly selected dimension; weighted cumulative ascending */
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-group-row-v616ey td{padding:11px 12px!important;vertical-align:middle}
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-group-row-v616ey.sub td,
+#page-dashboard .dashboard-org-comparison-table-v616eq .dashboard-group-row-v616ey.subarea td{padding-left:12px!important}
+#page-dashboard .dashboard-group-toggle-v616ev{gap:8px;flex-wrap:wrap;min-width:0;color:inherit}
+#page-dashboard .dashboard-group-toggle-v616ev .caret{flex:0 0 16px;border:1px solid rgba(37,99,235,.20);background:rgba(37,99,235,.06);border-radius:6px;height:18px}
+#page-dashboard .dashboard-group-toggle-v616ev:hover .caret{background:rgba(37,99,235,.18)}
+#page-dashboard .dashboard-group-count-v616ey{display:inline-flex;font-weight:600;font-size:10px;opacity:.75;white-space:nowrap}
+#page-dashboard .dashboard-org-sort-hint-v616ey{margin-left:auto;display:inline-flex;align-items:center;padding:5px 10px;border:1px solid rgba(14,116,144,.17);border-radius:999px;background:rgba(8,145,178,.05);font-size:11px;font-weight:700;color:var(--text-muted,#64748b)}
+html[data-theme="dark"] #page-dashboard .dashboard-org-sort-hint-v616ey,body.theme-dark #page-dashboard .dashboard-org-sort-hint-v616ey{background:rgba(8,145,178,.14);border-color:rgba(8,145,178,.3);color:#b6d4e7}
+@media(max-width:820px){#page-dashboard .dashboard-org-sort-hint-v616ey{width:100%;margin-left:0;justify-content:flex-start}}
