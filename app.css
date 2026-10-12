@@ -38526,7 +38526,7 @@ html[data-theme="dark"] #page-dashboard .dashboard-org-sort-hint-v616ey,body.the
 #page-dashboard .dashboard-workforce-track-v616eq [data-chart-tip-v616ez]:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
 .dashboard-chart-tooltip-v616ez{
   --tip-accent:#2563eb;
-  position:fixed!important;inset:auto!important;
+  position:fixed!important;inset:auto;
   z-index:2147483645!important;width:min(290px,calc(100vw - 24px));max-width:calc(100vw - 20px);
   display:block!important;visibility:hidden;opacity:0;pointer-events:none!important;
   border-radius:16px;border:1px solid rgba(148,163,184,.3);
@@ -39160,7 +39160,7 @@ html[data-theme="dark"] #page-dashboard .trend-ring-v616fi>div,body.theme-dark #
 /* FIX16FJ • Scoped custom tooltips for all Trend charts, rows, and chart segments */
 .dashboard-trend-tooltip-v616fj{
   --trend-tip-color:#2563eb;
-  position:fixed!important;inset:auto!important;
+  position:fixed!important;inset:auto;
   display:block;visibility:hidden;opacity:0;pointer-events:none!important;
   z-index:2147483647!important;
   width:min(310px,calc(100vw - 18px));max-width:calc(100vw - 18px);
@@ -39208,3 +39208,6 @@ body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-note{color:#cbd5e1}
 /* FIX16FM: floating Heatmap tooltip follows the hovered/focused tile.
    Do not make `inset` important: that overrides the inline top/left set in JS. */
 .dashboard-heatmap-tooltip-v616fh.is-visible{will-change:opacity,transform;}
+
+/* FIX16FN: allow inline top/left to place both dashboard SVG and Trend popovers.
+   The previous inset:auto!important masked JS coordinates in both tooltip classes. */
