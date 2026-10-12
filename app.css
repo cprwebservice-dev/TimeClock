@@ -39199,3 +39199,8 @@ body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-counts{background:#26
 html[data-theme="dark"] .dashboard-trend-tooltip-v616fj .trend-tip-note,
 body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-note{color:#cbd5e1}
 @media(max-width:600px){.dashboard-trend-tooltip-v616fj{padding:11px 13px;width:min(300px,calc(100vw - 16px))}.dashboard-trend-tooltip-v616fj .trend-tip-value{font-size:17px}}
+
+/* FIX16FL: heatmap items reveal rich details, not the OS question-mark help cursor. */
+#page-dashboard .dashboard-heatmap-cell-v616fg,
+#page-dashboard .dashboard-heatmap-row-name-v616fg[data-heatmap-tip-v616fh]{cursor:pointer;}
+#page-dashboard .dashboard-heatmap-cell-v616fg:focus-visible{outline:2px solid var(--primary,#2563eb);outline-offset:2px;}

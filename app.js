@@ -5773,7 +5773,7 @@ window.tcIsDayShiftCode = value =>
         const d=new Date(`${day}T12:00:00`);
         return Number.isNaN(d.getTime())?day:d.toLocaleDateString('th-TH',{day:'numeric',month:'short'});
       };
-      const formatPct=v=>v===null?'—':Number(v).toFixed(1)+'%';
+      const formatPct=v=>(v===null || v===undefined || !Number.isFinite(Number(v)))?'—':Number(v).toFixed(1)+'%';
       const fullDate=day=>{const d=new Date(`${day}T12:00:00`);return Number.isNaN(d.getTime())?String(day):d.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'long',year:'numeric'});};
       const safe=dashboardManagerSafeV616EQ;
       const groupMode=['AREA','SUB_AREA','ORG'].includes(String(payload.group_by||'').toUpperCase())?String(payload.group_by).toUpperCase():'AREA';
@@ -5792,7 +5792,7 @@ window.tcIsDayShiftCode = value =>
         const groupRate=groupTotal>0?groupComplete*100/groupTotal:null;
         const tone=groupTotal>0?`${formatPct(groupRate)} สะสม`:'ไม่มีฐานคำนวณ';
         const rowTip={kind:'สรุปลงเวลาครบในช่วงที่แสดง',name:groupTitle,value:formatPct(groupRate),date:`${fullDate(visibleStart)} – ${fullDate(visibleEnd)}`,counts:groupTotal>0?`ครบ ${formatNumber(groupComplete)} จาก ${formatNumber(groupTotal)} วัน-พนักงาน`:'ไม่มีวันทำงานที่ต้องลงเวลา',note:'ยอดสะสมคำนวณจากจำนวนวัน-พนักงานจริง ไม่ใช่ค่าเฉลี่ยของเปอร์เซ็นต์',color:'#2563eb'};
-        out+=`<div class="dashboard-heatmap-row-name-v616fg" role="rowheader" tabindex="0" aria-label="${safe(`${groupTitle}, ${tone}`)}" data-heatmap-tip-v616fh="${encodeURIComponent(JSON.stringify(rowTip))}"><strong>${safe(label)}</strong>${groupSubheading?`<small>${safe(groupSubheading)}</small>`:''}</div>`;
+        out+=`<div class="dashboard-heatmap-row-name-v616fg" role="rowheader" tabindex="0" aria-label="${safe(`${groupTitle}, ${tone}`)}" data-heatmap-tip-v616fh="${encodeURIComponent(JSON.stringify(rowTip))}" data-no-overflow-tooltip="1"><strong>${safe(label)}</strong>${groupSubheading?`<small>${safe(groupSubheading)}</small>`:''}</div>`;
         dates.forEach(date=>{
           const d=rows.get(String(date))||{};
           const total=Number(d.total||0),complete=Number(d.complete||0);
@@ -5801,7 +5801,7 @@ window.tcIsDayShiftCode = value =>
           const info={kind:total>0?'ลงเวลาครบรายวัน':'ไม่มีฐานคำนวณ',name:groupTitle,date:fullDate(date),value:formatPct(pct),counts:total>0?`ลงเวลาครบ ${formatNumber(complete)} จาก ${formatNumber(total)} วัน-พนักงาน`:'ไม่มีพนักงานที่ต้องลงเวลาในวันดังกล่าว',note:total>0?'นับเฉพาะวันที่มีกะทำงานจริง • ไม่รวม OFF / วันหยุด / วันลาเต็มวัน':'ไม่แสดงเป็น 0% เพราะวันนี้ไม่มีฐานสำหรับคำนวณ',color:{good:'#16a779',warn:'#e99b29',bad:'#ee7272',empty:'#93a4ba'}[cat]};
           const encoded=encodeURIComponent(JSON.stringify(info));
           const aria=safe(`${groupTitle}, ${fullDate(date)}, ${formatPct(pct)}, ${complete} จาก ${total} วัน-พนักงาน`);
-          out+=`<button type="button" class="dashboard-heatmap-cell-v616fg ${cat}" aria-label="${aria}" data-heatmap-tip-v616fh="${encoded}"></button>`;
+          out+=`<button type="button" class="dashboard-heatmap-cell-v616fg ${cat}" aria-label="${aria}" data-heatmap-tip-v616fh="${encoded}" data-no-overflow-tooltip="1"></button>`;
         });
       });
       host.style.setProperty('--dashboard-heatmap-day-count-v616fg',String(dates.length));
@@ -5840,6 +5840,8 @@ window.tcIsDayShiftCode = value =>
     }
 
     function installDashboardHeatmapControlsV616FG() {
+      // FIX16FL: delegate hover/focus handlers before asynchronous heatmap RPC.
+      installDashboardHeatmapTooltipV616FH();
       const selector=$('dashboardHeatmapModeV616FG');
       if(selector&&!selector.dataset.fix16fgBound){
         selector.dataset.fix16fgBound='1';
@@ -40383,7 +40385,7 @@ ${names}${extra}
   }
 
   function bind(){
-    trendTooltipInstallV616FJ();
+    // FIX16FL: Trend tooltip belongs to the separate Trend IIFE; do not call it here.
     document.querySelectorAll('[data-dashboard-view-v616h]').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.dashboardViewV616h,true)));
     document.querySelectorAll('[data-dashboard-range-v616h]').forEach(btn=>btn.addEventListener('click',()=>rangePreset(btn.dataset.dashboardRangeV616h)));
     ['dashStart','dashEnd','dashSide','dashDivision','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{ $('dashboardViewDailyV616H')?.removeAttribute('data-loaded-key'); document.querySelectorAll('[data-dashboard-range-v616h]').forEach(b=>b.classList.remove('active')); }));
@@ -40485,8 +40487,8 @@ ${names}${extra}
     const startEl = start instanceof Element ? start : null;
     if (!startEl) return null;
 
-    // Dedicated schedule tooltip already owns this interaction.
-    if (startEl.closest('[data-shift-tooltip]')) return null;
+    // Dedicated schedule and dashboard heatmap tooltips own these interactions.
+    if (startEl.closest('[data-shift-tooltip], [data-heatmap-tip-v616fh]')) return null;
 
     let el = startEl;
     for (let depth = 0; el && el !== document.body && depth < MAX_ANCESTORS; depth++, el = el.parentElement) {
@@ -41517,6 +41519,8 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     requests(current);
   }
   function bind(){
+    // FIX16FL: install in its lexical scope before any Trend render.
+    trendTooltipInstallV616FJ();
     document.querySelectorAll('[data-dashboard-view-v616h]').forEach(b=>b.addEventListener('click',()=>{
       if(b.dataset.dashboardViewV616h==='daily')setTimeout(()=>load(),100);
     }));
