@@ -39157,3 +39157,45 @@ html[data-theme="dark"] #page-dashboard .trend-ring-v616fi>div,body.theme-dark #
 @media(max-width:1150px){#page-dashboard .trend-panels-v616fi{grid-template-columns:1fr 1fr}#page-dashboard .trend-status-layout-v616fi{grid-template-columns:130px minmax(0,1fr);gap:10px}#page-dashboard .trend-ring-v616fi{width:128px}#page-dashboard .trend-ring-v616fi strong{font-size:26px}}
 @media(max-width:900px){#page-dashboard .trend-panels-v616fi{grid-template-columns:1fr}#page-dashboard .trend-ring-v616fi{width:160px}#page-dashboard .trend-status-layout-v616fi{grid-template-columns:170px minmax(0,1fr)}}
 @media(max-width:520px){#page-dashboard .trend-intro-v616fi h3{font-size:18px}#page-dashboard .trend-panel-v616fi>.panel-header{padding:12px 13px}#page-dashboard .trend-panel-v616fi>.panel-body{padding:12px 13px}#page-dashboard .trend-status-layout-v616fi{grid-template-columns:1fr}#page-dashboard .trend-status-list-v616fi{width:100%}#page-dashboard .trend-forecast-plot-v616fi{min-width:570px}#page-dashboard #trendForecastV616FI{overflow-x:auto;overflow-y:hidden}#page-dashboard .trend-columns-v616fi{min-width:540px}#page-dashboard #trendDailyIssuesV616FI,#page-dashboard #trendHoursV616FI{overflow-x:auto}}
+/* FIX16FJ • Scoped custom tooltips for all Trend charts, rows, and chart segments */
+.dashboard-trend-tooltip-v616fj{
+  --trend-tip-color:#2563eb;
+  position:fixed!important;inset:auto!important;
+  display:block;visibility:hidden;opacity:0;pointer-events:none!important;
+  z-index:2147483647!important;
+  width:min(310px,calc(100vw - 18px));max-width:calc(100vw - 18px);
+  box-sizing:border-box;padding:13px 15px 13px 17px;
+  border-radius:16px;border:1px solid rgba(148,163,184,.3);
+  background:linear-gradient(165deg,#fff,#f8fbff);color:#14233b;
+  box-shadow:0 18px 45px rgba(15,23,42,.22),0 4px 12px rgba(15,23,42,.08);
+  font-family:inherit;font-size:12px;line-height:1.55;text-align:left;
+  transform:translateY(4px);transition:opacity .12s ease-out,transform .12s ease-out,visibility .12s;
+}
+.dashboard-trend-tooltip-v616fj.is-visible{visibility:visible;opacity:1;transform:translateY(0)}
+.dashboard-trend-tooltip-v616fj::before{content:"";position:absolute;top:14px;left:0;width:4px;height:38px;border-radius:0 6px 6px 0;background:var(--trend-tip-color)}
+.dashboard-trend-tooltip-v616fj .trend-tip-head{display:flex;align-items:flex-start;gap:12px;justify-content:space-between;margin-bottom:6px}
+.dashboard-trend-tooltip-v616fj .trend-tip-title{font-size:11px;color:var(--trend-tip-color);font-weight:850}
+.dashboard-trend-tooltip-v616fj .trend-tip-value{font-size:19px;line-height:1.2;font-weight:900;color:#0f172a;text-align:right;white-space:nowrap}
+.dashboard-trend-tooltip-v616fj .trend-tip-name{display:block;font-size:12.5px;overflow-wrap:anywhere;color:#1e293b;margin:3px 0}
+.dashboard-trend-tooltip-v616fj .trend-tip-counts{display:block;background:#eff6ff;color:#1e40af;padding:8px 10px;border-radius:10px;font-weight:750;overflow-wrap:anywhere;margin-top:8px}
+.dashboard-trend-tooltip-v616fj .trend-tip-note{display:block;font-size:11px;color:#64748b;margin-top:8px;overflow-wrap:anywhere}
+.dashboard-trend-tooltip-v616fj .trend-tip-note[hidden]{display:none}
+#page-dashboard .trend-tip-target-v616fj{cursor:help}
+#page-dashboard .trend-tip-target-v616fj:focus-visible{outline:2px solid #2563eb;outline-offset:3px;border-radius:8px}
+#page-dashboard .trend-day-column-v616fi.trend-tip-target-v616fj:focus-visible{outline-offset:-2px}
+#page-dashboard .trend-ot-row-v616fi.trend-tip-target-v616fj:hover,
+#page-dashboard .trend-request-row-v616fi.trend-tip-target-v616fj:hover,
+#page-dashboard .trend-org-row-v616fi.trend-tip-target-v616fj:hover,
+#page-dashboard .trend-forecast-day-v616fi.trend-tip-target-v616fj:hover{background:rgba(37,99,235,.045);border-radius:8px}
+#page-dashboard svg.dashboard-executive-spark-v616fd .dashboard-chart-hit-v616fa{cursor:help}
+html[data-theme="dark"] .dashboard-trend-tooltip-v616fj,
+body.theme-dark .dashboard-trend-tooltip-v616fj,body.dark .dashboard-trend-tooltip-v616fj{background:linear-gradient(165deg,#1e293b,#111827);color:#f8fafc;border-color:#475569;box-shadow:0 18px 40px rgba(0,0,0,.5)}
+html[data-theme="dark"] .dashboard-trend-tooltip-v616fj .trend-tip-name,
+html[data-theme="dark"] .dashboard-trend-tooltip-v616fj .trend-tip-value,
+body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-name,
+body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-value{color:#f8fafc}
+html[data-theme="dark"] .dashboard-trend-tooltip-v616fj .trend-tip-counts,
+body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-counts{background:#263b54;color:#dbeafe}
+html[data-theme="dark"] .dashboard-trend-tooltip-v616fj .trend-tip-note,
+body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-note{color:#cbd5e1}
+@media(max-width:600px){.dashboard-trend-tooltip-v616fj{padding:11px 13px;width:min(300px,calc(100vw - 16px))}.dashboard-trend-tooltip-v616fj .trend-tip-value{font-size:17px}}

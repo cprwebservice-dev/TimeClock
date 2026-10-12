@@ -5423,7 +5423,7 @@ window.tcIsDayShiftCode = value =>
         place(target);
       };
       const marker=event=>event.target?.closest?.('[data-chart-tip-v616ez]')||null;
-      const chartUnderPointer=event=>event.target?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg')||null;
+      const chartUnderPointer=event=>event.target?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg, #page-dashboard svg.dashboard-executive-spark-v616fd')||null;
       // Pick the nearest point in screen pixels: users can hover over a line without
       // trying to hit a tiny circle; distance also differentiates crowded Area lines.
       const nearest=(svg,event)=>{
@@ -5463,8 +5463,8 @@ window.tcIsDayShiftCode = value =>
       });
       document.addEventListener('pointerout',event=>{
         if(pinned||!active)return;
-        const leavingChart=event.target?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg');
-        const enteringChart=event.relatedTarget?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg');
+        const leavingChart=event.target?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg, #page-dashboard svg.dashboard-executive-spark-v616fd');
+        const enteringChart=event.relatedTarget?.closest?.('#page-dashboard .dashboard-manager-line-chart-v616eq svg, #page-dashboard svg.dashboard-executive-spark-v616fd');
         if(leavingChart&&!enteringChart)hide();
         const leavingHeatmap=event.target?.closest?.('.dashboard-heatmap-cell-v616fg');
         const enteringHeatmap=event.relatedTarget?.closest?.('.dashboard-heatmap-cell-v616fg');
@@ -6025,7 +6025,8 @@ window.tcIsDayShiftCode = value =>
       const x=i=>l+i*(W-l-r)/(values.length-1), y=v=>H-b-((v-low)/(high-low))*(H-t-b);
       const xy=values.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
       const end=values.length-1;
-      return `<svg viewBox="0 0 ${W} ${H}" class="dashboard-executive-spark-v616fd ${tone}" role="img" aria-label="${dashboardManagerSafeV616EQ(label)}"><polyline points="${xy}" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${x(end).toFixed(1)}" cy="${y(values[end]).toFixed(1)}" r="3" fill="currentColor"/></svg>`;
+      const marks=values.map((v,i)=>dashboardRateDotV616EZ(x(i).toFixed(2),y(v).toFixed(2),'spark',2.8,{title:label,date:`จุดข้อมูล ${i+1} จาก ${values.length}`,value:Number(v).toLocaleString('th-TH',{maximumFractionDigits:1}),counts:'แนวโน้มรายวันย้อนหลัง (ข้อมูลตามช่วงวันที่เลือก)',color:tone==='red'?'#ef4444':tone==='orange'?'#f97316':tone==='navy'?'#17446a':'#2563eb',showPoint:i===end})).join('');
+      return `<svg viewBox="0 0 ${W} ${H}" class="dashboard-executive-spark-v616fd ${tone}" role="img" aria-label="${dashboardManagerSafeV616EQ(label)}"><polyline points="${xy}" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"/>${marks}</svg>`;
     }
 
     function renderDashboardExecutiveKpisV616FD(payload){
@@ -40277,7 +40278,7 @@ ${names}${extra}
     const grid=[0,25,50,75,100].map(v=>`<g><line x1="${pL}" y1="${y(v)}" x2="${W-pR}" y2="${y(v)}" class="grid"/><text x="${pL-9}" y="${y(v)+4}" text-anchor="end">${v}%</text></g>`).join('');
     const labelIdx=[0,Math.floor((rows.length-1)/2),rows.length-1].filter((v,i,a)=>a.indexOf(v)===i);
     const labels=labelIdx.map(i=>`<text x="${x(i)}" y="${H-10}" text-anchor="middle">${safe(shortDate(rows[i].date))}</text>`).join('');
-    const dots=rows.map((r,i)=>`<circle cx="${x(i)}" cy="${y(r.completeRate)}" r="2.5" class="daily-dot"><title>${safe(longDate(r.date))}: ${r.completeRate.toFixed(1)}%</title></circle>`).join('');
+    const dots=rows.map((r,i)=>{const info={title:'อัตราลงเวลาครบรายวัน',name:longDate(r.date),value:r.total>0?r.completeRate.toFixed(1)+'%':'—',counts:`ครบ ${fmt(r.complete)} จาก ${fmt(r.total)} วัน-พนักงาน`,note:'นับเฉพาะวันทำงานที่ต้องลงเวลาจริง',color:'#169a72'};return `<g><circle cx="${x(i)}" cy="${y(r.completeRate)}" r="2.5" class="daily-dot" pointer-events="none"/><circle cx="${x(i)}" cy="${y(r.completeRate)}" r="9" fill="transparent" stroke="none" class="trend-tip-target-v616fj" tabindex="0" role="img" aria-label="${safe(longDate(r.date))} ${r.completeRate.toFixed(1)}%" data-trend-tip-v616fj="${encodeURIComponent(JSON.stringify(info))}"/></g>`;}).join('');
     return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="อัตราลงเวลาครบรายวันและสะสม"><g class="axis">${grid}${labels}</g><polyline points="${pts('cumCompleteRate')}" class="cum-line"/><polyline points="${pts('completeRate')}" class="daily-line"/>${dots}</svg>`;
   }
 
@@ -40382,6 +40383,7 @@ ${names}${extra}
   }
 
   function bind(){
+    trendTooltipInstallV616FJ();
     document.querySelectorAll('[data-dashboard-view-v616h]').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.dashboardViewV616h,true)));
     document.querySelectorAll('[data-dashboard-range-v616h]').forEach(btn=>btn.addEventListener('click',()=>rangePreset(btn.dataset.dashboardRangeV616h)));
     ['dashStart','dashEnd','dashSide','dashDivision','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{ $('dashboardViewDailyV616H')?.removeAttribute('data-loaded-key'); document.querySelectorAll('[data-dashboard-range-v616h]').forEach(b=>b.classList.remove('active')); }));
@@ -41369,6 +41371,107 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     const flagged=list.filter(r=>raw(r.total)>0 && percent(raw(r.morning)+raw(r.night),r.total)<threshold);
     return `<div class="trend-forecast-v616fi"><div class="trend-forecast-plot-v616fi">${list.map(r=>{const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned),total=raw(r.total);const ratio=percent(morning+night,total);const flagged=ratio!==null&&ratio<threshold;return `<div class="trend-forecast-day-v616fi" title="${esc(thdate(r.date))}: เช้า ${morning}, ดึก ${night}, ลา ${leave}, หยุด ${off}, ยังไม่มีกะ ${unknown}"><div class="trend-f-bar-v616fi ${flagged?'flagged':''}"><i style="height:${morning/max*100}%;background:#3288c8"></i><i style="height:${night/max*100}%;background:#153957"></i><i style="height:${leave/max*100}%;background:#8759f2"></i><i style="height:${off/max*100}%;background:#adbbc8"></i><i style="height:${unknown/max*100}%;background:#d7e0eb"></i></div><span>${esc(thdate(r.date))}</span>${flagged?'<em>▲</em>':''}</div>`;}).join('')}</div><div class="trend-key-v616fi"><span><i class="blue"></i>กะเช้า</span><span><i style="background:#153957"></i>กะดึก</span><span><i style="background:#8759f2"></i>ลา (ตามรหัสกะ)</span><span><i style="background:#adbbc8"></i>หยุด</span><span><i style="background:#d7e0eb"></i>ยังไม่มีกะ</span></div>${flagged.length?`<div class="trend-alert-v616fi">พบ ${number(flagged.length)} วัน ที่จำนวนมีกะทำงานต่ำกว่า ${number(threshold)}% ของพนักงานใน Scope • วันแรก ${esc(thdate(flagged[0].date))}</div>`:`<div class="trend-note-v616fi">ไม่พบวันที่มีสัดส่วนมีกะทำงานต่ำกว่าเกณฑ์ ${number(threshold)}% ในข้อมูลแผนกะที่มี</div>`}<div class="trend-note-v616fi">เป็นการอ่าน Shift Calendar ที่บันทึกแล้วเท่านั้น • วันที่ยังไม่จัดกะอาจทำให้จำนวนมีกะทำงานต่ำกว่าความเป็นจริง • ไม่ใช่การทำนายการมาปฏิบัติงาน</div></div>`;
   }
+  // FIX16FJ: one consistent hover/focus/touch tooltip for all eight Trend panels.
+  // All data comes from the same already-authorized Trend/Request response; no extra RPC.
+  function trendTooltipInstallV616FJ(){
+    if(document.getElementById('dashboardTrendTooltipV616FJ'))return;
+    const tip=document.createElement('div');
+    tip.id='dashboardTrendTooltipV616FJ';
+    tip.className='dashboard-trend-tooltip-v616fj';
+    tip.setAttribute('role','tooltip');
+    tip.setAttribute('aria-hidden','true');
+    tip.innerHTML='<div class="trend-tip-head"><span class="trend-tip-title"></span><strong class="trend-tip-value"></strong></div><strong class="trend-tip-name"></strong><span class="trend-tip-counts"></span><span class="trend-tip-note"></span>';
+    document.body.appendChild(tip);
+    let active=null,pinned=false;
+    const targetOf=e=>{
+      const exact=e?.closest?.('[data-trend-tip-v616fj]');if(exact)return exact;
+      // Adapt older Dashboard bars and mini heatmap tiles that only provided native titles.
+      const legacy=e?.closest?.('#page-dashboard .dashboard-workforce-track-v616eq i[title], #page-dashboard .issue-day-v616h[title], #page-dashboard .heat-day-v616h[title]');
+      if(!legacy)return null;
+      const label=legacy.getAttribute('title')||'';
+      const region=legacy.closest('.dashboard-workforce-row-v616eq')?.querySelector('.dashboard-workforce-label-v616eq strong')?.textContent||'';
+      legacy.dataset.trendTipV616fj=encodeURIComponent(JSON.stringify({title:'รายละเอียดกราฟ',name:region||label,value:region?label:'',counts:region?'ตามประเภทช่างเทคนิคและพื้นที่ที่เลือก':label,note:'ข้อมูลจาก Dashboard ตามตัวกรองปัจจุบัน',color:'#2563eb'}));
+      legacy.dataset.noOverflowTooltip='1';legacy.removeAttribute('title');legacy.classList.add('trend-tip-target-v616fj');
+      return legacy;
+    };
+    const read=e=>{try{return JSON.parse(decodeURIComponent(e.dataset.trendTipV616fj||''));}catch(_){return null;}};
+    const position=target=>{
+      if(!target?.isConnected)return;
+      const box=target.getBoundingClientRect(), width=tip.offsetWidth||280, height=tip.offsetHeight||145;
+      const vw=document.documentElement.clientWidth||window.innerWidth, vh=window.innerHeight;
+      const left=Math.max(8,Math.min(vw-width-8,box.left+box.width/2-width/2));
+      const above=box.top-height-12;
+      const top=above>=8?above:box.bottom+height+12<=vh-8?box.bottom+12:Math.max(8,Math.min(vh-height-8,box.top-height/2));
+      tip.style.left=Math.round(left)+'px';tip.style.top=Math.round(top)+'px';
+    };
+    const hide=()=>{if(active)active.removeAttribute('aria-describedby');active=null;pinned=false;tip.classList.remove('is-visible');tip.setAttribute('aria-hidden','true');};
+    const show=target=>{
+      const info=target&&read(target);if(!info)return;
+      if(active&&active!==target)active.removeAttribute('aria-describedby');active=target;
+      const color=/^#[0-9a-f]{6}$/i.test(String(info.color||''))?info.color:'#2563eb';
+      tip.style.setProperty('--trend-tip-color',color);
+      tip.querySelector('.trend-tip-title').textContent=info.title||'รายละเอียด';
+      tip.querySelector('.trend-tip-value').textContent=info.value||'—';
+      tip.querySelector('.trend-tip-name').textContent=info.name||'';
+      tip.querySelector('.trend-tip-counts').textContent=info.counts||'';
+      const note=tip.querySelector('.trend-tip-note');note.textContent=info.note||'';note.hidden=!info.note;
+      target.setAttribute('aria-describedby',tip.id);
+      tip.classList.add('is-visible');tip.setAttribute('aria-hidden','false');position(target);
+    };
+    document.addEventListener('pointerover',e=>{if(e.pointerType==='touch'||pinned)return;const node=targetOf(e.target);if(node)show(node);});
+    document.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||pinned)return;const node=targetOf(e.target);if(node){if(node!==active)show(node);}else if(active)hide();});
+    document.addEventListener('pointerout',e=>{if(pinned||!active)return;const from=targetOf(e.target),to=targetOf(e.relatedTarget);if(from&&!to)hide();});
+    document.addEventListener('focusin',e=>{const node=targetOf(e.target);if(node){pinned=false;show(node);}});
+    document.addEventListener('focusout',e=>{if(e.target===active&&!pinned)hide();});
+    document.addEventListener('click',e=>{const node=targetOf(e.target);if(!node){if(active)hide();return;}if(active===node&&pinned){hide();return;}show(node);pinned=true;});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});
+    document.addEventListener('scroll',()=>{if(!active)return;const b=active.getBoundingClientRect();if(!active.isConnected||b.bottom<0||b.top>window.innerHeight)hide();else position(active);},true);
+    window.addEventListener('resize',()=>{if(active)hide();});
+    window.TimeClockTrendTooltipV616FJ={show,hide};
+  }
+  function tooltipOnV616FJ(element,info){
+    if(!element)return;
+    element.dataset.trendTipV616fj=encodeURIComponent(JSON.stringify(info));
+    element.dataset.noOverflowTooltip='1';
+    if(element.hasAttribute('title'))element.removeAttribute('title');
+    element.querySelectorAll?.('[title]').forEach(node=>node.removeAttribute('title'));
+    if(!element.matches('button,a,input,select,textarea')&&!element.hasAttribute('tabindex'))element.tabIndex=0;
+    element.classList.add('trend-tip-target-v616fj');
+  }
+  function decorateRequestTooltipsV616FJ(rows){
+    const list=all(rows).filter(r=>['PENDING','IN_REVIEW','SUBMITTED','WAITING_APPROVAL'].includes(String(r.status||'').toUpperCase()));
+    const age=r=>{const d=new Date(r.requested_at||r.created_at||'');return Number.isNaN(d.getTime())?null:Math.max(0,(Date.now()-d.getTime())/86400000);};
+    const types=new Map([['LEAVE','ขอแก้ไขกะ/ลา'],['TIME_CERTIFICATION','ขอรับรองเวลา'],['CERTIFICATION','ขอรับรองเวลา'],['SPECIAL_WORK','แจ้งทำงานพิเศษ'],['SHIFT_CHANGE','ขอเปลี่ยนกะ']]);
+    const grouped=new Map();list.forEach(r=>{const key=String(r.request_type||r.request_subtype||'OTHER').toUpperCase();if(!grouped.has(key))grouped.set(key,{name:types.get(key)||key,green:0,orange:0,red:0,total:0});const g=grouped.get(key);const n=age(r);if(n!==null){if(n<1)g.green++;else if(n<=3)g.orange++;else g.red++;}g.total++;});
+    [...grouped.values()].sort((a,b)=>b.total-a.total).slice(0,7).forEach((r,i)=>tooltipOnV616FJ($('trendRequestsV616FI')?.querySelectorAll('.trend-request-row-v616fi')[i],{title:'คำขอรอพิจารณา',name:r.name,value:`${number(r.total)} รายการ`,counts:`<1 วัน ${number(r.green)} • 1–3 วัน ${number(r.orange)} • >3 วัน ${number(r.red)}`,note:'นับจากรายการคำขอที่ผู้ใช้ได้รับสิทธิ์ใน Workflow',color:'#f48a20'}));
+    [...list].sort((a,b)=>(age(b)||0)-(age(a)||0)).slice(0,6).forEach((r,i)=>tooltipOnV616FJ($('trendRequestsV616FI')?.querySelectorAll('.trend-request-queue-v616fi>div')[i],{title:'คำขอค้างพิจารณา',name:types.get(String(r.request_type||'').toUpperCase())||r.request_type||'คำขอ',value:age(r)===null?'ไม่พบเวลา':age(r).toFixed(1)+' วัน',counts:r.full_name||r.emp_code||'',note:'ข้อมูลคิวตามสิทธิ์ Workflow',color:'#e58a1f'}));
+  }
+  function decorateTrendChartsV616FJ(d){
+    trendTooltipInstallV616FJ();
+    const statuses=[['NORMAL','ปกติ','#1c9b72'],['LATE','มาสาย 1–29 นาที','#f28a17'],['EARLY','กลับก่อน','#e6ba07'],['ABSENT_OR_INCOMPLETE','ขาด/เวลาไม่ครบ','#df4848'],['LEAVE','ลา','#8b5cf6'],['NO_PUNCH_REQUIRED','ไม่ต้องลงเวลา','#a7b8cc']];
+    const status=d?.today_status||{};
+    const statusTotal=statuses.reduce((acc,s)=>acc+raw(status[s[0]]),0);
+    tooltipOnV616FJ($('trendHeadcountV616FI')?.querySelector('.trend-ring-v616fi'),{title:'กำลังพลในวันล่าสุด',name:thdate(d?.latest_day),value:`${number(statusTotal)} วัน-พนักงาน`,counts:`ลงเวลาครบ ${number(d?.today_complete??0)} จาก ${number(d?.today_expected??0)}`,note:'สถานะรายวันจากข้อมูลที่โหลดตาม Scope',color:'#1c9b72'});
+    const statusNodes=$('trendHeadcountV616FI')?.querySelectorAll('.trend-status-list-v616fi>div')||[];
+    statuses.forEach((x,i)=>tooltipOnV616FJ(statusNodes[i],{title:'สถานะวันที่มีข้อมูลล่าสุด',name:x[1],value:`${number(status[x[0]])} วัน-พนักงาน`,counts:thdate(d?.latest_day),note:'แบ่งตามสถานะจาก Attendance ของวัน',color:x[2]}));
+    const otThreshold=raw(value('trendOtThresholdV616FI'));
+    all(d?.people).filter(x=>raw(x.ot)>0).sort((a,b)=>raw(b.ot)-raw(a.ot)).slice(0,8).forEach((r,i)=>tooltipOnV616FJ($('trendTopOtV616FI')?.querySelectorAll('.trend-ot-row-v616fi')[i],{title:'ชั่วโมง OT รายพนักงาน',name:r.name||r.code,value:`${number(r.ot)} ชม.`,counts:r.org||r.code||'',note:`เกณฑ์เปรียบเทียบ ${number(otThreshold)} ชม. ในช่วงที่เลือก`,color:'#3288c8'}));
+    all(d?.people).filter(r=>raw(r.absent)+raw(r.late)+raw(r.early)>0).sort((a,b)=>(raw(b.absent)*3+raw(b.late)+raw(b.early)*.5)-(raw(a.absent)*3+raw(a.late)+raw(a.early)*.5)).slice(0,8).forEach((r,i)=>tooltipOnV616FJ($('trendPeopleRiskV616FI')?.querySelectorAll('tbody tr')[i],{title:'พนักงานที่ควรติดตาม',name:r.name||r.code,value:`${number(raw(r.absent)+raw(r.late)+raw(r.early))} เหตุการณ์`,counts:`มาสาย ${number(r.late)} • ขาด/ไม่ครบ ${number(r.absent)} • กลับก่อน ${number(r.early)}`,note:`${r.org||''} • ${r.code||''}`,color:'#df4848'}));
+    const days=all(d?.daily).slice(-31);
+    days.forEach((r,i)=>{
+      tooltipOnV616FJ($('trendDailyIssuesV616FI')?.querySelectorAll('.trend-day-column-v616fi')[i],{title:'ความผิดปกติรายวัน',name:thdate(r.date),value:`${number(raw(r.absent)+raw(r.late)+raw(r.early))} เหตุการณ์`,counts:`ขาด/ไม่ครบ ${number(r.absent)} • สาย ${number(r.late)} • กลับก่อน ${number(r.early)}`,note:'คนเดียวอาจมีมากกว่าหนึ่งเหตุการณ์',color:'#df4848'});
+      tooltipOnV616FJ($('trendHoursV616FI')?.querySelectorAll('.trend-day-column-v616fi')[i],{title:'ชั่วโมงทำงานปกติ vs OT',name:thdate(r.date),value:`${number(raw(r.regular)+raw(r.ot))} ชม.`,counts:`ชั่วโมงปกติ ${number(r.regular)} • OT ${number(r.ot)}`,note:'ยอดชั่วโมงรายวันจาก Attendance Calculations',color:'#3288c8'});
+    });
+    all(d?.org_risk).filter(r=>raw(r.expected)>0).sort((a,b)=>percent(b.anomalous,b.expected)-percent(a.anomalous,a.expected)).slice(0,12).forEach((r,i)=>tooltipOnV616FJ($('trendOrgRiskV616FI')?.querySelectorAll('.trend-org-row-v616fi')[i],{title:'ความผิดปกติรายหน่วยงาน',name:r.org||'',value:fmt(percent(r.anomalous,r.expected)),counts:`พบเหตุ ${number(r.anomalous)} จาก ${number(r.expected)} วัน-พนักงาน`,note:`พนักงาน ${number(r.employees)} คน • คำนวณจากยอดจริง`,color:'#e58a1f'}));
+    decorateForecastV616FJ(d);
+  }
+  function decorateForecastV616FJ(d){
+    const threshold=raw(value('trendStaffThresholdV616FI'))||75;
+    all(d?.forecast).slice(0,14).forEach((r,i)=>{
+      const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned),total=raw(r.total),pct=percent(morning+night,total);
+      tooltipOnV616FJ($('trendForecastV616FI')?.querySelectorAll('.trend-forecast-day-v616fi')[i],{title:'แผนกำลังพล 14 วัน',name:thdate(r.date),value:fmt(pct),counts:`เช้า ${number(morning)} • ดึก ${number(night)} • ลา ${number(leave)} • หยุด ${number(off)} • ยังไม่มีกะ ${number(unknown)}`,note:`เกณฑ์ ${number(threshold)}% • นับเฉพาะกะที่บันทึกไว้ ไม่ยืนยันการเข้างานจริง`,color:pct!==null&&pct<threshold?'#e54b47':'#3288c8'});
+    });
+  }
   function render(data){lastData=data||{};const d=data||{};
     host('trendHeadcountV616FI',statusChart(d));
     host('trendTopOtV616FI',barPeople(d.people,raw(value('trendOtThresholdV616FI'))));
@@ -41376,7 +41479,7 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     host('trendDailyIssuesV616FI',miniBarChart(d.daily,[{key:'absent',label:'ขาด/ไม่ครบ',color:'#db4646'},{key:'late',label:'มาสาย',color:'#f58a18'},{key:'early',label:'กลับก่อน',color:'#183e60'}],{note:'หนึ่งวัน-พนักงานอาจมีมากกว่าหนึ่งเหตุผิดปกติ'}));
     host('trendHoursV616FI',miniBarChart(d.daily,[{key:'regular',label:'ชั่วโมงปกติ',color:'#3288c8'},{key:'ot',label:'OT',color:'#f58a18'}],{note:'ชั่วโมงรวมจาก Attendance Calculations ของพนักงานใน Scope'}));
     host('trendOrgRiskV616FI',orgRisk(d.org_risk));
-    renderForecast();
+    renderForecast();decorateTrendChartsV616FJ(d);
   }
   function renderForecast(){const target=raw(value('trendStaffThresholdV616FI'))||75; if($('trendStaffTargetV616FI'))$('trendStaffTargetV616FI').textContent=target+'%'; host('trendForecastV616FI',future(lastData?.forecast,target));}
   async function requests(signal){
@@ -41387,7 +41490,8 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
       });
       if(signal!==token)return;
       if(error)throw error;
-      host('trendRequestsV616FI',requestsChart(Array.isArray(data)?data:Array.isArray(data?.rows)?data.rows:[]));
+      const requestRows=Array.isArray(data)?data:Array.isArray(data?.rows)?data.rows:[];
+      host('trendRequestsV616FI',requestsChart(requestRows));decorateRequestTooltipsV616FJ(requestRows);
     }catch(e){if(signal!==token)return;
       if($('trendRequestCountV616FI'))$('trendRequestCountV616FI').textContent='—';
       host('trendRequestsV616FI',empty('โหลดคิวคำขอไม่สำเร็จ • ตรวจสิทธิ์ Workflow หรือ RPC คำขอ'));
@@ -41416,8 +41520,8 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     document.querySelectorAll('[data-dashboard-view-v616h]').forEach(b=>b.addEventListener('click',()=>{
       if(b.dataset.dashboardViewV616h==='daily')setTimeout(()=>load(),100);
     }));
-    $('trendOtThresholdV616FI')?.addEventListener('change',()=>{if(lastData)host('trendTopOtV616FI',barPeople(lastData.people,raw(value('trendOtThresholdV616FI'))));});
-    $('trendStaffThresholdV616FI')?.addEventListener('input',renderForecast);
+    $('trendOtThresholdV616FI')?.addEventListener('change',()=>{if(lastData)host('trendTopOtV616FI',barPeople(lastData.people,raw(value('trendOtThresholdV616FI'))));decorateTrendChartsV616FJ(lastData);});
+    $('trendStaffThresholdV616FI')?.addEventListener('input',()=>{renderForecast();if(lastData)decorateForecastV616FJ(lastData);});
     ['dashStart','dashEnd','dashSide','dashDivision','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{lastKey='';}));
     $('loadDashboardBtn')?.addEventListener('click',()=>{lastKey='';setTimeout(()=>load(true),180);});
     document.addEventListener('timeclock:dashboard-rendered-v616h',()=>{if(isShown())load(true);});
