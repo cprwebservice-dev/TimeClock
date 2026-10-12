@@ -40296,6 +40296,24 @@ ${names}${extra}
     host.innerHTML=rows.length?rows.map(r=>{ const cls=r.total===0?'empty':r.completeRate>=90?'good':r.completeRate>=75?'warn':'bad'; return `<div class="heat-day-v616h ${cls}" title="${safe(longDate(r.date))} • ลงเวลาครบ ${r.completeRate.toFixed(1)}% • ${fmt(r.complete)}/${fmt(r.total)} รายการ"><span>${parseISO(r.date)?.getDate()||''}</span><strong>${r.total?`${r.completeRate.toFixed(0)}%`:'—'}</strong><small>${safe(shortDate(r.date))}</small></div>`;}).join(''):'<div class="dashboard-daily-empty-v616h">ไม่มีข้อมูล</div>';
   }
 
+  // FIX16FO: daily-tab sparkline shares Overview card design and existing Trend tooltip handler.
+  // Missing denominator is not shown as 0%; no fabricated comparison data.
+  function dashboardTrendKpiSparkV616FO(rows,metric,label,tone,unit){
+    const sampled=rows.slice(-18).map(r=>({date:r.date,value:metric(r)})).filter(r=>r.value!==null&&Number.isFinite(r.value));
+    if(sampled.length<2)return '<span class="dashboard-executive-spark-empty-v616fd" aria-label="ข้อมูลแนวโน้มยังไม่เพียงพอ">—</span>';
+    const W=112,H=52,left=6,right=6,top=8,bottom=8;
+    const vals=sampled.map(r=>r.value),min=Math.min(...vals),max=Math.max(...vals);
+    const spread=Math.max(max-min,Math.abs(max)*.08,1),low=min-(spread-(max-min))/2,high=max+(spread-(max-min))/2;
+    const x=i=>left+i*(W-left-right)/(sampled.length-1),y=v=>H-bottom-(v-low)/(high-low)*(H-top-bottom);
+    const coords=sampled.map((r,i)=>`${x(i).toFixed(2)},${y(r.value).toFixed(2)}`).join(' ');
+    const color=tone==='red'?'#ef4444':tone==='orange'?'#f97316':tone==='navy'?'#17446a':'#2563eb';
+    const circles=sampled.map((r,i)=>{
+      const info={title:`แนวโน้ม ${label}`,name:longDate(r.date),value:`${r.value.toLocaleString('th-TH',{maximumFractionDigits:1})} ${unit}`,counts:'ข้อมูลรายวันตามช่วงที่เลือก',note:'ไม่ได้ใช้ข้อมูลจำลอง',color};
+      return `<circle cx="${x(i).toFixed(2)}" cy="${y(r.value).toFixed(2)}" r="8" fill="transparent" stroke="none" tabindex="0" role="img" class="trend-tip-target-v616fj" data-trend-tip-v616fj="${encodeURIComponent(JSON.stringify(info))}" aria-label="${safe(`${longDate(r.date)} ${info.value}`)}"/>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${W} ${H}" class="dashboard-executive-spark-v616fd dashboard-trend-spark-v616fo ${tone}" role="img" aria-label="${safe(`แนวโน้ม ${label} รายวัน`)}"><polyline points="${coords}" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>${circles}</svg>`;
+  }
+
   function renderDaily(rows,originalStart,originalEnd,displayStart){
     const cumulativeRows=cumulative(rows), latest=cumulativeRows[cumulativeRows.length-1]||null;
     if($('dashboardDailyRangeV616H')) $('dashboardDailyRangeV616H').textContent = rows.length?`${longDate(rows[0].date)} – ${longDate(rows[rows.length-1].date)}`:'—';
@@ -40304,15 +40322,43 @@ ${names}${extra}
     if(notice){ const clipped=displayStart!==originalStart; notice.classList.toggle('hidden',!clipped); notice.textContent=clipped?`ช่วงที่เลือกยาวเกิน 31 วัน • มุมมองรายวันแสดง 31 วันล่าสุด (${longDate(displayStart)} – ${longDate(originalEnd)}) เพื่อให้โหลดเร็วและอ่านแนวโน้มได้ชัดเจน`:''; }
     const kpis=$('dashboardDailyKpisV616H');
     if(kpis){
-      if(!latest) kpis.innerHTML='<div class="dashboard-daily-empty-v616h">ไม่มีข้อมูลรายวัน</div>';
-      else kpis.innerHTML=[
-        ['วัน-พนักงาน',latest.total,'รายการ',`วันที่ ${longDate(latest.date)}`,'neutral'],
-        ['ลงเวลาครบ',latest.completeRate.toFixed(1),'%',`${fmt(latest.complete)} รายการ`,'good'],
-        ['ขาดงาน',latest.absent,'รายการ','ตามเกณฑ์ Attendance','bad'],
-        ['มาสาย',latest.late,'รายการ','1–29 นาที','warn'],
-        ['กลับก่อน',latest.early,'รายการ','ก่อนสิ้นสุดกะ','warn'],
-        ['OT',latest.ot,'ชม.','ของวันล่าสุด','accent']
-      ].map(x=>`<article class="daily-kpi-v616h ${x[4]}"><span>${x[0]}</span><div><strong>${fmt(x[1])}</strong><em>${x[2]}</em></div><small>${x[3]}</small></article>`).join('');
+      if(!latest){
+        kpis.innerHTML='<div class="dashboard-daily-empty-v616h">ไม่มีข้อมูลรายวัน</div>';
+      }else{
+        // FIX16FO: same six-card visual contract as Manager Overview FIX16FD.
+        // All amounts remain the DAILY values from the existing RPC; no new queries.
+        const previous=cumulativeRows.length>1?cumulativeRows[cumulativeRows.length-2]:null;
+        const asNum=value=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
+        const usableRate=row=>row&&Number(row.total)>0?asNum(row.completeRate):null;
+        const items=[
+          {label:'วัน-พนักงาน',tone:'blue',unit:'รายการ',metric:r=>asNum(r.total),value:asNum(latest.total),note:`วันที่ ${longDate(latest.date)} • วันทำงานที่ต้องลงเวลา`,kind:'volume',tip:'จำนวนวัน-พนักงานที่มีหน้าที่ต้องลงเวลาในวันล่าสุด'},
+          {label:'ลงเวลาครบ',tone:'blue',unit:'%',digits:1,metric:usableRate,value:usableRate(latest),note:`ครบ ${fmt(latest.complete)} จาก ${fmt(latest.total)} วัน-พนักงาน`,kind:'rate',tip:'อัตราลงเวลาครบของวันล่าสุด ไม่ใช่อัตราสะสม'},
+          {label:'ขาดงาน',tone:'red',unit:'รายการ',metric:r=>asNum(r.absent),value:asNum(latest.absent),note:'ขาดงาน/ลงเวลาไม่ครบ • วันล่าสุด',kind:'issue',tip:'จำนวนขาดงานหรือเวลาไม่ครบ ตามเกณฑ์ Attendance'},
+          {label:'มาสาย (1–29 นาที)',tone:'orange',unit:'รายการ',metric:r=>asNum(r.late),value:asNum(latest.late),note:'มาสาย 1–29 นาที • วันล่าสุด',kind:'issue',tip:'จำนวนรายการมาสาย 1–29 นาที ของวันล่าสุด'},
+          {label:'กลับก่อนเวลา',tone:'orange',unit:'รายการ',metric:r=>asNum(r.early),value:asNum(latest.early),note:'ก่อนสิ้นสุดกะ • วันล่าสุด',kind:'issue',tip:'จำนวนรายการกลับก่อนเวลา ของวันล่าสุด'},
+          {label:'ชั่วโมง OT',tone:'navy',unit:'ชม.',digits:1,metric:r=>asNum(r.ot),value:asNum(latest.ot),note:'ยอด OT จากวันล่าสุด',kind:'hours',tip:'ชั่วโมง OT ของวันล่าสุดตามผลคำนวณ Attendance'}
+        ];
+        kpis.innerHTML=items.map(item=>{
+          const lastValue=item.metric(latest),priorValue=previous?item.metric(previous):null;
+          let deltaLabel='—',deltaClass='neutral';
+          if(lastValue!==null && priorValue!==null){
+            const change=lastValue-priorValue;
+            const magnitude=Number(Math.abs(change).toFixed(item.kind==='rate'||item.kind==='hours'?1:0));
+            if(magnitude>0){
+              deltaLabel=`${change>0?'+':'−'}${magnitude.toLocaleString('th-TH',{maximumFractionDigits:1})} ${item.kind==='rate'?'จุด%':item.kind==='hours'?'ชม.':'รายการ'}`;
+              deltaClass=item.kind==='issue'?(change<0?'good':'bad'):item.kind==='rate'?(change>0?'good':'bad'):'neutral';
+            }else deltaLabel=`0 ${item.kind==='rate'?'จุด%':item.kind==='hours'?'ชม.':'รายการ'}`;
+          }
+          const textValue=item.value===null?'—':item.value.toLocaleString('th-TH',{minimumFractionDigits:item.digits||0,maximumFractionDigits:item.digits||0});
+          const spark=dashboardTrendKpiSparkV616FO(cumulativeRows,item.metric,item.label,item.tone,item.unit);
+          const tooltip=previous?'วันล่าสุดเทียบวันก่อนหน้าที่มีข้อมูล':'ต้องมีข้อมูลอย่างน้อย 2 วันจึงจะเปรียบเทียบได้';
+          return `<article class="dashboard-executive-kpi-v616fd ${item.tone} dashboard-trend-kpi-v616fo">
+            <div class="dashboard-executive-kpi-title-v616fd" title="${safe(item.tip)}">${safe(item.label)}</div>
+            <div class="dashboard-executive-kpi-main-v616fd"><div class="dashboard-executive-kpi-value-v616fd"><strong>${safe(textValue)}</strong><em>${safe(item.unit)}</em></div>${spark}</div>
+            <div class="dashboard-executive-kpi-bottom-v616fd"><span class="dashboard-executive-kpi-delta-v616fd ${deltaClass}" title="${safe(tooltip)}">${safe(deltaLabel)}</span><small>${safe(item.note)}</small></div>
+          </article>`;
+        }).join('');
+      }
     }
     if($('dashboardDailyRateChartV616H')) $('dashboardDailyRateChartV616H').innerHTML=lineChart(cumulativeRows);
     if($('dashboardDailyLatestRateV616H')) $('dashboardDailyLatestRateV616H').textContent=latest?`${latest.completeRate.toFixed(1)}% ล่าสุด`:'—';

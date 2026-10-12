@@ -39211,3 +39211,21 @@ body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-note{color:#cbd5e1}
 
 /* FIX16FN: allow inline top/left to place both dashboard SVG and Trend popovers.
    The previous inset:auto!important masked JS coordinates in both tooltip classes. */
+
+/* FIX16FO — Trend top KPI cards match Manager Overview FIX16FD styling.
+   Presentation only. Six existing daily metrics, same RPC, same scope and formulae. */
+#page-dashboard #dashboardDailyKpisV616H{
+  display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  gap:12px!important;margin:12px 0 18px!important;min-width:0
+}
+html[data-dashboard-focus-version="FIX16DO"] #page-dashboard #dashboardDailyKpisV616H > :nth-child(1),
+html[data-dashboard-focus-version="FIX16DO"] #page-dashboard #dashboardDailyKpisV616H > :nth-child(5){display:flex!important}
+#page-dashboard #dashboardDailyKpisV616H .dashboard-trend-kpi-v616fo{min-height:151px}
+#page-dashboard #dashboardDailyKpisV616H .dashboard-executive-kpi-main-v616fd{min-width:0}
+#page-dashboard #dashboardDailyKpisV616H .dashboard-executive-kpi-value-v616fd{max-width:64%;min-width:0}
+#page-dashboard #dashboardDailyKpisV616H .dashboard-executive-kpi-value-v616fd strong{font-variant-numeric:tabular-nums;overflow-wrap:normal}
+#page-dashboard #dashboardDailyKpisV616H .dashboard-trend-spark-v616fo{color:var(--strip);overflow:visible}
+#page-dashboard #dashboardDailyKpisV616H .dashboard-trend-spark-v616fo .trend-tip-target-v616fj{cursor:help}
+@media(max-width:1490px){#page-dashboard #dashboardDailyKpisV616H{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:790px){#page-dashboard #dashboardDailyKpisV616H{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}}
+@media(max-width:420px){#page-dashboard #dashboardDailyKpisV616H .dashboard-executive-kpi-value-v616fd strong{font-size:22px}}
