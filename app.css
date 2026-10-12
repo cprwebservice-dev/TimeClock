@@ -39044,7 +39044,7 @@ body.theme-dark #page-dashboard .dashboard-heatmap-cell-v616fg.bad{background:#b
 
 /* FIX16FH — Separate Heatmap tooltip with reliable scroll-safe hover / keyboard / touch. */
 .dashboard-heatmap-tooltip-v616fh{
-  --heat-tip-color:#2563eb;position:fixed!important;inset:auto!important;z-index:2147483646!important;
+  --heat-tip-color:#2563eb;position:fixed!important;inset:auto;z-index:2147483646!important;
   display:block;visibility:hidden;opacity:0;pointer-events:none;transform:translateY(4px);
   width:min(320px,calc(100vw - 16px));max-width:calc(100vw - 16px);
   padding:13px 15px 14px;box-sizing:border-box;border:1px solid rgba(148,163,184,.32);
@@ -39204,3 +39204,7 @@ body.theme-dark .dashboard-trend-tooltip-v616fj .trend-tip-note{color:#cbd5e1}
 #page-dashboard .dashboard-heatmap-cell-v616fg,
 #page-dashboard .dashboard-heatmap-row-name-v616fg[data-heatmap-tip-v616fh]{cursor:pointer;}
 #page-dashboard .dashboard-heatmap-cell-v616fg:focus-visible{outline:2px solid var(--primary,#2563eb);outline-offset:2px;}
+
+/* FIX16FM: floating Heatmap tooltip follows the hovered/focused tile.
+   Do not make `inset` important: that overrides the inline top/left set in JS. */
+.dashboard-heatmap-tooltip-v616fh.is-visible{will-change:opacity,transform;}
