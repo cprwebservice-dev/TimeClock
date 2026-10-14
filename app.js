@@ -41417,23 +41417,35 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     if(!list.length)return empty('ไม่พบหน่วยงานที่มีภาระต้องลงเวลาในช่วงที่เลือก');
     return `${list.map(r=>{const rate=percent(r.anomalous,r.expected),color=rate>=25?'#dc4848':rate>=17?'#f0901a':'#169a6d';return `<div class="trend-org-row-v616fi"><span title="${esc(r.org)}"><strong>${esc(r.org)}</strong><small>${number(r.employees)} คน • ลงเวลาครบ/ไม่ครบตามเกณฑ์</small></span><div class="trend-track-v616fi"><i style="width:${rate.toFixed(1)}%;background:${color}"></i></div><b>${fmt(rate)}</b></div>`;}).join('')}<div class="trend-key-v616fi"><span><i class="success"></i>&lt;17%</span><span><i class="warning"></i>17–24.9%</span><span><i class="danger"></i>≥25%</span></div>`;
   }
-  // FIX16FU: classify planned full-off days separately from staffing alerts.
-  // A zero-working day is never called an attendance anomaly here: this is a
-  // scheduling outlook only, NOT verified staffing demand or actual presence.
+  // FIX16FV: only Holiday Master metadata defines a public holiday; do not
+  // interpret a planned OFF day as an attendance anomaly. All values are from
+  // the existing FIX16FQ Trend RPC (no secondary browser Scope calculation).
   function forecastStatusV616FU(r,threshold){
     const total=raw(r.total),work=raw(r.morning)+raw(r.night),off=raw(r.off),
       leave=raw(r.leave),unknown=raw(r.unassigned),ratio=percent(work,total),
-      mismatch=total>0 && work+off+leave+unknown!==total;
-    const rest=total>0 && work===0 && off===total && leave===0 && unknown===0;
-    return {total,work,ratio,rest,mismatch,low:total>0&&!rest&&ratio!==null&&ratio<threshold};
+      mismatch=total>0 && work+off+leave+unknown!==total,
+      rest=total>0 && work===0 && off===total && leave===0 && unknown===0,
+      holiday=r.holiday_master===true,
+      weeklyOffAll=r.weekly_off_all===true;
+    const dayType=holiday?'PUBLIC_HOLIDAY':rest&&weeklyOffAll?'WEEKLY_OFF':rest?'FULL_OFF':'WORKDAY';
+    // Public holidays may legitimately have low scheduled coverage; show an
+    // informational notice rather than the red normal-day staffing alert.
+    const low=total>0&&!rest&&!holiday&&!mismatch&&ratio!==null&&ratio<threshold;
+    const holidayWatch=total>0&&holiday&&!rest&&!mismatch&&ratio!==null&&ratio<threshold;
+    return {total,work,ratio,rest,mismatch,holiday,weeklyOffAll,dayType,low,holidayWatch};
   }
-  function future(rows,threshold){const list=all(rows).slice(0,14);
+  function future(rows,threshold){
+    const list=all(rows).slice(0,14);
     if(!list.length)return empty('ไม่มีข้อมูลกะที่มีผลในช่วงวันที่เลือก • ตรวจรูปแบบการทำงานและ Scope');
     const max=Math.max(1,...list.map(r=>raw(r.total)));
-    const low=list.filter(r=>forecastStatusV616FU(r,threshold).low);
-    const rests=list.filter(r=>forecastStatusV616FU(r,threshold).rest);
-    const mismatch=list.filter(r=>forecastStatusV616FU(r,threshold).mismatch);
-    return `<div class="trend-forecast-v616fi"><div class="trend-forecast-plot-v616fi">${list.map(r=>{const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned);const status=forecastStatusV616FU(r,threshold);return `<div class="trend-forecast-day-v616fi" title="${esc(thdate(r.date))}: เช้า ${morning}, ดึก ${night}, ลา ${leave}, หยุด ${off}, ตรวจสอบกะ ${unknown}"><div class="trend-f-bar-v616fi ${status.low?'flagged':status.rest?'planned-rest-v616fu':status.mismatch?'data-review-v616fu':''}"><i style="height:${morning/max*100}%;background:#3288c8"></i><i style="height:${night/max*100}%;background:#153957"></i><i style="height:${leave/max*100}%;background:#8759f2"></i><i style="height:${off/max*100}%;background:#adbbc8"></i><i style="height:${unknown/max*100}%;background:#d7e0eb"></i></div><span>${esc(thdate(r.date))}</span>${status.low?'<em>▲</em>':''}</div>`;}).join('')}</div><div class="trend-key-v616fi"><span><i class="blue"></i>กะเช้า</span><span><i style="background:#153957"></i>กะดึก</span><span><i style="background:#8759f2"></i>ลา (กะ / คำขออนุมัติ)</span><span><i style="background:#adbbc8"></i>หยุด</span><span><i style="background:#d7e0eb"></i>ตรวจสอบกะ</span></div>${low.length?`<div class="trend-alert-v616fi">พบ ${number(low.length)} วัน ที่จำนวนผู้มีกะทำงานต่ำกว่า ${number(threshold)}% ของคนใน Scope • วันแรก ${esc(thdate(low[0].date))} (เตือนกำลังคนตามแผน ไม่ใช่การขาดงาน)</div>`:`<div class="trend-note-v616fi">ไม่พบวันที่มีกะทำงานต่ำกว่าเกณฑ์ ${number(threshold)}% นอกเหนือจากวันหยุดทั้ง Scope</div>`}${rests.length?`<div class="trend-rest-note-v616fu">${number(rests.length)} วันแสดงเป็นหยุดทั้ง Scope (${rests.map(x=>esc(thdate(x.date))).join(', ')}) • ไม่ตีเป็นเหตุผิดปกติของการลงเวลา แต่ควรตรวจความต้องการกำลังคนในวันหยุด</div>`:''}${mismatch.length?`<div class="trend-integrity-note-v616fu">ข้อมูล ${number(mismatch.length)} วันมีผลรวมประเภทกะไม่เท่าจำนวนคนใน Scope • กรุณาตรวจสอบ Backend</div>`:''}<div class="trend-note-v616fi">อ่านกะตั้งต้นที่มีผลรายวัน แล้วใช้รายการจัด/เปลี่ยนกะรายวันแทน • หากไม่มีรายการกะตั้งต้นรายบุคคล Backend อาจใช้กะมาตรฐานจากรูปแบบงานเป็นค่าอนุมาน • ไม่ใช่การยืนยันการเข้างานจริง</div></div>`;
+    const statusRows=list.map(r=>({r,status:forecastStatusV616FU(r,threshold)}));
+    const low=statusRows.filter(x=>x.status.low),rests=statusRows.filter(x=>x.status.rest&&!x.status.holiday),
+      holidays=statusRows.filter(x=>x.status.holiday),holidayWatch=statusRows.filter(x=>x.status.holidayWatch),
+      mismatch=statusRows.filter(x=>x.status.mismatch);
+    return `<div class="trend-forecast-v616fi"><div class="trend-forecast-plot-v616fi">${statusRows.map(({r,status})=>{const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned);
+      const marker=status.mismatch?'data-review-v616fu':status.holiday?'public-holiday-v616fv':status.rest?'planned-rest-v616fu':status.low?'flagged':'';
+      return `<div class="trend-forecast-day-v616fi" title="${esc(thdate(r.date))}: เช้า ${morning}, ดึก ${night}, ลา ${leave}, หยุด ${off}, ตรวจสอบกะ ${unknown}"><div class="trend-f-bar-v616fi ${marker}"><i style="height:${morning/max*100}%;background:#3288c8"></i><i style="height:${night/max*100}%;background:#153957"></i><i style="height:${leave/max*100}%;background:#8759f2"></i><i style="height:${off/max*100}%;background:#adbbc8"></i><i style="height:${unknown/max*100}%;background:#d7e0eb"></i></div><span>${esc(thdate(r.date))}</span>${status.low?'<em>▲</em>':''}</div>`;
+    }).join('')}</div><div class="trend-key-v616fi"><span><i class="blue"></i>กะเช้า</span><span><i style="background:#153957"></i>กะดึก</span><span><i style="background:#8759f2"></i>ลา (กะ / คำขออนุมัติ)</span><span><i style="background:#adbbc8"></i>หยุด</span><span><i style="background:#d7e0eb"></i>ตรวจสอบกะ</span></div>${low.length?`<div class="trend-alert-v616fi">พบ ${number(low.length)} วันทำงานตามแผนที่ผู้มีกะทำงานต่ำกว่า ${number(threshold)}% ของ Scope • วันแรก ${esc(thdate(low[0].r.date))} (ไม่ใช่เหตุขาดงาน)</div>`:`<div class="trend-note-v616fi">ไม่พบวันทำงานตามแผนที่มีสัดส่วนผู้มีกะทำงานต่ำกว่าเกณฑ์ ${number(threshold)}% (ไม่รวมวันหยุดนักขัตฤกษ์และวันหยุดทั้ง Scope)</div>`}${holidays.length?`<div class="trend-holiday-note-v616fv">วันหยุดนักขัตฤกษ์ตาม Holiday Master ${number(holidays.length)} วัน (${holidays.map(x=>esc(thdate(x.r.date))).join(', ')})${holidayWatch.length?' • มี '+number(holidayWatch.length)+' วันสัดส่วนผู้จัดกะต่ำกว่าเกณฑ์: ใช้ตรวจแผนกำลังคนในวันหยุด ไม่ใช่เหตุผิดปกติการลงเวลา':''}</div>`:''}${rests.length?`<div class="trend-rest-note-v616fu">หยุดทั้ง Scope ${number(rests.length)} วัน (${rests.map(x=>esc(thdate(x.r.date))).join(', ')}) • ไม่ถือเป็นเหตุขาดงาน${rests.some(x=>x.status.weeklyOffAll)?' • มีวันหยุดประจำสัปดาห์ตาม Work Pattern':''}</div>`:''}${mismatch.length?`<div class="trend-integrity-note-v616fu">ข้อมูล ${number(mismatch.length)} วันมีผลรวมประเภทกะไม่เท่าจำนวนคนใน Scope • กรุณาตรวจสอบ Backend</div>`:''}<div class="trend-note-v616fi">อ่านกะตั้งต้นตามวันที่มีผล แล้วใช้กะจัด/เปลี่ยนรายวันแทน • กะมาตรฐานที่ระบบคำนวณอัตโนมัติไม่ใช่กะรายบุคคลที่บันทึกไว้ • ไม่ใช่การยืนยันเวลาเข้างานจริง</div></div>`;
   }
   // FIX16FJ: one consistent hover/focus/touch tooltip for all eight Trend panels.
   // All data comes from the same already-authorized Trend/Request response; no extra RPC.
@@ -41551,7 +41563,17 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     const threshold=raw(value('trendStaffThresholdV616FI'))||75;
     all(d?.forecast).slice(0,14).forEach((r,i)=>{
       const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned),total=raw(r.total),pct=percent(morning+night,total);
-      tooltipOnV616FJ($('trendForecastV616FI')?.querySelectorAll('.trend-forecast-day-v616fi')[i],{title:'แผนกำลังพล 14 วัน',name:thdate(r.date),value:fmt(pct),counts:`เช้า ${number(morning)} • ดึก ${number(night)} • ลา ${number(leave)} • หยุด ${number(off)} • ตรวจสอบกะ ${number(unknown)}`,note:`คนใน Scope ${number(total)} • เกณฑ์ ${number(threshold)}% • ${forecastStatusV616FU(r,threshold).rest?'หยุดทั้งหมดตามข้อมูลแผน ไม่ใช่เหตุขาดงาน • ':''}จากกะตั้งต้นในวันทำงาน ${number(r.from_baseline)} (รวมกะอนุมานเมื่อไม่พบรายการตั้งต้น) • จัด/เปลี่ยนรายวัน ${number(r.assigned_daily)} • เปลี่ยนจากตั้งต้น ${number(r.changed_daily)} • ไม่ใช่ผลเข้างานจริง`,color:forecastStatusV616FU(r,threshold).low?'#e54b47':forecastStatusV616FU(r,threshold).rest?'#64748b':'#3288c8'});
+      const status=forecastStatusV616FU(r,threshold);
+      const hasSplit=Number.isFinite(Number(r.baseline_personal))&&Number.isFinite(Number(r.baseline_standard))&&r.baseline_personal!==null&&r.baseline_standard!==null;
+      const baselineTotal=raw(r.from_baseline),personal=raw(r.baseline_personal),standard=raw(r.baseline_standard);
+      const sources=hasSplit
+        ?`กะตั้งต้นรายบุคคล ${number(personal)} • กะมาตรฐานอัตโนมัติ ${number(standard)}${personal+standard!==baselineTotal?' (ยอดไม่ตรงกับกะตั้งต้นรวม: ตรวจสอบข้อมูล)':''}`
+        :`กะตั้งต้นรวม ${number(baselineTotal)} (ยังไม่มีข้อมูลแยกรายบุคคล/อัตโนมัติจาก RPC)`;
+      const dayType={PUBLIC_HOLIDAY:'วันหยุดนักขัตฤกษ์ (Holiday Master)',WEEKLY_OFF:'วันหยุดประจำสัปดาห์',FULL_OFF:'หยุดทั้ง Scope (ตรวจประเภทวันจากข้อมูลแผน)',WORKDAY:'วันทำงานตามแผน'}[status.dayType];
+      const detail=[`คนใน Scope ${number(total)} • เกณฑ์ ${number(threshold)}% • ${dayType}`,
+        `ที่มาของกะ: ${sources} • จัด/เปลี่ยนรายวัน ${number(r.assigned_daily)} (ต่างจากตั้งต้น ${number(r.changed_daily)})`,
+        `กะรายบุคคลและกะอัตโนมัตินับเฉพาะวันที่ใช้กะตั้งต้น • ตัวเลขเป็นแผน ไม่ใช่การยืนยันเข้า-ออกงานจริง`].join('\n');
+      tooltipOnV616FJ($('trendForecastV616FI')?.querySelectorAll('.trend-forecast-day-v616fi')[i],{title:'แผนกำลังพล 14 วัน',name:thdate(r.date),value:fmt(pct),counts:`เช้า ${number(morning)} • ดึก ${number(night)} • ลา ${number(leave)} • หยุด ${number(off)} • ตรวจสอบกะ ${number(unknown)}`,note:detail,color:status.mismatch?'#d97706':status.holiday||status.rest?'#64748b':status.low?'#e54b47':'#3288c8'});
     });
   }
   function render(data){lastData=data||{};const d=data||{};

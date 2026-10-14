@@ -39237,3 +39237,9 @@ html[data-dashboard-focus-version="FIX16DO"] #page-dashboard #dashboardDailyKpis
 #page-dashboard .trend-rest-note-v616fu{background:rgba(100,116,139,.08);color:var(--text-muted,#52657d);border:1px solid rgba(100,116,139,.18)}
 #page-dashboard .trend-integrity-note-v616fu{background:rgba(217,119,6,.09);color:var(--text-primary,#92400e);border:1px solid rgba(217,119,6,.3)}
 #page-dashboard .trend-f-bar-v616fi.flagged{outline-color:#e75b55}
+
+/* FIX16FV: holiday master is informational, not a red staffing shortfall. */
+#page-dashboard .trend-f-bar-v616fi.public-holiday-v616fv{outline:2px solid rgba(100,116,139,.56);outline-offset:2px}
+#page-dashboard .trend-holiday-note-v616fv{margin-top:9px;padding:9px 12px;border-radius:10px;font-size:11.5px;line-height:1.6;background:rgba(100,116,139,.075);border:1px solid rgba(100,116,139,.20);color:var(--text-muted,#52657d)}
+.dashboard-trend-tooltip-v616fj .trend-tip-note{white-space:pre-line;line-height:1.55}
+.dashboard-trend-tooltip-v616fj{max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
