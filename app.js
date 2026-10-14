@@ -41602,43 +41602,89 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
       console.warn('[FIX16FI request panel]',e?.message||e);
     }finally{}
   }
+  // FIX16FW: History and 14-day forecast now load independently from two
+  // scope-preserving, read-only RPCs. A timeout in one must not hide the other.
+  // Requests with identical filters share one in-flight serial pair of promises.
   async function load(force=false){
     if(!isShown()||!chartsReady())return;
-    const key=currentKey();if(!force&&key===lastKey&&lastData)return;
-    // Automatic render/tab events should not immediately hammer a timed-out RPC.
-    // Explicit Refresh remains available and bypasses this short cooldown.
+    const key=currentKey();if(!force&&key===lastKey&&lastData&&!pendingTrendRpc.has(key))return;
     if(!force&&key===lastFailureKey&&Date.now()-lastFailureAt<15000)return;
     const p=args();if(!p.p_start_date||!p.p_end_date)return;
-    const current=++token;lastKey=key;setState('กำลังโหลดกราฟ…');
+    const current=++token;lastKey=key;setState('กำลังโหลดข้อมูลแนวโน้มและแผนกำลังพล…');
+    const rpcNames=['ta_get_manager_dashboard_history_v616fw','ta_get_manager_dashboard_forecast_v616fw'];
+    const rpcLabels=['ข้อมูลย้อนหลัง','แผนกำลังพล 14 วัน'];
+    const timeoutLike=e=>/statement timeout|canceling statement due to|57014/i.test(String(e?.message||e?.details||e||''));
+    const failureText=(e,label)=>{
+      const msg=String(e?.message||e?.details||'');
+      if(timeoutLike(e))return `${label}: SQL ใช้เวลานานเกินกำหนด • ทดลองจำกัด Scope แล้วโหลดใหม่`;
+      if(/PGRST202|function.*not found|could not find/i.test(msg))return `${label}: ยังไม่พบ RPC FIX16FW • กรุณารัน SQL FIX16FW ก่อน Deploy`;
+      return `${label}: โหลดไม่สำเร็จ • ตรวจ Response ใน Network`;
+    };
     try{
-      // The same filter can trigger multiple load events. Share ONE live promise.
-      // Different filters retain independent requests; stale responses are discarded by token.
       let request=pendingTrendRpc.get(key);
       if(!request){
-        request=Promise.resolve().then(()=>app().state.client.rpc('ta_get_manager_dashboard_trend_v616fi',p));
+        // Sequential requests avoid doubling database pressure when the actor's Scope
+        // is large. Show the 14-day forecast as soon as it finishes, independently.
+        request=(async()=>{
+          const runOne=async name=>{
+            try{
+              const result=await app().state.client.rpc(name,p);
+              if(result.error)throw result.error;
+              return {ok:true,data:result.data||{}};
+            }catch(error){return {ok:false,error};}
+          };
+          const forecast=await runOne(rpcNames[1]);
+          if(current===token){
+            if(forecast.ok){
+              lastData={forecast:all(forecast.data?.forecast)};
+              renderForecast();decorateForecastV616FJ(lastData);
+              setState('แสดงแผนกำลังพลแล้ว • กำลังโหลดข้อมูลย้อนหลัง…');
+            }else{
+              host('trendForecastV616FI',empty(failureText(forecast.error,rpcLabels[1])));
+              setState('แผนกำลังพลโหลดไม่สำเร็จ • กำลังตรวจข้อมูลย้อนหลัง…');
+            }
+          }
+          const history=await runOne(rpcNames[0]);
+          return [history,forecast];
+        })();
         pendingTrendRpc.set(key,request);
-        // Use both completion branches to clean up without an unhandled rejection.
-        request.then(
-          ()=>{if(pendingTrendRpc.get(key)===request)pendingTrendRpc.delete(key);},
-          ()=>{if(pendingTrendRpc.get(key)===request)pendingTrendRpc.delete(key);}
-        );
+        request.then(()=>{if(pendingTrendRpc.get(key)===request)pendingTrendRpc.delete(key);},
+                     ()=>{if(pendingTrendRpc.get(key)===request)pendingTrendRpc.delete(key);});
       }
-      const response=await request;
+      const [history,forecast]=await request;
       if(current!==token)return;
-      if(response.error)throw response.error;
-      lastFailureKey='';lastFailureAt=0;
-      render(response.data||{});setState('แสดงข้อมูลตาม Scope');
+      const merged={...(history.ok?history.data:{}),forecast:forecast.ok?all(forecast.data?.forecast):[]};
+      if(history.ok||forecast.ok){
+        render(merged);
+        if(!history.ok){
+          const msg=failureText(history.error,rpcLabels[0]);
+          ['trendHeadcountV616FI','trendTopOtV616FI','trendPeopleRiskV616FI',
+           'trendDailyIssuesV616FI','trendHoursV616FI','trendOrgRiskV616FI'].forEach(id=>host(id,empty(msg)));
+        }
+        if(!forecast.ok)host('trendForecastV616FI',empty(failureText(forecast.error,rpcLabels[1])));
+        if(history.ok&&forecast.ok){
+          lastFailureKey='';lastFailureAt=0;
+          setState('แสดงข้อมูลตาม Scope');
+        }else{
+          lastFailureKey=key;lastFailureAt=Date.now();lastKey='';
+          setState('แสดงข้อมูลบางส่วน • มี RPC ที่โหลดไม่สำเร็จ');
+        }
+      }else{
+        lastData=null;lastFailureKey=key;lastFailureAt=Date.now();lastKey='';
+        const histMsg=failureText(history.error,rpcLabels[0]);
+        const foreMsg=failureText(forecast.error,rpcLabels[1]);
+        ['trendHeadcountV616FI','trendTopOtV616FI','trendPeopleRiskV616FI',
+         'trendDailyIssuesV616FI','trendHoursV616FI','trendOrgRiskV616FI'].forEach(id=>host(id,empty(histMsg)));
+        host('trendForecastV616FI',empty(foreMsg));
+        setState('ไม่สามารถโหลดข้อมูลแนวโน้มได้');
+      }
+      if(!history.ok)console.warn('[FIX16FW History RPC]',history.error?.message||history.error);
+      if(!forecast.ok)console.warn('[FIX16FW Forecast RPC]',forecast.error?.message||forecast.error);
     }catch(error){
       if(current!==token)return;
-      lastData=null;lastFailureKey=key;lastFailureAt=Date.now();
-      const errText=String(error?.message||error?.details||'');
-      const isStatementTimeout=/statement timeout|canceling statement due to|57014/i.test(errText);
-      setState(isStatementTimeout?'SQL ใช้เวลานานเกินกำหนด':'โหลดข้อมูลแนวโน้มไม่สำเร็จ');
-      const message=isStatementTimeout
-        ? 'SQL ใช้เวลานานเกินกำหนด (Timeout) • ลดช่วงวันที่หรือเลือกหน่วยงานเพื่อทดลองใหม่'
-        : 'โหลดข้อมูลแนวโน้มไม่สำเร็จ • ดูรายละเอียดข้อผิดพลาดใน Console';
-      ['trendHeadcountV616FI','trendTopOtV616FI','trendPeopleRiskV616FI','trendDailyIssuesV616FI','trendHoursV616FI','trendOrgRiskV616FI','trendForecastV616FI'].forEach(id=>host(id,empty(message)));
-      console.warn('[FIX16FT Trend RPC]',error?.message||error);
+      lastData=null;lastKey='';lastFailureKey=key;lastFailureAt=Date.now();
+      setState('โหลด Dashboard ไม่สำเร็จ');
+      console.warn('[FIX16FW Trend controller]',error?.message||error);
     }
     requests(current);
   }
