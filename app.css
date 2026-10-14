@@ -39243,3 +39243,55 @@ html[data-dashboard-focus-version="FIX16DO"] #page-dashboard #dashboardDailyKpis
 #page-dashboard .trend-holiday-note-v616fv{margin-top:9px;padding:9px 12px;border-radius:10px;font-size:11.5px;line-height:1.6;background:rgba(100,116,139,.075);border:1px solid rgba(100,116,139,.20);color:var(--text-muted,#52657d)}
 .dashboard-trend-tooltip-v616fj .trend-tip-note{white-space:pre-line;line-height:1.55}
 .dashboard-trend-tooltip-v616fj{max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
+
+
+/* FIX16FX — Trend > People to watch: scoped, readable table heading.
+   The global `th` rule has a navy background; overriding just its text color
+   causes the low-contrast header seen in FIX16FW. Keep all other tables intact. */
+#page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi{
+  border-collapse:separate;
+  border-spacing:0;
+}
+#page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi thead th{
+  position:sticky;
+  top:0;
+  z-index:3;
+  background:#eaf3fd !important;
+  color:#24476b !important;
+  border-top:1px solid #d0e2f3;
+  border-bottom:1px solid #c7daec;
+  height:42px;
+  padding:10px 12px;
+  line-height:1.45;
+  font-size:11.5px;
+  font-weight:800;
+  letter-spacing:0;
+  text-align:center;
+  vertical-align:middle;
+  box-shadow:none;
+}
+#page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi thead th:first-child{
+  text-align:left;
+  width:46%;
+  padding-left:14px;
+  border-left:1px solid #d0e2f3;
+  border-top-left-radius:10px;
+}
+#page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi thead th:last-child{
+  border-right:1px solid #d0e2f3;
+  border-top-right-radius:10px;
+}
+#page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi tbody td:first-child{
+  padding-left:14px;
+}
+html[data-theme="dark"] #page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi thead th,
+body.theme-dark #page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi thead th,
+body.dark #page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi thead th,
+body.dark-mode #page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616fi thead th{
+  background:#203854 !important;
+  color:#ecf5ff !important;
+  border-top-color:#35526e;
+  border-bottom-color:#35526e;
+  border-left-color:#35526e;
+  border-right-color:#35526e;
+}
