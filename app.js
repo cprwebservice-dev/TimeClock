@@ -41351,6 +41351,10 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
   const empty = msg => `<div class="trend-empty-v616fi">${esc(msg)}</div>`;
   const app = () => window.TimeClockApp;
   let token=0, lastKey='', lastData=null;
+  // FIX16FT: coalesce identical in-flight Trend RPC calls (same date + scope).
+  // Prevent redundant SQL work from dashboard refresh events and tab activation.
+  const pendingTrendRpc = new Map();
+  let lastFailureKey='', lastFailureAt=0;
   const value = id => $(id)?.value||'';
   const all = (a) => Array.isArray(a)?a:[];
   const host = (id,html) => { if($(id)) $(id).innerHTML=html; };
@@ -41549,18 +41553,40 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
   async function load(force=false){
     if(!isShown()||!chartsReady())return;
     const key=currentKey();if(!force&&key===lastKey&&lastData)return;
+    // Automatic render/tab events should not immediately hammer a timed-out RPC.
+    // Explicit Refresh remains available and bypasses this short cooldown.
+    if(!force&&key===lastFailureKey&&Date.now()-lastFailureAt<15000)return;
     const p=args();if(!p.p_start_date||!p.p_end_date)return;
     const current=++token;lastKey=key;setState('กำลังโหลดกราฟ…');
     try{
-      const response=await app().state.client.rpc('ta_get_manager_dashboard_trend_v616fi',p);
+      // The same filter can trigger multiple load events. Share ONE live promise.
+      // Different filters retain independent requests; stale responses are discarded by token.
+      let request=pendingTrendRpc.get(key);
+      if(!request){
+        request=Promise.resolve().then(()=>app().state.client.rpc('ta_get_manager_dashboard_trend_v616fi',p));
+        pendingTrendRpc.set(key,request);
+        // Use both completion branches to clean up without an unhandled rejection.
+        request.then(
+          ()=>{if(pendingTrendRpc.get(key)===request)pendingTrendRpc.delete(key);},
+          ()=>{if(pendingTrendRpc.get(key)===request)pendingTrendRpc.delete(key);}
+        );
+      }
+      const response=await request;
       if(current!==token)return;
       if(response.error)throw response.error;
+      lastFailureKey='';lastFailureAt=0;
       render(response.data||{});setState('แสดงข้อมูลตาม Scope');
     }catch(error){
       if(current!==token)return;
-      lastData=null;setState('ต้องติดตั้ง SQL / ตรวจสิทธิ์');
-      ['trendHeadcountV616FI','trendTopOtV616FI','trendPeopleRiskV616FI','trendDailyIssuesV616FI','trendHoursV616FI','trendOrgRiskV616FI','trendForecastV616FI'].forEach(id=>host(id,empty('โหลดไม่ได้ • กรุณาติดตั้ง SQL FIX16FI และตรวจสิทธิ์ Manager/Acting')));
-      console.warn('[FIX16FI]',error?.message||error);
+      lastData=null;lastFailureKey=key;lastFailureAt=Date.now();
+      const errText=String(error?.message||error?.details||'');
+      const isStatementTimeout=/statement timeout|canceling statement due to|57014/i.test(errText);
+      setState(isStatementTimeout?'SQL ใช้เวลานานเกินกำหนด':'โหลดข้อมูลแนวโน้มไม่สำเร็จ');
+      const message=isStatementTimeout
+        ? 'SQL ใช้เวลานานเกินกำหนด (Timeout) • ลดช่วงวันที่หรือเลือกหน่วยงานเพื่อทดลองใหม่'
+        : 'โหลดข้อมูลแนวโน้มไม่สำเร็จ • ดูรายละเอียดข้อผิดพลาดใน Console';
+      ['trendHeadcountV616FI','trendTopOtV616FI','trendPeopleRiskV616FI','trendDailyIssuesV616FI','trendHoursV616FI','trendOrgRiskV616FI','trendForecastV616FI'].forEach(id=>host(id,empty(message)));
+      console.warn('[FIX16FT Trend RPC]',error?.message||error);
     }
     requests(current);
   }
@@ -41574,7 +41600,7 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     $('trendStaffThresholdV616FI')?.addEventListener('input',()=>{renderForecast();if(lastData)decorateForecastV616FJ(lastData);});
     ['dashStart','dashEnd','dashSide','dashDivision','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{lastKey='';}));
     $('loadDashboardBtn')?.addEventListener('click',()=>{lastKey='';setTimeout(()=>load(true),180);});
-    document.addEventListener('timeclock:dashboard-rendered-v616h',()=>{if(isShown())load(true);});
+    document.addEventListener('timeclock:dashboard-rendered-v616h',()=>{if(isShown())load(false);});
     if(isShown())setTimeout(()=>load(),250);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
