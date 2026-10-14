@@ -41417,11 +41417,23 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     if(!list.length)return empty('ไม่พบหน่วยงานที่มีภาระต้องลงเวลาในช่วงที่เลือก');
     return `${list.map(r=>{const rate=percent(r.anomalous,r.expected),color=rate>=25?'#dc4848':rate>=17?'#f0901a':'#169a6d';return `<div class="trend-org-row-v616fi"><span title="${esc(r.org)}"><strong>${esc(r.org)}</strong><small>${number(r.employees)} คน • ลงเวลาครบ/ไม่ครบตามเกณฑ์</small></span><div class="trend-track-v616fi"><i style="width:${rate.toFixed(1)}%;background:${color}"></i></div><b>${fmt(rate)}</b></div>`;}).join('')}<div class="trend-key-v616fi"><span><i class="success"></i>&lt;17%</span><span><i class="warning"></i>17–24.9%</span><span><i class="danger"></i>≥25%</span></div>`;
   }
+  // FIX16FU: classify planned full-off days separately from staffing alerts.
+  // A zero-working day is never called an attendance anomaly here: this is a
+  // scheduling outlook only, NOT verified staffing demand or actual presence.
+  function forecastStatusV616FU(r,threshold){
+    const total=raw(r.total),work=raw(r.morning)+raw(r.night),off=raw(r.off),
+      leave=raw(r.leave),unknown=raw(r.unassigned),ratio=percent(work,total),
+      mismatch=total>0 && work+off+leave+unknown!==total;
+    const rest=total>0 && work===0 && off===total && leave===0 && unknown===0;
+    return {total,work,ratio,rest,mismatch,low:total>0&&!rest&&ratio!==null&&ratio<threshold};
+  }
   function future(rows,threshold){const list=all(rows).slice(0,14);
     if(!list.length)return empty('ไม่มีข้อมูลกะที่มีผลในช่วงวันที่เลือก • ตรวจรูปแบบการทำงานและ Scope');
     const max=Math.max(1,...list.map(r=>raw(r.total)));
-    const flagged=list.filter(r=>raw(r.total)>0 && percent(raw(r.morning)+raw(r.night),r.total)<threshold);
-    return `<div class="trend-forecast-v616fi"><div class="trend-forecast-plot-v616fi">${list.map(r=>{const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned),total=raw(r.total);const ratio=percent(morning+night,total);const flagged=ratio!==null&&ratio<threshold;return `<div class="trend-forecast-day-v616fi" title="${esc(thdate(r.date))}: เช้า ${morning}, ดึก ${night}, ลา ${leave}, หยุด ${off}, ตรวจสอบกะ ${unknown}"><div class="trend-f-bar-v616fi ${flagged?'flagged':''}"><i style="height:${morning/max*100}%;background:#3288c8"></i><i style="height:${night/max*100}%;background:#153957"></i><i style="height:${leave/max*100}%;background:#8759f2"></i><i style="height:${off/max*100}%;background:#adbbc8"></i><i style="height:${unknown/max*100}%;background:#d7e0eb"></i></div><span>${esc(thdate(r.date))}</span>${flagged?'<em>▲</em>':''}</div>`;}).join('')}</div><div class="trend-key-v616fi"><span><i class="blue"></i>กะเช้า</span><span><i style="background:#153957"></i>กะดึก</span><span><i style="background:#8759f2"></i>ลา (กะ / คำขออนุมัติ)</span><span><i style="background:#adbbc8"></i>หยุด</span><span><i style="background:#d7e0eb"></i>ตรวจสอบกะ</span></div>${flagged.length?`<div class="trend-alert-v616fi">พบ ${number(flagged.length)} วัน ที่จำนวนมีกะทำงานต่ำกว่า ${number(threshold)}% ของพนักงานใน Scope • วันแรก ${esc(thdate(flagged[0].date))}</div>`:`<div class="trend-note-v616fi">ไม่พบวันที่มีสัดส่วนมีกะทำงานต่ำกว่าเกณฑ์ ${number(threshold)}% ในข้อมูลแผนกะที่มี</div>`}<div class="trend-note-v616fi">อ่านกะตั้งต้นที่มีผลรายวัน แล้วใช้กะที่จัดหรือเปลี่ยนภายหลังแทน • รวมวันหยุดประจำสัปดาห์และวันลาที่อนุมัติเต็มวัน • ไม่ใช่การทำนายการมาปฏิบัติงาน</div></div>`;
+    const low=list.filter(r=>forecastStatusV616FU(r,threshold).low);
+    const rests=list.filter(r=>forecastStatusV616FU(r,threshold).rest);
+    const mismatch=list.filter(r=>forecastStatusV616FU(r,threshold).mismatch);
+    return `<div class="trend-forecast-v616fi"><div class="trend-forecast-plot-v616fi">${list.map(r=>{const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned);const status=forecastStatusV616FU(r,threshold);return `<div class="trend-forecast-day-v616fi" title="${esc(thdate(r.date))}: เช้า ${morning}, ดึก ${night}, ลา ${leave}, หยุด ${off}, ตรวจสอบกะ ${unknown}"><div class="trend-f-bar-v616fi ${status.low?'flagged':status.rest?'planned-rest-v616fu':status.mismatch?'data-review-v616fu':''}"><i style="height:${morning/max*100}%;background:#3288c8"></i><i style="height:${night/max*100}%;background:#153957"></i><i style="height:${leave/max*100}%;background:#8759f2"></i><i style="height:${off/max*100}%;background:#adbbc8"></i><i style="height:${unknown/max*100}%;background:#d7e0eb"></i></div><span>${esc(thdate(r.date))}</span>${status.low?'<em>▲</em>':''}</div>`;}).join('')}</div><div class="trend-key-v616fi"><span><i class="blue"></i>กะเช้า</span><span><i style="background:#153957"></i>กะดึก</span><span><i style="background:#8759f2"></i>ลา (กะ / คำขออนุมัติ)</span><span><i style="background:#adbbc8"></i>หยุด</span><span><i style="background:#d7e0eb"></i>ตรวจสอบกะ</span></div>${low.length?`<div class="trend-alert-v616fi">พบ ${number(low.length)} วัน ที่จำนวนผู้มีกะทำงานต่ำกว่า ${number(threshold)}% ของคนใน Scope • วันแรก ${esc(thdate(low[0].date))} (เตือนกำลังคนตามแผน ไม่ใช่การขาดงาน)</div>`:`<div class="trend-note-v616fi">ไม่พบวันที่มีกะทำงานต่ำกว่าเกณฑ์ ${number(threshold)}% นอกเหนือจากวันหยุดทั้ง Scope</div>`}${rests.length?`<div class="trend-rest-note-v616fu">${number(rests.length)} วันแสดงเป็นหยุดทั้ง Scope (${rests.map(x=>esc(thdate(x.date))).join(', ')}) • ไม่ตีเป็นเหตุผิดปกติของการลงเวลา แต่ควรตรวจความต้องการกำลังคนในวันหยุด</div>`:''}${mismatch.length?`<div class="trend-integrity-note-v616fu">ข้อมูล ${number(mismatch.length)} วันมีผลรวมประเภทกะไม่เท่าจำนวนคนใน Scope • กรุณาตรวจสอบ Backend</div>`:''}<div class="trend-note-v616fi">อ่านกะตั้งต้นที่มีผลรายวัน แล้วใช้รายการจัด/เปลี่ยนกะรายวันแทน • หากไม่มีรายการกะตั้งต้นรายบุคคล Backend อาจใช้กะมาตรฐานจากรูปแบบงานเป็นค่าอนุมาน • ไม่ใช่การยืนยันการเข้างานจริง</div></div>`;
   }
   // FIX16FJ: one consistent hover/focus/touch tooltip for all eight Trend panels.
   // All data comes from the same already-authorized Trend/Request response; no extra RPC.
@@ -41447,17 +41459,35 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
       return legacy;
     };
     const read=e=>{try{return JSON.parse(decodeURIComponent(e.dataset.trendTipV616fj||''));}catch(_){return null;}};
-    const position=target=>{
+    const position=(target,event)=>{
       if(!target?.isConnected)return;
-      const box=target.getBoundingClientRect(), width=tip.offsetWidth||280, height=tip.offsetHeight||145;
-      const vw=document.documentElement.clientWidth||window.innerWidth, vh=window.innerHeight;
-      const left=Math.max(8,Math.min(vw-width-8,box.left+box.width/2-width/2));
-      const above=box.top-height-12;
-      const top=above>=8?above:box.bottom+height+12<=vh-8?box.bottom+12:Math.max(8,Math.min(vh-height-8,box.top-height/2));
+      const b=target.getBoundingClientRect(),w=tip.offsetWidth||310,h=tip.offsetHeight||158;
+      const vw=document.documentElement.clientWidth||window.innerWidth,vh=window.innerHeight;
+      const forecastPlot=target.closest('.trend-forecast-day-v616fi')?.closest('.trend-forecast-plot-v616fi');
+      if(forecastPlot){
+        // FIX16FU: side-align forecast tip to its column, not above the plot
+        // where it covers the chart title, threshold and controls.
+        const plot=forecastPlot.getBoundingClientRect();
+        const rightX=b.right+12,leftX=b.left-w-12;
+        const roomRight=vw-rightX-8,roomLeft=leftX-8;
+        let x=roomRight>=w?rightX:roomLeft>=0?leftX:roomRight>=roomLeft?rightX:leftX;
+        x=Math.max(8,Math.min(vw-w-8,x));
+        const desiredY=event&&Number.isFinite(event.clientY)?event.clientY-34:b.top+20;
+        const minY=Math.max(8,plot.top+6);
+        const maxY=Math.min(vh-h-8,plot.bottom-h-6);
+        let y;
+        if(maxY>=minY)y=Math.min(maxY,Math.max(minY,desiredY));
+        else y=Math.max(8,Math.min(vh-h-8,Math.max(plot.top,desiredY)));
+        tip.style.left=Math.round(x)+'px';tip.style.top=Math.round(y)+'px';
+        return;
+      }
+      const left=Math.max(8,Math.min(vw-w-8,b.left+b.width/2-w/2));
+      const above=b.top-h-12;
+      const top=above>=8?above:b.bottom+h+12<=vh-8?b.bottom+12:Math.max(8,Math.min(vh-h-8,b.top-h/2));
       tip.style.left=Math.round(left)+'px';tip.style.top=Math.round(top)+'px';
     };
     const hide=()=>{if(active)active.removeAttribute('aria-describedby');active=null;pinned=false;tip.classList.remove('is-visible');tip.setAttribute('aria-hidden','true');};
-    const show=target=>{
+    const show=(target,event)=>{
       const info=target&&read(target);if(!info)return;
       if(active&&active!==target)active.removeAttribute('aria-describedby');active=target;
       const color=/^#[0-9a-f]{6}$/i.test(String(info.color||''))?info.color:'#2563eb';
@@ -41468,10 +41498,10 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
       tip.querySelector('.trend-tip-counts').textContent=info.counts||'';
       const note=tip.querySelector('.trend-tip-note');note.textContent=info.note||'';note.hidden=!info.note;
       target.setAttribute('aria-describedby',tip.id);
-      tip.classList.add('is-visible');tip.setAttribute('aria-hidden','false');position(target);
+      tip.classList.add('is-visible');tip.setAttribute('aria-hidden','false');position(target,event);
     };
-    document.addEventListener('pointerover',e=>{if(e.pointerType==='touch'||pinned)return;const node=targetOf(e.target);if(node)show(node);});
-    document.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||pinned)return;const node=targetOf(e.target);if(node){if(node!==active)show(node);}else if(active)hide();});
+    document.addEventListener('pointerover',e=>{if(e.pointerType==='touch'||pinned)return;const node=targetOf(e.target);if(node)show(node,e);});
+    document.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||pinned)return;const node=targetOf(e.target);if(node){if(node!==active)show(node,e);else if(node.closest('.trend-forecast-day-v616fi'))position(node,e);}else if(active)hide();});
     document.addEventListener('pointerout',e=>{if(pinned||!active)return;const from=targetOf(e.target),to=targetOf(e.relatedTarget);if(from&&!to)hide();});
     document.addEventListener('focusin',e=>{const node=targetOf(e.target);if(node){pinned=false;show(node);}});
     document.addEventListener('focusout',e=>{if(e.target===active&&!pinned)hide();});
@@ -41521,7 +41551,7 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     const threshold=raw(value('trendStaffThresholdV616FI'))||75;
     all(d?.forecast).slice(0,14).forEach((r,i)=>{
       const morning=raw(r.morning),night=raw(r.night),leave=raw(r.leave),off=raw(r.off),unknown=raw(r.unassigned),total=raw(r.total),pct=percent(morning+night,total);
-      tooltipOnV616FJ($('trendForecastV616FI')?.querySelectorAll('.trend-forecast-day-v616fi')[i],{title:'แผนกำลังพล 14 วัน',name:thdate(r.date),value:fmt(pct),counts:`เช้า ${number(morning)} • ดึก ${number(night)} • ลา ${number(leave)} • หยุด ${number(off)} • ตรวจสอบกะ ${number(unknown)}`,note:`เกณฑ์ ${number(threshold)}% ของพนักงานใน Scope • กะตั้งต้น ${number(r.from_baseline)} • จัดกะรายวัน ${number(r.assigned_daily)} • เปลี่ยนจากตั้งต้น ${number(r.changed_daily)} • ไม่ยืนยันการเข้างานจริง`,color:pct!==null&&pct<threshold?'#e54b47':'#3288c8'});
+      tooltipOnV616FJ($('trendForecastV616FI')?.querySelectorAll('.trend-forecast-day-v616fi')[i],{title:'แผนกำลังพล 14 วัน',name:thdate(r.date),value:fmt(pct),counts:`เช้า ${number(morning)} • ดึก ${number(night)} • ลา ${number(leave)} • หยุด ${number(off)} • ตรวจสอบกะ ${number(unknown)}`,note:`คนใน Scope ${number(total)} • เกณฑ์ ${number(threshold)}% • ${forecastStatusV616FU(r,threshold).rest?'หยุดทั้งหมดตามข้อมูลแผน ไม่ใช่เหตุขาดงาน • ':''}จากกะตั้งต้นในวันทำงาน ${number(r.from_baseline)} (รวมกะอนุมานเมื่อไม่พบรายการตั้งต้น) • จัด/เปลี่ยนรายวัน ${number(r.assigned_daily)} • เปลี่ยนจากตั้งต้น ${number(r.changed_daily)} • ไม่ใช่ผลเข้างานจริง`,color:forecastStatusV616FU(r,threshold).low?'#e54b47':forecastStatusV616FU(r,threshold).rest?'#64748b':'#3288c8'});
     });
   }
   function render(data){lastData=data||{};const d=data||{};

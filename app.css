@@ -39229,3 +39229,11 @@ html[data-dashboard-focus-version="FIX16DO"] #page-dashboard #dashboardDailyKpis
 @media(max-width:1490px){#page-dashboard #dashboardDailyKpisV616H{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 @media(max-width:790px){#page-dashboard #dashboardDailyKpisV616H{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}}
 @media(max-width:420px){#page-dashboard #dashboardDailyKpisV616H .dashboard-executive-kpi-value-v616fd strong{font-size:22px}}
+
+/* FIX16FU: distinguish full planned-off days from low-coverage warnings. */
+#page-dashboard .trend-f-bar-v616fi.planned-rest-v616fu{outline:1px solid rgba(100,116,139,.38);outline-offset:2px}
+#page-dashboard .trend-f-bar-v616fi.data-review-v616fu{outline:2px dashed #d97706;outline-offset:2px}
+#page-dashboard .trend-rest-note-v616fu,#page-dashboard .trend-integrity-note-v616fu{margin-top:9px;padding:9px 12px;border-radius:10px;font-size:11.5px;line-height:1.5}
+#page-dashboard .trend-rest-note-v616fu{background:rgba(100,116,139,.08);color:var(--text-muted,#52657d);border:1px solid rgba(100,116,139,.18)}
+#page-dashboard .trend-integrity-note-v616fu{background:rgba(217,119,6,.09);color:var(--text-primary,#92400e);border:1px solid rgba(217,119,6,.3)}
+#page-dashboard .trend-f-bar-v616fi.flagged{outline-color:#e75b55}
