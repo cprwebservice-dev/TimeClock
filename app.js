@@ -41413,10 +41413,60 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
     const colors=Object.fromEntries(fields.map(f=>[f.key,f.color]));
     return `<div class="trend-columns-v616fi">${list.map((r,i)=>{const total=fields.reduce((s,f)=>s+raw(r[f.key]),0);return `<div class="trend-day-column-v616fi" title="${esc(thdate(r.date))}: ${esc(fields.map(f=>f.label+' '+number(r[f.key])).join(' • '))}"><div class="trend-day-column-bars-v616fi">${fields.map(f=>`<i style="height:${Math.max(0,raw(r[f.key])/top*100)}%;background:${colors[f.key]}"></i>`).join('')}</div><span>${i===0||i===list.length-1||i%Math.max(1,Math.ceil(list.length/8))===0?esc(thdate(r.date)):''}</span></div>`;}).join('')}</div><div class="trend-key-v616fi">${fields.map(f=>`<span><i style="background:${f.color}"></i>${esc(f.label)}</span>`).join('')}</div><div class="trend-note-v616fi">${esc(opts.note||'ยึดช่วงวันที่เลือกและสิทธิ์พนักงานใน Scope')}</div>`;
   }
-  function orgRisk(rows){const list=all(rows).filter(r=>raw(r.expected)>0).sort((a,b)=>percent(b.anomalous,b.expected)-percent(a.anomalous,a.expected)).slice(0,12);
-    if(!list.length)return empty('ไม่พบหน่วยงานที่มีภาระต้องลงเวลาในช่วงที่เลือก');
-    return `${list.map(r=>{const rate=percent(r.anomalous,r.expected),color=rate>=25?'#dc4848':rate>=17?'#f0901a':'#169a6d';return `<div class="trend-org-row-v616fi"><span title="${esc(r.org)}"><strong>${esc(r.org)}</strong><small>${number(r.employees)} คน • ลงเวลาครบ/ไม่ครบตามเกณฑ์</small></span><div class="trend-track-v616fi"><i style="width:${rate.toFixed(1)}%;background:${color}"></i></div><b>${fmt(rate)}</b></div>`;}).join('')}<div class="trend-key-v616fi"><span><i class="success"></i>&lt;17%</span><span><i class="warning"></i>17–24.9%</span><span><i class="danger"></i>≥25%</span></div>`;
+  // FIX16FY: one abnormal employee-day can have multiple event categories.
+  // Use the backend's DISTINCT employee-day anomalous/expected counts for both
+  // the percentage and its evidence, never the sum of absent+late+early.
+  function orgRiskRowsV616FY(rows){
+    return all(rows).filter(r=>Number(r?.expected)>0)
+      .sort((a,b)=>raw(b.anomalous)/raw(b.expected)-raw(a.anomalous)/raw(a.expected))
+      .slice(0,12);
   }
+  function orgRiskToneV616FY(rate){return rate>=25?'#dc4848':rate>=17?'#f0901a':'#169a6d';}
+  function orgRiskSelectOptionV616FY(orgId){
+    const dept=$('dashDepartment');
+    if(!dept||!orgId||!dept.options)return null;
+    const wanted=String(orgId).toLowerCase();
+    return [...dept.options].find(o=>
+      String(o.dataset?.orgId||o.value||'').toLowerCase()===wanted) || null;
+  }
+  function orgRisk(rows){
+    const list=orgRiskRowsV616FY(rows);
+    if(!list.length)return empty('ไม่พบหน่วยงานที่มีภาระต้องลงเวลาในช่วงที่เลือก');
+    return `${list.map(r=>{
+      const expected=raw(r.expected), anomalous=raw(r.anomalous);
+      const valid=Number.isFinite(anomalous)&&anomalous>=0&&anomalous<=expected;
+      const rate=valid?percent(anomalous,expected):null;
+      const color=rate===null?'#a77b25':orgRiskToneV616FY(rate);
+      const id=String(r.org_id||'');
+      const filterable=!!orgRiskSelectOptionV616FY(id);
+      const action=filterable?` role="button" tabindex="0" aria-label="กรอง Dashboard ตามหน่วยงาน ${esc(r.org||'')}" data-org-risk-filter-id="${esc(id)}"`:'';
+      return `<div class="trend-org-row-v616fi trend-org-audit-v616fy${filterable?' is-filterable-v616fy':''}"${action}>
+        <span><strong>${esc(r.org||'ไม่ระบุหน่วยงาน')}</strong><small>${number(r.employees)} คน • ผิดปกติ ${number(anomalous)} / ${number(expected)} วัน-พนักงาน</small></span>
+        <div class="trend-track-v616fi"><i style="width:${rate===null?0:rate.toFixed(1)}%;background:${color}"></i></div>
+        <b>${rate===null?'ตรวจสอบ':fmt(rate)}</b>
+      </div>`;
+    }).join('')}
+    <div class="trend-key-v616fi"><span><i class="success"></i>&lt;17%</span><span><i class="warning"></i>17–24.9%</span><span><i class="danger"></i>≥25%</span></div>
+    <div class="trend-note-v616fi trend-org-method-v616fy">สัดส่วน = วัน-พนักงานที่มีความผิดปกติอย่างน้อย 1 ประเภท (ไม่ซ้ำ) ÷ วัน-พนักงานที่ต้องลงเวลา × 100 • เหตุการณ์แต่ละประเภทอาจนับซ้ำในวันเดียวกัน • คลิกแถวที่เลือกได้เพื่อกรอง Dashboard</div>`;
+  }
+  function onOrgRiskChooseV616FY(event){
+    const row=event?.target?.closest?.('[data-org-risk-filter-id]');
+    if(!row || !row.closest('#trendOrgRiskV616FI'))return;
+    const id=row.dataset.orgRiskFilterId;
+    const select=$('dashDepartment'),option=orgRiskSelectOptionV616FY(id);
+    // Fail closed. Never filter by plain-text name, never expand accessible scope.
+    if(!option||!select)return;
+    event.preventDefault();
+    event.stopPropagation?.();
+    window.TimeClockTrendTooltipV616FJ?.hide?.();
+    select.value=option.value;
+    select.dispatchEvent(new Event('change',{bubbles:true}));
+    // Existing Dashboard refresh handles the manager/acting authorization and
+    // reloads all panels, rather than making an unscoped custom request.
+    $('loadDashboardBtn')?.click();
+    select.focus({preventScroll:true});
+  }
+
   // FIX16FV: only Holiday Master metadata defines a public holiday; do not
   // interpret a planned OFF day as an attendance anomaly. All values are from
   // the existing FIX16FQ Trend RPC (no secondary browser Scope calculation).
@@ -41556,7 +41606,16 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
       tooltipOnV616FJ($('trendDailyIssuesV616FI')?.querySelectorAll('.trend-day-column-v616fi')[i],{title:'ความผิดปกติรายวัน',name:thdate(r.date),value:`${number(raw(r.absent)+raw(r.late)+raw(r.early))} เหตุการณ์`,counts:`ขาด/ไม่ครบ ${number(r.absent)} • สาย ${number(r.late)} • กลับก่อน ${number(r.early)}`,note:'คนเดียวอาจมีมากกว่าหนึ่งเหตุการณ์',color:'#df4848'});
       tooltipOnV616FJ($('trendHoursV616FI')?.querySelectorAll('.trend-day-column-v616fi')[i],{title:'ชั่วโมงทำงานปกติ vs OT',name:thdate(r.date),value:`${number(raw(r.regular)+raw(r.ot))} ชม.`,counts:`ชั่วโมงปกติ ${number(r.regular)} • OT ${number(r.ot)}`,note:'ยอดชั่วโมงรายวันจาก Attendance Calculations',color:'#3288c8'});
     });
-    all(d?.org_risk).filter(r=>raw(r.expected)>0).sort((a,b)=>percent(b.anomalous,b.expected)-percent(a.anomalous,a.expected)).slice(0,12).forEach((r,i)=>tooltipOnV616FJ($('trendOrgRiskV616FI')?.querySelectorAll('.trend-org-row-v616fi')[i],{title:'ความผิดปกติรายหน่วยงาน',name:r.org||'',value:fmt(percent(r.anomalous,r.expected)),counts:`พบเหตุ ${number(r.anomalous)} จาก ${number(r.expected)} วัน-พนักงาน`,note:`พนักงาน ${number(r.employees)} คน • คำนวณจากยอดจริง`,color:'#e58a1f'}));
+    orgRiskRowsV616FY(d?.org_risk).forEach((r,i)=>{
+      const anomaly=raw(r.anomalous),expected=raw(r.expected),rate=anomaly>=0&&anomaly<=expected?percent(anomaly,expected):null;
+      const filterable=!!orgRiskSelectOptionV616FY(r.org_id);
+      tooltipOnV616FJ($('trendOrgRiskV616FI')?.querySelectorAll('.trend-org-row-v616fi')[i],{
+        title:'สัดส่วนความผิดปกติรายหน่วยงาน',name:r.org||'',value:fmt(rate),
+        counts:`ผิดปกติไม่ซ้ำ ${number(anomaly)} / ต้องลงเวลา ${number(expected)} วัน-พนักงาน`,
+        note:`ขาด/เวลาไม่ครบ ${number(r.absent)} • มาสาย ${number(r.late)} • กลับก่อน ${number(r.early)}\nพนักงาน ${number(r.employees)} คน • เหตุการณ์ 3 ประเภทอาจทับซ้อนกันในวันเดียว\n${filterable?'คลิกเพื่อกรอง Dashboard ตามหน่วยงานนี้':'ดูรายละเอียดได้ แต่หน่วยงานนี้ไม่ได้อยู่ในตัวเลือกกรองปัจจุบัน'}`,
+        color:rate===null?'#a77b25':orgRiskToneV616FY(rate)
+      });
+    });
     decorateForecastV616FJ(d);
   }
   function decorateForecastV616FJ(d){
@@ -41691,6 +41750,11 @@ window.TimeClockHrAdminSelectionFirstV616EH=Object.freeze({
   function bind(){
     // FIX16FL: install in its lexical scope before any Trend render.
     trendTooltipInstallV616FJ();
+    // FIX16FY: delegated click + keyboard selection, no new RPC or permissions.
+    $('trendOrgRiskV616FI')?.addEventListener('click',onOrgRiskChooseV616FY);
+    $('trendOrgRiskV616FI')?.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){onOrgRiskChooseV616FY(e);}
+    });
     document.querySelectorAll('[data-dashboard-view-v616h]').forEach(b=>b.addEventListener('click',()=>{
       if(b.dataset.dashboardViewV616h==='daily')setTimeout(()=>load(),100);
     }));

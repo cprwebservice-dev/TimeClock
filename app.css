@@ -39295,3 +39295,32 @@ body.dark-mode #page-dashboard .trend-table-scroll-v616fi .trend-risk-table-v616
   border-left-color:#35526e;
   border-right-color:#35526e;
 }
+
+
+/* FIX16FY — Trend organizational anomaly evidence & scoped drill-down. */
+#page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy{
+  grid-template-columns:minmax(125px,205px) minmax(0,1fr) minmax(47px,58px);
+  border-radius:9px;padding:5px 7px;margin:5px 0;min-width:0;
+}
+#page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy small{
+  white-space:normal;overflow-wrap:anywhere;line-height:1.5;
+}
+#page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy.is-filterable-v616fy{
+  cursor:pointer;transition:background-color .15s ease;
+}
+#page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy.is-filterable-v616fy:hover{
+  background:rgba(40,133,203,.09);
+}
+#page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy.is-filterable-v616fy:focus-visible{
+  outline:2px solid #2686c7;outline-offset:1px;
+}
+#page-dashboard .trend-org-method-v616fy{line-height:1.65;margin-top:10px}
+@media(max-width:640px){
+ #page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy{
+   grid-template-columns:minmax(100px,140px) minmax(65px,1fr) minmax(43px,53px);gap:7px;
+ }
+}
+html[data-theme="dark"] #page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy.is-filterable-v616fy:hover,
+body.theme-dark #page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy.is-filterable-v616fy:hover{
+ background:rgba(96,165,250,.14);
+}
