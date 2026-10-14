@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix16fo-trend-kpi-match-20261012" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix16fq-forecast-baseline-20261014" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -502,9 +502,9 @@
     <article class="panel trend-panel-v616fi"><div class="panel-header"><div><h3>ความผิดปกติรายวัน</h3><p>ขาด/เวลาไม่ครบ • มาสาย • กลับก่อน (อาจเกิดร่วมกันได้)</p></div></div><div class="panel-body" id="trendDailyIssuesV616FI"><div class="trend-empty-v616fi">รอข้อมูล</div></div></article>
     <article class="panel trend-panel-v616fi"><div class="panel-header"><div><h3>ชั่วโมงทำงานปกติ vs OT</h3><p>รายวัน • ชั่วโมงปกติและ OT ที่ระบบคำนวณได้</p></div></div><div class="panel-body" id="trendHoursV616FI"><div class="trend-empty-v616fi">รอข้อมูล</div></div></article>
     <article class="panel trend-panel-v616fi"><div class="panel-header"><div><h3>หน่วยงานตามสัดส่วนความผิดปกติ</h3><p>เรียงสัดส่วนสูงสุดก่อน • วัน-พนักงานที่พบอย่างน้อยหนึ่งเหตุการณ์ ÷ วัน-พนักงานที่ต้องลงเวลา</p></div><span class="trend-chip-v616fi">Top 12</span></div><div class="panel-body" id="trendOrgRiskV616FI"><div class="trend-empty-v616fi">รอข้อมูล</div></div></article>
-    <article class="panel trend-panel-v616fi"><div class="panel-header"><div><h3>ประมาณการกำลังพล 14 วันล่วงหน้า</h3><p>จากกะใน Shift Calendar ที่บันทึกแล้ว • ไม่ใช่ AI Forecast</p></div><span class="trend-chip-v616fi">14 วัน</span></div><div class="panel-body"><label class="trend-control-v616fi">เกณฑ์กำลังพลพร้อมทำงาน <input id="trendStaffThresholdV616FI" type="range" min="50" max="100" value="75" step="1"/> <b id="trendStaffTargetV616FI">75%</b></label><div id="trendForecastV616FI"><div class="trend-empty-v616fi">รอข้อมูลกะล่วงหน้า</div></div></div></article>
+    <article class="panel trend-panel-v616fi"><div class="panel-header"><div><h3>ประมาณการกำลังพล 14 วันล่วงหน้า</h3><p>อ่านกะตั้งต้นตามวันที่มีผล + กะที่เปลี่ยนรายวัน • ไม่ใช่ AI Forecast</p></div><span class="trend-chip-v616fi">14 วัน</span></div><div class="panel-body"><label class="trend-control-v616fi">เกณฑ์สัดส่วนผู้มีกะทำงานใน Scope <input id="trendStaffThresholdV616FI" type="range" min="50" max="100" value="75" step="1"/> <b id="trendStaffTargetV616FI">75%</b></label><div id="trendForecastV616FI"><div class="trend-empty-v616fi">รอข้อมูลกะล่วงหน้า</div></div></div></article>
   </div>
-  <div class="trend-policy-v616fi">แหล่งข้อมูล: FIX16ES Workday + Attendance Calculations + Manager Scope + Shift Calendar • กลุ่มขาด/สาย/กลับก่อนอาจซ้ำในวันเดียว • คำขออ่านจาก Workflow เดิม • ไม่มีข้อมูลจะแสดง “—” ไม่แทนด้วย 0</div>
+  <div class="trend-policy-v616fi">แหล่งข้อมูล: FIX16ES Workday + Attendance Calculations + Manager Scope + กะตั้งต้น + Shift Calendar • กลุ่มขาด/สาย/กลับก่อนอาจซ้ำในวันเดียว • คำขออ่านจาก Workflow เดิม • ไม่มีข้อมูลจะแสดง “—” ไม่แทนด้วย 0</div>
 </section>
 
 <div class="dashboard-daily-grid-v616h section-gap">
@@ -3619,6 +3619,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16fo-trend-kpi-match-20261012"></script>
+<script src="./app.js?v=6.15.29-fix16fq-forecast-baseline-20261014"></script>
 </body>
 </html>
