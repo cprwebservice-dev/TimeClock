@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix16fq-forecast-baseline-20261014" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix16fr-trend-trim-20261014" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -507,27 +507,7 @@
   <div class="trend-policy-v616fi">แหล่งข้อมูล: FIX16ES Workday + Attendance Calculations + Manager Scope + กะตั้งต้น + Shift Calendar • กลุ่มขาด/สาย/กลับก่อนอาจซ้ำในวันเดียว • คำขออ่านจาก Workflow เดิม • ไม่มีข้อมูลจะแสดง “—” ไม่แทนด้วย 0</div>
 </section>
 
-<div class="dashboard-daily-grid-v616h section-gap">
-<div class="panel dashboard-trend-panel-v616h">
-<div class="panel-header"><div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม</h3><p>เส้นสีเขียว = รายวัน • เส้นสีส้ม = อัตราสะสมตั้งแต่วันเริ่มต้น</p></div><span class="panel-chip" id="dashboardDailyLatestRateV616H">—</span></div>
-<div class="panel-body"><div class="dashboard-line-chart-v616h" id="dashboardDailyRateChartV616H"><div class="dashboard-daily-empty-v616h">เลือกช่วงวันที่แล้วกดแสดงผล</div></div></div>
-</div>
-<div class="panel dashboard-cumulative-panel-v616h">
-<div class="panel-header"><div><h3>ผลสะสมในช่วงวันที่</h3><p>ยอดสะสมจากข้อมูลจริงในแต่ละวัน</p></div><span class="panel-chip">Cumulative</span></div>
-<div class="panel-body"><div class="dashboard-cumulative-cards-v616h" id="dashboardDailyCumulativeV616H"></div></div>
-</div>
-</div>
-
-<div class="dashboard-daily-grid-v616h section-gap">
-<div class="panel">
-<div class="panel-header"><div><h3>เหตุผิดปกติรายวัน</h3><p>ขาดงาน • มาสาย • กลับก่อน แยกตามวัน</p></div><div class="dashboard-issue-legend-v616h"><span class="absent">ขาดงาน</span><span class="late">มาสาย</span><span class="early">กลับก่อน</span></div></div>
-<div class="panel-body"><div class="dashboard-issue-bars-v616h" id="dashboardDailyIssueBarsV616H"></div></div>
-</div>
-<div class="panel">
-<div class="panel-header"><div><h3>ปฏิทินคุณภาพการลงเวลา</h3><p>สีตามอัตราลงเวลาครบของแต่ละวัน</p></div><div class="dashboard-heat-legend-v616h"><span class="good">≥90%</span><span class="warn">75–89%</span><span class="bad">&lt;75%</span></div></div>
-<div class="panel-body"><div class="dashboard-heatmap-v616h" id="dashboardDailyHeatmapV616H"></div></div>
-</div>
-</div>
+<!-- FIX16FR: removed four redundant Trend panels (daily rate, cumulative summary, issue bars, quality calendar); Manager Overview untouched. -->
 
 <div class="panel section-gap dashboard-daily-table-panel-v616h">
 <div class="panel-header"><div><h3>รายละเอียดรายวันและยอดสะสม</h3><p>ใช้ตรวจแนวโน้มรายวันก่อนลงไปที่รายละเอียดเวลาทำงาน</p></div><button type="button" class="btn btn-light btn-sm" data-go-page="attendance">เปิดรายละเอียดเวลา</button></div>
@@ -3670,6 +3650,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16fq-forecast-baseline-20261014"></script>
+<script src="./app.js?v=6.15.29-fix16fr-trend-trim-20261014"></script>
 </body>
 </html>
