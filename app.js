@@ -26172,13 +26172,21 @@ ${names}${extra}
 
     const profile = app()?.state?.profile || {};
     if ($("roleBadge")) {
-      $("roleBadge").textContent = currentRole;
-      const level = roleLevelText(profile);
-      if (level) {
-        $("roleBadge").title =
-          `${currentRole} • ${level} • `
-          + `รหัส ${profile.emp_code || "-"}`;
-      }
+      // FIX16GG: display Acting alongside the unchanged base role.
+      // Never use operational authority alone as proof of Acting: a normal
+      // Manager also has operational authority. The Acting accessor is
+      // bound to the current signed-in identity and effective assignment.
+      const actingBadge =
+        window.TimeClockTemporaryAssignmentV61529F14B?.hasActingAuthority?.() === true;
+      const displayRole = actingBadge
+        ? `${currentRole} · Acting Manager`
+        : currentRole;
+      $("roleBadge").textContent = displayRole;
+      $("roleBadge").title = actingBadge
+        ? `Base Role ${currentRole} • Acting Manager เฉพาะ Scope และช่วงวันที่ได้รับมอบหมาย`
+        : (roleLevelText(profile)
+            ? `${currentRole} • ${roleLevelText(profile)} • รหัส ${profile.emp_code || "-"}`
+            : `สิทธิ์จริง ${currentRole}`);
     }
 
     $("newShiftRequestBtn")?.classList.toggle(
@@ -39671,15 +39679,9 @@ ${names}${extra}
       ? 'Acting Manager • สิทธิ์เทียบเท่า Manager เฉพาะ Scope และช่วงวันที่ที่ได้รับมอบหมาย'
       : 'จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ';
 
-    const roleBadge=document.getElementById('roleBadge');
-    if(roleBadge&&acting){
-      roleBadge.textContent='ACTING MANAGER';
-      roleBadge.title=`Base Role ${String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'VIEWER').toUpperCase()} • Operational Manager ตาม Scope/Effective Date`;
-    }else if(roleBadge){
-      const base=String(app()?.state?.profile?.role||'VIEWER').toUpperCase();
-      roleBadge.textContent=base;
-    }
-
+    // FIX16GG: one canonical badge render AFTER role/scope UI sync.
+    // applyRoleUI reads hasActingAuthority() from this identity-bound module;
+    // calling it last prevents a later base-role render from hiding Acting.
     window.TimeClockV680?.applyRoleUI?.();
   }
 
