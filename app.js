@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16EH HR Admin Selection-First Lazy Loading";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16GJ-FINAL Atomic Bulk Attendance";
 document.documentElement.dataset.timeClockBuild = "6.15.29-fix16eh-hradmin-selection-first";
 
 
@@ -28,8 +28,8 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
 */
 window.TimeClockRpcContractsV616DF = Object.freeze({
   bulkSchedule: Object.freeze({
-    primary: 'ta_assign_shifts_bulk_v61424',
-    compatibility: Object.freeze(['ta_assign_shifts_bulk_v6143']),
+    primary: 'ta_save_schedule_atomic_v616gj',
+    compatibility: Object.freeze([]),
     mode: 'missing-only'
   }),
   attendanceDayDetail: Object.freeze({
@@ -474,38 +474,33 @@ window.tcIsDayShiftCode = value =>
       throw new Error(periodCheck.message || "SYSTEM_PERIOD_SCHEDULE_CLOSED");
     }
 
-    // V6.14.24: use the write-only guarded bulk RPC.
-    // V6.14.3 -> V6.11.17 bulk writer recalculates Attendance inside the
-    // transaction, while V6.14.15+ finalizes/recalculates again after the
-    // Scheduling Rule extension is saved. Large bulk actions can therefore hit
-    // statement timeout / HTTP 500 before the final canonical refresh.
-    // V6.14.24 keeps all write guards but defers Attendance to the existing
-    // post-extension finalizer.
-    const bulkContractV616DF=window.TimeClockRpcContractsV616DF.bulkSchedule;
-    let response = await client.rpc(bulkContractV616DF.primary, {
+    // FIX16GJ: one DB transaction for schedule + rule sync + attendance.
+    // The legacy two-RPC flow could leave a committed schedule without a
+    // refreshed attendance record. Do not retry the write on an RPC error:
+    // network timeout can leave the commit outcome unknown.
+    const response = await client.rpc(window.TimeClockRpcContractsV616DF.bulkSchedule.primary, {
       p_rows: cleanRows,
-      p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
+      p_change_reason: changeReason || 'บันทึกกะแบบหลายรายการจากหน้าเว็บ',
       p_confirm_now: Boolean(confirmNow)
     });
-    if (!response.error) return response.data;
-
-    // Backward compatibility only when the new migration has not been run yet.
-    // Do not retry old V6.14.3 on a real V6.14.24 database/runtime error,
-    // otherwise the same mutation may be attempted twice.
-    if (missingFunction(response.error)) {
-      response = await client.rpc(bulkContractV616DF.compatibility[0], {
-        p_rows: cleanRows,
-        p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
-        p_confirm_now: Boolean(confirmNow)
-      });
-      if (!response.error) return response.data;
-      if (!missingFunction(response.error)) throw response.error;
-      throw new Error(
-        "BULK_SCHEDULE_V61424_REQUIRED: กรุณารัน SQL V6.14.24 เพื่อแก้ปัญหา Bulk Schedule 500 / Double Recalculation"
-      );
+    if (response.error) {
+      if (missingFunction(response.error)) {
+        throw new Error('FIX16GJ_BACKEND_REQUIRED: กรุณาติดตั้ง SQL FIX16GJ-FINAL ก่อนใช้งานจัดกะหลายรายการ');
+      }
+      throw response.error;
     }
-
-    throw response.error;
+    if (response.data?.atomic_recalculation !== true ||
+        response.data?.certification_aware !== true ||
+        response.data?.attendance_rebuilt !== true) {
+      throw new Error('FIX16GJ_ATOMIC_RESULT_UNVERIFIED: โปรดตรวจผลการบันทึกในระบบก่อนทำรายการซ้ำ');
+    }
+    try {
+      window.TimeClockConsistencyV61415?.invalidate?.(cleanRows);
+      document.dispatchEvent(new CustomEvent('timeclock:mutation-consistency-v61415', {
+        detail: { type:'SCHEDULE', rows:cleanRows, result:response.data.attendance_recalculation, source:'fix16gj-atomic-bulk' }
+      }));
+    } catch (cacheError) { console.warn('FIX16GJ cache refresh:', cacheError); }
+    return response.data;
   }
 
   async function deleteBulk(app, empCodes, startDate, endDate, changeReason) {
@@ -10829,19 +10824,13 @@ window.tcIsDayShiftCode = value =>
         if (response.error) throw response.error;
         result = response.data || null;
       } catch (error) {
-        if (!window.TimeClockShiftAPI?.missingFunction?.(error)) throw error;
-        // Compatibility fallback. It keeps the UI functional before the new SQL is
-        // installed, but V6.14.15 SQL is required for the canonical certified-time path.
-        const dates = rows.map(x => x.work_date).sort();
-        const empCodes = [...new Set(rows.map(x => x.emp_code))];
-        const fallback = await state.client.rpc('ta_recalculate_attendance_v640', {
-          p_start_date: dates[0],
-          p_end_date: dates[dates.length - 1],
-          p_emp_codes: empCodes
-        });
-        if (fallback.error) throw fallback.error;
-        result = { ...(fallback.data || {}), fallback:true, version:'V6.14.15-FALLBACK' };
-        console.warn('V6.14.15 consistency finalizer SQL is not installed; used legacy recalc fallback.');
+        if (window.TimeClockShiftAPI?.missingFunction?.(error)) {
+          throw new Error('CERTIFICATION_AWARE_FINALIZER_REQUIRED: ไม่พบตัวคำนวณที่รักษาเวลารับรองแล้ว กรุณาตรวจ Backend');
+        }
+        throw error;
+      }
+      if (!result || result.certification_aware !== true || result.attendance_workday_rebuilt !== true || result.recalculated !== true) {
+        throw new Error('ATTENDANCE_FINALIZER_UNVERIFIED: ไม่ยืนยันผล Rebuild/Recalculate กรุณาตรวจข้อมูลก่อนดำเนินการซ้ำ');
       }
       document.dispatchEvent(new CustomEvent('timeclock:mutation-consistency-v61415', {
         detail: { type:'SCHEDULE', rows, result, source:options.source || '' }
@@ -14522,6 +14511,7 @@ window.tcIsDayShiftCode = value =>
     let scheduleAssignmentSaveInFlightV61530 = false;
 
     async function saveAssignment() {
+      let shiftCommittedV616GJ = false;
       const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
         [val("assignWorkDate")],
         true
@@ -14799,6 +14789,7 @@ window.tcIsDayShiftCode = value =>
           }
           throw saveError;
         }
+        shiftCommittedV616GJ = true;
         const scheduleSaveRpcMsV6144 = performance.now() - scheduleSaveStartedV6144;
         console.info('[Schedule Save V6.14.8]', {
           rpcMs: Math.round(scheduleSaveRpcMsV6144),
@@ -14964,7 +14955,11 @@ window.tcIsDayShiftCode = value =>
           console.warn('Schedule return refresh V6.14.8:', refreshErr?.message || refreshErr);
           toast('บันทึกกะเรียบร้อยแล้ว แต่รีเฟรชหน้าจอไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง','warning');
         }
-      } catch (err) { toast(humanError(err), "error"); }
+      } catch (err) {
+        toast(shiftCommittedV616GJ
+          ? `กะถูกบันทึกแล้ว แต่ซิงก์กฎกะ/ประมวลผล Attendance ไม่ครบ: ${humanError(err)} • กรุณาตรวจข้อมูลก่อนกดบันทึกซ้ำ`
+          : humanError(err), shiftCommittedV616GJ ? 'warning' : 'error');
+      }
       finally {
         scheduleAssignmentSaveInFlightV61530 = false;
         const scheduleSaveButtonAfterV61530 = $("saveAssignmentBtn");
@@ -14977,6 +14972,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function deleteAssignment() {
+      let deleteCommittedV616GJ = false;
       const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
         [val("assignWorkDate")],
         true
@@ -15035,6 +15031,7 @@ window.tcIsDayShiftCode = value =>
           throw deleteError;
         }
 
+        deleteCommittedV616GJ = true;
         await window.TimeClockSchedulingRulesV6120?.deleteExtension?.(
           val("assignEmpCode"),
           val("assignWorkDate")
@@ -15114,7 +15111,11 @@ window.tcIsDayShiftCode = value =>
           );
           window.TimeClockEmployeeMonthReturnContext = null;
         }
-      } catch (err) { toast(humanError(err), "error"); }
+      } catch (err) {
+        toast(deleteCommittedV616GJ
+          ? `ลบกะแล้ว แต่ซิงก์กฎกะ/คำนวณ Attendance ไม่ครบ: ${humanError(err)} • กรุณาตรวจข้อมูลก่อนทำซ้ำ`
+          : humanError(err), deleteCommittedV616GJ ? 'warning' : 'error');
+      }
       finally { hideLoading(); }
     }
 
@@ -18454,6 +18455,7 @@ ${skippedSummary(compatibility.skipped)}
 
     const before=validPayload.map(p=>{const x=rowForKey(`${p.emp_code}|${p.work_date}`);return {...p,shift_code:currentCode(x.row)};});
     app().showLoading(`กำลังบันทึก ${validPayload.length.toLocaleString("th-TH")} รายการ...`);
+    let committedV616GJ=false;
     try{
       const autoConfirmOnSaveV61117 = validPayload.some(item =>
         item.shift_code !== null
@@ -18461,8 +18463,8 @@ ${skippedSummary(compatibility.skipped)}
         && String(item.shift_code).trim() !== ""
       );
       await window.TimeClockShiftAPI.assignBulk(app(), validPayload, reason, autoConfirmOnSaveV61117);
-      await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(validPayload);
-      await window.TimeClockConsistencyV61415?.finalizeSchedule?.(validPayload, { source:'schedule-pro-bulk' });
+      committedV616GJ=true;
+      // FIX16GJ: sync + certified-time recalculation committed atomically by Backend.
       undoStack.push({label:historyLabel,before,after:validPayload.map(x=>({...x}))}); if(undoStack.length>30)undoStack.shift(); redoStack.length=0; updateHistoryButtons();
       app().toast(
         `บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,
@@ -18470,7 +18472,12 @@ ${skippedSummary(compatibility.skipped)}
       );
       await app().loadSchedule();
       return true;
-    }catch(err){app().toast(app().humanError(err),"error");return false;}finally{app().hideLoading();}
+    }catch(err){
+      app().toast(committedV616GJ
+        ? `กะและ Attendance บันทึกแล้ว แต่โหลดหน้าจอไม่สำเร็จ: ${app().humanError(err)}`
+        : `ไม่สามารถยืนยันผลบันทึกกะ: ${app().humanError(err)} • ตรวจตารางก่อนสั่งซ้ำ`,committedV616GJ?'warning':'error');
+      return committedV616GJ;
+    }finally{app().hideLoading();}
   }
   async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
   function specialCellCopyMetaV616BF(row){
@@ -18927,10 +18934,13 @@ ${skippedSummary(compatibility.skipped)}
     monthCopyApplyingV61414=true;
     if(applyBtn){applyBtn.disabled=true;applyBtn.textContent='กำลังวางทับทั้งเดือน...';}
     let backendSaved=false;
+    let attendanceFinalizedV616GJ=false;
+    let monthCopyRecoveryRowsV616GJ=[];
     try{
       const plan=await buildMonthCopyPlanV61413(false);
       if(plan.reason){app()?.toast(plan.reason,'error');return;}
       if(!Number(plan.summary?.ready||0)){app()?.toast('ไม่มีรายการกะที่ต้องเปลี่ยนหลังหักวันลา LV ของปลายทาง','warning');return;}
+      monthCopyRecoveryRowsV616GJ=plan.payload;
 
       closeMonthCopyPasteV61413();
       app()?.showLoading(`กำลังวางทับกะทั้งเดือน ${plan.payload.length.toLocaleString('th-TH')} รายการ...`);
@@ -18952,7 +18962,11 @@ ${skippedSummary(compatibility.skipped)}
 
       // Canonical Attendance refresh remains after the month transaction so the
       // writer does not repeat heavy daily calculation inside the DB mutation.
-      await window.TimeClockConsistencyV61415?.finalizeSchedule?.(plan.payload,{source:'schedule-month-copy-v616bg'});
+      if (typeof window.TimeClockConsistencyV61415?.finalizeSchedule !== 'function') {
+        throw new Error('ATTENDANCE_FINALIZER_REQUIRED');
+      }
+      await window.TimeClockConsistencyV61415.finalizeSchedule(plan.payload,{source:'schedule-month-copy-v616bg'});
+      attendanceFinalizedV616GJ=true;
 
       resetMonthCopyWorkflowV61413({silent:true});
       await app().loadSchedule();
@@ -18964,8 +18978,34 @@ ${skippedSummary(compatibility.skipped)}
     }catch(e){
       const message=app()?.humanError?.(e)||e.message||String(e);
       if(backendSaved){
-        app()?.toast(`กะทั้งเดือนบันทึกแล้ว แต่ประมวลผล Attendance ไม่สำเร็จ: ${message}`,'warning');
+        app()?.toast(attendanceFinalizedV616GJ
+          ? `กะและ Attendance บันทึกแล้ว แต่รีเฟรชหน้าจอไม่สำเร็จ: ${message}`
+          : `กะทั้งเดือนบันทึกแล้ว แต่ยังยืนยันการคำนวณ Attendance ไม่ได้: ${message} • อย่ากดวางกะซ้ำ`, 'warning');
         try{await app().loadSchedule();}catch(_){ }
+        // FIX16GJ: on an incomplete post-write Finalizer, offer a retry of the
+        // certified-time refresh ONLY. Never repeat the month-copy writer.
+        if(!attendanceFinalizedV616GJ && monthCopyRecoveryRowsV616GJ.length){
+          app()?.hideLoading?.();
+          const retry=await window.tcConfirm({
+            title:'กะบันทึกแล้ว • Attendance ยังไม่ยืนยัน',
+            message:'ต้องการลองคำนวณ Attendance อีกครั้งเฉพาะพนักงานและวันที่ที่วางกะหรือไม่? ระบบจะไม่บันทึกกะซ้ำ และจะรักษาข้อมูลรับรองเวลาตามเงื่อนไข Backend',
+            confirmText:'คำนวณ Attendance เท่านั้น',
+            cancelText:'ตรวจสอบภายหลัง',
+            tone:'warning'
+          });
+          if(retry){
+            app()?.showLoading?.('กำลังลองคำนวณ Attendance โดยไม่วางกะซ้ำ...');
+            try{
+              await window.TimeClockConsistencyV61415.finalizeSchedule(monthCopyRecoveryRowsV616GJ,{source:'fix16gj-month-copy-retry-finalizer-only'});
+              attendanceFinalizedV616GJ=true;
+              resetMonthCopyWorkflowV61413({silent:true});
+              try{await app().loadSchedule();}catch(_){ }
+              app()?.toast('คำนวณ Attendance จากกะที่บันทึกแล้วสำเร็จ • ไม่มีการวางกะซ้ำ','success');
+            }catch(retryError){
+              app()?.toast(`ยังคำนวณ Attendance ไม่สำเร็จ: ${app()?.humanError?.(retryError)||retryError.message} • โปรดให้ HR ตรวจสอบ โดยไม่ต้องวางกะซ้ำ`,'warning');
+            }
+          }
+        }
       }else{
         app()?.toast(message,'error');
         if(monthCopyPhaseV61413==='TARGET'&&monthCopySourceV61413&&monthCopyTargetsV61413.size){
@@ -18985,18 +19025,24 @@ ${skippedSummary(compatibility.skipped)}
     const periodCheck=await window.TimeClockSystemPeriods?.checkScheduleDates?.(payload.map(x=>x.work_date),true);
     if(periodCheck&&!periodCheck.allowed){app()?.toast(periodCheck.message||"ไม่สามารถแก้ไขรายการย้อนหลังในรอบที่ปิดแล้ว","warning");return;}
     app().showLoading(`กำลัง ${mode==="undo"?"ย้อนกลับ":"ทำซ้ำ"}...`);
+    let committedV616GJ=false;
     try{
       const ruleGuardV6125=await window.TimeClockSchedulingRulesV6120?.validateBulk?.(payload);
       if(ruleGuardV6125&&ruleGuardV6125.allowed===false)return;
       const autoConfirmOnSaveV61117=payload.some(x=>x.shift_code!==null&&x.shift_code!==undefined&&String(x.shift_code).trim()!=="");
       await window.TimeClockShiftAPI.assignBulk(app(),payload,`${mode} ${item.label}`,autoConfirmOnSaveV61117);
-      await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(payload);
-      await window.TimeClockConsistencyV61415?.finalizeSchedule?.(payload, { source:`schedule-${mode}` });
-      (mode==="undo"?redoStack:undoStack).push(item);updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับและประมวลผลเวลาใหม่แล้ว":"ทำซ้ำและประมวลผลเวลาใหม่แล้ว","success");
-    }catch(err){app().toast(app().humanError(err),"error");}finally{app().hideLoading();}
+      committedV616GJ=true;
+      // FIX16GJ: sync + certified-time recalculation committed atomically by Backend.
+      (mode==="undo"?undoStack:redoStack).pop();
+      (mode==="undo"?redoStack:undoStack).push(item);
+      updateHistoryButtons();await app().loadSchedule();app().toast(mode==="undo"?"ย้อนกลับและประมวลผลเวลาใหม่แล้ว":"ทำซ้ำและประมวลผลเวลาใหม่แล้ว","success");
+    }catch(err){app().toast(committedV616GJ
+      ? `ย้อนกลับ/ทำซ้ำบันทึกแล้ว แต่รีเฟรชหน้าจอไม่สำเร็จ: ${app().humanError(err)}`
+      : `ยังไม่ยืนยันการย้อนกลับ/ทำซ้ำ: ${app().humanError(err)} • ตรวจข้อมูลก่อนสั่งซ้ำ`,committedV616GJ?'warning':'error');}
+    finally{app().hideLoading();}
   }
-  function undo(){const x=undoStack.pop();if(x)applyHistory(x,"undo");}
-  function redo(){const x=redoStack.pop();if(x)applyHistory(x,"redo");}
+  function undo(){const x=undoStack[undoStack.length-1];if(x)applyHistory(x,"undo");}
+  function redo(){const x=redoStack[redoStack.length-1];if(x)applyHistory(x,"redo");}
   function moveActive(dx,dy,extend=false){const c=getCell(activeKey)||cells()[0];if(!c)return;const td=c.closest("td"),tr=td.parentElement;const rows=[...tr.parentElement.children];let ri=rows.indexOf(tr)+dy;ri=Math.max(0,Math.min(rows.length-1,ri));const targetRow=rows[ri];const cellsRow=[...targetRow.querySelectorAll("[data-schedule-cell]")];const sourceCells=[...tr.querySelectorAll("[data-schedule-cell]")];let ci=sourceCells.indexOf(c)+dx;ci=Math.max(0,Math.min(cellsRow.length-1,ci));const target=cellsRow[ci];if(target){selectCell(target,false,extend);target.scrollIntoView({block:"nearest",inline:"nearest"});}}
   function periodStartDate(){
     return window.TimeClockSchedulePeriod?.range?.().startDate
@@ -21735,14 +21781,18 @@ ${skippedSummary(compatibility.skipped)}
     const ruleGuardV6120=await window.TimeClockSchedulingRulesV6120?.validateBulk?.(payload);
     if(ruleGuardV6120&&ruleGuardV6120.allowed===false)return;
     app()?.showLoading?.(`กำลังบันทึก ${payload.length.toLocaleString("th-TH")} รายการ...`);
+    let committedV616GJ=false;
     try{
       const autoConfirmOnSaveV61117=payload.some(item=>item.shift_code!==null&&item.shift_code!==undefined&&String(item.shift_code).trim()!=="");
       await window.TimeClockShiftAPI.assignBulk(app(),payload,reason,autoConfirmOnSaveV61117);
-      await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(payload);
-      await window.TimeClockConsistencyV61415?.finalizeSchedule?.(payload, { source:'schedule-completion-bulk' });
+      committedV616GJ=true;
+      // FIX16GJ: sync + certified-time recalculation committed atomically by Backend.
       app()?.toast(`บันทึก ${payload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,"success");
       await app()?.loadSchedule?.();
-    }catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}
+    }catch(e){app()?.toast(committedV616GJ
+      ? `กะ/Attendance บันทึกแล้ว แต่รีเฟรชไม่สำเร็จ: ${app()?.humanError?.(e)||e.message}`
+      : `ไม่สามารถยืนยันผลบันทึกกะ: ${app()?.humanError?.(e)||e.message} • ตรวจข้อมูลก่อนกดซ้ำ`, committedV616GJ?'warning':'error');}
+    finally{app()?.hideLoading?.();}
   }
   function selectedCellMeta(){return selectedScheduleCells().map(c=>{const td=c.closest("td"),tr=td.closest("tr");return {cell:c,td,tr,emp:c.dataset.emp,date:c.dataset.date,row:rowAt(c.dataset.emp,c.dataset.date),ri:[...tr.parentElement.children].indexOf(tr),ci:[...tr.children].indexOf(td)};});}
   async function fillSchedule(direction){
@@ -37266,10 +37316,10 @@ ${names}${extra}
       if(c.extension){await deleteExtension(c.empCode,c.workDate);c.extension=null;}
       return;
     }
-    try{await rpc('ta_upsert_schedule_rule_assignment_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_work_mode_code:c.mode,p_base_shift_code:c.baseShiftCode||null,p_generated_shift_code:c.generatedShiftCode||null,p_first_segment_end:c.mode==='SPLIT_WAIT_NIGHT'?p.firstEnd:null,p_second_segment_start:c.mode==='SPLIT_WAIT_NIGHT'?p.secondStart:null,p_second_segment_planned_end:c.mode==='SPLIT_WAIT_NIGHT'?p.end:null,p_custom_start_time:c.mode==='HOUR_BASED'?p.start:null,p_custom_end_time:c.mode==='HOUR_BASED'?(c.customEnd||p.end):null,p_off_window_start:c.mode==='DYNAMIC_OFF'?basis?.start:null,p_off_window_end:c.mode==='DYNAMIC_OFF'?basis?.end:null,p_off_basis_shift_code:c.mode==='DYNAMIC_OFF'?basis?.basisCode:null,p_planned_minutes:Number(p.planned||0),p_validation_snapshot:{rest_minutes:p.guard?.restMinutes??null,continuous_minutes_before:p.guard?.continuousBefore??null,continuous_minutes_after:p.guard?.continuousAfter??null,warning_48h:p.guard?.warning48??false},p_note:$('assignNote')?.value||null});}catch(e){app()?.toast?.(`บันทึกกะสำเร็จ แต่บันทึก Scheduling Rule V6.12.0 ไม่สำเร็จ: ${e.message||e}`,'warning');}
+    try{await rpc('ta_upsert_schedule_rule_assignment_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_work_mode_code:c.mode,p_base_shift_code:c.baseShiftCode||null,p_generated_shift_code:c.generatedShiftCode||null,p_first_segment_end:c.mode==='SPLIT_WAIT_NIGHT'?p.firstEnd:null,p_second_segment_start:c.mode==='SPLIT_WAIT_NIGHT'?p.secondStart:null,p_second_segment_planned_end:c.mode==='SPLIT_WAIT_NIGHT'?p.end:null,p_custom_start_time:c.mode==='HOUR_BASED'?p.start:null,p_custom_end_time:c.mode==='HOUR_BASED'?(c.customEnd||p.end):null,p_off_window_start:c.mode==='DYNAMIC_OFF'?basis?.start:null,p_off_window_end:c.mode==='DYNAMIC_OFF'?basis?.end:null,p_off_basis_shift_code:c.mode==='DYNAMIC_OFF'?basis?.basisCode:null,p_planned_minutes:Number(p.planned||0),p_validation_snapshot:{rest_minutes:p.guard?.restMinutes??null,continuous_minutes_before:p.guard?.continuousBefore??null,continuous_minutes_after:p.guard?.continuousAfter??null,warning_48h:p.guard?.warning48??false},p_note:$('assignNote')?.value||null});}catch(e){throw new Error(`SCHEDULE_RULE_SYNC_FAILED: กะบันทึกแล้ว แต่บันทึกกฎกะไม่สำเร็จ: ${e.message||e}`);}
   }
   async function deleteExtension(empCode,workDate){
-    try{await rpc('ta_delete_schedule_rule_assignment_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});}catch(e){}
+    await rpc('ta_delete_schedule_rule_assignment_v6120',{p_emp_code:String(empCode),p_work_date:String(workDate).slice(0,10)});
   }
   function bulkVirtualMap(){
     const map=new Map();
@@ -37516,7 +37566,7 @@ ${names}${extra}
           'บันทึกตารางกะสำเร็จ แต่ไม่พบ RPC สำหรับซิงก์ Smart OFF/Scheduling Rule กรุณาตรวจสอบ Backend SQL',
           'warning'
         );
-        return;
+        throw error;
       }
       console.warn(
         'Scheduling Rule frozen contract failed; compatibility fallback blocked',
@@ -37526,6 +37576,7 @@ ${names}${extra}
         `บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule ไม่สำเร็จ: ${error?.message||error}`,
         'warning'
       );
+      throw error;
     }
   }
   async function enrichScheduleRows(rows=[]){
