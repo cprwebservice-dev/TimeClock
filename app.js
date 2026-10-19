@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16GJ-FINAL Atomic Bulk Attendance";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16GK-04 Atomic Month Copy";
 document.documentElement.dataset.timeClockBuild = "6.15.29-fix16eh-hradmin-selection-first";
 
 
@@ -18927,90 +18927,91 @@ ${skippedSummary(compatibility.skipped)}
   // Backend V616BG verifies: stable same 5D/6D pattern, employment window,
   // Operational Profile + Team, Work-Date authority and open system period.
   // Night Sequence / 6h / 48h / Day-off quota are not re-applied row-by-row.
+  // FIX16GK-04: Each target employee/month is one atomic Backend transaction.
+  // Never rerun a target on an RPC error: a network error can hide a DB commit.
+  // Other targets may already be committed; show exact confirmed count and
+  // require verification before any new copy attempt.
   async function applyMonthCopyV61413(){
     if(monthCopyApplyingV61414)return;
     const applyBtn=$('scheduleMonthCopyApplyV61413');
     const originalText=applyBtn?.textContent||'ยืนยันและวางทับทั้งเดือน';
     monthCopyApplyingV61414=true;
-    if(applyBtn){applyBtn.disabled=true;applyBtn.textContent='กำลังวางทับทั้งเดือน...';}
-    let backendSaved=false;
-    let attendanceFinalizedV616GJ=false;
-    let monthCopyRecoveryRowsV616GJ=[];
+    if(applyBtn){applyBtn.disabled=true;applyBtn.textContent='กำลังวางกะและประมวลผล...';}
+    let completed=[];
+    let attempted='';
+    let plan=null;
+    let allCommitted=false;
     try{
-      const plan=await buildMonthCopyPlanV61413(false);
+      plan=await buildMonthCopyPlanV61413(false);
       if(plan.reason){app()?.toast(plan.reason,'error');return;}
-      if(!Number(plan.summary?.ready||0)){app()?.toast('ไม่มีรายการกะที่ต้องเปลี่ยนหลังหักวันลา LV ของปลายทาง','warning');return;}
-      monthCopyRecoveryRowsV616GJ=plan.payload;
-
+      if(!Number(plan.summary?.ready||0)){
+        app()?.toast('ไม่มีรายการกะที่ต้องเปลี่ยนหลังหักวันลา LV ของปลายทาง','warning');return;
+      }
+      const byTarget=new Map(plan.targets.map(emp=>[String(emp),[]]));
+      for(const row of plan.payload){
+        const code=String(row.emp_code||'');
+        if(!byTarget.has(code))throw new Error('FIX16GK04_INVALID_MONTH_COPY_PLAN');
+        byTarget.get(code).push(row);
+      }
       closeMonthCopyPasteV61413();
-      app()?.showLoading(`กำลังวางทับกะทั้งเดือน ${plan.payload.length.toLocaleString('th-TH')} รายการ...`);
-
-      const response=await app().state.client.rpc('ta_apply_month_copy_v616bg',{
-        p_source_emp:plan.source,
-        p_target_emps:plan.targets,
-        p_month:`${plan.month}-01`,
-        p_rows:plan.payload,
-        p_change_reason:`คัดลอกกะทั้งเดือนจาก ${plan.source} ไป ${plan.targets.length} คน`
-      });
-      if(response.error){
-        if(window.TimeClockShiftAPI?.missingFunction?.(response.error)){
-          throw new Error('MONTH_COPY_V616BG_REQUIRED: กรุณารัน SQL FIX16BG ก่อนใช้คัดลอกกะทั้งเดือน');
-        }
-        throw response.error;
-      }
-      backendSaved=true;
-
-      // Canonical Attendance refresh remains after the month transaction so the
-      // writer does not repeat heavy daily calculation inside the DB mutation.
-      if (typeof window.TimeClockConsistencyV61415?.finalizeSchedule !== 'function') {
-        throw new Error('ATTENDANCE_FINALIZER_REQUIRED');
-      }
-      await window.TimeClockConsistencyV61415.finalizeSchedule(plan.payload,{source:'schedule-month-copy-v616bg'});
-      attendanceFinalizedV616GJ=true;
-
-      resetMonthCopyWorkflowV61413({silent:true});
-      await app().loadSchedule();
-      const result=response.data||{};
-      app()?.toast(
-        `วางทับกะทั้งเดือนสำเร็จ ${Number(result.saved_rows??plan.payload.length).toLocaleString('th-TH')} รายการ • ประมวลผล Attendance ใหม่แล้ว`,
-        'success'
-      );
-    }catch(e){
-      const message=app()?.humanError?.(e)||e.message||String(e);
-      if(backendSaved){
-        app()?.toast(attendanceFinalizedV616GJ
-          ? `กะและ Attendance บันทึกแล้ว แต่รีเฟรชหน้าจอไม่สำเร็จ: ${message}`
-          : `กะทั้งเดือนบันทึกแล้ว แต่ยังยืนยันการคำนวณ Attendance ไม่ได้: ${message} • อย่ากดวางกะซ้ำ`, 'warning');
-        try{await app().loadSchedule();}catch(_){ }
-        // FIX16GJ: on an incomplete post-write Finalizer, offer a retry of the
-        // certified-time refresh ONLY. Never repeat the month-copy writer.
-        if(!attendanceFinalizedV616GJ && monthCopyRecoveryRowsV616GJ.length){
-          app()?.hideLoading?.();
-          const retry=await window.tcConfirm({
-            title:'กะบันทึกแล้ว • Attendance ยังไม่ยืนยัน',
-            message:'ต้องการลองคำนวณ Attendance อีกครั้งเฉพาะพนักงานและวันที่ที่วางกะหรือไม่? ระบบจะไม่บันทึกกะซ้ำ และจะรักษาข้อมูลรับรองเวลาตามเงื่อนไข Backend',
-            confirmText:'คำนวณ Attendance เท่านั้น',
-            cancelText:'ตรวจสอบภายหลัง',
-            tone:'warning'
-          });
-          if(retry){
-            app()?.showLoading?.('กำลังลองคำนวณ Attendance โดยไม่วางกะซ้ำ...');
-            try{
-              await window.TimeClockConsistencyV61415.finalizeSchedule(monthCopyRecoveryRowsV616GJ,{source:'fix16gj-month-copy-retry-finalizer-only'});
-              attendanceFinalizedV616GJ=true;
-              resetMonthCopyWorkflowV61413({silent:true});
-              try{await app().loadSchedule();}catch(_){ }
-              app()?.toast('คำนวณ Attendance จากกะที่บันทึกแล้วสำเร็จ • ไม่มีการวางกะซ้ำ','success');
-            }catch(retryError){
-              app()?.toast(`ยังคำนวณ Attendance ไม่สำเร็จ: ${app()?.humanError?.(retryError)||retryError.message} • โปรดให้ HR ตรวจสอบ โดยไม่ต้องวางกะซ้ำ`,'warning');
-            }
+      for(let i=0;i<plan.targets.length;i++){
+        const target=String(plan.targets[i]);
+        attempted=target;
+        const rows=byTarget.get(target)||[];
+        if(!rows.length)throw new Error(`FIX16GK04_NO_TARGET_ROWS: ${target}`);
+        app()?.showLoading(`คัดลอกกะ + คำนวณ Attendance: คนที่ ${i+1}/${plan.targets.length} (${target})`);
+        const response=await app().state.client.rpc('ta_apply_month_copy_atomic_v616gk04',{
+          p_source_emp:plan.source,
+          p_target_emps:[target],
+          p_month:`${plan.month}-01`,
+          p_rows:rows,
+          p_change_reason:`คัดลอกกะทั้งเดือนจาก ${plan.source} ไป ${target}`
+        });
+        if(response.error){
+          if(window.TimeClockShiftAPI?.missingFunction?.(response.error)){
+            throw new Error('FIX16GK04_BACKEND_REQUIRED: กรุณาติดตั้ง SQL FIX16GK-04 ก่อนใช้คัดลอกกะทั้งเดือน');
           }
+          throw response.error;
         }
+        const result=response.data||{};
+        if(result.atomic_recalculation!==true || result.attendance_rebuilt!==true ||
+           result.certification_aware!==true ||
+           result.atomic_scope!=='ONE_TARGET_EMPLOYEE_MONTH' ||
+           String(result.target_emp||'')!==target){
+          throw new Error('FIX16GK04_ATOMIC_RESULT_UNVERIFIED');
+        }
+        completed.push(target);
+        try{window.TimeClockConsistencyV61415?.invalidate?.(rows);}catch(_){ }
+      }
+      allCommitted=true;
+      resetMonthCopyWorkflowV61413({silent:true});
+      try{await app().loadSchedule();}
+      catch(refreshError){
+        app()?.toast(`กะและ Attendance สำเร็จ ${completed.length} คน แต่โหลดหน้าจอไม่สำเร็จ: ${app()?.humanError?.(refreshError)||refreshError.message}`,'warning');
+        return;
+      }
+      app()?.toast(`คัดลอกกะและคำนวณ Attendance สำเร็จครบ ${completed.length} คน • ไม่ทับวันลา LV`,'success');
+    }catch(e){
+      const message=app()?.humanError?.(e)||e?.message||String(e);
+      const total=plan?.targets?.length||0;
+      if(attempted){
+        const remain=plan.targets.slice(completed.length);
+        app()?.toast(
+          `สำเร็จยืนยันแล้ว ${completed.length}/${total} คน`+
+          ` • คน ${attempted} ยังไม่ยืนยันผล: ${message}`+
+          ` • ไม่วางกะซ้ำอัตโนมัติ กรุณาตรวจข้อมูลก่อนเริ่มรายการใหม่`,
+          'warning'
+        );
+        console.warn('FIX16GK04 month-copy partial/unknown outcome',{
+          confirmed_targets:completed, uncertain_target:attempted,
+          unattempted_targets:remain.slice(1), error:message
+        });
+        // Deliberately clear the previous paste selection. A repeated action
+        // could overwrite targets already committed or awaiting verification.
+        resetMonthCopyWorkflowV61413({silent:true});
+        try{await app().loadSchedule();}catch(_){ }
       }else{
         app()?.toast(message,'error');
-        if(monthCopyPhaseV61413==='TARGET'&&monthCopySourceV61413&&monthCopyTargetsV61413.size){
-          requestAnimationFrame(()=>openMonthCopyPasteV61413());
-        }
       }
     }finally{
       app()?.hideLoading();
