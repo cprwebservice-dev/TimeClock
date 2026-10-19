@@ -1,6 +1,6 @@
 
 /* V6.10.2 deployment diagnostic */
-window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16GK-04 Atomic Month Copy";
+window.__TIME_CLOCK_BUILD__ = "V6.15.29 FIX16GK-04 + FIX16GK-05 Client Source Alignment";
 document.documentElement.dataset.timeClockBuild = "6.15.29-fix16eh-hradmin-selection-first";
 
 
@@ -17873,6 +17873,9 @@ window.tcIsDayShiftCode = value =>
   let monthCopySourceRowsV61413 = [];
   const monthCopyTargetsV61413 = new Set();
   let monthCopyApplyingV61414 = false;
+  // FIX16GK07: explicit acknowledgement when the visible Grid differs from the
+  // same source-of-truth RPC used by the atomic Month Copy writer.
+  let monthCopyAckSignatureV616GK07 = "";
   const app = () => window.TimeClockApp;
   const wrap = () => document.getElementById("scheduleTableWrap");
   const $ = id => document.getElementById(id);
@@ -18562,6 +18565,7 @@ ${skippedSummary(compatibility.skipped)}
     monthCopyMonthV61413='';
     monthCopySourceRowsV61413=[];
     monthCopyTargetsV61413.clear();
+    monthCopyAckSignatureV616GK07='';
     updateMonthCopyWorkflowUIV61413();
     if(!silent)app()?.toast('ยกเลิกโหมดคัดลอกกะทั้งเดือนแล้ว','info');
   }
@@ -18682,6 +18686,54 @@ ${skippedSummary(compatibility.skipped)}
     return out;
   }
 
+  // FIX16GK07 — Read Month Copy source from the EXACT Backend function used
+  // by ta_apply_month_copy_v616bg to validate each source date. Do not pass
+  // the light-grid schedule as the writer's payload template.
+  async function fetchMonthCopyWriterSourceV616GK07(source,month){
+    const client=app()?.state?.client;
+    if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+    const [year,mm]=String(month||'').slice(0,7).split('-').map(Number);
+    if(!Number.isInteger(year)||!Number.isInteger(mm)||mm<1||mm>12){
+      throw new Error('MONTH_COPY_INVALID_MONTH');
+    }
+    const last=new Date(year,mm,0).getDate();
+    const start=`${month}-01`,end=`${month}-${String(last).padStart(2,'0')}`;
+    const {data,error}=await client.rpc('ta_get_employee_month_schedule_v6128',{
+      p_emp_code:String(source||'').trim(),p_start_date:start,p_end_date:end
+    });
+    if(error)throw error;
+    const rows=Array.isArray(data)?data:[];
+    const coverage=monthCopySourceCoverageV616GK05(rows,source,month);
+    if(!coverage.ok)throw new Error(`MONTH_COPY_WRITER_SOURCE_NOT_FULLY_VISIBLE: ${coverage.message}`);
+    return rows.slice().sort((a,b)=>String(a.work_date||'').localeCompare(String(b.work_date||'')));
+  }
+
+  // Match PL/pgSQL NULLIF(UPPER(TRIM(effective_shift_code)),'') literally;
+  // tcShiftCode/assigned/auto fallback could change the literal checked by the writer.
+  function monthCopyWriterCodeV616GK07(row){
+    return String(row?.effective_shift_code??'').trim().toUpperCase();
+  }
+
+  function monthCopyGridDifferencesV616GK07(gridRows,writerRows,source,month){
+    const display=new Map();
+    for(const r of gridRows||[]){
+      if(String(r?.emp_code||'').trim()!==source)continue;
+      const date=String(r?.work_date||'').slice(0,10);
+      if(date.startsWith(`${month}-`))display.set(date,r);
+    }
+    const diffs=[];
+    for(const wr of writerRows||[]){
+      const date=String(wr?.work_date||'').slice(0,10);
+      const dr=display.get(date);
+      const backend=monthCopyWriterCodeV616GK07(wr)||'NULL';
+      const visible=dr?String(monthCopyEffectiveCodeV616BG(dr)||'').trim().toUpperCase()||'NULL':'<NO_GRID_ROW>';
+      // Public holiday is COPY/CLEAR in the writer. Still compare underlying
+      // canonical shift for transparent disclosure, not the transformed payload.
+      if(visible!==backend)diffs.push({date,visible,backend});
+    }
+    return diffs;
+  }
+
   function mergeMonthRowsIntoStateV61413(rows=[]){
     const current=app()?.state?.schedule||[];
     const map=new Map(current.map(r=>[`${String(r.emp_code||'')}|${String(r.work_date||'').slice(0,10)}`,r]));
@@ -18695,14 +18747,23 @@ ${skippedSummary(compatibility.skipped)}
     const month=monthCopyCurrentMonthV61413();
     app()?.showLoading('กำลังคัดลอกรูปแบบกะทั้งเดือน...');
     try{
-      const rows=await fetchMonthRowsForCopyV61413([source],month);
-      if(!rows.length)return app()?.toast('ไม่พบข้อมูลกะของพนักงานต้นทางในเดือนที่เลือก','warning');
+      // FIX16GK-05: bypass the 60s schedule read cache before capturing a source.
+      // The atomic backend must never receive a template based on stale shifts.
+      window.TimeClockShiftAPI?.clearReadCache?.();
+      const rows=await fetchMonthCopyWriterSourceV616GK07(source,month);
+      if(!rows.length)return app()?.toast('ไม่พบข้อมูลกะต้นทางจาก Backend ในเดือนที่เลือก','warning');
+      const sourceCoverage=monthCopySourceCoverageV616GK05(rows,source,month);
+      if(!sourceCoverage.ok){
+        app()?.toast(sourceCoverage.message,'warning');
+        return;
+      }
       monthCopySourceV61413=source;
       monthCopyMonthV61413=month;
       monthCopySourceRowsV61413=rows.slice().sort((a,b)=>String(a.work_date||'').localeCompare(String(b.work_date||'')));
       monthCopyTargetsV61413.clear();
       monthCopyPhaseV61413='TARGET';
-      mergeMonthRowsIntoStateV61413(rows);
+      // Do not overwrite the Calendar grid with writer-only rows. The preview
+      // compares the original visible grid with the authoritative writer source.
       updateMonthCopyWorkflowUIV61413();
       const meta=monthCopyEmployeeMetaV61413(source);
       app()?.toast(`คัดลอกกะทั้งเดือนของ ${meta.full_name||source} แล้ว • เลือก Checkbox ปลายทางแล้วกด วางกะทั้งเดือน`,'success');
@@ -18711,13 +18772,35 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   function monthCopyEffectiveCodeV616BG(row){
-    return window.tcShiftCode(
-      row?.effective_shift_code
-      || row?.assigned_shift_code
-      || row?.auto_shift_code
-      || row?.shift_code
-      || null
-    );
+    // FIX16GK-05: exactly the same priority as the visible Calendar cell
+    // and ordinary Schedule copy (assigned > effective > auto > shift).
+    // DO NOT switch priorities in month-copy only.
+    return currentCode(row);
+  }
+
+  function monthCopySourceCoverageV616GK05(rows,source,month){
+    const [year,monthNumber]=String(month||'').split('-').map(Number);
+    const expectedDays=new Date(year,monthNumber,0).getDate();
+    if(!Number.isInteger(year)||!Number.isInteger(monthNumber)||monthNumber<1||monthNumber>12||!expectedDays){
+      return {ok:false,message:'เดือนไม่ถูกต้อง กรุณาเลือกเดือนอีกครั้ง'};
+    }
+    const expectedPrefix=`${String(year).padStart(4,'0')}-${String(monthNumber).padStart(2,'0')}-`;
+    const dates=new Set();
+    let duplicates=0;
+    let outside=0;
+    for(const row of rows||[]){
+      const date=String(row?.work_date||'').slice(0,10);
+      if(String(row?.emp_code||'').trim()!==String(source||'').trim()||!date.startsWith(expectedPrefix)){
+        outside++;
+        continue;
+      }
+      if(dates.has(date))duplicates++;
+      dates.add(date);
+    }
+    if(dates.size!==expectedDays||duplicates||outside){
+      return {ok:false,message:`ข้อมูลกะต้นทาง ${source} เดือน ${month} ไม่ครบหรือมีข้อมูลซ้ำ (${dates.size}/${expectedDays} วัน, ซ้ำ ${duplicates}) • หยุดการวางเพื่อป้องกันการทับกะผิด กรุณาตรวจ Scope/ข้อมูลต้นทาง`};
+    }
+    return {ok:true,expectedDays};
   }
 
   function monthCopyPatternLabelV616BG(code){
@@ -18749,15 +18832,27 @@ ${skippedSummary(compatibility.skipped)}
     if(!source||!targets.length||!month)return {payload:[],reason:'กรุณาคัดลอกต้นทางและเลือกพนักงานปลายทางอย่างน้อย 1 คน'};
     if(showLoading)app()?.showLoading('กำลังตรวจ 5D / 6D ของต้นทางและปลายทาง...');
     try{
-      const [sourceRows,targetRows,previewV616BG]=await Promise.all([
-        (monthCopySourceRowsV61413.length&&monthCopyMonthV61413===month)
-          ? Promise.resolve(monthCopySourceRowsV61413)
-          : fetchMonthRowsForCopyV61413([source],month),
+      // FIX16GK-05: always read the source again for preview AND final submit.
+      // Previously this reused the old clipboard snapshot while the Backend
+      // re-read the live source in the atomic transaction.
+      window.TimeClockShiftAPI?.clearReadCache?.();
+      const [sourceRows,targetRows,previewV616BG,gridSourceRows]=await Promise.all([
+        fetchMonthCopyWriterSourceV616GK07(source,month),
         fetchMonthRowsForCopyV61413(targets,month),
-        monthCopyBackendPreviewV616BG(source,targets,month)
+        monthCopyBackendPreviewV616BG(source,targets,month),
+        fetchMonthRowsForCopyV61413([source],month)
       ]);
-
-      mergeMonthRowsIntoStateV61413([...sourceRows,...targetRows]);
+      const sourceCoverage=monthCopySourceCoverageV616GK05(sourceRows,source,month);
+      if(!sourceCoverage.ok){
+        return {payload:[],source,targets,month,reason:sourceCoverage.message,summary:{ready:0}};
+      }
+      monthCopySourceRowsV61413=sourceRows.slice();
+      // Keep the light-grid rows visually faithful while calculating the
+      // copy payload exclusively from the writer's source-of-truth RPC.
+      mergeMonthRowsIntoStateV61413([...gridSourceRows,...targetRows]);
+      const sourceGridDifferences=monthCopyGridDifferencesV616GK07(gridSourceRows,sourceRows,source,month);
+      const sourceGridSignature=sourceGridDifferences.length
+        ? JSON.stringify({source,month,differences:sourceGridDifferences}) : '';
       const rowsByTarget=new Map(targets.map(emp=>[emp,new Map()]));
       targetRows.forEach(r=>{
         const emp=String(r.emp_code||'');const date=String(r.work_date||'').slice(0,10);
@@ -18793,7 +18888,7 @@ ${skippedSummary(compatibility.skipped)}
 
         for(const row of sourceRows){
           const date=String(row.work_date||'').slice(0,10);
-          let code=monthCopyEffectiveCodeV616BG(row);
+          let code=monthCopyWriterCodeV616GK07(row);
           if(!date)continue;
           code=code?String(code).toUpperCase():'';
 
@@ -18865,6 +18960,7 @@ ${skippedSummary(compatibility.skipped)}
         payload,source,targets,month,mode:'OVERWRITE',
         sourcePattern:String(previewV616BG?.source?.pattern_code||''),
         previewV616BG,
+        sourceGridDifferences,sourceGridSignature,
         reason,
         summary:{...total,targetCount:targets.length,payloadRows:payload.length},
         targetSummary
@@ -18893,10 +18989,18 @@ ${skippedSummary(compatibility.skipped)}
       const q=plan.summary||{};
       const sourcePattern=monthCopyPatternLabelV616BG(plan.sourcePattern);
       const protectedCount=Number(q.skipSourceLeave||0)+Number(q.skipSourceHol||0)+Number(q.protectedTargetLeave||0);
-      box.innerHTML=`<div class="month-copy-preview-grid-v61413"><span><b>${sourcePattern}</b><small>รูปแบบต้นทาง</small></span><span><b>${Number(q.targetCount||0).toLocaleString('th-TH')}</b><small>พนักงานปลายทาง</small></span><span><b>${Number(q.ready||0).toLocaleString('th-TH')}</b><small>รายการวางทับ</small></span><span><b>${Number(q.specialCount||0).toLocaleString('th-TH')}</b><small>กะพิเศษคัดลอกครบ</small></span><span><b>${protectedCount.toLocaleString('th-TH')}</b><small>LV ปลายทางคงเดิม / HOL คืนค่าระบบ</small></span></div><small>Month Copy = วางทับตารางกะทั้งเดือน • ตรวจหลัก 5D ↔ 5D / 6D ↔ 6D • LV ของปลายทางไม่ถูกทับ • LV ของต้นทางไม่ถูกคัดลอก • HOL/วันที่ว่างของต้นทางจะล้างกะเดิมให้กลับไปใช้ปฏิทินระบบ</small>${plan.reason?`<small class="text-danger">${monthCopyEscV61413(plan.reason)}</small>`:''}`;
+      const diffs=plan.sourceGridDifferences||[];
+      const signature=plan.sourceGridSignature||'';
+      const sourceMismatchNotice=diffs.length?`<div class="month-copy-source-diff-v616gk07" role="status"><strong>กะต้นทางบนปฏิทินไม่ตรงกับค่าที่ Backend จะคัดลอก ${diffs.length} วัน</strong><p>ระบบจะใช้ effective_shift_code จาก Backend เท่านั้น เพื่อให้ตรงกับการตรวจของ Month Copy กรุณาตรวจรายการต่อไปนี้ก่อนอนุมัติ</p><details><summary>ดูวันที่และรหัสกะที่ต่างกัน (${diffs.length} วัน)</summary><div class="month-copy-diff-list-v616gk07">${diffs.map(d=>`<div><span>${monthCopyEscV61413(d.date)}</span><span>ปฏิทิน: ${monthCopyEscV61413(d.visible)}</span><span>Backend: ${monthCopyEscV61413(d.backend)}</span></div>`).join('')}</div></details><label class="month-copy-diff-ack-v616gk07"><input type="checkbox" id="monthCopySourceAckV616GK07" ${signature===monthCopyAckSignatureV616GK07?'checked':''}> ฉันตรวจสอบความแตกต่างแล้ว และยืนยันให้ใช้กะตาม Backend เป็นข้อมูลต้นทาง</label></div>`:'';
+      box.innerHTML=`<div class="month-copy-preview-grid-v61413"><span><b>${sourcePattern}</b><small>รูปแบบต้นทาง</small></span><span><b>${Number(q.targetCount||0).toLocaleString('th-TH')}</b><small>พนักงานปลายทาง</small></span><span><b>${Number(q.ready||0).toLocaleString('th-TH')}</b><small>รายการวางทับ</small></span><span><b>${Number(q.specialCount||0).toLocaleString('th-TH')}</b><small>กะพิเศษคัดลอกครบ</small></span><span><b>${protectedCount.toLocaleString('th-TH')}</b><small>LV ปลายทางคงเดิม / HOL คืนค่าระบบ</small></span></div><small>Month Copy = วางทับตารางกะทั้งเดือน • ตรวจหลัก 5D ↔ 5D / 6D ↔ 6D • LV ของปลายทางไม่ถูกทับ • LV ของต้นทางไม่ถูกคัดลอก • HOL/วันที่ว่างของต้นทางจะล้างกะเดิมให้กลับไปใช้ปฏิทินระบบ</small>${sourceMismatchNotice}${plan.reason?`<small class="text-danger">${monthCopyEscV61413(plan.reason)}</small>`:''}`;
       renderMonthCopyTargetListV61413(plan);
       const applyBtn=$('scheduleMonthCopyApplyV61413');
-      if(applyBtn&&!monthCopyApplyingV61414)applyBtn.disabled=Boolean(plan.reason)||!Number(plan.summary?.ready||0);
+      const syncApply=()=>{if(applyBtn&&!monthCopyApplyingV61414)applyBtn.disabled=Boolean(plan.reason)||!Number(plan.summary?.ready||0)||Boolean(signature&&monthCopyAckSignatureV616GK07!==signature);};
+      box.querySelector('#monthCopySourceAckV616GK07')?.addEventListener('change',event=>{
+        monthCopyAckSignatureV616GK07=event.target.checked?signature:'';
+        syncApply();
+      });
+      syncApply();
     }catch(e){
       box.textContent=app()?.humanError?.(e)||e.message||String(e);
       const applyBtn=$('scheduleMonthCopyApplyV61413');if(applyBtn)applyBtn.disabled=true;
@@ -18907,6 +19011,7 @@ ${skippedSummary(compatibility.skipped)}
     if(monthCopyPhaseV61413!=='TARGET'||!monthCopySourceV61413)return app()?.toast('กรุณาคัดลอกพนักงานต้นทางก่อน','warning');
     if(!monthCopyTargetsV61413.size)return app()?.toast('กรุณาเลือก Checkbox พนักงานปลายทางอย่างน้อย 1 คน','warning');
     const modal=$('scheduleMonthCopyModalV61413');if(!modal)return;
+    monthCopyAckSignatureV616GK07='';
     const source=monthCopyEmployeeMetaV61413(monthCopySourceV61413);
     if($('scheduleMonthCopySourceSummaryV61413'))$('scheduleMonthCopySourceSummaryV61413').innerHTML=`<span>ต้นทาง</span><strong>${monthCopyEscV61413(source.emp_code)} • ${monthCopyEscV61413(source.full_name||'-')}</strong><small>${monthCopyEscV61413(monthCopyMonthV61413)}</small>`;
     if($('scheduleMonthCopyTargetSummaryV61413'))$('scheduleMonthCopyTargetSummaryV61413').innerHTML=`<span>ปลายทาง</span><strong>${monthCopyTargetsV61413.size.toLocaleString('th-TH')} คน</strong><small>ตรวจ Preview ก่อนยืนยัน</small>`;
@@ -18946,6 +19051,11 @@ ${skippedSummary(compatibility.skipped)}
       if(plan.reason){app()?.toast(plan.reason,'error');return;}
       if(!Number(plan.summary?.ready||0)){
         app()?.toast('ไม่มีรายการกะที่ต้องเปลี่ยนหลังหักวันลา LV ของปลายทาง','warning');return;
+      }
+      if(plan.sourceGridSignature && monthCopyAckSignatureV616GK07!==plan.sourceGridSignature){
+        app()?.toast('พบกะต้นทางที่แสดงบนปฏิทินไม่ตรงกับ Backend กรุณาตรวจและยืนยันความแตกต่างใน Preview ก่อนวางกะ','warning');
+        await refreshMonthCopyPreviewV61413();
+        return;
       }
       const byTarget=new Map(plan.targets.map(emp=>[String(emp),[]]));
       for(const row of plan.payload){
@@ -19016,7 +19126,10 @@ ${skippedSummary(compatibility.skipped)}
     }finally{
       app()?.hideLoading();
       monthCopyApplyingV61414=false;
-      if(applyBtn){applyBtn.disabled=false;applyBtn.textContent=originalText;}
+      if(applyBtn){
+        applyBtn.disabled=Boolean(plan?.reason)||!Number(plan?.summary?.ready||0)||Boolean(plan?.sourceGridSignature&&monthCopyAckSignatureV616GK07!==plan.sourceGridSignature);
+        applyBtn.textContent=originalText;
+      }
     }
   }
 

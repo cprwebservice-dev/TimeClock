@@ -39324,3 +39324,13 @@ html[data-theme="dark"] #page-dashboard .trend-org-row-v616fi.trend-org-audit-v6
 body.theme-dark #page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy.is-filterable-v616fy:hover{
  background:rgba(96,165,250,.14);
 }
+
+/* FIX16GK07: disclose source Calendar / Backend differences before copying. */
+.month-copy-source-diff-v616gk07{margin-top:12px;padding:12px 14px;border:1px solid #e6aa3a;border-radius:12px;background:rgba(231,163,45,.11);color:inherit;font-size:13px}
+.month-copy-source-diff-v616gk07 strong{display:block;font-size:14px;margin-bottom:6px}
+.month-copy-source-diff-v616gk07 p{margin:0 0 8px;line-height:1.55}
+.month-copy-source-diff-v616gk07 summary{cursor:pointer;font-weight:600;margin:5px 0}
+.month-copy-diff-list-v616gk07{max-height:180px;overflow:auto;margin:6px 0 10px}
+.month-copy-diff-list-v616gk07>div{display:grid;grid-template-columns:minmax(85px,1fr) repeat(2,minmax(100px,1.2fr));gap:8px;padding:5px 7px;border-bottom:1px solid rgba(127,127,127,.18)}
+.month-copy-diff-ack-v616gk07{display:flex;align-items:flex-start;gap:8px;margin-top:10px;cursor:pointer;font-weight:600;line-height:1.5}
+.month-copy-diff-ack-v616gk07 input{margin-top:3px;flex-shrink:0}
