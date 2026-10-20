@@ -40910,3 +40910,130 @@ body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-row-v61462.st
 html[data-theme="dark"] #page-attendance .attendance-row-v61462.status-day_off td,
 body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-row-v61462.status-day_off td{background-color:rgba(51,65,85,.38)}
 @media(max-width:900px){#page-attendance .attendance-column-presets-v616gl08{width:100%;margin-left:0}}
+
+/* ========================================================================== 
+   V6.15.29 FIX16GL09 • Attendance Employee Dropdown / Filter Action Fix
+   Frontend-only. Restores overlay visibility and compact action layout.
+   ========================================================================== */
+#page-attendance .attendance-filter-panel-v61462{
+  overflow:visible!important;
+  position:relative;
+  z-index:20;
+}
+#page-attendance .attendance-filter-panel-v61462>.panel-body{
+  overflow:visible!important;
+}
+#page-attendance .attendance-filter-grid{
+  overflow:visible!important;
+}
+#page-attendance .attendance-filter-employee,
+#page-attendance .attendance-employee-multi{
+  position:relative;
+  overflow:visible!important;
+  z-index:30;
+}
+#page-attendance .attendance-employee-dropdown{
+  z-index:300!important;
+  width:min(480px,calc(100vw - 32px));
+  max-height:min(520px,calc(100vh - 190px));
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-radius:14px;
+  box-shadow:0 18px 48px rgba(15,23,42,.22);
+}
+#page-attendance .attendance-employee-dropdown.hidden{display:none!important}
+#page-attendance .attendance-employee-search,
+#page-attendance .attendance-employee-actions,
+#page-attendance .attendance-employee-pagination{
+  flex:0 0 auto;
+}
+#page-attendance .attendance-employee-search{padding:10px 10px 8px}
+#page-attendance .attendance-employee-actions{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  padding:7px 10px 9px;
+  overflow:visible;
+}
+#page-attendance .attendance-employee-actions .btn{
+  width:100%;
+  min-width:0;
+  min-height:34px;
+  padding:0 8px;
+  font-size:9.5px;
+  white-space:nowrap;
+}
+#page-attendance .attendance-employee-list{
+  flex:1 1 auto;
+  min-height:120px;
+  max-height:310px;
+  overflow:auto!important;
+  overscroll-behavior:contain;
+  padding:5px;
+  background:var(--surface,#fff);
+}
+#page-attendance .attendance-employee-empty{min-height:110px}
+#page-attendance .attendance-employee-pagination{
+  min-height:40px;
+  padding:6px 10px;
+}
+
+/* Keep Search / Export actions compact and aligned to the right. */
+#page-attendance .attendance-filter-actions{
+  grid-column:1/-1!important;
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end!important;
+  flex-wrap:nowrap!important;
+  gap:8px!important;
+  padding-top:2px!important;
+}
+#page-attendance .attendance-filter-actions .btn{
+  width:auto!important;
+  flex:0 0 auto!important;
+  min-width:112px!important;
+  min-height:40px;
+  padding:0 16px!important;
+}
+#page-attendance .attendance-filter-actions #loadAttendanceBtn{min-width:140px!important}
+#page-attendance .attendance-filter-actions #attendanceExcelBtn,
+#page-attendance .attendance-filter-actions #attendancePrintBtn{min-width:112px!important}
+
+/* Give the open employee selector enough visual priority over result panels. */
+#page-attendance:has(#attEmployeeToggle[aria-expanded="true"]) .attendance-table-panel-v61462,
+#page-attendance:has(#attEmployeeToggle[aria-expanded="true"]) .attendance-enterprise-tools{
+  position:relative;
+  z-index:1;
+}
+
+html[data-theme="dark"] #page-attendance .attendance-employee-list,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-employee-list{
+  background:rgba(15,23,42,.98);
+}
+
+@media(max-width:900px){
+  #page-attendance .attendance-filter-actions{
+    justify-content:stretch!important;
+  }
+  #page-attendance .attendance-filter-actions .btn{
+    flex:1 1 0!important;
+    min-width:0!important;
+  }
+}
+@media(max-width:760px){
+  #page-attendance .attendance-employee-dropdown{
+    position:fixed;
+    top:78px;
+    right:12px;
+    left:12px;
+    width:auto;
+    max-height:calc(100vh - 96px);
+  }
+  #page-attendance .attendance-employee-list{max-height:calc(100vh - 275px)}
+}
+@media(max-width:560px){
+  #page-attendance .attendance-employee-actions{grid-template-columns:1fr}
+  #page-attendance .attendance-filter-actions{flex-wrap:wrap!important}
+  #page-attendance .attendance-filter-actions .btn{flex:1 1 100%!important}
+}
