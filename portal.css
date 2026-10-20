@@ -6091,3 +6091,108 @@ body.theme-dark .portal-week-strip .portal-day-chip.night .portal-day-chip-label
   color:var(--portal-muted,#7890a6);
 }
 .theme-dark .portal-field-guideline{color:#9db4c7;}
+
+/* ========================================================================== 
+   V6.15.29 FIX16GL11 — MODERN AZURE EMPLOYEE PORTAL COLOR REFRESH
+   Visual-only. Existing portal workflows and logic are unchanged.
+   ========================================================================== */
+:root{
+  --navy:#3476A5;
+  --navy2:#3F86B5;
+  --blue:#438FCA;
+  --blue2:#347DB7;
+  --sky:#EDF8FE;
+  --line:#DCE9F2;
+  --text:#18354D;
+  --muted:#748A9B;
+  --green:#2B9568;
+  --orange:#EE9848;
+  --red:#D95757;
+  --purple:#7866C9;
+  --bg:#F3F8FC;
+  --card:#FFFFFF;
+  --shadow:0 13px 36px rgba(46,94,129,.09);
+  --shadow-soft:0 7px 22px rgba(46,94,129,.065);
+}
+
+body:not(.theme-dark):not(.dark):not(.dark-mode),
+html:not([data-theme="dark"]) body{
+  background:linear-gradient(180deg,#F0F7FC 0%,#F8FAFC 52%,#F3F7FA 100%);
+}
+
+/* Portal login / activation */
+body:not(.theme-dark) .portal-auth{
+  background:
+    radial-gradient(circle at 12% 10%,rgba(112,190,232,.22),transparent 30%),
+    radial-gradient(circle at 88% 92%,rgba(245,166,92,.18),transparent 27%),
+    linear-gradient(180deg,#F2F8FC 0%,#EDF5FA 100%)!important;
+}
+body:not(.theme-dark) .portal-auth-shell{
+  border-color:#D6E6F1!important;
+  background:rgba(255,255,255,.98)!important;
+  box-shadow:0 24px 62px rgba(43,94,131,.13)!important;
+}
+body:not(.theme-dark) .portal-auth .portal-brand-mark{
+  background:linear-gradient(145deg,#5AA7D8,#F1A05A)!important;
+  box-shadow:0 8px 20px rgba(51,119,169,.15)!important;
+}
+body:not(.theme-dark) .portal-auth .portal-brand strong{color:#2D6D9D!important}
+body:not(.theme-dark) .portal-auth-tabs{background:#EEF5F9!important}
+body:not(.theme-dark) .portal-auth-tabs button.active{
+  color:#2E77AE!important;
+  box-shadow:0 3px 10px rgba(47,115,165,.08)!important;
+}
+body:not(.theme-dark) .portal-auth-form input:focus,
+body:not(.theme-dark) .portal-modal-body input:focus,
+body:not(.theme-dark) .portal-modal-body select:focus,
+body:not(.theme-dark) .portal-modal-body textarea:focus{
+  border-color:#72B4DE!important;
+  box-shadow:0 0 0 3px rgba(72,151,204,.11)!important;
+}
+body:not(.theme-dark) .portal-primary{
+  background:linear-gradient(135deg,#4B99D0,#347DB7)!important;
+  box-shadow:0 7px 18px rgba(48,123,180,.15);
+}
+
+/* Portal app shell */
+body:not(.theme-dark) .portal-topbar{
+  background:linear-gradient(135deg,#3A80B2 0%,#4B98C8 100%)!important;
+  box-shadow:0 7px 22px rgba(47,108,151,.15)!important;
+}
+body:not(.theme-dark) .portal-top-brand span{color:#D8ECF8!important}
+body:not(.theme-dark) .portal-topbar .portal-icon-btn{
+  background:rgba(255,255,255,.13)!important;
+  border-color:rgba(255,255,255,.22)!important;
+}
+body:not(.theme-dark) .portal-profile-card{
+  border-color:#D8E7F1!important;
+  box-shadow:0 7px 22px rgba(44,91,125,.055)!important;
+}
+body:not(.theme-dark) .portal-profile-card:before{
+  background:linear-gradient(180deg,#53A6D9,#77C1E8)!important;
+}
+body:not(.theme-dark) .portal-avatar{
+  background:linear-gradient(145deg,#EAF7FE,#DDF0FA)!important;
+  color:#327BAD!important;
+  border-color:#CDE7F5!important;
+}
+body:not(.theme-dark) .portal-today-card{
+  background:
+    radial-gradient(circle at 86% 4%,rgba(181,228,249,.28),transparent 32%),
+    linear-gradient(145deg,#357CAE 0%,#4694C5 60%,#59A9D4 100%)!important;
+  box-shadow:0 15px 31px rgba(48,116,164,.20)!important;
+}
+body:not(.theme-dark) .portal-bottom-nav button.active{color:#347FB9!important}
+body:not(.theme-dark) .portal-day-chip.today,
+body:not(.theme-dark) .portal-cal-day.today{border-color:#73B6DD!important;box-shadow:0 0 0 2px rgba(72,151,204,.09)!important}
+body:not(.theme-dark) .portal-text-btn{color:#347EB7!important}
+body:not(.theme-dark) .portal-quick-grid i{background:#EAF6FD!important;color:#347EB7!important}
+body:not(.theme-dark) .portal-request-tabs button.active{border-color:#8AC3E4!important;background:#EDF8FE!important;color:#3178AD!important}
+body:not(.theme-dark) .portal-notification-item.unread{border-color:#A9D3EB!important;background:#F3FAFE!important}
+
+/* Dark portal remains deliberately dark; only accents become fresher */
+body.theme-dark{
+  --blue:#6CB5E2;
+  --blue2:#5CA5D4;
+  --orange:#F1A15B;
+}

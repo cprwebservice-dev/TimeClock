@@ -4,7 +4,7 @@
   "start_url":"./portal.html",
   "display":"standalone",
   "background_color":"#F4F7FB",
-  "theme_color":"#123A5A",
+  "theme_color":"#3A80B2",
   "icons":[
     {
       "src":"./favicon.ico",

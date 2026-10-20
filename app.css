@@ -41037,3 +41037,237 @@ body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-employee-list
   #page-attendance .attendance-filter-actions{flex-wrap:wrap!important}
   #page-attendance .attendance-filter-actions .btn{flex:1 1 100%!important}
 }
+
+/* ========================================================================== 
+   V6.15.29 FIX16GL11 — MODERN AZURE GLOBAL COLOR REFRESH
+   Visual-only palette refresh across Login + all application pages.
+   Business logic / RPC / permissions are unchanged.
+   ========================================================================== */
+:root{
+  --brand-blue:#3C88C7;
+  --brand-navy:#2B6797;
+  --brand-orange:#F39A4A;
+  --surface:#FFFFFF;
+  --surface-soft:#F5FAFE;
+  --text-main:#18324A;
+  --text-muted:#6C8194;
+  --line:#DCE8F1;
+  --shadow-soft:0 10px 30px rgba(42,92,132,.075);
+
+  --navy-950:#245A83;
+  --navy-900:#2A6593;
+  --navy-800:#3276A9;
+  --blue-700:#317AB6;
+  --blue-600:#3E8BC8;
+  --blue-500:#55A3DA;
+  --blue-100:#EAF6FD;
+  --orange-600:#E77A27;
+  --orange-500:#F39A4A;
+  --orange-100:#FFF3E7;
+  --slate-900:#193249;
+  --slate-700:#496174;
+  --slate-600:#667B8D;
+  --slate-500:#8293A2;
+  --slate-300:#D7E2EB;
+  --slate-200:#E4ECF3;
+  --slate-100:#F4F8FB;
+  --shadow:0 10px 30px rgba(39,83,117,.075);
+}
+
+/* ---------- Global shell ---------- */
+html:not([data-theme="dark"]) body:not(.dark):not(.theme-dark):not(.dark-mode){
+  background:linear-gradient(180deg,#F5F9FD 0%,#F1F6FA 100%);
+}
+html:not([data-theme="dark"]) .main-shell{
+  background:linear-gradient(180deg,#F8FBFE 0%,#F3F7FB 100%);
+}
+html:not([data-theme="dark"]) .topbar{
+  background:rgba(252,254,255,.94);
+  border-bottom-color:#E1EAF2;
+  box-shadow:0 5px 18px rgba(47,92,127,.035);
+}
+html:not([data-theme="dark"]) .content{color:#193249}
+html:not([data-theme="dark"]) .panel{
+  border-color:#DCE7F0;
+  box-shadow:0 8px 26px rgba(50,92,124,.06);
+}
+html:not([data-theme="dark"]) .panel-header{border-bottom-color:#E5EDF3}
+
+/* ---------- Login ---------- */
+html:not([data-theme="dark"]) .login-screen{
+  background:
+    radial-gradient(circle at 14% 11%,rgba(136,205,241,.42),transparent 31%),
+    radial-gradient(circle at 83% 87%,rgba(255,197,135,.28),transparent 28%),
+    linear-gradient(135deg,#2E78AF 0%,#3C8EC6 52%,#5AA8D3 100%);
+}
+html:not([data-theme="dark"]) .login-hero{
+  background:
+    radial-gradient(circle at 12% 20%,rgba(255,255,255,.12),transparent 27%),
+    linear-gradient(145deg,rgba(42,112,165,.20),rgba(96,180,222,.08));
+}
+html:not([data-theme="dark"]) .login-hero::after{
+  border-color:rgba(255,255,255,.20);
+  box-shadow:0 0 0 60px rgba(255,255,255,.045),0 0 0 120px rgba(255,255,255,.025);
+}
+html:not([data-theme="dark"]) .login-hero h1 span{color:#FFD0A3}
+html:not([data-theme="dark"]) .login-hero p{color:rgba(255,255,255,.88)}
+html:not([data-theme="dark"]) .feature-pill{
+  background:rgba(255,255,255,.14);
+  border-color:rgba(255,255,255,.20);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+html:not([data-theme="dark"]) .login-panel-wrap{
+  background:linear-gradient(145deg,rgba(247,251,254,.98),rgba(240,247,252,.96));
+}
+html:not([data-theme="dark"]) .login-card{
+  border:1px solid rgba(209,226,238,.85);
+  box-shadow:0 24px 64px rgba(39,86,121,.16);
+}
+html:not([data-theme="dark"]) .brand-mark{
+  background:linear-gradient(145deg,#5AA9DB,#F3A15B);
+  box-shadow:0 10px 24px rgba(48,119,170,.18);
+}
+html:not([data-theme="dark"]) .login-card .input:focus,
+html:not([data-theme="dark"]) .login-card .select:focus{
+  border-color:#63AADA;
+  box-shadow:0 0 0 4px rgba(85,163,218,.13);
+}
+
+/* ---------- Sidebar ---------- */
+html:not([data-theme="dark"]) .sidebar{
+  background:
+    radial-gradient(circle at 20% 0%,rgba(117,194,231,.18),transparent 25%),
+    linear-gradient(180deg,#2A6796 0%,#28628E 48%,#24577E 100%);
+  box-shadow:7px 0 26px rgba(39,84,118,.11);
+}
+html:not([data-theme="dark"]) .sidebar-brand{border-bottom-color:rgba(255,255,255,.13)}
+html:not([data-theme="dark"]) .sidebar-brand-text span{color:rgba(237,248,255,.74)}
+html:not([data-theme="dark"]) .nav-label{color:rgba(232,246,255,.58)}
+html:not([data-theme="dark"]) .nav-item{color:rgba(245,251,255,.82)}
+html:not([data-theme="dark"]) .nav-item:hover{
+  color:#fff;
+  background:rgba(255,255,255,.10);
+}
+html:not([data-theme="dark"]) .nav-item.active{
+  color:#fff;
+  background:linear-gradient(90deg,rgba(116,190,230,.30),rgba(255,255,255,.10));
+  box-shadow:inset 3px 0 #F5A25D,0 6px 16px rgba(24,73,109,.10);
+}
+html:not([data-theme="dark"]) .nav-item.active .nav-icon{
+  background:rgba(255,255,255,.10);
+  border-radius:9px;
+}
+html:not([data-theme="dark"]) .sidebar-footer{border-top-color:rgba(255,255,255,.12)}
+html:not([data-theme="dark"]) .sidebar-user{background:rgba(255,255,255,.085)}
+html:not([data-theme="dark"]) .sidebar-user span{color:rgba(235,247,255,.68)}
+html:not([data-theme="dark"]) .sidebar-collapse-btn{
+  background:#F7FBFE;
+  border-color:#BFD9EA;
+  color:#2F78AE;
+  box-shadow:0 4px 14px rgba(30,87,128,.12);
+}
+
+/* ---------- Buttons / controls ---------- */
+html:not([data-theme="dark"]) .btn-primary{
+  background:linear-gradient(135deg,#4A98D1,#317DB8);
+  box-shadow:0 7px 18px rgba(49,125,184,.18);
+}
+html:not([data-theme="dark"]) .btn-primary:hover{background:linear-gradient(135deg,#55A3D9,#357FB8)}
+html:not([data-theme="dark"]) .btn-soft{background:#EAF6FD;color:#2C72A9}
+html:not([data-theme="dark"]) .btn-light{
+  background:#F7FAFC;
+  border-color:#DCE7EF;
+  color:#4D6476;
+}
+html:not([data-theme="dark"]) .role-badge{
+  background:#EAF6FD;
+  color:#2C72A9;
+  border:1px solid #D4EAF7;
+}
+html:not([data-theme="dark"]) .input:focus,
+html:not([data-theme="dark"]) .select:focus,
+html:not([data-theme="dark"]) .textarea:focus{
+  border-color:#66ACDC;
+  box-shadow:0 0 0 4px rgba(85,163,218,.12);
+}
+html:not([data-theme="dark"]) .kpi-icon{background:#EAF6FD;color:#347FB7}
+html:not([data-theme="dark"]) .kpi-card::after{background:rgba(85,163,218,.075)}
+
+/* ---------- Modern blue accents across key page hero areas ---------- */
+html:not([data-theme="dark"]) .review-hero{
+  background:linear-gradient(135deg,#347FB6 0%,#438FC2 58%,#F09A52 100%);
+  box-shadow:0 13px 32px rgba(48,111,158,.16);
+}
+html:not([data-theme="dark"]) .leave-hero{
+  background:linear-gradient(135deg,#347FAF,#42A0C5 62%,#F19B50);
+}
+html:not([data-theme="dark"]) .correction-hero{
+  background:linear-gradient(135deg,#3B76B0,#4D91C7 62%,#F29B4D);
+}
+html:not([data-theme="dark"]) .exception-hero{
+  background:linear-gradient(135deg,#456E96,#4B82AD 62%,#E58C43);
+}
+html:not([data-theme="dark"]) .report-hero{
+  background:linear-gradient(135deg,#347FB6,#4C98C9 64%,#F3A15B);
+}
+
+/* ---------- Tables: replace near-black/navy headers with medium azure ---------- */
+html:not([data-theme="dark"]) #page-attendance .attendance-grid-table thead,
+html:not([data-theme="dark"]) #page-attendance .attendance-grid-table thead tr{
+  background:#3477AA!important;
+}
+html:not([data-theme="dark"]) #page-attendance .attendance-grid-table-v616gl07 thead th,
+html:not([data-theme="dark"]) #page-attendance .attendance-grid-table thead th{
+  background:linear-gradient(180deg,#377FAF 0%,#2F70A0 100%)!important;
+  border-right-color:rgba(255,255,255,.12)!important;
+  border-bottom-color:#F2A15D!important;
+}
+html:not([data-theme="dark"]) #page-attendance .attendance-grid-table-v616gl07 .attendance-punch-head.shift-1{
+  background:linear-gradient(180deg,#3C86B8,#3476A5)!important;
+}
+html:not([data-theme="dark"]) #page-attendance .attendance-grid-table-v616gl07 .attendance-punch-head.shift-2{
+  background:linear-gradient(180deg,#5A86B2,#4B759F)!important;
+}
+html:not([data-theme="dark"]) .employee-pattern-table-v6119 thead th{
+  background:#397EAE!important;
+}
+html:not([data-theme="dark"]) .review-bulk-bar{
+  background:linear-gradient(135deg,#367BAE,#2F6D9B);
+  box-shadow:0 8px 22px rgba(42,99,141,.15);
+}
+
+/* ---------- Schedule / interactive accent colors ---------- */
+html:not([data-theme="dark"]) .schedule-kpi strong,
+html:not([data-theme="dark"]) .schedule-selection-info span{color:#2F6F9F}
+html:not([data-theme="dark"]) .enterprise-schedule-table thead .sticky-col-1,
+html:not([data-theme="dark"]) .enterprise-schedule-table thead .sticky-col-2{
+  background:#EAF4FB;
+}
+html:not([data-theme="dark"]) .schedule-emp-code{color:#2D648E}
+html:not([data-theme="dark"]) .schedule-data-cell.cell-selected{
+  background:#E5F3FC!important;
+  box-shadow:inset 0 0 0 2px #4B9BD2;
+}
+
+/* ---------- Light backgrounds / badges ---------- */
+html:not([data-theme="dark"]) .blue-soft,
+html:not([data-theme="dark"]) .info-soft{background:#ECF7FD!important}
+html:not([data-theme="dark"]) .badge.info,
+html:not([data-theme="dark"]) .fc-chip.info{background:#E8F5FC;color:#2C73A8}
+html:not([data-theme="dark"]) tbody tr:hover td{background:#F4F9FD}
+
+/* ---------- Dark mode keeps dark surfaces, only refreshes accent blue ---------- */
+html[data-theme="dark"],
+body:is(.dark,.theme-dark,.dark-mode){
+  --brand-blue:#6AB2E2;
+  --brand-orange:#F3A15B;
+  --blue-700:#5FA9DA;
+  --blue-600:#67B0DF;
+  --blue-500:#73B8E5;
+  --blue-100:#183A52;
+}
+html[data-theme="dark"] .btn-primary,
+body:is(.dark,.theme-dark,.dark-mode) .btn-primary{
+  background:linear-gradient(135deg,#438DBE,#326E9A);
+  box-shadow:none;
+}
