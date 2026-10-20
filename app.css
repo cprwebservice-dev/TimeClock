@@ -40554,3 +40554,232 @@ body:is(.theme-dark,.dark,.dark-mode) #page-schedule #scheduleTeamWorkspace .tea
     grid-template-columns:repeat(3,minmax(0,1fr))!important;
   }
 }
+
+/* ========================================================================== 
+   V6.15.29 FIX16GL06 • DASHBOARD UX/UI REFINEMENT
+   Presentation only. No RPC / permission / KPI formula / chart logic changes.
+   ========================================================================== */
+
+/* Page rhythm */
+#page-dashboard.dashboard-ui-gl06{
+  --dash-gl06-gap:14px;
+  --dash-gl06-radius:16px;
+  --dash-gl06-soft:#f7f9fc;
+  --dash-gl06-line:#dbe5f0;
+}
+#page-dashboard.dashboard-ui-gl06 .section-gap{margin-top:14px!important}
+#page-dashboard.dashboard-ui-gl06 .panel{border-radius:var(--dash-gl06-radius);box-shadow:0 5px 18px rgba(15,36,64,.035)}
+
+/* Compact command header: top app header already says Dashboard, so this becomes context/action header. */
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-welcome-v616dw{
+  min-height:0!important;
+  padding:12px 16px!important;
+  border:1px solid var(--dash-gl06-line)!important;
+  border-radius:16px!important;
+  background:linear-gradient(100deg,rgba(239,246,255,.9) 0%,rgba(255,255,255,.96) 55%,rgba(255,247,237,.78) 100%)!important;
+  box-shadow:none!important;
+}
+#page-dashboard.dashboard-ui-gl06 .dashboard-welcome-v616dw .eyebrow{font-size:9.5px;letter-spacing:.1em;margin-bottom:1px}
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-welcome-v616dw h2{
+  margin:0 0 2px!important;font-size:18px!important;line-height:1.28!important;letter-spacing:-.02em
+}
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-welcome-v616dw p{
+  max-width:760px;margin:0!important;font-size:11px!important;line-height:1.45!important
+}
+#page-dashboard.dashboard-ui-gl06 .dashboard-welcome-actions-v616dw{gap:6px!important;align-items:center}
+#page-dashboard.dashboard-ui-gl06 .dashboard-welcome-actions-v616dw .btn{min-height:36px;padding:7px 12px;border-radius:10px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-welcome-actions-v616dw .updated-chip{min-height:34px;display:inline-flex;align-items:center;padding:6px 10px;border-radius:10px;font-size:10.5px}
+
+/* Active scope becomes a clean one-line information rail. */
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw{
+  margin-top:7px!important;padding:6px 8px!important;gap:5px!important;border-radius:12px!important;background:rgba(248,250,252,.82)!important
+}
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw>span{
+  min-height:29px;padding:4px 8px!important;border:1px solid rgba(203,213,225,.55);background:rgba(255,255,255,.72);border-radius:9px!important
+}
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw b,
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw em{font-size:10.5px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-context-status-v616dw{margin-left:auto!important}
+
+/* View switcher: stronger active state but lower overall visual weight. */
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-view-tabs-v616h{
+  width:min(520px,100%)!important;margin:8px 0 0!important;padding:4px!important;gap:4px!important;border-radius:13px!important;background:#f4f7fb!important;border-color:#dbe5ef!important
+}
+#page-dashboard.dashboard-ui-gl06 .dashboard-view-tab-v616h{
+  flex:1;justify-content:flex-start!important;min-height:43px!important;padding:7px 12px!important;border-radius:10px!important
+}
+#page-dashboard.dashboard-ui-gl06 .dashboard-view-tab-v616h.active{
+  background:#fff!important;border-color:#b8d5f5!important;box-shadow:0 3px 10px rgba(37,99,235,.08)!important
+}
+#page-dashboard.dashboard-ui-gl06 .dashboard-view-tab-v616h b{font-size:12px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-view-tab-v616h small{display:block!important;font-size:9.5px!important;line-height:1.25;margin-top:1px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-tab-icon-v616h{width:28px;height:28px;display:grid;place-items:center;border-radius:8px;background:#eef5ff;color:#2563eb}
+
+/* Filter block: hierarchy first, dates/actions second, consistent control geometry. */
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-filter-panel-v616h{
+  margin-top:8px!important;border:1px solid var(--dash-gl06-line)!important;border-radius:15px!important;background:#fbfcfe!important;box-shadow:none!important
+}
+#page-dashboard.dashboard-ui-gl06 .dashboard-filter-panel-v616h .panel-body{padding:12px 14px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-quick-range-v616h{margin:0 0 10px;padding-bottom:9px;border-bottom:1px solid #e7edf5;gap:6px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-quick-range-v616h>span{font-size:10.5px;font-weight:800;color:#52667b;margin-right:2px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-quick-range-v616h button{min-height:31px;padding:4px 10px;border-radius:9px;font-size:10.5px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-filter-grid-v616eq{gap:10px 12px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-filter-grid-v616eq .field label{margin-bottom:5px!important;font-size:10.8px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-filter-grid-v616eq .input,
+#page-dashboard.dashboard-ui-gl06 .dashboard-filter-grid-v616eq .select{height:40px!important;border-radius:10px!important;font-size:12px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-filter-actions-v616eq .btn{height:40px!important;min-width:108px!important;border-radius:10px}
+
+/* Overview heading and version status */
+#page-dashboard.dashboard-ui-gl06 .manager-operations-overview-v616eq{padding-top:10px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-section-heading-v616eq{align-items:center!important;margin-bottom:10px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-section-heading-v616eq .eyebrow{font-size:9.5px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-section-heading-v616eq h3{font-size:19px!important;margin:1px 0 2px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-section-heading-v616eq p{font-size:11px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-data-version-v616eq{padding:5px 9px!important;font-size:9.5px!important;background:#f8fafc!important}
+
+/* Executive KPIs: compact, scan-first cards. */
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpis-v616fd{margin:0 0 12px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-grid-v616fd{gap:9px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-v616fd{
+  min-height:124px!important;padding:11px 12px 10px!important;border-radius:14px!important;box-shadow:none!important
+}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-v616fd::before{left:12px;right:12px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-title-v616fd{font-size:10.8px!important;min-height:15px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-main-v616fd{min-height:49px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-value-v616fd strong{font-size:25px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-value-v616fd em{font-size:9.5px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-delta-v616fd{min-height:20px;padding:2px 7px;font-size:9.5px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-bottom-v616fd{gap:4px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-bottom-v616fd small{font-size:9.2px!important;line-height:1.32!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-executive-spark-v616fd{max-width:92px}
+
+/* Consistent panel hierarchy */
+#page-dashboard.dashboard-ui-gl06 .manager-workforce-grid-v616eq{gap:12px!important;grid-template-columns:minmax(0,1.6fr) minmax(300px,.8fr)!important}
+#page-dashboard.dashboard-ui-gl06 .manager-operations-overview-v616eq .panel-header{padding:13px 15px 10px!important;gap:12px}
+#page-dashboard.dashboard-ui-gl06 .manager-operations-overview-v616eq .panel-header h3{font-size:14px!important;margin-bottom:2px!important}
+#page-dashboard.dashboard-ui-gl06 .manager-operations-overview-v616eq .panel-header p{font-size:10.5px!important;line-height:1.4!important}
+#page-dashboard.dashboard-ui-gl06 .manager-operations-overview-v616eq .panel-body{padding:12px 15px 14px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-workforce-bars-v616eq{gap:14px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-workforce-row-v616eq{grid-template-columns:105px minmax(160px,1fr) minmax(220px,auto);gap:11px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-team-cards-v616eq{gap:8px}
+
+/* Attendance rate chart: make controls read as one compact toolbar. */
+#page-dashboard.dashboard-ui-gl06 .dashboard-rate-tools-v616er{display:flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+#page-dashboard.dashboard-ui-gl06 .dashboard-rate-tools-v616er label{padding:4px 7px;border:1px solid #dbe5ef;border-radius:9px;background:#f8fafc}
+#page-dashboard.dashboard-ui-gl06 .dashboard-rate-tools-v616er input{height:30px!important;width:58px!important;border-radius:7px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-rate-definition-v616er{margin:8px 0 0;padding:7px 9px;border-radius:9px;background:#f8fafc;border:1px dashed #d9e3ed;font-size:9.8px!important;line-height:1.45}
+
+/* Area / heatmap sections: clear section boundaries without heavy cards. */
+#page-dashboard.dashboard-ui-gl06 .dashboard-area-comparison-panel-v616fb,
+#page-dashboard.dashboard-ui-gl06 .dashboard-area-trend-panel-v616er,
+#page-dashboard.dashboard-ui-gl06 .dashboard-attendance-heatmap-panel-v616fg,
+#page-dashboard.dashboard-ui-gl06 .dashboard-org-comparison-panel-v616eq{border-color:#dce6ef!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-area-toggle-v616fg{min-height:34px;border-radius:9px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-heatmap-tools-v616fg{gap:6px;align-items:center}
+#page-dashboard.dashboard-ui-gl06 .dashboard-heatmap-tools-v616fg select{height:34px;border-radius:9px;padding:0 28px 0 9px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-heatmap-legend-v616fg{margin-top:9px;padding-top:8px;border-top:1px solid #edf1f6}
+
+/* Org comparison: toolbar groups are visually separated from the table. */
+#page-dashboard.dashboard-ui-gl06 .dashboard-comparison-help-v616et{margin:0 0 8px;padding:8px 10px;border-radius:10px;font-size:10px;line-height:1.42}
+#page-dashboard.dashboard-ui-gl06 .dashboard-org-manager-status-v616fb{font-size:9.8px;margin-bottom:8px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-org-group-controls-v616ex{padding:8px 9px;border:1px solid #e1e8f0;border-radius:11px;background:#f8fafc;gap:6px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-org-group-btn-v616ex,
+#page-dashboard.dashboard-ui-gl06 .dashboard-group-bulk-button-v616ez{min-height:31px;border-radius:8px;font-size:10.5px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-org-searchbar-v616fc{margin:9px 0 10px!important;gap:7px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-org-searchfield-v616fc{height:39px!important;border-radius:10px!important;box-shadow:none!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-org-comparison-table-v616eq thead th{font-size:10.5px;line-height:1.25}
+#page-dashboard.dashboard-ui-gl06 .dashboard-org-comparison-table-v616eq tbody td{font-size:10.8px}
+
+/* Decision center: group it as a distinct second layer after operational overview. */
+html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .manager-focus-dashboard-v616do{
+  margin-top:16px!important;padding:13px 14px 14px!important;border:1px solid #dce6ef;border-radius:16px;background:linear-gradient(180deg,#f9fbfd 0%,#f5f8fb 100%)
+}
+#page-dashboard.dashboard-ui-gl06 .manager-focus-head-v616do{margin-bottom:8px!important}
+#page-dashboard.dashboard-ui-gl06 .manager-focus-head-v616do h3{font-size:15px!important}
+#page-dashboard.dashboard-ui-gl06 .manager-action-strip-v616do{gap:7px!important}
+#page-dashboard.dashboard-ui-gl06 .manager-action-card-v616do{min-height:78px!important;padding:9px!important;border-radius:11px!important;box-shadow:none!important;background:#fff}
+#page-dashboard.dashboard-ui-gl06 .manager-kpi-grid-v616do{gap:7px!important}
+#page-dashboard.dashboard-ui-gl06 .manager-kpi-v616do{min-height:80px!important;padding:9px 10px!important;background:#fff}
+#page-dashboard.dashboard-ui-gl06 .manager-decision-grid-v616do{gap:8px!important}
+#page-dashboard.dashboard-ui-gl06 .manager-hours-panel-v616do{margin-top:9px!important}
+#page-dashboard.dashboard-ui-gl06 .manager-quick-nav-v616do{margin-top:9px!important;gap:7px!important}
+#page-dashboard.dashboard-ui-gl06 .manager-quick-nav-v616do button{min-height:62px;border-radius:11px;background:#fff}
+
+/* Daily / Trends: denser top, calmer cards, same data. */
+#page-dashboard.dashboard-ui-gl06 .dashboard-daily-heading-v616h{align-items:center!important;margin:10px 0 10px!important;padding:10px 12px;border:1px solid #e0e8f1;border-radius:13px;background:#f8fafc}
+#page-dashboard.dashboard-ui-gl06 .dashboard-daily-heading-v616h h3{font-size:17px!important;margin:1px 0 2px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-daily-heading-v616h p{font-size:10.5px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-daily-meta-v616h{gap:6px!important}
+#page-dashboard.dashboard-ui-gl06 .dashboard-daily-meta-v616h>span{padding:5px 8px;border-radius:8px;font-size:10px}
+#page-dashboard.dashboard-ui-gl06 .dashboard-daily-kpis-v616h{gap:9px!important;margin-bottom:12px}
+#page-dashboard.dashboard-ui-gl06 .trend-intelligence-v616fi{margin-top:12px!important}
+#page-dashboard.dashboard-ui-gl06 .trend-intro-v616fi{margin-bottom:10px;padding:0 2px}
+#page-dashboard.dashboard-ui-gl06 .trend-intro-v616fi h3{font-size:17px!important;margin:1px 0 2px}
+#page-dashboard.dashboard-ui-gl06 .trend-intro-v616fi p{font-size:10.5px!important}
+#page-dashboard.dashboard-ui-gl06 .trend-panels-v616fi{gap:10px!important}
+#page-dashboard.dashboard-ui-gl06 .trend-panel-v616fi{border-radius:14px!important;box-shadow:none!important}
+#page-dashboard.dashboard-ui-gl06 .trend-panel-v616fi .panel-header{padding:11px 13px 8px!important}
+#page-dashboard.dashboard-ui-gl06 .trend-panel-v616fi .panel-header h3{font-size:13px!important}
+#page-dashboard.dashboard-ui-gl06 .trend-panel-v616fi .panel-header p{font-size:9.8px!important;line-height:1.4!important}
+#page-dashboard.dashboard-ui-gl06 .trend-panel-v616fi .panel-body{padding:10px 13px 13px!important}
+#page-dashboard.dashboard-ui-gl06 .trend-policy-v616fi{margin-top:10px;padding:8px 10px;border-radius:10px;font-size:9.5px;line-height:1.45}
+#page-dashboard.dashboard-ui-gl06 .dashboard-daily-table-panel-v616h{border-radius:14px!important}
+
+/* Dark mode */
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .dashboard-welcome-v616dw,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .dashboard-welcome-v616dw,
+body.dark #page-dashboard.dashboard-ui-gl06 .dashboard-welcome-v616dw{
+  background:linear-gradient(100deg,rgba(25,39,59,.96),rgba(18,28,43,.98),rgba(52,38,28,.55))!important;border-color:#334155!important
+}
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw,
+body.dark #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw,
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .dashboard-filter-panel-v616h,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .dashboard-filter-panel-v616h,
+body.dark #page-dashboard.dashboard-ui-gl06 .dashboard-filter-panel-v616h,
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .manager-focus-dashboard-v616do,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .manager-focus-dashboard-v616do,
+body.dark #page-dashboard.dashboard-ui-gl06 .manager-focus-dashboard-v616do{
+  background:#151f2e!important;border-color:#334155!important
+}
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw>span,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw>span,
+body.dark #page-dashboard.dashboard-ui-gl06 .dashboard-contextbar-v616dw>span,
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .manager-action-card-v616do,
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .manager-kpi-v616do,
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .manager-quick-nav-v616do button,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .manager-action-card-v616do,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .manager-kpi-v616do,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .manager-quick-nav-v616do button{
+  background:#182436!important;border-color:#334155!important
+}
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .dashboard-view-tabs-v616h,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .dashboard-view-tabs-v616h,
+body.dark #page-dashboard.dashboard-ui-gl06 .dashboard-view-tabs-v616h,
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .dashboard-daily-heading-v616h,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .dashboard-daily-heading-v616h,
+body.dark #page-dashboard.dashboard-ui-gl06 .dashboard-daily-heading-v616h,
+html[data-theme="dark"] #page-dashboard.dashboard-ui-gl06 .dashboard-org-group-controls-v616ex,
+body.theme-dark #page-dashboard.dashboard-ui-gl06 .dashboard-org-group-controls-v616ex,
+body.dark #page-dashboard.dashboard-ui-gl06 .dashboard-org-group-controls-v616ex{
+  background:#172235!important;border-color:#334155!important
+}
+
+/* Responsive */
+@media(max-width:1380px){
+  #page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-grid-v616fd{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #page-dashboard.dashboard-ui-gl06 .manager-workforce-grid-v616eq{grid-template-columns:1fr!important}
+}
+@media(max-width:980px){
+  html[data-dashboard-focus-version] #page-dashboard.dashboard-ui-gl06 .dashboard-welcome-v616dw{align-items:flex-start!important;gap:10px;flex-direction:column}
+  #page-dashboard.dashboard-ui-gl06 .dashboard-welcome-actions-v616dw{width:100%;justify-content:flex-start;flex-wrap:wrap}
+  #page-dashboard.dashboard-ui-gl06 .dashboard-context-status-v616dw{margin-left:0!important}
+  #page-dashboard.dashboard-ui-gl06 .dashboard-view-tabs-v616h{width:100%!important}
+  #page-dashboard.dashboard-ui-gl06 .manager-focus-dashboard-v616do{padding:11px!important}
+}
+@media(max-width:720px){
+  #page-dashboard.dashboard-ui-gl06 .dashboard-executive-kpi-grid-v616fd{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #page-dashboard.dashboard-ui-gl06 .dashboard-view-tab-v616h small{display:none!important}
+  #page-dashboard.dashboard-ui-gl06 .dashboard-workforce-row-v616eq{grid-template-columns:1fr;gap:6px}
+  #page-dashboard.dashboard-ui-gl06 .dashboard-workforce-counts-v616eq{justify-content:flex-start}
+}
