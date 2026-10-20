@@ -6951,6 +6951,144 @@ window.tcIsDayShiftCode = value =>
       }
     }
 
+    // FIX16GL10 — Attendance Full Calendar Coverage Guard
+    // ta_get_schedule_range_light_v616n is optimized for the schedule grid and
+    // may legitimately omit dates that have no persisted/visible schedule row.
+    // Attendance Detail, however, must show EVERY employee-day in the selected
+    // range.  For employees whose light-grid coverage is incomplete, fill the
+    // missing dates from the canonical employee-month getter already used by
+    // Month Copy validation.  Existing rich grid rows always win; the canonical
+    // getter only supplies missing employee-day rows.
+    async function ensureAttendanceFullCalendarCoverageV616GL10(
+      requestEmployeeCodes,
+      calendarRows
+    ) {
+      const rows = Array.isArray(calendarRows) ? calendarRows.map(r=>({...r})) : [];
+      const client = state.client;
+      const startDate = String(val('attStart') || '').slice(0,10);
+      const endDate = String(val('attEnd') || '').slice(0,10);
+      if (!client || !startDate || !endDate) return rows;
+
+      const startObj = attendanceParseDate(startDate);
+      const endObj = attendanceParseDate(endDate);
+      if (!startObj || !endObj || endObj < startObj) return rows;
+      const expectedDays = Math.floor((endObj-startObj)/86400000)+1;
+
+      const optionMeta = new Map(
+        (attendanceEmployeeFilter.options || []).map(e=>[
+          String(e?.emp_code || '').trim(),
+          e || {}
+        ])
+      );
+      const rowMeta = new Map();
+      rows.forEach(r=>{
+        const emp=String(r?.emp_code||'').trim();
+        if(emp&&!rowMeta.has(emp)) rowMeta.set(emp,r);
+      });
+
+      const codes = [...new Set(
+        (Array.isArray(requestEmployeeCodes) && requestEmployeeCodes.length
+          ? requestEmployeeCodes
+          : [
+              ...rows.map(r=>r?.emp_code),
+              ...(attendanceEmployeeFilter.options || []).map(e=>e?.emp_code)
+            ]
+        ).map(x=>String(x||'').trim()).filter(Boolean)
+      )];
+      if(!codes.length) return rows;
+
+      const byEmpDates = new Map();
+      rows.forEach(r=>{
+        const emp=String(r?.emp_code||'').trim();
+        const d=String(r?.work_date||'').slice(0,10);
+        if(!emp||!d||d<startDate||d>endDate)return;
+        if(!byEmpDates.has(emp))byEmpDates.set(emp,new Set());
+        byEmpDates.get(emp).add(d);
+      });
+      const incomplete = codes.filter(emp=>(byEmpDates.get(emp)?.size||0)<expectedDays);
+      if(!incomplete.length){
+        state.attendanceCalendarCanonicalFilledV616GL10=0;
+        return rows;
+      }
+
+      const canonical=[];
+      // Moderate concurrency: each RPC returns only one employee x selected days.
+      for(let i=0;i<incomplete.length;i+=6){
+        const batch=incomplete.slice(i,i+6);
+        const settled=await Promise.all(batch.map(async emp=>{
+          const {data,error}=await client.rpc('ta_get_employee_month_schedule_v6128',{
+            p_emp_code:emp,
+            p_start_date:startDate,
+            p_end_date:endDate
+          });
+          if(error)throw error;
+          return {emp,rows:Array.isArray(data)?data:[]};
+        }).map(p=>p.catch(error=>({error}))));
+        for(const result of settled){
+          if(result?.error){
+            console.warn('Attendance canonical calendar FIX16GL10 fallback:',result.error);
+            continue;
+          }
+          canonical.push(...(result?.rows||[]));
+        }
+      }
+
+      if(!canonical.length){
+        state.attendanceCalendarCanonicalFilledV616GL10=0;
+        return rows;
+      }
+
+      const existing = new Set(rows.map(r=>
+        `${String(r?.emp_code||'').trim()}|${String(r?.work_date||'').slice(0,10)}`
+      ));
+      const missing=[];
+      canonical.forEach(raw=>{
+        const emp=String(raw?.emp_code||'').trim();
+        const d=String(raw?.work_date||'').slice(0,10);
+        if(!emp||!d||d<startDate||d>endDate)return;
+        const key=`${emp}|${d}`;
+        if(existing.has(key))return;
+        const seed=rowMeta.get(emp)||{};
+        const opt=optionMeta.get(emp)||{};
+        missing.push({
+          ...seed,
+          ...raw,
+          emp_code:emp,
+          work_date:d,
+          full_name:raw.full_name||seed.full_name||opt.full_name||opt.employee_name||'',
+          department:raw.department||seed.department||opt.department||opt.org_name||'',
+          zone:raw.zone||seed.zone||opt.zone||'',
+          area:raw.area||seed.area||opt.area||'',
+          sub_area:raw.sub_area||seed.sub_area||opt.sub_area||'',
+          pattern_code:raw.pattern_code||raw.resolved_pattern_code||seed.pattern_code||opt.pattern_code||'',
+          _attendance_canonical_fill_v616gl10:true
+        });
+        existing.add(key);
+      });
+
+      if(missing.length){
+        const period={
+          startDate,endDate,month:String(startDate).slice(0,7),
+          viewMode:'ATTENDANCE',personDisplayMode:'MONTH'
+        };
+        try{
+          await Promise.all([
+            enrichScheduleWorkPlanMetaV6118(period,missing),
+            window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(missing)
+          ]);
+        }catch(error){
+          console.warn('Attendance canonical calendar enrich FIX16GL10:',error);
+        }
+        missing.forEach(r=>rows.push(attendanceScheduleSkeletonRowV61462(r)));
+      }
+
+      state.attendanceCalendarCanonicalFilledV616GL10=missing.length;
+      return rows.sort((a,b)=>
+        String(b.work_date||'').localeCompare(String(a.work_date||'')) ||
+        String(a.emp_code||'').localeCompare(String(b.emp_code||''),'th',{numeric:true})
+      );
+    }
+
     function mergeAttendanceCalendarRowsV61462(calendarRows, attendanceRows) {
       const merged = new Map();
       (calendarRows || []).forEach((row,index) => {
@@ -7403,8 +7541,12 @@ window.tcIsDayShiftCode = value =>
           requestEmployeeCodes,
           persistedAttendanceRows
         );
+        const fullCalendarRowsV616GL10 = await ensureAttendanceFullCalendarCoverageV616GL10(
+          requestEmployeeCodes,
+          calendarRowsV61462
+        );
         const mergedAttendanceRowsV61462 = mergeAttendanceCalendarRowsV61462(
-          calendarRowsV61462,
+          fullCalendarRowsV616GL10,
           persistedAttendanceRows
         );
         state.attendanceFullCalendarLimitedV61462 =
@@ -7508,7 +7650,10 @@ window.tcIsDayShiftCode = value =>
 
                 reachedLimit:
                   Boolean(state.attendanceFullCalendarLimitedV61462)
-                  || state.attendance.length >= 5000
+                  || state.attendance.length >= 5000,
+
+                canonicalFilledDays:
+                  Number(state.attendanceCalendarCanonicalFilledV616GL10 || 0)
               }
             }
           )
