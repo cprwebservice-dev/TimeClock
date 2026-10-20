@@ -8901,6 +8901,10 @@ window.tcIsDayShiftCode = value =>
 
     function applyScheduleViewMode() {
       const mode = scheduleCurrentView();
+      const viewSwitchV16GL02 = $("scheduleViewSwitch");
+      const teamWorkspaceV16GL02 = $("scheduleTeamWorkspace");
+      if (viewSwitchV16GL02) viewSwitchV16GL02.dataset.activeView = mode;
+      if (teamWorkspaceV16GL02) teamWorkspaceV16GL02.dataset.activeView = mode;
       qsa('[data-schedule-view]').forEach(button => {
         button.classList.toggle(
           'active',
@@ -8920,16 +8924,16 @@ window.tcIsDayShiftCode = value =>
       const text = $("scheduleViewHintText");
       if (title) {
         title.textContent = mode === "TIME"
-          ? "สถิติการมาทำงานรายทีม"
+          ? "ภาพรวมเวลาทำงานตามทีม"
           : mode === "TEAM"
-            ? "สรุปข้อมูลรายทีมช่างเทคนิค"
+            ? "ภาพรวมกำลังคนตามทีม"
             : "ปฏิทินจัดกะรายบุคคล";
       }
       if (text) {
         text.textContent = mode === "TIME"
-          ? "ดูจำนวนพนักงานปกติ ขาดงาน มาสาย กลับก่อน และลารายทีม/รายวัน • คลิก Label เพื่อดูรายชื่อและเวลาเข้า–ออก"
+          ? "ติดตาม ปกติ • ขาด • สาย • กลับก่อน • หยุด • ลา รายวัน และคลิกวันที่เพื่อดูเวลาเข้า–ออกของแต่ละคน"
           : mode === "TEAM"
-            ? "ดูภาพรวมตาม Effective Team • แยกทีมรถยนต์/มอเตอร์ไซค์และกลุ่มยังไม่ได้กำหนดทีมตามวันที่"
+            ? "ดูจำนวนกะเช้า • กะดึก • หยุด • รายการปรับกะ ตาม Effective Team และคลิกวันที่เพื่อดูรายคน"
             : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงเฉพาะไอคอน • วางเมาส์บนไอคอนเพื่อดูรหัสกะ เวลา และรายละเอียด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
       }
 
@@ -8938,16 +8942,16 @@ window.tcIsDayShiftCode = value =>
       const teamLegendV6146 = $("scheduleTeamLegendV6146");
       const teamTipV6146 = $("scheduleTeamTipV6146");
       const teamAlertLabelV6146 = $("scheduleTeamAlertLabelV6146");
-      if (teamTitleV6146) teamTitleV6146.textContent = mode === "TIME" ? "สรุปเวลาทำงานรายทีมช่างเทคนิค" : "ตารางกะสรุปรายทีมช่างเทคนิค";
+      if (teamTitleV6146) teamTitleV6146.textContent = mode === "TIME" ? "ภาพรวมเวลาทำงานรายทีมช่างเทคนิค" : "ภาพรวมกะรายทีมช่างเทคนิค";
       if (teamSubtitleV6146) teamSubtitleV6146.textContent = mode === "TIME"
-        ? "สรุปสถานะการมาทำงานรายทีมในช่วงประมาณ 15 วันที่เลือก • คลิกแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
-        : "สรุปตาม Effective Team ในช่วงประมาณ 15 วันที่เลือก • รวมกลุ่มรถยนต์/มอเตอร์ไซค์/สนับสนุนที่ยังไม่มีทีม และรอ Manager กำหนดประเภท";
+        ? "ดูสถานะการมาทำงานในช่วงที่เลือก • คลิกการ์ดของแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
+        : "ดูการกระจายกะตาม Effective Team ในช่วงที่เลือก • คลิกการ์ดของแต่ละวันเพื่อดูรายชื่อและรายละเอียดกะ";
       if (teamLegendV6146) teamLegendV6146.innerHTML = mode === "TIME"
         ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-off-v61411">หยุด</span><span class="badge time-legend-leave-v6149">ลา</span>'
         : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
       if (teamTipV6146) teamTipV6146.textContent = mode === "TIME"
-        ? "มุมมองเวลาเหมาะสำหรับหัวหน้างานติดตามการมาทำงานรายวัน แล้วคลิกดูรายชื่อพนักงานที่ต้องติดตาม"
-        : "มุมมองทีมเหมาะสำหรับดูภาพรวมการครอบคลุมกำลังคน ก่อนเจาะลงไปดูรายบุคคล";
+        ? "โฟกัสความผิดปกติรายวันก่อน แล้วคลิกวันที่เพื่อดูพนักงานที่ต้องติดตาม"
+        : "ดูสมดุลกะของแต่ละทีมก่อน แล้วคลิกวันที่เพื่อดูรายชื่อพนักงาน";
       if (teamAlertLabelV6146) teamAlertLabelV6146.textContent = mode === "TIME" ? "รายการผิดปกติ" : "จุดที่ต้องตรวจสอบ";
 
       if (mode !== "PERSON") {
