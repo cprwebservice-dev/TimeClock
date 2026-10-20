@@ -8296,7 +8296,14 @@ window.tcIsDayShiftCode = value =>
                 enrichScheduleManagerMapV61124(scheduleRowsForEnrichmentV6125, period)
               ]);
               await enrichScheduleManagerNamesV61121(scheduleRowsForEnrichmentV6125);
-              const unresolvedManagerRowsV61124 = scheduleRowsForEnrichmentV6125.filter(row =>
+              let unresolvedManagerRowsV61124 = scheduleRowsForEnrichmentV6125.filter(row =>
+                !Array.isArray(row?._team_manager_names_v61123)
+                || row._team_manager_names_v61123.length === 0
+              );
+              if (unresolvedManagerRowsV61124.length) {
+                await enrichScheduleScopedOrgManagersV16GL03(unresolvedManagerRowsV61124, period);
+              }
+              unresolvedManagerRowsV61124 = scheduleRowsForEnrichmentV6125.filter(row =>
                 !Array.isArray(row?._team_manager_names_v61123)
                 || row._team_manager_names_v61123.length === 0
               );
@@ -9402,6 +9409,94 @@ window.tcIsDayShiftCode = value =>
         resolvedRows += 1;
       });
       return resolvedRows;
+    }
+
+    // FIX16GL03 — TEAM/TIME manager label fallback for Manager / Acting.
+    // The legacy org-detail fallback is intentionally HR-only, so a VIEWER with
+    // Acting Manager authority can see/edit the correct scoped schedule while
+    // the team card still shows `Manager -`. Reuse the scoped dashboard manager
+    // read RPC instead of opening unscoped Organization Master access.
+    const scheduleScopedOrgManagerStateV16GL03 = {
+      key:'', namesByOrgId:new Map(), loadedAt:0, error:null
+    };
+
+    async function enrichScheduleScopedOrgManagersV16GL03(rows = [], period = null) {
+      const list = Array.isArray(rows) ? rows : [];
+      if (!list.length || !state.client) return 0;
+
+      const resolvedPeriod = period || syncSchedulePeriodUI();
+      const startDate = String(resolvedPeriod?.startDate || todayISO()).slice(0,10);
+      const endDate = String(resolvedPeriod?.endDate || startDate).slice(0,10);
+      const key = `${startDate}|${endDate}`;
+      const cache = scheduleScopedOrgManagerStateV16GL03;
+
+      try {
+        await scheduleLoadOrgUnitsV61123(resolvedPeriod);
+        const orgCache = scheduleOrgManagerStateV61123;
+        if (!orgCache.units.length) return 0;
+
+        if (cache.key !== key || !cache.loadedAt) {
+          const { data, error } = await state.client.rpc(
+            'ta_get_dashboard_org_managers_v616fb',
+            { p_start_date:startDate, p_end_date:endDate }
+          );
+          if (error) throw error;
+
+          const items = Array.isArray(data?.org_managers)
+            ? data.org_managers
+            : (Array.isArray(data) ? data : []);
+          const namesByOrgId = new Map();
+          items.forEach(item => {
+            const orgId = String(item?.org_id || '').trim();
+            if (!orgId) return;
+            const names = [
+              ...(Array.isArray(item?.manager_names) ? item.manager_names : []),
+              item?.manager_name,
+              item?.manager_email
+            ].map(value => String(value || '').trim()).filter(Boolean);
+            if (!names.length) return;
+            namesByOrgId.set(orgId,[...new Set(names)]);
+          });
+          cache.key = key;
+          cache.namesByOrgId = namesByOrgId;
+          cache.loadedAt = Date.now();
+          cache.error = null;
+        }
+
+        let resolvedRows = 0;
+        list.forEach(row => {
+          if (Array.isArray(row?._team_manager_names_v61123) && row._team_manager_names_v61123.length) return;
+
+          const teamCtx = scheduleOperationalTeamGroupV61526(row);
+          const orgCode = String(
+            teamCtx?.orgCode
+            || row?._team_context_v61526?.team_org_code
+            || row?._team_context_v61526?.employee_org_code
+            || canonicalOrgCodeV616Q(row)
+            || row?.org_code
+            || ''
+          ).trim();
+          const orgName = String(scheduleUnitLabel(row) || '').trim();
+          const unit = orgCache.byCode.get(scheduleNormalizeOrgKeyV61123(orgCode))
+            || orgCache.byName.get(scheduleNormalizeOrgKeyV61123(orgName))
+            || null;
+          const orgId = String(unit?.org_id || '').trim();
+          const names = orgId ? (cache.namesByOrgId.get(orgId) || []) : [];
+          if (!names.length) return;
+
+          row._team_manager_names_v61123 = [...names];
+          row._team_manager_source_v61124 = 'SCOPED_ORG_MANAGER_V16GL03';
+          row._team_org_id_v61123 = orgId;
+          row._team_org_code_v61123 = String(unit?.org_code || orgCode || '').trim();
+          row._team_org_name_v616l = String(unit?.org_name || orgName || '').trim();
+          resolvedRows += 1;
+        });
+        return resolvedRows;
+      } catch (error) {
+        cache.error = error;
+        console.warn('Schedule scoped Manager label fallback FIX16GL03:', error);
+        return 0;
+      }
     }
 
     function scheduleTeamManagerLabelV61121(team) {
