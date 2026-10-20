@@ -39334,3 +39334,461 @@ body.theme-dark #page-dashboard .trend-org-row-v616fi.trend-org-audit-v616fy.is-
 .month-copy-diff-list-v616gk07>div{display:grid;grid-template-columns:minmax(85px,1fr) repeat(2,minmax(100px,1.2fr));gap:8px;padding:5px 7px;border-bottom:1px solid rgba(127,127,127,.18)}
 .month-copy-diff-ack-v616gk07{display:flex;align-items:flex-start;gap:8px;margin-top:10px;cursor:pointer;font-weight:600;line-height:1.5}
 .month-copy-diff-ack-v616gk07 input{margin-top:3px;flex-shrink:0}
+
+
+/* ==========================================================================
+   V6.15.29 FIX16GL01 — Work Pattern UI balance / compact bulk workflow
+   Frontend layout only. Business rules and RPC behavior are unchanged.
+   ========================================================================== */
+
+#page-work-patterns .work-pattern-hero-v16gl01{}
+
+#page-work-patterns .work-pattern-hero-v61111{
+  min-height:0!important;
+  padding:17px 22px!important;
+  border-radius:16px!important;
+  box-shadow:0 7px 22px rgba(37,77,115,.07)!important;
+}
+#page-work-patterns .work-pattern-hero-v61111 .eyebrow{
+  margin-bottom:4px;
+  font-size:10px!important;
+  letter-spacing:.11em!important;
+}
+#page-work-patterns .work-pattern-hero-v61111 h2{
+  margin:0!important;
+  font-size:21px!important;
+  line-height:1.25!important;
+}
+#page-work-patterns .work-pattern-hero-v61111 p{
+  max-width:920px!important;
+  margin:5px 0 0!important;
+  font-size:11.5px!important;
+  line-height:1.55!important;
+}
+#page-work-patterns .work-pattern-hero-tags-v61111{
+  gap:6px!important;
+  margin-top:9px!important;
+}
+#page-work-patterns .work-pattern-hero-tags-v61111 span{
+  padding:3px 8px!important;
+  font-size:10px!important;
+}
+#page-work-patterns .work-pattern-refresh-v61111{
+  min-height:40px;
+  padding:8px 14px;
+  white-space:nowrap;
+}
+
+#page-work-patterns .employee-pattern-bulk-panel-v61416{
+  overflow:visible;
+  border-radius:16px!important;
+}
+#page-work-patterns .employee-pattern-bulk-panel-v61416>.panel-header{
+  padding-top:13px!important;
+  padding-bottom:12px!important;
+}
+#page-work-patterns .work-pattern-panel-head-v61111 h3{
+  margin:2px 0 2px!important;
+  font-size:17px!important;
+}
+#page-work-patterns .work-pattern-panel-head-v61111 p{
+  margin:0!important;
+  max-width:920px;
+  font-size:10.8px!important;
+  line-height:1.45!important;
+}
+#page-work-patterns .work-pattern-panel-badge-v61111.bulk{
+  align-self:center;
+}
+
+/* KPI strip */
+#page-work-patterns .work-pattern-summary-v61416{
+  gap:9px!important;
+  margin-bottom:11px!important;
+}
+#page-work-patterns .work-pattern-summary-v61416 article{
+  min-height:76px!important;
+  padding:10px 13px!important;
+  border-radius:12px!important;
+}
+#page-work-patterns .work-pattern-summary-v61416 article::after{
+  right:-18px!important;
+  bottom:-22px!important;
+  width:54px!important;
+  height:54px!important;
+  opacity:.6;
+}
+#page-work-patterns .work-pattern-summary-v61416 span{
+  font-size:10.5px!important;
+  line-height:1.25;
+}
+#page-work-patterns .work-pattern-summary-v61416 strong{
+  margin-top:4px!important;
+  font-size:22px!important;
+  line-height:1.05!important;
+}
+
+/* Filter panel */
+#page-work-patterns .work-pattern-filter-panel-v16gl01{
+  display:block!important;
+  padding:0!important;
+  overflow:hidden;
+  border:1px solid #d7e3ee!important;
+  border-radius:14px!important;
+  background:#fbfdff!important;
+}
+#page-work-patterns .work-pattern-filter-head-v16gl01{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:10px 13px;
+  border-bottom:1px solid #e3ebf3;
+  background:linear-gradient(180deg,#fbfdff,#f7fbfe);
+}
+#page-work-patterns .work-pattern-filter-head-v16gl01>div:first-child{
+  min-width:0;
+}
+#page-work-patterns .work-pattern-filter-head-v16gl01 strong{
+  display:block;
+  color:#173a5e;
+  font-size:12px;
+  font-weight:900;
+}
+#page-work-patterns .work-pattern-filter-head-v16gl01 small{
+  display:block;
+  margin-top:2px;
+  color:#7a8d9f;
+  font-size:10.5px;
+  line-height:1.35;
+}
+#page-work-patterns .work-pattern-filter-result-v16gl01{
+  display:flex;
+  align-items:baseline;
+  gap:6px;
+  flex:0 0 auto;
+  padding:5px 9px;
+  border:1px solid #cfe0ef;
+  border-radius:999px;
+  background:#fff;
+  color:#52718c;
+  white-space:nowrap;
+}
+#page-work-patterns .work-pattern-filter-result-v16gl01 span{
+  font-size:10px;
+  font-weight:750;
+}
+#page-work-patterns .work-pattern-filter-result-v16gl01 strong{
+  color:#1f5f96;
+  font-size:11.5px;
+}
+#page-work-patterns .work-pattern-filter-primary-v16gl01{
+  display:grid;
+  grid-template-columns:minmax(260px,1.55fr) minmax(210px,1.15fr) minmax(170px,.88fr) minmax(175px,.86fr);
+  align-items:start;
+  gap:12px;
+  padding:12px 13px 8px;
+}
+#page-work-patterns .work-pattern-filter-secondary-v16gl01{
+  display:flex;
+  align-items:end;
+  gap:12px;
+  padding:3px 13px 12px;
+}
+#page-work-patterns .work-pattern-filter-secondary-fields-v16gl01{
+  display:grid;
+  grid-template-columns:minmax(175px,210px) minmax(160px,190px);
+  gap:12px;
+  min-width:0;
+}
+#page-work-patterns .work-pattern-filter-panel-v16gl01 .field{
+  min-width:0;
+  margin:0!important;
+}
+#page-work-patterns .work-pattern-filter-panel-v16gl01 .field label{
+  display:block;
+  margin-bottom:5px;
+  color:#536a7f;
+  font-size:10.5px;
+  font-weight:850;
+}
+#page-work-patterns .work-pattern-filter-panel-v16gl01 :is(.input,.select){
+  width:100%;
+  min-height:40px;
+  border-radius:10px;
+}
+#page-work-patterns .work-pattern-filter-panel-v16gl01 .wp-month-helper-v61419{
+  min-height:14px;
+  margin:4px 0 0!important;
+  font-size:9.8px!important;
+  line-height:1.25;
+}
+#page-work-patterns .work-pattern-filter-actions-v16gl01{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-left:auto;
+  padding-bottom:0;
+}
+#page-work-patterns .work-pattern-filter-actions-v16gl01 .btn{
+  min-height:40px;
+  padding:8px 14px;
+  border-radius:10px;
+  white-space:nowrap;
+}
+#page-work-patterns #employeePatternLoadBtn{
+  min-width:94px;
+}
+
+/* Selection + assignment workflow */
+#page-work-patterns .wp-bulk-bar-v61416{
+  top:8px!important;
+  margin-top:12px!important;
+  border-radius:15px!important;
+  box-shadow:0 8px 24px rgba(15,76,129,.08)!important;
+}
+#page-work-patterns .wp-bulk-head-v61416{
+  min-height:48px;
+  padding:8px 12px!important;
+}
+#page-work-patterns .wp-select-all-v61416{
+  font-size:11.5px;
+}
+#page-work-patterns .wp-bulk-selected-v61416{
+  gap:4px!important;
+  min-height:30px;
+  margin-left:auto;
+  padding:4px 9px!important;
+}
+#page-work-patterns .wp-bulk-selected-v61416 span{
+  font-size:10px!important;
+}
+#page-work-patterns .wp-bulk-selected-v61416 strong{
+  font-size:16px!important;
+}
+#page-work-patterns .wp-bulk-controls-v61416{
+  grid-template-columns:minmax(180px,.9fr) minmax(190px,.95fr) minmax(170px,.78fr) minmax(250px,1.2fr) minmax(150px,.62fr)!important;
+  gap:11px!important;
+  align-items:stretch!important;
+  padding:12px!important;
+  background:rgba(255,255,255,.66);
+}
+#page-work-patterns .wp-bulk-control-v61416{
+  align-content:start;
+  padding:1px 0;
+}
+#page-work-patterns .wp-bulk-label-v61416{
+  min-height:16px;
+  font-size:10.5px!important;
+}
+#page-work-patterns .wp-segment-v61416{
+  min-height:42px;
+  border-radius:11px!important;
+}
+#page-work-patterns .wp-segment-v61416 button{
+  min-height:36px!important;
+}
+#page-work-patterns .wp-bulk-control-v61416.date .input{
+  min-height:42px;
+  border-radius:10px;
+}
+#page-work-patterns .wp-bulk-control-v61416.date .wp-period-hint-v61417{
+  margin-top:4px!important;
+  font-size:9.7px!important;
+  line-height:1.25!important;
+}
+#page-work-patterns .wp-bulk-map-v61416{
+  min-height:66px!important;
+  align-content:center;
+  gap:2px!important;
+  padding:8px 11px!important;
+  border-radius:12px!important;
+}
+#page-work-patterns .wp-bulk-map-v61416 span{
+  color:#8b5b2d!important;
+  font-size:9.8px!important;
+  letter-spacing:.02em;
+  text-transform:none!important;
+}
+#page-work-patterns .wp-bulk-map-v61416 strong{
+  font-size:13px!important;
+}
+#page-work-patterns .wp-bulk-map-v61416 small{
+  font-size:10px;
+}
+#page-work-patterns .wp-bulk-apply-v61416{
+  align-self:stretch;
+  min-width:150px!important;
+  min-height:66px!important;
+  border-color:#2d74b6!important;
+  background:#2d74b6!important;
+  color:#fff!important;
+  box-shadow:0 7px 16px rgba(45,116,182,.18)!important;
+  font-weight:850;
+}
+#page-work-patterns .wp-bulk-apply-v61416:hover:not(:disabled){
+  background:#24669f!important;
+  border-color:#24669f!important;
+}
+#page-work-patterns .wp-bulk-apply-v61416:disabled{
+  border-color:#d4dee8!important;
+  background:#e8eef4!important;
+  color:#8a9bad!important;
+  box-shadow:none!important;
+  opacity:1!important;
+}
+#page-work-patterns .wp-month-info-v16gl01{
+  margin:0!important;
+  padding:8px 12px!important;
+  border-top:1px solid #dbeafe!important;
+  border-right:0!important;
+  border-bottom:0!important;
+  border-left:0!important;
+  border-radius:0!important;
+  background:#f5f9ff!important;
+  color:#597086!important;
+}
+#page-work-patterns .wp-month-info-v16gl01>span{
+  color:#2563eb!important;
+}
+#page-work-patterns .wp-month-info-v16gl01 strong{
+  color:#245f92!important;
+}
+#page-work-patterns .wp-month-info-v16gl01 p{
+  line-height:1.45!important;
+}
+
+/* Keep the table separated from the action panel, but reduce excess whitespace. */
+#page-work-patterns .employee-pattern-bulk-panel-v61416 .table-wrap.section-gap{
+  margin-top:12px!important;
+}
+
+/* Dark mode */
+html[data-theme="dark"] body #page-work-patterns .work-pattern-filter-panel-v16gl01,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-filter-panel-v16gl01{
+  border-color:#333c44!important;
+  background:#1b2024!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-filter-head-v16gl01,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-filter-head-v16gl01{
+  border-color:#333c44!important;
+  background:#1f2429!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-filter-head-v16gl01 strong,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-filter-head-v16gl01 strong{
+  color:#e8edf2!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-filter-head-v16gl01 small,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-filter-head-v16gl01 small{
+  color:#98a2ad!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-filter-result-v16gl01,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-filter-result-v16gl01{
+  border-color:#3b4c5c!important;
+  background:#171b1f!important;
+  color:#9eabb7!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-filter-result-v16gl01 strong,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-filter-result-v16gl01 strong{
+  color:#8bc5f6!important;
+}
+html[data-theme="dark"] body #page-work-patterns .work-pattern-filter-panel-v16gl01 .field label,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .work-pattern-filter-panel-v16gl01 .field label{
+  color:#b1bac3!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-bulk-controls-v61416,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-bulk-controls-v61416{
+  background:#181d21!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-month-info-v16gl01,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-month-info-v16gl01{
+  border-color:#32465a!important;
+  background:#182430!important;
+  color:#a8b8c7!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-month-info-v16gl01 strong,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-month-info-v16gl01 strong{
+  color:#9dccf5!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-bulk-apply-v61416,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-bulk-apply-v61416{
+  border-color:#3e83c3!important;
+  background:#2d6fa8!important;
+}
+html[data-theme="dark"] body #page-work-patterns .wp-bulk-apply-v61416:disabled,
+body:is(.theme-dark,.dark,.dark-mode) #page-work-patterns .wp-bulk-apply-v61416:disabled{
+  border-color:#31383f!important;
+  background:#262c31!important;
+  color:#6f7a84!important;
+}
+
+/* Responsive */
+@media(max-width:1280px){
+  #page-work-patterns .work-pattern-filter-primary-v16gl01{
+    grid-template-columns:minmax(240px,1.35fr) minmax(190px,1fr) minmax(160px,.85fr) minmax(170px,.8fr);
+  }
+  #page-work-patterns .wp-bulk-controls-v61416{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  #page-work-patterns .wp-bulk-control-v61416.date,
+  #page-work-patterns .wp-bulk-map-v61416{
+    min-width:0;
+  }
+  #page-work-patterns .wp-bulk-apply-v61416{
+    min-height:46px!important;
+  }
+}
+@media(max-width:980px){
+  #page-work-patterns .work-pattern-filter-primary-v16gl01{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  #page-work-patterns .work-pattern-filter-secondary-v16gl01{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  #page-work-patterns .work-pattern-filter-secondary-fields-v16gl01{
+    width:100%;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  #page-work-patterns .work-pattern-filter-actions-v16gl01{
+    width:100%;
+    justify-content:flex-end;
+  }
+}
+@media(max-width:680px){
+  #page-work-patterns .work-pattern-hero-v61111{
+    align-items:flex-start!important;
+    padding:14px 15px!important;
+  }
+  #page-work-patterns .work-pattern-refresh-v61111{
+    width:100%;
+    margin-top:10px;
+  }
+  #page-work-patterns .work-pattern-filter-head-v16gl01{
+    align-items:flex-start;
+  }
+  #page-work-patterns .work-pattern-filter-primary-v16gl01,
+  #page-work-patterns .work-pattern-filter-secondary-fields-v16gl01{
+    grid-template-columns:1fr;
+  }
+  #page-work-patterns .work-pattern-filter-actions-v16gl01{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+  #page-work-patterns .work-pattern-filter-actions-v16gl01 .btn{
+    width:100%;
+  }
+  #page-work-patterns .wp-bulk-head-v61416{
+    flex-wrap:wrap;
+  }
+  #page-work-patterns .wp-bulk-selected-v61416{
+    margin-left:0;
+  }
+  #page-work-patterns .wp-bulk-controls-v61416{
+    grid-template-columns:1fr!important;
+  }
+  #page-work-patterns .wp-bulk-apply-v61416{
+    min-height:46px!important;
+    width:100%;
+  }
+}

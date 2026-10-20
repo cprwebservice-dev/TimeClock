@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
-<link href="./app.css?v=6.15.29-fix16fy-org-risk-evidence-20261014" rel="stylesheet"/>
+<link href="./app.css?v=6.15.29-fix16gl01-work-pattern-ui-20261020" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1272,7 +1272,7 @@
 <div class="work-pattern-hero-copy-v61111">
 <span class="eyebrow">TECHNICIAN WORK MODEL • BULK SETUP</span>
 <h2>รูปแบบการทำงานช่างเทคนิค</h2>
-<p>กำหนดรูปแบบ 5/6 วัน กะตั้งต้น “เช้า / ดึก” และวันหยุดจาก Work Pattern ให้หลายคนพร้อมกัน • ทุกตำแหน่งใช้ค่าที่กำหนดจากหน้านี้ และวันเริ่มใช้ต้องสอดคล้องกับรอบระบบ</p>
+<p>กำหนดรูปแบบ 5/6 วัน กะตั้งต้น และเดือนเริ่มใช้ให้พนักงานหลายคนพร้อมกัน • ระบบอ้างอิง Work Pattern และรอบระบบเดิมอัตโนมัติ</p>
 <div class="work-pattern-hero-tags-v61111"><span>เลือกหลายคนพร้อมกัน</span><span>5 วัน / 6 วัน</span><span>☀ กะเช้า / ☾ กะดึก</span><span>Auto Shift + Paired Day-off</span></div>
 </div>
 <button type="button" class="btn btn-primary work-pattern-refresh-v61111" id="workPatternRefreshBtn">↻ รีเฟรชข้อมูล</button>
@@ -1294,29 +1294,42 @@
 <article class="day"><span>☀ กะตั้งต้นเช้า</span><strong id="wpSummaryDayV61416">0</strong></article>
 <article class="night"><span>☾ กะตั้งต้นดึก</span><strong id="wpSummaryNightV61416">0</strong></article>
 </div>
-<div class="work-pattern-filterbar-v61111 work-pattern-filterbar-v61416">
-<div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="employeePatternSearch" placeholder="รหัสพนักงาน หรือ ชื่อ-นามสกุล"/></div>
+<div class="work-pattern-filterbar-v61111 work-pattern-filterbar-v61416 work-pattern-filter-panel-v16gl01">
+<div class="work-pattern-filter-head-v16gl01">
+<div><strong>ค้นหาและกรองพนักงาน</strong><small>จำกัดขอบเขตให้ชัดก่อนเลือกพนักงานและกำหนดรูปแบบ</small></div>
+<div class="work-pattern-filter-result-v16gl01" aria-live="polite"><span>ผลลัพธ์</span><strong id="wpFilterResultCountV16GL01">0 คน</strong></div>
+</div>
+<div class="work-pattern-filter-primary-v16gl01">
+<div class="field work-pattern-search-field-v16gl01"><label>ค้นหาพนักงาน</label><input class="input" id="employeePatternSearch" placeholder="รหัสพนักงาน / ชื่อ / นามสกุล"/></div>
 <div class="field"><label>หน่วยงาน</label><select class="select" id="employeePatternDepartmentFilterV61416"><option value="ALL">ทุกหน่วยงาน</option></select></div>
 <div class="field"><label>ทีมช่างเทคนิค</label><select class="select" id="employeePatternTeamFilterV616T"><option value="ALL">ทุกทีม</option></select></div>
-<div class="field"><label>เดือนที่อ้างอิง</label><input class="input" id="employeePatternDate" type="month"/><small class="wp-month-helper-v61419">แสดงค่าที่มีผลตั้งแต่วันที่ 1 ของเดือน</small></div>
-<div class="field"><label>รูปแบบ</label><select class="select" id="employeePatternPatternFilterV61416"><option value="ALL">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option></select></div>
+<div class="field work-pattern-month-field-v16gl01"><label>เดือนที่มีผล</label><input class="input" id="employeePatternDate" type="month"/><small class="wp-month-helper-v61419">แสดงค่าที่มีผลในเดือนที่เลือก</small></div>
+</div>
+<div class="work-pattern-filter-secondary-v16gl01">
+<div class="work-pattern-filter-secondary-fields-v16gl01">
+<div class="field"><label>รูปแบบการทำงาน</label><select class="select" id="employeePatternPatternFilterV61416"><option value="ALL">ทั้งหมด</option><option value="TECH_5D">5 วัน/สัปดาห์</option><option value="TECH_6D">6 วัน/สัปดาห์</option></select></div>
 <div class="field"><label>กะตั้งต้น</label><select class="select" id="employeePatternShiftFilterV61416"><option value="ALL">ทั้งหมด</option><option value="DAY">กะเช้า</option><option value="NIGHT">กะดึก</option></select></div>
-<div class="toolbar-actions"><button type="button" class="btn btn-primary" id="employeePatternLoadBtn">⌕ ค้นหา</button></div>
+</div>
+<div class="toolbar-actions work-pattern-filter-actions-v16gl01">
+<button type="button" class="btn btn-light" id="employeePatternClearFiltersV16GL01">ล้างตัวกรอง</button>
+<button type="button" class="btn btn-primary" id="employeePatternLoadBtn">⌕ ค้นหา</button>
+</div>
+</div>
 </div>
 <div class="wp-bulk-bar-v61416" id="wpBulkBarV61416">
 <div class="wp-bulk-head-v61416">
 <label class="wp-select-all-v61416"><input type="checkbox" id="employeePatternSelectAllV61416"><span>เลือกทั้งหมดที่แสดง</span></label>
-<div class="wp-bulk-selected-v61416"><strong id="wpBulkSelectedCountV61416">0</strong><span>คนที่เลือก</span></div>
+<div class="wp-bulk-selected-v61416"><span>เลือกแล้ว</span><strong id="wpBulkSelectedCountV61416">0</strong><span>คน</span></div>
 <button type="button" class="btn btn-light btn-sm" id="wpBulkClearV61416">ล้างที่เลือก</button>
 </div>
 <div class="wp-bulk-controls-v61416">
 <div class="wp-bulk-control-v61416"><span class="wp-bulk-label-v61416">1. รูปแบบการทำงาน</span><div class="wp-segment-v61416"><button type="button" data-wp-bulk-pattern="TECH_5D">5 วัน</button><button type="button" class="active" data-wp-bulk-pattern="TECH_6D">6 วัน</button></div></div>
 <div class="wp-bulk-control-v61416"><span class="wp-bulk-label-v61416">2. กะตั้งต้น</span><div class="wp-segment-v61416 shift"><button type="button" class="active day" data-wp-bulk-shift="DAY">☀ กะเช้า</button><button type="button" class="night" data-wp-bulk-shift="NIGHT">☾ กะดึก</button></div></div>
 <div class="wp-bulk-control-v61416 date"><span class="wp-bulk-label-v61416">3. เริ่มใช้เดือน</span><input class="input" id="wpBulkEffectiveDateV61416" type="month"><small class="wp-period-hint-v61417">Monthly Baseline • มีผลตั้งแต่วันที่ 1 • อิงรอบแก้ไขกะ + รับรองเวลา</small></div>
-<div class="wp-bulk-map-v61416"><span>Auto Shift ที่จะใช้</span><strong id="wpBulkMappingV61416">S043 • 08:30–17:30</strong><small id="wpBulkDayoffMappingV61416">วันหยุดคู่: OS043</small></div>
-<button type="button" class="btn btn-orange wp-bulk-apply-v61416" id="wpBulkApplyBtnV61416" disabled>✓ ใช้กับ 0 คน</button>
+<div class="wp-bulk-map-v61416"><span>ตัวอย่างกะที่จะนำไปใช้</span><strong id="wpBulkMappingV61416">S043 • 08:30–17:30</strong><small id="wpBulkDayoffMappingV61416">วันหยุดคู่: OS043</small></div>
+<button type="button" class="btn btn-orange wp-bulk-apply-v61416" id="wpBulkApplyBtnV61416" disabled>นำไปใช้กับ 0 คน</button>
 </div>
-<div id="wpBulkPositionPolicyV61417" class="wp-position-policy-note-v61417 hidden"></div><div class="wp-bulk-note-v61416 wp-month-rule-v61419"><span>ⓘ</span><p><strong>Monthly Baseline:</strong> รูปแบบ 5/6 วันและกะตั้งต้นจากหน้านี้มีผลเต็มเดือน ไม่สามารถเริ่มกลางเดือนได้ • หากต้องเปลี่ยนกะเฉพาะบางวันให้จัดในปฏิทิน • วันเริ่มใช้ต้องไม่ย้อนเข้าเดือนที่ปิดรอบแก้ไขกะหรือรับรองเวลา</p></div>
+<div id="wpBulkPositionPolicyV61417" class="wp-position-policy-note-v61417 hidden"></div><div class="wp-bulk-note-v61416 wp-month-rule-v61419 wp-month-info-v16gl01"><span>ⓘ</span><p><strong>Monthly Baseline:</strong> เริ่มมีผลวันที่ 1 ของเดือน ระบบคงวันลา/วันหยุดตามกฎเดิม และไม่อนุญาตเดือนที่ปิดรอบ • หากเปลี่ยนเฉพาะบางวัน ให้จัดในปฏิทิน</p></div>
 </div>
 <div class="work-pattern-load-note-v61111 hidden" id="workPatternMetaWarningV61111"></div>
 <div class="table-wrap section-gap"><table class="employee-pattern-table-v6119 employee-pattern-table-v61416"><thead><tr><th class="select-col"><span class="sr-only">เลือก</span></th><th>พนักงาน</th><th>หน่วยงาน</th><th>ตำแหน่ง</th><th>รูปแบบ</th><th>กะตั้งต้น</th><th>วันหยุดตั้งต้น</th><th>เริ่มใช้</th><th>ผู้บันทึก</th><th>จัดการ</th></tr></thead><tbody id="employeePatternBody"></tbody></table></div>
@@ -3599,6 +3612,6 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
-<script src="./app.js?v=6.15.29-fix16gk05-client-20261019"></script>
+<script src="./app.js?v=6.15.29-fix16gl01-work-pattern-ui-20261020"></script>
 </body>
 </html>

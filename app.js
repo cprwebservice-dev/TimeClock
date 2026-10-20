@@ -24721,6 +24721,7 @@ ${skippedSummary(compatibility.skipped)}
     return {text:'ยังไม่กำหนด',cls:'none'};
   }
 
+/* FIX16GL01 — Work Pattern UI balance: layout-only + filter reset/result count; no business-rule changes. */
   const EMPLOYEE_DEFAULT_SHIFT_MAP_V61416={
     TECH_5D:{
       DAY:{code:'STD',time:'08:30–18:00',off:'OSTD'},
@@ -24870,7 +24871,7 @@ ${skippedSummary(compatibility.skipped)}
   function updateBulkWorkPatternControlsV61416(){
     const selected=wp.selectedEmployees.size;
     const count=$('wpBulkSelectedCountV61416');if(count)count.textContent=selected.toLocaleString('th-TH');
-    const btn=$('wpBulkApplyBtnV61416');if(btn){btn.disabled=selected===0;btn.textContent=`✓ ใช้กับ ${selected.toLocaleString('th-TH')} คน`;}
+    const btn=$('wpBulkApplyBtnV61416');if(btn){btn.disabled=selected===0;btn.textContent=`นำไปใช้กับ ${selected.toLocaleString('th-TH')} คน`;}
     qsa('[data-wp-bulk-pattern]').forEach(b=>b.classList.toggle('active',b.dataset.wpBulkPattern===wp.bulkPatternCode));
     qsa('[data-wp-bulk-shift]').forEach(b=>b.classList.toggle('active',b.dataset.wpBulkShift===wp.bulkShiftPeriod));
     const map=defaultShiftForPatternV61416(wp.bulkPatternCode,wp.bulkShiftPeriod);
@@ -24884,6 +24885,8 @@ ${skippedSummary(compatibility.skipped)}
   function renderEmployeePatternsV61416(){
     const body=$('employeePatternBody');if(!body)return;
     const rows=currentFilteredEmployeePatternsV61416();
+    const resultCountV16GL01=$('wpFilterResultCountV16GL01');
+    if(resultCountV16GL01)resultCountV16GL01.textContent=`${rows.length.toLocaleString('th-TH')} คน`;
     renderEmployeePatternSummaryV61416(rows);
     body.innerHTML=rows.length?rows.map(r=>{
       const assignmentState=assignmentStateLabelV61111(r.assignment_state);
@@ -25601,6 +25604,21 @@ ${names}${extra}
     });
     $('workPatternNewBtn')?.addEventListener('click',()=>openPattern(null));
     $('employeePatternLoadBtn')?.addEventListener('click',loadEmployeePatterns);
+    $('employeePatternClearFiltersV16GL01')?.addEventListener('click',()=>{
+      if($('employeePatternSearch'))$('employeePatternSearch').value='';
+      if($('employeePatternDepartmentFilterV61416'))$('employeePatternDepartmentFilterV61416').value='ALL';
+      if($('employeePatternTeamFilterV616T'))$('employeePatternTeamFilterV616T').value='ALL';
+      if($('employeePatternPatternFilterV61416'))$('employeePatternPatternFilterV61416').value='ALL';
+      if($('employeePatternShiftFilterV61416'))$('employeePatternShiftFilterV61416').value='ALL';
+      wp.selectedEmployees.clear();
+      renderEmployeePatternsV61416();
+      if(workPatternSelectionFirstV616EH()){
+        showWorkPatternSelectionNoticeV616EH(
+          'ล้างตัวกรองแล้ว • เลือกหน่วยงาน หรือค้นหาพนักงาน แล้วกด “ค้นหา” เพื่อโหลดข้อมูลใหม่',
+          'info'
+        );
+      }
+    });
     $('employeePatternSearch')?.addEventListener('keydown',e=>{if(e.key==='Enter')loadEmployeePatterns();});
     $('employeePatternDepartmentFilterV61416')?.addEventListener('change',()=>{
       wp.selectedEmployees.clear();
