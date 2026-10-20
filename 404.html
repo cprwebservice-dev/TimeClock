@@ -747,7 +747,7 @@
 </div>
 </div>
 <div class="panel section-gap attendance-table-panel-v61462">
-<div class="panel-header"><div><h3>ตารางรายละเอียดรายวัน</h3><p id="attendanceCount">0 รายการ</p></div></div>
+<div class="panel-header attendance-results-header-v616gl07"><div><h3>ตารางรายละเอียดเวลารายวัน</h3><p id="attendanceCount">0 รายการ</p></div><div class="attendance-results-actions-v616gl07"><span class="attendance-results-hint-v616gl07">เลื่อนแนวนอนเพื่อดูข้อมูลกะและเวลาจริง</span></div></div>
 <div class="attendance-column-controls">
 <strong>แสดงคอลัมน์เพิ่มเติม</strong>
 <label><input data-att-column-toggle="zone" type="checkbox"/> พื้นที่</label>
@@ -762,35 +762,35 @@
 <label><input data-att-column-toggle="comp_off_balance" type="checkbox"/> วันหยุดชดเชยคงเหลือ</label>
 <small>ค่าเริ่มต้นซ่อน และการเลือกมีผลต่อ Export Excel</small>
 </div>
-<div class="panel-body"><div class="table-wrap" style="max-height:68vh"><table><thead><tr>
+<div class="panel-body"><div class="table-wrap attendance-table-wrap-v616gl07" style="max-height:68vh"><table class="attendance-grid-table attendance-grid-table-v616gl07"><thead><tr>
 <th data-att-col="work_date">วันที่</th>
 <th data-att-col="emp_code">รหัส</th>
-<th data-att-col="full_name">ชื่อ-นามสกุล</th>
+<th data-att-col="full_name">พนักงาน</th>
 <th data-att-col="department">หน่วยงาน</th>
 <th class="attendance-col-hidden" data-att-col="zone">พื้นที่</th>
 <th class="attendance-col-hidden" data-att-col="sub_area">พื้นที่ย่อย</th>
-<th data-att-col="pattern_code">รูปแบบงาน</th>
+<th data-att-col="pattern_code">รูปแบบ</th>
 <th class="attendance-col-hidden" data-att-col="template_code">รูปแบบช่วงงาน</th>
-<th data-att-col="day_type">ประเภทวัน</th>
+<th data-att-col="day_type">ประเภท</th>
 <th data-att-col="shift_code">กะ</th>
-<th class="attendance-punch-head attendance-plan-head shift-1" data-att-col="shift_1_start"><span>กะที่ 1 • แผน</span><strong>เริ่มกะ</strong></th>
-<th class="attendance-punch-head attendance-plan-head shift-1" data-att-col="shift_1_end"><span>กะที่ 1 • แผน</span><strong>สิ้นสุดกะ</strong></th>
-<th class="attendance-punch-head shift-1" data-att-col="shift_1_in"><span>กะที่ 1 • ลงจริง</span><strong>เวลาเข้า</strong></th>
-<th class="attendance-punch-head shift-1" data-att-col="shift_1_out"><span>กะที่ 1 • ลงจริง</span><strong>เวลาออก</strong></th>
-<th class="attendance-punch-head attendance-plan-head shift-2" data-att-col="shift_2_start"><span>งานลูกค้าช่วงดึก • แผน</span><strong>เริ่ม</strong></th>
-<th class="attendance-punch-head attendance-plan-head shift-2" data-att-col="shift_2_end"><span>งานลูกค้าช่วงดึก • แผน</span><strong>สิ้นสุด</strong></th>
-<th class="attendance-punch-head shift-2" data-att-col="shift_2_in"><span>งานลูกค้าช่วงดึก • ลงจริง</span><strong>เวลาเข้า</strong></th>
-<th class="attendance-punch-head shift-2" data-att-col="shift_2_out"><span>งานลูกค้าช่วงดึก • ลงจริง</span><strong>เวลาออก</strong></th>
+<th class="attendance-punch-head attendance-plan-head shift-1" data-att-col="shift_1_start"><span>S1 • แผน</span><strong>เริ่ม</strong></th>
+<th class="attendance-punch-head attendance-plan-head shift-1" data-att-col="shift_1_end"><span>S1 • แผน</span><strong>สิ้นสุด</strong></th>
+<th class="attendance-punch-head shift-1" data-att-col="shift_1_in"><span>S1 • จริง</span><strong>เข้า</strong></th>
+<th class="attendance-punch-head shift-1" data-att-col="shift_1_out"><span>S1 • จริง</span><strong>ออก</strong></th>
+<th class="attendance-punch-head attendance-plan-head shift-2" data-att-col="shift_2_start"><span>S2 • แผน</span><strong>เริ่ม</strong></th>
+<th class="attendance-punch-head attendance-plan-head shift-2" data-att-col="shift_2_end"><span>S2 • แผน</span><strong>สิ้นสุด</strong></th>
+<th class="attendance-punch-head shift-2" data-att-col="shift_2_in"><span>S2 • จริง</span><strong>เข้า</strong></th>
+<th class="attendance-punch-head shift-2" data-att-col="shift_2_out"><span>S2 • จริง</span><strong>ออก</strong></th>
 <th data-att-col="display_status">สถานะ</th>
-<th data-att-col="net_work_minutes">ชม.สุทธิ</th>
-<th data-att-col="regular_minutes">ชม.ปกติ</th>
+<th data-att-col="net_work_minutes">สุทธิ</th>
+<th data-att-col="regular_minutes">ปกติ</th>
 <th class="attendance-col-hidden" data-att-col="overtime_minutes">OT</th>
-<th class="attendance-col-hidden" data-att-col="waiting_minutes">รอคอย</th>
+<th class="attendance-col-hidden" data-att-col="waiting_minutes">รอ</th>
 <th class="attendance-col-hidden" data-att-col="break_deducted_minutes">พัก</th>
-<th class="attendance-col-hidden" data-att-col="late_minutes">สาย(นาที)</th>
-<th class="attendance-col-hidden" data-att-col="early_leave_minutes">กลับก่อน(นาที)</th>
-<th class="attendance-col-hidden" data-att-col="absence_minutes">ขาดงาน(นาที)</th>
-<th class="attendance-col-hidden" data-att-col="comp_off_balance">วันหยุดชดเชยคงเหลือ</th>
+<th class="attendance-col-hidden" data-att-col="late_minutes">สาย</th>
+<th class="attendance-col-hidden" data-att-col="early_leave_minutes">กลับก่อน</th>
+<th class="attendance-col-hidden" data-att-col="absence_minutes">ขาด</th>
+<th class="attendance-col-hidden" data-att-col="comp_off_balance">ชดเชย</th>
 </tr></thead><tbody id="attendanceBody"></tbody></table></div></div>
 </div>
 </section>

@@ -41292,6 +41292,13 @@ ${names}${extra}
       const applyCols=v=>{c.classList.toggle("ux16dn-columns-open",v);x.textContent=v?"ซ่อนตัวเลือกคอลัมน์":"เลือกคอลัมน์";x.setAttribute("aria-expanded",String(v));set("attCols",v);};
       applyCols(get("attCols",false)); x.onclick=()=>applyCols(!c.classList.contains("ux16dn-columns-open"));
     }
+    const hero=qs("#page-attendance .attendance-hero-chips-v61462");
+    if(hero&&!hero.querySelector("#attendanceCompactHintV616GL07")){
+      const chip=document.createElement("span");
+      chip.id="attendanceCompactHintV616GL07";
+      chip.textContent="หัวตารางแบบย่อ • S1/S2 = กะที่ 1 / งานกะพิเศษ";
+      hero.appendChild(chip);
+    }
   }
 
   function schedule(){
