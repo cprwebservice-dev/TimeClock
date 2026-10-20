@@ -40851,3 +40851,62 @@ html[data-theme="dark"] #page-attendance .attendance-grid-table-v616gl07 tbody t
 @media (max-width:1280px){#page-attendance .attendance-filter-grid{grid-template-columns:repeat(8,minmax(0,1fr))}#page-attendance .attendance-filter-grid .attendance-filter-date,#page-attendance .attendance-filter-grid .attendance-filter-field:not(.attendance-filter-employee):not(.attendance-filter-status):not(.attendance-filter-department){grid-column:span 2}#page-attendance .attendance-filter-grid .attendance-filter-employee{grid-column:span 4}#page-attendance .attendance-filter-grid .attendance-filter-status,#page-attendance .attendance-filter-grid .attendance-filter-department,#page-attendance .attendance-filter-grid .attendance-filter-team-v616t,#page-attendance .attendance-filter-grid .attendance-filter-current-team-v616bb{grid-column:span 2}}
 @media (max-width:900px){#page-attendance .attendance-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#page-attendance .attendance-filter-grid .field,#page-attendance .attendance-filter-grid .attendance-filter-date,#page-attendance .attendance-filter-grid .attendance-filter-employee,#page-attendance .attendance-filter-grid .attendance-filter-status,#page-attendance .attendance-filter-grid .attendance-filter-team-v616t,#page-attendance .attendance-filter-grid .attendance-filter-current-team-v616bb,#page-attendance .attendance-filter-grid .attendance-filter-department{grid-column:span 1}#page-attendance .attendance-filter-actions{justify-content:stretch}#page-attendance .attendance-filter-actions .btn{flex:1}#page-attendance .attendance-results-header-v616gl07{flex-direction:column;align-items:flex-start}}
 @media (max-width:640px){#page-attendance .attendance-filter-grid{grid-template-columns:1fr}#page-attendance .attendance-filter-grid .field,#page-attendance .attendance-filter-grid .attendance-filter-date,#page-attendance .attendance-filter-grid .attendance-filter-employee,#page-attendance .attendance-filter-grid .attendance-filter-status,#page-attendance .attendance-filter-grid .attendance-filter-team-v616t,#page-attendance .attendance-filter-grid .attendance-filter-current-team-v616bb,#page-attendance .attendance-filter-grid .attendance-filter-department{grid-column:1/-1}#page-attendance .attendance-table-panel-v61462>.panel-body{padding:0 10px 10px}}
+
+
+/* ========================================================================== 
+   V6.15.29 FIX16GL08 • Attendance Status + Role-aware Column Profiles
+   ========================================================================== */
+#page-attendance .attendance-column-presets-v616gl08{display:flex;align-items:center;gap:5px;margin-left:auto;flex-wrap:wrap}
+#page-attendance .attendance-column-presets-v616gl08>span{font-size:10px;font-weight:900;color:var(--slate-500)}
+#page-attendance .attendance-column-presets-v616gl08 button{appearance:none;border:1px solid rgba(148,163,184,.22);background:#fff;color:var(--slate-600);padding:5px 8px;border-radius:999px;font-size:9.5px;font-weight:800;cursor:pointer;transition:.18s ease}
+#page-attendance .attendance-column-presets-v616gl08 button:hover{border-color:rgba(37,99,235,.42);background:#eff6ff;color:#1d4ed8}
+#page-attendance .attendance-grid-table-v616gl07{min-width:1620px}
+#page-attendance .attendance-grid-table-v616gl07 thead th{min-width:72px;padding:9px 6px}
+#page-attendance .attendance-grid-table-v616gl07 thead th[data-att-col="department"]{min-width:112px}
+#page-attendance .attendance-grid-table-v616gl07 thead th[data-att-col="pattern_code"]{min-width:72px}
+#page-attendance .attendance-grid-table-v616gl07 thead th[data-att-col="day_type"]{min-width:70px}
+#page-attendance .attendance-grid-table-v616gl07 thead th[data-att-col="shift_code"]{min-width:54px}
+#page-attendance .attendance-grid-table-v616gl07 thead th[data-att-col="display_status"]{min-width:84px}
+#page-attendance .attendance-grid-table-v616gl07 thead th[data-att-col="net_work_minutes"],
+#page-attendance .attendance-grid-table-v616gl07 thead th[data-att-col="regular_minutes"],
+#page-attendance .attendance-grid-table-v616gl07 thead th[data-att-col="overtime_minutes"]{min-width:62px}
+#page-attendance .attendance-grid-table-v616gl07 .attendance-punch-head{min-width:66px!important;width:66px!important}
+#page-attendance .attendance-status-badge-v616gl08{display:inline-flex;align-items:center;justify-content:center;min-width:52px;max-width:92px;padding:5px 8px;border-radius:999px;font-size:9.5px;font-weight:900;white-space:nowrap}
+#page-attendance .attendance-row-v61462.status-normal td{background-color:#fff}
+#page-attendance .attendance-row-v61462.status-absence td{background-color:rgba(254,242,242,.72)}
+#page-attendance .attendance-row-v61462.status-late td,
+#page-attendance .attendance-row-v61462.status-early_leave td,
+#page-attendance .attendance-row-v61462.status-late_and_early_leave td{background-color:rgba(255,251,235,.72)}
+#page-attendance .attendance-row-v61462.status-leave td{background-color:rgba(250,245,255,.72)}
+#page-attendance .attendance-row-v61462.status-day_off td{background-color:rgba(248,250,252,.92)}
+#page-attendance .attendance-row-v61462.status-upcoming td{background-color:rgba(239,246,255,.64)}
+#page-attendance .attendance-row-v61462.status-absence td:first-child{box-shadow:inset 4px 0 0 #ef4444}
+#page-attendance .attendance-row-v61462.status-late td:first-child,
+#page-attendance .attendance-row-v61462.status-early_leave td:first-child,
+#page-attendance .attendance-row-v61462.status-late_and_early_leave td:first-child{box-shadow:inset 4px 0 0 #f59e0b}
+#page-attendance .attendance-row-v61462.status-leave td:first-child{box-shadow:inset 4px 0 0 #8b5cf6}
+#page-attendance .attendance-row-v61462.status-day_off td:first-child{box-shadow:inset 4px 0 0 #94a3b8}
+#page-attendance .attendance-row-v61462.status-upcoming td:first-child{box-shadow:inset 4px 0 0 #3b82f6}
+#page-attendance .metric-alert-v616gl08:not(.attendance-col-hidden){font-weight:800;color:#b45309}
+#page-attendance .metric-danger-v616gl08:not(.attendance-col-hidden){font-weight:900;color:#dc2626}
+#page-attendance .attendance-mini-kpi:nth-child(2){border-left-color:#10b981}
+#page-attendance .attendance-mini-kpi:nth-child(3),#page-attendance .attendance-mini-kpi:nth-child(4){border-left-color:#ef4444}
+#page-attendance .attendance-mini-kpi:nth-child(5){border-left-color:#f59e0b}
+#page-attendance .attendance-mini-kpi:nth-child(6){border-left-color:#64748b}
+#page-attendance .attendance-mini-kpi:nth-child(7){border-left-color:#8b5cf6}
+#page-attendance .attendance-mini-kpi:nth-child(8){border-left-color:#06b6d4}
+html[data-theme="dark"] #page-attendance .attendance-column-presets-v616gl08 button,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-column-presets-v616gl08 button{background:rgba(30,41,59,.9);border-color:rgba(148,163,184,.18);color:#cbd5e1}
+html[data-theme="dark"] #page-attendance .attendance-row-v61462.status-absence td,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-row-v61462.status-absence td{background-color:rgba(127,29,29,.16)}
+html[data-theme="dark"] #page-attendance .attendance-row-v61462.status-late td,
+html[data-theme="dark"] #page-attendance .attendance-row-v61462.status-early_leave td,
+html[data-theme="dark"] #page-attendance .attendance-row-v61462.status-late_and_early_leave td,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-row-v61462.status-late td,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-row-v61462.status-early_leave td,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-row-v61462.status-late_and_early_leave td{background-color:rgba(120,53,15,.15)}
+html[data-theme="dark"] #page-attendance .attendance-row-v61462.status-leave td,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-row-v61462.status-leave td{background-color:rgba(88,28,135,.14)}
+html[data-theme="dark"] #page-attendance .attendance-row-v61462.status-day_off td,
+body:is(.dark,.theme-dark,.dark-mode) #page-attendance .attendance-row-v61462.status-day_off td{background-color:rgba(51,65,85,.38)}
+@media(max-width:900px){#page-attendance .attendance-column-presets-v616gl08{width:100%;margin-left:0}}

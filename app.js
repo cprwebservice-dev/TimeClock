@@ -7553,10 +7553,7 @@ window.tcIsDayShiftCode = value =>
           <td data-att-col="emp_code">${safe(r.emp_code)}</td>
           <td data-att-col="full_name" class="nowrap">${safe(r.full_name)}</td>
           <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${safe(canonicalOrgNameV616Q(r)||r.department||'-')}</strong><small class="attendance-history-team-v616bb" title="${safe(`ข้อมูล ณ วันที่ทำงาน ${formatDate(r.work_date)}`)}">${safe(attendanceOrgSublineV616V(r)||'')}</small>${(()=>{const h=attendanceHistoricalTeamLabelV616BA(r),c=attendanceCurrentTeamCompactLabelV616BB(r);return c&&c!==h?`<small class="attendance-current-team-secondary-v616bb" title="ข้อมูลประกอบ ไม่ใช้แทนประวัติ ณ วันที่ทำงาน">ปัจจุบัน: ${safe(c)}</small>`:'';})()}</div></td>
-          <td data-att-col="zone" class="${optionalClass("zone").trim()}">${safe(r.zone || r.area)}</td>
-          <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${safe(r.sub_area)}</td>
           <td data-att-col="pattern_code">${badge(r.pattern_code||"-","badge-blue")}</td>
-          <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${safe(workTemplateLabelV6118(r.template_code))}</td>
           <td data-att-col="day_type">${safe(attendanceLabel(r.day_type||"-"))}</td>
           <td data-att-col="shift_code">${badge(code, shiftBadgeClass(code))}</td>
           <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_start">${attendancePlannedCellV61110(r.shift_1_planned_start_at,1,"START",r)}</td>
@@ -7571,11 +7568,14 @@ window.tcIsDayShiftCode = value =>
           <td data-att-col="net_work_minutes" class="text-right">${attendanceMinutesToHourMinuteV61457(r.net_work_minutes)}</td>
           <td data-att-col="regular_minutes" class="text-right">${attendanceMinutesToHourMinuteV61457(r.regular_minutes)}</td>
           <td data-att-col="overtime_minutes" class="text-right${optionalClass("overtime_minutes")}">${attendanceMinutesToHourMinuteV61457(r.overtime_minutes)}</td>
-          <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${attendanceMinutesToHourMinuteV61457(r.waiting_minutes)}</td>
-          <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${minutesToHours(r.break_deducted_minutes)}</td>
           <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${formatNumber(attendanceLateMinutesForDisplayV61456(r))}</td>
           <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${formatNumber(r.early_leave_minutes)}</td>
           <td data-att-col="absence_minutes" class="text-right${optionalClass("absence_minutes")}">${formatNumber(attendanceAbsenceMinutes(r))}</td>
+          <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${attendanceMinutesToHourMinuteV61457(r.waiting_minutes)}</td>
+          <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${minutesToHours(r.break_deducted_minutes)}</td>
+          <td data-att-col="zone" class="${optionalClass("zone").trim()}">${safe(r.zone || r.area)}</td>
+          <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${safe(r.sub_area)}</td>
+          <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${safe(workTemplateLabelV6118(r.template_code))}</td>
           <td data-att-col="comp_off_balance" class="text-right${optionalClass("comp_off_balance")}">${r.comp_off_earned?"ได้รับ":""}${r.comp_off_balance!=null?` ${formatNumber(r.comp_off_balance)}`:"-"}</td>
         </tr>`;
       }).join("") : emptyRow(28);
@@ -20566,6 +20566,60 @@ ${skippedSummary(compatibility.skipped)}
     "comp_off_balance"
   ];
 
+  const ATTENDANCE_COLUMN_PREF_KEY_V616GL08 = "timeclock.fix16gl08.attColumns.";
+  function attendanceRoleClassV616GL08(){
+    const raw=String(app()?.state?.profile?.role||$("roleBadge")?.textContent||"VIEWER").toUpperCase();
+    if(raw.includes("HR_ADMIN"))return "HR_ADMIN";
+    if(raw.includes("MANAGER")||raw.includes("ACTING"))return "MANAGER";
+    return "VIEWER";
+  }
+  function attendanceDefaultColumnsV616GL08(role=attendanceRoleClassV616GL08()){
+    const common=["overtime_minutes","late_minutes","early_leave_minutes","absence_minutes"];
+    return role==="HR_ADMIN"?["zone",...common]:common;
+  }
+  function attendanceReadColumnPrefsV616GL08(){
+    const role=attendanceRoleClassV616GL08();
+    try{
+      const raw=localStorage.getItem(ATTENDANCE_COLUMN_PREF_KEY_V616GL08+role);
+      if(raw){
+        const parsed=JSON.parse(raw);
+        if(Array.isArray(parsed))return new Set(parsed.filter(k=>ATTENDANCE_OPTIONAL_KEYS.includes(k)));
+      }
+    }catch(_){ }
+    return new Set(attendanceDefaultColumnsV616GL08(role));
+  }
+  function attendanceWriteColumnPrefsV616GL08(){
+    const role=attendanceRoleClassV616GL08();
+    const values=qsa("[data-att-column-toggle]",$("page-attendance"))
+      .filter(toggle=>toggle.checked)
+      .map(toggle=>toggle.dataset.attColumnToggle)
+      .filter(Boolean);
+    try{localStorage.setItem(ATTENDANCE_COLUMN_PREF_KEY_V616GL08+role,JSON.stringify(values));}catch(_){ }
+  }
+  function attendanceApplyColumnPresetV616GL08(mode){
+    const page=$("page-attendance"); if(!page)return;
+    let visible;
+    if(mode==="ALL")visible=new Set(ATTENDANCE_OPTIONAL_KEYS);
+    else if(mode==="NONE")visible=new Set();
+    else if(mode==="AUDIT")visible=new Set(["zone","sub_area","overtime_minutes","waiting_minutes","late_minutes","early_leave_minutes","absence_minutes","comp_off_balance"]);
+    else visible=new Set(attendanceDefaultColumnsV616GL08());
+    qsa("[data-att-column-toggle]",page).forEach(toggle=>{
+      toggle.checked=visible.has(toggle.dataset.attColumnToggle);
+    });
+    attendanceWriteColumnPrefsV616GL08();
+    applyAttendanceColumnVisibility();
+    renderAttendanceEnterprise();
+  }
+  function attendanceCompactStatusV616GL08(r){
+    const status=String(attendanceStatus(r)||"").toUpperCase();
+    const map={
+      NORMAL:"ปกติ", COMPLETE:"ปกติ", ABSENCE:"ขาด", LEAVE:"ลา",
+      DAY_OFF:"หยุด", LATE:"สาย", EARLY_LEAVE:"กลับก่อน",
+      LATE_AND_EARLY_LEAVE:"สาย+กลับก่อน", UPCOMING:"ยังไม่ถึงวัน"
+    };
+    return map[status]||attendanceStatusText(r)||statusLabel(status)||"-";
+  }
+
   function applyAttendanceColumnVisibility(){
     ATTENDANCE_OPTIONAL_KEYS.forEach(key => {
       const visible =
@@ -20651,22 +20705,15 @@ ${skippedSummary(compatibility.skipped)}
     const table=qs("table",tablePanel); table?.classList.add("attendance-grid-table");
     const keys=[
       "work_date","emp_code","full_name","department",
-      "zone","sub_area","pattern_code","template_code",
-      "day_type","shift_code",
-      "shift_1_planned_start_at",
-      "shift_1_planned_end_at",
-      "shift_1_actual_in_at",
-      "shift_1_actual_out_at",
-      "shift_2_planned_start_at",
-      "shift_2_planned_end_at",
-      "shift_2_actual_in_at",
-      "shift_2_actual_out_at",
-      "display_status",
-      "net_work_minutes","regular_minutes",
-      "overtime_minutes","waiting_minutes",
-      "break_deducted_minutes","late_minutes",
-      "early_leave_minutes","absence_minutes",
-      "comp_off_balance"
+      "pattern_code","day_type","shift_code",
+      "shift_1_planned_start_at","shift_1_planned_end_at",
+      "shift_1_actual_in_at","shift_1_actual_out_at",
+      "shift_2_planned_start_at","shift_2_planned_end_at",
+      "shift_2_actual_in_at","shift_2_actual_out_at",
+      "display_status","net_work_minutes","regular_minutes",
+      "overtime_minutes","late_minutes","early_leave_minutes","absence_minutes",
+      "waiting_minutes","break_deducted_minutes",
+      "zone","sub_area","template_code","comp_off_balance"
     ];
     qsa("thead th",table).forEach((th,i)=>{th.dataset.sortKey=keys[i]; if(i===0)th.classList.add("sticky-att-1"); if(i===1)th.classList.add("sticky-att-2");});
     qs(".panel-body",tablePanel)?.insertAdjacentHTML("beforeend",`<div class="attendance-pagination"><button id="attPrevPage" class="btn btn-light">‹ ก่อนหน้า</button><span id="attPageInfo" class="page-info">หน้า 1 / 1</span><button id="attNextPage" class="btn btn-light">ถัดไป ›</button></div>`);
@@ -20735,12 +20782,24 @@ ${skippedSummary(compatibility.skipped)}
     $("attNextPage")?.addEventListener("click",()=>{const max=Math.ceil(attGrid.rows.length/attGrid.pageSize)||1;if(attGrid.page<max){attGrid.page++;renderAttendanceEnterprise();}});
     $("attendanceExcelBtn")?.addEventListener("click",()=>exportAttendanceEnterprise("excel"));
     $("attendancePrintBtn")?.addEventListener("click",()=>exportAttendanceEnterprise("print"));
+    const savedColumnsV616GL08=attendanceReadColumnPrefsV616GL08();
     qsa("[data-att-column-toggle]",page).forEach(toggle => {
-      toggle.checked = false;
+      toggle.checked=savedColumnsV616GL08.has(toggle.dataset.attColumnToggle);
       toggle.addEventListener("change",() => {
+        attendanceWriteColumnPrefsV616GL08();
         applyAttendanceColumnVisibility();
+        renderAttendanceEnterprise();
       });
     });
+    const columnControlsV616GL08=qs(".attendance-column-controls",page);
+    if(columnControlsV616GL08&&!$("attendanceColumnPresetsV616GL08")){
+      const presets=document.createElement("div");
+      presets.id="attendanceColumnPresetsV616GL08";
+      presets.className="attendance-column-presets-v616gl08";
+      presets.innerHTML=`<span>มุมมอง:</span><button type="button" data-att-preset="DEFAULT">หลัก</button><button type="button" data-att-preset="AUDIT">ตรวจสอบ</button><button type="button" data-att-preset="ALL">ทั้งหมด</button><button type="button" data-att-preset="NONE">กระชับ</button>`;
+      columnControlsV616GL08.appendChild(presets);
+      qsa("[data-att-preset]",presets).forEach(button=>button.addEventListener("click",()=>attendanceApplyColumnPresetV616GL08(button.dataset.attPreset)));
+    }
     applyAttendanceColumnVisibility();
     $("attendanceDetailClose")?.addEventListener(
       "click",
@@ -20876,10 +20935,7 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="emp_code" class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td>
             <td data-att-col="full_name" class="nowrap">${esc(r.full_name)}</td>
             <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${esc(app()?.canonicalOrgNameV616Q?.(r)||r.department||"-")}</strong><small>${esc(app()?.attendanceOrgSublineV616V?.(r)||"")}</small></div></td>
-            <td data-att-col="zone" class="${optionalClass("zone").trim()}">${esc(r.zone||r.area||"-")}</td>
-            <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${esc(r.sub_area||"-")}</td>
             <td data-att-col="pattern_code"><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td>
-            <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${esc(app()?.workTemplateLabelV6118?.(r.template_code)||r.template_code||"-")}</td>
             <td data-att-col="day_type">${esc(statusLabel(r.day_type||"-"))}</td>
             <td data-att-col="shift_code"><span class="badge badge-blue">${esc(codeOf(r)||"-")}</span></td>
             <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_start">${app()?.attendancePlannedCellV61110?.(r.shift_1_planned_start_at,1,"START",r)||"-"}</td>
@@ -20890,15 +20946,18 @@ ${skippedSummary(compatibility.skipped)}
             <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_end">${app()?.attendancePlannedCellV61110?.(r.shift_2_planned_end_at,2,"END",r)||"-"}</td>
             <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_in">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_in_at,2,"IN")||"-"}</td>
             <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_out">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_out_at,2,"OUT")||"-"}</td>
-            <td data-att-col="display_status"><span class="fc-badge ${badgeClass}">${esc(attendanceStatusText(r))}</span></td>
+            <td data-att-col="display_status"><span class="fc-badge ${badgeClass} attendance-status-badge-v616gl08" title="${esc(attendanceStatusText(r))}">${esc(attendanceCompactStatusV616GL08(r))}</span></td>
             <td data-att-col="net_work_minutes" class="text-right">${app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0) ?? "0.00"}</td>
             <td data-att-col="regular_minutes" class="text-right">${app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0) ?? "0.00"}</td>
             <td data-att-col="overtime_minutes" class="text-right calc-ot${optionalClass("overtime_minutes")}">${app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0) ?? "0.00"}</td>
+            <td data-att-col="late_minutes" class="text-right metric-alert-v616gl08${optionalClass("late_minutes")}">${num(app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0))}</td>
+            <td data-att-col="early_leave_minutes" class="text-right metric-alert-v616gl08${optionalClass("early_leave_minutes")}">${num(r.early_leave_minutes)}</td>
+            <td data-att-col="absence_minutes" class="text-right absence-value metric-danger-v616gl08${optionalClass("absence_minutes")}">${num(attendanceAbsence(r))}</td>
             <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0) ?? "0.00"}</td>
             <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${(Number(r.break_deducted_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
-            <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${num(app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0))}</td>
-            <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${num(r.early_leave_minutes)}</td>
-            <td data-att-col="absence_minutes" class="text-right absence-value${optionalClass("absence_minutes")}">${num(attendanceAbsence(r))}</td>
+            <td data-att-col="zone" class="${optionalClass("zone").trim()}">${esc(r.zone||r.area||"-")}</td>
+            <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${esc(r.sub_area||"-")}</td>
+            <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${esc(app()?.workTemplateLabelV6118?.(r.template_code)||r.template_code||"-")}</td>
             <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${esc(comp)}</td>
           </tr>`;
         }).join("")
