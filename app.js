@@ -31911,7 +31911,11 @@ ${names}${extra}
       .dark-mode .ttm-step,.theme-dark .ttm-step{background:#0c1724;border-color:#26374a}
       .ttm-step b{display:grid;place-items:center;width:28px;height:28px;border-radius:999px;margin:0 auto 7px;background:#e2e8f0;color:#64748b;font-size:12px}
       .ttm-step strong{display:block;font-size:11px;color:#334155}
+      .ttm-step small{display:block;margin-top:3px;font-size:9px;line-height:1.25;color:#94a3b8}
       .dark-mode .ttm-step strong,.theme-dark .ttm-step strong{color:#cbd5e1}
+      .dark-mode .ttm-step small,.theme-dark .ttm-step small{color:#64748b}
+      .ttm-step.skipped{opacity:.72;background:rgba(248,250,252,.42)}
+      .ttm-step.skipped b{background:#e2e8f0;color:#94a3b8}
       .ttm-step.done{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.065)}
       .ttm-step.done b{background:#22c55e;color:#fff}
       .ttm-step.active{border-color:rgba(245,158,11,.36);background:rgba(245,158,11,.075)}
@@ -32109,15 +32113,28 @@ ${names}${extra}
     const q = String(batch.queue_status || "").toUpperCase();
     const importReady = String(batch.import_status || "").toUpperCase() === "SHADOW_READY";
     const resolved = String(batch.gm04t_status || "").toUpperCase() === "SHADOW_READY";
+    const hasAutomationQueue = Boolean(batch.queue_status);
+    const historical = !batch.is_pilot_target && !hasAutomationQueue;
     const applied = Boolean(batch.last_apply_lane) || ["WAITING_ATTENDANCE","COMPLETED"].includes(q);
     const attendancePending = Number(data?.attendance?.pending || 0) > 0;
     const completed = q === "COMPLETED";
     const failed = q === "FAILED" || Boolean(batch.last_error);
+    if (historical) {
+      return [
+        {label:"Received", done:true},
+        {label:"Imported", done:importReady, active:!importReady},
+        {label:"Queued", skipped:true, note:"ไม่ได้เข้า Automation"},
+        {label:"Resolved", done:resolved, active:importReady && !resolved},
+        {label:"Applied", skipped:true, note:"ไม่ได้ผ่าน Automation"},
+        {label:"Attendance", skipped:true, note:"ไม่มี Auto Apply"},
+        {label:"Completed", skipped:true, note:"Historical batch"}
+      ];
+    }
     return [
       {label:"Received", done:true},
       {label:"Imported", done:importReady, active:!importReady},
-      {label:"Queued", done:Boolean(batch.queue_status), active:importReady && !batch.queue_status},
-      {label:"Resolved", done:resolved, active:Boolean(batch.queue_status) && !resolved},
+      {label:"Queued", done:hasAutomationQueue, active:importReady && !hasAutomationQueue},
+      {label:"Resolved", done:resolved, active:hasAutomationQueue && !resolved},
       {label:"Applied", done:applied, active:resolved && !applied},
       {label:"Attendance", done:applied && !attendancePending, active:applied && attendancePending},
       {label:"Completed", done:completed, active:applied && !completed && !failed, error:failed}
@@ -32136,14 +32153,20 @@ ${names}${extra}
     }
     const steps = pipelineSteps(batch,data);
     root.innerHTML = steps.map((s,i) => `
-      <div class="ttm-step ${s.error ? "error" : s.done ? "done" : s.active ? "active" : ""}">
-        <b>${s.error ? "!" : s.done ? "✓" : i+1}</b>
+      <div class="ttm-step ${s.error ? "error" : s.done ? "done" : s.active ? "active" : s.skipped ? "skipped" : ""}">
+        <b>${s.error ? "!" : s.done ? "✓" : s.skipped ? "–" : i+1}</b>
         <strong>${esc(s.label)}</strong>
+        ${s.note ? `<small>${esc(s.note)}</small>` : ""}
       </div>`).join("");
     if ($("ttmPipelineCaption")) {
       $("ttmPipelineCaption").textContent = `${batch.file_name || "TextTime"} • Batch ${shortId(batch.batch_id)}${batch.is_pilot_target ? " • PILOT TARGET" : ""}`;
     }
-    if ($("ttmPipelineBadge")) $("ttmPipelineBadge").innerHTML = pill(batch.pipeline_stage,batch.pipeline_stage);
+    if ($("ttmPipelineBadge")) {
+      const historical = !batch.is_pilot_target && !batch.queue_status;
+      $("ttmPipelineBadge").innerHTML = historical
+        ? pill("neutral",`HISTORICAL • ${batch.pipeline_stage || "-"}`)
+        : pill(batch.pipeline_stage,batch.pipeline_stage);
+    }
   }
 
   function renderSystem(data) {
@@ -32182,12 +32205,13 @@ ${names}${extra}
     batches.filter(x => x.last_error).slice(0,5).forEach(x => {
       alerts.push({type:"error",text:`${x.file_name || shortId(x.batch_id)} • ${x.last_error}`});
     });
-    if (!alerts.length) alerts.push({type:"ok",text:"ไม่พบ Error หรือ Blocked queue ในขณะนี้"});
+    const issueCount = alerts.length;
+    if (!issueCount) alerts.push({type:"ok",text:"ไม่พบ Error หรือ Blocked queue ในขณะนี้"});
 
     if ($("ttmAlerts")) $("ttmAlerts").innerHTML = alerts.map(x => `<div class="ttm-alert ${x.type === "warn" ? "" : x.type}">${esc(x.text)}</div>`).join("");
     if ($("ttmAlertCount")) $("ttmAlertCount").innerHTML = pill(
       alerts.some(x=>x.type==="error") ? "FAIL" : alerts.some(x=>x.type==="warn") ? "PILOT" : "HEALTHY",
-      `${alerts.length} รายการ`
+      `${issueCount} รายการ`
     );
   }
 
