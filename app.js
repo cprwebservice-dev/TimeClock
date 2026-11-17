@@ -31765,14 +31765,14 @@ ${names}${extra}
 
 ;
 
-/* ===== js/texttime-monitor-v616gm06e.js ===== */
+/* ===== js/texttime-monitor-v616gm06e-r2-live-operations.js ===== */
 (() => {
   "use strict";
 
   const PAGE = "admin-texttime-monitor";
   const RPC_MONITOR = "ta_get_texttime_monitor_v616gm06e";
   const RPC_PAUSE = "ta_pause_texttime_automation_v616gm06e";
-  const REFRESH_MS = 60000;
+  const REFRESH_MS = 30000;
 
   const $ = id => document.getElementById(id);
   const app = () => window.TimeClockApp;
@@ -31892,14 +31892,14 @@ ${names}${extra}
       .ttm-hero-actions .btn{white-space:nowrap}
       .ttm-status-strip{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
       .ttm-last-refresh{font-size:12px;color:#64748b;margin-left:auto}
-      .ttm-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:16px}
+      .ttm-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:16px}
       .ttm-kpi{background:var(--surface,#fff);border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:16px;box-shadow:0 7px 20px rgba(15,23,42,.045)}
       .ttm-kpi span{display:block;color:#64748b;font-size:12px;margin-bottom:6px}
       .ttm-kpi strong{display:block;font-size:24px;line-height:1.15;color:#0f172a}
       .ttm-kpi small{display:block;color:#64748b;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .dark-mode .ttm-kpi,.theme-dark .ttm-kpi{background:#101d2b;border-color:#26374a}
       .dark-mode .ttm-kpi strong,.theme-dark .ttm-kpi strong{color:#f8fafc}
-      .ttm-columns{display:grid;grid-template-columns:minmax(0,2fr) minmax(310px,1fr);gap:14px;margin-top:14px}
+      .ttm-columns{display:grid;grid-template-columns:minmax(0,2fr) minmax(310px,1fr);gap:14px;margin-top:14px;align-items:start}
       .ttm-panel{background:var(--surface,#fff);border:1px solid rgba(148,163,184,.22);border-radius:18px;overflow:hidden}
       .dark-mode .ttm-panel,.theme-dark .ttm-panel{background:#101d2b;border-color:#26374a}
       .ttm-panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 17px;border-bottom:1px solid rgba(148,163,184,.18)}
@@ -31949,6 +31949,10 @@ ${names}${extra}
       .ttm-empty{padding:22px;text-align:center;color:#64748b;font-size:12px}
       .ttm-pause-note{font-size:11px;color:#64748b;margin-top:8px}
       .ttm-danger{background:#fff7f7!important;border-color:#fecaca!important;color:#b91c1c!important}
+      .ttm-kpi.sla-ok{border-color:rgba(34,197,94,.28);background:linear-gradient(180deg,rgba(240,253,244,.75),var(--surface,#fff))}
+      .ttm-kpi.sla-warn{border-color:rgba(245,158,11,.34);background:linear-gradient(180deg,rgba(255,251,235,.88),var(--surface,#fff))}
+      .ttm-kpi.sla-error{border-color:rgba(239,68,68,.34);background:linear-gradient(180deg,rgba(254,242,242,.88),var(--surface,#fff))}
+      .ttm-live-note{margin-top:10px;padding:9px 10px;border-radius:10px;background:rgba(14,165,233,.06);color:#475569;font-size:10px;line-height:1.45}
       .dark-mode .ttm-danger,.theme-dark .ttm-danger{background:#31191b!important}
       @media(max-width:1200px){.ttm-grid{grid-template-columns:repeat(3,1fr)}.ttm-columns{grid-template-columns:1fr}.ttm-pipeline{grid-template-columns:repeat(4,1fr)}}
       @media(max-width:760px){.ttm-hero{align-items:flex-start;flex-direction:column}.ttm-hero-actions{justify-content:flex-start}.ttm-grid{grid-template-columns:1fr 1fr}.ttm-pipeline{grid-template-columns:1fr 1fr}.ttm-last-refresh{width:100%;margin-left:0}}
@@ -32012,7 +32016,7 @@ ${names}${extra}
         <div>
           <span class="eyebrow">HR ADMIN • TEXTTIME OPERATIONS</span>
           <h2>TextTime Monitor</h2>
-          <p>ติดตามการรับไฟล์ → Import → Queue → Resolver → Apply → Attendance พร้อมสถานะ Pilot/Live และ Error จากจุดเดียว</p>
+          <p>ติดตามการรับไฟล์ → Import → Queue → Resolver → Apply → Attendance แบบ Live Operations พร้อม SLA และ Error จากจุดเดียว</p>
           <div class="ttm-status-strip">
             <span id="ttmHeroHealth">${pill("neutral","กำลังโหลด")}</span>
             <span id="ttmHeroMode">${pill("neutral","-")}</span>
@@ -32029,22 +32033,24 @@ ${names}${extra}
 
       <div class="ttm-grid">
         <article class="ttm-kpi"><span>Automation</span><strong id="ttmKpiAutomation">-</strong><small id="ttmKpiAutomationSub">-</small></article>
-        <article class="ttm-kpi"><span>Last file received</span><strong id="ttmKpiLastFile">-</strong><small id="ttmKpiLastFileSub">-</small></article>
+        <article class="ttm-kpi"><span>Batch ล่าสุด</span><strong id="ttmKpiLastFile">-</strong><small id="ttmKpiLastFileSub">-</small></article>
         <article class="ttm-kpi"><span>TextTime Queue</span><strong id="ttmKpiQueue">0</strong><small id="ttmKpiQueueSub">-</small></article>
         <article class="ttm-kpi"><span>Attendance Pending</span><strong id="ttmKpiAttendance">0</strong><small id="ttmKpiAttendanceSub">-</small></article>
+        <article class="ttm-kpi" id="ttmKpiSlaCard"><span>Processing SLA</span><strong id="ttmKpiLatency">-</strong><small id="ttmKpiLatencySub">เป้าหมาย ≤ 2 ชม.</small></article>
         <article class="ttm-kpi"><span>Failed / Blocked</span><strong id="ttmKpiErrors">0</strong><small id="ttmKpiErrorsSub">-</small></article>
       </div>
 
       <div class="ttm-columns">
         <div class="ttm-panel">
-          <div class="ttm-panel-head"><div><h3>Pipeline ล่าสุด</h3><p id="ttmPipelineCaption">เลือกจาก Pilot target หรือ Batch ล่าสุด</p></div><span id="ttmPipelineBadge">${pill("neutral","-")}</span></div>
+          <div class="ttm-panel-head"><div><h3>Pipeline ล่าสุด</h3><p id="ttmPipelineCaption">Batch ล่าสุดในระบบ Automation</p></div><span id="ttmPipelineBadge">${pill("neutral","-")}</span></div>
           <div class="ttm-panel-body"><div class="ttm-pipeline" id="ttmPipeline"></div></div>
         </div>
         <div class="ttm-panel">
-          <div class="ttm-panel-head"><div><h3>System / Pilot</h3><p>สถานะสำคัญสำหรับ HR Admin</p></div></div>
+          <div class="ttm-panel-head"><div><h3 id="ttmSystemTitle">Live Operations</h3><p id="ttmSystemSubtitle">สถานะ Automation และ Worker สำหรับ HR Admin</p></div></div>
           <div class="ttm-panel-body">
             <div class="ttm-mini-list" id="ttmSystemList"></div>
             <div class="ttm-pause-note">Pause หยุดการประมวลผลรอบถัดไปเท่านั้น ไม่ย้อนกลับข้อมูลที่ Apply ไปแล้ว</div>
+            <div class="ttm-live-note">Production target: Batch รายวันควร Completed ภายใน 2 ชม. • Monitor refresh ทุก 30 วินาที</div>
           </div>
         </div>
       </div>
@@ -32100,7 +32106,18 @@ ${names}${extra}
 
   function choosePipelineBatch(data) {
     const batches = Array.isArray(data?.batches) ? data.batches : [];
-    const target = data?.automation?.pilot_target_batch_id;
+    const a = data?.automation || {};
+    const mode = String(a.arm_mode || "").toUpperCase();
+
+    if (mode === "LIVE") {
+      const active = batches.find(x => {
+        const q = String(x.queue_status || "").toUpperCase();
+        return q && !["COMPLETED","FAILED"].includes(q);
+      });
+      return active || batches[0] || null;
+    }
+
+    const target = a.pilot_target_batch_id;
     if (target) {
       const found = batches.find(x => String(x.batch_id) === String(target));
       if (found) return found;
@@ -32159,7 +32176,11 @@ ${names}${extra}
         ${s.note ? `<small>${esc(s.note)}</small>` : ""}
       </div>`).join("");
     if ($("ttmPipelineCaption")) {
-      $("ttmPipelineCaption").textContent = `${batch.file_name || "TextTime"} • Batch ${shortId(batch.batch_id)}${batch.is_pilot_target ? " • PILOT TARGET" : ""}`;
+      const mode = String(data?.automation?.arm_mode || "").toUpperCase();
+      const modeTag = mode === "LIVE"
+        ? " • LIVE"
+        : batch.is_pilot_target ? " • PILOT TARGET" : "";
+      $("ttmPipelineCaption").textContent = `${batch.file_name || "TextTime"} • Batch ${shortId(batch.batch_id)}${modeTag}`;
     }
     if ($("ttmPipelineBadge")) {
       const historical = !batch.is_pilot_target && !batch.queue_status;
@@ -32173,18 +32194,47 @@ ${names}${extra}
     const a = data?.automation || {};
     const s = data?.settings || {};
     const i = data?.infrastructure || {};
+    const batches = Array.isArray(data?.batches) ? data.batches : [];
     const root = $("ttmSystemList");
     if (!root) return;
-    const rows = [
-      ["Mode", `${a.arm_mode || "-"} / ${a.is_enabled ? "Enabled" : "Disabled"}`],
-      ["Last status", a.last_status || "-"],
-      ["Pilot target", a.pilot_target_batch_id ? shortId(a.pilot_target_batch_id) : "รอ Batch ใหม่"],
-      ["Pilot chunks", `${num(a.pilot_apply_chunks_done)}/${num(a.pilot_max_apply_chunks)}`],
-      ["Pilot expires", dateTime(a.pilot_expires_at)],
-      ["Import / Auto Apply", `${bool(s.import_enabled) ? "ON" : "OFF"} / ${bool(s.auto_apply_enabled) ? "ON" : "OFF"}`],
-      ["Trigger / Cron", `${bool(i.trigger_active) ? "ON" : "OFF"} / ${bool(i.cron_active) ? "ON" : "OFF"}`],
-      ["Last worker run", dateTime(a.last_run_at)]
-    ];
+
+    const mode = String(a.arm_mode || "").toUpperCase();
+    const activeBatch = batches.find(x => {
+      const q = String(x.queue_status || "").toUpperCase();
+      return q && !["COMPLETED","FAILED"].includes(q);
+    });
+
+    if ($("ttmSystemTitle")) {
+      $("ttmSystemTitle").textContent = mode === "LIVE" ? "Live Operations" : "System / Pilot";
+    }
+    if ($("ttmSystemSubtitle")) {
+      $("ttmSystemSubtitle").textContent = mode === "LIVE"
+        ? "สถานะ Automation, Worker และ Throughput สำหรับ Production"
+        : "สถานะควบคุม Pilot / Automation สำหรับ HR Admin";
+    }
+
+    const rows = mode === "LIVE"
+      ? [
+          ["Mode", `${a.arm_mode || "-"} / ${a.is_enabled ? "Enabled" : "Disabled"}`],
+          ["System status", a.last_status || "-"],
+          ["Current batch", activeBatch ? shortId(activeBatch.batch_id) : "ไม่มีงานค้าง"],
+          ["Apply limit", a.max_apply_segments_per_tick != null ? `${num(a.max_apply_segments_per_tick)} segments/tick` : "-"],
+          ["Import / Auto Apply", `${bool(s.import_enabled) ? "ON" : "OFF"} / ${bool(s.auto_apply_enabled) ? "ON" : "OFF"}`],
+          ["Trigger / Cron", `${bool(i.trigger_active) ? "ON" : "OFF"} / ${bool(i.cron_active) ? "ON" : "OFF"}`],
+          ["Last worker run", dateTime(a.last_run_at)],
+          ["Monitor refresh", "ทุก 30 วินาที"]
+        ]
+      : [
+          ["Mode", `${a.arm_mode || "-"} / ${a.is_enabled ? "Enabled" : "Disabled"}`],
+          ["Last status", a.last_status || "-"],
+          ["Pilot target", a.pilot_target_batch_id ? shortId(a.pilot_target_batch_id) : "รอ Batch ใหม่"],
+          ["Pilot chunks", `${num(a.pilot_apply_chunks_done)}/${num(a.pilot_max_apply_chunks)}`],
+          ["Pilot expires", dateTime(a.pilot_expires_at)],
+          ["Import / Auto Apply", `${bool(s.import_enabled) ? "ON" : "OFF"} / ${bool(s.auto_apply_enabled) ? "ON" : "OFF"}`],
+          ["Trigger / Cron", `${bool(i.trigger_active) ? "ON" : "OFF"} / ${bool(i.cron_active) ? "ON" : "OFF"}`],
+          ["Last worker run", dateTime(a.last_run_at)]
+        ];
+
     root.innerHTML = rows.map(([k,v]) => `<div class="ttm-mini-row"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join("");
   }
 
@@ -32200,13 +32250,25 @@ ${names}${extra}
     if (!bool(i.cron_active)) alerts.push({type:"error",text:"TextTime cron worker ไม่ Active"});
     if (Number(q.failed || 0) > 0) alerts.push({type:"error",text:`TextTime Queue Failed ${num(q.failed)} batch`});
     if (Number(gf.blocked || 0) > 0) alerts.push({type:"error",text:`Attendance/FIX16GF Blocked ${num(gf.blocked)} รายการ`});
-    if (Number(gf.pending || 0) > 0) alerts.push({type:"warn",text:`Attendance กำลังรอประมวลผล ${num(gf.pending)} รายการ`});
+    if (Number(gf.pending || 0) > 0) alerts.push({type:"warn",text:`Attendance กำลังประมวลผล ${num(gf.pending)} รายการ • Blocked ${num(gf.blocked)} • เป็นสถานะปกติขณะ Worker ทำงาน`});
     if (!a.is_enabled) alerts.push({type:"warn",text:`Automation อยู่ในสถานะ Pause • ${a.last_status || "-"}`});
     batches.filter(x => x.last_error).slice(0,5).forEach(x => {
       alerts.push({type:"error",text:`${x.file_name || shortId(x.batch_id)} • ${x.last_error}`});
     });
+
+    const activeBatch = batches.find(x => {
+      const qs = String(x.queue_status || "").toUpperCase();
+      return qs && !["COMPLETED","FAILED"].includes(qs);
+    });
+    if (activeBatch && Number(activeBatch.latency_seconds || 0) > 7200) {
+      alerts.push({
+        type:"warn",
+        text:`Batch ${activeBatch.file_name || shortId(activeBatch.batch_id)} ใช้เวลาเกิน SLA 2 ชม. • ปัจจุบัน ${duration(activeBatch.latency_seconds)}`
+      });
+    }
+
     const issueCount = alerts.length;
-    if (!issueCount) alerts.push({type:"ok",text:"ไม่พบ Error หรือ Blocked queue ในขณะนี้"});
+    if (!issueCount) alerts.push({type:"ok",text:"ระบบพร้อมรับ Batch ใหม่ • Queue clear • ไม่พบ Error หรือ Blocked"});
 
     if ($("ttmAlerts")) $("ttmAlerts").innerHTML = alerts.map(x => `<div class="ttm-alert ${x.type === "warn" ? "" : x.type}">${esc(x.text)}</div>`).join("");
     if ($("ttmAlertCount")) $("ttmAlertCount").innerHTML = pill(
@@ -32243,19 +32305,26 @@ ${names}${extra}
       const records = `${num(row.valid_rows)}/${num(row.raw_rows)}`;
       const invalid = Number(row.invalid_rows || 0);
       const applyText = row.last_apply_lane
-        ? `${pill("APPLIED",row.last_apply_lane)}<span class="ttm-cell-sub">Explicit ${num(row.explicit_candidates_remaining)} • Pattern ${num(row.pattern_candidates_remaining)}</span>`
+        ? `${pill("APPLIED",row.last_apply_lane)}<span class="ttm-cell-sub">Snapshot: Explicit ${num(row.explicit_candidates_remaining)} • Pattern ${num(row.pattern_candidates_remaining)}</span>`
         : pill("neutral","-");
       const finalState = row.last_error ? "FAILED" : row.queue_status || row.pipeline_stage;
+      const liveMode = String(data?.automation?.arm_mode || "").toUpperCase() === "LIVE";
+      const pilotTag = !liveMode && row.is_pilot_target ? " • PILOT" : "";
+      const latencySec = Number(row.latency_seconds || 0);
+      const isAutomationBatch = Boolean(row.queue_status);
+      const slaText = isAutomationBatch && latencySec
+        ? `<span class="ttm-cell-sub">${latencySec <= 7200 ? "SLA ผ่าน ≤ 2 ชม." : "เกิน SLA 2 ชม."}</span>`
+        : "";
       return `<tr title="${esc(row.last_error || "")}">
         <td>${esc(dateTime(row.created_at))}<span class="ttm-cell-sub">${esc(timeAgo(row.created_at))}</span></td>
-        <td class="ttm-file"><strong>${esc(row.file_name || "-")}</strong><small>${esc(shortId(row.batch_id))}${row.is_pilot_target ? " • PILOT" : ""}</small></td>
+        <td class="ttm-file"><strong>${esc(row.file_name || "-")}</strong><small>${esc(shortId(row.batch_id))}${pilotTag}</small></td>
         <td><strong>${esc(records)}</strong><span class="ttm-cell-sub">${invalid ? `invalid ${num(invalid)}` : "valid/raw"}</span></td>
         <td>${pill(row.import_status,row.import_status)}</td>
         <td>${pill(row.gm04t_status || row.gm04h_status || "neutral",resolverText(row))}</td>
         <td>${applyText}</td>
         <td>${attendanceText(row,data)}</td>
         <td>${pill(finalState,finalState || "-")}${row.attempt_count ? `<span class="ttm-cell-sub">attempt ${num(row.attempt_count)}</span>` : ""}</td>
-        <td>${esc(duration(row.latency_seconds))}</td>
+        <td>${esc(duration(row.latency_seconds))}${slaText}</td>
       </tr>`;
     }).join("");
   }
@@ -32267,6 +32336,8 @@ ${names}${extra}
     const gf = data?.attendance || {};
     const i = data?.infrastructure || {};
     const latest = data?.latest_import || null;
+    const batches = Array.isArray(data?.batches) ? data.batches : [];
+    const latestBatch = batches[0] || null;
 
     if ($("ttmHeroHealth")) $("ttmHeroHealth").innerHTML = pill(health,health);
     if ($("ttmHeroMode")) $("ttmHeroMode").innerHTML = pill(a.is_enabled ? (a.arm_mode || "ACTIVE") : "PAUSED",a.arm_mode || (a.is_enabled ? "ACTIVE" : "PAUSED"));
@@ -32276,7 +32347,13 @@ ${names}${extra}
     );
 
     if ($("ttmKpiAutomation")) $("ttmKpiAutomation").textContent = a.arm_mode || (a.is_enabled ? "ACTIVE" : "PAUSED");
-    if ($("ttmKpiAutomationSub")) $("ttmKpiAutomationSub").textContent = a.last_status || "-";
+    if ($("ttmKpiAutomationSub")) {
+      const last = String(a.last_status || "").toUpperCase();
+      $("ttmKpiAutomationSub").textContent =
+        last === "IDLE" ? "พร้อมรับ Batch ใหม่" :
+        last === "WAITING_ATTENDANCE" ? "กำลังประมวลผล Attendance" :
+        a.last_status || "-";
+    }
 
     if ($("ttmKpiLastFile")) $("ttmKpiLastFile").textContent = latest?.file_name || "-";
     if ($("ttmKpiLastFileSub")) $("ttmKpiLastFileSub").textContent = latest?.created_at ? `${dateTime(latest.created_at)} • ${timeAgo(latest.created_at)}` : "ยังไม่มีไฟล์";
@@ -32286,7 +32363,29 @@ ${names}${extra}
     if ($("ttmKpiQueueSub")) $("ttmKpiQueueSub").textContent = `Pending ${num(q.pending)} • Resolving ${num(q.resolving)} • Attendance ${num(q.waiting_attendance)}`;
 
     if ($("ttmKpiAttendance")) $("ttmKpiAttendance").textContent = num(gf.pending);
-    if ($("ttmKpiAttendanceSub")) $("ttmKpiAttendanceSub").textContent = `Blocked ${num(gf.blocked)} • Processed ${num(gf.processed)}`;
+    if ($("ttmKpiAttendanceSub")) {
+      $("ttmKpiAttendanceSub").textContent = Number(gf.pending || 0) > 0
+        ? `กำลังประมวลผล • Blocked ${num(gf.blocked)} • Processed ${num(gf.processed)}`
+        : `Queue clear • Blocked ${num(gf.blocked)} • Processed ${num(gf.processed)}`;
+    }
+
+    const latencySec = Number(latestBatch?.latency_seconds || 0);
+    const slaCard = $("ttmKpiSlaCard");
+    if ($("ttmKpiLatency")) $("ttmKpiLatency").textContent = latencySec ? duration(latencySec) : "-";
+    if ($("ttmKpiLatencySub")) {
+      $("ttmKpiLatencySub").textContent = !latencySec
+        ? "เป้าหมาย ≤ 2 ชม."
+        : latencySec <= 7200
+          ? "ผ่าน SLA • เป้าหมาย ≤ 2 ชม."
+          : "เกิน SLA • เป้าหมาย ≤ 2 ชม.";
+    }
+    if (slaCard) {
+      slaCard.classList.remove("sla-ok","sla-warn","sla-error");
+      if (latencySec) {
+        const active = latestBatch && !["COMPLETED","FAILED"].includes(String(latestBatch.queue_status || "").toUpperCase());
+        slaCard.classList.add(latencySec <= 7200 ? "sla-ok" : active ? "sla-error" : "sla-warn");
+      }
+    }
 
     const errors = Number(q.failed||0)+Number(gf.blocked||0);
     if ($("ttmKpiErrors")) $("ttmKpiErrors").textContent = num(errors);
