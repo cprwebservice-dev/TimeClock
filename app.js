@@ -22093,7 +22093,7 @@ ${names}${extra}
 })();
 
 
-/* ===== V6.15.29 FIX16AG Organization Structure UX Refresh ===== */
+/* ===== V6.15.29 FIX16AH Organization Structure Dark Mode ===== */
 "use strict";
 (() => {
   const A = () => window.TimeClockApp;
@@ -22461,6 +22461,335 @@ ${names}${extra}
 
         #page-admin-org.org-ux-v616ag .org-permission.no{
           color:#b9c5cf;
+        }
+
+        /* FIX16AH — Organization Structure full Dark Mode */
+        body.theme-dark #page-admin-org.org-ux-v616ag,
+        body.dark-mode #page-admin-org.org-ux-v616ag,
+        body.dark #page-admin-org.org-ux-v616ag{
+          --org-ux-border:#26384a;
+          --org-ux-soft:#101b27;
+          --org-ux-text:#e8f0f7;
+          --org-ux-muted:#91a6b9;
+          --org-ux-blue:#5ab0e6;
+          --org-ux-blue-soft:#142b3d;
+          --org-ux-green:#42c88a;
+          --org-ux-green-soft:#123125;
+          --org-ux-amber:#f2b557;
+          --org-ux-amber-soft:#352817;
+          color:#dce8f2;
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-hero,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-hero,
+        body.dark #page-admin-org.org-ux-v616ag .org-hero{
+          background:
+            radial-gradient(circle at 96% 8%,rgba(42,118,165,.18),transparent 24%),
+            linear-gradient(105deg,#2a211f 0%,#171f27 56%,#102331 100%);
+          border-color:#2a3c4d;
+          box-shadow:0 12px 30px rgba(0,0,0,.18);
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-hero h2,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-hero h2,
+        body.dark #page-admin-org.org-ux-v616ag .org-hero h2{color:#f8fafc}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-hero p,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-hero p,
+        body.dark #page-admin-org.org-ux-v616ag .org-hero p{color:#a8bac9}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-hero-badges span,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-hero-badges span,
+        body.dark #page-admin-org.org-ux-v616ag .org-hero-badges span{
+          background:#122238;border-color:#334960;color:#c5d7e6
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag article,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag article,
+        body.dark #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag article{
+          background:#101d2a;
+          border-color:#26384a;
+          box-shadow:0 7px 18px rgba(0,0,0,.12);
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag span,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag span,
+        body.dark #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag span{color:#8fa6ba}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag strong,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag strong,
+        body.dark #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag strong{color:#f1f6fa}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag small,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag small,
+        body.dark #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag small{color:#71889c}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-tree-panel,
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-detail-panel,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-tree-panel,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-detail-panel,
+        body.dark #page-admin-org.org-ux-v616ag .org-tree-panel,
+        body.dark #page-admin-org.org-ux-v616ag .org-detail-panel{
+          background:#0f1b27;
+          border-color:#26384a;
+          color:#dce8f2;
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-tree-toolbar,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-tree-toolbar,
+        body.dark #page-admin-org.org-ux-v616ag .org-tree-toolbar{
+          background:#101d2a;border-color:#26384a
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag #orgTreeSearch,
+        body.theme-dark #page-admin-org.org-ux-v616ag .input,
+        body.theme-dark #page-admin-org.org-ux-v616ag .select,
+        body.dark-mode #page-admin-org.org-ux-v616ag #orgTreeSearch,
+        body.dark-mode #page-admin-org.org-ux-v616ag .input,
+        body.dark-mode #page-admin-org.org-ux-v616ag .select,
+        body.dark #page-admin-org.org-ux-v616ag #orgTreeSearch,
+        body.dark #page-admin-org.org-ux-v616ag .input,
+        body.dark #page-admin-org.org-ux-v616ag .select{
+          background:#111d29 !important;
+          border-color:#314356 !important;
+          color:#e3edf5 !important;
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag #orgTreeSearch::placeholder,
+        body.theme-dark #page-admin-org.org-ux-v616ag .input::placeholder,
+        body.dark-mode #page-admin-org.org-ux-v616ag #orgTreeSearch::placeholder,
+        body.dark-mode #page-admin-org.org-ux-v616ag .input::placeholder,
+        body.dark #page-admin-org.org-ux-v616ag #orgTreeSearch::placeholder,
+        body.dark #page-admin-org.org-ux-v616ag .input::placeholder{color:#61788c}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-inactive-toggle,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-inactive-toggle,
+        body.dark #page-admin-org.org-ux-v616ag .org-inactive-toggle{color:#94a9bb}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-tree-actions,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-tree-actions,
+        body.dark #page-admin-org.org-ux-v616ag .org-tree-actions{border-color:#243648}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag #orgTreeCount,
+        body.dark-mode #page-admin-org.org-ux-v616ag #orgTreeCount,
+        body.dark #page-admin-org.org-ux-v616ag #orgTreeCount{
+          background:#142b3d;color:#86c9ee
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-drag-guide,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-drag-guide,
+        body.dark #page-admin-org.org-ux-v616ag .org-drag-guide{
+          background:#111f2c;
+          border:1px solid #2b4052;
+          color:#8fa6b8;
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-drag-guide strong,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-drag-guide strong,
+        body.dark #page-admin-org.org-ux-v616ag .org-drag-guide strong{color:#c8d7e3}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-drag-guide small,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-drag-guide small,
+        body.dark #page-admin-org.org-ux-v616ag .org-drag-guide small{color:#71889a}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-root-drop-zone,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-root-drop-zone,
+        body.dark #page-admin-org.org-ux-v616ag .org-root-drop-zone{
+          background:#111f2c;border-color:#33485b;color:#9eb2c3
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-root-drop-zone.active,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-root-drop-zone.active,
+        body.dark #page-admin-org.org-ux-v616ag .org-root-drop-zone.active{
+          background:#133247;border-color:#51a8dd;color:#c9eafa
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-tree-node:hover,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-tree-node:hover,
+        body.dark #page-admin-org.org-ux-v616ag .org-tree-node:hover{
+          background:#142432;border-color:#2d4153
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-tree-node.selected,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-tree-node.selected,
+        body.dark #page-admin-org.org-ux-v616ag .org-tree-node.selected{
+          background:linear-gradient(90deg,#18384e 0%,#132b3c 100%);
+          border-color:#4fa7da;
+          box-shadow:inset 3px 0 0 #52b4ed,0 5px 14px rgba(0,0,0,.12);
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-tree-node.inactive,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-tree-node.inactive,
+        body.dark #page-admin-org.org-ux-v616ag .org-tree-node.inactive{
+          background:#111922;opacity:.58
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-tree-node-main strong,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-tree-node-main strong,
+        body.dark #page-admin-org.org-ux-v616ag .org-tree-node-main strong{color:#d9e6ef}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-tree-node-main strong b,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-tree-node-main strong b,
+        body.dark #page-admin-org.org-ux-v616ag .org-tree-node-main strong b{
+          background:#1e3040;color:#c4d7e5
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-node-chip-v616ag,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-node-chip-v616ag,
+        body.dark #page-admin-org.org-ux-v616ag .org-node-chip-v616ag{
+          background:#1a2936;color:#9fb3c4
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-node-chip-v616ag.people,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-node-chip-v616ag.people,
+        body.dark #page-admin-org.org-ux-v616ag .org-node-chip-v616ag.people{
+          background:#143226;color:#7bd9aa
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-node-chip-v616ag.manager,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-node-chip-v616ag.manager,
+        body.dark #page-admin-org.org-ux-v616ag .org-node-chip-v616ag.manager{
+          background:#372a18;color:#f3c66e
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-detail-head,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-detail-head,
+        body.dark #page-admin-org.org-ux-v616ag .org-detail-head{
+          background:rgba(15,27,39,.97);
+          border-color:#26384a;
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-breadcrumb,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-breadcrumb,
+        body.dark #page-admin-org.org-ux-v616ag .org-breadcrumb{color:#70b8e6}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-detail-head h2,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-detail-head h2,
+        body.dark #page-admin-org.org-ux-v616ag .org-detail-head h2{color:#f4f8fb}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-detail-head p,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-detail-head p,
+        body.dark #page-admin-org.org-ux-v616ag .org-detail-head p{color:#8ea4b7}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-kpi-grid article,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-kpi-grid article,
+        body.dark #page-admin-org.org-ux-v616ag .org-kpi-grid article{
+          background:#111f2c !important;border-color:#2a3d4f
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-kpi-grid article span,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-kpi-grid article span,
+        body.dark #page-admin-org.org-ux-v616ag .org-kpi-grid article span{color:#8fa5b7}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-kpi-grid article strong,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-kpi-grid article strong,
+        body.dark #page-admin-org.org-ux-v616ag .org-kpi-grid article strong{color:#f2f7fa}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-info-card,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-info-card,
+        body.dark #page-admin-org.org-ux-v616ag .org-info-card{
+          background:#101d29 !important;border-color:#293c4e;color:#dbe7ef
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-section-head,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-section-head,
+        body.dark #page-admin-org.org-ux-v616ag .org-section-head{border-color:#26384a}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-section-head strong,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-section-head strong,
+        body.dark #page-admin-org.org-ux-v616ag .org-section-head strong{color:#e9f1f6}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-section-head small,
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-section-head span,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-section-head small,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-section-head span,
+        body.dark #page-admin-org.org-ux-v616ag .org-section-head small,
+        body.dark #page-admin-org.org-ux-v616ag .org-section-head span{color:#8399ab}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-info-grid > div,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-info-grid > div,
+        body.dark #page-admin-org.org-ux-v616ag .org-info-grid > div{
+          background:#14222f;border:1px solid #263a4b
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-info-grid span,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-info-grid span,
+        body.dark #page-admin-org.org-ux-v616ag .org-info-grid span{color:#7f96a9}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-info-grid strong,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-info-grid strong,
+        body.dark #page-admin-org.org-ux-v616ag .org-info-grid strong{color:#e5eef5}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-children-list button,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-children-list button,
+        body.dark #page-admin-org.org-ux-v616ag .org-children-list button{
+          background:#121f2b;border-color:#2a3c4d;color:#d8e5ee
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-children-list button:hover,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-children-list button:hover,
+        body.dark #page-admin-org.org-ux-v616ag .org-children-list button:hover{
+          background:#172b3a;border-color:#3f6179
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-children-list strong,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-children-list strong,
+        body.dark #page-admin-org.org-ux-v616ag .org-children-list strong{color:#e1ebf2}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-children-list small,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-children-list small,
+        body.dark #page-admin-org.org-ux-v616ag .org-children-list small{color:#7f97aa}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-manager-card .table-wrap,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-manager-card .table-wrap,
+        body.dark #page-admin-org.org-ux-v616ag .org-manager-card .table-wrap{
+          border-color:#293c4e;background:#0e1a25
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-manager-card table,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-manager-card table,
+        body.dark #page-admin-org.org-ux-v616ag .org-manager-card table{color:#d6e3ec}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-manager-card table thead th,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-manager-card table thead th,
+        body.dark #page-admin-org.org-ux-v616ag .org-manager-card table thead th{
+          background:#132330;border-color:#293c4e;color:#9fb3c3
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-manager-card table td,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-manager-card table td,
+        body.dark #page-admin-org.org-ux-v616ag .org-manager-card table td{
+          border-color:#223545;color:#d5e1e9
+        }
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-manager-card tbody tr:hover,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-manager-card tbody tr:hover,
+        body.dark #page-admin-org.org-ux-v616ag .org-manager-card tbody tr:hover{background:#142432}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-manager-email,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-manager-email,
+        body.dark #page-admin-org.org-ux-v616ag .org-manager-email{color:#7690a5}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-detail-empty,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-detail-empty,
+        body.dark #page-admin-org.org-ux-v616ag .org-detail-empty{color:#9db0c0}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-detail-empty h3,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-detail-empty h3,
+        body.dark #page-admin-org.org-ux-v616ag .org-detail-empty h3{color:#e4edf3}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-list-empty,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-list-empty,
+        body.dark #page-admin-org.org-ux-v616ag .org-list-empty{color:#738b9e}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-search-clear-v616ag,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-search-clear-v616ag,
+        body.dark #page-admin-org.org-ux-v616ag .org-search-clear-v616ag{color:#8da3b5}
+
+        body.theme-dark #page-admin-org.org-ux-v616ag .org-search-clear-v616ag:hover,
+        body.dark-mode #page-admin-org.org-ux-v616ag .org-search-clear-v616ag:hover,
+        body.dark #page-admin-org.org-ux-v616ag .org-search-clear-v616ag:hover{
+          background:#1b2d3b;color:#d9e6ef
         }
 
         @media(max-width:1100px){
