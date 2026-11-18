@@ -31765,7 +31765,7 @@ ${names}${extra}
 
 ;
 
-/* ===== js/texttime-monitor-v616gm06e-r3-status-truth.js ===== */
+/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow.js ===== */
 (() => {
   "use strict";
 
@@ -31893,9 +31893,10 @@ ${names}${extra}
       .ttm-status-strip{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
       .ttm-last-refresh{font-size:12px;color:#64748b;margin-left:auto}
       .ttm-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:16px}
-      .ttm-kpi{background:var(--surface,#fff);border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:16px;box-shadow:0 7px 20px rgba(15,23,42,.045)}
+      .ttm-kpi{background:var(--surface,#fff);border:1px solid rgba(148,163,184,.22);border-radius:18px;padding:16px;box-shadow:0 7px 20px rgba(15,23,42,.045);min-width:0;overflow:hidden}
       .ttm-kpi span{display:block;color:#64748b;font-size:12px;margin-bottom:6px}
-      .ttm-kpi strong{display:block;font-size:24px;line-height:1.15;color:#0f172a}
+      .ttm-kpi strong{display:block;font-size:24px;line-height:1.15;color:#0f172a;max-width:100%}
+      .ttm-kpi.ttm-kpi-file strong{font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em}
       .ttm-kpi small{display:block;color:#64748b;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
       .dark-mode .ttm-kpi,.theme-dark .ttm-kpi{background:#101d2b;border-color:#26374a}
       .dark-mode .ttm-kpi strong,.theme-dark .ttm-kpi strong{color:#f8fafc}
@@ -32034,7 +32035,7 @@ ${names}${extra}
 
       <div class="ttm-grid">
         <article class="ttm-kpi"><span>Automation</span><strong id="ttmKpiAutomation">-</strong><small id="ttmKpiAutomationSub">-</small></article>
-        <article class="ttm-kpi"><span>Batch ล่าสุด</span><strong id="ttmKpiLastFile">-</strong><small id="ttmKpiLastFileSub">-</small></article>
+        <article class="ttm-kpi ttm-kpi-file"><span>Batch ล่าสุด</span><strong id="ttmKpiLastFile" title="-">-</strong><small id="ttmKpiLastFileSub">-</small></article>
         <article class="ttm-kpi"><span>TextTime Queue</span><strong id="ttmKpiQueue">0</strong><small id="ttmKpiQueueSub">-</small></article>
         <article class="ttm-kpi"><span>Attendance Pending</span><strong id="ttmKpiAttendance">0</strong><small id="ttmKpiAttendanceSub">-</small></article>
         <article class="ttm-kpi" id="ttmKpiSlaCard"><span>Processing SLA</span><strong id="ttmKpiLatency">-</strong><small id="ttmKpiLatencySub">เป้าหมาย ≤ 2 ชม.</small></article>
@@ -32409,7 +32410,11 @@ ${names}${extra}
         liveStatus;
     }
 
-    if ($("ttmKpiLastFile")) $("ttmKpiLastFile").textContent = latest?.file_name || "-";
+    if ($("ttmKpiLastFile")) {
+      const fullFileName = latest?.file_name || "-";
+      $("ttmKpiLastFile").textContent = fullFileName;
+      $("ttmKpiLastFile").title = fullFileName;
+    }
     if ($("ttmKpiLastFileSub")) $("ttmKpiLastFileSub").textContent = latest?.created_at ? `${dateTime(latest.created_at)} • ${timeAgo(latest.created_at)}` : "ยังไม่มีไฟล์";
 
     const qActive = Number(q.pending||0)+Number(q.resolving||0)+Number(q.waiting_attendance||0);
