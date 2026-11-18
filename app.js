@@ -31588,10 +31588,10 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();
 
-/* ===== V6.15.29 FIX16AD Employee Portal Dedicated Modal Fix ===== */
+/* ===== V6.15.29 FIX16AE Employee Portal HR Global Access Card ===== */
 (function(){
   "use strict";
-  const VERSION="6.15.29-FIX16AD";
+  const VERSION="6.15.29-FIX16AE";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -31876,6 +31876,140 @@ ${names}${extra}
     catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}
   }
 
+  function ensureAdminPortalAccessCardV616ae(){
+    if($("portalAdminAccessCardV616ae"))return $("portalAdminAccessCardV616ae");
+
+    const page=$("page-admin-employee-portal");
+    if(!page)return null;
+
+    const hero=page.querySelector(".portal-hero-v61482");
+    if(!hero)return null;
+
+    const wrap=document.createElement("div");
+    wrap.id="portalAdminAccessCardV616ae";
+    wrap.className="section-gap";
+    wrap.innerHTML=`
+      <article class="portal-link-card-v61482" style="width:100%;box-sizing:border-box">
+        <div class="portal-card-head-v61482">
+          <div>
+            <span>Portal Access</span>
+            <strong>QR / Link กลางเข้า Employee Portal</strong>
+          </div>
+          <span class="portal-secure-badge-v61482">ลิงก์กลาง</span>
+        </div>
+
+        <div class="portal-qr-wrap-v61482">
+          <div id="portalAdminQrV616ae" class="portal-qr-v61482"></div>
+
+          <div class="portal-link-copy-v61482">
+            <code id="portalAdminLinkTextV616ae">กำลังโหลด Link กลาง...</code>
+            <div>
+              <button class="btn btn-primary btn-sm" id="portalAdminCopyLinkV616ae">คัดลอก Link</button>
+              <button class="btn btn-light btn-sm" id="portalAdminShareLinkV616ae">แชร์</button>
+              <button class="btn btn-danger-soft btn-sm" id="portalAdminRotateLinkV616ae">เปลี่ยน Link กลาง</button>
+            </div>
+          </div>
+        </div>
+
+        <small>
+          QR/Link เดียวใช้ร่วมกันทั้งระบบ • ไม่ใช่ Password • Employee ยังต้องยืนยันรหัสพนักงาน + Activation Code/PIN ของตนเอง
+        </small>
+      </article>
+    `;
+
+    hero.insertAdjacentElement("afterend",wrap);
+
+    $("portalAdminCopyLinkV616ae")?.addEventListener("click",async()=>{
+      await ensureAdminPortalLink();
+      const url=teamPortalUrl(team.link?.public_token);
+      await copyText(url);
+      toast("คัดลอก Link กลางแล้ว","success");
+    });
+
+    $("portalAdminShareLinkV616ae")?.addEventListener("click",async()=>{
+      await ensureAdminPortalLink();
+      const url=teamPortalUrl(team.link?.public_token);
+      await shareText(
+        "TimeAttendance Employee Portal",
+        "เข้าสู่ Employee Portal",
+        url
+      );
+    });
+
+    $("portalAdminRotateLinkV616ae")?.addEventListener("click",async()=>{
+      const ok=await portalConfirm(
+        "เปลี่ยน Link กลางของ Employee Portal?\n\nQR / Link เดิมจะใช้เปิดหน้า Activate ใหม่ไม่ได้ และการเปลี่ยนนี้มีผลทั้งระบบ",
+        {
+          title:"เปลี่ยน Link กลาง",
+          confirmText:"ยืนยันเปลี่ยน Link",
+          tone:"warning"
+        }
+      );
+      if(!ok)return;
+
+      app()?.showLoading?.("กำลังเปลี่ยน Link กลาง...");
+      try{
+        await loadAdminPortalAccessV616ae(true);
+        toast("สร้าง Link กลางใหม่แล้ว","success");
+      }catch(e){
+        toast(human(e),"error");
+      }finally{
+        app()?.hideLoading?.();
+      }
+    });
+
+    return wrap;
+  }
+
+  function renderAdminQrV616ae(){
+    const root=$("portalAdminQrV616ae");
+    if(!root)return;
+
+    root.innerHTML="";
+    const token=team.link?.public_token;
+
+    if(!token){
+      root.innerHTML='<div class="portal-qr-fallback-v61482">QR<br><small>ยังไม่มี Link</small></div>';
+      return;
+    }
+
+    const url=teamPortalUrl(token);
+
+    if(window.QRCode){
+      try{
+        new window.QRCode(root,{
+          text:url,
+          width:168,
+          height:168,
+          correctLevel:window.QRCode.CorrectLevel?.M
+        });
+        return;
+      }catch(e){
+        console.warn("HR Portal QR FIX16AE",e);
+      }
+    }
+
+    root.innerHTML='<div class="portal-qr-fallback-v61482">QR<br><small>ใช้ปุ่มคัดลอก Link</small></div>';
+  }
+
+  async function loadAdminPortalAccessV616ae(rotate=false){
+    ensureAdminPortalAccessCardV616ae();
+
+    team.link=await rpc("ta_portal_get_team_link_v61482",{
+      p_rotate:Boolean(rotate)
+    });
+
+    const url=teamPortalUrl(team.link?.public_token);
+
+    if($("portalAdminLinkTextV616ae")){
+      $("portalAdminLinkTextV616ae").textContent=url;
+      $("portalAdminLinkTextV616ae").title=url;
+    }
+
+    renderAdminQrV616ae();
+    return team.link;
+  }
+
   function renderAdmin(){
     // V6.14.84: paged RPC results are combined into admin.rows before render.
     // Do not switch to admin.filtered merely because
@@ -31922,12 +32056,21 @@ ${names}${extra}
 
   async function loadAdmin(){
     if(realRole()!=="HR_ADMIN")return;
+
+    ensureAdminPortalAccessCardV616ae();
+
     const searchValue=String($("portalAdminSearchV61482")?.value||"").trim()||null;
     const statusValue=String($("portalAdminStatusV61482")?.value||"")||null;
     const pageSizeV61484=800;
     const maxRowsV61484=10000;
     app()?.showLoading?.("กำลังโหลดพนักงาน Employee Portal...");
     try{
+      const accessPromiseV616ae=loadAdminPortalAccessV616ae(false).catch(e=>{
+        console.warn("HR Portal Access FIX16AE",e);
+        if($("portalAdminLinkTextV616ae"))$("portalAdminLinkTextV616ae").textContent="โหลด Link กลางไม่สำเร็จ";
+        return null;
+      });
+
       let allRowsV61484=[];
       let offsetV61484=0;
       while(offsetV61484<maxRowsV61484){
@@ -31949,6 +32092,7 @@ ${names}${extra}
       admin.filtered=[];
       const visible=new Set(admin.rows.map(r=>String(r.emp_code)));
       admin.selected=new Set([...admin.selected].filter(x=>visible.has(x)));
+      await accessPromiseV616ae;
       renderAdmin();
     }catch(e){
       toast(human(e),"error");
@@ -32102,21 +32246,32 @@ ${names}${extra}
       const sel=e.target.closest("[data-portal-admin-select-v61482]");if(sel){const code=String(sel.dataset.portalAdminSelectV61482);sel.checked?admin.selected.add(code):admin.selected.delete(code);renderAdmin();return;}
       if(e.target.closest("[data-close-team-portal-v61482]")){closeActivation();return;}
       const nav=e.target.closest('.nav-item[data-page="team-portal"]');if(nav)setTimeout(loadTeam,0);
-      const adminNav=e.target.closest('.nav-item[data-page="admin-employee-portal"]');if(adminNav)setTimeout(loadAdmin,0);
+      const adminNav=e.target.closest('.nav-item[data-page="admin-employee-portal"]');
+      if(adminNav){
+        ensureAdminPortalAccessCardV616ae();
+        setTimeout(loadAdmin,0);
+      }
     });
     $("teamPortalCopyCodeV61482")?.addEventListener("click",async()=>{const c=team.lastActivation?.activation_code;if(!c)return;await copyText(c);toast("คัดลอก Activation Code แล้ว","success");});
     $("teamPortalShareCodeV61482")?.addEventListener("click",async()=>{const r=team.lastActivation;if(!r)return;await ensureAdminPortalLink();shareText("TimeAttendance Activation",`${r.emp_code} ${r.full_name||""}\nActivation Code: ${r.activation_code}\nใช้รหัสนี้ครั้งเดียว แล้วตั้ง PIN 6 หลักของตนเอง`,teamPortalUrl(team.link?.public_token));});
     window.addEventListener("ta:session-ready",()=>{const rr=role();$("teamPortalNavV61482")?.classList.toggle("hidden",rr!=="MANAGER");});
   }
 
-  window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,issueAdminActivation,hrEnableAndIssueActivation,version:VERSION};
-  console.info("[TimeClock] Employee Portal FIX16AD loaded", VERSION);
+  window.TimeClockEmployeePortalV61482={
+    loadTeam,
+    loadAdmin,
+    loadAdminPortalAccessV616ae,
+    issueAdminActivation,
+    hrEnableAndIssueActivation,
+    version:VERSION
+  };
+  console.info("[TimeClock] Employee Portal FIX16AE loaded", VERSION);
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();
 
 ;
 
-/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow + FIX16AD portal modal ===== */
+/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow + FIX16AE HR portal global access ===== */
 (() => {
   "use strict";
 
