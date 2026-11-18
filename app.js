@@ -31588,10 +31588,10 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();
 
-/* ===== V6.15.29 FIX16AE Employee Portal HR Global Access Card ===== */
+/* ===== V6.15.29 FIX16AF Manager Portal Reset PIN Modal Fix ===== */
 (function(){
   "use strict";
-  const VERSION="6.15.29-FIX16AE";
+  const VERSION="6.15.29-FIX16AF";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -31870,10 +31870,33 @@ ${names}${extra}
   }
   function closeActivation(){const m=$("teamPortalActivationModalV61482");m?.classList.add("hidden");m?.setAttribute("aria-hidden","true");}
   async function issueActivation(emp,reset=false){
-    if(reset){const ok=window.tcConfirm?await window.tcConfirm("Reset PIN จะออกจากระบบทุกอุปกรณ์ของพนักงานและต้อง Activate ใหม่ ยืนยันหรือไม่?"):window.confirm("Reset PIN และให้พนักงาน Activate ใหม่?");if(!ok)return;}
+    if(reset){
+      const row=team.rows.find(r=>String(r.emp_code)===String(emp));
+      const ok=await portalConfirm(
+        `Reset PIN ของพนักงาน?\n${row?.emp_code||emp}${row?.full_name?` • ${row.full_name}`:""}\n\nระบบจะออกจากระบบทุกอุปกรณ์ และสร้าง Activation Code ใหม่เพื่อให้พนักงานตั้ง PIN 6 หลักอีกครั้ง`,
+        {
+          title:"Reset PIN • Employee Portal",
+          confirmText:"ยืนยัน Reset PIN",
+          tone:"warning"
+        }
+      );
+      if(!ok)return;
+    }
+
     app()?.showLoading?.(reset?"กำลัง Reset PIN...":"กำลังสร้าง Activation Code...");
-    try{const r=await rpc("ta_portal_issue_activation_v61482",{p_emp_code:String(emp),p_reset_pin:Boolean(reset)});openActivation(r);await loadTeam();}
-    catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}
+    try{
+      const r=await rpc("ta_portal_issue_activation_v61482",{
+        p_emp_code:String(emp),
+        p_reset_pin:Boolean(reset)
+      });
+      openActivation(r);
+      await loadTeam();
+      toast(reset?"Reset PIN และสร้าง Activation Code ใหม่แล้ว":"สร้าง Activation Code แล้ว","success");
+    }catch(e){
+      toast(human(e),"error");
+    }finally{
+      app()?.hideLoading?.();
+    }
   }
 
   function ensureAdminPortalAccessCardV616ae(){
@@ -32215,7 +32238,26 @@ ${names}${extra}
     $("teamPortalStatusV61482")?.addEventListener("change",applyTeamFilter);
     $("teamPortalCopyLinkV61482")?.addEventListener("click",async()=>{const u=teamPortalUrl(team.link?.public_token);await copyText(u);toast("คัดลอก Link แล้ว","success");});
     $("teamPortalShareLinkV61482")?.addEventListener("click",()=>shareText("TimeAttendance Employee Portal","เข้าระบบ TimeAttendance ของทีม",teamPortalUrl(team.link?.public_token)));
-    $("teamPortalRotateLinkV61482")?.addEventListener("click",async()=>{const ok=window.tcConfirm?await window.tcConfirm("เปลี่ยน Link ทีม? Link/QR เดิมจะใช้เปิดหน้า Activate ใหม่ไม่ได้"):window.confirm("เปลี่ยน Link ทีม?");if(!ok)return;app()?.showLoading?.("กำลังเปลี่ยน Link...");try{await loadTeamLink(true);toast("สร้าง Link ทีมใหม่แล้ว","success");}catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}});
+    $("teamPortalRotateLinkV61482")?.addEventListener("click",async()=>{
+      const ok=await portalConfirm(
+        "เปลี่ยน Link/QR สำหรับ Employee Portal?\n\nLink เดิมจะใช้เปิดหน้า Activate ใหม่ไม่ได้",
+        {
+          title:"เปลี่ยน Portal Link",
+          confirmText:"ยืนยันเปลี่ยน Link",
+          tone:"warning"
+        }
+      );
+      if(!ok)return;
+      app()?.showLoading?.("กำลังเปลี่ยน Link...");
+      try{
+        await loadTeamLink(true);
+        toast("สร้าง Link ใหม่แล้ว","success");
+      }catch(e){
+        toast(human(e),"error");
+      }finally{
+        app()?.hideLoading?.();
+      }
+    });
 
     $("portalAdminRefreshV61482")?.addEventListener("click",loadAdmin);
     $("portalAdminSearchBtnV61482")?.addEventListener("click",loadAdmin);
@@ -32265,13 +32307,13 @@ ${names}${extra}
     hrEnableAndIssueActivation,
     version:VERSION
   };
-  console.info("[TimeClock] Employee Portal FIX16AE loaded", VERSION);
+  console.info("[TimeClock] Employee Portal FIX16AF loaded", VERSION);
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();
 
 ;
 
-/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow + FIX16AE HR portal global access ===== */
+/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow + FIX16AF manager portal reset modal ===== */
 (() => {
   "use strict";
 
