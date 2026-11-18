@@ -9036,13 +9036,37 @@ window.tcIsDayShiftCode = value =>
         // V6.14.28: the Monthly Personal "วันหยุด" KPI must use the same
         // canonical day-off balance as Assignment / Bulk guards. This avoids a
         // browser-side recount that used to exclude public holidays.
+        // FIX16AL: Manager / HR Admin sees the same requestable balance concept
+        // as Employee Portal. Canonical quota still comes from V6.14.25/FIX16AR.
         const dayoffBalancePromise = employeeMonthWithTimeoutV61427(
-          state.client.rpc('ta_get_dayoff_balance_v61425', {
-            p_emp_code: empCode,
-            p_month: `${bounds.value}-01`
-          }),
+          (async () => {
+            const argsV616al = {
+              p_emp_code: empCode,
+              p_month: `${bounds.value}-01`
+            };
+            const preferredV616al = await state.client.rpc(
+              'ta_get_dayoff_requestable_balance_v616al',
+              argsV616al
+            );
+            if (!preferredV616al?.error) return preferredV616al;
+
+            const missingV616al = String(
+              preferredV616al?.error?.code
+              || preferredV616al?.error?.message
+              || ''
+            ).toUpperCase();
+
+            if (
+              missingV616al.includes('PGRST202')
+              || missingV616al.includes('COULD NOT FIND THE FUNCTION')
+              || missingV616al.includes('FUNCTION')
+            ) {
+              return state.client.rpc('ta_get_dayoff_balance_v61425', argsV616al);
+            }
+            return preferredV616al;
+          })(),
           15000,
-          'โหลดโควต้าวันหยุด Monthly Personal V6.14.30'
+          'โหลดโควต้าวันหยุด + สิทธิ์ขอหยุดเพิ่ม FIX16AL'
         );
 
         const settled = await Promise.allSettled([
@@ -9581,6 +9605,11 @@ window.tcIsDayShiftCode = value =>
       const quotaDaysV61426 = Number(dayoffBalanceV61426?.month_quota_days);
       const carriedDaysV61426 = Number(dayoffBalanceV61426?.carried_in_days);
       const balanceDaysV61426 = Number(dayoffBalanceV61426?.balance_days);
+      const pendingAddDayoffV616al = Number(dayoffBalanceV61426?.pending_add_dayoff_requests);
+      const requestableDaysV616al = Number(
+        dayoffBalanceV61426?.requestable_balance_days
+        ?? dayoffBalanceV61426?.balance_days
+      );
       const dayoffQuotaDisplayV61478 = Number.isFinite(quotaDaysV61426)
         ? formatNumber(quotaDaysV61426)
         : '-';
@@ -9592,6 +9621,10 @@ window.tcIsDayShiftCode = value =>
         ? [
             `ตามตาราง ${formatNumber(offDays)} วัน`,
             Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)} วัน` : '',
+            Number.isFinite(requestableDaysV616al) ? `ขอได้อีก ${formatNumber(Math.max(0,requestableDaysV616al))} วัน` : '',
+            Number.isFinite(pendingAddDayoffV616al) && pendingAddDayoffV616al > 0
+              ? `รออนุมัติ ${formatNumber(pendingAddDayoffV616al)} วัน`
+              : '',
             Number.isFinite(carriedDaysV61426) && carriedDaysV61426 !== 0 ? `ยกมา ${formatNumber(carriedDaysV61426)} วัน` : ''
           ].filter(Boolean).join(' • ')
         : 'นับจากตารางกะเดียวกับรายบุคคลเต็มเดือน';
@@ -31715,10 +31748,16 @@ ${names}${extra}
     const warning48=authoritative?.warning_48h===true||(authoritative?false:g.warning48);
     const quota=st.quota||{};
     const rest=restMinutes==null?'ตรวจเมื่อมีข้อมูลกะก่อนหน้า':`${(restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.`;
+    const pendingAddDayoffV616al=Number(quota.pending_add_dayoff_requests||0);
+    const requestableDaysV616al=Number(
+      quota.requestable_balance_days ?? quota.balance_days ?? 0
+    );
     const quotaMeta=quota.month_quota_days==null
       ? 'เริ่มแสดงหลังติดตั้ง Day-off Quota'
       : [
           `คงเหลือ ${Number(quota.balance_days||0).toLocaleString('th-TH')} วัน`,
+          `ขอได้อีก ${Math.max(0,requestableDaysV616al).toLocaleString('th-TH')} วัน`,
+          pendingAddDayoffV616al>0 ? `รออนุมัติ ${pendingAddDayoffV616al.toLocaleString('th-TH')} วัน` : '',
           Number(quota.carried_in_days||0)!==0 ? `ยกมา ${Number(quota.carried_in_days||0).toLocaleString('th-TH')} วัน` : ''
         ].filter(Boolean).join(' • ');
     const quotaKpiValue=quota.month_quota_days==null
@@ -31759,15 +31798,20 @@ ${names}${extra}
       nightSequenceReason,source:authoritative?'SERVER_V61435':'LOCAL'
     };
   }
+  // FIX16AL — Day-off Requestable Balance parity with Employee Portal
   async function loadQuota(){
     st.quota=null;if(!st.current)return;
     const args={p_emp_code:st.current.empCode,p_month:`${String(st.current.workDate).slice(0,7)}-01`};
     try{
       let q;
-      try{q=await rpc('ta_get_dayoff_balance_v61425',args);}
-      catch(e){
-        if(missingRpcV61425(e))throw new Error('DAYOFF_BALANCE_V61425_REQUIRED: กรุณารัน SQL V6.14.25');
-        throw e;
+      try{
+        q=await rpc('ta_get_dayoff_requestable_balance_v616al',args);
+      }catch(e){
+        if(missingRpcV61425(e)){
+          q=await rpc('ta_get_dayoff_balance_v61425',args);
+        }else{
+          throw e;
+        }
       }
       st.quota=Array.isArray(q)?q[0]:q;
       renderModeGrid();
