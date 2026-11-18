@@ -31588,10 +31588,10 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();
 
-/* ===== V6.15.29 FIX16AC Employee Portal Confirm Bypass Hotfix ===== */
+/* ===== V6.15.29 FIX16AD Employee Portal Dedicated Modal Fix ===== */
 (function(){
   "use strict";
-  const VERSION="6.15.29-FIX16AC";
+  const VERSION="6.15.29-FIX16AD";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -31602,14 +31602,178 @@ ${names}${extra}
     const s=String(e?.message||e?.details||e||"").toLowerCase();
     return e?.code==="PGRST202"||s.includes("could not find the function")||s.includes("schema cache");
   };
+  let portalConfirmResolveV616ad=null;
+
+  function ensurePortalConfirmModalV616ad(){
+    let root=$("employeePortalConfirmModalV616ad");
+    if(root)return root;
+
+    const style=document.createElement("style");
+    style.id="employeePortalConfirmStyleV616ad";
+    style.textContent=`
+      #employeePortalConfirmModalV616ad{
+        position:fixed;inset:0;z-index:2147483000;
+        display:flex;align-items:center;justify-content:center;
+        padding:20px;background:rgba(15,23,42,.62);
+        backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+        pointer-events:auto;
+      }
+      #employeePortalConfirmModalV616ad.hidden{display:none!important}
+      #employeePortalConfirmModalV616ad .epm-dialog{
+        width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 40px);
+        overflow:auto;background:#fff;border:1px solid #dbe5ef;
+        border-radius:16px;box-shadow:0 24px 70px rgba(15,23,42,.30);
+        color:#18324b;pointer-events:auto;
+      }
+      #employeePortalConfirmModalV616ad .epm-head{
+        display:flex;align-items:center;gap:14px;padding:18px 20px 16px;
+        border-bottom:1px solid #e5edf5;
+      }
+      #employeePortalConfirmModalV616ad .epm-icon{
+        width:44px;height:44px;display:grid;place-items:center;flex:0 0 44px;
+        border-radius:12px;border:1px solid #fed7aa;background:#fff7ed;
+        color:#c46a00;font-size:23px;font-weight:800;
+      }
+      #employeePortalConfirmModalV616ad .epm-title-wrap{min-width:0;flex:1}
+      #employeePortalConfirmModalV616ad .epm-kicker{
+        margin:0 0 2px;color:#7890a7;font-size:11px;letter-spacing:.04em;
+      }
+      #employeePortalConfirmModalV616ad .epm-title{
+        margin:0;color:#17324d;font-size:20px;line-height:1.25;font-weight:800;
+      }
+      #employeePortalConfirmModalV616ad .epm-close{
+        width:40px;height:40px;display:grid;place-items:center;flex:0 0 40px;
+        border:1px solid #d8e4ef;border-radius:10px;background:#fff;
+        color:#48657f;font-size:18px;font-weight:700;cursor:pointer;
+      }
+      #employeePortalConfirmModalV616ad .epm-close:hover{background:#f8fbfd}
+      #employeePortalConfirmModalV616ad .epm-body{padding:18px 20px}
+      #employeePortalConfirmModalV616ad .epm-message{
+        padding:16px;border:1px solid #d9e7f2;border-radius:12px;
+        background:#f7fafc;color:#3f5d77;font-size:14px;line-height:1.65;
+        white-space:pre-line;font-weight:600;
+      }
+      #employeePortalConfirmModalV616ad .epm-actions{
+        display:flex;justify-content:flex-end;gap:10px;padding:14px 20px 18px;
+        border-top:1px solid #e5edf5;
+      }
+      #employeePortalConfirmModalV616ad .epm-btn{
+        min-width:106px;height:42px;padding:0 18px;border-radius:10px;
+        border:1px solid #d6e2ed;background:#fff;color:#3d5871;
+        font-weight:700;cursor:pointer;
+      }
+      #employeePortalConfirmModalV616ad .epm-btn:hover{background:#f7fafc}
+      #employeePortalConfirmModalV616ad .epm-confirm{
+        min-width:150px;border-color:#3c91cf;background:#3c91cf;color:#fff;
+      }
+      #employeePortalConfirmModalV616ad .epm-confirm:hover{background:#2f82bd}
+      #employeePortalConfirmModalV616ad .epm-confirm.warning{
+        border-color:#d97706;background:#d97706;
+      }
+      #employeePortalConfirmModalV616ad .epm-confirm.warning:hover{background:#b85f04}
+      @media(max-width:640px){
+        #employeePortalConfirmModalV616ad{padding:12px}
+        #employeePortalConfirmModalV616ad .epm-head,
+        #employeePortalConfirmModalV616ad .epm-body{padding-left:16px;padding-right:16px}
+        #employeePortalConfirmModalV616ad .epm-actions{
+          padding-left:16px;padding-right:16px;flex-direction:column-reverse;
+        }
+        #employeePortalConfirmModalV616ad .epm-btn{width:100%}
+      }
+    `;
+    document.head.appendChild(style);
+
+    root=document.createElement("div");
+    root.id="employeePortalConfirmModalV616ad";
+    root.className="hidden";
+    root.setAttribute("role","dialog");
+    root.setAttribute("aria-modal","true");
+    root.setAttribute("aria-labelledby","employeePortalConfirmTitleV616ad");
+    root.innerHTML=`
+      <div class="epm-dialog" tabindex="-1">
+        <div class="epm-head">
+          <div class="epm-icon">?</div>
+          <div class="epm-title-wrap">
+            <div class="epm-kicker">ยืนยันรายการ</div>
+            <h3 class="epm-title" id="employeePortalConfirmTitleV616ad">Employee Portal</h3>
+          </div>
+          <button type="button" class="epm-close" id="employeePortalConfirmCloseV616ad" aria-label="ปิด">×</button>
+        </div>
+        <div class="epm-body">
+          <div class="epm-message" id="employeePortalConfirmMessageV616ad"></div>
+        </div>
+        <div class="epm-actions">
+          <button type="button" class="epm-btn" id="employeePortalConfirmCancelV616ad">ยกเลิก</button>
+          <button type="button" class="epm-btn epm-confirm" id="employeePortalConfirmOkV616ad">ยืนยัน</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(root);
+
+    const settle=value=>{
+      if(!portalConfirmResolveV616ad)return;
+      const resolve=portalConfirmResolveV616ad;
+      portalConfirmResolveV616ad=null;
+      root.classList.add("hidden");
+      root.setAttribute("aria-hidden","true");
+      resolve(Boolean(value));
+    };
+
+    // Bind directly to the concrete elements AFTER they are appended.
+    $("employeePortalConfirmCancelV616ad").addEventListener("click",e=>{
+      e.preventDefault();e.stopPropagation();settle(false);
+    });
+    $("employeePortalConfirmCloseV616ad").addEventListener("click",e=>{
+      e.preventDefault();e.stopPropagation();settle(false);
+    });
+    $("employeePortalConfirmOkV616ad").addEventListener("click",e=>{
+      e.preventDefault();e.stopPropagation();settle(true);
+    });
+    root.addEventListener("click",e=>{
+      if(e.target===root){e.preventDefault();e.stopPropagation();settle(false);}
+    });
+
+    document.addEventListener("keydown",e=>{
+      if(root.classList.contains("hidden"))return;
+      if(e.key==="Escape"){e.preventDefault();settle(false);}
+      if(e.key==="Enter"){e.preventDefault();settle(true);}
+    },true);
+
+    return root;
+  }
+
   async function portalConfirm(message,options={}){
-    // FIX16AC:
-    // Employee Portal must not depend on the shared modal layer.
-    // A native browser confirmation is intentionally used here because
-    // it cannot be blocked by app modal overlays / z-index / late DOM binding.
+    const root=ensurePortalConfirmModalV616ad();
+
+    // Resolve any abandoned previous confirmation safely.
+    if(portalConfirmResolveV616ad){
+      const previous=portalConfirmResolveV616ad;
+      portalConfirmResolveV616ad=null;
+      previous(false);
+    }
+
     const title=String(options.title||"Employee Portal").trim();
     const body=String(message||"ยืนยันการดำเนินการ?").trim();
-    return window.confirm(`${title}\n\n${body}`);
+    const confirmText=String(options.confirmText||"ยืนยัน").trim();
+    const tone=String(options.tone||"primary").toLowerCase();
+
+    $("employeePortalConfirmTitleV616ad").textContent=title;
+    $("employeePortalConfirmMessageV616ad").textContent=body;
+
+    const okBtn=$("employeePortalConfirmOkV616ad");
+    okBtn.textContent=confirmText;
+    okBtn.classList.toggle("warning",tone==="warning"||tone==="danger");
+
+    root.classList.remove("hidden");
+    root.setAttribute("aria-hidden","false");
+
+    requestAnimationFrame(()=>{
+      okBtn?.focus?.({preventScroll:true});
+    });
+
+    return new Promise(resolve=>{
+      portalConfirmResolveV616ad=resolve;
+    });
   }
   const toast=(m,t="info")=>app()?.toast?.(m,t);
   const role=()=>String(app()?.state?.profile?.role||"").toUpperCase();
@@ -31946,13 +32110,13 @@ ${names}${extra}
   }
 
   window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,issueAdminActivation,hrEnableAndIssueActivation,version:VERSION};
-  console.info("[TimeClock] Employee Portal FIX16AC loaded", VERSION);
+  console.info("[TimeClock] Employee Portal FIX16AD loaded", VERSION);
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();
 
 ;
 
-/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow + FIX16AB portal restore ===== */
+/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow + FIX16AD portal modal ===== */
 (() => {
   "use strict";
 
