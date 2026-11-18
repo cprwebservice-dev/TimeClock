@@ -211,32 +211,72 @@ window.tcIsDayShiftCode = value =>
   }
 
   function bind() {
-    const el = modalEls();
-    el.cancel?.addEventListener("click", () => settle(activeMode === "prompt" ? null : false));
-    el.close?.addEventListener("click", () => settle(activeMode === "prompt" ? null : false));
-    el.confirm?.addEventListener("click", () => {
-      if (activeMode === "prompt") {
-        if (el.input.required && !el.input.value.trim()) {
-          el.input.focus();
-          el.input.classList.add("modal-input-invalid-v61134");
-          return;
-        }
-        el.input.classList.remove("modal-input-invalid-v61134");
-        settle(el.input.value);
-      } else settle(true);
-    });
-    el.backdrop?.addEventListener("click", event => {
-      if (event.target === el.backdrop) settle(activeMode === "prompt" ? null : false);
-    });
-    el.input?.addEventListener("input", () => el.input.classList.remove("modal-input-invalid-v61134"));
+    if (document.documentElement.dataset.globalModalDelegationV616ab === "1") return;
+    document.documentElement.dataset.globalModalDelegationV616ab = "1";
 
-    $("globalPrintModalClose")?.addEventListener("click", closePrint);
-    $("globalPrintModalCancel")?.addEventListener("click", closePrint);
-    $("globalPrintModal")?.addEventListener("click", event => { if (event.target.id === "globalPrintModal") closePrint(); });
-    $("globalPrintModalPrint")?.addEventListener("click", () => {
-      try { $("globalPrintFrame")?.contentWindow?.focus(); $("globalPrintFrame")?.contentWindow?.print(); }
-      catch (_) { window.TimeClockApp?.toast?.("ไม่สามารถเปิดหน้าพิมพ์ได้", "error"); }
-    });
+    // FIX16AB: delegated handlers keep the modal functional even when
+    // modal markup is mounted/re-rendered after this module initializes.
+    document.addEventListener("click", event => {
+      const target = event.target;
+      if (!target) return;
+
+      if (target.closest?.("#globalActionModalCancel, #globalActionModalClose")) {
+        event.preventDefault();
+        settle(activeMode === "prompt" ? null : false);
+        return;
+      }
+
+      if (target.closest?.("#globalActionModalConfirm")) {
+        event.preventDefault();
+        const el = modalEls();
+
+        if (activeMode === "prompt") {
+          if (el.input?.required && !String(el.input.value || "").trim()) {
+            el.input.focus();
+            el.input.classList.add("modal-input-invalid-v61134");
+            return;
+          }
+
+          el.input?.classList.remove("modal-input-invalid-v61134");
+          settle(el.input?.value ?? "");
+        } else {
+          settle(true);
+        }
+        return;
+      }
+
+      if (target.id === "globalActionModal") {
+        settle(activeMode === "prompt" ? null : false);
+        return;
+      }
+
+      if (target.closest?.("#globalPrintModalClose, #globalPrintModalCancel")) {
+        event.preventDefault();
+        closePrint();
+        return;
+      }
+
+      if (target.id === "globalPrintModal") {
+        closePrint();
+        return;
+      }
+
+      if (target.closest?.("#globalPrintModalPrint")) {
+        event.preventDefault();
+        try {
+          $("globalPrintFrame")?.contentWindow?.focus();
+          $("globalPrintFrame")?.contentWindow?.print();
+        } catch (_) {
+          window.TimeClockApp?.toast?.("ไม่สามารถเปิดหน้าพิมพ์ได้", "error");
+        }
+      }
+    }, true);
+
+    document.addEventListener("input", event => {
+      if (event.target?.id === "globalActionModalInput") {
+        event.target.classList.remove("modal-input-invalid-v61134");
+      }
+    }, true);
 
     document.addEventListener("keydown", event => {
       if (event.key !== "Escape") return;
@@ -31548,16 +31588,38 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();
 
-/* ===== V6.14.84 Employee Portal >1000 Search + Crypto Fix ===== */
+/* ===== V6.15.29 FIX16AB Employee Portal HR Admin Activation Restore ===== */
 (function(){
   "use strict";
-  const VERSION="6.14.84";
+  const VERSION="6.15.29-FIX16AB";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   const fmtDateTime=v=>{if(!v)return"-";const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString("th-TH",{dateStyle:"short",timeStyle:"short"});};
   const human=e=>app()?.humanError?.(e)||String(e?.message||e||"เกิดข้อผิดพลาด");
   const rpc=async(name,args={})=>{const c=app()?.state?.client;if(!c)throw new Error("SUPABASE_CLIENT_NOT_READY");const {data,error}=await c.rpc(name,args);if(error)throw error;return data;};
+  const rpcMissing=e=>{
+    const s=String(e?.message||e?.details||e||"").toLowerCase();
+    return e?.code==="PGRST202"||s.includes("could not find the function")||s.includes("schema cache");
+  };
+  async function portalConfirm(message,options={}){
+    // Unified modal is preferred after FIX16AB delegation.
+    // Native confirm remains a final safety fallback.
+    try{
+      if(window.TimeClockModal?.confirm){
+        return Boolean(await window.TimeClockModal.confirm({
+          title:options.title||"ยืนยันการดำเนินการ",
+          message,
+          confirmText:options.confirmText||"ยืนยัน",
+          cancelText:options.cancelText||"ยกเลิก",
+          tone:options.tone||"warning"
+        }));
+      }
+    }catch(e){
+      console.warn("Employee Portal confirm fallback",e);
+    }
+    return window.confirm(String(message||"ยืนยันการดำเนินการ?"));
+  }
   const toast=(m,t="info")=>app()?.toast?.(m,t);
   const role=()=>String(app()?.state?.profile?.role||"").toUpperCase();
   const realRole=()=>String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||"").toUpperCase();
@@ -31675,7 +31737,32 @@ ${names}${extra}
     $("portalAdminKpiOffV61482")&&( $("portalAdminKpiOffV61482").textContent=off.toLocaleString("th-TH") );
     $("portalAdminMetaV61482")&&( $("portalAdminMetaV61482").textContent=`${rows.length.toLocaleString("th-TH")} รายการ • เลือกแล้ว ${admin.selected.size.toLocaleString("th-TH")} คน` );
     const body=$("portalAdminBodyV61482");if(!body)return;
-    body.innerHTML=rows.length?rows.map(r=>`<tr><td><input type="checkbox" data-portal-admin-select-v61482="${esc(r.emp_code)}" ${admin.selected.has(String(r.emp_code))?"checked":""}/></td><td><strong>${esc(r.emp_code)}</strong><small>${esc(r.full_name||"-")}</small></td><td><strong>${esc(r.position_name||"-")}</strong></td><td><strong>${esc(r.department||"-")}</strong><small>${esc(r.zone||r.area||"-")} ${r.sub_area?`/ ${esc(r.sub_area)}`:""}</small></td><td>${esc(r.pc||"-")}</td><td>${statusBadge(r.portal_status)}</td><td><small>Activate ${esc(fmtDateTime(r.activated_at))}</small><small>Login ${esc(fmtDateTime(r.last_login_at))}</small></td></tr>`).join(""):'<tr><td colspan="7" class="fc-empty">ไม่พบข้อมูลพนักงาน</td></tr>';
+    body.innerHTML=rows.length?rows.map(r=>{
+      const status=String(r.portal_status||"NOT_ENABLED").toUpperCase();
+      const emp=esc(r.emp_code);
+      let action="";
+      if(status==="ACTIVE"){
+        action=`<button class="btn btn-light btn-sm" data-portal-admin-activation-v616ab="${emp}" data-reset-pin="1">Reset PIN / Code ใหม่</button>`;
+      }else if(status==="ACTIVATION_READY"){
+        action=`<button class="btn btn-primary btn-sm" data-portal-admin-activation-v616ab="${emp}">สร้าง Code ใหม่</button>`;
+      }else if(status==="READY"){
+        action=`<button class="btn btn-primary btn-sm" data-portal-admin-activation-v616ab="${emp}">สร้าง Activation Code</button>`;
+      }else{
+        action=`<button class="btn btn-primary btn-sm" data-portal-admin-activation-v616ab="${emp}">เปิดสิทธิ์ + สร้าง Code</button>`;
+      }
+      return `<tr>
+        <td><input type="checkbox" data-portal-admin-select-v61482="${emp}" ${admin.selected.has(String(r.emp_code))?"checked":""}/></td>
+        <td><strong>${emp}</strong><small>${esc(r.full_name||"-")}</small></td>
+        <td><strong>${esc(r.position_name||"-")}</strong></td>
+        <td><strong>${esc(r.department||"-")}</strong><small>${esc(r.zone||r.area||"-")} ${r.sub_area?`/ ${esc(r.sub_area)}`:""}</small></td>
+        <td>${esc(r.pc||"-")}</td>
+        <td>${statusBadge(status)}</td>
+        <td><div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
+          <span><small>Activate ${esc(fmtDateTime(r.activated_at))}</small><small>Login ${esc(fmtDateTime(r.last_login_at))}</small></span>
+          ${action}
+        </div></td>
+      </tr>`;
+    }).join(""):'<tr><td colspan="7" class="fc-empty">ไม่พบข้อมูลพนักงาน</td></tr>';
   }
 
   async function loadAdmin(){
@@ -31714,13 +31801,113 @@ ${names}${extra}
     }finally{app()?.hideLoading?.();}
   }
 
+  async function ensureAdminPortalLink(){
+    if(team.link?.public_token)return team.link;
+    try{
+      team.link=await rpc("ta_portal_get_team_link_v61482",{p_rotate:false});
+    }catch(e){
+      console.warn("Employee Portal global link unavailable",e);
+    }
+    return team.link;
+  }
+
+  async function hrEnableAndIssueActivation(emp,reset=false){
+    const code=String(emp||"").trim();
+    if(!code)throw new Error("EMP_CODE_REQUIRED");
+
+    try{
+      return await rpc("ta_portal_hr_enable_and_issue_activation_v616aa",{
+        p_emp_code:code,
+        p_reset_pin:Boolean(reset)
+      });
+    }catch(e){
+      if(!rpcMissing(e))throw e;
+
+      // Compatibility fallback if FIX16AA helper is not in schema cache.
+      await rpc("ta_portal_admin_set_enabled_v61482",{
+        p_emp_codes:[code],
+        p_enabled:true,
+        p_note:"HR Admin enable for Activation • FIX16AB fallback"
+      });
+      return await rpc("ta_portal_issue_activation_v61482",{
+        p_emp_code:code,
+        p_reset_pin:Boolean(reset)
+      });
+    }
+  }
+
+  async function issueAdminActivation(emp,reset=false){
+    const row=admin.rows.find(r=>String(r.emp_code)===String(emp));
+    const status=String(row?.portal_status||"NOT_ENABLED").toUpperCase();
+    const isReset=Boolean(reset)||status==="ACTIVE";
+    const label=isReset
+      ?"Reset PIN และสร้าง Activation Code ใหม่"
+      :["NOT_ENABLED","DISABLED"].includes(status)
+        ?"เปิดสิทธิ์ Employee Portal และสร้าง Activation Code"
+        :"สร้าง Activation Code";
+
+    const ok=await portalConfirm(
+      `${label}\n${row?.emp_code||emp} • ${row?.full_name||""}\n\nActivation Code ใช้ครั้งเดียว แล้วพนักงานตั้ง PIN 6 หลักของตนเอง`,
+      {
+        title:"Employee Portal",
+        confirmText:isReset?"Reset และสร้าง Code":"ยืนยันและสร้าง Code",
+        tone:isReset?"warning":"primary"
+      }
+    );
+    if(!ok)return;
+
+    app()?.showLoading?.("กำลังสร้าง Activation Code...");
+    try{
+      await ensureAdminPortalLink();
+      const result=await hrEnableAndIssueActivation(emp,isReset);
+      openActivation(result);
+      toast("สร้าง Activation Code เรียบร้อย","success");
+      admin.selected.delete(String(emp));
+      await loadAdmin();
+    }catch(e){
+      toast(human(e),"error");
+    }finally{
+      app()?.hideLoading?.();
+    }
+  }
+
   async function setAdminEnabled(enabled){
-    const codes=[...admin.selected];if(!codes.length)return toast("กรุณาเลือกพนักงานอย่างน้อย 1 คน","warning");
+    const codes=[...admin.selected];
+    if(!codes.length)return toast("กรุณาเลือกพนักงานอย่างน้อย 1 คน","warning");
+
+    // For one employee, HR Admin can finish the whole workflow in one action:
+    // enable + issue Activation Code.
+    if(enabled&&codes.length===1){
+      return issueAdminActivation(codes[0],false);
+    }
+
     const label=enabled?"เปิดสิทธิ์ Employee Portal":"ระงับ Employee Portal";
-    const ok=window.tcConfirm?await window.tcConfirm(`${label} จำนวน ${codes.length.toLocaleString("th-TH")} คน?`):window.confirm(`${label} ${codes.length} คน?`);if(!ok)return;
+    const detail=enabled
+      ?`${label} จำนวน ${codes.length.toLocaleString("th-TH")} คน?\n\nหลังเปิดสิทธิ์ สามารถสร้าง Activation Code รายบุคคลจากปุ่มในตาราง`
+      :`${label} จำนวน ${codes.length.toLocaleString("th-TH")} คน?`;
+
+    const ok=await portalConfirm(detail,{
+      title:"Employee Portal",
+      confirmText:enabled?"เปิดสิทธิ์":"ระงับสิทธิ์",
+      tone:enabled?"primary":"warning"
+    });
+    if(!ok)return;
+
     app()?.showLoading?.(`กำลัง${label}...`);
-    try{await rpc("ta_portal_admin_set_enabled_v61482",{p_emp_codes:codes,p_enabled:Boolean(enabled),p_note:null});toast(`${label}เรียบร้อย`,"success");admin.selected.clear();await loadAdmin();}
-    catch(e){toast(human(e),"error");}finally{app()?.hideLoading?.();}
+    try{
+      await rpc("ta_portal_admin_set_enabled_v61482",{
+        p_emp_codes:codes,
+        p_enabled:Boolean(enabled),
+        p_note:enabled?"HR Admin bulk enable • FIX16AB":null
+      });
+      toast(`${label}เรียบร้อย`,"success");
+      admin.selected.clear();
+      await loadAdmin();
+    }catch(e){
+      toast(human(e),"error");
+    }finally{
+      app()?.hideLoading?.();
+    }
   }
 
   function bind(){
@@ -31747,6 +31934,14 @@ ${names}${extra}
     $("portalAdminSelectAllV61482")?.addEventListener("change",e=>{const rows=admin.rows;if(e.target.checked)rows.forEach(r=>admin.selected.add(String(r.emp_code)));else rows.forEach(r=>admin.selected.delete(String(r.emp_code)));renderAdmin();});
 
     document.addEventListener("click",async e=>{
+      const adminActivation=e.target.closest("[data-portal-admin-activation-v616ab]");
+      if(adminActivation){
+        await issueAdminActivation(
+          adminActivation.dataset.portalAdminActivationV616ab,
+          adminActivation.dataset.resetPin==="1"
+        );
+        return;
+      }
       const a=e.target.closest("[data-portal-activation-v61482]");if(a){await issueActivation(a.dataset.portalActivationV61482,false);return;}
       const r=e.target.closest("[data-portal-reset-pin-v61482]");if(r){await issueActivation(r.dataset.portalResetPinV61482,true);return;}
       const sel=e.target.closest("[data-portal-admin-select-v61482]");if(sel){const code=String(sel.dataset.portalAdminSelectV61482);sel.checked?admin.selected.add(code):admin.selected.delete(code);renderAdmin();return;}
@@ -31755,17 +31950,17 @@ ${names}${extra}
       const adminNav=e.target.closest('.nav-item[data-page="admin-employee-portal"]');if(adminNav)setTimeout(loadAdmin,0);
     });
     $("teamPortalCopyCodeV61482")?.addEventListener("click",async()=>{const c=team.lastActivation?.activation_code;if(!c)return;await copyText(c);toast("คัดลอก Activation Code แล้ว","success");});
-    $("teamPortalShareCodeV61482")?.addEventListener("click",()=>{const r=team.lastActivation;if(!r)return;shareText("TimeAttendance Activation",`${r.emp_code} ${r.full_name||""}\nActivation Code: ${r.activation_code}\nใช้รหัสนี้ครั้งเดียว แล้วตั้ง PIN 6 หลักของตนเอง`,teamPortalUrl(team.link?.public_token));});
+    $("teamPortalShareCodeV61482")?.addEventListener("click",async()=>{const r=team.lastActivation;if(!r)return;await ensureAdminPortalLink();shareText("TimeAttendance Activation",`${r.emp_code} ${r.full_name||""}\nActivation Code: ${r.activation_code}\nใช้รหัสนี้ครั้งเดียว แล้วตั้ง PIN 6 หลักของตนเอง`,teamPortalUrl(team.link?.public_token));});
     window.addEventListener("ta:session-ready",()=>{const rr=role();$("teamPortalNavV61482")?.classList.toggle("hidden",rr!=="MANAGER");});
   }
 
-  window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,version:VERSION};
+  window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,issueAdminActivation,hrEnableAndIssueActivation,version:VERSION};
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();
 
 ;
 
-/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow.js ===== */
+/* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow + FIX16AB portal restore ===== */
 (() => {
   "use strict";
 
