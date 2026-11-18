@@ -31765,7 +31765,7 @@ ${names}${extra}
 
 ;
 
-/* ===== js/texttime-monitor-v616gm06e-r2-live-operations.js ===== */
+/* ===== js/texttime-monitor-v616gm06e-r3-status-truth.js ===== */
 (() => {
   "use strict";
 
@@ -31945,6 +31945,7 @@ ${names}${extra}
       .ttm-alerts{display:grid;gap:8px}
       .ttm-alert{padding:11px 12px;border-radius:12px;font-size:12px;border:1px solid #fed7aa;background:#fff7ed;color:#9a3412}
       .ttm-alert.error{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+      .ttm-alert.info{border-color:#bae6fd;background:#f0f9ff;color:#075985}
       .ttm-alert.ok{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
       .ttm-empty{padding:22px;text-align:center;color:#64748b;font-size:12px}
       .ttm-pause-note{font-size:11px;color:#64748b;margin-top:8px}
@@ -32020,7 +32021,7 @@ ${names}${extra}
           <div class="ttm-status-strip">
             <span id="ttmHeroHealth">${pill("neutral","กำลังโหลด")}</span>
             <span id="ttmHeroMode">${pill("neutral","-")}</span>
-            <span id="ttmHeroInfra">${pill("neutral","ตรวจสอบ Trigger / Cron")}</span>
+            <span id="ttmHeroInfra">${pill("neutral","ตรวจสอบ DB Trigger / Worker Cron")}</span>
           </div>
         </div>
         <div class="ttm-hero-actions">
@@ -32050,7 +32051,7 @@ ${names}${extra}
           <div class="ttm-panel-body">
             <div class="ttm-mini-list" id="ttmSystemList"></div>
             <div class="ttm-pause-note">Pause หยุดการประมวลผลรอบถัดไปเท่านั้น ไม่ย้อนกลับข้อมูลที่ Apply ไปแล้ว</div>
-            <div class="ttm-live-note">Production target: Batch รายวันควร Completed ภายใน 2 ชม. • Monitor refresh ทุก 30 วินาที</div>
+            <div class="ttm-live-note">Production target: Batch รายวันควร Completed ภายใน 2 ชม. • Gmail Trigger อยู่ที่ Apps Script • Monitor refresh ทุก 30 วินาที</div>
           </div>
         </div>
       </div>
@@ -32190,6 +32191,32 @@ ${names}${extra}
     }
   }
 
+  function activeAutomationBatch(data) {
+    const batches = Array.isArray(data?.batches) ? data.batches : [];
+    return batches.find(x => {
+      const q = String(x.queue_status || "").toUpperCase();
+      return q && !["COMPLETED","FAILED"].includes(q);
+    }) || null;
+  }
+
+  function effectiveLiveStatus(data) {
+    const a = data?.automation || {};
+    const q = data?.queue || {};
+    const gf = data?.attendance || {};
+    const active = activeAutomationBatch(data);
+
+    if (!a.is_enabled) return "PAUSED";
+    if (!active) return "IDLE";
+
+    if (Number(gf.blocked || 0) > 0 || Number(q.failed || 0) > 0) return "ATTENTION";
+    if (Number(q.waiting_attendance || 0) > 0 || Number(gf.pending || 0) > 0) return "PROCESSING ATTENDANCE";
+    if (Number(q.resolving || 0) > 0) return "RESOLVING";
+    if (Number(q.pending || 0) > 0) return "QUEUED";
+
+    const stage = String(active.pipeline_stage || "").toUpperCase();
+    return stage || "PROCESSING";
+  }
+
   function renderSystem(data) {
     const a = data?.automation || {};
     const s = data?.settings || {};
@@ -32216,11 +32243,13 @@ ${names}${extra}
     const rows = mode === "LIVE"
       ? [
           ["Mode", `${a.arm_mode || "-"} / ${a.is_enabled ? "Enabled" : "Disabled"}`],
-          ["System status", a.last_status || "-"],
+          ["System status", effectiveLiveStatus(data)],
           ["Current batch", activeBatch ? shortId(activeBatch.batch_id) : "ไม่มีงานค้าง"],
+          ["Gmail Collector", data?.latest_import?.created_at ? `รับไฟล์ล่าสุด ${timeAgo(data.latest_import.created_at)}` : "ยังไม่มีหลักฐานรับไฟล์"],
           ["Apply limit", a.max_apply_segments_per_tick != null ? `${num(a.max_apply_segments_per_tick)} segments/tick` : "-"],
           ["Import / Auto Apply", `${bool(s.import_enabled) ? "ON" : "OFF"} / ${bool(s.auto_apply_enabled) ? "ON" : "OFF"}`],
-          ["Trigger / Cron", `${bool(i.trigger_active) ? "ON" : "OFF"} / ${bool(i.cron_active) ? "ON" : "OFF"}`],
+          ["DB Trigger", bool(i.trigger_active) ? "ON" : "OFF"],
+          ["Worker Cron", bool(i.cron_active) ? "ON" : "OFF"],
           ["Last worker run", dateTime(a.last_run_at)],
           ["Monitor refresh", "ทุก 30 วินาที"]
         ]
@@ -32231,7 +32260,7 @@ ${names}${extra}
           ["Pilot chunks", `${num(a.pilot_apply_chunks_done)}/${num(a.pilot_max_apply_chunks)}`],
           ["Pilot expires", dateTime(a.pilot_expires_at)],
           ["Import / Auto Apply", `${bool(s.import_enabled) ? "ON" : "OFF"} / ${bool(s.auto_apply_enabled) ? "ON" : "OFF"}`],
-          ["Trigger / Cron", `${bool(i.trigger_active) ? "ON" : "OFF"} / ${bool(i.cron_active) ? "ON" : "OFF"}`],
+          ["DB Trigger / Worker Cron", `${bool(i.trigger_active) ? "ON" : "OFF"} / ${bool(i.cron_active) ? "ON" : "OFF"}`],
           ["Last worker run", dateTime(a.last_run_at)]
         ];
 
@@ -32256,10 +32285,7 @@ ${names}${extra}
       alerts.push({type:"error",text:`${x.file_name || shortId(x.batch_id)} • ${x.last_error}`});
     });
 
-    const activeBatch = batches.find(x => {
-      const qs = String(x.queue_status || "").toUpperCase();
-      return qs && !["COMPLETED","FAILED"].includes(qs);
-    });
+    const activeBatch = activeAutomationBatch(data);
     if (activeBatch && Number(activeBatch.latency_seconds || 0) > 7200) {
       alerts.push({
         type:"warn",
@@ -32267,13 +32293,30 @@ ${names}${extra}
       });
     }
 
-    const issueCount = alerts.length;
-    if (!issueCount) alerts.push({type:"ok",text:"ระบบพร้อมรับ Batch ใหม่ • Queue clear • ไม่พบ Error หรือ Blocked"});
+    const issueCount = alerts.filter(x => x.type === "error" || x.type === "warn").length;
+
+    if (activeBatch && issueCount === 0) {
+      const status = effectiveLiveStatus(data);
+      const file = activeBatch.file_name || shortId(activeBatch.batch_id);
+      const stageText =
+        status === "QUEUED" ? "เข้าคิวแล้ว • กำลังรอ Resolver/Worker รอบถัดไป" :
+        status === "RESOLVING" ? "กำลัง Resolver" :
+        status === "PROCESSING ATTENDANCE" ? "กำลังประมวลผล Attendance" :
+        "กำลังประมวลผล";
+      alerts.push({
+        type:"info",
+        text:`${file} • ${stageText} • เวลาใน Pipeline ${duration(activeBatch.latency_seconds)}`
+      });
+    } else if (!activeBatch && issueCount === 0) {
+      alerts.push({type:"ok",text:"ระบบพร้อมรับ Batch ใหม่ • Queue clear • ไม่พบ Error หรือ Blocked"});
+    }
 
     if ($("ttmAlerts")) $("ttmAlerts").innerHTML = alerts.map(x => `<div class="ttm-alert ${x.type === "warn" ? "" : x.type}">${esc(x.text)}</div>`).join("");
     if ($("ttmAlertCount")) $("ttmAlertCount").innerHTML = pill(
-      alerts.some(x=>x.type==="error") ? "FAIL" : alerts.some(x=>x.type==="warn") ? "PILOT" : "HEALTHY",
-      `${issueCount} รายการ`
+      alerts.some(x=>x.type==="error") ? "FAIL" :
+      alerts.some(x=>x.type==="warn") ? "PILOT" :
+      activeBatch ? "PROCESSING" : "HEALTHY",
+      issueCount ? `${issueCount} รายการ` : activeBatch ? "กำลังทำงาน" : "0 รายการ"
     );
   }
 
@@ -32339,20 +32382,31 @@ ${names}${extra}
     const batches = Array.isArray(data?.batches) ? data.batches : [];
     const latestBatch = batches[0] || null;
 
-    if ($("ttmHeroHealth")) $("ttmHeroHealth").innerHTML = pill(health,health);
+    if ($("ttmHeroHealth")) {
+      const active = activeAutomationBatch(data);
+      const hasFailure = Number(q.failed || 0) > 0 || Number(gf.blocked || 0) > 0;
+      $("ttmHeroHealth").innerHTML = hasFailure
+        ? pill("FAIL","ATTENTION")
+        : active
+          ? pill("PROCESSING","PROCESSING")
+          : pill(health,health);
+    }
     if ($("ttmHeroMode")) $("ttmHeroMode").innerHTML = pill(a.is_enabled ? (a.arm_mode || "ACTIVE") : "PAUSED",a.arm_mode || (a.is_enabled ? "ACTIVE" : "PAUSED"));
     if ($("ttmHeroInfra")) $("ttmHeroInfra").innerHTML = pill(
       bool(i.trigger_active) && bool(i.cron_active) ? "HEALTHY" : "FAIL",
-      `Trigger ${bool(i.trigger_active) ? "ON" : "OFF"} • Cron ${bool(i.cron_active) ? "ON" : "OFF"}`
+      `DB Trigger ${bool(i.trigger_active) ? "ON" : "OFF"} • Worker Cron ${bool(i.cron_active) ? "ON" : "OFF"}`
     );
 
     if ($("ttmKpiAutomation")) $("ttmKpiAutomation").textContent = a.arm_mode || (a.is_enabled ? "ACTIVE" : "PAUSED");
     if ($("ttmKpiAutomationSub")) {
-      const last = String(a.last_status || "").toUpperCase();
+      const liveStatus = effectiveLiveStatus(data);
       $("ttmKpiAutomationSub").textContent =
-        last === "IDLE" ? "พร้อมรับ Batch ใหม่" :
-        last === "WAITING_ATTENDANCE" ? "กำลังประมวลผล Attendance" :
-        a.last_status || "-";
+        liveStatus === "IDLE" ? "พร้อมรับ Batch ใหม่" :
+        liveStatus === "QUEUED" ? "มี Batch ใหม่ • รอ Worker รอบถัดไป" :
+        liveStatus === "RESOLVING" ? "กำลัง Resolver" :
+        liveStatus === "PROCESSING ATTENDANCE" ? "กำลังประมวลผล Attendance" :
+        liveStatus === "ATTENTION" ? "พบสถานะที่ต้องตรวจสอบ" :
+        liveStatus;
     }
 
     if ($("ttmKpiLastFile")) $("ttmKpiLastFile").textContent = latest?.file_name || "-";
