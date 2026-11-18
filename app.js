@@ -22093,7 +22093,7 @@ ${names}${extra}
 })();
 
 
-/* ===== V6.10.2 Organization Structure ===== */
+/* ===== V6.15.29 FIX16AG Organization Structure UX Refresh ===== */
 "use strict";
 (() => {
   const A = () => window.TimeClockApp;
@@ -22131,6 +22131,480 @@ ${names}${extra}
     const {data,error} = await A().state.client.rpc(name,args);
     if(error) throw error;
     return data;
+  }
+
+  function ensureOrgUxV616ag() {
+    const page = $("page-admin-org");
+    if(!page) return;
+
+    page.classList.add("org-ux-v616ag");
+
+    if(!$("orgUxStyleV616ag")) {
+      const style = document.createElement("style");
+      style.id = "orgUxStyleV616ag";
+      style.textContent = `
+        #page-admin-org.org-ux-v616ag{
+          --org-ux-border:#dce7f1;
+          --org-ux-soft:#f7fafc;
+          --org-ux-text:#18324b;
+          --org-ux-muted:#6f879d;
+          --org-ux-blue:#2f86c5;
+          --org-ux-blue-soft:#eef7fd;
+          --org-ux-green:#15945e;
+          --org-ux-green-soft:#eefaf4;
+          --org-ux-amber:#c47700;
+          --org-ux-amber-soft:#fff8ea;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-hero{
+          border:1px solid rgba(44,127,184,.16);
+          box-shadow:0 12px 28px rgba(27,66,99,.06);
+        }
+
+        #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag{
+          display:grid;
+          grid-template-columns:repeat(4,minmax(0,1fr));
+          gap:10px;
+          margin-top:12px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag article{
+          min-width:0;
+          border:1px solid var(--org-ux-border);
+          border-radius:14px;
+          background:#fff;
+          padding:12px 14px;
+          box-shadow:0 6px 16px rgba(30,64,92,.035);
+        }
+
+        #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag span{
+          display:block;
+          color:var(--org-ux-muted);
+          font-size:11px;
+          margin-bottom:4px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag strong{
+          display:block;
+          color:var(--org-ux-text);
+          font-size:20px;
+          line-height:1.2;
+          overflow:hidden;
+          text-overflow:ellipsis;
+          white-space:nowrap;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag small{
+          display:block;
+          color:#8aa0b4;
+          font-size:10px;
+          margin-top:3px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-workspace{
+          align-items:start;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-panel{
+          position:sticky;
+          top:78px;
+          align-self:start;
+          max-height:calc(100vh - 94px);
+          overflow:hidden;
+          display:flex;
+          flex-direction:column;
+          border-color:var(--org-ux-border);
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree{
+          overflow:auto;
+          min-height:260px;
+          max-height:calc(100vh - 330px);
+          padding:4px 4px 14px;
+          scrollbar-width:thin;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-toolbar{
+          gap:8px;
+          padding-bottom:10px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-search{
+          flex:1 1 240px;
+          min-width:0;
+          position:relative;
+        }
+
+        #page-admin-org.org-ux-v616ag #orgTreeSearch{
+          padding-right:34px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-search-clear-v616ag{
+          position:absolute;
+          right:6px;
+          top:50%;
+          transform:translateY(-50%);
+          width:26px;
+          height:26px;
+          border:0;
+          border-radius:8px;
+          background:transparent;
+          color:#7f95a8;
+          cursor:pointer;
+          display:none;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-search-clear-v616ag:hover{
+          background:#edf4f9;
+          color:#36546d;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-actions{
+          border-top:1px solid #edf2f6;
+          border-bottom:1px solid #edf2f6;
+          padding:8px 0;
+          margin-bottom:8px;
+        }
+
+        #page-admin-org.org-ux-v616ag #orgTreeCount{
+          margin-left:auto;
+          border-radius:999px;
+          background:#edf6fc;
+          color:#2f6f9e;
+          padding:5px 9px;
+          font-size:10px;
+          font-weight:700;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-drag-guide{
+          padding:9px 10px;
+          margin-bottom:7px;
+          border-radius:10px;
+          background:#f8fbfd;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-drag-guide strong{
+          font-size:11px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-drag-guide small{
+          font-size:9px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-node{
+          border-radius:11px;
+          border:1px solid transparent;
+          margin:2px 0;
+          min-height:50px;
+          transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .15s ease;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-node:hover{
+          background:#f8fbfd;
+          border-color:#e3edf5;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-node.selected{
+          background:linear-gradient(90deg,#eef8ff 0%,#f8fcff 100%);
+          border-color:#9fd2f3;
+          box-shadow:inset 3px 0 0 #368fc9,0 4px 12px rgba(40,111,159,.06);
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-node.inactive{
+          opacity:.58;
+          background:#fbfbfc;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-node-main{
+          min-width:0;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-node-main strong{
+          display:flex;
+          align-items:center;
+          gap:6px;
+          min-width:0;
+          font-size:12px;
+          color:var(--org-ux-text);
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-node-main strong b{
+          flex:0 0 auto;
+          font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+          font-size:10px;
+          padding:2px 6px;
+          border-radius:6px;
+          background:#edf3f8;
+          color:#4d6b83;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-tree-node-main .org-name-v616ag{
+          min-width:0;
+          overflow:hidden;
+          white-space:nowrap;
+          text-overflow:ellipsis;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-node-meta-v616ag{
+          display:flex;
+          align-items:center;
+          flex-wrap:wrap;
+          gap:4px;
+          margin-top:4px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-node-chip-v616ag{
+          display:inline-flex;
+          align-items:center;
+          max-width:180px;
+          border-radius:999px;
+          padding:2px 6px;
+          background:#f1f5f8;
+          color:#607a90;
+          font-size:9px;
+          line-height:1.25;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-node-chip-v616ag.people{
+          background:var(--org-ux-green-soft);
+          color:#16704c;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-node-chip-v616ag.manager{
+          background:var(--org-ux-amber-soft);
+          color:#9a6100;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-detail-panel{
+          border-color:var(--org-ux-border);
+          min-width:0;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-detail-head{
+          position:sticky;
+          top:72px;
+          z-index:4;
+          background:rgba(255,255,255,.97);
+          backdrop-filter:blur(8px);
+          -webkit-backdrop-filter:blur(8px);
+          border-bottom:1px solid #edf2f6;
+          padding-bottom:12px;
+          margin-bottom:12px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-breadcrumb{
+          overflow-x:auto;
+          white-space:nowrap;
+          padding-bottom:2px;
+          scrollbar-width:thin;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-kpi-grid article{
+          border:1px solid var(--org-ux-border);
+          border-radius:12px;
+          box-shadow:none;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-kpi-grid article strong{
+          font-size:22px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-info-card{
+          border-color:var(--org-ux-border);
+          border-radius:13px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-info-grid > div{
+          background:#fbfdfe;
+          border-radius:9px;
+          padding:9px 10px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-children-list button{
+          border-radius:10px;
+          transition:background .14s ease,border-color .14s ease;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-children-list button:hover{
+          background:#f5fafe;
+          border-color:#d7e7f3;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-manager-card .table-wrap{
+          border:1px solid #e5edf4;
+          border-radius:10px;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-manager-card table thead th{
+          position:sticky;
+          top:0;
+          z-index:2;
+          background:#f7fafc;
+          white-space:nowrap;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-manager-card tbody tr:hover{
+          background:#fbfdff;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-permission.yes{
+          width:24px;height:24px;
+          display:inline-grid;place-items:center;
+          border-radius:50%;
+          background:#eaf8f1;
+          color:#14845a;
+          font-weight:800;
+        }
+
+        #page-admin-org.org-ux-v616ag .org-permission.no{
+          color:#b9c5cf;
+        }
+
+        @media(max-width:1100px){
+          #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag{
+            grid-template-columns:repeat(2,minmax(0,1fr));
+          }
+          #page-admin-org.org-ux-v616ag .org-tree-panel{
+            position:relative;
+            top:auto;
+            max-height:none;
+          }
+          #page-admin-org.org-ux-v616ag .org-tree{
+            max-height:520px;
+          }
+          #page-admin-org.org-ux-v616ag .org-detail-head{
+            position:relative;
+            top:auto;
+          }
+        }
+
+        @media(max-width:640px){
+          #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag{
+            grid-template-columns:1fr 1fr;
+          }
+          #page-admin-org.org-ux-v616ag .org-ux-summary-v616ag strong{
+            font-size:17px;
+          }
+          #page-admin-org.org-ux-v616ag .org-tree-node-main .org-node-chip-v616ag:nth-child(n+3){
+            display:none;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
+    if(!$("orgUxSummaryV616ag")) {
+      const hero = page.querySelector(".org-hero");
+      if(hero) {
+        const summary = document.createElement("div");
+        summary.id = "orgUxSummaryV616ag";
+        summary.className = "org-ux-summary-v616ag";
+        summary.innerHTML = `
+          <article>
+            <span>หน่วยงานทั้งหมด</span>
+            <strong id="orgUxTotalV616ag">0</strong>
+            <small>ตามตัวกรองปัจจุบัน</small>
+          </article>
+          <article>
+            <span>ใช้งาน</span>
+            <strong id="orgUxActiveV616ag">0</strong>
+            <small>Active organization units</small>
+          </article>
+          <article>
+            <span>ระดับราก</span>
+            <strong id="orgUxRootV616ag">0</strong>
+            <small>หน่วยงานหลัก</small>
+          </article>
+          <article>
+            <span>กำลังเลือก</span>
+            <strong id="orgUxSelectedV616ag">ยังไม่ได้เลือก</strong>
+            <small id="orgUxSelectedSubV616ag">เลือกจากผังด้านซ้าย</small>
+          </article>
+        `;
+        hero.insertAdjacentElement("afterend",summary);
+      }
+    }
+
+    const searchWrap = $("orgTreeSearch")?.closest(".org-tree-search");
+    if(searchWrap && !$("orgSearchClearV616ag")) {
+      const clear = document.createElement("button");
+      clear.type = "button";
+      clear.id = "orgSearchClearV616ag";
+      clear.className = "org-search-clear-v616ag";
+      clear.textContent = "×";
+      clear.title = "ล้างคำค้นหา";
+      clear.setAttribute("aria-label","ล้างคำค้นหา");
+      searchWrap.appendChild(clear);
+
+      clear.addEventListener("click",()=>{
+        const input = $("orgTreeSearch");
+        if(input) input.value = "";
+        state.search = "";
+        clear.style.display = "none";
+        renderTree();
+        input?.focus();
+      });
+    }
+  }
+
+  function updateOrgSummaryV616ag() {
+    const rows = state.rows || [];
+    const roots = rows.filter(row => !row.parent_org_id);
+    const active = rows.filter(row => row.is_active);
+    const selected = state.selectedId
+      ? rows.find(row => row.org_id === state.selectedId)
+      : null;
+
+    setText("orgUxTotalV616ag",num(rows.length));
+    setText("orgUxActiveV616ag",num(active.length));
+    setText("orgUxRootV616ag",num(roots.length));
+    setText(
+      "orgUxSelectedV616ag",
+      selected ? selected.org_name : "ยังไม่ได้เลือก"
+    );
+    setText(
+      "orgUxSelectedSubV616ag",
+      selected
+        ? `${selected.org_code} • ${selected.org_level_name||selected.org_level_code}`
+        : "เลือกจากผังด้านซ้าย"
+    );
+  }
+
+  function expandOrgAncestorsV616ag(orgId) {
+    if(!orgId) return;
+
+    const byId = new Map(
+      state.rows.map(row => [row.org_id,row])
+    );
+
+    let current = byId.get(orgId);
+    const visited = new Set();
+
+    while(
+      current
+      && current.parent_org_id
+      && !visited.has(current.org_id)
+    ) {
+      visited.add(current.org_id);
+      state.expanded.add(current.parent_org_id);
+      current = byId.get(current.parent_org_id);
+    }
+  }
+
+  function scrollSelectedOrgIntoViewV616ag() {
+    requestAnimationFrame(()=>{
+      const el = document.querySelector(
+        `.org-tree-node[data-org-select="${CSS.escape(String(state.selectedId||""))}"]`
+      );
+      el?.scrollIntoView?.({
+        behavior:"smooth",
+        block:"nearest",
+        inline:"nearest"
+      });
+    });
   }
 
   function levelTone(level) {
@@ -22222,11 +22696,16 @@ ${names}${extra}
           >${children.length ? (expanded ? "−" : "+") : ""}</span>
           <span class="org-tree-icon ${levelTone(row.org_level_code)}">▱</span>
           <span class="org-tree-node-main">
-            <strong><b>${esc(row.org_code)}</b> • ${esc(row.org_name)}</strong>
-            <small>${esc(row.org_level_name||row.org_level_code)}
-              · ${esc(row.zone||"ยังไม่กำหนด Zone")}
-              · พนักงาน ${num(row.employee_count)}
-              · Manager ${num(row.manager_count)}</small>
+            <strong>
+              <b>${esc(row.org_code)}</b>
+              <span class="org-name-v616ag" title="${esc(row.org_name)}">${esc(row.org_name)}</span>
+            </strong>
+            <span class="org-node-meta-v616ag">
+              <span class="org-node-chip-v616ag">${esc(row.org_level_name||row.org_level_code)}</span>
+              <span class="org-node-chip-v616ag">${esc(row.zone||"ยังไม่กำหนด Zone")}</span>
+              <span class="org-node-chip-v616ag people">พนักงาน ${num(row.employee_count)}</span>
+              <span class="org-node-chip-v616ag manager">Manager ${num(row.manager_count)}</span>
+            </span>
           </span>
           ${row.is_active ? "" : "<em>ปิด</em>"}
         </button>
@@ -22239,7 +22718,19 @@ ${names}${extra}
     const roots = map.get("__ROOT__") || [];
     root.innerHTML = roots.map(node).join("")
       || '<div class="org-tree-empty">ไม่พบหน่วยงาน</div>';
-    setText("orgTreeCount",`${num(state.rows.length)} หน่วยงาน`);
+    if(searching) {
+      const matchCount = visible
+        ? state.rows.filter(row => visible.has(row.org_id)).length
+        : state.rows.length;
+      setText("orgTreeCount",`พบ ${num(matchCount)} / ${num(state.rows.length)}`);
+    } else {
+      setText("orgTreeCount",`${num(state.rows.length)} หน่วยงาน`);
+    }
+
+    updateOrgSummaryV616ag();
+
+    const clear = $("orgSearchClearV616ag");
+    if(clear) clear.style.display = searching ? "grid" : "none";
   }
 
   function orgRow(orgId) {
@@ -22711,6 +23202,8 @@ ${names}${extra}
 
   async function load() {
     if(!A()?.state?.client) return;
+
+    ensureOrgUxV616ag();
     A().showLoading?.("กำลังโหลดผังองค์กร...");
     try {
       state.rows = await rpc("ta_get_org_tree_v6101",{
@@ -22752,13 +23245,16 @@ ${names}${extra}
 
   async function selectUnit(orgId) {
     state.selectedId = orgId;
+    expandOrgAncestorsV616ag(orgId);
     renderTree();
+    scrollSelectedOrgIntoViewV616ag();
 
     try {
       state.detail = await rpc("ta_get_org_unit_detail_v690",{
         p_org_id:orgId
       });
       renderDetail();
+      updateOrgSummaryV616ag();
     } catch(error) {
       A().toast?.(A().humanError?.(error)||error.message,"error");
     }
@@ -22805,9 +23301,9 @@ ${names}${extra}
       ["ชื่อหน่วยงาน",unit.org_name],
       ["Zone",unit.zone||"-"],
       ["Area",unit.area||"-"],
-      ["Sub-area",unit.sub_area||"-"],
-      ["ระดับ",unit.org_level_name||unit.org_level_code],
-      ["หน่วยงานแม่",detail.parent?.org_name||"หน่วยงานหลัก"],
+      ["Sub Area",unit.sub_area||"-"],
+      ["ระดับโครงสร้าง",unit.org_level_name||unit.org_level_code],
+      ["อยู่ภายใต้",detail.parent?.org_name||"หน่วยงานหลัก"],
       ["ลำดับแสดง",unit.sort_order],
       ["เริ่มใช้",fmtDate(unit.effective_from)],
       ["สิ้นสุด",fmtDate(unit.effective_to)],
@@ -23802,6 +24298,8 @@ ${names}${extra}
   }
 
   function bind() {
+    ensureOrgUxV616ag();
+
     const orgTree = $("orgTree");
     const rootDropZone =
       $("orgRootDropZone");
@@ -23895,7 +24393,10 @@ ${names}${extra}
     $("orgShowInactive")?.addEventListener("change",load);
     $("orgTreeSearch")?.addEventListener(
       "input",
-      event => { state.search=event.target.value; renderTree(); }
+      event => {
+        state.search=event.target.value;
+        renderTree();
+      }
     );
     $("orgExpandAllBtn")?.addEventListener(
       "click",
