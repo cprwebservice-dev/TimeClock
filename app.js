@@ -5437,6 +5437,62 @@ window.tcIsDayShiftCode = value =>
     let scheduleLoadInFlightV61151 = false;
     let scheduleLoadQueuedV61151 = false;
 
+    // FIX16AI — HR Admin Schedule Filter-first Load
+    function scheduleRealRoleV616ai() {
+      return String(
+        state.profile?._realRole
+        || state.profile?.role
+        || ""
+      ).trim().toUpperCase();
+    }
+
+    function scheduleHrFilterStateV616ai() {
+      return {
+        zone: String(val("scheduleZone") || "").trim(),
+        department: String(val("scheduleDepartment") || "").trim(),
+        search: String(val("scheduleSearch") || "").trim()
+      };
+    }
+
+    function scheduleHrHasIntentionalScopeV616ai() {
+      if (scheduleRealRoleV616ai() !== "HR_ADMIN") return true;
+
+      const f = scheduleHrFilterStateV616ai();
+      const exactEmp = /^\d{4,20}$/.test(f.search);
+
+      return Boolean(
+        f.zone
+        || f.department
+        || exactEmp
+      );
+    }
+
+    function scheduleHrFilterFirstMessageV616ai() {
+      return "เพื่อให้ปฏิทินจัดกะโหลดเร็วขึ้น HR Admin ต้องเลือกพื้นที่ / หน่วยงาน หรือค้นหารหัสพนักงานก่อน แล้วกด “โหลดตารางกะ”";
+    }
+
+    function prepareScheduleFilterFirstV616ai() {
+      const period = syncSchedulePeriodUI();
+
+      state.schedule = [];
+      state.scheduleGuardBoundaryRowsV61431 = [];
+      state.scheduleScopeEmployeesV61151 = [];
+      state.scheduleLoadMetaV61149 = null;
+
+      renderSchedule();
+      setScheduleLoadStatus(
+        "info",
+        `${scheduleHrFilterFirstMessageV616ai()} • ช่วง ${formatDate(period.startDate)}–${formatDate(period.endDate)}`
+      );
+
+      const button = $("loadScheduleBtn");
+      if (button) {
+        button.disabled = false;
+        button.removeAttribute("aria-busy");
+        button.innerHTML = '<span>↻</span> โหลดตารางกะ';
+      }
+    }
+
     async function loadSchedule() {
       if (scheduleLoadInFlightV61151) {
         scheduleLoadQueuedV61151 = true;
@@ -5446,6 +5502,17 @@ window.tcIsDayShiftCode = value =>
       scheduleLoadInFlightV61151 = true;
 
       const period=syncSchedulePeriodUI();
+
+      // FIX16AI:
+      // HR Admin must intentionally narrow the very large enterprise scope.
+      // Do not call schedule filter/calendar RPCs for "all areas + all units".
+      if (!scheduleHrHasIntentionalScopeV616ai()) {
+        prepareScheduleFilterFirstV616ai();
+        scheduleLoadInFlightV61151 = false;
+        scheduleLoadQueuedV61151 = false;
+        return;
+      }
+
       const scheduleLoadStartedAtV6125 = (window.performance?.now?.() || Date.now());
       state.scheduleManagerEnrichTokenV6125 = Number(state.scheduleManagerEnrichTokenV6125 || 0) + 1;
       const managerEnrichTokenV6125 = state.scheduleManagerEnrichTokenV6125;
@@ -12908,14 +12975,26 @@ window.tcIsDayShiftCode = value =>
       if (page === "attendance" && !state.attendance.length) loadAttendance();
       if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
       if (page === "schedule") {
-        const personNeedsFullMonth =
-          scheduleCurrentView() === "PERSON"
-          && !schedulePersonLoadMatchesV61149();
+        const isHrAdminV616ai =
+          scheduleRealRoleV616ai() === "HR_ADMIN";
 
-        if (!state.schedule.length || personNeedsFullMonth) {
-          loadSchedule();
+        if (
+          isHrAdminV616ai
+          && !scheduleHrHasIntentionalScopeV616ai()
+        ) {
+          // Filter-first: open the page immediately without loading the
+          // enterprise-wide Employee x Day calendar.
+          prepareScheduleFilterFirstV616ai();
         } else {
-          renderSchedule();
+          const personNeedsFullMonth =
+            scheduleCurrentView() === "PERSON"
+            && !schedulePersonLoadMatchesV61149();
+
+          if (!state.schedule.length || personNeedsFullMonth) {
+            loadSchedule();
+          } else {
+            renderSchedule();
+          }
         }
       }
 
@@ -13195,7 +13274,17 @@ window.tcIsDayShiftCode = value =>
               val("scheduleZone")
             );
 
-            if (scheduleCurrentView() === "PERSON") {
+            if (scheduleRealRoleV616ai() === "HR_ADMIN") {
+              // Filter change is cheap; calendar load stays explicit.
+              state.schedule = [];
+              renderSchedule();
+              setScheduleLoadStatus(
+                "info",
+                val("scheduleZone")
+                  ? "เลือกหน่วยงานเพิ่มเติมได้ หรือกด “โหลดตารางกะ” เพื่อโหลดตามพื้นที่ที่เลือก"
+                  : scheduleHrFilterFirstMessageV616ai()
+              );
+            } else if (scheduleCurrentView() === "PERSON") {
               await loadSchedule();
             } else {
               renderSchedule();
@@ -13211,6 +13300,20 @@ window.tcIsDayShiftCode = value =>
 
       $("scheduleDepartment")?.addEventListener("change", async () => {
         setVal("scheduleTeamFocus", val("scheduleDepartment"));
+
+        if (scheduleRealRoleV616ai() === "HR_ADMIN") {
+          state.schedule = [];
+          renderSchedule();
+
+          setScheduleLoadStatus(
+            "info",
+            scheduleHrHasIntentionalScopeV616ai()
+              ? "ตัวกรองพร้อมแล้ว • กด “โหลดตารางกะ” เพื่อดึงข้อมูลเฉพาะ Scope ที่เลือก"
+              : scheduleHrFilterFirstMessageV616ai()
+          );
+          return;
+        }
+
         if (scheduleCurrentView() === "PERSON") {
           await loadSchedule();
         } else {
@@ -13225,6 +13328,16 @@ window.tcIsDayShiftCode = value =>
 
         const term = val("scheduleSearch").trim();
         const exactEmp = /^\d{4,20}$/.test(term);
+
+        if (
+          scheduleRealRoleV616ai() === "HR_ADMIN"
+          && exactEmp
+        ) {
+          setScheduleLoadStatus(
+            "info",
+            `พร้อมโหลดรหัสพนักงาน ${term} • กด “โหลดตารางกะ”`
+          );
+        }
 
         if (
           exactEmp
