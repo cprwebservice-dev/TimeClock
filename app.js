@@ -31588,10 +31588,10 @@ ${names}${extra}
   window.TimeClockSchedulingRulesV6123=window.TimeClockSchedulingRulesV6120;
 })();
 
-/* ===== V6.15.29 FIX16AB Employee Portal HR Admin Activation Restore ===== */
+/* ===== V6.15.29 FIX16AC Employee Portal Confirm Bypass Hotfix ===== */
 (function(){
   "use strict";
-  const VERSION="6.15.29-FIX16AB";
+  const VERSION="6.15.29-FIX16AC";
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
@@ -31603,22 +31603,13 @@ ${names}${extra}
     return e?.code==="PGRST202"||s.includes("could not find the function")||s.includes("schema cache");
   };
   async function portalConfirm(message,options={}){
-    // Unified modal is preferred after FIX16AB delegation.
-    // Native confirm remains a final safety fallback.
-    try{
-      if(window.TimeClockModal?.confirm){
-        return Boolean(await window.TimeClockModal.confirm({
-          title:options.title||"ยืนยันการดำเนินการ",
-          message,
-          confirmText:options.confirmText||"ยืนยัน",
-          cancelText:options.cancelText||"ยกเลิก",
-          tone:options.tone||"warning"
-        }));
-      }
-    }catch(e){
-      console.warn("Employee Portal confirm fallback",e);
-    }
-    return window.confirm(String(message||"ยืนยันการดำเนินการ?"));
+    // FIX16AC:
+    // Employee Portal must not depend on the shared modal layer.
+    // A native browser confirmation is intentionally used here because
+    // it cannot be blocked by app modal overlays / z-index / late DOM binding.
+    const title=String(options.title||"Employee Portal").trim();
+    const body=String(message||"ยืนยันการดำเนินการ?").trim();
+    return window.confirm(`${title}\n\n${body}`);
   }
   const toast=(m,t="info")=>app()?.toast?.(m,t);
   const role=()=>String(app()?.state?.profile?.role||"").toUpperCase();
@@ -31955,6 +31946,7 @@ ${names}${extra}
   }
 
   window.TimeClockEmployeePortalV61482={loadTeam,loadAdmin,issueAdminActivation,hrEnableAndIssueActivation,version:VERSION};
+  console.info("[TimeClock] Employee Portal FIX16AC loaded", VERSION);
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();
 
