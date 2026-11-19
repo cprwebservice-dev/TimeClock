@@ -18206,7 +18206,77 @@ ${skippedSummary(compatibility.skipped)}
 );}
   function openCommand(){if(!$("commandBackdrop"))return;$("commandBackdrop").classList.remove("hidden");$("commandInput").value="";renderCommand();setTimeout(()=>$("commandInput")?.focus(),20);}
   function closeCommand(){$("commandBackdrop")?.classList.add("hidden");}
-  function mountDrawer(){if($("notificationDrawer"))return;const d=document.createElement("aside");d.id="notificationDrawer";d.className="notification-drawer";d.innerHTML=`<div class="drawer-head"><div><small>TIME-CLOCK V6</small><h3>การแจ้งเตือน</h3></div><button id="drawerClose" class="btn btn-light btn-icon">×</button></div><div class="drawer-tabs"><button class="drawer-tab active">ทั้งหมด</button><button class="drawer-tab" data-drawer-go="schedule">ตารางกะ</button></div><div class="drawer-body"><div class="notification-empty">กำลังโหลดการแจ้งเตือน...</div></div>`;document.body.appendChild(d);$("drawerClose").onclick=()=>d.classList.remove("open");qa("[data-drawer-go]",d).forEach(b=>b.onclick=()=>{go(b.dataset.drawerGo);d.classList.remove("open");});}
+  // FIX16AO — restore modern Notification Drawer shell V61529F15L.
+  function mountDrawer(){
+    if($("notificationDrawer"))return;
+
+    const d=document.createElement("aside");
+    d.id="notificationDrawer";
+    d.className="notification-drawer notification-drawer-v61529f15l";
+    d.dataset.noticeFilter="ALL";
+    d.innerHTML=`
+      <div class="drawer-head drawer-head-v61529f15l">
+        <div class="drawer-title-v61529f15l">
+          <span class="drawer-title-icon-v61529f15l" aria-hidden="true">◉</span>
+          <div>
+            <small>TIME-CLOCK V6</small>
+            <h3>การแจ้งเตือน</h3>
+            <p>ติดตามรายการที่ต้องดำเนินการและเหตุการณ์ล่าสุด</p>
+          </div>
+        </div>
+        <button id="drawerClose" class="btn btn-light btn-icon drawer-close-v61529f15l" aria-label="ปิด">×</button>
+      </div>
+
+      <div class="drawer-tabs drawer-tabs-v61529f15l" role="tablist" aria-label="ตัวกรองการแจ้งเตือน">
+        <button class="drawer-tab active" data-notice-filter-v61529f15l="ALL" role="tab" aria-selected="true">
+          <span>ทั้งหมด</span><b data-notice-count-v61529f15l="ALL">0</b>
+        </button>
+        <button class="drawer-tab" data-notice-filter-v61529f15l="BORROW" role="tab" aria-selected="false">
+          <span>ยืมตัว</span><b data-notice-count-v61529f15l="BORROW">0</b>
+        </button>
+        <button class="drawer-tab" data-notice-filter-v61529f15l="REQUEST" role="tab" aria-selected="false">
+          <span>คำขอ</span><b data-notice-count-v61529f15l="REQUEST">0</b>
+        </button>
+        <button class="drawer-tab" data-notice-filter-v61529f15l="SCHEDULE" role="tab" aria-selected="false">
+          <span>ตารางกะ</span><b data-notice-count-v61529f15l="SCHEDULE">0</b>
+        </button>
+      </div>
+
+      <div class="drawer-body">
+        <div class="notification-empty">กำลังโหลดการแจ้งเตือน...</div>
+      </div>
+
+      <div class="drawer-foot-v61529f15l">
+        <span>คลิกรายการเพื่อเปิดหน้าที่เกี่ยวข้อง</span>
+        <button type="button" data-drawer-go-v61529f15l="schedule">เปิดตารางกะ →</button>
+      </div>
+    `;
+
+    document.body.appendChild(d);
+
+    $("drawerClose").onclick=()=>d.classList.remove("open");
+
+    qa("[data-notice-filter-v61529f15l]",d).forEach(b=>{
+      b.onclick=()=>{
+        d.dataset.noticeFilter=b.dataset.noticeFilterV61529f15l||"ALL";
+
+        qa("[data-notice-filter-v61529f15l]",d).forEach(x=>{
+          const active=x===b;
+          x.classList.toggle("active",active);
+          x.setAttribute("aria-selected",active?"true":"false");
+        });
+
+        window.TimeClockFunctional?.loadNotifications?.();
+      };
+    });
+
+    qa("[data-drawer-go-v61529f15l]",d).forEach(b=>{
+      b.onclick=()=>{
+        go(b.dataset.drawerGoV61529f15l);
+        d.classList.remove("open");
+      };
+    });
+  }
   function mountProfile(){if($("profileMenu"))return;const p=document.createElement("div");p.id="profileMenu";p.className="profile-menu hidden";p.innerHTML=`<div class="profile-head"><div class="profile-avatar" id="profileAvatar">TC</div><div class="profile-meta"><strong id="profileName">-</strong><span id="profileEmail">-</span><span id="profileRole">VIEWER</span></div></div><hr><button class="profile-action" data-profile-go="smart-assistant">✦ ผู้ช่วยวิเคราะห์</button><button class="profile-action" data-profile-go="system-settings">⚙ System Settings</button><button class="profile-action" id="profileTheme">◐ เปลี่ยนธีม</button><button class="profile-action" id="profileLogout">↪ ออกจากระบบ</button>`;document.body.appendChild(p);qa("[data-profile-go]",p).forEach(b=>b.onclick=()=>{go(b.dataset.profileGo);p.classList.add("hidden")});$("profileTheme").onclick=()=>$("themeToggleBtn")?.click();$("profileLogout").onclick=()=>$("logoutBtn")?.click();}
   function enhanceTopbar(){const old=q(".global-search");old?.classList.add("hidden-important");const right=q(".topbar-right");if(!right||$("shellSearchBtn"))return;const b=document.createElement("button");b.id="shellSearchBtn";b.className="btn btn-light shell-search-trigger desktop-only";b.innerHTML="<span>⌕ ค้นหาทั้งระบบ</span><kbd>Ctrl K</kbd>";b.onclick=openCommand;right.insertBefore(b,right.firstChild);const roleEl=$("roleBadge");if(roleEl){roleEl.style.cursor="pointer";roleEl.title="เปิดโปรไฟล์ผู้ใช้งาน";roleEl.onclick=toggleProfile;}}
   function toggleProfile(){const p=$("profileMenu");if(!p)return;p.classList.toggle("hidden");$("profileName").textContent=name();$("profileEmail").textContent=email();$("profileRole").textContent=role();$("profileAvatar").textContent=(name().slice(0,2)||"TC").toUpperCase();}
@@ -39684,6 +39754,7 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureTeamWorkspaceV616an,{once:true});else ensureTeamWorkspaceV616an();
   window.TimeClockTeamWorkspaceRecoveryV616AN={ensure:ensureTeamWorkspaceV616an,version:'6.15.29-FIX16AN'};
+  document.documentElement.dataset.notificationUxFixV616ao='1';
 })();
 
 /* ============================================================================
