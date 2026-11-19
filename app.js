@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AU DAY -> NIGHT allowed when rest >= 6h ===== */
 /* ===== V6.15.29 FIX16AT Bulk Certification Selection Scope Fix ===== */
 /* ===== V6.15.29 FIX16AS Bulk Time Certification Footer Click Reliability ===== */
 /* ===== V6.15.29 FIX16AR Bulk Time Certification ===== */
@@ -36563,30 +36564,93 @@ ${names}${extra}
     const target=proposedNightStateV61435(targetCode,targetStart,targetEnd);
     const following=rowNightStateV61435(next);
 
-    // Canonical V6.14.37 invariant:
-    // 1) A Night may NOT have a morning/day work shift on the previous date.
-    // 2) The calendar day after a Night must be another Night, a true Day-off, or LV.
-    // 3) Therefore changing a day to morning/day is also blocked when tomorrow
-    //    is already a Night (otherwise that Night would have an invalid previous day).
-    const targetNightPreviousMorningBlock=Boolean(target.night&&previous.dayWork);
-    const targetNightNextBlock=Boolean(target.night&&following.exists&&!following.night&&!following.dayoff&&!following.leave);
-    const previousNightTargetInvalidBlock=Boolean(previous.night&&!target.night&&!target.dayoff&&!target.leave);
-    const nextNightTargetMorningBlock=Boolean(following.night&&target.dayWork);
-    const nightSequenceBlock=Boolean(
-      targetNightPreviousMorningBlock||targetNightNextBlock||
-      previousNightTargetInvalidBlock||nextNightTargetMorningBlock
+    // FIX16AU:
+    // DAY -> NIGHT is allowed when the planned rest is >= 6 hours.
+    // NIGHT -> DAY remains invalid on the immediate next calendar day.
+    const targetNightPreviousRestBlock=Boolean(
+      target.night
+      && previous.dayWork
+      && base.restMinutes!=null
+      && base.restMinutes<360
     );
+
+    const targetEndTsV616au=(
+      target.dayWork
+      && target.start
+      && target.end
+    ) ? dateTimeFor(date,target.end,target.start) : null;
+
+    const followingStartTsV616au=(
+      following.night
+      && following.start
+    ) ? dateTimeFor(isoAddDays(date,1),following.start) : null;
+
+    const targetToNextRestMinutesV616au=(
+      targetEndTsV616au
+      && followingStartTsV616au
+    ) ? Math.round((followingStartTsV616au-targetEndTsV616au)/60000) : null;
+
+    const targetNightNextBlock=Boolean(
+      target.night
+      && following.exists
+      && !following.night
+      && !following.dayoff
+      && !following.leave
+    );
+
+    const previousNightTargetInvalidBlock=Boolean(
+      previous.night
+      && !target.night
+      && !target.dayoff
+      && !target.leave
+    );
+
+    // Editing a DAY while tomorrow is already NIGHT is also allowed when
+    // the rest from today's planned end -> tomorrow's Night start is >= 6h.
+    const nextNightTargetRestBlock=Boolean(
+      following.night
+      && target.dayWork
+      && targetToNextRestMinutesV616au!=null
+      && targetToNextRestMinutesV616au<360
+    );
+
+    const nightSequenceBlock=Boolean(
+      targetNightPreviousRestBlock
+      || targetNightNextBlock
+      || previousNightTargetInvalidBlock
+      || nextNightTargetRestBlock
+    );
+
     let sequenceReason=null;
-    if(targetNightPreviousMorningBlock)sequenceReason='NIGHT_PREVIOUS_DAY_WORK';
-    else if(targetNightNextBlock)sequenceReason='NIGHT_NEXT_NOT_NIGHT_DAYOFF_OR_LEAVE';
-    else if(previousNightTargetInvalidBlock)sequenceReason='PREVIOUS_NIGHT_TARGET_INVALID';
-    else if(nextNightTargetMorningBlock)sequenceReason='DAY_WORK_BEFORE_NEXT_NIGHT';
+    let sequenceRestMinutesV616au=null;
+    let sequenceFromCodeV616au=null;
+    let sequenceToCodeV616au=null;
+
+    if(targetNightPreviousRestBlock){
+      sequenceReason='NIGHT_PREVIOUS_REST_LT_6H';
+      sequenceRestMinutesV616au=base.restMinutes;
+      sequenceFromCodeV616au=previous.code;
+      sequenceToCodeV616au=target.code;
+    }else if(targetNightNextBlock){
+      sequenceReason='NIGHT_NEXT_NOT_NIGHT_DAYOFF_OR_LEAVE';
+    }else if(previousNightTargetInvalidBlock){
+      sequenceReason='PREVIOUS_NIGHT_TARGET_INVALID';
+    }else if(nextNightTargetRestBlock){
+      sequenceReason='NIGHT_PREVIOUS_REST_LT_6H';
+      sequenceRestMinutesV616au=targetToNextRestMinutesV616au;
+      sequenceFromCodeV616au=target.code;
+      sequenceToCodeV616au=following.code;
+    }
 
     return {
       ...base,
       hardBlock:Boolean(base.minimumRestBlock||nightSequenceBlock),
       nightSequenceBlock,
       sequenceReason,
+      sequenceRestMinutesV616au,
+      sequenceFromCodeV616au,
+      sequenceToCodeV616au,
+      targetToNextRestMinutesV616au,
       previousCode:previous.code||base.previousCode||'',
       previousNight:previous.night,
       previousDayWork:previous.dayWork,
@@ -36600,17 +36664,30 @@ ${names}${extra}
       nextDayoff:following.dayoff,
       nextLeave:following.leave,
       nextDayWork:following.dayWork,
-      targetNightPreviousMorningBlock,
+      targetNightPreviousRestBlock,
       targetNightNextBlock,
       previousNightTargetInvalidBlock,
-      nextNightTargetMorningBlock
+      nextNightTargetRestBlock
     };
   }
   function sequenceBlockMessageV61435(t){
     const prev=t?.previousCode||'-', next=t?.nextCode||'-';
     switch(String(t?.sequenceReason||'').toUpperCase()){
+      case 'NIGHT_PREVIOUS_REST_LT_6H': {
+        const mins=Number(
+          t?.sequenceRestMinutesV616au
+          ?? t?.nightSequenceRestMinutes
+          ?? t?.restMinutes
+        );
+        const hours=Number.isFinite(mins)
+          ? (mins/60).toLocaleString('th-TH',{maximumFractionDigits:2})
+          : '-';
+        const from=t?.sequenceFromCodeV616au||t?.nightSequenceFromCode||prev||'-';
+        const to=t?.sequenceToCodeV616au||t?.nightSequenceToCode||t?.targetCode||'-';
+        return `กำหนดกะดึกไม่ได้: เวลาพัก ${from} → ${to} มี ${hours} ชม. ต่ำกว่าเกณฑ์ 6 ชม.`;
+      }
       case 'NIGHT_PREVIOUS_DAY_WORK':
-        return `กำหนดกะดึกไม่ได้: วันก่อนหน้าเป็นกะเช้า/กลางวัน ${prev} • ก่อนเริ่มชุดกะดึกต้องเป็นวันหยุด/ลา หรือกะดึก ไม่ใช่กะเช้า`;
+        return `กำหนดกะดึกไม่ได้: ระบบกฎเดิมยังบล็อก DAY → NIGHT กรุณาติดตั้ง FIX16AU ให้ครบทั้ง Backend และ Front-end`;
       case 'NIGHT_NEXT_NOT_NIGHT_OR_DAYOFF':
       case 'NIGHT_NEXT_NOT_NIGHT_DAYOFF_OR_LEAVE':
         return `กำหนดกะดึกไม่ได้: วันถัดไปเป็น ${next} • หลังจัดกะดึก วันถัดไปต้องเป็น “กะดึก”, “วันหยุด” หรือ “ลา (LV)”`;
@@ -37051,6 +37128,10 @@ ${names}${extra}
       night_sequence_block:sequence?.allowed===false,
       night_sequence_reason:violation?.reason||null,
       night_sequence_night_date:violation?.night_date||null,
+      night_sequence_rest_minutes:
+        violation?.rest_minutes==null ? null : Number(violation.rest_minutes),
+      night_sequence_from_code:violation?.previous_code||null,
+      night_sequence_to_code:violation?.night_code||null,
       previous_shift_code:violation?.previous_code||base?.previous_shift_code||null,
       next_shift_code:violation?.next_code||null,
       sequence_guard:sequence||null
@@ -37111,7 +37192,25 @@ ${names}${extra}
     const nightSequenceReason=authoritative
       ? (authoritative?.night_sequence_reason||null)
       : (g.sequenceReason||null);
-    const sequenceContextV61435={...g,sequenceReason:nightSequenceReason,previousCode:authoritative?.previous_shift_code||g.previousCode,nextCode:authoritative?.next_shift_code||g.nextCode,nightSequenceBlock};
+    const sequenceContextV61435={
+      ...g,
+      sequenceReason:nightSequenceReason,
+      previousCode:authoritative?.previous_shift_code||g.previousCode,
+      nextCode:authoritative?.next_shift_code||g.nextCode,
+      nightSequenceBlock,
+      nightSequenceRestMinutes:
+        authoritative?.night_sequence_rest_minutes
+        ?? g.sequenceRestMinutesV616au
+        ?? null,
+      nightSequenceFromCode:
+        authoritative?.night_sequence_from_code
+        || g.sequenceFromCodeV616au
+        || null,
+      nightSequenceToCode:
+        authoritative?.night_sequence_to_code
+        || g.sequenceToCodeV616au
+        || null
+    };
     const nightToMorning=Boolean(g.nightToMorning&&hardBlock);
     const morningRestBlock=Boolean(hardBlock&&targetMorningV61431&&!nightSequenceBlock);
     const quotaState=dayoffQuotaAvailabilityV6142();
