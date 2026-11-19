@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AW Quick Shift Notification UX Unified ===== */
 /* ===== V6.15.29 FIX16AV Night Sequence UX: actual rest + toast dedupe ===== */
 /* ===== V6.15.29 FIX16AU DAY -> NIGHT allowed when rest >= 6h ===== */
 /* ===== V6.15.29 FIX16AT Bulk Certification Selection Scope Fix ===== */
@@ -18146,6 +18147,77 @@ window.tcIsDayShiftCode = value =>
       .join("\n");
   }
 
+  // FIX16AW — Unified UX for the 4 quick schedule actions:
+  // NORMAL / NIGHT / OFF / LV.
+  function scheduleQuickActionMetaV616aw(actionOrCode){
+    const key=String(actionOrCode||'').trim().toUpperCase();
+    if(key==='NORMAL'){
+      return {
+        key,
+        label:'กะปกติ',
+        title:'ยืนยันกำหนดกะปกติ',
+        confirmText:'ยืนยันกำหนดกะปกติ',
+        tone:'primary'
+      };
+    }
+    if(key==='NIGHT'){
+      return {
+        key,
+        label:'กะกลางคืน',
+        title:'ยืนยันกำหนดกะกลางคืน',
+        confirmText:'ยืนยันกำหนดกะกลางคืน',
+        tone:'warning'
+      };
+    }
+    if(key==='OFF'){
+      return {
+        key,
+        label:'วันหยุดตามกะล่าสุด',
+        title:'ยืนยันกำหนดวันหยุด',
+        confirmText:'ยืนยันวันหยุด',
+        tone:'primary'
+      };
+    }
+    if(key==='LV'){
+      return {
+        key,
+        label:'ลา LV',
+        title:'ยืนยันกำหนดลา',
+        confirmText:'ยืนยันลา LV',
+        tone:'primary'
+      };
+    }
+    return {
+      key,
+      label:key||'กะ',
+      title:`ยืนยันกำหนด ${key||'กะ'}`,
+      confirmText:'ยืนยัน',
+      tone:'primary'
+    };
+  }
+
+  function scheduleQuickActionSuccessV616aw(meta,count,skipped=0){
+    const n=Number(count||0);
+    const s=Number(skipped||0);
+    const base=`${meta.label} • บันทึกสำเร็จ ${n.toLocaleString('th-TH')} ช่อง`;
+    return s>0
+      ? `${base} • ข้าม ${s.toLocaleString('th-TH')} ช่อง`
+      : `${base} • ประมวลผลเวลาใหม่แล้ว`;
+  }
+
+  async function confirmScheduleQuickActionV616aw(meta,count,detailLines=[]){
+    const lines=[
+      `เลือก ${meta.label} จำนวน ${Number(count||0).toLocaleString('th-TH')} ช่อง`,
+      ...detailLines.filter(Boolean)
+    ];
+    return window.tcConfirm({
+      title:meta.title,
+      message:lines.join('\n'),
+      confirmText:`${meta.confirmText} ${Number(count||0).toLocaleString('th-TH')} ช่อง`,
+      tone:meta.tone
+    });
+  }
+
   async function smartBulkAssign(action, confirmNow=false){
     await window.TimeClockSchedulingRulesV6120?.ensureRuntimeRules?.();
     const rows = selectedRows();
@@ -18230,28 +18302,37 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
-    const message = [
-      `กำหนด${smartActionLabel(action)}จำนวน ${mapped.length.toLocaleString("th-TH")} ช่อง`,
-      "",
+    const metaV616aw=scheduleQuickActionMetaV616aw(action);
+    const confirmLinesV616aw=[
       ...lines,
       (skipped.length || restBlocked.length)
-        ? "\nรายการที่ไม่ผ่านเงื่อนไขจะถูกข้าม และไม่ถูกบันทึก"
-        : ""
-    ].join("\n");
+        ? `รายการที่ไม่ผ่านเงื่อนไขจะถูกข้าม ${(skipped.length+restBlocked.length).toLocaleString("th-TH")} ช่อง`
+        : 'ผ่านการตรวจสอบเงื่อนไขก่อนบันทึกแล้ว'
+    ];
 
-    if (!await window.tcConfirm(message)) return;
+    if (!await confirmScheduleQuickActionV616aw(
+      metaV616aw,
+      mapped.length,
+      confirmLinesV616aw
+    )) return;
 
-    await savePayload(
+    const savedV616aw=await savePayload(
       mapped,
       `กำหนด${smartActionLabel(action)}ตาม Work Pattern`,
       confirmNow,
-      `กำหนด${smartActionLabel(action)}`
+      `กำหนด${smartActionLabel(action)}`,
+      {suppressDefaultSuccessToast:true}
     );
 
-    if (skipped.length || restBlocked.length) {
+    if(savedV616aw){
+      const skippedTotalV616aw=skipped.length+restBlocked.length;
       app()?.toast(
-        `บันทึกสำเร็จ ${mapped.length.toLocaleString("th-TH")} ช่อง • ข้าม ${(skipped.length+restBlocked.length).toLocaleString("th-TH")} ช่อง`,
-        "info"
+        scheduleQuickActionSuccessV616aw(
+          metaV616aw,
+          mapped.length,
+          skippedTotalV616aw
+        ),
+        skippedTotalV616aw?'info':'success'
       );
     }
   }
@@ -18420,7 +18501,7 @@ window.tcIsDayShiftCode = value =>
     return {allowed:blocked.length===0,blocked,blockedKeys};
   }
 
-  async function savePayload(payload, reason, confirmNow=false, historyLabel="แก้ไขกะ"){
+  async function savePayload(payload, reason, confirmNow=false, historyLabel="แก้ไขกะ", uxOptionsV616aw=null){
     if(!payload.length) return false;
 
     const compatibility = payloadCompatibility(payload);
@@ -18473,15 +18554,74 @@ ${skippedSummary(compatibility.skipped)}
       await window.TimeClockSchedulingRulesV6120?.saveBulkExtensions?.(validPayload);
       await window.TimeClockConsistencyV61415?.finalizeSchedule?.(validPayload, { source:'schedule-pro-bulk' });
       undoStack.push({label:historyLabel,before,after:validPayload.map(x=>({...x}))}); if(undoStack.length>30)undoStack.shift(); redoStack.length=0; updateHistoryButtons();
-      app().toast(
-        `บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,
-        "success"
-      );
+      if(!uxOptionsV616aw?.suppressDefaultSuccessToast){
+        app().toast(
+          uxOptionsV616aw?.successMessage
+            || `บันทึก ${validPayload.length.toLocaleString("th-TH")} รายการและประมวลผลเวลาใหม่แล้ว`,
+          uxOptionsV616aw?.successTone||"success"
+        );
+      }
       await app().loadSchedule();
       return true;
     }catch(err){app().toast(app().humanError(err),"error");return false;}finally{app().hideLoading();}
   }
-  async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
+  async function bulkAssign(shiftCode,confirmNow=false){
+    const rows=selectedRows();
+    if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");
+
+    const metaV616aw=scheduleQuickActionMetaV616aw(shiftCode);
+    const normalizedCodeV616aw=String(shiftCode||'').trim().toUpperCase();
+
+    // Only the four top quick actions receive the unified UX.
+    // Other context-menu/raw shift-code actions keep their existing flow.
+    const unifiedV616aw=['OFF','LV'].includes(normalizedCodeV616aw);
+
+    if(unifiedV616aw){
+      const detailV616aw = normalizedCodeV616aw==='OFF'
+        ? [
+            'ระบบจะเลือก OFF code ให้สัมพันธ์กับกะ/Work Pattern ของพนักงาน',
+            'กฎวันหยุดและโควต้าจะถูกตรวจสอบก่อนบันทึก'
+          ]
+        : [
+            'กำหนดเป็นลาเต็มวัน (LV)',
+            'ระบบจะตรวจเงื่อนไขกะดึกและวันที่ที่อนุญาตก่อนบันทึก'
+          ];
+
+      if(!await confirmScheduleQuickActionV616aw(
+        metaV616aw,
+        rows.length,
+        detailV616aw
+      ))return;
+    }
+
+    const okV616aw=await savePayload(
+      rows.map(x=>({
+        emp_code:x.emp_code,
+        work_date:x.work_date,
+        shift_code:shiftCode,
+        note:unifiedV616aw
+          ? `กำหนด${metaV616aw.label}จากกะด่วน • FIX16AW`
+          : "กำหนดจาก Schedule Pro"
+      })),
+      `กำหนดกะ ${shiftCode} จาก Schedule Pro`,
+      confirmNow,
+      `กำหนด ${shiftCode}`,
+      unifiedV616aw
+        ? {suppressDefaultSuccessToast:true}
+        : null
+    );
+
+    if(okV616aw&&unifiedV616aw){
+      app()?.toast(
+        scheduleQuickActionSuccessV616aw(
+          metaV616aw,
+          rows.length,
+          0
+        ),
+        'success'
+      );
+    }
+  }
   function specialCellCopyMetaV616BF(row){
     const mode=String(row?.schedule_rule_mode||row?.work_mode_code||'').trim().toUpperCase();
     const isSpecial=['HOUR_BASED','SPLIT_WAIT_NIGHT','NORMAL_LATE_CUSTOMER'].includes(mode)
