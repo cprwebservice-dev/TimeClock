@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16BA Suspension UX/UI Parity Across Schedule Views ===== */
 /* ===== V6.15.29 FIX16AZ Disciplinary Suspension Overlay ===== */
 /* ===== V6.15.29 FIX16AY Quick Shift No-Silent-Failure + Local Night Toast ===== */
 /* ===== V6.15.29 FIX16AX Quick Night Alert Parity + Single Toast ===== */
@@ -8312,8 +8313,8 @@ window.tcIsDayShiftCode = value =>
         ? "สรุปสถานะการมาทำงานรายทีมในช่วงประมาณ 15 วันที่เลือก • คลิกแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
         : "สรุปตาม Effective Team ในช่วงประมาณ 15 วันที่เลือก • รวมกลุ่มรถยนต์/มอเตอร์ไซค์/สนับสนุนที่ยังไม่มีทีม และรอ Manager กำหนดประเภท";
       if (teamLegendV6146) teamLegendV6146.innerHTML = mode === "TIME"
-        ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-off-v61411">หยุด</span><span class="badge time-legend-leave-v6149">ลา</span>'
-        : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
+        ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-off-v61411">หยุด</span><span class="badge time-legend-leave-v6149">ลา</span><span class="badge shift-legend-suspension-v616ba">พักงาน</span>'
+        : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge shift-legend-suspension-v616ba">พักงาน</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
       if (teamTipV6146) teamTipV6146.textContent = mode === "TIME"
         ? "มุมมองเวลาเหมาะสำหรับหัวหน้างานติดตามการมาทำงานรายวัน แล้วคลิกดูรายชื่อพนักงานที่ต้องติดตาม"
         : "มุมมองทีมเหมาะสำหรับดูภาพรวมการครอบคลุมกำลังคน ก่อนเจาะลงไปดูรายบุคคล";
@@ -8787,7 +8788,172 @@ window.tcIsDayShiftCode = value =>
       return scheduleManagerNameCacheV61121.get(code) || code;
     }
 
+    // =====================================================================
+    // FIX16BA — Suspension presentation contract shared by ALL Schedule views.
+    // =====================================================================
+    function scheduleSuspensionMetaV616ba(row){
+      if(!row)return null;
+
+      const overlay=row?._suspension_v616az||row?.suspension_overlay_v616az||null;
+      const dayType=String(row?.day_type||row?.calculation_day_type||'').trim().toUpperCase();
+      const code=String(
+        row?.effective_shift_code
+        || row?.assigned_shift_code
+        || row?.shift_code
+        || ''
+      ).trim().toUpperCase();
+
+      if(overlay){
+        return {
+          ...overlay,
+          suspension_id:overlay.suspension_id||null,
+          suspension_start:String(overlay.suspension_start||row?.work_date||'').slice(0,10),
+          suspension_end:String(overlay.suspension_end||row?.work_date||'').slice(0,10),
+          suspension_days:Number(overlay.suspension_days||0)||1,
+          warning_reference:overlay.warning_reference||null,
+          note:overlay.note||null
+        };
+      }
+
+      if(dayType==='SUSPENSION'||code==='SUSP'){
+        const workDate=String(row?.work_date||'').slice(0,10);
+        return {
+          suspension_id:row?.suspension_id||null,
+          suspension_start:String(row?.suspension_start||workDate).slice(0,10),
+          suspension_end:String(row?.suspension_end||workDate).slice(0,10),
+          suspension_days:Number(row?.suspension_days||1)||1,
+          warning_reference:row?.warning_reference||null,
+          note:row?.suspension_note||row?.note||null
+        };
+      }
+
+      return null;
+    }
+
+    function scheduleIsSuspendedV616ba(row){
+      return Boolean(scheduleSuspensionMetaV616ba(row));
+    }
+
+    function scheduleSuspensionRangeTextV616ba(row){
+      const s=scheduleSuspensionMetaV616ba(row);
+      if(!s)return '';
+      const from=s.suspension_start?formatDate(s.suspension_start):'-';
+      const to=s.suspension_end?formatDate(s.suspension_end):from;
+      return from===to ? from : `${from}–${to}`;
+    }
+
+    function ensureSuspensionAllViewsStyleV616ba(){
+      if($('suspensionAllViewsStyleV616ba'))return;
+      const style=document.createElement('style');
+      style.id='suspensionAllViewsStyleV616ba';
+      style.textContent=`
+        .tone-suspension,
+        .shift-suspension,
+        .month-day-status-v61127.tone-suspension{
+          --susp-bg:#fff5df;
+          --susp-border:#f3c56f;
+          --susp-text:#9a5b00;
+        }
+
+        .shift-legend-suspension-v616ba,
+        .team-day-count-v61115.tone-suspension,
+        .time-team-row-v6148.tone-time-suspension,
+        .team-day-extra.tone-suspension,
+        .team-att-status.tone-suspension,
+        .employee-month-quick-filter-v61480.tone-suspension,
+        .month-anomaly.suspension{
+          background:#fff5df!important;
+          border-color:#f3c56f!important;
+          color:#9a5b00!important;
+        }
+
+        .shift-legend-suspension-v616ba::before,
+        .team-day-count-v61115.tone-suspension i,
+        .time-team-row-v6148.tone-time-suspension i{
+          background:#d97706!important;
+        }
+
+        .employee-month-day.month-day-kind-suspension-v616ba{
+          background:linear-gradient(180deg,#fffaf0,#fff5df)!important;
+          border-color:#f3c56f!important;
+          box-shadow:inset 0 0 0 1px rgba(217,119,6,.05);
+        }
+
+        .employee-month-suspension-v616ba{
+          display:flex;flex-direction:column;gap:6px;
+          padding:10px;border:1px solid #f2ca82;border-radius:10px;
+          background:#fff8e8;color:#7d5208;
+        }
+        .employee-month-suspension-v616ba strong{
+          display:flex;align-items:center;gap:6px;color:#9a5b00;font-size:13px
+        }
+        .employee-month-suspension-v616ba small{line-height:1.45;color:#8b6a31}
+        .employee-month-suspension-v616ba .sus-ref{
+          display:inline-flex;width:max-content;max-width:100%;
+          padding:3px 7px;border-radius:999px;background:#fff0c7;
+          color:#805100;font-size:10px;font-weight:800
+        }
+
+        .month-overview-kpi.suspension{
+          border-color:#f3c56f!important;
+          background:linear-gradient(180deg,#fffdf7,#fff7e6)!important;
+        }
+        .month-overview-kpi.suspension .month-kpi-icon{
+          background:#fff0c7!important;color:#a35e00!important;
+        }
+
+        .team-employee-card.is-suspension-v616ba{
+          border-color:#f2c66f!important;
+          background:linear-gradient(180deg,#fffdf8,#fff8e8)!important;
+        }
+        .team-suspension-detail-v616ba{
+          display:flex;flex-direction:column;gap:3px;color:#805100
+        }
+        .team-suspension-detail-v616ba strong{color:#9a5b00}
+        .team-suspension-action-v616ba{
+          border-color:#f2c66f!important;background:#fff5df!important;color:#955700!important;
+        }
+
+        .schedule-shift-icon-v6136.icon-suspension{
+          background:#fff5df!important;border-color:#f3c56f!important;color:#a45f00!important;
+        }
+
+        .suspension-count-chip-v616ba{
+          display:inline-flex;align-items:center;gap:4px;
+          padding:3px 7px;border-radius:999px;
+          background:#fff5df;border:1px solid #f3c56f;color:#9a5b00;
+          font-size:10px;font-weight:800;
+        }
+
+        body.theme-dark .employee-month-day.month-day-kind-suspension-v616ba,
+        body.dark-mode .employee-month-day.month-day-kind-suspension-v616ba,
+        body.dark .employee-month-day.month-day-kind-suspension-v616ba,
+        body.theme-dark .team-employee-card.is-suspension-v616ba,
+        body.dark-mode .team-employee-card.is-suspension-v616ba,
+        body.dark .team-employee-card.is-suspension-v616ba{
+          background:#34270f!important;border-color:#8f6927!important;
+        }
+        body.theme-dark .employee-month-suspension-v616ba,
+        body.dark-mode .employee-month-suspension-v616ba,
+        body.dark .employee-month-suspension-v616ba{
+          background:#3a2a0d;border-color:#8f6927;color:#f0cb86;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     function scheduleResolveShiftMeta(row) {
+      const suspensionV616ba=scheduleSuspensionMetaV616ba(row);
+      if(suspensionV616ba){
+        return {
+          code:'SUSP',
+          label:'พักงาน',
+          tone:'suspension',
+          isWorking:false,
+          suspension:suspensionV616ba
+        };
+      }
+
       const schedulingRuleDisplayV6120 = window.TimeClockSchedulingRulesV6120?.rowDisplay?.(row) || null;
       const code = window.tcShiftCode(
         row?.assigned_shift_code
@@ -8865,6 +9031,7 @@ window.tcIsDayShiftCode = value =>
         night: `<svg ${common}><path d="M20.5 14.2A8.3 8.3 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>`,
         off: `<svg ${common} class="schedule-off-calendar-off-v61442"><path d="M7 2.5v3.5M17 2.5v3.5"></path><path d="M5 4.5h14a2 2 0 0 1 2 2v12.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Z"></path><path d="M3 9h18"></path><path d="M8 18l8-7"></path></svg>`,
         leave: `<svg ${common}><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v5h5M10 12h5M10 16h4"></path></svg>`,
+        suspension: `<svg ${common}><rect x="5" y="4" width="5" height="16" rx="1.5"></rect><rect x="14" y="4" width="5" height="16" rx="1.5"></rect></svg>`,
         holiday: `<svg ${common}><path d="m12 3 1.55 4.45L18 9l-4.45 1.55L12 15l-1.55-4.45L6 9l4.45-1.55L12 3Z"></path><path d="m19 15 .8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15ZM5 14l.7 1.8L7.5 16.5l-1.8.7L5 19l-.7-1.8-1.8-.7 1.8-.7L5 14Z"></path></svg>`,
         hour: `<svg ${common}><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>`,
         split: `<svg ${common}><path d="M7 7h10l-2.5-2.5M17 17H7l2.5 2.5"></path><path d="M17 7l-2.5 2.5M7 17l2.5-2.5"></path></svg>`,
@@ -8874,6 +9041,9 @@ window.tcIsDayShiftCode = value =>
     }
 
     function schedulePersonIconMetaV6136(row) {
+      if(scheduleIsSuspendedV616ba(row)){
+        return { kind:'suspension', label:'พักงาน', tone:'suspension' };
+      }
       const shift = scheduleResolveShiftMeta(row || {});
       const code = window.tcShiftCode(
         row?.assigned_shift_code
@@ -9172,6 +9342,7 @@ window.tcIsDayShiftCode = value =>
     };
 
     function scheduleTeamAttendanceStatus(row) {
+      if(scheduleIsSuspendedV616ba(row))return 'SUSPENSION';
       const flags = attendancePolicyFlagsV61428(row);
       if (flags.leave) return 'LEAVE';
       if (flags.dayOff) return 'OFF';
@@ -9188,6 +9359,7 @@ window.tcIsDayShiftCode = value =>
         ABSENCE:{label:'ขาดงาน',tone:'absence'},
         OFF:{label:'หยุด',tone:'off'},
         LEAVE:{label:'ลา',tone:'leave'},
+        SUSPENSION:{label:'พักงาน',tone:'suspension'},
         UPCOMING:{label:'รอทำงาน',tone:'upcoming'}
       })[status] || {label:'ปกติ',tone:'normal'};
     }
@@ -9593,6 +9765,7 @@ window.tcIsDayShiftCode = value =>
       // Certification is allowed only for today or a past work date.
       // The certified end datetime may still cross to the next day for a night shift.
       if (workDate > todayISO()) return 'FUTURE';
+      if(scheduleIsSuspendedV616ba(row))return 'SUSPENSION';
 
       const dayType = String(row?.day_type || '').trim().toUpperCase();
       const rawStatus = String(
@@ -10752,6 +10925,7 @@ window.tcIsDayShiftCode = value =>
       const blockedReasonV61143 = timeCertificationBlockedReasonV61143(row);
       if (blockedReasonV61143 === 'FUTURE') return toast('รับรองเวลาได้เฉพาะวันที่ปัจจุบันและย้อนหลังเท่านั้น','error');
       if (blockedReasonV61143 === 'LEAVE') return toast('วันลาไม่สามารถรับรองเวลาได้','error');
+      if (blockedReasonV61143 === 'SUSPENSION') return toast('วันพักงานไม่สามารถรับรองเวลาได้','error');
       if (blockedReasonV61143 === 'OFF') return toast('วันหยุด / กะ OFF ไม่สามารถรับรองเวลาได้','error');
 
       const dateScopeV616aq=validateTimeCertificationDateScopeV616aq(
@@ -11055,6 +11229,7 @@ window.tcIsDayShiftCode = value =>
         early: scheduleTeamIsEarlyV6147(normalized),
         off: status === 'OFF',
         leave: status === 'LEAVE',
+        suspension: status === 'SUSPENSION',
         pending: status === 'UPCOMING'
       };
     }
@@ -11182,7 +11357,7 @@ window.tcIsDayShiftCode = value =>
       if (!list || !summary || !filters) return;
 
       const rows = scheduleTeamDrawerState.rows || [];
-      const counts = {ALL: rows.length, NORMAL:0, LATE:0, ABSENCE:0, EARLY:0, OFF:0, LEAVE:0, UPCOMING:0};
+      const counts = {ALL: rows.length, NORMAL:0, LATE:0, ABSENCE:0, EARLY:0, SUSPENSION:0, OFF:0, LEAVE:0, UPCOMING:0};
       rows.forEach(row => {
         const status = scheduleTeamAttendanceStatus(row);
         counts[status] = (counts[status] || 0) + 1;
@@ -11195,11 +11370,12 @@ window.tcIsDayShiftCode = value =>
         ['LATE','สาย 1–29','late'],
         ['ABSENCE','ขาดงาน','absence'],
         ['EARLY','กลับก่อน','early'],
+        ['SUSPENSION','พักงาน','suspension'],
         ['OFF','หยุด','off'],
         ['LEAVE','ลา','leave'],
         ['UPCOMING','รอทำงาน','upcoming']
       ];
-      summary.innerHTML = cards.slice(0,6).map(([key,label,tone]) => `<button type="button" class="team-drawer-kpi tone-${tone} ${scheduleTeamDrawerState.filter===key?'active':''}" data-team-drawer-filter="${key}"><span>${safe(label)}</span><strong>${safe(formatNumber(counts[key] || 0))}</strong></button>`).join('');
+      summary.innerHTML = cards.slice(0,7).map(([key,label,tone]) => `<button type="button" class="team-drawer-kpi tone-${tone} ${scheduleTeamDrawerState.filter===key?'active':''}" data-team-drawer-filter="${key}"><span>${safe(label)}</span><strong>${safe(formatNumber(counts[key] || 0))}</strong></button>`).join('');
       filters.innerHTML = cards.map(([key,label,tone]) => `<button type="button" class="team-drawer-filter-chip tone-${tone} ${scheduleTeamDrawerState.filter===key?'active':''}" data-team-drawer-filter="${key}">${safe(label)} <b>${safe(formatNumber(counts[key] || 0))}</b></button>`).join('');
 
       const visible = rows.filter(row => scheduleTeamDrawerMatchesFilterV6147(row, scheduleTeamDrawerState.filter));
@@ -11213,11 +11389,12 @@ window.tcIsDayShiftCode = value =>
 
       list.innerHTML = visible
         .sort((a,b) => {
-          const order={ABSENCE:0,LATE:1,NORMAL:2,UPCOMING:3,LEAVE:4,OFF:5};
+          const order={ABSENCE:0,LATE:1,SUSPENSION:2,NORMAL:3,UPCOMING:4,LEAVE:5,OFF:6};
           const sa=scheduleTeamAttendanceStatus(a), sb=scheduleTeamAttendanceStatus(b);
           return (order[sa]??9)-(order[sb]??9) || String(a.full_name||'').localeCompare(String(b.full_name||''),'th');
         })
         .map(row => {
+          const suspensionV616ba=scheduleSuspensionMetaV616ba(row);
           const shift = scheduleResolveShiftMeta(row);
           const status = scheduleTeamAttendanceStatus(row);
           const statusMeta = scheduleTeamStatusMeta(status);
@@ -11240,26 +11417,30 @@ window.tcIsDayShiftCode = value =>
           const canEditWorkingV61529F14B = scheduleWorkingTeamCanEditV61529F14B(row);
           const splitWorkTemplate = Boolean(specialModeV61459 && ['customer','wait'].includes(specialModeV61459.key)) || templateCode === 'SPLIT_FLEX' || shift2Plan !== '-' || shift2In !== '-' || shift2Out !== '-';
           const splitModeLabelV61459 = specialModeV61459?.label || 'กะปกติ + งานลูกค้าช่วงดึก';
-          const shiftDetailHtml = splitWorkTemplate
-            ? `<div class="team-shift-stack"><small><b>กะ 1</b><span>${safe(shift1Plan)}</span></small><small class="secondary"><b>กะ 2</b><span>${safe(shift2Plan)}</span></small></div><small class="team-shift-meta">${safe(splitModeLabelV61459)}</small>`
-            : `<strong class="team-shift-text tone-${safe(shift.tone)}">${safe(shift.code || '-')}</strong><small>${safe(scheduleTeamPlannedTime(row))}</small>`;
-          return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''}">
+          const shiftDetailHtml = suspensionV616ba
+            ? `<div class="team-suspension-detail-v616ba"><strong>⏸ พักงาน</strong><small>${safe(scheduleSuspensionRangeTextV616ba(row))} • ${safe(formatNumber(suspensionV616ba.suspension_days||1))} วันปฏิทิน</small>${suspensionV616ba.warning_reference?`<span class="suspension-count-chip-v616ba">${safe(suspensionV616ba.warning_reference)}</span>`:''}</div>`
+            : splitWorkTemplate
+              ? `<div class="team-shift-stack"><small><b>กะ 1</b><span>${safe(shift1Plan)}</span></small><small class="secondary"><b>กะ 2</b><span>${safe(shift2Plan)}</span></small></div><small class="team-shift-meta">${safe(splitModeLabelV61459)}</small>`
+              : `<strong class="team-shift-text tone-${safe(shift.tone)}">${safe(shift.code || '-')}</strong><small>${safe(scheduleTeamPlannedTime(row))}</small>`;
+          return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${suspensionV616ba?'is-suspension-v616ba':''} ${splitWorkTemplate ? 'has-double-shift' : ''}">
             <div class="team-employee-main">
               <div class="team-employee-avatar">${safe(initials)}</div>
               <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small>${tempWorkingBadgeV61529F14B}</div>
               <div class="team-employee-actions-v61118">
                 <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
-                ${timeCertificationBadgeV61139(row)}
-                ${timeCertificationButtonV61139(row,'team-daily')}
-                ${canEditWorkingV61529F14B
-                  ? `<button type="button" class="team-assign-btn-v61118" data-team-assign data-emp="${safe(row.emp_code || '')}" data-date="${safe(String(row.work_date || scheduleTeamDrawerState.date || '').slice(0,10))}" title="จัดกะและประมวลผลเวลาทำงานใหม่"><span>✎</span> จัดกะ</button>`
-                  : `<span class="team-working-readonly-v61529f14b" title="ช่วงยืมตัวนี้จัดกะโดย Manager/Acting ของทีมปลายทาง">ดูอย่างเดียว</span>`}
+                ${suspensionV616ba ? '' : timeCertificationBadgeV61139(row)}
+                ${suspensionV616ba ? '' : timeCertificationButtonV61139(row,'team-daily')}
+                ${suspensionV616ba
+                  ? `<button type="button" class="btn btn-light btn-sm team-suspension-action-v616ba" data-suspension-cell-v616az="1" data-suspension-id="${safe(suspensionV616ba.suspension_id||'')}" data-emp="${safe(row.emp_code||'')}" data-date="${safe(String(row.work_date||scheduleTeamDrawerState.date||'').slice(0,10))}" title="ดูรายละเอียดพักงาน">⏸ ดูพักงาน</button>`
+                  : canEditWorkingV61529F14B
+                    ? `<button type="button" class="team-assign-btn-v61118" data-team-assign data-emp="${safe(row.emp_code || '')}" data-date="${safe(String(row.work_date || scheduleTeamDrawerState.date || '').slice(0,10))}" title="จัดกะและประมวลผลเวลาทำงานใหม่"><span>✎</span> จัดกะ</button>`
+                    : `<span class="team-working-readonly-v61529f14b" title="ช่วงยืมตัวนี้จัดกะโดย Manager/Acting ของทีมปลายทาง">ดูอย่างเดียว</span>`}
               </div>
             </div>
             <div class="team-employee-detail-grid segments-${splitWorkTemplate ? 'five' : 'three'} ${splitWorkTemplate ? 'double-shift' : ''}">
               <div class="team-detail-card is-shift"><span>กะทำงาน</span>${shiftDetailHtml}</div>
-              <div class="team-detail-card tone-shift1"><span>เข้า กะ 1</span><strong>${safe(shift1In)}</strong><small>${safe(shift1Plan)}</small></div>
-              <div class="team-detail-card tone-shift1"><span>ออก กะ 1</span><strong>${safe(shift1Out)}</strong><small>${safe(shift1Plan)}</small></div>
+              <div class="team-detail-card tone-shift1"><span>${suspensionV616ba?'สถานะ':'เข้า กะ 1'}</span><strong>${suspensionV616ba?'ไม่ต้องลงเวลา':safe(shift1In)}</strong><small>${suspensionV616ba?'Suspension Overlay':safe(shift1Plan)}</small></div>
+              <div class="team-detail-card tone-shift1"><span>${suspensionV616ba?'กะเดิม':'ออก กะ 1'}</span><strong>${suspensionV616ba?'เก็บไว้':safe(shift1Out)}</strong><small>${suspensionV616ba?'ไม่ถูกลบ/เขียนทับ':safe(shift1Plan)}</small></div>
               <div class="team-detail-card tone-shift2 ${splitWorkTemplate ? '' : 'is-muted'}"><span>เข้า กะ 2</span><strong>${safe(splitWorkTemplate ? shift2In : '-')}</strong><small>${safe(splitWorkTemplate ? shift2Plan : 'ไม่มี')}</small></div>
               <div class="team-detail-card tone-shift2 ${splitWorkTemplate ? '' : 'is-muted'}"><span>ออก กะ 2</span><strong>${safe(splitWorkTemplate ? shift2Out : '-')}</strong><small>${safe(splitWorkTemplate ? shift2Plan : 'ไม่มี')}</small></div>
             </div>
@@ -11988,7 +12169,8 @@ window.tcIsDayShiftCode = value =>
       // Scheduling Rule deterministic and equal to the final Full Month state.
       await Promise.all([
         enrichScheduleWorkPlanMetaV6118(period, canonicalRows),
-        window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(canonicalRows)
+        window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(canonicalRows),
+        enrichScheduleSuspensionsV616az(canonicalRows,period)
       ]);
 
       const unique = new Map();
@@ -12046,6 +12228,9 @@ window.tcIsDayShiftCode = value =>
     }
 
     function employeeMonthScheduleFallbackStatusV61429(scheduleRow, workDate, employmentState = 'ACTIVE') {
+      if(scheduleIsSuspendedV616ba(scheduleRow)){
+        return { status:'SUSPENSION', label:'พักงาน', tone:'suspension' };
+      }
       if (employmentState === 'BEFORE_START') {
         return { status:'BEFORE_START', label:'ยังไม่เริ่มงาน', tone:'neutral' };
       }
@@ -12402,6 +12587,9 @@ window.tcIsDayShiftCode = value =>
     }
 
     function employeeMonthStatusMetaV61121(row, workDate) {
+      if(scheduleIsSuspendedV616ba(row)){
+        return { status:'SUSPENSION', label:'พักงาน', tone:'suspension' };
+      }
       if (!row) {
         return {
           status: 'UNPROCESSED',
@@ -12433,6 +12621,24 @@ window.tcIsDayShiftCode = value =>
       employmentState = 'ACTIVE'
     ) {
       const merged = employeeMonthMergeCanonicalV61429(scheduleRow, attendanceRow);
+
+      if(scheduleIsSuspendedV616ba(scheduleRow)||scheduleIsSuspendedV616ba(merged)){
+        const suspensionV616ba=scheduleSuspensionMetaV616ba(scheduleRow||merged);
+        const suspendedMergedV616ba={
+          ...(merged||scheduleRow||{}),
+          day_type:'SUSPENSION',
+          effective_shift_code:'SUSP',
+          calculation_status:'SUSPENSION',
+          is_workday:false,
+          _suspension_v616az:suspensionV616ba
+        };
+        return {
+          merged:suspendedMergedV616ba,
+          flags:null,
+          useCanonical:false,
+          statusMeta:{status:'SUSPENSION',label:'พักงาน',tone:'suspension'}
+        };
+      }
 
       if (employmentState !== 'ACTIVE') {
         return {
@@ -12519,6 +12725,7 @@ window.tcIsDayShiftCode = value =>
         work: 'วันทำงาน',
         dayoff: 'วันหยุด',
         leave: 'ลา',
+        suspension: 'พักงาน',
         absence: 'ขาดงาน',
         late: 'มาสาย',
         early: 'กลับก่อน',
@@ -12565,13 +12772,17 @@ window.tcIsDayShiftCode = value =>
       const holidayRow = context.holidayRow || null;
       const publicHoliday = employeeMonthPublicHolidayV61480(scheduleRow, shift, holidayRow);
       const scopeGap = context.scopeGap || null;
+      const suspensionV616ba=scheduleIsSuspendedV616ba(scheduleRow||canonical?.merged||attendanceRow);
 
       if (employmentState !== 'ACTIVE') return false;
       // FIX15N: Public Holiday is a company calendar fact, not employee schedule data.
       // It remains visible/filterable even when the destination Manager is outside
       // the effective Borrow window. Other employee-specific filters stay blocked.
       if (key === 'holiday') return publicHoliday;
+      if (key === 'suspension') return suspensionV616ba;
       if (scopeGap) return false;
+
+      if (suspensionV616ba) return false;
 
       if (key === 'work') {
         return Boolean(
@@ -12711,6 +12922,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function renderEmployeeMonthCalendarV61121() {
+      ensureSuspensionAllViewsStyleV616ba();
       const modal = $('employeeMonthScheduleModal');
       const grid = $('employeeMonthScheduleGrid');
       if (!modal || !grid) return;
@@ -12792,10 +13004,16 @@ window.tcIsDayShiftCode = value =>
       let lateDays = 0;
       let earlyDays = 0;
       let splitDays = 0;
+      let suspensionDaysV616ba = 0;
       scheduleRows.forEach(scheduleRow => {
         const date = String(scheduleRow?.work_date || '').slice(0,10);
         if (!date || employeeMonthEmploymentStateV61429(scheduleRows,date) !== 'ACTIVE') return;
+        const suspensionV616ba=scheduleIsSuspendedV616ba(scheduleRow);
         const shift = scheduleResolveShiftMeta(scheduleRow);
+        if(suspensionV616ba){
+          suspensionDaysV616ba += 1;
+          return;
+        }
         if (shift.isWorking) workdays += 1;
         if (employeeMonthConsumesDayoffFallbackV61426(scheduleRow)) {
           scheduledOffDaysV61429 += 1;
@@ -12846,6 +13064,7 @@ window.tcIsDayShiftCode = value =>
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;
         const employmentState = employeeMonthEmploymentStateV61429(scheduleRows,workDate);
+        if(scheduleIsSuspendedV616ba(scheduleRow))return;
         const canonical = employeeMonthCanonicalDayV61467(
           scheduleRow,
           attendanceRow,
@@ -12865,6 +13084,7 @@ window.tcIsDayShiftCode = value =>
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;
         const employmentState = employeeMonthEmploymentStateV61429(scheduleRows,workDate);
+        if(scheduleIsSuspendedV616ba(scheduleRow))return;
         const canonical = employeeMonthCanonicalDayV61467(
           scheduleRow,
           attendanceRow,
@@ -12907,6 +13127,7 @@ window.tcIsDayShiftCode = value =>
           holidayDaysV61480 += 1;
         }
         if (scopeGapV61529F15C) continue;
+        if(scheduleIsSuspendedV616ba(scheduleRowV61480))continue;
         const canonicalV61480 = employeeMonthCanonicalDayV61467(
           scheduleRowV61480,
           attendanceRowV61480,
@@ -12930,6 +13151,7 @@ window.tcIsDayShiftCode = value =>
         <button type="button" class="${safe(monthFilterKpiClassV61480('work','primary'))}" data-employee-month-filter="work" aria-pressed="${activeMonthFilterV61480==='work' ? 'true' : 'false'}" title="กดเพื่อกรองวันทำงาน"><div class="month-kpi-icon">ปฏิ</div><div><span>วันทำงาน</span><small>ตามตารางกะเดือนนี้</small></div><strong>${safe(formatNumber(workdays))}</strong></button>
         <button type="button" class="${safe(monthFilterKpiClassV61480('dayoff','off'))}" data-employee-month-filter="dayoff" aria-pressed="${activeMonthFilterV61480==='dayoff' ? 'true' : 'false'}" title="กดเพื่อกรองวันหยุด"><div class="month-kpi-icon">หยุด</div><div><span>โควต้าวันหยุด</span><small>${safe(dayoffMetaV61426)}</small></div><strong>${safe(dayoffKpiValueV61478)}</strong></button>
         <button type="button" class="${safe(monthFilterKpiClassV61480('leave','leave'))}" data-employee-month-filter="leave" aria-pressed="${activeMonthFilterV61480==='leave' ? 'true' : 'false'}" title="กดเพื่อกรองวันลา"><div class="month-kpi-icon">ลา</div><div><span>ลา</span><small>วันลาที่มีรายการอนุมัติ</small></div><strong>${safe(formatNumber(leaveDays))}</strong></button>
+        <button type="button" class="${safe(monthFilterKpiClassV61480('suspension','suspension'))}" data-employee-month-filter="suspension" aria-pressed="${activeMonthFilterV61480==='suspension' ? 'true' : 'false'}" title="กดเพื่อกรองวันพักงาน"><div class="month-kpi-icon">⏸</div><div><span>พักงาน</span><small>ช่วงพักงานตามคำสั่งทางวินัย</small></div><strong>${safe(formatNumber(suspensionDaysV616ba))}</strong></button>
         <button type="button" class="${safe(monthFilterKpiClassV61480('absence','danger'))}" data-employee-month-filter="absence" aria-pressed="${activeMonthFilterV61480==='absence' ? 'true' : 'false'}" title="กดเพื่อกรองวันขาดงาน"><div class="month-kpi-icon">ขาด</div><div><span>ขาดงาน</span><small>เวลาไม่ครบ หรือ เข้าช้า ≥ 30 นาที</small></div><strong>${safe(formatNumber(absenceDays))}</strong></button>
         <button type="button" class="${safe(monthFilterKpiClassV61480('late','late'))}" data-employee-month-filter="late" aria-pressed="${activeMonthFilterV61480==='late' ? 'true' : 'false'}" title="กดเพื่อกรองวันมาสาย"><div class="month-kpi-icon">สาย</div><div><span>มาสาย</span><small>เข้าหลังเริ่มกะ 1–29 นาที</small></div><strong>${safe(formatNumber(lateDays))}</strong></button>
         <button type="button" class="${safe(monthFilterKpiClassV61480('early','early'))}" data-employee-month-filter="early" aria-pressed="${activeMonthFilterV61480==='early' ? 'true' : 'false'}" title="กดเพื่อกรองวันกลับก่อน"><div class="month-kpi-icon">ก่อน</div><div><span>กลับก่อน</span><small>จำนวนวันที่ออกก่อนกะ</small></div><strong>${safe(formatNumber(earlyDays))}</strong></button>
@@ -12948,6 +13170,7 @@ window.tcIsDayShiftCode = value =>
           <span class="employee-month-quick-filter-label-v61480">ตัวกรองเพิ่มเติม</span>
           <button type="button" class="employee-month-quick-filter-v61480 tone-all ${activeMonthFilterV61480==='all' ? 'is-active-filter-v61480' : ''}" data-employee-month-filter="all" aria-pressed="${activeMonthFilterV61480==='all' ? 'true' : 'false'}" title="แสดงทุกวัน"><span class="employee-month-quick-filter-icon-v61480">●</span><strong>ทั้งหมด</strong></button>
           ${chipV61480('holiday','นักขัตฤกษ์',holidayDaysV61480,'holiday','HOL')}
+          ${chipV61480('suspension','พักงาน',suspensionDaysV616ba,'suspension','⏸')}
           ${chipV61480('certified','รับรองแล้ว',certifiedDays,'certified','✓')}
           ${chipV61480('multipunch','หลายรายการลงเวลา',multiPunchDaysV61480,'multi','≋')}
           ${chipV61480('pending','รอทำงาน / ยังไม่ประมวลผล',pendingDaysV61480,'pending','◷')}
@@ -12990,6 +13213,7 @@ window.tcIsDayShiftCode = value =>
           canonicalDayV61467.useCanonical = false;
         }
         const merged = canonicalDayV61467.merged;
+        const suspensionV616ba=scheduleSuspensionMetaV616ba(scheduleRow||merged);
         const d = new Date(`${workDate}T00:00:00`);
         const dow = d.getDay();
         const shift = scopeGapV61529F15C
@@ -13010,11 +13234,11 @@ window.tcIsDayShiftCode = value =>
         );
         const templateCode = (scheduleRow || merged) ? employeeMonthTemplateCodeV61127(scheduleRow || merged) : '-';
         const activeEmploymentV61429 = employmentStateV61429 === 'ACTIVE';
-        const editButton = canEdit && scheduleRow && activeEmploymentV61429
+        const editButton = canEdit && scheduleRow && activeEmploymentV61429 && !suspensionV616ba
           ? `<button type="button" class="employee-month-edit-btn" data-employee-month-edit-date="${safe(workDate)}" title="จัดกะ" aria-label="จัดกะ"><span>✎</span><em>กะ</em></button>`
           : '';
-        const certificationButton = merged && activeEmploymentV61429 ? timeCertificationButtonV61139(merged,'employee-month') : '';
-        const certificationBadge = merged ? timeCertificationBadgeV61139(merged) : '';
+        const certificationButton = merged && activeEmploymentV61429 && !suspensionV616ba ? timeCertificationButtonV61139(merged,'employee-month') : '';
+        const certificationBadge = merged && !suspensionV616ba ? timeCertificationBadgeV61139(merged) : '';
         const isToday = workDate === todayISO();
         const workingShiftOverride =
           attendanceHasWorkingShiftOverrideV61155(scheduleRow || merged);
@@ -13065,6 +13289,8 @@ window.tcIsDayShiftCode = value =>
             ? 'month-day-kind-inactive-v61429 month-day-before-start-v61429'
             : employmentStateV61429 === 'AFTER_RESIGN'
               ? 'month-day-kind-inactive-v61429 month-day-after-resign-v61429'
+              : suspensionV616ba
+              ? 'month-day-kind-suspension-v616ba'
               : workingShiftOverride
               ? 'month-day-kind-work-v61153 month-day-work-override-v61155'
               : holiday
@@ -13103,6 +13329,13 @@ window.tcIsDayShiftCode = value =>
               <div class="employee-month-scope-lock-icon-v61529f15c" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></div>
               <strong>${safe(scopeGapV61529F15C.borrow?'นอกช่วงยืมตัว':'นอกขอบเขต')}</strong>
               ${calendarHoliday ? `<div class="employee-month-scope-holiday-v61529f15n" title="${safe(calendarHolidayNameV61529F15N)}"><span>HOL</span><b>${safe(calendarHolidayNameV61529F15N)}</b></div>` : ''}
+            </div>
+          ` : suspensionV616ba ? `
+            <div class="employee-month-suspension-v616ba">
+              <strong><span aria-hidden="true">⏸</span> พักงาน</strong>
+              <small>${safe(scheduleSuspensionRangeTextV616ba(scheduleRow||merged))} • รวม ${safe(formatNumber(suspensionV616ba.suspension_days||1))} วันปฏิทิน</small>
+              ${suspensionV616ba.warning_reference?`<span class="sus-ref">${safe(suspensionV616ba.warning_reference)}</span>`:''}
+              <small>ไม่ต้องลงเวลา • ไม่นับเป็นขาดงาน • กะเดิมยังถูกเก็บไว้</small>
             </div>
           ` : `
             <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
@@ -13415,6 +13648,7 @@ window.tcIsDayShiftCode = value =>
             off: 0,
             holiday: 0,
             leave: 0,
+            suspension: 0,
             day: 0,
             night: 0,
             split: 0,
@@ -13445,6 +13679,7 @@ window.tcIsDayShiftCode = value =>
         if (shiftMeta.tone === 'off') day.off += 1;
         if (shiftMeta.tone === 'holiday') day.holiday += 1;
         if (shiftMeta.tone === 'leave') day.leave += 1;
+        if (shiftMeta.tone === 'suspension') day.suspension += 1;
         if (splitWorkTemplate) {
           day.split += 1;
         } else if (shiftMeta.tone === 'day') {
@@ -13527,7 +13762,8 @@ window.tcIsDayShiftCode = value =>
             day.day > 0 ? `<span class="team-day-count-v61115 tone-day"><i></i><small>เช้า</small><strong>${safe(formatNumber(day.day))}</strong></span>` : '',
             day.night > 0 ? `<span class="team-day-count-v61115 tone-night"><i></i><small>ดึก</small><strong>${safe(formatNumber(day.night))}</strong></span>` : '',
             day.split > 0 ? `<span class="team-day-count-v61115 tone-split"><i></i><small>ปกติ+ดึก</small><strong>${safe(formatNumber(day.split))}</strong></span>` : '',
-            offTotal > 0 ? `<span class="team-day-count-v61115 tone-off"><i></i><small>หยุด</small><strong>${safe(formatNumber(offTotal))}</strong></span>` : ''
+            offTotal > 0 ? `<span class="team-day-count-v61115 tone-off"><i></i><small>หยุด</small><strong>${safe(formatNumber(offTotal))}</strong></span>` : '',
+            day.suspension > 0 ? `<span class="team-day-count-v61115 tone-suspension"><i></i><small>พักงาน</small><strong>${safe(formatNumber(day.suspension))}</strong></span>` : ''
           ].filter(Boolean).join('');
           const extraBadges = [
             day.leave > 0
@@ -13544,7 +13780,7 @@ window.tcIsDayShiftCode = value =>
 
           html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-key-v61526="${safe(team.filterKey||'')}" data-team-day-label-v61526="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดกะ">
             ${changeBadge ? `<div class="team-day-top-v61115 team-day-top-manual-v61117">${changeBadge}</div>` : ''}
-            <div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 ${[day.day, day.night, day.split, offTotal].filter(value => value > 0).length <= 2 ? 'is-compact' : ''}">
+            <div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 ${[day.day, day.night, day.split, offTotal, day.suspension].filter(value => value > 0).length <= 2 ? 'is-compact' : ''}">
               ${visibleShiftChips || '<span class="team-day-extra-empty">ไม่มีกะทำงาน</span>'}
             </div>
             ${extraBadges ? `<div class="team-day-bottom-v61115 team-day-bottom-extras-v61116"><span class="team-day-extras-v61115">${extraBadges}</span></div>` : ''}
@@ -13742,6 +13978,19 @@ window.tcIsDayShiftCode = value =>
     }
 
     function scheduleTimeMetricsV6146(baseRow, attendanceRow) {
+      if(scheduleIsSuspendedV616ba(baseRow)||scheduleIsSuspendedV616ba(attendanceRow)){
+        return {
+          eligible:false,
+          normal:false,
+          absence:false,
+          late:false,
+          early:false,
+          off:false,
+          leave:false,
+          suspension:true,
+          pending:false
+        };
+      }
       // V6.14.13: use the exact TEAM DAILY DETAIL classifier. This keeps the
       // summary label and the drawer KPI counts identical for the same team/day.
       const merged = scheduleMergeTeamAttendanceRowV61411(baseRow || {}, attendanceRow || {}, {}, {});
@@ -13754,6 +14003,7 @@ window.tcIsDayShiftCode = value =>
         early: flags.early,
         off: flags.off,
         leave: flags.leave,
+        suspension:false,
         pending: flags.pending
       };
     }
@@ -13792,7 +14042,7 @@ window.tcIsDayShiftCode = value =>
           ? []
           : (Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : []);
         names.forEach(name => { const n=String(name||'').trim(); if(n) team.managerNames.set(n,(team.managerNames.get(n)||0)+1); });
-        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0});
+        if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,off:0,leave:0,suspension:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0});
         const metrics = scheduleTimeMetricsV6146(row, attendanceMap.get(`${emp}|${date}`));
         const day = team.days.get(date);
         const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(row);
@@ -13807,6 +14057,7 @@ window.tcIsDayShiftCode = value =>
         if (metrics.early) day.early += 1;
         if (metrics.off) day.off += 1;
         if (metrics.leave) day.leave += 1;
+        if (metrics.suspension) day.suspension += 1;
         if (metrics.pending) day.pending += 1;
       }
 
@@ -13843,7 +14094,7 @@ window.tcIsDayShiftCode = value =>
         const teamPolicyV61526=baseTeamPolicyV61526+tempTeamPolicyV61529F14B;
         html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115 team-unit-card-v61526"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small>${teamPolicyV61526}<small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open-key-v61526="${safe(team.filterKey||'')}" data-team-open-label-v61526="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
         for (const date of period.dates) {
-          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0};
+          const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,off:0,leave:0,suspension:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0};
           const loading=scheduleTimeAttendanceStateV6146.loading && scheduleTimeAttendanceStateV6146.key===key;
           const error=scheduleTimeAttendanceStateV6146.error && scheduleTimeAttendanceStateV6146.key===key;
           const future=date>todayISO();
@@ -13858,7 +14109,8 @@ window.tcIsDayShiftCode = value =>
               day.late > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-late"><i></i><small>สาย</small><strong>${safe(formatNumber(day.late))}</strong></span>` : '',
               day.early > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-early"><i></i><small>กลับก่อน</small><strong>${safe(formatNumber(day.early))}</strong></span>` : '',
               day.off > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-off"><i></i><small>หยุด</small><strong>${safe(formatNumber(day.off))}</strong></span>` : '',
-              day.leave > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-leave"><i></i><small>ลา</small><strong>${safe(formatNumber(day.leave))}</strong></span>` : ''
+              day.leave > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-leave"><i></i><small>ลา</small><strong>${safe(formatNumber(day.leave))}</strong></span>` : '',
+              day.suspension > 0 ? `<span class="team-day-count-v61115 time-team-row-v6148 tone-time-suspension"><i></i><small>พักงาน</small><strong>${safe(formatNumber(day.suspension))}</strong></span>` : ''
             ].filter(Boolean);
             body = timeRowsV6148.length
               ? `<div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 time-team-counts-v6148 ${timeRowsV6148.length <= 2 ? 'is-compact' : ''}">${timeRowsV6148.join('')}</div>`
@@ -13874,6 +14126,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function renderSchedule() {
+      ensureSuspensionAllViewsStyleV616ba();
       const period = syncSchedulePeriodUI();
       const periodRows = state.schedule.filter(r => {
         const date = String(r.work_date || "").slice(0,10);
