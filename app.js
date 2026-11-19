@@ -381,6 +381,629 @@ window.tcIsDayShiftCode = value =>
   else bind();
 })();
 
+
+/* ===== V6.15.29 FIX16AP Global Popup Reliability Core ===== */
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  let activeResolveV616ap = null;
+  let activeModeV616ap = "confirm";
+
+  function escV616ap(value){
+    return String(value ?? "").replace(
+      /[&<>"']/g,
+      c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])
+    );
+  }
+
+  function normalizeV616ap(input, options={}, fallbackTitle="ยืนยันการดำเนินการ"){
+    if(typeof input === "string"){
+      return {
+        ...(options || {}),
+        message: input,
+        title: options?.title || fallbackTitle
+      };
+    }
+    return {
+      ...(input || {}),
+      ...(options || {}),
+      title: input?.title || options?.title || fallbackTitle
+    };
+  }
+
+  function ensureStyleV616ap(){
+    if($("globalActionCoreStyleV616ap")) return;
+
+    const style=document.createElement("style");
+    style.id="globalActionCoreStyleV616ap";
+    style.textContent=`
+      #globalActionCoreV616ap{
+        position:fixed;
+        inset:0;
+        z-index:2147483600;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+        background:rgba(15,23,42,.66);
+        backdrop-filter:blur(3px);
+        -webkit-backdrop-filter:blur(3px);
+        pointer-events:auto!important;
+      }
+      #globalActionCoreV616ap.hidden{display:none!important}
+      #globalActionCoreV616ap .gap-dialog{
+        width:min(600px,calc(100vw - 32px));
+        max-height:calc(100vh - 40px);
+        overflow:auto;
+        background:#fff;
+        border:1px solid #d9e5ef;
+        border-radius:16px;
+        box-shadow:0 28px 80px rgba(15,23,42,.34);
+        color:#17324d;
+        pointer-events:auto!important;
+        isolation:isolate;
+      }
+      #globalActionCoreV616ap .gap-head{
+        display:flex;
+        align-items:center;
+        gap:14px;
+        padding:18px 20px 16px;
+        border-bottom:1px solid #e5edf5;
+      }
+      #globalActionCoreV616ap .gap-icon{
+        width:44px;height:44px;
+        display:grid;place-items:center;
+        flex:0 0 44px;
+        border-radius:12px;
+        border:1px solid #f2d29b;
+        background:#fff8ea;
+        color:#b87500;
+        font-size:22px;
+        font-weight:800;
+      }
+      #globalActionCoreV616ap[data-tone="danger"] .gap-icon{
+        border-color:#fecaca;background:#fff1f2;color:#c62828;
+      }
+      #globalActionCoreV616ap[data-tone="primary"] .gap-icon{
+        border-color:#bfdbfe;background:#eff6ff;color:#2579b8;
+      }
+      #globalActionCoreV616ap .gap-title-wrap{min-width:0;flex:1}
+      #globalActionCoreV616ap .gap-kicker{
+        display:block;
+        margin-bottom:2px;
+        color:#7d92a6;
+        font-size:11px;
+        letter-spacing:.04em;
+      }
+      #globalActionCoreV616ap .gap-title{
+        margin:0;
+        color:#17324d;
+        font-size:20px;
+        line-height:1.25;
+        font-weight:800;
+      }
+      #globalActionCoreV616ap .gap-close{
+        width:40px;height:40px;
+        display:grid;place-items:center;
+        flex:0 0 40px;
+        border:1px solid #d8e4ef;
+        border-radius:10px;
+        background:#fff;
+        color:#48657f;
+        font-size:18px;
+        font-weight:700;
+        cursor:pointer;
+        pointer-events:auto!important;
+      }
+      #globalActionCoreV616ap .gap-body{padding:18px 20px}
+      #globalActionCoreV616ap .gap-message{
+        padding:16px;
+        border:1px solid #d9e7f2;
+        border-radius:12px;
+        background:#f7fafc;
+        color:#3f5d77;
+        font-size:14px;
+        line-height:1.68;
+        white-space:pre-line;
+        font-weight:600;
+      }
+      #globalActionCoreV616ap .gap-input-wrap{margin-top:14px}
+      #globalActionCoreV616ap .gap-input-wrap.hidden{display:none!important}
+      #globalActionCoreV616ap .gap-input-wrap label{
+        display:block;
+        margin-bottom:6px;
+        color:#526d84;
+        font-size:12px;
+        font-weight:700;
+      }
+      #globalActionCoreV616ap .gap-input{
+        width:100%;
+        min-height:42px;
+        box-sizing:border-box;
+        border:1px solid #cddbe7;
+        border-radius:10px;
+        background:#fff;
+        color:#17324d;
+        padding:10px 12px;
+        outline:none;
+      }
+      #globalActionCoreV616ap .gap-input:focus{
+        border-color:#5ca9dc;
+        box-shadow:0 0 0 3px rgba(60,145,207,.12);
+      }
+      #globalActionCoreV616ap .gap-input.invalid{
+        border-color:#ef4444;
+        box-shadow:0 0 0 3px rgba(239,68,68,.10);
+      }
+      #globalActionCoreV616ap .gap-help{
+        display:block;
+        margin-top:5px;
+        color:#8499aa;
+        font-size:11px;
+      }
+      #globalActionCoreV616ap .gap-actions{
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+        padding:14px 20px 18px;
+        border-top:1px solid #e5edf5;
+      }
+      #globalActionCoreV616ap .gap-btn{
+        min-width:106px;
+        height:42px;
+        padding:0 18px;
+        border-radius:10px;
+        border:1px solid #d6e2ed;
+        background:#fff;
+        color:#3d5871;
+        font-weight:700;
+        cursor:pointer;
+        pointer-events:auto!important;
+      }
+      #globalActionCoreV616ap .gap-btn:hover{background:#f7fafc}
+      #globalActionCoreV616ap .gap-confirm{
+        min-width:145px;
+        background:#3c91cf;
+        border-color:#3c91cf;
+        color:#fff;
+      }
+      #globalActionCoreV616ap[data-tone="warning"] .gap-confirm{
+        background:#d97706;border-color:#d97706;
+      }
+      #globalActionCoreV616ap[data-tone="danger"] .gap-confirm{
+        background:#dc3545;border-color:#dc3545;
+      }
+
+      #globalPrintCoreV616ap{
+        position:fixed;
+        inset:0;
+        z-index:2147483590;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:18px;
+        background:rgba(15,23,42,.66);
+        pointer-events:auto!important;
+      }
+      #globalPrintCoreV616ap.hidden{display:none!important}
+      #globalPrintCoreV616ap .gpp-dialog{
+        width:min(1180px,calc(100vw - 28px));
+        height:min(820px,calc(100vh - 28px));
+        display:flex;
+        flex-direction:column;
+        overflow:hidden;
+        background:#fff;
+        border:1px solid #d9e5ef;
+        border-radius:16px;
+        box-shadow:0 28px 80px rgba(15,23,42,.34);
+        pointer-events:auto!important;
+      }
+      #globalPrintCoreV616ap .gpp-head{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        padding:12px 14px;
+        border-bottom:1px solid #e5edf5;
+      }
+      #globalPrintCoreV616ap .gpp-head strong{flex:1;color:#17324d}
+      #globalPrintCoreV616ap iframe{
+        flex:1;
+        width:100%;
+        border:0;
+        background:#fff;
+      }
+
+      body.theme-dark #globalActionCoreV616ap .gap-dialog,
+      body.dark-mode #globalActionCoreV616ap .gap-dialog,
+      body.dark #globalActionCoreV616ap .gap-dialog,
+      body.theme-dark #globalPrintCoreV616ap .gpp-dialog,
+      body.dark-mode #globalPrintCoreV616ap .gpp-dialog,
+      body.dark #globalPrintCoreV616ap .gpp-dialog{
+        background:#101d29;
+        border-color:#293c4e;
+        color:#dbe7ef;
+      }
+      body.theme-dark #globalActionCoreV616ap .gap-head,
+      body.theme-dark #globalActionCoreV616ap .gap-actions,
+      body.dark-mode #globalActionCoreV616ap .gap-head,
+      body.dark-mode #globalActionCoreV616ap .gap-actions,
+      body.dark #globalActionCoreV616ap .gap-head,
+      body.dark #globalActionCoreV616ap .gap-actions,
+      body.theme-dark #globalPrintCoreV616ap .gpp-head,
+      body.dark-mode #globalPrintCoreV616ap .gpp-head,
+      body.dark #globalPrintCoreV616ap .gpp-head{
+        border-color:#293c4e;
+      }
+      body.theme-dark #globalActionCoreV616ap .gap-title,
+      body.dark-mode #globalActionCoreV616ap .gap-title,
+      body.dark #globalActionCoreV616ap .gap-title,
+      body.theme-dark #globalPrintCoreV616ap .gpp-head strong,
+      body.dark-mode #globalPrintCoreV616ap .gpp-head strong,
+      body.dark #globalPrintCoreV616ap .gpp-head strong{color:#f2f7fa}
+      body.theme-dark #globalActionCoreV616ap .gap-message,
+      body.dark-mode #globalActionCoreV616ap .gap-message,
+      body.dark #globalActionCoreV616ap .gap-message{
+        background:#14222f;border-color:#2a3d4f;color:#cddae4;
+      }
+      body.theme-dark #globalActionCoreV616ap .gap-input,
+      body.dark-mode #globalActionCoreV616ap .gap-input,
+      body.dark #globalActionCoreV616ap .gap-input{
+        background:#132330;border-color:#31475b;color:#e5eef5;
+      }
+      body.theme-dark #globalActionCoreV616ap .gap-close,
+      body.theme-dark #globalActionCoreV616ap .gap-btn:not(.gap-confirm),
+      body.dark-mode #globalActionCoreV616ap .gap-close,
+      body.dark-mode #globalActionCoreV616ap .gap-btn:not(.gap-confirm),
+      body.dark #globalActionCoreV616ap .gap-close,
+      body.dark #globalActionCoreV616ap .gap-btn:not(.gap-confirm){
+        background:#132330;border-color:#31475b;color:#d5e3ed;
+      }
+
+      @media(max-width:640px){
+        #globalActionCoreV616ap{padding:12px}
+        #globalActionCoreV616ap .gap-actions{flex-direction:column-reverse}
+        #globalActionCoreV616ap .gap-btn{width:100%}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function hideLegacyV616ap(){
+    const legacy=$("globalActionModal");
+    if(legacy){
+      legacy.classList.add("hidden");
+      legacy.setAttribute("aria-hidden","true");
+    }
+    document.body.classList.remove("modal-open-v61134");
+  }
+
+  function ensureActionV616ap(){
+    ensureStyleV616ap();
+
+    let root=$("globalActionCoreV616ap");
+    if(root) return root;
+
+    root=document.createElement("div");
+    root.id="globalActionCoreV616ap";
+    root.className="hidden";
+    root.setAttribute("role","dialog");
+    root.setAttribute("aria-modal","true");
+    root.setAttribute("aria-labelledby","globalActionCoreTitleV616ap");
+    root.innerHTML=`
+      <div class="gap-dialog" tabindex="-1">
+        <div class="gap-head">
+          <div class="gap-icon" id="globalActionCoreIconV616ap">?</div>
+          <div class="gap-title-wrap">
+            <span class="gap-kicker" id="globalActionCoreKickerV616ap">ยืนยันรายการ</span>
+            <h3 class="gap-title" id="globalActionCoreTitleV616ap">ยืนยันการดำเนินการ</h3>
+          </div>
+          <button type="button" class="gap-close" id="globalActionCoreCloseV616ap" aria-label="ปิด">×</button>
+        </div>
+        <div class="gap-body">
+          <div class="gap-message" id="globalActionCoreMessageV616ap"></div>
+          <div class="gap-input-wrap hidden" id="globalActionCoreInputWrapV616ap">
+            <label id="globalActionCoreInputLabelV616ap" for="globalActionCoreInputV616ap">หมายเหตุ</label>
+            <input class="gap-input" id="globalActionCoreInputV616ap" type="text">
+            <small class="gap-help" id="globalActionCoreInputHelpV616ap"></small>
+          </div>
+        </div>
+        <div class="gap-actions">
+          <button type="button" class="gap-btn" id="globalActionCoreCancelV616ap">ยกเลิก</button>
+          <button type="button" class="gap-btn gap-confirm" id="globalActionCoreConfirmV616ap">ยืนยัน</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(root);
+
+    const settle=value=>{
+      if(!activeResolveV616ap) return;
+
+      const resolve=activeResolveV616ap;
+      activeResolveV616ap=null;
+
+      root.classList.add("hidden");
+      root.setAttribute("aria-hidden","true");
+      document.body.classList.remove("modal-open-v616ap");
+
+      resolve(value);
+    };
+
+    $("globalActionCoreCancelV616ap").addEventListener("click",e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      settle(activeModeV616ap==="prompt" ? null : false);
+    });
+
+    $("globalActionCoreCloseV616ap").addEventListener("click",e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      settle(activeModeV616ap==="prompt" ? null : false);
+    });
+
+    $("globalActionCoreConfirmV616ap").addEventListener("click",e=>{
+      e.preventDefault();
+      e.stopPropagation();
+
+      if(activeModeV616ap==="prompt"){
+        const input=$("globalActionCoreInputV616ap");
+        if(input?.required && !String(input.value||"").trim()){
+          input.classList.add("invalid");
+          input.focus();
+          return;
+        }
+        input?.classList.remove("invalid");
+        settle(input?.value ?? "");
+      }else{
+        settle(true);
+      }
+    });
+
+    $("globalActionCoreInputV616ap").addEventListener("input",e=>{
+      e.target.classList.remove("invalid");
+    });
+
+    root.addEventListener("click",e=>{
+      if(e.target===root){
+        e.preventDefault();
+        e.stopPropagation();
+        settle(activeModeV616ap==="prompt" ? null : false);
+      }
+    });
+
+    return root;
+  }
+
+  function ensurePrintV616ap(){
+    ensureStyleV616ap();
+
+    let root=$("globalPrintCoreV616ap");
+    if(root) return root;
+
+    root=document.createElement("div");
+    root.id="globalPrintCoreV616ap";
+    root.className="hidden";
+    root.setAttribute("role","dialog");
+    root.setAttribute("aria-modal","true");
+    root.innerHTML=`
+      <div class="gpp-dialog">
+        <div class="gpp-head">
+          <strong id="globalPrintCoreTitleV616ap">ตัวอย่างก่อนพิมพ์</strong>
+          <button type="button" class="gap-btn" id="globalPrintCorePrintV616ap">พิมพ์</button>
+          <button type="button" class="gap-btn" id="globalPrintCoreCloseV616ap">ปิด</button>
+        </div>
+        <iframe id="globalPrintCoreFrameV616ap" title="ตัวอย่างก่อนพิมพ์"></iframe>
+      </div>
+    `;
+    document.body.appendChild(root);
+
+    const close=()=>{
+      const frame=$("globalPrintCoreFrameV616ap");
+      root.classList.add("hidden");
+      root.setAttribute("aria-hidden","true");
+      if(frame) frame.srcdoc="";
+    };
+
+    $("globalPrintCoreCloseV616ap").addEventListener("click",e=>{
+      e.preventDefault();e.stopPropagation();close();
+    });
+
+    $("globalPrintCorePrintV616ap").addEventListener("click",e=>{
+      e.preventDefault();e.stopPropagation();
+      try{
+        const frame=$("globalPrintCoreFrameV616ap");
+        frame?.contentWindow?.focus();
+        frame?.contentWindow?.print();
+      }catch(_){
+        window.TimeClockApp?.toast?.("ไม่สามารถเปิดหน้าพิมพ์ได้","error");
+      }
+    });
+
+    root.addEventListener("click",e=>{
+      if(e.target===root) close();
+    });
+
+    root._closeV616ap=close;
+    return root;
+  }
+
+  async function openV616ap(mode,input,options={}){
+    const fallbackTitle=mode==="prompt" ? "ระบุรายละเอียด" : "ยืนยันการดำเนินการ";
+    const o=normalizeV616ap(input,options,fallbackTitle);
+    const root=ensureActionV616ap();
+
+    hideLegacyV616ap();
+
+    if(activeResolveV616ap){
+      const old=activeResolveV616ap;
+      activeResolveV616ap=null;
+      old(activeModeV616ap==="prompt" ? null : false);
+    }
+
+    activeModeV616ap=mode;
+
+    const tone=String(o.tone || (mode==="prompt" ? "primary" : "warning")).toLowerCase();
+    root.dataset.tone=tone;
+
+    $("globalActionCoreTitleV616ap").textContent=o.title || fallbackTitle;
+    $("globalActionCoreKickerV616ap").textContent=
+      o.eyebrow || (mode==="prompt" ? "กรอกข้อมูล" : "ยืนยันรายการ");
+    $("globalActionCoreMessageV616ap").textContent=
+      o.message || "กรุณาตรวจสอบข้อมูลก่อนดำเนินการ";
+    $("globalActionCoreIconV616ap").textContent=
+      o.icon || (mode==="prompt" ? "✎" : (tone==="danger" ? "!" : "?"));
+    $("globalActionCoreCancelV616ap").textContent=o.cancelText || "ยกเลิก";
+    $("globalActionCoreConfirmV616ap").textContent=
+      o.confirmText || (mode==="prompt" ? "บันทึก" : "ยืนยัน");
+
+    const wrap=$("globalActionCoreInputWrapV616ap");
+    const inputEl=$("globalActionCoreInputV616ap");
+
+    if(mode==="prompt"){
+      wrap.classList.remove("hidden");
+      $("globalActionCoreInputLabelV616ap").textContent=o.inputLabel || "หมายเหตุ";
+      inputEl.placeholder=o.placeholder || "ระบุรายละเอียด...";
+      inputEl.value=o.defaultValue || "";
+      inputEl.required=Boolean(o.required);
+      $("globalActionCoreInputHelpV616ap").textContent=
+        o.helpText || (o.required ? "จำเป็นต้องระบุข้อมูล" : "สามารถเว้นว่างได้");
+    }else{
+      wrap.classList.add("hidden");
+      inputEl.value="";
+      inputEl.required=false;
+      inputEl.classList.remove("invalid");
+    }
+
+    root.classList.remove("hidden");
+    root.setAttribute("aria-hidden","false");
+    document.body.classList.add("modal-open-v616ap");
+
+    return new Promise(resolve=>{
+      activeResolveV616ap=resolve;
+      requestAnimationFrame(()=>{
+        (mode==="prompt" ? inputEl : $("globalActionCoreConfirmV616ap"))
+          ?.focus?.({preventScroll:true});
+      });
+    });
+  }
+
+  async function confirmV616ap(input,options={}){
+    return Boolean(await openV616ap("confirm",input,options));
+  }
+
+  async function promptV616ap(input,options={}){
+    return await openV616ap("prompt",input,options);
+  }
+
+  function printV616ap(input={}){
+    hideLegacyV616ap();
+
+    const root=ensurePrintV616ap();
+    $("globalPrintCoreTitleV616ap").textContent=
+      input.title || "ตัวอย่างก่อนพิมพ์";
+    $("globalPrintCoreFrameV616ap").srcdoc=input.html || "";
+    root.classList.remove("hidden");
+    root.setAttribute("aria-hidden","false");
+  }
+
+  function closePrintV616ap(){
+    const root=$("globalPrintCoreV616ap");
+    root?._closeV616ap?.();
+  }
+
+  function bindKeyboardV616ap(){
+    if(document.documentElement.dataset.popupKeyboardV616ap==="1") return;
+    document.documentElement.dataset.popupKeyboardV616ap="1";
+
+    document.addEventListener("keydown",e=>{
+      const root=$("globalActionCoreV616ap");
+
+      if(root && !root.classList.contains("hidden")){
+        if(e.key==="Escape"){
+          e.preventDefault();
+          const cancel=$("globalActionCoreCancelV616ap");
+          cancel?.click();
+          return;
+        }
+
+        if(e.key==="Enter"){
+          const target=e.target;
+          if(target?.tagName==="TEXTAREA") return;
+
+          e.preventDefault();
+          $("globalActionCoreConfirmV616ap")?.click();
+          return;
+        }
+      }
+
+      const print=$("globalPrintCoreV616ap");
+      if(print && !print.classList.contains("hidden") && e.key==="Escape"){
+        e.preventDefault();
+        closePrintV616ap();
+      }
+    },true);
+  }
+
+  function bindGenericModalCloseV616ap(){
+    if(document.documentElement.dataset.genericModalCloseV616ap==="1") return;
+    document.documentElement.dataset.genericModalCloseV616ap="1";
+
+    // Harden static and late-mounted generic modals.
+    document.addEventListener("click",e=>{
+      const close=e.target?.closest?.("[data-close-modal]");
+      if(!close) return;
+
+      const id=close.dataset.closeModal;
+      if(!id) return;
+
+      // Let the module's own handler run if present; this is a fallback for
+      // late-mounted markup where the original qsa(...).addEventListener()
+      // never saw the button.
+      requestAnimationFrame(()=>{
+        const modal=$(id);
+        if(!modal || modal.classList.contains("hidden")) return;
+
+        if(window.TimeClockApp?.closeModal){
+          window.TimeClockApp.closeModal(id);
+        }else{
+          modal.classList.add("hidden");
+          modal.setAttribute("aria-hidden","true");
+        }
+      });
+    },false);
+  }
+
+  function initV616ap(){
+    ensureStyleV616ap();
+    bindKeyboardV616ap();
+    bindGenericModalCloseV616ap();
+
+    // Keep legacy shell hidden so it can never intercept pointer events.
+    hideLegacyV616ap();
+
+    window.TimeClockModal={
+      ...(window.TimeClockModal || {}),
+      confirm:confirmV616ap,
+      prompt:promptV616ap,
+      printPreview:printV616ap,
+      closePrint:closePrintV616ap,
+      version:"6.15.29-FIX16AP"
+    };
+
+    window.tcConfirm=confirmV616ap;
+    window.tcPrompt=promptV616ap;
+    window.tcPrintPreview=printV616ap;
+
+    document.documentElement.dataset.popupCoreV616ap="1";
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",initV616ap,{once:true});
+  }else{
+    initV616ap();
+  }
+})();
+
 /* ===== js/shift-api.js ===== */
 (() => {
   "use strict";
