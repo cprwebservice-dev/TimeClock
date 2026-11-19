@@ -1,3 +1,4 @@
+/* TimeClock V6.15.29 FIX16AN — Full Frontend Regression Recovery */
 
 /* V6.10.2 deployment diagnostic */
 window.__TIME_CLOCK_BUILD__ = "V6.15.11";
@@ -16,6 +17,87 @@ window.TIME_CLOCK_CONFIG = Object.freeze({
   version: '6.15.10',
   defaultRoute: 'dashboard',
   githubPagesBase: '/TimeClock/'
+});
+
+/* ===== V6.15.29 FIX16DF Frontend RPC Contract Freeze =====
+   Contract policy:
+   - primary = authoritative frontend contract.
+   - compatibility = migration compatibility only.
+   - missing-only chains must NEVER bypass a real permission/business/runtime error.
+   - safety-secondary is an intentionally separate safety check, not a version fallback.
+*/
+window.TimeClockRpcContractsV616DF = Object.freeze({
+  bulkSchedule: Object.freeze({
+    primary: 'ta_assign_shifts_bulk_v61424',
+    compatibility: Object.freeze(['ta_assign_shifts_bulk_v6143']),
+    mode: 'missing-only'
+  }),
+  attendanceDayDetail: Object.freeze({
+    primary: 'ta_get_attendance_day_detail_v650',
+    compatibility: Object.freeze(['ta_get_attendance_day_detail_v640']),
+    mode: 'missing-only'
+  }),
+  workPatternParameterAccess: Object.freeze({
+    primary: 'ta_get_work_pattern_parameter_access_v657',
+    compatibility: Object.freeze(['ta_get_work_pattern_parameter_access_v656']),
+    mode: 'missing-only'
+  }),
+  scheduleRuleSync: Object.freeze({
+    primary: 'ta_sync_bulk_schedule_rules_v6135',
+    compatibility: Object.freeze([
+      'ta_sync_bulk_schedule_rules_v6134',
+      'ta_sync_bulk_schedule_rules_v6123',
+      'ta_sync_bulk_schedule_rules_v6120'
+    ]),
+    mode: 'missing-only'
+  }),
+  nightSequence: Object.freeze({
+    primary: 'ta_validate_night_sequence_bulk_v61437',
+    compatibility: Object.freeze(['ta_validate_night_sequence_bulk_v61435']),
+    mode: 'missing-only'
+  }),
+  scheduleGuard: Object.freeze({
+    primary: 'ta_validate_schedule_guard_v6141',
+    compatibility: Object.freeze(['ta_validate_schedule_guard_v6120']),
+    mode: 'safety-secondary'
+  })
+});
+
+window.tcRpcMissingV616DF = error => {
+  const code=String(error?.code||'').toUpperCase();
+  const text=String(error?.message||error?.details||error||'').toLowerCase();
+  return code==='PGRST202'
+    || code==='42883'
+    || text.includes('could not find the function')
+    || (text.includes('function') && text.includes('does not exist'))
+    || text.includes('schema cache');
+};
+
+window.tcRpcContractV616DF = async (contractKey,args,callRpc) => {
+  const contract=window.TimeClockRpcContractsV616DF?.[contractKey];
+  if(!contract) throw new Error(`RPC_CONTRACT_NOT_FOUND:${contractKey}`);
+  if(typeof callRpc!=='function') throw new Error(`RPC_CALLER_REQUIRED:${contractKey}`);
+
+  const names=[contract.primary,...(contract.compatibility||[])].filter(Boolean);
+  let lastError=null;
+  for(let i=0;i<names.length;i++){
+    try{
+      return await callRpc(names[i],args||{});
+    }catch(error){
+      lastError=error;
+      const mayFallback=contract.mode==='missing-only'
+        && i<names.length-1
+        && window.tcRpcMissingV616DF(error);
+      if(!mayFallback) throw error;
+    }
+  }
+  throw lastError||new Error(`RPC_CONTRACT_UNAVAILABLE:${contractKey}`);
+};
+
+window.__TIME_CLOCK_RPC_CONTRACT_FREEZE__ = Object.freeze({
+  version:'V6.15.29 FIX16DF',
+  policy:'CANONICAL_PRIMARY_WITH_EXPLICIT_COMPATIBILITY',
+  contracts:window.TimeClockRpcContractsV616DF
 });
 
 /* ===== V6.14.52 Calendar-Date Safety (retains V61448 utility name) =====
@@ -350,6 +432,15 @@ window.tcIsDayShiftCode = value =>
       throw new Error(periodCheck.message || "SYSTEM_PERIOD_SCHEDULE_CLOSED");
     }
 
+    try {
+      const readiness = await client.rpc("ta_validate_schedule_readiness_v616t", { p_rows:[{emp_code:full.p_emp_code,work_date:full.p_work_date}] });
+      if (!readiness.error && readiness.data?.allowed === false) {
+        const first=Array.isArray(readiness.data.blocked)?readiness.data.blocked[0]:null;
+        throw new Error(first?.code || "SCHEDULE_READINESS_REQUIRED");
+      }
+      if (readiness.error && !missingFunction(readiness.error)) throw readiness.error;
+    } catch(e) { if(!missingFunction(e)) throw e; }
+
     let response = await client.rpc("ta_assign_shift_single_v6143", full);
     if (!response.error) return response.data;
     if (!missingFunction(response.error)) throw response.error;
@@ -370,6 +461,18 @@ window.tcIsDayShiftCode = value =>
     })).filter(row => row.emp_code && row.work_date);
     if (!cleanRows.length) return { saved_rows: 0 };
 
+    // FIX16T: Auto Readiness = Employment Window + Operational Profile + Effective Working Team.
+    try {
+      const readiness=await client.rpc("ta_validate_schedule_readiness_v616t",{p_rows:cleanRows});
+      if(!readiness.error&&readiness.data?.allowed===false){
+        const first=Array.isArray(readiness.data.blocked)?readiness.data.blocked[0]:null;
+        throw new Error(first?.code||"SCHEDULE_READINESS_REQUIRED");
+      }
+      if(readiness.error&&!missingFunction(readiness.error))throw readiness.error;
+    }catch(e){if(!missingFunction(e))throw e;}
+
+    // FIX16T: no legacy Team Enforcement preflight. Auto Readiness is the schedule prerequisite.
+
     const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
       cleanRows.map(row => row.work_date),
       true
@@ -385,7 +488,8 @@ window.tcIsDayShiftCode = value =>
     // statement timeout / HTTP 500 before the final canonical refresh.
     // V6.14.24 keeps all write guards but defers Attendance to the existing
     // post-extension finalizer.
-    let response = await client.rpc("ta_assign_shifts_bulk_v61424", {
+    const bulkContractV616DF=window.TimeClockRpcContractsV616DF.bulkSchedule;
+    let response = await client.rpc(bulkContractV616DF.primary, {
       p_rows: cleanRows,
       p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
       p_confirm_now: Boolean(confirmNow)
@@ -396,7 +500,7 @@ window.tcIsDayShiftCode = value =>
     // Do not retry old V6.14.3 on a real V6.14.24 database/runtime error,
     // otherwise the same mutation may be attempted twice.
     if (missingFunction(response.error)) {
-      response = await client.rpc("ta_assign_shifts_bulk_v6143", {
+      response = await client.rpc(bulkContractV616DF.compatibility[0], {
         p_rows: cleanRows,
         p_change_reason: changeReason || "บันทึกกะแบบหลายรายการจากหน้าเว็บ",
         p_confirm_now: Boolean(confirmNow)
@@ -726,12 +830,44 @@ window.tcIsDayShiftCode = value =>
   const scheduleReadCacheV61463 = new Map();
   const SCHEDULE_READ_CACHE_TTL_V61463 = 60000;
 
+  // FIX16N — org_id remains the canonical Department identity, and the
+  // ALL/blank Department state now means "all Organization Units inside the
+  // actor's authorized Scope". It must never fall back to the wider legacy
+  // employee/day list for Manager/Acting runtime reads.
+  const scheduleOrgEmployeeCodesCacheV616M = new Map();
+  const ORG_UUID_RE_V616M = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  function scheduleOrgIdentityValueV616M(value) {
+    const text = String(value || '').trim();
+    return ORG_UUID_RE_V616M.test(text) ? text : null;
+  }
+
+  async function scheduleOrgEmployeeCodesV616M(client,orgId,startDate,endDate) {
+    const id = String(orgId || '').trim() || null;
+    const key = `${id || 'ALL_SCOPE'}|${startDate}|${endDate}`;
+    const hit = scheduleOrgEmployeeCodesCacheV616M.get(key);
+    if (hit && Date.now() - hit.loadedAt <= 60000) return [...hit.codes];
+    const {data,error} = await client.rpc('ta_get_org_employee_codes_v616m',{
+      p_org_id:id,p_start_date:startDate,p_end_date:endDate
+    });
+    if (error) {
+      if (missingFunction(error)) {
+        throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
+      }
+      throw error;
+    }
+    const codes=[...new Set((data||[]).map(row=>scheduleText(row?.emp_code)).filter(Boolean))];
+    scheduleOrgEmployeeCodesCacheV616M.set(key,{loadedAt:Date.now(),codes});
+    return [...codes];
+  }
+
   function scheduleReadCacheKeyV61463(args, disableRangePaging) {
     return JSON.stringify({
       start: args?.p_start_date || '',
       end: args?.p_end_date || '',
       zone: args?.p_zone || '',
       department: args?.p_department || '',
+      orgId: args?.p_org_id || '',
       employees: Array.isArray(args?.p_emp_codes) ? [...args.p_emp_codes].map(String).sort() : null,
       statuses: Array.isArray(args?.p_schedule_statuses) ? [...args.p_schedule_statuses].map(String).sort() : null,
       onePage: Boolean(disableRangePaging)
@@ -803,34 +939,40 @@ window.tcIsDayShiftCode = value =>
       return [];
     }
 
+    const rawDepartmentV616M = params.p_department ?? null;
+    const orgIdV616M = String(params.p_org_id || scheduleOrgIdentityValueV616M(rawDepartmentV616M) || '').trim() || null;
+    let effectiveEmpCodesV616M = params.p_emp_codes ?? null;
+
+    // FIX16N: resolve the employee set even when Department is blank/ALL.
+    // The backend returns all employees inside the authorized Organization
+    // Scope for Manager/Acting, while Viewer compatibility remains own-access.
+    const orgCodesV616M = await scheduleOrgEmployeeCodesV616M(
+      client,orgIdV616M,rangeStartDate,rangeEndDate
+    );
+    const allowedV616M = new Set(orgCodesV616M || []);
+    if (Array.isArray(effectiveEmpCodesV616M)) {
+      effectiveEmpCodesV616M = effectiveEmpCodesV616M
+        .map(scheduleText)
+        .filter(code => code && allowedV616M.has(code));
+    } else {
+      effectiveEmpCodesV616M = [...allowedV616M];
+    }
+    // Empty array must never mean ALL employees to the canonical Schedule RPC.
+    if (!effectiveEmpCodesV616M.length) return [];
+
     const rpcArgs = {
-      p_start_date:
-        rangeStartDate,
-
-      p_end_date:
-        rangeEndDate,
-
-      p_zone:
-        params.p_zone
-        ?? null,
-
-      p_department:
-        params.p_department
-        ?? null,
-
-      p_emp_codes:
-        params.p_emp_codes
-        ?? null,
-
-      p_schedule_statuses:
-        params.p_schedule_statuses
-        ?? null
+      p_start_date: rangeStartDate,
+      p_end_date: rangeEndDate,
+      p_zone: params.p_zone ?? null,
+      p_department: orgIdV616M ? null : rawDepartmentV616M,
+      p_org_id: orgIdV616M,
+      p_emp_codes: effectiveEmpCodesV616M,
+      p_schedule_statuses: params.p_schedule_statuses ?? null
     };
 
-    const disableRangePaging =
-      params.p_disable_range_paging === true;
-
-    const scheduleCacheKeyV61463 = scheduleReadCacheKeyV61463(rpcArgs, disableRangePaging);
+    const disableRangePaging = params.p_disable_range_paging === true;
+    const scheduleCacheArgsV616M = {...rpcArgs,p_org_id:orgIdV616M};
+    const scheduleCacheKeyV61463 = scheduleReadCacheKeyV61463(scheduleCacheArgsV616M, disableRangePaging);
     const scheduleCachedV61463 = scheduleReadCacheV61463.get(scheduleCacheKeyV61463);
     if (scheduleCachedV61463
         && Date.now() - Number(scheduleCachedV61463.savedAt || 0) <= SCHEDULE_READ_CACHE_TTL_V61463) {
@@ -849,7 +991,7 @@ window.tcIsDayShiftCode = value =>
       from < maxRows;
       from += pageSize
     ) {
-      const scheduleRpcName = "ta_get_schedule_range_light_v61425";
+      const scheduleRpcName = "ta_get_schedule_range_light_v616n";
       let request = client.rpc(scheduleRpcName,rpcArgs);
 
       if (!disableRangePaging) {
@@ -876,7 +1018,7 @@ window.tcIsDayShiftCode = value =>
       if(response.error) {
         if(missingFunction(response.error)) {
           throw new Error(
-            "SCHEDULE_DAYOFF_V61425_REQUIRED: กรุณารัน SQL V6.14.25 เพื่อให้ทุกหน้าจัดกะใช้การคำนวณวันหยุดชุดเดียวกัน"
+            "ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O เพื่อให้ Schedule ใช้ Organization Scope เดียวกับ Attendance"
           );
         }
         throw response.error;
@@ -977,6 +1119,17 @@ window.tcIsDayShiftCode = value =>
       if (!missingFunction(response.error)) throw response.error;
     } catch (error) {
       if (!missingFunction(error) && !String(error?.message || "").includes("ใช้เวลานานเกิน")) throw error;
+    }
+    const roleV616K = String(
+      app?.state?.profile?._realRole || app?.state?.profile?.role || "VIEWER"
+    ).toUpperCase();
+    if (
+      roleV616K !== "HR_ADMIN"
+      && (!Array.isArray(exact.p_emp_codes) || !exact.p_emp_codes.length)
+    ) {
+      throw new Error(
+        "SECURE_REVIEW_SCOPE_RPC_REQUIRED: ไม่อนุญาต Direct Table fallback โดยไม่มี Employee Scope"
+      );
     }
     return withTimeout(directReview(client, exact), 30000, "โหลดรายการรอตรวจสอบสำรอง");
   }
@@ -1378,12 +1531,15 @@ window.tcIsDayShiftCode = value =>
       document.querySelectorAll('[data-person-days-mode]').forEach(btn => {
         btn.classList.toggle('active', String(btn.dataset.personDaysMode || '').toUpperCase() === String(scheduleViewState.personDisplayMode || 'MONTH').toUpperCase());
       });
+      document.querySelectorAll('[data-person-team-group-v616t]').forEach(btn => {
+        btn.classList.toggle('active', String(btn.dataset.personTeamGroupV616t || '').toUpperCase() === String(scheduleViewState.personTeamGroupMode || 'TEAM').toUpperCase());
+      });
       const personTitleV61412 = document.getElementById('schedulePersonTitleV61412');
       const personSubtitleV61412 = document.getElementById('schedulePersonSubtitleV61412');
       if (personTitleV61412) personTitleV61412.textContent = `ตารางกะรายบุคคล • ${range.personDisplayMode === '15D' ? '15 วัน' : 'เต็มเดือน'}`;
       if (personSubtitleV61412) personSubtitleV61412.textContent = range.personDisplayMode === '15D'
-        ? 'แสดงช่วงประมาณ 15 วัน • ซ่อนคอลัมน์วันเริ่มงาน • Label แสดงเฉพาะ Icon • คัดลอก/วางกะได้เหมือนเดิม'
-        : 'แสดงทุกวันของเดือนในตารางเดียว • ซ่อนคอลัมน์วันเริ่มงาน • Label แสดงเฉพาะ Icon • คัดลอก/วางกะได้เหมือนเดิม';
+        ? 'แสดงช่วงประมาณ 15 วัน • ต้องมี Team ปัจจุบันก่อนจัดกะ • Same Manager ย้ายทีมแล้วแก้กะได้ต่อเนื่อง'
+        : `แสดงทุกวันของเดือนในตารางเดียว • ${scheduleViewState.personTeamGroupMode==='TEAM'?'จัดกลุ่มตามสถานะทีม ณ วันที่อ้างอิง':'แสดงรายชื่อรวม'} • Effective Team ใช้แสดงประวัติ • สิทธิ์จัดกะยึด Team ปัจจุบัน + Authority`;
 
       return range;
     };
@@ -2180,8 +2336,9 @@ window.tcIsDayShiftCode = value =>
         ["work_date","วันที่",r => formatDate(r.work_date)],
         ["emp_code","รหัส",r => r.emp_code],
         ["full_name","ชื่อ-นามสกุล",r => r.full_name],
-        ["department","หน่วยงาน",r => r.department],
-        ["zone","พื้นที่",r => r.zone || r.area],
+        ["department","หน่วยงาน",r => canonicalOrgNameV616Q(r) || r.department],
+        ["team","ทีม",r => attendanceTeamLabelV616U(r)],
+        ["zone","พื้นที่",r => canonicalAreaV616Q(r) || r.zone || r.area],
         ["sub_area","พื้นที่ย่อย",r => r.sub_area],
         ["pattern_code","รูปแบบงาน",r => r.pattern_code],
         ["template_code","รูปแบบช่วงงาน",r => workTemplateLabelV6118(r.template_code)],
@@ -2320,8 +2477,25 @@ window.tcIsDayShiftCode = value =>
         state.session = session;
         state.user = session?.user || null;
 
+        // FIX15B: keep Realtime authorization synchronized with the refreshed
+        // access token. Run outside the auth callback tick to avoid auth-lock
+        // re-entrancy while Supabase is persisting the new session.
+        if (session?.access_token && state.client?.realtime?.setAuth) {
+          setTimeout(() => {
+            try {
+              const result = state.client.realtime.setAuth(session.access_token);
+              if (result?.catch) result.catch(() => {});
+            } catch (_) {}
+          }, 0);
+        }
+
         if (event === "SIGNED_OUT") {
+          state.profile = null;
+          window.__tcProfileReadyKey = "";
+          window.dispatchEvent(new CustomEvent("timeclock:auth-signed-out"));
           showLogin();
+        } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          window.dispatchEvent(new CustomEvent("timeclock:auth-refreshed", { detail: { event } }));
         }
 
         if (
@@ -2529,7 +2703,16 @@ window.tcIsDayShiftCode = value =>
       $("adminNavGroup").classList.toggle("hidden", p.role !== "HR_ADMIN" && p._realRole !== "HR_ADMIN");
       qsa("#adminNavGroup .nav-item:not(#systemSettingsNav)").forEach(el => el.classList.toggle("hidden", p.role !== "HR_ADMIN"));
       $("systemSettingsNav")?.classList.toggle("hidden", p._realRole !== "HR_ADMIN");
-      $("teamPortalNavV61482")?.classList.toggle("hidden", String(p.role||"").toUpperCase()!=="MANAGER");
+      const actingManagerV616CB = window.TimeClockTemporaryAssignmentV61529F14B?.hasActingAuthority?.() === true;
+      $("teamPortalNavV61482")?.classList.toggle(
+        "hidden",
+        !["MANAGER","HR_ADMIN"].includes(String(p.role||"").toUpperCase()) && !actingManagerV616CB
+      );
+      $("teamMasterNavV61523")?.classList.toggle(
+        "hidden",
+        !["MANAGER","HR_ADMIN"].includes(String(p.role||"").toUpperCase())
+        && window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.()!==true
+      );
       window.TimeClockSettings?.syncProfile?.(p);
       document.dispatchEvent(new CustomEvent("timeclock:effective-role-changed", {
         detail: {
@@ -2537,6 +2720,21 @@ window.tcIsDayShiftCode = value =>
           realRole: p._realRole || p.role || "VIEWER"
         }
       }));
+
+      // FIX16BQ: emit profile-ready from the actual auth/profile completion point.
+      if (state.session?.access_token && state.user?.id && p?.is_active) {
+        const readyKey = `${state.user.id}|${String(p.email || state.user.email || "").toLowerCase()}|${String(p._realRole || p.role || "VIEWER").toUpperCase()}`;
+        window.__tcProfileReadyKey = readyKey;
+        document.dispatchEvent(new CustomEvent("timeclock:profile-ready", {
+          detail: {
+            userId: state.user.id,
+            email: p.email || state.user.email || "",
+            effectiveRole: p.role || "VIEWER",
+            realRole: p._realRole || p.role || "VIEWER",
+            authReady: true
+          }
+        }));
+      }
     }
 
     async function loadFilterOptions() {
@@ -2571,12 +2769,30 @@ window.tcIsDayShiftCode = value =>
       }
 
       const f = data || {};
+      const orgContractV616L = await loadAuthorizedOrgContractV616L(
+        val("dashStart"),
+        val("dashEnd")
+      );
+      const rawZonesV616L = Array.isArray(f.zones) ? f.zones : [];
+      const rawDepartmentsV616L = Array.isArray(f.departments) ? f.departments : [];
+      const zonesV616L = scopedLocationValuesV616L(
+        rawZonesV616L,
+        orgContractV616L,
+        ["zone","area"]
+      );
+      const departmentOptionsV616L = scopedDepartmentOptionsV616L(
+        rawDepartmentsV616L,
+        orgContractV616L
+      );
+      const departmentsV616L = departmentOptionsV616L.map(option => option.value);
+
       let shiftRows = Array.isArray(f.shifts) ? f.shifts : [];
       const shiftResponse = await state.client.rpc("ta_get_shift_master_v651");
       if (!shiftResponse.error && Array.isArray(shiftResponse.data)) shiftRows = shiftResponse.data;
       state.filters = {
-        zones: Array.isArray(f.zones) ? f.zones : [],
-        departments: Array.isArray(f.departments) ? f.departments : [],
+        zones: zonesV616L,
+        departments: departmentsV616L,
+        departmentOptionsV616L,
         employees: Array.isArray(f.employees) ? f.employees : [],
         shifts: shiftRows,
         attendance: state.filters.attendance || {
@@ -2587,7 +2803,9 @@ window.tcIsDayShiftCode = value =>
         }
       };
       ["dashZone","scheduleZone","reportZone"].forEach(id => fillSelect(id, state.filters.zones, "ทุกพื้นที่"));
-      ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id => fillSelect(id, state.filters.departments, "ทุกหน่วยงาน"));
+      ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id =>
+        fillScopedDepartmentSelectV616L(id, departmentOptionsV616L, "ทุกหน่วยงานใน Scope")
+      );
       fillShiftSelect();
       populateSharedEmployeeMasterList();
     }
@@ -2664,7 +2882,7 @@ window.tcIsDayShiftCode = value =>
         end: range?.end || '',
         area: val("attZone") || '',
         subArea: val("attSubArea") || '',
-        department: val("attDepartment") || '',
+        department: selectedOrgIdV616M("attDepartment") || val("attDepartment") || '',
         employees: Array.isArray(requestEmployeeCodes) ? [...requestEmployeeCodes].map(String).sort() : null
       });
     }
@@ -2750,13 +2968,17 @@ window.tcIsDayShiftCode = value =>
         return {
           emp_code: item.trim(),
           full_name: "",
+          position_name: "",
           department: "",
           area: "",
-          sub_area: ""
+          sub_area: "",
+          org_id: "",
+          org_code: "",
+          org_name: ""
         };
       }
 
-      return {
+      const row = {
         emp_code: String(
           item?.emp_code
           || item?.employee_id
@@ -2771,18 +2993,16 @@ window.tcIsDayShiftCode = value =>
           || item?.label
           || ""
         ).trim(),
-        department: String(
-          item?.department || ""
-        ).trim(),
-        area: String(
-          item?.area
-          || item?.zone
-          || ""
-        ).trim(),
-        sub_area: String(
-          item?.sub_area || ""
-        ).trim()
+        position_name: String(item?.position_name || "").trim(),
+        department: String(item?.department || item?.org_name || "").trim(),
+        area: String(item?.area || item?.zone || "").trim(),
+        sub_area: String(item?.sub_area || "").trim(),
+        org_id: String(item?.org_id || "").trim(),
+        org_code: String(item?.org_code || "").trim(),
+        org_name: String(item?.org_name || "").trim()
       };
+      applyCanonicalOrgMetaV616Q(row,item);
+      return row;
     }
 
     function attendanceEmployeeFilterKey() {
@@ -2791,7 +3011,7 @@ window.tcIsDayShiftCode = value =>
         val("attEnd"),
         val("attZone"),
         val("attSubArea"),
-        val("attDepartment")
+        selectedOrgIdV616M("attDepartment") || val("attDepartment")
       ].join("|");
     }
 
@@ -2806,7 +3026,7 @@ window.tcIsDayShiftCode = value =>
 
       return attendanceEmployeeFilter.options.filter(
         employee =>
-          `${employee.emp_code} ${employee.full_name}`
+          `${employee.emp_code} ${employee.full_name} ${canonicalOrgNameV616Q(employee)} ${canonicalOrgCodeV616Q(employee)} ${canonicalAreaV616Q(employee)} ${canonicalSubAreaV616Q(employee)}`
             .toLowerCase()
             .includes(term)
       );
@@ -2858,6 +3078,32 @@ window.tcIsDayShiftCode = value =>
       }
 
       return selected;
+    }
+
+    // FIX16J: When the employee filter shows a small, scope-aware list, send
+    // those employee codes explicitly to the attendance RPC. Previously the
+    // UI displayed e.g. "พนักงานทั้งหมด • 5 คน" but translated that state to
+    // p_emp_codes = null. On some Manager scopes / historical periods the
+    // server returned no persisted attendance rows, and the calendar fallback
+    // then had no employee codes to request, so the table stayed empty.
+    // Keep null for large scopes to avoid oversized RPC payloads.
+    function attendanceEmployeeCodesForLoadV616J() {
+      const selected = attendanceEmployeeCodesForQuery();
+      if (Array.isArray(selected) && selected.length) {
+        return selected;
+      }
+
+      const optionCodes = [
+        ...new Set(
+          (attendanceEmployeeFilter.options || [])
+            .map(employee => String(employee?.emp_code || "").trim())
+            .filter(Boolean)
+        )
+      ];
+
+      return optionCodes.length && optionCodes.length <= 250
+        ? optionCodes
+        : null;
     }
 
     function updateAttendanceEmployeeToggle() {
@@ -2967,14 +3213,15 @@ window.tcIsDayShiftCode = value =>
                     )}
                   </span>
                 </strong>
-                <small>
+                <small class="attendance-employee-org-v616u">
+                  ${safe(canonicalOrgLabelV616Q(employee) || "-")}
+                </small>
+                <small class="attendance-employee-location-v616u">
                   ${safe(
                     [
-                      employee.department,
-                      employee.area,
-                      employee.sub_area
-                    ].filter(Boolean).join(" • ")
-                    || "-"
+                      canonicalAreaV616Q(employee),
+                      canonicalSubAreaV616Q(employee)
+                    ].filter(Boolean).join(" / ") || ""
                   )}
                 </small>
               </span>
@@ -3036,6 +3283,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     function fallbackAttendanceEmployeeOptions() {
+      if (selectedOrgIdV616M("attDepartment")) return [];
       const source = [
         ...(state.attendance || []),
         ...(state.filters.employees || [])
@@ -3135,42 +3383,70 @@ window.tcIsDayShiftCode = value =>
           rows =
             attendanceEmployeeFilter.cache.get(cacheKey);
         } else {
-          const args = {
+          const orgIdV616M = selectedOrgIdV616M("attDepartment");
+          const legacyDepartmentV616M = selectedLegacyDepartmentV616M("attDepartment");
+          const argsV616M = {
             p_start_date: val("attStart"),
             p_end_date: val("attEnd"),
             p_area: val("attZone") || null,
             p_sub_area: val("attSubArea") || null,
-            p_department:
-              val("attDepartment") || null,
+            p_department: orgIdV616M ? null : legacyDepartmentV616M,
+            p_org_id: orgIdV616M,
             p_search: null,
             p_limit: 5000
           };
 
-          let response =
-            await state.client.rpc(
-              "ta_get_attendance_employee_options_v61018",
-              args
+          // FIX16U: Employee selector uses the same Canonical Organization
+          // contract as Schedule/Portal.  Legacy attendance_workday.department
+          // is not a UI identity and must not leak into the selector.
+          let response = null;
+          try {
+            const contractV616U = await loadAuthorizedOrgContractV616L(
+              argsV616M.p_start_date,
+              argsV616M.p_end_date
             );
-
-          if(
-            response.error
-            && window.TimeClockShiftAPI
-              ?.missingFunction?.(
-                response.error
-              )
-          ) {
-            response =
-              await state.client.rpc(
-                "ta_get_attendance_employee_options_v671",
-                args
+            if (contractV616U?.strict) {
+              const scopedV616U = await loadScopeEmployeeOptionsV616O(
+                orgIdV616M,
+                argsV616M.p_start_date,
+                argsV616M.p_end_date
               );
+              const areaV616U = String(argsV616M.p_area || '').trim();
+              const subAreaV616U = String(argsV616M.p_sub_area || '').trim();
+              rows = (scopedV616U || [])
+                .filter(item => !areaV616U || canonicalAreaV616Q(item) === areaV616U)
+                .filter(item => !subAreaV616U || canonicalSubAreaV616Q(item) === subAreaV616U)
+                .map(normalizeAttendanceEmployeeOption)
+                .filter(employee => employee.emp_code);
+            }
+          } catch (canonicalSelectorErrorV616U) {
+            console.warn('Attendance Canonical employee selector FIX16U:',canonicalSelectorErrorV616U);
           }
 
-          if(response.error) {
+          if (!rows) response = await state.client.rpc(
+            "ta_get_attendance_employee_options_v616m",argsV616M
+          );
+
+          if(!rows && response?.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+            if (orgIdV616M) throw new Error("ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O");
+            const legacyArgs = {
+              p_start_date:argsV616M.p_start_date,p_end_date:argsV616M.p_end_date,
+              p_area:argsV616M.p_area,p_sub_area:argsV616M.p_sub_area,
+              p_department:legacyDepartmentV616M,p_search:null,p_limit:5000
+            };
+            response = await state.client.rpc(
+              "ta_get_attendance_employee_options_v61018",legacyArgs
+            );
+            if(response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+              response = await state.client.rpc("ta_get_attendance_employee_options_v671",legacyArgs);
+            }
+          }
+
+          if(!rows && response?.error) {
             throw response.error;
           }
 
-          rows = (response.data || [])
+          if(!rows) rows = (response?.data || [])
             .map(normalizeAttendanceEmployeeOption)
             .filter(employee => employee.emp_code);
 
@@ -3316,105 +3592,151 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function loadAttendanceFilterOptions(preserve = true) {
-      const oldArea = preserve ? val("attZone") : "";
-      const oldSubArea = preserve ? val("attSubArea") : "";
-      const oldDepartment = preserve ? val("attDepartment") : "";
+      const oldArea = preserve ? String(val("attZone") || "") : "";
+      const oldSubArea = preserve ? String(val("attSubArea") || "") : "";
+      const oldDepartment = preserve ? String(val("attDepartment") || "") : "";
       try {
-        const {
-          data,
-          error
-        } =
-          await state.client.rpc(
-            "ta_get_attendance_filter_options_v61022",
-            {
-              p_start_date:
-                val("attStart"),
-
-              p_end_date:
-                val("attEnd"),
-
-              p_area:
-                oldArea
-                || null,
-
-              p_sub_area:
-                oldSubArea
-                || null
-            }
-          );
-
-        if(error) {
-          if(
-            window.TimeClockShiftAPI
-              ?.missingFunction?.(
-                error
-              )
-          ) {
+        const orgContractV616L = await loadAuthorizedOrgContractV616L(
+          val("attStart"),
+          val("attEnd")
+        );
+        // Area-level scope first. Do not let a stale Sub-area constrain the parent list.
+        let response = await state.client.rpc(
+          "ta_get_attendance_filter_options_v61022",
+          {
+            p_start_date: val("attStart"),
+            p_end_date: val("attEnd"),
+            p_area: oldArea || null,
+            p_sub_area: null
+          }
+        );
+        if (response.error) {
+          if (window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
             throw new Error(
               "SECURE_ATTENDANCE_FILTER_RPC_REQUIRED: กรุณารัน SQL V6.11.15"
             );
           }
-
-          throw error;
+          throw response.error;
         }
-        const f = data || {};
+
+        let f = response.data || {};
+        let areas = scopedLocationValuesV616L(
+          Array.isArray(f.areas) ? f.areas : [],
+          orgContractV616L,
+          ["area","zone"]
+        );
+        let effectiveArea = oldArea && areas.some(v => String(v) === oldArea) ? oldArea : "";
+
+        // If a manually typed/stale Area is invalid, reload the full authorized Area list.
+        if (oldArea && !effectiveArea) {
+          response = await state.client.rpc(
+            "ta_get_attendance_filter_options_v61022",
+            {
+              p_start_date: val("attStart"),
+              p_end_date: val("attEnd"),
+              p_area: null,
+              p_sub_area: null
+            }
+          );
+          if (response.error) throw response.error;
+          f = response.data || {};
+          areas = scopedLocationValuesV616L(
+            Array.isArray(f.areas) ? f.areas : [],
+            orgContractV616L,
+            ["area","zone"]
+          );
+        }
+
+        let subAreas = scopedLocationValuesV616L(
+          Array.isArray(f.sub_areas) ? f.sub_areas : [],
+          orgContractV616L,
+          ["sub_area"]
+        );
+        let departments = Array.isArray(f.departments) ? f.departments : [];
+
+        // Employee options are the most concrete scope source for the hierarchy.
+        // Use them to remove impossible Area/Sub-area/Department combinations.
+        if (effectiveArea) {
+          try {
+            const areaEmployees = await attendanceHierarchyEmployeesV616K(effectiveArea,null);
+            const derivedSubAreas = [...new Set(areaEmployees.map(r => r.sub_area).filter(Boolean))]
+              .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
+            const derivedDepartments = [...new Set(areaEmployees.map(r => r.department).filter(Boolean))]
+              .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
+            if (derivedSubAreas.length) subAreas = derivedSubAreas;
+            if (areaEmployees.length) departments = derivedDepartments;
+          } catch (hierarchyError) {
+            console.warn("Attendance scope hierarchy area FIX16K:",hierarchyError);
+          }
+        }
+
+        subAreas = scopedLocationValuesV616L(subAreas,orgContractV616L,["sub_area"]);
+        let effectiveSubArea = oldSubArea && subAreas.some(v => String(v) === oldSubArea)
+          ? oldSubArea
+          : "";
+
+        if (effectiveArea && effectiveSubArea) {
+          try {
+            const subEmployees = await attendanceHierarchyEmployeesV616K(effectiveArea,effectiveSubArea);
+            departments = [...new Set(subEmployees.map(r => r.department).filter(Boolean))]
+              .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
+          } catch (hierarchyError) {
+            // Fall back to server filter RPC for the exact hierarchy.
+            const child = await state.client.rpc(
+              "ta_get_attendance_filter_options_v61022",
+              {
+                p_start_date: val("attStart"),
+                p_end_date: val("attEnd"),
+                p_area: effectiveArea,
+                p_sub_area: effectiveSubArea
+              }
+            );
+            if (!child.error) {
+              departments = Array.isArray(child.data?.departments) ? child.data.departments : departments;
+            }
+          }
+        }
+
+        areas = scopedLocationValuesV616L(areas,orgContractV616L,["area","zone"]);
+        subAreas = scopedLocationValuesV616L(subAreas,orgContractV616L,["sub_area"]);
+        effectiveArea = effectiveArea && areas.includes(effectiveArea) ? effectiveArea : "";
+        effectiveSubArea = effectiveSubArea && subAreas.includes(effectiveSubArea) ? effectiveSubArea : "";
+        const attendanceDepartmentOptionsV616L = scopedDepartmentOptionsV616L(
+          departments,
+          orgContractV616L,
+          {area:effectiveArea,sub_area:effectiveSubArea}
+        );
+        departments = attendanceDepartmentOptionsV616L.map(option => String(option?.label || option?.value || '').trim()).filter(Boolean);
+
         state.filters.attendance = {
-          areas: Array.isArray(f.areas) ? f.areas : [],
-          sub_areas: Array.isArray(f.sub_areas) ? f.sub_areas : [],
-          departments: Array.isArray(f.departments) ? f.departments : [],
-          employees:
-            state.filters.attendance.employees || []
+          areas,
+          sub_areas: subAreas,
+          departments,
+          departmentOptionsV616L: attendanceDepartmentOptionsV616L,
+          employees: state.filters.attendance.employees || []
         };
-        fillSearchableAttendanceFilter(
-          "attZone",
-          "attZoneOptions",
-          state.filters.attendance.areas,
-          "ทุกพื้นที่"
-        );
-        fillSearchableAttendanceFilter(
-          "attSubArea",
-          "attSubAreaOptions",
-          state.filters.attendance.sub_areas,
-          "ทุกพื้นที่ย่อย"
-        );
-        fillSearchableAttendanceFilter(
-          "attDepartment",
-          "attDepartmentOptions",
-          state.filters.attendance.departments,
-          "ทุกหน่วยงาน"
+        fillSearchableAttendanceFilter("attZone","attZoneOptions",areas,"ทุกพื้นที่");
+        fillSearchableAttendanceFilter("attSubArea","attSubAreaOptions",subAreas,"ทุกพื้นที่ย่อย");
+        fillSearchableDepartmentIdentityV616M(
+          "attDepartment","attDepartmentOptions",attendanceDepartmentOptionsV616L,"ทุกหน่วยงานใน Scope"
         );
 
-        if (
-          oldArea
-          && attendanceFilterHasOption("attZone",oldArea)
-        ) {
-          setVal("attZone",oldArea);
+        setVal("attZone",effectiveArea);
+        setVal("attSubArea",effectiveSubArea);
+        let effectiveDepartment = departmentOptionPreservedValueV616M(
+          oldDepartment,attendanceDepartmentOptionsV616L,{input:true}
+        );
+        // When Scope resolves to exactly one Organization Unit, show it
+        // explicitly instead of leaving a misleading blank "all" field.
+        if (!effectiveDepartment && attendanceDepartmentOptionsV616L.length === 1) {
+          effectiveDepartment = String(attendanceDepartmentOptionsV616L[0]?.label || '').trim();
         }
-        if (
-          oldSubArea
-          && attendanceFilterHasOption(
-            "attSubArea",
-            oldSubArea
-          )
-        ) {
-          setVal("attSubArea",oldSubArea);
-        }
-        if (
-          oldDepartment
-          && attendanceFilterHasOption(
-            "attDepartment",
-            oldDepartment
-          )
-        ) {
-          setVal("attDepartment",oldDepartment);
-        }
+        setVal("attDepartment",effectiveDepartment);
       } catch (err) {
         toast(`โหลดตัวกรองรายละเอียดเวลาไม่สำเร็จ: ${humanError(err)}`, "error");
       }
 
-      invalidateAttendanceEmployeeOptions(
-        preserve
-      );
+      invalidateAttendanceEmployeeOptions(preserve);
     }
 
     function fillSearchableAttendanceFilter(
@@ -3465,6 +3787,532 @@ window.tcIsDayShiftCode = value =>
         return values.includes(value);
       } catch (_) {
         return false;
+      }
+    }
+
+    // FIX16L — Organization Scope Contract. Organization Structure + Manager/Acting
+    // scope is the UI source of truth. Legacy filter values remain the submitted
+    // values so existing Dashboard/Attendance/Schedule readers stay compatible.
+    const orgScopeContractV616L = {
+      cache: new Map(),
+      ttl: 60000
+    };
+
+    function orgScopeNormalizeV616L(value) {
+      return String(value || "")
+        .trim()
+        .toLocaleLowerCase("th-TH")
+        .replace(/\s+/g," ");
+    }
+
+    function orgScopeTextArrayV616L(value) {
+      if (Array.isArray(value)) return value;
+      if (value == null || value === "") return [];
+      if (typeof value === "string") {
+        const text = value.trim();
+        if (!text) return [];
+        if (text.startsWith("{") && text.endsWith("}")) {
+          return text.slice(1,-1).split(",").map(v => v.replace(/^"|"$/g,"").trim()).filter(Boolean);
+        }
+      }
+      return [value];
+    }
+
+    async function loadAuthorizedOrgContractV616L(startDate,endDate) {
+      const start = String(startDate || todayISO()).slice(0,10);
+      const end = String(endDate || start).slice(0,10);
+      const key = `${start}|${end}`;
+      const cached = orgScopeContractV616L.cache.get(key);
+      if (cached && Date.now() - cached.loadedAt <= orgScopeContractV616L.ttl) {
+        return cached;
+      }
+
+      // FIX16O: Organization Scope is resolved directly from Manager/Acting
+      // scope + Org Master. Do not derive the UI contract from legacy
+      // employee/day permission rows.
+      let response = await state.client.rpc(
+        "ta_get_authorized_org_units_v616o",
+        { p_start_date:start, p_end_date:end }
+      );
+      let strict = true;
+      let identity = true;
+      if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        response = await state.client.rpc(
+          "ta_get_authorized_org_units_v616m",
+          { p_start_date:start, p_end_date:end }
+        );
+      }
+      if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        identity = false;
+        response = await state.client.rpc(
+          "ta_get_authorized_org_units_v616l",
+          { p_start_date:start, p_end_date:end }
+        );
+      }
+      if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        strict = false;
+        identity = false;
+        response = await state.client.rpc(
+          "ta_get_schedule_org_units_v61529f15o",
+          { p_start_date:start, p_end_date:end }
+        );
+      }
+      if (response.error) throw response.error;
+
+      const unitsV616O = Array.isArray(response.data) ? response.data : [];
+      // Ordinary VIEWER keeps own-access compatibility. Acting users can still
+      // enter strict mode because their authorized Organization list is non-empty.
+      const runtimeRoleV616O = String(state.profile?._sourceRole || state.profile?.role || "VIEWER").toUpperCase();
+      strict = strict && (
+        ["MANAGER","HR_ADMIN"].includes(runtimeRoleV616O)
+        || unitsV616O.length > 0
+      );
+      const contract = {
+        loadedAt: Date.now(),
+        strict,
+        identity,
+        start,
+        end,
+        units: unitsV616O
+      };
+      orgScopeContractV616L.cache.set(key,contract);
+      return contract;
+    }
+
+    function orgUnitDepartmentAliasesV616L(unit) {
+      return [
+        unit?.org_name,
+        unit?.org_code,
+        ...orgScopeTextArrayV616L(unit?.department_filter_values)
+      ].map(orgScopeNormalizeV616L).filter(Boolean);
+    }
+
+    function scopedDepartmentOptionsV616L(values,contract,context={}) {
+      const raw = [...new Set((Array.isArray(values) ? values : [])
+        .map(value => String(value || "").trim()).filter(Boolean))];
+      if (!contract?.strict) {
+        return raw.map(value => ({value,label:value,org_id:null,org_code:null,legacy_value:value,legacy_values:[value],identity:false}));
+      }
+      const units = Array.isArray(contract?.units) ? contract.units : [];
+      if (!units.length) return [];
+
+      // FIX16M: one option per org_id. A legacy department alias may intentionally
+      // map to multiple Organization Units; both remain visible and are separated
+      // by org_code in the label instead of collapsing to the first match.
+      if (contract?.identity) {
+        const zoneKey = orgScopeNormalizeV616L(context?.zone || context?.area || '');
+        const subAreaKey = orgScopeNormalizeV616L(context?.sub_area || '');
+        const rows = [];
+        const seen = new Set();
+
+        units.forEach(unit => {
+          const aliasesRaw = [
+            unit?.org_name,
+            unit?.org_code,
+            ...orgScopeTextArrayV616L(unit?.department_filter_values)
+          ].map(value => String(value || '').trim()).filter(Boolean);
+          const aliasKeys = aliasesRaw.map(orgScopeNormalizeV616L);
+          const matchedRaw = raw.length
+            ? raw.find(value => aliasKeys.includes(orgScopeNormalizeV616L(value)))
+            : null;
+
+          // FIX16M: Organization Structure is the source of identity choices.
+          // Do not require a legacy department alias to exist in the current
+          // Attendance/Schedule result. This keeps authorized parent units and
+          // zero-row units selectable, and selecting a parent can aggregate its
+          // authorized descendants by org_id.
+          if (zoneKey) {
+            const unitZones=[unit?.zone,unit?.area].map(orgScopeNormalizeV616L).filter(Boolean);
+            if (unitZones.length && !unitZones.includes(zoneKey)) return;
+          }
+          if (subAreaKey) {
+            const unitSub=orgScopeNormalizeV616L(unit?.sub_area);
+            if (unitSub && unitSub!==subAreaKey) return;
+          }
+
+          const orgId=String(unit?.org_id || '').trim();
+          if (!orgId || seen.has(orgId)) return;
+          seen.add(orgId);
+          const code=String(unit?.org_code || '').trim();
+          const name=String(unit?.org_name || matchedRaw || code || '').trim();
+          const label=String(unit?.identity_label || '').trim()
+            || [code,name].filter(Boolean).join(' · ')
+            || name
+            || code;
+          rows.push({
+            value:orgId,
+            label,
+            org_id:orgId,
+            org_code:code || null,
+            legacy_value:String(matchedRaw || aliasesRaw[0] || '').trim() || null,
+            legacy_values:aliasesRaw,
+            alias_ambiguous:unit?.alias_ambiguous===true,
+            identity:true
+          });
+        });
+
+        return rows.sort((a,b)=>a.label.localeCompare(b.label,'th',{numeric:true}));
+      }
+
+      const aliasMap = new Map();
+      units.forEach(unit => {
+        orgUnitDepartmentAliasesV616L(unit).forEach(alias => {
+          if (!aliasMap.has(alias)) aliasMap.set(alias,[]);
+          aliasMap.get(alias).push(unit);
+        });
+      });
+
+      return raw.map(value => {
+        const matches = aliasMap.get(orgScopeNormalizeV616L(value)) || [];
+        if (!matches.length) return null;
+        const unit = matches[0];
+        const duplicate = matches.length > 1;
+        const name = String(unit?.org_name || value).trim() || value;
+        const code = String(unit?.org_code || "").trim();
+        return {
+          value,
+          label: duplicate && code ? `${name} (${code})` : name,
+          org_id: unit?.org_id || null,
+          org_code: code || null,
+          legacy_value:value,
+          legacy_values:[value],
+          identity:false
+        };
+      }).filter(Boolean);
+    }
+
+    function scopedLocationValuesV616L(values,contract,fields=[]) {
+      const raw = [...new Set((Array.isArray(values) ? values : [])
+        .map(value => String(value || "").trim()).filter(Boolean))];
+      if (!contract?.strict) return raw;
+      const units = Array.isArray(contract?.units) ? contract.units : [];
+      const allowedDisplay = new Map();
+      units.forEach(unit => fields.forEach(field => {
+        const display = String(unit?.[field] || "").trim();
+        const key = orgScopeNormalizeV616L(display);
+        if (key && !allowedDisplay.has(key)) allowedDisplay.set(key,display);
+      }));
+      // FIX16O: Org Contract is the source of the location choices too.
+      // Legacy filter RPC may legitimately return zero rows before a Schedule
+      // exists, so filtering only its values can make Area/Sub-area disappear.
+      if (allowedDisplay.size) {
+        return [...allowedDisplay.values()].sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
+      }
+      return raw;
+    }
+
+    function fillScopedDepartmentSelectV616L(id,options,allLabel) {
+      const el = $(id);
+      if (!el) return;
+      const old = el.value;
+      const rows = Array.isArray(options) ? options : [];
+      el.innerHTML = `<option value="">${safe(allLabel)}</option>` + rows.map(option => {
+        const value = String(option?.value ?? option ?? "").trim();
+        const label = String(option?.label ?? value).trim() || value;
+        const legacy = String(option?.legacy_value || '').trim();
+        return `<option value="${safe(value)}" data-org-code="${safe(option?.org_code || "")}" data-org-id="${safe(option?.org_id || "")}" data-legacy-value="${safe(legacy)}" data-org-identity="${option?.identity ? '1':'0'}">${safe(label)}</option>`;
+      }).join("");
+      if ([...el.options].some(option => option.value === old)) el.value = old;
+    }
+
+    function departmentOptionPreservedValueV616M(oldValue,options,{input=false}={}) {
+      const old=String(oldValue||'').trim();
+      if(!old) return '';
+      const rows=Array.isArray(options)?options:[];
+      const oldKey=orgScopeNormalizeV616L(old);
+      const matches=rows.filter(option=>{
+        if(orgScopeNormalizeV616L(option?.value)===oldKey) return true;
+        if(orgScopeNormalizeV616L(option?.label)===oldKey) return true;
+        return (option?.legacy_values||[]).some(value=>orgScopeNormalizeV616L(value)===oldKey);
+      });
+      if(matches.length!==1) return '';
+      return String(input ? matches[0].label : matches[0].value || '').trim();
+    }
+
+    function fillSearchableDepartmentIdentityV616M(inputId,listId,options,placeholder) {
+      const input=$(inputId), list=$(listId);
+      if(!input || !list) return;
+      const rows=Array.isArray(options)?options:[];
+      list.innerHTML=rows.map(option=>`<option value="${safe(String(option?.label||option?.value||''))}"></option>`).join('');
+      input.placeholder=placeholder;
+      input.dataset.options=JSON.stringify(rows.map(option=>String(option?.label||option?.value||'')).filter(Boolean));
+      input.dataset.orgIdentityOptions=JSON.stringify(rows.map(option=>({
+        label:String(option?.label||option?.value||''),
+        value:String(option?.value||''),
+        org_id:String(option?.org_id||''),
+        org_code:String(option?.org_code||''),
+        legacy_value:String(option?.legacy_value||''),
+        legacy_values:Array.isArray(option?.legacy_values)?option.legacy_values:[]
+      })));
+    }
+
+    function selectedOrgIdV616M(id) {
+      const el=$(id);
+      if(!el) return null;
+      if(String(el.tagName||'').toUpperCase()==='SELECT') {
+        const option=el.options?.[el.selectedIndex] || null;
+        const direct=String(option?.dataset?.orgId || '').trim();
+        if(direct) return direct;
+        const value=String(el.value||'').trim();
+        return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)?value:null;
+      }
+      const value=String(el.value||'').trim();
+      if(!value) return null;
+      try {
+        const rows=JSON.parse(el.dataset.orgIdentityOptions||'[]');
+        const key=orgScopeNormalizeV616L(value);
+        const match=rows.find(row=>orgScopeNormalizeV616L(row?.label)===key || orgScopeNormalizeV616L(row?.value)===key);
+        return String(match?.org_id||'').trim() || null;
+      } catch(_) { return null; }
+    }
+
+    function selectedLegacyDepartmentV616M(id) {
+      const el=$(id);
+      if(!el) return null;
+      const orgId=selectedOrgIdV616M(id);
+      if(String(el.tagName||'').toUpperCase()==='SELECT') {
+        const option=el.options?.[el.selectedIndex] || null;
+        if(orgId) return String(option?.dataset?.legacyValue || '').trim() || null;
+        return String(el.value||'').trim() || null;
+      }
+      const value=String(el.value||'').trim();
+      if(!orgId) return value || null;
+      try {
+        const rows=JSON.parse(el.dataset.orgIdentityOptions||'[]');
+        const key=orgScopeNormalizeV616L(value);
+        const match=rows.find(row=>orgScopeNormalizeV616L(row?.label)===key || String(row?.org_id||'')===orgId);
+        return String(match?.legacy_value||'').trim() || null;
+      } catch(_) { return null; }
+    }
+
+    function selectedDepartmentDisplayV616M(id) {
+      const el=$(id);
+      if(!el) return '';
+      if(String(el.tagName||'').toUpperCase()==='SELECT') {
+        return String(el.options?.[el.selectedIndex]?.textContent || '').trim();
+      }
+      return String(el.value||'').trim();
+    }
+
+    async function loadOrgEmployeeCodesV616M(orgId,startDate,endDate) {
+      const id=String(orgId||'').trim() || null;
+      const start=String(startDate||todayISO()).slice(0,10);
+      const end=String(endDate||start).slice(0,10);
+      const key=`EMP|${id || 'ALL_SCOPE'}|${start}|${end}`;
+      const hit=orgScopeContractV616L.cache.get(key);
+      if(hit && Date.now()-hit.loadedAt<=orgScopeContractV616L.ttl) return [...hit.codes];
+      const {data,error}=await state.client.rpc('ta_get_org_employee_codes_v616m',{p_org_id:id,p_start_date:start,p_end_date:end});
+      if(error) {
+        if(window.TimeClockShiftAPI?.missingFunction?.(error)) throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
+        throw error;
+      }
+      const codes=[...new Set((data||[]).map(row=>String(row?.emp_code||'').trim()).filter(Boolean))];
+      orgScopeContractV616L.cache.set(key,{loadedAt:Date.now(),codes});
+      return [...codes];
+    }
+
+
+    async function loadScopeEmployeeOptionsV616O(orgId,startDate,endDate) {
+      const id=String(orgId||'').trim() || null;
+      const start=String(startDate||todayISO()).slice(0,10);
+      const end=String(endDate||start).slice(0,10);
+      const key=`EMP_OPTIONS_V616O|${id || 'ALL_SCOPE'}|${start}|${end}`;
+      const hit=orgScopeContractV616L.cache.get(key);
+      if(hit && Date.now()-hit.loadedAt<=orgScopeContractV616L.ttl) return hit.rows.map(row=>({...row}));
+      const {data,error}=await state.client.rpc('ta_get_scope_employee_options_v616o',{
+        p_org_id:id,p_start_date:start,p_end_date:end
+      });
+      if(error) {
+        if(window.TimeClockShiftAPI?.missingFunction?.(error)) {
+          throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
+        }
+        throw error;
+      }
+      const rows=(data||[]).map(row=>({
+        ...row,
+        emp_code:String(row?.emp_code||'').trim(),
+        full_name:String(row?.full_name||'').trim(),
+        position_name:String(row?.position_name||'').trim(),
+        department:String(row?.department||row?.org_name||'').trim(),
+        area:String(row?.area||'').trim(),
+        sub_area:String(row?.sub_area||'').trim(),
+        org_id:String(row?.org_id||'').trim(),
+        org_code:String(row?.org_code||'').trim(),
+        org_name:String(row?.org_name||'').trim()
+      })).filter(row=>row.emp_code);
+      orgScopeContractV616L.cache.set(key,{loadedAt:Date.now(),rows});
+      return rows.map(row=>({...row}));
+    }
+
+
+    // FIX16Q — Canonical Organization display/filter binding.
+    // Keep legacy `department` untouched for backward-compatible RPC/business rules;
+    // UI pages use these canonical metadata fields instead.
+    function canonicalScopeEmployeeMetaMapV616Q(rows = []) {
+      const map = new Map();
+      (Array.isArray(rows) ? rows : []).forEach(row => {
+        const empCode = String(row?.emp_code || row?.EmployeeId || '').trim();
+        if (empCode) map.set(empCode,row);
+      });
+      return map;
+    }
+
+    function applyCanonicalOrgMetaV616Q(row,meta) {
+      if (!row || !meta) return row;
+      const orgId=String(meta?.org_id || '').trim();
+      const orgCode=String(meta?.org_code || '').trim();
+      const orgName=String(meta?.org_name || '').trim();
+      const area=String(meta?.area || '').trim();
+      const subArea=String(meta?.sub_area || '').trim();
+      if (orgId) row._canonical_org_id_v616q=orgId;
+      if (orgCode) row._canonical_org_code_v616q=orgCode;
+      if (orgName) row._canonical_org_name_v616q=orgName;
+      if (area) row._canonical_area_v616q=area;
+      if (subArea) row._canonical_sub_area_v616q=subArea;
+      row._canonical_org_label_v616q=[orgCode,orgName].filter(Boolean).join(' · ') || orgName || orgCode || '';
+      return row;
+    }
+
+    function canonicalOrgNameV616Q(row) {
+      return String(
+        row?._canonical_org_name_v616q
+        || row?._team_org_name_v616l
+        || row?.org_name
+        || row?.department
+        || ''
+      ).trim();
+    }
+
+    function canonicalOrgCodeV616Q(row) {
+      return String(
+        row?._canonical_org_code_v616q
+        || row?._team_org_code_v61123
+        || row?.org_code
+        || ''
+      ).trim();
+    }
+
+    function canonicalOrgLabelV616Q(row) {
+      const explicit=String(row?._canonical_org_label_v616q || '').trim();
+      if (explicit) return explicit;
+      const code=canonicalOrgCodeV616Q(row);
+      const name=canonicalOrgNameV616Q(row);
+      return [code,name].filter(Boolean).join(' · ') || name || code || 'ไม่ระบุหน่วยงาน';
+    }
+
+    function canonicalOrgIdentityV616Q(row) {
+      return String(row?._canonical_org_id_v616q || row?.org_id || row?.department || '').trim();
+    }
+
+    function canonicalAreaV616Q(row) {
+      return String(row?._canonical_area_v616q || row?.area || row?.zone || '').trim();
+    }
+
+    function canonicalSubAreaV616Q(row) {
+      return String(row?._canonical_sub_area_v616q || row?.sub_area || '').trim();
+    }
+
+    // FIX16K — Scope Contract helpers. UI filters are only a convenience layer;
+    // every data RPC remains the final permission boundary. These helpers prevent
+    // impossible Area > Sub-area > Department combinations from being selectable.
+    function attendanceRejectOutOfScopeValueV616K(inputId,label) {
+      const value = String(val(inputId) || "").trim();
+      if (!value || attendanceFilterHasOption(inputId,value)) return true;
+      setVal(inputId,"");
+      toast(`${label} “${value}” ไม่อยู่ใน Scope หรือไม่สัมพันธ์กับตัวกรองก่อนหน้า`,"warning");
+      return false;
+    }
+
+    async function attendanceHierarchyEmployeesV616K(area,subArea) {
+      const args = {
+        p_start_date: val("attStart"),
+        p_end_date: val("attEnd"),
+        p_area: area || null,
+        p_sub_area: subArea || null,
+        p_department: null,
+        p_search: null,
+        p_limit: 5000
+      };
+      let response = await state.client.rpc(
+        "ta_get_attendance_employee_options_v61018",
+        args
+      );
+      if (
+        response.error
+        && window.TimeClockShiftAPI?.missingFunction?.(response.error)
+      ) {
+        response = await state.client.rpc(
+          "ta_get_attendance_employee_options_v671",
+          args
+        );
+      }
+      if (response.error) throw response.error;
+      return (response.data || [])
+        .map(normalizeAttendanceEmployeeOption)
+        .filter(row => row.emp_code);
+    }
+
+    async function loadScopedAreaDepartmentOptionsV616K({
+      startId,
+      endId,
+      areaId,
+      departmentId,
+      preserve = true
+    } = {}) {
+      if (!state.client || !$(areaId) || !$(departmentId)) return null;
+      const start = val(startId);
+      const end = val(endId);
+      const oldArea = preserve ? String(val(areaId) || "") : "";
+      const oldDepartment = preserve ? String(val(departmentId) || "") : "";
+      if (!start || !end) return null;
+      try {
+        let base = await state.client.rpc(
+          "ta_get_attendance_filter_options_v61022",
+          {
+            p_start_date: start,
+            p_end_date: end,
+            p_area: null,
+            p_sub_area: null
+          }
+        );
+        if (base.error) throw base.error;
+        const orgContractV616L = await loadAuthorizedOrgContractV616L(start,end);
+        const areas = scopedLocationValuesV616L(
+          Array.isArray(base.data?.areas) ? base.data.areas : [],
+          orgContractV616L,
+          ["area","zone"]
+        );
+        fillSelect(areaId,areas,"ทุกพื้นที่");
+        const area = oldArea && areas.some(v => String(v) === oldArea) ? oldArea : "";
+        setVal(areaId,area);
+
+        let scoped = base.data || {};
+        if (area) {
+          const response = await state.client.rpc(
+            "ta_get_attendance_filter_options_v61022",
+            {
+              p_start_date: start,
+              p_end_date: end,
+              p_area: area,
+              p_sub_area: null
+            }
+          );
+          if (response.error) throw response.error;
+          scoped = response.data || {};
+        }
+        const departmentOptionsV616L = scopedDepartmentOptionsV616L(
+          Array.isArray(scoped.departments) ? scoped.departments : [],
+          orgContractV616L,
+          {area}
+        );
+        const departments = departmentOptionsV616L.map(option => option.value);
+        fillScopedDepartmentSelectV616L(departmentId,departmentOptionsV616L,"ทุกหน่วยงานใน Scope");
+        const department = departmentOptionPreservedValueV616M(oldDepartment,departmentOptionsV616L);
+        setVal(departmentId,department);
+        return {areas,departments,departmentOptionsV616L,area,department};
+      } catch (error) {
+        console.warn("Scoped Area/Department options FIX16K:",error);
+        return null;
       }
     }
 
@@ -3537,26 +4385,64 @@ window.tcIsDayShiftCode = value =>
     function scheduleFilteredRows(rows = state.schedule) {
       const filter = val("schedulePatternFilter");
       const term = val("scheduleSearch").trim().toLowerCase();
+      const personModeV616AV = scheduleCurrentView() === "PERSON";
       const departmentFilter = String(
-        scheduleCurrentView() === "PERSON"
-          ? (
-              val("scheduleDepartment")
-              || ""
-            )
-          : (
-              val("scheduleDepartment")
-              || val("scheduleTeamFocus")
-              || ""
-            )
+        personModeV616AV
+          ? (val("scheduleDepartment") || "")
+          : (val("scheduleDepartment") || val("scheduleTeamFocus") || "")
       ).trim();
+      const operationalTeamFilterV61526 = String(val("scheduleOperationalTeamV61526") || '').trim();
+      const departmentOrgIdV616M = selectedOrgIdV616M("scheduleDepartment");
+
+      // FIX16AV: PERSON Team filter is based on the Effective Team at the
+      // reference date, not "ever belonged to this team in the visible range".
+      // Reference date = today when it is inside the range, otherwise the
+      // nearest edge of the visible range.
+      const personReferenceTeamKeyV616AV = new Map();
+      if (personModeV616AV && operationalTeamFilterV61526) {
+        const datesV616AV = [...new Set((rows||[]).map(r=>String(r?.work_date||'').slice(0,10)).filter(Boolean))].sort();
+        if (datesV616AV.length) {
+          const todayV616AV = todayISO();
+          const referenceDateV616AV = todayV616AV < datesV616AV[0]
+            ? datesV616AV[0]
+            : todayV616AV > datesV616AV[datesV616AV.length-1]
+              ? datesV616AV[datesV616AV.length-1]
+              : todayV616AV;
+          const byEmpV616AV = new Map();
+          (rows||[]).forEach(r=>{
+            const emp=String(r?.emp_code||'').trim();
+            if(!emp)return;
+            if(!byEmpV616AV.has(emp))byEmpV616AV.set(emp,[]);
+            byEmpV616AV.get(emp).push(r);
+          });
+          for(const [emp,list] of byEmpV616AV){
+            const sorted=[...list].sort((a,b)=>String(a?.work_date||'').localeCompare(String(b?.work_date||'')));
+            let ref=sorted.find(r=>String(r?.work_date||'').slice(0,10)===referenceDateV616AV);
+            if(!ref){
+              const before=sorted.filter(r=>String(r?.work_date||'').slice(0,10)<=referenceDateV616AV);
+              ref=before[before.length-1]||sorted[0]||null;
+            }
+            if(ref)personReferenceTeamKeyV616AV.set(emp,scheduleOperationalTeamGroupV61526(ref).key);
+          }
+        }
+      }
 
       return (rows || []).filter(row => {
         const pattern = scheduleRowPattern(row);
         if (filter && pattern !== filter) return false;
         if (
           departmentFilter
+          && !departmentOrgIdV616M
           && scheduleUnitLabel(row) !== departmentFilter
         ) return false;
+        if (operationalTeamFilterV61526) {
+          if (personModeV616AV) {
+            if (personReferenceTeamKeyV616AV.get(String(row?.emp_code||'').trim()) !== operationalTeamFilterV61526) return false;
+          } else {
+            const teamGroupV61526=scheduleOperationalTeamGroupV61526(row);
+            if (teamGroupV61526.key !== operationalTeamFilterV61526) return false;
+          }
+        }
         if (
           term
           && !`${row.emp_code || ""} ${row.full_name || ""}`
@@ -4074,10 +4960,26 @@ window.tcIsDayShiftCode = value =>
     async function loadDashboard() {
       showLoading("กำลังโหลด Dashboard...");
       try {
-        const args = {
-          p_start_date: val("dashStart"), p_end_date: val("dashEnd"), p_zone: val("dashZone") || null, p_department: val("dashDepartment") || null
+        await loadScopedAreaDepartmentOptionsV616K({
+          startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true
+        });
+        const orgIdV616M = selectedOrgIdV616M("dashDepartment");
+        const legacyDepartmentV616M = selectedLegacyDepartmentV616M("dashDepartment");
+        const argsV616M = {
+          p_start_date: val("dashStart"),p_end_date: val("dashEnd"),
+          p_zone: val("dashZone") || null,
+          p_department: orgIdV616M ? null : legacyDepartmentV616M,
+          p_org_id: orgIdV616M
         };
-        let response = await state.client.rpc("ta_get_dashboard_overview_v61463", args);
+        let response = await state.client.rpc("ta_get_dashboard_overview_v616m", argsV616M);
+        const args = {
+          p_start_date:argsV616M.p_start_date,p_end_date:argsV616M.p_end_date,
+          p_zone:argsV616M.p_zone,p_department:legacyDepartmentV616M
+        };
+        if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          if (orgIdV616M) throw new Error("ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O");
+          response = await state.client.rpc("ta_get_dashboard_overview_v61463", args);
+        }
         if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
           response = await state.client.rpc("ta_get_dashboard_overview_v650", args);
         }
@@ -4099,19 +5001,25 @@ window.tcIsDayShiftCode = value =>
       const cards = [
         ["พนักงาน", d.total_employees, "คนในขอบเขตข้อมูล", "♙", ""],
         ["รายการทั้งหมด", d.total_rows, "วัน-พนักงาน", "▦", ""],
-        ["ลงเวลาครบคู่", d.complete_time_rows, "มีเวลาเข้าและออก (ข้อมูลเทคนิค)", "✓", "green"],
-        ["ขาดงาน", d.absent_rows ?? 0, "เวลาไม่ครบ หรือ เข้าหลังเริ่มกะ ≥ 30 นาที", "×", "red"],
+        ["ลงเวลาครบคู่", d.complete_time_rows, "มีเวลาเข้าและออก", "✓", "green"],
+        ["ขาดงาน", d.absent_rows ?? 0, "เวลาไม่ครบ หรือสาย ≥ 30 นาที", "×", "red"],
         ["มาสาย", d.late_rows ?? 0, "เข้าหลังเริ่มกะ 1–29 นาที", "!", "orange"],
-        ["กลับก่อน", d.early_leave_rows ?? 0, "ลงเวลาออกก่อนเวลาสิ้นสุดกะ", "↙", "orange"],
-        ["เวลาไม่ครบ", Number(d.missing_in_rows||0)+Number(d.missing_out_rows||0), "ใช้ตรวจสาเหตุขาดงานจาก Punch", "…", ""],
-        ["ชั่วโมงสุทธิ", Number(d.paid_work_hours||0), "ชั่วโมงหลังหักพัก/รอคอย", "◷", "blue"],
-        ["ชั่วโมงปกติ", Number(d.regular_hours||0), "ชั่วโมงปกติรวม", "◉", "green"],
-        ["OT", Number(d.overtime_hours||0), `${formatNumber(d.overtime_rows||0)} รายการ`, "＋", "orange"],
-        ["ช่วงรอคอย", Number(d.waiting_hours||0), "ไม่นำไปคำนวณ OT", "⌛", ""],
-        ["ทำงานวันหยุด", Number(d.offday_work_hours||0), "ชั่วโมงวันหยุด", "◆", "blue"],
-        ["วันหยุดชดเชย", d.comp_off_earned_rows||0, "สิทธิ์ที่ได้รับจากการทำงานวันหยุด", "↺", "green"]
+        ["กลับก่อน", d.early_leave_rows ?? 0, "ออกก่อนเวลาสิ้นสุดกะ", "↙", "orange"]
       ];
       $("dashboardKpis").innerHTML = cards.map(c => `<div class="panel kpi-card ${c[4]}"><div class="kpi-label">${safe(c[0])}</div><div class="kpi-value">${formatNumber(c[1])}</div><div class="kpi-sub">${safe(c[2])}</div><div class="kpi-icon">${c[3]}</div></div>`).join("");
+
+      const secondary = [
+        ["เวลาไม่ครบ", Number(d.missing_in_rows||0)+Number(d.missing_out_rows||0), "รายการ", "…", "neutral"],
+        ["ชั่วโมงสุทธิ", Number(d.paid_work_hours||0), "ชม.", "◷", "blue"],
+        ["ชั่วโมงปกติ", Number(d.regular_hours||0), "ชม.", "◉", "green"],
+        ["OT", Number(d.overtime_hours||0), "ชม.", "＋", "orange"],
+        ["ช่วงรอคอย", Number(d.waiting_hours||0), "ชม.", "⌛", "neutral"],
+        ["ทำงานวันหยุด", Number(d.offday_work_hours||0), "ชม.", "◆", "blue"],
+        ["วันหยุดชดเชย", Number(d.comp_off_earned_rows||0), "วัน", "↺", "green"]
+      ];
+      const opsHost = $("dashboardOpsMetricsV616H");
+      if (opsHost) opsHost.innerHTML = secondary.map(x => `<article class="dashboard-ops-card-v616h ${x[4]}"><span class="dashboard-ops-icon-v616h">${x[3]}</span><div><small>${safe(x[0])}</small><strong>${formatNumber(x[1])}<em>${x[2]}</em></strong></div></article>`).join("");
+
       const bars = [
         ["ขาดงาน", d.absent_rows, "red"],
         ["มาสาย 1–29 นาที", d.late_rows, "orange"],
@@ -4126,6 +5034,7 @@ window.tcIsDayShiftCode = value =>
         ["กลับก่อน", d.early_leave_rows, "attendance"],
         ["กะที่หัวหน้างานบันทึก", d.confirmed_rows, "schedule"]
       ].map(x => `<button class="quick-item" data-go-page="${x[2]}"><div><strong>${safe(x[0])}</strong><span> คลิกเพื่อดูรายละเอียด</span></div><span class="badge badge-blue">${formatNumber(x[1])}</span></button>`).join("");
+      document.dispatchEvent(new CustomEvent('timeclock:dashboard-rendered-v616h', { detail: { dashboard: d } }));
     }
 
     let attendanceLoadRequestId = 0;
@@ -4282,36 +5191,19 @@ window.tcIsDayShiftCode = value =>
       statuses,
       depth = 0
     ) {
+      const orgIdV616M = selectedOrgIdV616M("attDepartment");
+      const legacyDepartmentV616M = selectedLegacyDepartmentV616M("attDepartment");
       const newArgs = {
-        p_start_date:
-          range.start,
-
-        p_end_date:
-          range.end,
-
-        p_area:
-          val("attZone")
-          || null,
-
-        p_sub_area:
-          val("attSubArea")
-          || null,
-
-        p_department:
-          val("attDepartment")
-          || null,
-
-        p_emp_codes:
-          requestEmployeeCodes,
-
-        p_attendance_statuses:
-          null,
-
-        p_schedule_statuses:
-          null,
-
-        p_limit:
-          5000
+        p_start_date:range.start,
+        p_end_date:range.end,
+        p_area:val("attZone") || null,
+        p_sub_area:val("attSubArea") || null,
+        p_department:orgIdV616M ? null : legacyDepartmentV616M,
+        p_org_id:orgIdV616M,
+        p_emp_codes:requestEmployeeCodes,
+        p_attendance_statuses:null,
+        p_schedule_statuses:null,
+        p_limit:5000
       };
 
       const attendanceCacheKeyV61463 = depth === 0
@@ -4326,12 +5218,12 @@ window.tcIsDayShiftCode = value =>
 
       let response =
         await state.client.rpc(
-          "ta_get_attendance_detail_v61463",
+          "ta_get_attendance_detail_v616m",
           newArgs
         );
 
       let source =
-        "V6.14.63";
+        "V6.15.29 FIX16M";
 
       let serverStatusFilter =
         false;
@@ -4346,6 +5238,9 @@ window.tcIsDayShiftCode = value =>
             response.error
           )
       ) {
+        if (orgIdV616M) {
+          throw new Error("ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O");
+        }
         const legacyArgs = {
           p_start_date:
             range.start,
@@ -4353,13 +5248,16 @@ window.tcIsDayShiftCode = value =>
           p_end_date:
             range.end,
 
-          p_zone:
+          p_area:
             val("attZone")
             || null,
 
-          p_department:
-            val("attDepartment")
+          p_sub_area:
+            val("attSubArea")
             || null,
+
+          p_department:
+            legacyDepartmentV616M,
 
           p_emp_codes:
             requestEmployeeCodes,
@@ -4376,12 +5274,41 @@ window.tcIsDayShiftCode = value =>
 
         response =
           await state.client.rpc(
-            "ta_get_attendance_detail_v664",
+            "ta_get_attendance_detail_v61463",
             legacyArgs
           );
 
         source =
+          "V6.14.63";
+
+        serverSubAreaFilter =
+          true;
+      }
+
+      if(
+        response.error
+        && window.TimeClockShiftAPI
+          ?.missingFunction?.(
+            response.error
+          )
+      ) {
+        response =
+          await state.client.rpc(
+            "ta_get_attendance_detail_v664",
+            {
+              p_start_date:range.start,p_end_date:range.end,
+              p_zone:val("attZone") || null,
+              p_department:legacyDepartmentV616M,
+              p_emp_codes:requestEmployeeCodes,
+              p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
+            }
+          );
+
+        source =
           "V6.6.4";
+
+        serverStatusFilter =
+          false;
 
         serverSubAreaFilter =
           false;
@@ -4398,95 +5325,32 @@ window.tcIsDayShiftCode = value =>
           await state.client.rpc(
             "ta_get_attendance_detail_v640",
             {
-              p_start_date:
-                range.start,
-
-              p_end_date:
-                range.end,
-
-              p_zone:
-                val("attZone")
-                || null,
-
-              p_department:
-                val("attDepartment")
-                || null,
-
-              p_emp_codes:
-                requestEmployeeCodes,
-
-              p_attendance_statuses:
-                null,
-
-              p_schedule_statuses:
-                null,
-
-              p_limit:
-                5000
+              p_start_date:range.start,p_end_date:range.end,
+              p_zone:val("attZone") || null,
+              p_department:legacyDepartmentV616M,
+              p_emp_codes:requestEmployeeCodes,
+              p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
             }
           );
 
-        source =
-          "V6.4.0";
-
-        serverStatusFilter =
-          false;
-
-        serverSubAreaFilter =
-          false;
+        source = "V6.4.0";
+        serverStatusFilter = false;
+        serverSubAreaFilter = false;
       }
 
-      if(
-        response.error
-        && window.TimeClockShiftAPI
-          ?.missingFunction?.(
-            response.error
-          )
-      ) {
-        response =
-          await state.client.rpc(
-            "ta_get_attendance_detail_v619",
-            {
-              p_start_date:
-                range.start,
-
-              p_end_date:
-                range.end,
-
-              p_area:
-                val("attZone")
-                || null,
-
-              p_sub_area:
-                val("attSubArea")
-                || null,
-
-              p_department:
-                val("attDepartment")
-                || null,
-
-              p_emp_codes:
-                requestEmployeeCodes,
-
-              p_attendance_statuses:
-                null,
-
-              p_schedule_statuses:
-                null,
-
-              p_limit:
-                5000
-            }
-          );
-
-        source =
-          "V6.1.9";
-
-        serverStatusFilter =
-          false;
-
-        serverSubAreaFilter =
-          true;
+      if(response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+        response = await state.client.rpc(
+          "ta_get_attendance_detail_v619",
+          {
+            p_start_date:range.start,p_end_date:range.end,
+            p_area:val("attZone") || null,p_sub_area:val("attSubArea") || null,
+            p_department:legacyDepartmentV616M,p_emp_codes:requestEmployeeCodes,
+            p_attendance_statuses:null,p_schedule_statuses:null,p_limit:5000
+          }
+        );
+        source = "V6.1.9";
+        serverStatusFilter = false;
+        serverSubAreaFilter = true;
       }
 
       if(
@@ -4739,9 +5603,19 @@ window.tcIsDayShiftCode = value =>
       const dayCount = startObj && endObj ? Math.max(1, Math.floor((endObj-startObj)/86400000)+1) : 31;
       const maxEmployeeCount = Math.max(1, Math.floor(5000/dayCount));
       const persistedCodes = [...new Set((persistedRows || []).map(row=>String(row?.emp_code||'').trim()).filter(Boolean))];
+      // FIX16J: Full-calendar fallback must not depend only on persisted
+      // attendance rows. If there are no persisted rows yet, use the employee
+      // options already resolved from the current Manager/User Scope so the
+      // schedule calendar can still produce rows for workdays, OFF, leave and
+      // no-punch dates.
+      const optionCodesV616J = [...new Set(
+        (attendanceEmployeeFilter.options || [])
+          .map(employee => String(employee?.emp_code || '').trim())
+          .filter(Boolean)
+      )];
       let calendarEmpCodes = Array.isArray(requestEmployeeCodes) && requestEmployeeCodes.length
         ? [...new Set(requestEmployeeCodes.map(code=>String(code||'').trim()).filter(Boolean))]
-        : persistedCodes;
+        : (optionCodesV616J.length ? optionCodesV616J : persistedCodes);
       if (calendarEmpCodes.length > maxEmployeeCount) {
         state.attendanceCalendarScopeLimitedV61462 = true;
         calendarEmpCodes = calendarEmpCodes.slice(0,maxEmployeeCount);
@@ -4808,6 +5682,287 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
+    async function enrichRowsTeamContextV616T(rows,startDate,endDate,fallbackDate=null) {
+      const list=Array.isArray(rows)?rows:[];
+      const empCodes=[...new Set(list.map(r=>String(r?.emp_code||'').trim()).filter(Boolean))];
+      if(!list.length||!empCodes.length||!state.client||!startDate||!endDate)return list;
+      try{
+        const all=[];
+        for(let i=0;i<empCodes.length;i+=250){
+          const args={p_emp_codes:empCodes.slice(i,i+250),p_start_date:startDate,p_end_date:endDate};
+          let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
+          if(response.error&&window.TimeClockShiftAPI?.missingFunction?.(response.error))response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
+          if(response.error)throw response.error;
+          all.push(...(Array.isArray(response.data)?response.data:[]));
+        }
+        const map=new Map(all.map(x=>[`${String(x.emp_code||'').trim()}|${String(x.work_date||'').slice(0,10)}`,x]));
+        list.forEach(row=>{
+          const d=String(row?.work_date||fallbackDate||startDate).slice(0,10);
+          row._team_context_v61526=map.get(`${String(row?.emp_code||'').trim()}|${d}`)||null;
+        });
+      }catch(error){console.warn('Team Context FIX16T:',error);}
+      return list;
+    }
+
+    async function enrichAttendanceCanonicalOrgV616U(rows,startDate,endDate) {
+      const list=Array.isArray(rows)?rows:[];
+      if(!list.length||!startDate||!endDate)return list;
+      try{
+        const [contractV616U,scopeRowsV616U]=await Promise.all([
+          loadAuthorizedOrgContractV616L(startDate,endDate),
+          loadScopeEmployeeOptionsV616O(
+            selectedOrgIdV616M("attDepartment"),
+            startDate,
+            endDate
+          )
+        ]);
+        const orgRows=Array.isArray(contractV616U?.units)?contractV616U.units:[];
+        const orgByCode=new Map(orgRows.map(o=>[String(o?.org_code||'').trim().toLowerCase(),o]));
+        const employeeMap=canonicalScopeEmployeeMetaMapV616Q(scopeRowsV616U||[]);
+        list.forEach(row=>{
+          if(!row)return;
+          if(!row._legacy_department_v616u) row._legacy_department_v616u=String(row.department||'').trim();
+          const ctx=scheduleTeamContextMetaV61526(row);
+          const workingOrgCode=String(
+            ctx?.team_org_code
+            || ctx?.destination_org_code
+            || ctx?.employee_org_code
+            || ''
+          ).trim();
+          const pointOrg=workingOrgCode?orgByCode.get(workingOrgCode.toLowerCase()):null;
+          const employeeMeta=employeeMap.get(String(row.emp_code||'').trim());
+          applyCanonicalOrgMetaV616Q(row,pointOrg||employeeMeta);
+          if(workingOrgCode&&!row._canonical_org_code_v616q)row._canonical_org_code_v616q=workingOrgCode;
+          if(ctx?.assignment_state)row._working_assignment_state_v616u=String(ctx.assignment_state);
+        });
+      }catch(error){
+        console.warn('Attendance Canonical Org binding FIX16U:',error);
+      }
+      return list;
+    }
+
+    async function enrichAttendanceCurrentTeamV616BA(rows){
+      const list=Array.isArray(rows)?rows:[];
+      const empCodes=[...new Set(list.map(r=>String(r?.emp_code||'').trim()).filter(Boolean))];
+      if(!list.length||!empCodes.length||!state.client)return list;
+
+      try{
+        const all=[];
+        for(let i=0;i<empCodes.length;i+=250){
+          const chunk=empCodes.slice(i,i+250);
+          const response=await state.client.rpc(
+            'ta_get_schedule_membership_readiness_v616ay',
+            {p_emp_codes:chunk}
+          );
+          if(response.error)throw response.error;
+          all.push(...(Array.isArray(response.data)?response.data:[]));
+        }
+
+        const map=new Map(
+          all.map(x=>[String(x.emp_code||'').trim(),x])
+        );
+
+        list.forEach(row=>{
+          row._attendance_current_team_v616ba=
+            map.get(String(row?.emp_code||'').trim())||null;
+        });
+      }catch(error){
+        // Keep Attendance usable when the new readiness RPC is unavailable.
+        // Historical Effective Team remains the fallback.
+        console.warn('Attendance Current Team FIX16BA:',error);
+      }
+      return list;
+    }
+
+    function attendanceCurrentTeamMetaV616BA(row){
+      return row?._attendance_current_team_v616ba
+        || row?._membership_readiness_v616ay
+        || null;
+    }
+
+    function attendanceCurrentTeamGroupV616BA(row){
+      const current=attendanceCurrentTeamMetaV616BA(row);
+      const historical=scheduleTeamContextMetaV61526(row);
+      const orgCode=String(
+        canonicalOrgCodeV616Q(row)
+        || current?.current_team_org_code
+        || historical?.employee_org_code
+        || ''
+      ).trim();
+
+      if(current?.has_current_team===true && current?.current_team_id){
+        const teamCode=String(current.current_team_code||'').trim();
+        const teamName=String(current.current_team_name||'').trim();
+        const label=teamName||teamCode||'ทีมปัจจุบัน';
+        return {
+          key:`CURRENT_TEAM:${String(current.current_team_id)}`,
+          label:orgCode ? `${orgCode} · ${label}` : label,
+          compactLabel:label,
+          teamId:String(current.current_team_id||''),
+          teamCode,
+          teamName,
+          category:String(current.current_team_category||current.current_operational_type||'UNCLASSIFIED').toUpperCase(),
+          state:'CURRENT_TEAM',
+          hasCurrentTeam:true
+        };
+      }
+
+      // Current Team is the primary status in Attendance Detail. This avoids
+      // showing "รอกำหนดรูปแบบ" for old attendance dates after the employee
+      // has already been classified/assigned in the current operating model.
+      const category=String(
+        current?.current_operational_type
+        || historical?.car_category
+        || 'UNCLASSIFIED'
+      ).toUpperCase();
+
+      const waitingLabel =
+        category==='CAR' ? 'ยังไม่ได้จัดทีมปัจจุบัน • รถยนต์'
+        : category==='MOTORCYCLE' ? 'ยังไม่ได้จัดทีมปัจจุบัน • มอเตอร์ไซค์'
+        : category==='SUPPORT' ? 'ยังไม่ได้จัดทีมปัจจุบัน • สนับสนุน'
+        : 'รอกำหนดรูปแบบปัจจุบัน';
+
+      return {
+        key:`CURRENT_UNASSIGNED:${category}:${orgCode||'-'}`,
+        label:orgCode ? `${orgCode} · ${waitingLabel}` : waitingLabel,
+        compactLabel:waitingLabel,
+        teamId:'',
+        teamCode:'',
+        teamName:'',
+        category,
+        state:'CURRENT_UNASSIGNED',
+        hasCurrentTeam:false
+      };
+    }
+
+    function attendanceHistoricalTeamGroupV616BB(row){
+      const ctx=scheduleTeamContextMetaV61526(row);
+      const orgCode=String(
+        canonicalOrgCodeV616Q(row)
+        || ctx?.team_org_code
+        || ctx?.destination_org_code
+        || ctx?.employee_org_code
+        || ''
+      ).trim();
+
+      if(!ctx){
+        return {
+          key:`HIST:NO_CONTEXT:${orgCode||'-'}`,
+          label:orgCode ? `${orgCode} · ไม่มีข้อมูล Team ณ วันที่ทำงาน` : 'ไม่มีข้อมูล Team ณ วันที่ทำงาน',
+          compactLabel:'ไม่มีข้อมูล Team ณ วันที่ทำงาน',
+          teamId:'',
+          teamCode:'',
+          teamName:'',
+          state:'NO_CONTEXT',
+          historical:true
+        };
+      }
+
+      const group=scheduleOperationalTeamGroupV61526(row);
+      const state=String(ctx.assignment_state||group?.state||'').trim().toUpperCase();
+      const teamCode=String(ctx.team_code||group?.code||'').trim();
+      const teamName=String(ctx.team_name||group?.name||'').trim();
+      const teamId=String(ctx.team_id||group?.teamId||'').trim();
+
+      if(teamId || teamCode || teamName){
+        const compact=
+          teamCode && teamName && teamCode.toLowerCase()!==teamName.toLowerCase()
+            ? `${teamCode} · ${teamName}`
+            : (teamName||teamCode||'ทีม');
+        return {
+          key:String(group?.key||`HIST:TEAM:${teamId||compact}`),
+          label:orgCode ? `${orgCode} · ${compact}` : compact,
+          compactLabel:compact,
+          teamId,teamCode,teamName,
+          state:state||'TEAM',
+          historical:true
+        };
+      }
+
+      let compact='ยังไม่มี Team ณ วันที่ทำงาน';
+      if(state==='UNCLASSIFIED') compact='ยังไม่มีรูปแบบ ณ วันที่ทำงาน';
+      else if(['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(state)) compact='ยืมตัว ณ วันที่ทำงาน';
+      else if(['CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(state)) compact='ยังไม่มี Team ณ วันที่ทำงาน';
+
+      return {
+        key:String(group?.key||`HIST:${state||'UNASSIGNED'}:${orgCode||'-'}`),
+        label:orgCode ? `${orgCode} · ${compact}` : compact,
+        compactLabel:compact,
+        teamId:'',teamCode:'',teamName:'',
+        state:state||'UNASSIGNED',
+        historical:true
+      };
+    }
+
+    function attendanceHistoricalTeamLabelV616BA(row){
+      return String(attendanceHistoricalTeamGroupV616BB(row)?.compactLabel||'').trim();
+    }
+
+    function attendanceCurrentTeamCompactLabelV616BB(row){
+      const current=attendanceCurrentTeamGroupV616BA(row);
+      return String(current?.compactLabel||'').trim();
+    }
+
+    function attendanceTeamLabelV616U(row){
+      // Attendance is historical: the Team effective on work_date is primary.
+      return attendanceHistoricalTeamLabelV616BA(row);
+    }
+
+    // FIX16V — Attendance uses a compact Team label inside the Organization cell.
+    // Do not repeat org_code or long operational instructions in the row subtitle.
+    function attendanceTeamCompactLabelV616V(row){
+      return attendanceHistoricalTeamLabelV616BA(row);
+    }
+
+    // FIX16BC — Attendance Organization cell stays minimal:
+    // show Organization name on the first line and historical Team context only
+    // on the second line. Organization code remains available for filters/search/export.
+    function attendanceOrgSublineV616V(row){
+      return attendanceTeamCompactLabelV616V(row);
+    }
+
+    function teamOptionsFromRowsV616T(rows){
+      const groups=new Map();
+      (rows||[]).forEach(row=>{
+        const g=attendanceHistoricalTeamGroupV616BB(row);
+        if(!g?.key)return;
+        if(!groups.has(g.key))groups.set(g.key,g);
+      });
+      return [...groups.values()].sort(
+        (a,b)=>String(a.label||'').localeCompare(String(b.label||''),'th',{numeric:true,sensitivity:'base'})
+      );
+    }
+
+    function currentTeamOptionsFromRowsV616BB(rows){
+      const groups=new Map();
+      (rows||[]).forEach(row=>{
+        const g=attendanceCurrentTeamGroupV616BA(row);
+        if(!g?.key)return;
+        if(!groups.has(g.key))groups.set(g.key,g);
+      });
+      return [...groups.values()].sort((a,b)=>{
+        const aw=a.hasCurrentTeam?1:9;
+        const bw=b.hasCurrentTeam?1:9;
+        return aw-bw||String(a.label||'').localeCompare(String(b.label||''),'th',{numeric:true,sensitivity:'base'});
+      });
+    }
+
+    function fillAttendanceTeamOptionsV616T(rows){
+      const select=$('attTeamV616T');if(!select)return;
+      const current=String(select.value||'');
+      const groups=teamOptionsFromRowsV616T(rows);
+      select.innerHTML='<option value="">ทุกทีม</option>'+groups.map(g=>`<option value="${safe(g.key)}">${safe(g.label)}</option>`).join('');
+      if(groups.some(g=>g.key===current))select.value=current;else select.value='';
+    }
+
+    function fillAttendanceCurrentTeamOptionsV616BB(rows){
+      const select=$('attCurrentTeamV616BB');if(!select)return;
+      const current=String(select.value||'');
+      const groups=currentTeamOptionsFromRowsV616BB(rows);
+      select.innerHTML='<option value="">ทุกทีมปัจจุบัน</option>'+groups.map(g=>`<option value="${safe(g.key)}">${safe(g.label)}</option>`).join('');
+      if(groups.some(g=>g.key===current))select.value=current;else select.value='';
+    }
+
     async function loadAttendance() {
       const requestId =
         ++attendanceLoadRequestId;
@@ -4826,8 +5981,20 @@ window.tcIsDayShiftCode = value =>
               ]
             : null;
 
+        // FIX16J: Resolve the employee scope before running the attendance
+        // search. The dropdown previously loaded lazily, so pressing Search
+        // without opening it could leave the loader with no employee scope for
+        // the calendar fallback. The options RPC is cached by date/org filters.
+        const employeeOptionKeyV616J = attendanceEmployeeFilterKey();
+        if (
+          attendanceEmployeeFilter.loadedKey !== employeeOptionKeyV616J
+          || !attendanceEmployeeFilter.options.length
+        ) {
+          await loadAttendanceEmployeeOptions(true);
+        }
+
         const requestEmployeeCodes =
-          attendanceEmployeeCodesForQuery();
+          attendanceEmployeeCodesForLoadV616J();
 
         const ranges =
           attendanceChunkRanges(
@@ -4928,6 +6095,27 @@ window.tcIsDayShiftCode = value =>
           || mergedAttendanceRowsV61462.length > 5000
           || collected.length >= 5000;
         state.attendance = mergedAttendanceRowsV61462.slice(0,5000);
+
+        await enrichRowsTeamContextV616T(state.attendance,val("attStart"),val("attEnd"));
+        await enrichAttendanceCurrentTeamV616BA(state.attendance);
+        await enrichAttendanceCanonicalOrgV616U(state.attendance,val("attStart"),val("attEnd"));
+
+        fillAttendanceTeamOptionsV616T(state.attendance);
+        fillAttendanceCurrentTeamOptionsV616BB(state.attendance);
+
+        const attendanceTeamFilterV616T=String(val("attTeamV616T")||'').trim();
+        if(attendanceTeamFilterV616T){
+          state.attendance=state.attendance.filter(
+            row=>attendanceHistoricalTeamGroupV616BB(row).key===attendanceTeamFilterV616T
+          );
+        }
+
+        const attendanceCurrentTeamFilterV616BB=String(val("attCurrentTeamV616BB")||'').trim();
+        if(attendanceCurrentTeamFilterV616BB){
+          state.attendance=state.attendance.filter(
+            row=>attendanceCurrentTeamGroupV616BA(row).key===attendanceCurrentTeamFilterV616BB
+          );
+        }
 
         await enrichAttendanceWorkSegmentsV6118(
           state.attendance,
@@ -5042,7 +6230,7 @@ window.tcIsDayShiftCode = value =>
           <td data-att-col="work_date" class="nowrap">${formatDate(r.work_date)}</td>
           <td data-att-col="emp_code">${safe(r.emp_code)}</td>
           <td data-att-col="full_name" class="nowrap">${safe(r.full_name)}</td>
-          <td data-att-col="department">${safe(r.department)}</td>
+          <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${safe(canonicalOrgNameV616Q(r)||r.department||'-')}</strong><small class="attendance-history-team-v616bb" title="${safe(`ข้อมูล ณ วันที่ทำงาน ${formatDate(r.work_date)}`)}">${safe(attendanceOrgSublineV616V(r)||'')}</small>${(()=>{const h=attendanceHistoricalTeamLabelV616BA(r),c=attendanceCurrentTeamCompactLabelV616BB(r);return c&&c!==h?`<small class="attendance-current-team-secondary-v616bb" title="ข้อมูลประกอบ ไม่ใช้แทนประวัติ ณ วันที่ทำงาน">ปัจจุบัน: ${safe(c)}</small>`:'';})()}</div></td>
           <td data-att-col="zone" class="${optionalClass("zone").trim()}">${safe(r.zone || r.area)}</td>
           <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${safe(r.sub_area)}</td>
           <td data-att-col="pattern_code">${badge(r.pattern_code||"-","badge-blue")}</td>
@@ -5100,6 +6288,8 @@ window.tcIsDayShiftCode = value =>
     const scheduleFilterOptionsCacheV6125 = new Map();
     const SCHEDULE_FILTER_CACHE_TTL_V6125 = 30000;
 
+    // FIX15O: server-side options are Working-Org aware. Borrow destination
+    // visibility must not leak the employee's Home Department/Zone into filters.
     async function loadScheduleFilterOptions(
       period = syncSchedulePeriodUI(),
       zoneOverride = undefined
@@ -5165,26 +6355,15 @@ window.tcIsDayShiftCode = value =>
         });
       }
 
-      const zones =
-        Array.isArray(
-          result.zones
-        )
-          ? result.zones
-          : [];
-
-      const departments =
-        Array.isArray(
-          result.departments
-        )
-          ? result.departments
-          : [];
-
-      fillSelect(
-        "scheduleZone",
-        zones,
-        "ทุกพื้นที่"
+      const orgContractV616L = await loadAuthorizedOrgContractV616L(
+        period.startDate,
+        period.endDate
       );
-
+      const zones = scopedLocationValuesV616L(
+        Array.isArray(result.zones) ? result.zones : [],
+        orgContractV616L,
+        ["zone","area"]
+      );
       const zoneStillValid =
         !oldZone
         || zones.some(
@@ -5193,33 +6372,69 @@ window.tcIsDayShiftCode = value =>
             oldZone
         );
 
-      setVal(
-        "scheduleZone",
-        zoneStillValid
-          ? oldZone
-          : ""
+      // Scope can change while a previously selected Zone remains in the UI.
+      // If that Zone is no longer authorized, refetch once without it so the
+      // employee list and Organization choices do not stay falsely empty.
+      if (oldZone && !zoneStillValid) {
+        setVal("scheduleZone","");
+        return await loadScheduleFilterOptions(period,"");
+      }
+
+      const departmentOptionsV616L = scopedDepartmentOptionsV616L(
+        Array.isArray(result.departments) ? result.departments : [],
+        orgContractV616L,
+        {zone:oldZone}
       );
+      const departments = departmentOptionsV616L.map(option => option.value);
 
       fillSelect(
-        "scheduleDepartment",
-        departments,
-        "ทุกหน่วยงาน"
+        "scheduleZone",
+        zones,
+        "ทุกพื้นที่"
       );
-
-      const departmentStillValid =
-        !oldDepartment
-        || departments.some(
-          value =>
-            String(value) ===
-            oldDepartment
-        );
 
       setVal(
-        "scheduleDepartment",
-        departmentStillValid
-          ? oldDepartment
-          : ""
+        "scheduleZone",
+        oldZone
       );
+
+      fillScopedDepartmentSelectV616L(
+        "scheduleDepartment",
+        departmentOptionsV616L,
+        "ทุกหน่วยงานใน Scope"
+      );
+
+      let preservedDepartmentV616M = departmentOptionPreservedValueV616M(
+        oldDepartment,departmentOptionsV616L
+      );
+      if (!preservedDepartmentV616M && departmentOptionsV616L.length === 1) {
+        preservedDepartmentV616M = String(departmentOptionsV616L[0]?.value || '').trim();
+      }
+      setVal("scheduleDepartment",preservedDepartmentV616M);
+
+      // FIX16O: Schedule employee options come directly from Organization
+      // Scope Source of Truth. Never start from the legacy filter employee list
+      // because an empty/older Scope interpretation there would erase valid rows.
+      const selectedOrgIdV616MValue = selectedOrgIdV616M("scheduleDepartment");
+      if (orgContractV616L?.strict) {
+        const scopeEmployeesV616O = await loadScopeEmployeeOptionsV616O(
+          selectedOrgIdV616MValue,period.startDate,period.endDate
+        );
+        result = {
+          ...result,
+          employees: scopeEmployeesV616O
+        };
+      } else if (Array.isArray(result.employees)) {
+        const orgCodesV616M = new Set(await loadOrgEmployeeCodesV616M(
+          selectedOrgIdV616MValue,period.startDate,period.endDate
+        ));
+        result = {
+          ...result,
+          employees: result.employees.filter(employee =>
+            orgCodesV616M.has(String(employee?.emp_code || employee?.EmployeeId || '').trim())
+          )
+        };
+      }
 
       return result;
     }
@@ -5437,60 +6652,27 @@ window.tcIsDayShiftCode = value =>
     let scheduleLoadInFlightV61151 = false;
     let scheduleLoadQueuedV61151 = false;
 
-    // FIX16AI — HR Admin Schedule Filter-first Load
+    // FIX16AI — HR Admin Schedule Filter-first Load (re-applied by FIX16AN)
     function scheduleRealRoleV616ai() {
-      return String(
-        state.profile?._realRole
-        || state.profile?.role
-        || ""
-      ).trim().toUpperCase();
+      return String(state.profile?._realRole||state.profile?.role||"").trim().toUpperCase();
     }
-
     function scheduleHrFilterStateV616ai() {
-      return {
-        zone: String(val("scheduleZone") || "").trim(),
-        department: String(val("scheduleDepartment") || "").trim(),
-        search: String(val("scheduleSearch") || "").trim()
-      };
+      return {zone:String(val("scheduleZone")||"").trim(),department:String(val("scheduleDepartment")||"").trim(),search:String(val("scheduleSearch")||"").trim()};
     }
-
     function scheduleHrHasIntentionalScopeV616ai() {
-      if (scheduleRealRoleV616ai() !== "HR_ADMIN") return true;
-
-      const f = scheduleHrFilterStateV616ai();
-      const exactEmp = /^\d{4,20}$/.test(f.search);
-
-      return Boolean(
-        f.zone
-        || f.department
-        || exactEmp
-      );
+      if(scheduleRealRoleV616ai()!=="HR_ADMIN")return true;
+      const f=scheduleHrFilterStateV616ai();
+      return Boolean(f.zone||f.department||/^\d{4,20}$/.test(f.search));
     }
-
-    function scheduleHrFilterFirstMessageV616ai() {
-      return "เพื่อให้ปฏิทินจัดกะโหลดเร็วขึ้น HR Admin ต้องเลือกพื้นที่ / หน่วยงาน หรือค้นหารหัสพนักงานก่อน แล้วกด “โหลดตารางกะ”";
+    function scheduleHrFilterFirstMessageV616ai(){
+      return "เพื่อให้ปฏิทินจัดกะโหลดเร็วขึ้น HR Admin ต้องเลือกพื้นที่ / หน่วยงาน หรือค้นหารหัสพนักงานก่อน แล้วกด ‘โหลดตารางกะ’";
     }
-
-    function prepareScheduleFilterFirstV616ai() {
-      const period = syncSchedulePeriodUI();
-
-      state.schedule = [];
-      state.scheduleGuardBoundaryRowsV61431 = [];
-      state.scheduleScopeEmployeesV61151 = [];
-      state.scheduleLoadMetaV61149 = null;
-
+    function prepareScheduleFilterFirstV616ai(){
+      const period=syncSchedulePeriodUI();
+      state.schedule=[];state.scheduleGuardBoundaryRowsV61431=[];state.scheduleScopeEmployeesV61151=[];state.scheduleLoadMetaV61149=null;
       renderSchedule();
-      setScheduleLoadStatus(
-        "info",
-        `${scheduleHrFilterFirstMessageV616ai()} • ช่วง ${formatDate(period.startDate)}–${formatDate(period.endDate)}`
-      );
-
-      const button = $("loadScheduleBtn");
-      if (button) {
-        button.disabled = false;
-        button.removeAttribute("aria-busy");
-        button.innerHTML = '<span>↻</span> โหลดตารางกะ';
-      }
+      setScheduleLoadStatus("info",`${scheduleHrFilterFirstMessageV616ai()} • ช่วง ${formatDate(period.startDate)}–${formatDate(period.endDate)}`);
+      const button=$("loadScheduleBtn");if(button){button.disabled=false;button.removeAttribute("aria-busy");button.innerHTML='<span>↻</span> โหลดตารางกะ';}
     }
 
     async function loadSchedule() {
@@ -5502,17 +6684,10 @@ window.tcIsDayShiftCode = value =>
       scheduleLoadInFlightV61151 = true;
 
       const period=syncSchedulePeriodUI();
-
-      // FIX16AI:
-      // HR Admin must intentionally narrow the very large enterprise scope.
-      // Do not call schedule filter/calendar RPCs for "all areas + all units".
-      if (!scheduleHrHasIntentionalScopeV616ai()) {
+      if(!scheduleHrHasIntentionalScopeV616ai()){
         prepareScheduleFilterFirstV616ai();
-        scheduleLoadInFlightV61151 = false;
-        scheduleLoadQueuedV61151 = false;
-        return;
+        scheduleLoadInFlightV61151=false;scheduleLoadQueuedV61151=false;return;
       }
-
       const scheduleLoadStartedAtV6125 = (window.performance?.now?.() || Date.now());
       state.scheduleManagerEnrichTokenV6125 = Number(state.scheduleManagerEnrichTokenV6125 || 0) + 1;
       const managerEnrichTokenV6125 = state.scheduleManagerEnrichTokenV6125;
@@ -5543,15 +6718,13 @@ window.tcIsDayShiftCode = value =>
           const selectedDepartment =
             String(val("scheduleDepartment") || "").trim();
 
+          // FIX14B FINAL: do not pre-filter by Employee Master department in Browser.
+          // Borrowed technicians keep their Home Unit in Employee Master, while the
+          // canonical Schedule RPC filters them by the effective Working Org.
           const scopeEmployees =
             (Array.isArray(filterOptions.employees)
               ? filterOptions.employees
-              : [])
-              .filter(employee => {
-                if (!selectedDepartment) return true;
-                return String(employee?.department || "").trim()
-                  === selectedDepartment;
-              });
+              : []);
 
           const scopeEmpCodes =
             [...new Set(
@@ -5653,11 +6826,12 @@ window.tcIsDayShiftCode = value =>
           // fetch 7-day rows by employee batches. This avoids re-running the
           // full cross-product RPC once per HTTP range page.
           const selectedDepartment = String(val("scheduleDepartment") || "").trim();
+          // FIX14B FINAL: server-side Working Org filtering is authoritative.
+          // Client-side Home department filtering would incorrectly hide BN5 staff
+          // borrowed into BN6 before the Schedule RPC can resolve their Working Team.
           const availableScopeEmployees = (Array.isArray(filterOptions.employees)
             ? filterOptions.employees
-            : [])
-            .filter(employee => !selectedDepartment
-              || String(employee?.department || "").trim() === selectedDepartment);
+            : []);
           const teamEmpCodes = [...new Set(
             availableScopeEmployees
               .map(employee => String(employee?.emp_code || "").trim())
@@ -5741,7 +6915,9 @@ window.tcIsDayShiftCode = value =>
         );
         state.schedule.forEach(row => {
           const empCode = String(row?.emp_code || '').trim();
-          scheduleMergeEmployeeMeta(row, scheduleEmployeeMetaMapV6129.get(empCode));
+          const employeeMetaV616Q = scheduleEmployeeMetaMapV6129.get(empCode);
+          scheduleMergeEmployeeMeta(row, employeeMetaV616Q);
+          applyCanonicalOrgMetaV616Q(row,employeeMetaV616Q);
         });
 
         const expectedPersonEmployees =
@@ -5773,6 +6949,14 @@ window.tcIsDayShiftCode = value =>
         renderSchedule();
 
         const scheduleRowsForEnrichmentV6125 = state.schedule;
+        Promise.resolve().then(async () => {
+          try {
+            await enrichScheduleTeamContextV61526(scheduleRowsForEnrichmentV6125,period);
+            if (managerEnrichTokenV6125 === state.scheduleManagerEnrichTokenV6125) renderSchedule();
+          } catch (teamContextErrorV61526) {
+            console.warn('Deferred Team Context V6.15.26:',teamContextErrorV61526);
+          }
+        });
         Promise.resolve().then(async () => {
           try {
             await Promise.all([
@@ -5966,6 +7150,14 @@ window.tcIsDayShiftCode = value =>
           return "MONTH";
         }
       })(),
+      personTeamGroupMode: (() => {
+        try {
+          const saved = String(localStorage.getItem("timeclock.schedule.personTeamGroupMode") || "TEAM").toUpperCase();
+          return saved === "FLAT" ? "FLAT" : "TEAM";
+        } catch (_) {
+          return "TEAM";
+        }
+      })(),
       personPeriodStart: (() => {
         try {
           const saved = String(localStorage.getItem("timeclock.schedule.personPeriodStart") || "").slice(0,10);
@@ -5980,6 +7172,384 @@ window.tcIsDayShiftCode = value =>
       return ["TEAM","TIME","PERSON"].includes(scheduleViewState.mode)
         ? scheduleViewState.mode
         : "TEAM";
+    }
+
+    // V6.15.26 — 4D.1D effective Team context.
+    // Read-only enrichment; Team Enforcement remains authoritative in V6.15.25.
+    const scheduleTeamContextStateV61526 = {
+      key:'', loading:false, error:null, loadedAt:0
+    };
+    const scheduleMembershipReadinessStateV616AY = {
+      key:'', loading:false, error:null, loadedAt:0, byEmp:new Map()
+    };
+
+    function scheduleTeamContextMetaV61526(row) {
+      return row?._team_context_v61526 || null;
+    }
+
+    function scheduleOperationalTeamGroupV61526(row) {
+      const meta = scheduleTeamContextMetaV61526(row);
+      if (meta?.team_filter_key) {
+        return {
+          key:String(meta.team_filter_key),
+          label:String(meta.team_display_label || meta.team_name || meta.team_code || 'ไม่ระบุทีม'),
+          code:String(meta.team_code || ''),
+          name:String(meta.team_name || ''),
+          teamId:String(meta.team_id || ''),
+          orgCode:String(meta.team_org_code || meta.employee_org_code || ''),
+          category:String(meta.team_category || meta.car_category || 'UNCLASSIFIED').toUpperCase(),
+          state:String(meta.assignment_state || 'TEAM').toUpperCase(),
+          enforcementRequired:meta.enforcement_required === true,
+          enforcementSatisfied:meta.enforcement_satisfied !== false,
+          legacy:false
+        };
+      }
+      const unit = scheduleUnitLabel(row);
+      return {
+        key:`LEGACY:${unit}`, label:unit, code:'', name:unit, teamId:'', orgCode:'',
+        category:'UNCLASSIFIED', state:'LEGACY', enforcementRequired:false,
+        enforcementSatisfied:true, legacy:true
+      };
+    }
+
+    const schedulePersonCollapsedTeamsV616T = new Set();
+
+    function scheduleTeamReadyV616T(row) {
+      const meta = scheduleTeamContextMetaV61526(row);
+      const empCode=String(row?.emp_code||'').trim();
+      const current=scheduleMembershipReadinessStateV616AY.byEmp.get(empCode)||row?._membership_readiness_v616ay||null;
+
+      // FIX16AY:
+      // Team is a prerequisite, but Effective Team dates do NOT lock Schedule
+      // when the employee already has a valid CURRENT permanent Team.
+      // Cross-Manager/Borrow authority remains date-aware in canonical access.
+      if (!meta || !current) return false;
+
+      const stateCode = String(meta.assignment_state || '').toUpperCase();
+      if (stateCode === 'UNCLASSIFIED') return false; // Operational Profile is still effective-dated.
+
+      return current.has_current_team === true;
+    }
+
+    function scheduleTeamReadinessLabelV616T(row) {
+      const meta = scheduleTeamContextMetaV61526(row);
+      const empCode=String(row?.emp_code||'').trim();
+      const current=scheduleMembershipReadinessStateV616AY.byEmp.get(empCode)||row?._membership_readiness_v616ay||null;
+
+      if (!meta || !current) {
+        if (scheduleTeamContextStateV61526.loading || scheduleMembershipReadinessStateV616AY.loading) return 'กำลังตรวจรูปแบบและ Team ปัจจุบัน';
+        if (scheduleTeamContextStateV61526.error || scheduleMembershipReadinessStateV616AY.error) return 'ตรวจความพร้อมไม่สำเร็จ • ปิดการแก้ไขชั่วคราว';
+        return 'รอตรวจความพร้อม';
+      }
+
+      const stateCode = String(meta.assignment_state || '').toUpperCase();
+      if (stateCode === 'UNCLASSIFIED') return 'รอกำหนดรูปแบบตามวันที่';
+
+      if (current.has_current_team !== true) return 'ยังไม่ได้จัด Team ปัจจุบัน';
+
+      const code=String(current.current_team_code||'').trim();
+      return code ? `พร้อมจัดกะ • ${code}` : 'พร้อมจัดกะ';
+    }
+
+    function schedulePersonReferenceDateV616AV(period) {
+      const dates=[...(period?.dates||[])].filter(Boolean).sort();
+      if(!dates.length)return todayISO();
+      const today=todayISO();
+      if(today<dates[0])return dates[0];
+      if(today>dates[dates.length-1])return dates[dates.length-1];
+      return today;
+    }
+
+    function schedulePersonReferenceRowV616AV(obj,period) {
+      const dates=[...(period?.dates||[])].filter(Boolean).sort();
+      const refDate=schedulePersonReferenceDateV616AV(period);
+      const exact=obj?.days?.[refDate];
+      if(exact)return {row:exact,date:refDate};
+      const available=dates.filter(d=>obj?.days?.[d]);
+      if(!available.length)return {row:null,date:refDate};
+      const before=available.filter(d=>d<=refDate);
+      const chosen=before[before.length-1]||available[0];
+      return {row:obj.days[chosen],date:chosen};
+    }
+
+    function schedulePersonReferenceGroupV616AV(obj,period) {
+      const ref=schedulePersonReferenceRowV616AV(obj,period);
+      const refRow=ref.row||null;
+      const current=refRow ? (scheduleMembershipReadinessStateV616AY.byEmp.get(String(refRow.emp_code||'').trim())||refRow?._membership_readiness_v616ay||null) : null;
+      if(current?.has_current_team===true && current?.current_team_id){
+        return {
+          key:`TEAM:${String(current.current_team_id)}`,
+          label:String(current.current_team_name||current.current_team_code||'ทีมปัจจุบัน'),
+          code:String(current.current_team_code||''),
+          name:String(current.current_team_name||''),
+          teamId:String(current.current_team_id||''),
+          orgCode:String(current.current_team_org_code||''),
+          category:String(current.current_team_category||'UNCLASSIFIED').toUpperCase(),
+          state:'TEAM',
+          referenceDate:todayISO(),
+          currentTeam:true
+        };
+      }
+      const raw=refRow ? scheduleOperationalTeamGroupV61526(refRow) : null;
+      const stateCode=String(raw?.state||'UNCLASSIFIED').toUpperCase();
+      const category=String(current?.current_operational_type||raw?.category||'UNCLASSIFIED').toUpperCase();
+      if(stateCode==='UNCLASSIFIED'){
+        return {key:'UNASSIGNED:UNCLASSIFIED',label:'รอกำหนดรูปแบบการปฏิบัติงาน',code:'',name:'',teamId:'',orgCode:raw?.orgCode||'',category:'UNCLASSIFIED',state:'UNCLASSIFIED',referenceDate:ref.date};
+      }
+      if(stateCode==='CAR_UNASSIGNED'){
+        return {key:'UNASSIGNED:CAR',label:'ยังไม่ได้จัดทีมปัจจุบัน • รถยนต์',code:'',name:'',teamId:'',orgCode:raw?.orgCode||'',category:'CAR',state:'CAR_UNASSIGNED',referenceDate:ref.date};
+      }
+      if(['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(stateCode)){
+        return {key:'UNASSIGNED:MOTORCYCLE',label:'ยังไม่ได้จัดทีมปัจจุบัน • มอเตอร์ไซค์',code:'',name:'',teamId:'',orgCode:raw?.orgCode||'',category:'MOTORCYCLE',state:'MOTORCYCLE_UNASSIGNED',referenceDate:ref.date};
+      }
+      if(stateCode==='SUPPORT_UNASSIGNED'){
+        return {key:'UNASSIGNED:SUPPORT',label:'ยังไม่ได้จัดทีมปัจจุบัน • สนับสนุน',code:'',name:'',teamId:'',orgCode:raw?.orgCode||'',category:'SUPPORT',state:'SUPPORT_UNASSIGNED',referenceDate:ref.date};
+      }
+      return {...(raw||{}),referenceDate:ref.date};
+    }
+
+    function schedulePersonTeamSectionsV616T(entries, period) {
+      const list = Array.isArray(entries) ? entries : [];
+      if (String(scheduleViewState.personTeamGroupMode || 'TEAM').toUpperCase() === 'FLAT') {
+        return [{ key:'__ALL__', label:'พนักงานทั้งหมด', state:'FLAT', category:'ALL', entries:list }];
+      }
+
+      const groups = new Map();
+      const pendingStatesV616AV = new Set([
+        'UNCLASSIFIED','CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED',
+        'MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'
+      ]);
+
+      const ensure = group => {
+        const key = String(group?.key || 'UNASSIGNED:UNCLASSIFIED');
+        if (!groups.has(key)) groups.set(key, { ...group, key, entries:[] });
+        return groups.get(key);
+      };
+
+      list.forEach(([emp,obj]) => {
+        const contextKeysV616AV=new Set();
+        const historicalTeamsV616AV=[];
+        const readyDatesV616AW=[];
+        const blockedDatesV616AW=[];
+        let unreadyDaysV616AV=0;
+
+        (period?.dates || []).forEach(date => {
+          const row=obj?.days?.[date];
+          if(!row)return;
+          const g=scheduleOperationalTeamGroupV61526(row);
+          contextKeysV616AV.add(String(g?.key||''));
+          if(g?.teamId && !historicalTeamsV616AV.some(x=>x.teamId===g.teamId))historicalTeamsV616AV.push(g);
+          if(scheduleTeamReadyV616T(row)){
+            readyDatesV616AW.push(date);
+          }else{
+            blockedDatesV616AW.push(date);
+            unreadyDaysV616AV+=1;
+          }
+        });
+
+        // The section represents status at the reference date. Historical
+        // membership stays visible inside the row, but no longer keeps a person
+        // under a Team that they have already left.
+        const referenceGroupV616AV=schedulePersonReferenceGroupV616AV(obj,period);
+        const section=ensure(referenceGroupV616AV);
+        const currentPendingV616AV=pendingStatesV616AV.has(String(referenceGroupV616AV?.state||'').toUpperCase()) || !referenceGroupV616AV?.teamId;
+        const previousTeamV616AV=currentPendingV616AV
+          ? historicalTeamsV616AV[historicalTeamsV616AV.length-1]||null
+          : null;
+
+        section.entries.push([emp,{
+          ...obj,
+          meta:{...obj.meta,...(schedulePersonReferenceRowV616AV(obj,period).row||{})},
+          days:{...(obj?.days||{})},
+          _personTeamGroupV616T:false,
+          _personTeamPrimaryGroupKeyV616AU:String(referenceGroupV616AV?.key||''),
+          _personTeamContextCountV616AU:contextKeysV616AV.size,
+          _personTeamUnreadyCountV616AU:unreadyDaysV616AV,
+          _personTeamReferenceDateV616AV:String(referenceGroupV616AV?.referenceDate||''),
+          _personTeamReferenceStateV616AV:String(referenceGroupV616AV?.state||''),
+          _personTeamReferenceTeamIdV616AV:String(referenceGroupV616AV?.teamId||''),
+          _personTeamPreviousLabelV616AV:String(previousTeamV616AV?.label||previousTeamV616AV?.name||previousTeamV616AV?.code||''),
+          _personTeamReadyFromV616AW:String(readyDatesV616AW[0]||''),
+          _personTeamReadyToV616AW:String(readyDatesV616AW[readyDatesV616AW.length-1]||''),
+          _personTeamBlockedFromV616AW:String(blockedDatesV616AW[0]||''),
+          _personTeamBlockedToV616AW:String(blockedDatesV616AW[blockedDatesV616AW.length-1]||'')
+        }]);
+      });
+
+      const weight = stateCode => ['TEAM','BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(String(stateCode||'').toUpperCase()) ? 1 : 9;
+      return [...groups.values()].sort((a,b)=>weight(a.state)-weight(b.state)||String(a.label||'').localeCompare(String(b.label||''),'th',{numeric:true,sensitivity:'base'}));
+    }
+
+    function schedulePersonTeamHeaderV616T(section, colspan) {
+      if (String(scheduleViewState.personTeamGroupMode || 'TEAM').toUpperCase() !== 'TEAM') return '';
+      const key=String(section?.key||'');
+      const collapsed=schedulePersonCollapsedTeamsV616T.has(key);
+      const entries=section?.entries||[];
+      const count=new Set(entries.map(([emp])=>String(emp))).size;
+      const stateCode=String(section?.state||'').toUpperCase();
+      const pendingStateV616AV=['UNCLASSIFIED','CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(stateCode) || !section?.teamId;
+      const unreadyDaysV616AV=entries.reduce((sum,[,obj])=>sum+Number(obj?._personTeamUnreadyCountV616AU||0),0);
+      const transitionEmployeesV616AV=entries.filter(([,obj])=>Number(obj?._personTeamContextCountV616AU||0)>1).length;
+      const referenceDateV616AV=String(entries[0]?.[1]?._personTeamReferenceDateV616AV||'');
+      const ready=!pendingStateV616AV && unreadyDaysV616AV===0;
+      const partial=!pendingStateV616AV && !ready;
+      const category=String(section?.category||'UNCLASSIFIED').toUpperCase();
+      const categoryLabel=category==='CAR'?'CAR':category==='MOTORCYCLE'?'MOTORCYCLE':category==='SUPPORT'?'SUPPORT':'รอจัดข้อมูล';
+      const referenceIsTodayV616AW=referenceDateV616AV===todayISO();
+      const statusTextV616AV = pendingStateV616AV
+        ? `${referenceIsTodayV616AW?'ปัจจุบันยังไม่ได้จัดทีม':'ยังไม่ได้จัด Team ปัจจุบัน'} • ห้ามจัดกะจนกว่าจะมี Team`
+        : ready
+          ? (transitionEmployeesV616AV>0
+              ? `พร้อมตามวันที่ • มีประวัติเปลี่ยนทีม ${formatNumber(transitionEmployeesV616AV)} คน`
+              : (referenceIsTodayV616AW?'พร้อมจัดกะ':'พร้อมในช่วงที่แสดง'))
+          : `มีประวัติ Team ต่างช่วง ${formatNumber(unreadyDaysV616AV)} วัน • สิทธิ์จัดกะยึด Team ปัจจุบัน`;
+      const rowClassV616AV = ready ? 'is-ready' : partial ? 'is-partial' : 'is-pending';
+      return `<tr class="schedule-person-team-section-v616t ${rowClassV616AV}" data-person-team-section-v616t="${safe(key)}"><td colspan="${Number(colspan)||1}"><button type="button" class="schedule-person-team-toggle-v616t" data-person-team-toggle-v616t="${safe(key)}" aria-expanded="${collapsed?'false':'true'}"><span class="chev">${collapsed?'›':'⌄'}</span><strong>${safe(section?.label||'ไม่ระบุทีม')}</strong><small>${safe(categoryLabel)} · ${formatNumber(count)} คน</small></button><span class="schedule-person-team-ready-v616t">${safe(statusTextV616AV)}</span></td></tr>`;
+    }
+
+    function scheduleTemporaryWorkingMetaV61529F14B(row) {
+      const ctx = scheduleTeamContextMetaV61526(row);
+      const stateCode = String(ctx?.assignment_state || ctx?.assignment_type || '').toUpperCase();
+      if (!['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(stateCode)) return null;
+      const homeOrg = String(ctx?.home_org_code || ctx?.employee_org_code || '').trim();
+      const workingOrg = String(ctx?.team_org_code || '').trim();
+      const canEdit = ctx?.can_edit_schedule === true;
+      return {
+        type:stateCode,
+        isBorrow:stateCode === 'BORROW_CROSS_ORG',
+        isAssist:stateCode === 'TEMP_TEAM_ASSIST',
+        homeOrg,
+        workingOrg,
+        canEdit,
+        canConfirm:ctx?.can_confirm_schedule === true,
+        authorityType:String(ctx?.access_authority_type || '').toUpperCase(),
+        label:stateCode === 'BORROW_CROSS_ORG'
+          ? (canEdit ? `ยืมจาก ${homeOrg || '-'}` : `ยืมไป ${workingOrg || '-'}`)
+          : (canEdit ? 'มาช่วยทีมชั่วคราว' : `ไปช่วย ${workingOrg || 'ทีมอื่น'} ชั่วคราว`)
+      };
+    }
+
+    function scheduleBorrowDestinationWindowV61529F15L(days) {
+      const entries=Object.entries(days||{}).filter(([,row])=>{
+        const meta=scheduleTemporaryWorkingMetaV61529F14B(row);
+        return meta?.isBorrow===true && meta?.canEdit===true;
+      });
+      if(!entries.length)return null;
+      entries.sort((a,b)=>String(a[0]).localeCompare(String(b[0])));
+      const firstMeta=scheduleTemporaryWorkingMetaV61529F14B(entries[0][1])||{};
+      return {
+        from:String(entries[0][0]).slice(0,10),
+        to:String(entries[entries.length-1][0]).slice(0,10),
+        homeOrg:firstMeta.homeOrg||'',
+        workingOrg:firstMeta.workingOrg||''
+      };
+    }
+
+    function scheduleBorrowWindowBadgeV61529F15L(windowMeta) {
+      if(!windowMeta)return '';
+      const fromDay=Number(String(windowMeta.from||'').slice(8,10))||'';
+      const toDay=Number(String(windowMeta.to||'').slice(8,10))||'';
+      const compact=fromDay&&toDay?(fromDay===toDay?`${fromDay}`:`${fromDay}–${toDay}`):'ช่วงยืมตัว';
+      const title=`ยืมตัว${windowMeta.homeOrg?`จาก ${windowMeta.homeOrg}`:''} • จัดกะได้ ${formatDate(windowMeta.from)}–${formatDate(windowMeta.to)}`;
+      return `<span class="schedule-borrow-window-badge-v61529f15l" title="${safe(title)}"><span aria-hidden="true">↔</span><strong>ยืมตัว ${safe(compact)}</strong></span>`;
+    }
+
+    function scheduleWorkingTeamCanEditV61529F14B(row) {
+      const ctx = scheduleTeamContextMetaV61526(row);
+      return ctx?.can_edit_schedule !== false;
+    }
+
+    function fillScheduleOperationalTeamOptionsV61526(rows = state.schedule) {
+      const select = $("scheduleOperationalTeamV61526");
+      if (!select) return;
+      const old = String(select.value || '');
+      const groups = new Map();
+      (rows || []).forEach(row => {
+        const g = scheduleOperationalTeamGroupV61526(row);
+        if (g.legacy) return;
+        if (!groups.has(g.key)) groups.set(g.key,g);
+      });
+      const sorted = [...groups.values()].sort((a,b) => {
+        const aw = a.state==='CAR_UNASSIGNED' ? 8 : a.state==='SUPPORT_UNASSIGNED' ? 9 : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(a.state) ? 10 : a.state==='UNCLASSIFIED' ? 11 : 1;
+        const bw = b.state==='CAR_UNASSIGNED' ? 8 : b.state==='SUPPORT_UNASSIGNED' ? 9 : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(b.state) ? 10 : b.state==='UNCLASSIFIED' ? 11 : 1;
+        return aw-bw || a.label.localeCompare(b.label,'th');
+      });
+      const mappedOptionsV61526 = sorted.map(g => {
+        const suffix = g.state==='CAR_UNASSIGNED' ? ' ⚠' : g.state==='SUPPORT_UNASSIGNED' ? ' ⚠' : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(g.state) ? ' ⚠' : g.state==='UNCLASSIFIED' ? ' ⚠' : '';
+        return `<option value="${safe(g.key)}">${safe(g.label + suffix)}</option>`;
+      }).join('');
+      const keepPendingV61526 = old && !sorted.some(g => g.key===old) && scheduleTeamContextStateV61526.loading;
+      select.innerHTML = '<option value="">ทุกทีมช่างเทคนิค</option>' + (keepPendingV61526 ? `<option value="${safe(old)}">กำลังจับคู่ทีม...</option>` : '') + mappedOptionsV61526;
+      if ([...select.options].some(o => o.value === old)) select.value = old;
+      const note = $("scheduleOperationalTeamMetaV61526");
+      if (note) {
+        const unassigned = sorted.filter(g => ['CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(g.state)).length;
+        note.textContent = scheduleTeamContextStateV61526.loading
+          ? 'กำลังจับคู่ Effective Team...'
+          : scheduleTeamContextStateV61526.error
+            ? 'โหลด Team Context ไม่สำเร็จ • ตารางยังแสดงตามหน่วยงานเดิม'
+            : `${sorted.filter(g=>['TEAM','BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(g.state)).length} ทีม/รายการปฏิบัติงาน • ${unassigned} กลุ่มที่ยังต้องกำหนดทีม`;
+      }
+    }
+
+    async function enrichScheduleTeamContextV61526(rows, period) {
+      const list = Array.isArray(rows) ? rows : [];
+      const empCodes = [...new Set(list.map(r => String(r?.emp_code || '').trim()).filter(Boolean))];
+      if (!empCodes.length || !state.client || !period?.startDate || !period?.endDate) {
+        fillScheduleOperationalTeamOptionsV61526(list);
+        return;
+      }
+      const key = `${period.startDate}|${period.endDate}|${empCodes.join(',')}`;
+      scheduleTeamContextStateV61526.key=key;
+      scheduleTeamContextStateV61526.loading=true;
+      scheduleTeamContextStateV61526.error=null;
+      fillScheduleOperationalTeamOptionsV61526(list);
+      try {
+        const all=[];
+        const chunkSize=250;
+        for (let i=0;i<empCodes.length;i+=chunkSize) {
+          const chunk=empCodes.slice(i,i+chunkSize);
+          const args={p_emp_codes:chunk,p_start_date:period.startDate,p_end_date:period.endDate};
+          let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
+          if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+            response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
+          }
+          if (response.error) throw response.error;
+          all.push(...(Array.isArray(response.data)?response.data:[]));
+        }
+        if (scheduleTeamContextStateV61526.key!==key) return;
+        const map=new Map(all.map(x=>[`${String(x.emp_code||'').trim()}|${String(x.work_date||'').slice(0,10)}`,x]));
+
+        scheduleMembershipReadinessStateV616AY.key=key;
+        scheduleMembershipReadinessStateV616AY.loading=true;
+        scheduleMembershipReadinessStateV616AY.error=null;
+        const readyRows=[];
+        for(let i=0;i<empCodes.length;i+=250){
+          const chunk=empCodes.slice(i,i+250);
+          const rr=await state.client.rpc('ta_get_schedule_membership_readiness_v616ay',{p_emp_codes:chunk});
+          if(rr.error)throw rr.error;
+          readyRows.push(...(Array.isArray(rr.data)?rr.data:[]));
+        }
+        const readyMap=new Map(readyRows.map(x=>[String(x.emp_code||'').trim(),x]));
+        scheduleMembershipReadinessStateV616AY.byEmp=readyMap;
+        scheduleMembershipReadinessStateV616AY.loadedAt=Date.now();
+
+        list.forEach(row=>{
+          const emp=String(row?.emp_code||'').trim();
+          const k=`${emp}|${String(row?.work_date||'').slice(0,10)}`;
+          row._team_context_v61526=map.get(k)||null;
+          row._membership_readiness_v616ay=readyMap.get(emp)||null;
+        });
+        scheduleTeamContextStateV61526.loadedAt=Date.now();
+      } catch(error) {
+        scheduleTeamContextStateV61526.error=error;
+        scheduleMembershipReadinessStateV616AY.error=error;
+        console.warn('Schedule Team Context / Membership Readiness:',error);
+      } finally {
+        scheduleTeamContextStateV61526.loading=false;
+        scheduleMembershipReadinessStateV616AY.loading=false;
+        fillScheduleOperationalTeamOptionsV61526(list);
+      }
     }
 
     function schedulePersonLoadMatchesV61149(period = null) {
@@ -6036,14 +7606,14 @@ window.tcIsDayShiftCode = value =>
         title.textContent = mode === "TIME"
           ? "สถิติการมาทำงานรายทีม"
           : mode === "TEAM"
-            ? "สรุปข้อมูลรายหน่วยงาน"
+            ? "สรุปข้อมูลรายทีมช่างเทคนิค"
             : "ปฏิทินจัดกะรายบุคคล";
       }
       if (text) {
         text.textContent = mode === "TIME"
           ? "ดูจำนวนพนักงานปกติ ขาดงาน มาสาย กลับก่อน และลารายทีม/รายวัน • คลิก Label เพื่อดูรายชื่อและเวลาเข้า–ออก"
           : mode === "TEAM"
-            ? "ดูภาพรวมกะของแต่ละทีม • กะมาตรฐานทำงานอัตโนมัติ • เมื่อหัวหน้างานปรับกะและกดบันทึก ระบบมีผลทันที"
+            ? "ดูภาพรวมตาม Effective Team • แยกทีมรถยนต์/มอเตอร์ไซค์และกลุ่มยังไม่ได้กำหนดทีมตามวันที่"
             : "แสดงตารางรายบุคคลเต็มเดือน • Label แสดงเฉพาะไอคอน • วางเมาส์บนไอคอนเพื่อดูรหัสกะ เวลา และรายละเอียด • ยังเลือกหลายช่อง คัดลอก วาง และบันทึกได้เหมือนเดิม";
       }
 
@@ -6052,10 +7622,10 @@ window.tcIsDayShiftCode = value =>
       const teamLegendV6146 = $("scheduleTeamLegendV6146");
       const teamTipV6146 = $("scheduleTeamTipV6146");
       const teamAlertLabelV6146 = $("scheduleTeamAlertLabelV6146");
-      if (teamTitleV6146) teamTitleV6146.textContent = mode === "TIME" ? "สรุปเวลาทำงานรายหน่วยงาน" : "ตารางกะสรุปรายหน่วยงาน";
+      if (teamTitleV6146) teamTitleV6146.textContent = mode === "TIME" ? "สรุปเวลาทำงานรายทีมช่างเทคนิค" : "ตารางกะสรุปรายทีมช่างเทคนิค";
       if (teamSubtitleV6146) teamSubtitleV6146.textContent = mode === "TIME"
         ? "สรุปสถานะการมาทำงานรายทีมในช่วงประมาณ 15 วันที่เลือก • คลิกแต่ละวันเพื่อดูรายชื่อ เวลาเข้า–ออก และรายละเอียด"
-        : "สรุปภาพรวมกำลังคนตามหน่วยงานในช่วงประมาณ 15 วันที่เลือก • คลิกปุ่ม ดูรายคน เพื่อเปิดรายละเอียดและจัดกะรายบุคคล";
+        : "สรุปตาม Effective Team ในช่วงประมาณ 15 วันที่เลือก • รวมกลุ่มรถยนต์/มอเตอร์ไซค์/สนับสนุนที่ยังไม่มีทีม และรอ Manager กำหนดประเภท";
       if (teamLegendV6146) teamLegendV6146.innerHTML = mode === "TIME"
         ? '<span class="badge time-legend-normal-v6146">ปกติ</span><span class="badge time-legend-absence-v6146">ขาดงาน</span><span class="badge time-legend-late-v6146">สาย</span><span class="badge time-legend-early-v6146">กลับก่อน</span><span class="badge time-legend-off-v61411">หยุด</span><span class="badge time-legend-leave-v6149">ลา</span>'
         : '<span class="badge shift-legend-day">กะกลางวัน</span><span class="badge shift-legend-night">กะกลางคืน</span><span class="badge badge-gray">หยุด / OFF</span><span class="badge badge-orange">HOL / นักขัตฤกษ์</span><span class="badge badge-red-soft">มีรายการต้องตรวจสอบ</span>';
@@ -6141,7 +7711,7 @@ window.tcIsDayShiftCode = value =>
 
     function scheduleUnitLabel(row) {
       return String(
-        row?.department
+        canonicalOrgNameV616Q(row)
         || row?.sub_area
         || row?.area
         || row?.zone
@@ -6246,6 +7816,7 @@ window.tcIsDayShiftCode = value =>
 
     const scheduleOrgManagerStateV61123 = {
       loadedUnits: false,
+      loadedKey: "",
       units: [],
       byCode: new Map(),
       byName: new Map(),
@@ -6270,17 +7841,41 @@ window.tcIsDayShiftCode = value =>
       return true;
     }
 
-    async function scheduleLoadOrgUnitsV61123() {
+    async function scheduleLoadOrgUnitsV61123(period = null) {
       const cache = scheduleOrgManagerStateV61123;
-      if (cache.loadedUnits || !state.client) return cache.units;
+      if (!state.client) return cache.units;
+
+      // FIX15O: Organization Master is a permission boundary. Never read the
+      // complete ta_org_units table directly from a Manager/Viewer browser.
+      // The server returns only organization metadata authorized for the
+      // selected Schedule period (HR Admin remains unrestricted).
+      const resolvedPeriod = period || syncSchedulePeriodUI();
+      const startDate = String(resolvedPeriod?.startDate || todayISO()).slice(0,10);
+      const endDate = String(resolvedPeriod?.endDate || startDate).slice(0,10);
+      const cacheKey = `${startDate}|${endDate}`;
+
+      if (cache.loadedUnits && cache.loadedKey === cacheKey) return cache.units;
+
       try {
-        const { data, error } = await state.client
-          .from('ta_org_units')
-          .select('org_id,org_code,org_name,parent_org_id,is_active,effective_from,effective_to')
-          .order('level_order', { ascending: true })
-          .order('sort_order', { ascending: true });
-        if (error) throw error;
-        cache.units = data || [];
+        let response = await state.client.rpc(
+          'ta_get_authorized_org_units_v616m',
+          { p_start_date:startDate, p_end_date:endDate }
+        );
+        if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          response = await state.client.rpc(
+            'ta_get_authorized_org_units_v616l',
+            { p_start_date:startDate, p_end_date:endDate }
+          );
+        }
+        if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+          response = await state.client.rpc(
+            'ta_get_schedule_org_units_v61529f15o',
+            { p_start_date:startDate, p_end_date:endDate }
+          );
+        }
+        if (response.error) throw response.error;
+
+        cache.units = Array.isArray(response.data) ? response.data : [];
         cache.byCode.clear();
         cache.byName.clear();
         cache.units.forEach(unit => {
@@ -6290,8 +7885,15 @@ window.tcIsDayShiftCode = value =>
           if (nameKey && !cache.byName.has(nameKey)) cache.byName.set(nameKey, unit);
         });
         cache.loadedUnits = true;
+        cache.loadedKey = cacheKey;
       } catch (error) {
-        console.warn('Schedule org-unit metadata V6.11.24:', error);
+        // Security-first fallback: do not fall back to an unscoped table read.
+        cache.units = [];
+        cache.byCode.clear();
+        cache.byName.clear();
+        cache.loadedUnits = false;
+        cache.loadedKey = '';
+        console.warn('Schedule scoped org metadata FIX15O:', error);
       }
       return cache.units;
     }
@@ -6390,7 +7992,7 @@ window.tcIsDayShiftCode = value =>
 
     async function enrichScheduleOrgManagersV61123(rows = [], period = null) {
       if (!rows?.length || !state.client) return;
-      await scheduleLoadOrgUnitsV61123();
+      await scheduleLoadOrgUnitsV61123(period);
       const cache = scheduleOrgManagerStateV61123;
       if (!cache.units.length) return;
 
@@ -6424,6 +8026,7 @@ window.tcIsDayShiftCode = value =>
             row._team_manager_names_v61123 = names;
             row._team_org_id_v61123 = request.unit.org_id;
             row._team_org_code_v61123 = request.unit.org_code;
+            row._team_org_name_v616l = request.unit.org_name || row.department || "";
           });
         }));
       }
@@ -6867,7 +8470,7 @@ window.tcIsDayShiftCode = value =>
     function fillScheduleTeamFocusOptions(rows = []) {
       const select = $("scheduleTeamFocus");
       if (!select) return;
-      const old = select.value || val("scheduleDepartment") || '';
+      const old = select.value || (selectedOrgIdV616M("scheduleDepartment") ? '' : val("scheduleDepartment")) || '';
       const units = [...new Set((rows || []).map(scheduleUnitLabel))].sort((a,b) => a.localeCompare(b, 'th'));
       select.innerHTML = `<option value="">ทุกทีม / ทุกหน่วยงาน</option>` + units.map(unit => `<option value="${safe(unit)}">${safe(unit)}</option>`).join('');
       if ([...select.options].some(option => option.value === old)) {
@@ -6876,7 +8479,7 @@ window.tcIsDayShiftCode = value =>
     }
 
     const scheduleTeamDrawerState = {
-      unit: '',
+      unit: '', groupKey:'',
       date: '',
       filter: 'ALL',
       rows: [],
@@ -8010,7 +9613,7 @@ window.tcIsDayShiftCode = value =>
           p_end_date: date,
           p_area: null,
           p_sub_area: null,
-          p_department: unit || null,
+          p_department: null,
           p_emp_codes: empCodes,
           p_attendance_statuses: null,
           p_schedule_statuses: null,
@@ -8020,7 +9623,7 @@ window.tcIsDayShiftCode = value =>
           p_start_date: date,
           p_end_date: date,
           p_zone: null,
-          p_department: unit || null,
+          p_department: null,
           p_emp_codes: empCodes,
           p_attendance_statuses: null,
           p_schedule_statuses: null,
@@ -8030,7 +9633,7 @@ window.tcIsDayShiftCode = value =>
           p_start_date: date,
           p_end_date: date,
           p_zone: null,
-          p_department: unit || null,
+          p_department: null,
           p_emp_codes: empCodes,
           p_attendance_statuses: null,
           p_schedule_statuses: null,
@@ -8174,6 +9777,11 @@ window.tcIsDayShiftCode = value =>
           const shift2In = scheduleTeamSegmentActualTime(row, 2, 'IN');
           const shift2Out = scheduleTeamSegmentActualTime(row, 2, 'OUT');
           const specialModeV61459 = scheduleSpecialWorkModeMetaV61459(row);
+          const tempWorkingV61529F14B = scheduleTemporaryWorkingMetaV61529F14B(row);
+          const tempWorkingBadgeV61529F14B = tempWorkingV61529F14B
+            ? `<span class="team-scope-chip-v61526 ${tempWorkingV61529F14B.isBorrow?'borrowed':'assist'} team-employee-temp-chip-v61529f14b">${safe(tempWorkingV61529F14B.label)}</span>`
+            : '';
+          const canEditWorkingV61529F14B = scheduleWorkingTeamCanEditV61529F14B(row);
           const splitWorkTemplate = Boolean(specialModeV61459 && ['customer','wait'].includes(specialModeV61459.key)) || templateCode === 'SPLIT_FLEX' || shift2Plan !== '-' || shift2In !== '-' || shift2Out !== '-';
           const splitModeLabelV61459 = specialModeV61459?.label || 'กะปกติ + งานลูกค้าช่วงดึก';
           const shiftDetailHtml = splitWorkTemplate
@@ -8182,12 +9790,14 @@ window.tcIsDayShiftCode = value =>
           return `<article class="team-employee-card status-${safe(statusMeta.tone)} ${splitWorkTemplate ? 'has-double-shift' : ''}">
             <div class="team-employee-main">
               <div class="team-employee-avatar">${safe(initials)}</div>
-              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small></div>
+              <div class="team-employee-name"><strong>${safe(row.full_name || 'ไม่พบชื่อ')}</strong><small>${safe(row.emp_code || '-')} • ${safe(row.position_name || row.department || '')}</small>${tempWorkingBadgeV61529F14B}</div>
               <div class="team-employee-actions-v61118">
                 <span class="team-att-status tone-${safe(statusMeta.tone)}">${safe(statusMeta.label)}${safe(lateText)}</span>
                 ${timeCertificationBadgeV61139(row)}
                 ${timeCertificationButtonV61139(row,'team-daily')}
-                <button type="button" class="team-assign-btn-v61118" data-team-assign data-emp="${safe(row.emp_code || '')}" data-date="${safe(String(row.work_date || scheduleTeamDrawerState.date || '').slice(0,10))}" title="จัดกะและประมวลผลเวลาทำงานใหม่"><span>✎</span> จัดกะ</button>
+                ${canEditWorkingV61529F14B
+                  ? `<button type="button" class="team-assign-btn-v61118" data-team-assign data-emp="${safe(row.emp_code || '')}" data-date="${safe(String(row.work_date || scheduleTeamDrawerState.date || '').slice(0,10))}" title="จัดกะและประมวลผลเวลาทำงานใหม่"><span>✎</span> จัดกะ</button>`
+                  : `<span class="team-working-readonly-v61529f14b" title="ช่วงยืมตัวนี้จัดกะโดย Manager/Acting ของทีมปลายทาง">ดูอย่างเดียว</span>`}
               </div>
             </div>
             <div class="team-employee-detail-grid segments-${splitWorkTemplate ? 'five' : 'three'} ${splitWorkTemplate ? 'double-shift' : ''}">
@@ -8206,19 +9816,21 @@ window.tcIsDayShiftCode = value =>
       }));
     }
 
-    async function openScheduleTeamDrawer(unit, date) {
+    async function openScheduleTeamDrawer(groupKey, date, displayLabel = null) {
       const drawer = $('scheduleTeamDrawer');
       const backdrop = $('scheduleTeamDrawerBackdrop');
       if (!drawer || !backdrop) return;
 
-      scheduleTeamDrawerState.unit = unit;
+      const label=String(displayLabel || groupKey || 'ทีมช่างเทคนิค');
+      scheduleTeamDrawerState.unit = label;
+      scheduleTeamDrawerState.groupKey = String(groupKey || '');
       scheduleTeamDrawerState.date = date;
       scheduleTeamDrawerState.filter = 'ALL';
       scheduleTeamDrawerState.loading = true;
       drawer.dataset.periodDate = String(date || '').slice(0,10);
 
-      const baseRows = scheduleFilteredRows(state.schedule).filter(row => scheduleUnitLabel(row) === unit && String(row.work_date || '').slice(0,10) === date);
-      $('scheduleTeamDrawerTitle').textContent = unit;
+      const baseRows = scheduleFilteredRows(state.schedule).filter(row => scheduleOperationalTeamGroupV61526(row).key === scheduleTeamDrawerState.groupKey && String(row.work_date || '').slice(0,10) === date);
+      $('scheduleTeamDrawerTitle').textContent = label;
       $('scheduleTeamDrawerSubtitle').textContent = `${formatDate(date)} • ${formatNumber(new Set(baseRows.map(row=>row.emp_code)).size)} คน`;
       $('scheduleTeamDrawerList').innerHTML = `<div class="team-drawer-loading"><span class="spinner"></span><strong>กำลังโหลดเวลาลงงาน...</strong></div>`;
 
@@ -8228,7 +9840,7 @@ window.tcIsDayShiftCode = value =>
       document.body.classList.add('schedule-drawer-open');
 
       try {
-        scheduleTeamDrawerState.rows = await fetchScheduleTeamDayAttendance(unit,date,baseRows);
+        scheduleTeamDrawerState.rows = await fetchScheduleTeamDayAttendance(null,date,baseRows);
       } catch (error) {
         console.error('Team drawer:', error);
         scheduleTeamDrawerState.rows = baseRows;
@@ -8252,6 +9864,7 @@ window.tcIsDayShiftCode = value =>
       month: '',
       scheduleRows: [],
       attendanceRows: [],
+      holidayRows: [],
       dayoffBalance: null,
       timePunchRows: [],
       timePunchLoading: false,
@@ -8289,6 +9902,7 @@ window.tcIsDayShiftCode = value =>
       return {
         scheduleRows: employeeMonthCloneRowsV61138(cached.scheduleRows),
         attendanceRows: employeeMonthCloneRowsV61138(cached.attendanceRows),
+        holidayRows: employeeMonthCloneRowsV61138(cached.holidayRows),
         dayoffBalance: cached.dayoffBalance && typeof cached.dayoffBalance === 'object'
           ? { ...cached.dayoffBalance }
           : null,
@@ -8296,11 +9910,12 @@ window.tcIsDayShiftCode = value =>
       };
     }
 
-    function employeeMonthCacheSetV61138(empCode, monthValue, scheduleRows, attendanceRows, dayoffBalance = null) {
+    function employeeMonthCacheSetV61138(empCode, monthValue, scheduleRows, attendanceRows, dayoffBalance = null, holidayRows = []) {
       const key = employeeMonthCacheKeyV61138(empCode, monthValue);
       employeeMonthCacheV61138.set(key, {
         scheduleRows: employeeMonthCloneRowsV61138(scheduleRows),
         attendanceRows: employeeMonthCloneRowsV61138(attendanceRows),
+        holidayRows: employeeMonthCloneRowsV61138(holidayRows),
         dayoffBalance: dayoffBalance && typeof dayoffBalance === 'object'
           ? { ...dayoffBalance }
           : null,
@@ -8632,6 +10247,90 @@ window.tcIsDayShiftCode = value =>
       return ['HR_ADMIN','MANAGER','ADMIN','SUPER_ADMIN'].includes(role);
     }
 
+
+    // V6.15.29 FIX15C — Borrow-aware Monthly Personal access gap.
+    // The schedule RPC is intentionally date-scoped: a destination Manager gets
+    // rows only while an APPROVED Borrow is effective. A missing active-date row
+    // must therefore never be rendered as OFF / unprocessed, because that would
+    // invent a schedule outside the Manager's authority window.
+    function employeeMonthCurrentRoleV61529F15C() {
+      return String(
+        state.profile?._realRole
+        || state.profile?.role
+        || ''
+      ).trim().toUpperCase();
+    }
+
+    function employeeMonthBorrowDestinationContextV61529F15C(empCode) {
+      const code = String(empCode || '').trim();
+      if (!code) return null;
+      const pools = [
+        ...(Array.isArray(state.schedule) ? state.schedule : []),
+        ...(Array.isArray(employeeMonthCalendarStateV61121.scheduleRows)
+          ? employeeMonthCalendarStateV61121.scheduleRows
+          : [])
+      ];
+      const dates=[];
+      const explicitFrom=[];
+      const explicitTo=[];
+      let result=null;
+      for (const row of pools) {
+        if (String(row?.emp_code || '').trim() !== code) continue;
+        const ctx = scheduleTeamContextMetaV61526(row);
+        const stateCode = String(ctx?.assignment_state || ctx?.assignment_type || '').trim().toUpperCase();
+        if (stateCode !== 'BORROW_CROSS_ORG' || ctx?.can_edit_schedule !== true) continue;
+        const workDate=String(row?.work_date||'').slice(0,10);
+        if(workDate)dates.push(workDate);
+        const from=String(ctx?.effective_from||ctx?.assignment_effective_from||ctx?.borrow_effective_from||'').slice(0,10);
+        const to=String(ctx?.effective_to||ctx?.assignment_effective_to||ctx?.borrow_effective_to||'').slice(0,10);
+        if(from)explicitFrom.push(from);
+        if(to)explicitTo.push(to);
+        if(!result){
+          result={
+            isBorrowDestination:true,
+            homeOrg:String(ctx?.home_org_code || ctx?.employee_org_code || '').trim(),
+            workingOrg:String(ctx?.team_org_code || '').trim(),
+            teamCode:String(ctx?.team_code || '').trim()
+          };
+        }
+      }
+      if(!result)return null;
+      dates.sort();explicitFrom.sort();explicitTo.sort();
+      result.effectiveFrom=explicitFrom[0]||dates[0]||'';
+      result.effectiveTo=explicitTo[explicitTo.length-1]||dates[dates.length-1]||'';
+      return result;
+    }
+
+    function employeeMonthScopeGapMetaV61529F15C(
+      scheduleRow,
+      attendanceRow,
+      workDate,
+      employmentState = 'ACTIVE'
+    ) {
+      if (employmentState !== 'ACTIVE' || scheduleRow || attendanceRow) return null;
+      const role = employeeMonthCurrentRoleV61529F15C();
+      if (!['MANAGER','ADMIN','SUPER_ADMIN'].includes(role)) return null;
+      const borrow = employeeMonthBorrowDestinationContextV61529F15C(
+        employeeMonthCalendarStateV61121.empCode
+      );
+      if (borrow?.isBorrowDestination) {
+        return {
+          status:'OUTSIDE_BORROW_WINDOW',
+          label:'นอกช่วงยืมตัว',
+          tone:'scope',
+          detail:'Manager ปลายทางดูและจัดกะได้เฉพาะวันที่รายการยืมตัวมีผล',
+          borrow:true
+        };
+      }
+      return {
+        status:'OUTSIDE_MANAGER_SCOPE',
+        label:'นอกขอบเขตการดูแล',
+        tone:'scope',
+        detail:'ไม่มีสิทธิ์ดูหรือจัดกะในวันที่นี้',
+        borrow:false
+      };
+    }
+
     // V6.12.8: Attendance enrichment still uses adaptive date-splitting
     // strategy as Attendance Detail. The previous full-month attendance RPC could
     // hit PostgreSQL statement_timeout even for one employee when calculation / punch
@@ -8886,7 +10585,7 @@ window.tcIsDayShiftCode = value =>
       const startDate = String(first?.start_date || '').slice(0,10);
       const resignDate = String(first?.resign_date || '').slice(0,10);
       if (startDate && workDate < startDate) return 'BEFORE_START';
-      if (resignDate && workDate > resignDate) return 'AFTER_RESIGN';
+      if (resignDate && workDate >= resignDate) return 'AFTER_RESIGN';
       return 'ACTIVE';
     }
 
@@ -9036,37 +10735,28 @@ window.tcIsDayShiftCode = value =>
         // V6.14.28: the Monthly Personal "วันหยุด" KPI must use the same
         // canonical day-off balance as Assignment / Bulk guards. This avoids a
         // browser-side recount that used to exclude public holidays.
-        // FIX16AL: Manager / HR Admin sees the same requestable balance concept
-        // as Employee Portal. Canonical quota still comes from V6.14.25/FIX16AR.
         const dayoffBalancePromise = employeeMonthWithTimeoutV61427(
-          (async () => {
-            const argsV616al = {
-              p_emp_code: empCode,
-              p_month: `${bounds.value}-01`
-            };
-            const preferredV616al = await state.client.rpc(
-              'ta_get_dayoff_requestable_balance_v616al',
-              argsV616al
-            );
-            if (!preferredV616al?.error) return preferredV616al;
-
-            const missingV616al = String(
-              preferredV616al?.error?.code
-              || preferredV616al?.error?.message
-              || ''
-            ).toUpperCase();
-
-            if (
-              missingV616al.includes('PGRST202')
-              || missingV616al.includes('COULD NOT FIND THE FUNCTION')
-              || missingV616al.includes('FUNCTION')
-            ) {
-              return state.client.rpc('ta_get_dayoff_balance_v61425', argsV616al);
-            }
+          (async()=>{
+            const argsV616al={p_emp_code:empCode,p_month:`${bounds.value}-01`};
+            const preferredV616al=await state.client.rpc('ta_get_dayoff_requestable_balance_v616al',argsV616al);
+            if(!preferredV616al?.error)return preferredV616al;
+            const raw=String(preferredV616al?.error?.code||preferredV616al?.error?.message||'').toUpperCase();
+            if(raw.includes('PGRST202')||raw.includes('COULD NOT FIND THE FUNCTION')||raw.includes('FUNCTION'))return state.client.rpc('ta_get_dayoff_balance_v61425',argsV616al);
             return preferredV616al;
           })(),
           15000,
           'โหลดโควต้าวันหยุด + สิทธิ์ขอหยุดเพิ่ม FIX16AL'
+        );
+
+        // FIX15N: Public holidays must not depend on employee Schedule Scope.
+        // This read-only calendar RPC contains no employee/team/schedule data.
+        const holidayCalendarPromise = employeeMonthWithTimeoutV61427(
+          state.client.rpc('ta_get_calendar_holidays_v61529f15n', {
+            p_start_date: bounds.start,
+            p_end_date: bounds.end
+          }),
+          10000,
+          'โหลดวันหยุดนักขัตฤกษ์ Monthly Personal FIX15N'
         );
 
         const settled = await Promise.allSettled([
@@ -9075,7 +10765,8 @@ window.tcIsDayShiftCode = value =>
           attendancePromise,
           punchPromise,
           certificationPromise,
-          dayoffBalancePromise
+          dayoffBalancePromise,
+          holidayCalendarPromise
         ]);
 
         const [
@@ -9084,7 +10775,8 @@ window.tcIsDayShiftCode = value =>
           attendanceResult,
           punchResult,
           certificationResult,
-          dayoffBalanceResult
+          dayoffBalanceResult,
+          holidayCalendarResult
         ] = settled;
 
         // Schedule is the structural source of the monthly calendar. After adaptive
@@ -9107,6 +10799,12 @@ window.tcIsDayShiftCode = value =>
         const dayoffBalanceResponse = dayoffBalanceResult.status === 'fulfilled'
           ? dayoffBalanceResult.value
           : { data: null, error: dayoffBalanceResult.reason };
+        const holidayCalendarResponse = holidayCalendarResult.status === 'fulfilled'
+          ? holidayCalendarResult.value
+          : { data: [], error: holidayCalendarResult.reason };
+        const holidayRows = !holidayCalendarResponse?.error
+          ? (holidayCalendarResponse?.data || []).map(row => ({ ...row }))
+          : [];
         const dayoffBalance = !dayoffBalanceResponse?.error
           && dayoffBalanceResponse?.data
           && typeof dayoffBalanceResponse.data === 'object'
@@ -9117,6 +10815,12 @@ window.tcIsDayShiftCode = value =>
           console.info(
             'Monthly Personal canonical day-off balance unavailable; effective-schedule fallback will be used.',
             scheduleRpcErrorSummaryV6126(dayoffBalanceResponse.error).message || 'DAYOFF_BALANCE_UNAVAILABLE'
+          );
+        }
+        if (holidayCalendarResponse?.error) {
+          console.info(
+            'Monthly Personal FIX15N holiday calendar unavailable; schedule-row holiday fallback will be used.',
+            scheduleRpcErrorSummaryV6126(holidayCalendarResponse.error).message || 'HOLIDAY_CALENDAR_UNAVAILABLE'
           );
         }
 
@@ -9216,12 +10920,14 @@ window.tcIsDayShiftCode = value =>
           bounds.value,
           scheduleRows,
           attendanceRows,
-          dayoffBalance
+          dayoffBalance,
+          holidayRows
         );
 
         return {
           scheduleRows,
           attendanceRows,
+          holidayRows,
           dayoffBalance,
           savedAt: Date.now(),
           source: 'NETWORK'
@@ -9369,10 +11075,10 @@ window.tcIsDayShiftCode = value =>
       })[String(filterKey || 'all')] || 'ทั้งหมด';
     }
 
-    function employeeMonthPublicHolidayV61480(scheduleRow, shift = null) {
+    function employeeMonthPublicHolidayV61480(scheduleRow, shift = null, holidayRow = null) {
       const row = scheduleRow || {};
       const dayType = String(row?.day_type || '').trim().toUpperCase();
-      const resolvedShift = shift || scheduleResolveShiftMeta(row);
+      const resolvedShift = shift || (scheduleRow ? scheduleResolveShiftMeta(row) : null);
       const shiftCode = String(
         row?.assigned_shift_code
         || row?.effective_shift_code
@@ -9380,7 +11086,8 @@ window.tcIsDayShiftCode = value =>
         || ''
       ).trim().toUpperCase();
       return Boolean(
-        row?.is_public_holiday
+        holidayRow?.holiday_date
+        || row?.is_public_holiday
         || dayType === 'PUBLIC_HOLIDAY'
         || resolvedShift?.tone === 'holiday'
         || shiftCode === 'HOL'
@@ -9399,9 +11106,16 @@ window.tcIsDayShiftCode = value =>
       const rawPunchDay = context.rawPunchDay || null;
       const flags = canonical?.flags || null;
       const statusMeta = canonical?.statusMeta || null;
-      const publicHoliday = employeeMonthPublicHolidayV61480(scheduleRow, shift);
+      const holidayRow = context.holidayRow || null;
+      const publicHoliday = employeeMonthPublicHolidayV61480(scheduleRow, shift, holidayRow);
+      const scopeGap = context.scopeGap || null;
 
       if (employmentState !== 'ACTIVE') return false;
+      // FIX15N: Public Holiday is a company calendar fact, not employee schedule data.
+      // It remains visible/filterable even when the destination Manager is outside
+      // the effective Borrow window. Other employee-specific filters stay blocked.
+      if (key === 'holiday') return publicHoliday;
+      if (scopeGap) return false;
 
       if (key === 'work') {
         return Boolean(
@@ -9411,16 +11125,18 @@ window.tcIsDayShiftCode = value =>
         );
       }
       if (key === 'dayoff') {
+        // FIX16BD: Day-off filter follows the effective Schedule. A real working
+        // shift (STD/S043/S134/S135, etc.) overrides a natural weekly-off flag,
+        // so a worked Sunday must not be highlighted as a day-off.
+        const dayoffSourceV616bd = scheduleRow || canonical?.merged || attendanceRow || null;
+        const workingShiftOverrideV616bd = Boolean(
+          dayoffSourceV616bd
+          && attendanceHasWorkingShiftOverrideV61155(dayoffSourceV616bd)
+        );
         return Boolean(
           !publicHoliday
-          && (
-            flags?.dayOff
-            || shift?.tone === 'off'
-            || scheduleRow?.is_weekly_off
-            || ['WEEKLY_OFF','COMP_OFF','DAY_OFF'].includes(
-              String(scheduleRow?.day_type || '').trim().toUpperCase()
-            )
-          )
+          && !workingShiftOverrideV616bd
+          && employeeMonthConsumesDayoffFallbackV61426(dayoffSourceV616bd)
         );
       }
       if (key === 'leave') return Boolean(flags?.leave);
@@ -9429,18 +11145,29 @@ window.tcIsDayShiftCode = value =>
       if (key === 'early') return Boolean(flags?.early);
       if (key === 'split') return Boolean(specialMode && ['customer','wait'].includes(String(specialMode.key || '')));
       if (key === 'anomaly') return Boolean(flags && (flags.absence || flags.late || flags.early));
-      if (key === 'holiday') return publicHoliday;
       if (key === 'certified') return Boolean(timeCertificationActiveV61139(attendanceRow || canonical?.merged || {}));
       if (key === 'multipunch') return Boolean(rawPunchDay?.multiple);
       if (key === 'pending') return Boolean(flags?.upcoming || String(statusMeta?.status || '').toUpperCase() === 'UNPROCESSED');
       return true;
     }
 
-    function renderEmployeeMonthHolidayListV61153(scheduleRows = []) {
+    function renderEmployeeMonthHolidayListV61153(scheduleRows = [], holidayRows = []) {
       const root = $('employeeMonthHolidayItemsV61153');
       if (!root) return;
 
       const holidayMap = new Map();
+
+      // FIX15N: Company holiday calendar is independent from employee visibility.
+      // Load it first so Borrow dates outside destination scope still show HOL.
+      (holidayRows || []).forEach(row => {
+        const workDate = String(row?.holiday_date || row?.work_date || '').slice(0,10);
+        if (!workDate) return;
+        const name = String(row?.holiday_name || 'วันหยุดนักขัตฤกษ์').trim();
+        holidayMap.set(workDate, {
+          workDate,
+          name: name || 'วันหยุดนักขัตฤกษ์'
+        });
+      });
 
       (scheduleRows || []).forEach(row => {
         const workDate = String(row?.work_date || '').slice(0,10);
@@ -9535,8 +11262,14 @@ window.tcIsDayShiftCode = value =>
       const bounds = employeeMonthBoundsV61121(employeeMonthCalendarStateV61121.month);
       const scheduleRows = employeeMonthCalendarStateV61121.scheduleRows || [];
       const attendanceRows = employeeMonthCalendarStateV61121.attendanceRows || [];
+      const holidayRows = employeeMonthCalendarStateV61121.holidayRows || [];
       const scheduleByDate = new Map(scheduleRows.map(row => [String(row.work_date || '').slice(0,10), row]));
       const attendanceByDate = new Map(attendanceRows.map(row => [String(row.work_date || '').slice(0,10), row]));
+      const holidayByDateV61529F15N = new Map(
+        holidayRows
+          .map(row => [String(row?.holiday_date || row?.work_date || '').slice(0,10), row])
+          .filter(([date]) => Boolean(date))
+      );
       const rawPunchStatsV61460 = employeeMonthPunchStatsV61460();
       const rawPunchByDateV61460 = rawPunchStatsV61460.byDay;
       employeeMonthUpdatePunchButtonV61460();
@@ -9570,10 +11303,31 @@ window.tcIsDayShiftCode = value =>
           defaultShiftCodeV6133 ? `กะตั้งต้น ${defaultShiftCodeV6133}` : ''
         ].filter(Boolean).join(' • ') || 'รูปแบบการทำงานตามข้อมูลพนักงาน'
       );
+      const borrowDestinationContextV61529F15C = employeeMonthBorrowDestinationContextV61529F15C(
+        employeeMonthCalendarStateV61121.empCode
+      );
+      const borrowScopeBannerV61529F15L=$('employeeMonthBorrowScopeBannerV61529F15L');
+      if(borrowScopeBannerV61529F15L){
+        if(borrowDestinationContextV61529F15C?.isBorrowDestination){
+          const from=borrowDestinationContextV61529F15C.effectiveFrom||'';
+          const to=borrowDestinationContextV61529F15C.effectiveTo||'';
+          const range=from&&to?`${formatDate(from)} – ${formatDate(to)}`:'ตามช่วง Effective Date ของรายการยืมตัว';
+          borrowScopeBannerV61529F15L.classList.remove('hidden');
+          borrowScopeBannerV61529F15L.innerHTML=`<span class="employee-month-borrow-banner-icon-v61529f15l" aria-hidden="true">↔</span><div><strong>ช่วงที่ Manager ปลายทางจัดกะได้</strong><span>${safe(range)}${borrowDestinationContextV61529F15C.homeOrg?` • ยืมจาก ${safe(borrowDestinationContextV61529F15C.homeOrg)}`:''}${borrowDestinationContextV61529F15C.teamCode?` • ทีม ${safe(borrowDestinationContextV61529F15C.teamCode)}`:''}</span></div><small>วันนอกช่วงจะแสดงเป็นล็อก และไม่ถูกนับเป็นวันหยุดหรือรายการรอประมวลผล</small>`;
+        }else{
+          borrowScopeBannerV61529F15L.classList.add('hidden');
+          borrowScopeBannerV61529F15L.innerHTML='';
+        }
+      }
+
       const headerMode = $('employeeMonthHeaderMode');
       if (headerMode) {
         headerMode.className = `employee-month-header-mode-v61127 ${canEdit ? 'editable' : 'readonly'}`;
-        headerMode.textContent = canEdit ? 'แก้ไขกะได้' : 'ดูข้อมูลอย่างเดียว';
+        headerMode.textContent = canEdit
+          ? (borrowDestinationContextV61529F15C?.isBorrowDestination
+              ? 'แก้ไขได้เฉพาะช่วงยืมตัว'
+              : 'แก้ไขกะได้')
+          : 'ดูข้อมูลอย่างเดียว';
       }
 
       let workdays = 0;
@@ -9606,10 +11360,7 @@ window.tcIsDayShiftCode = value =>
       const carriedDaysV61426 = Number(dayoffBalanceV61426?.carried_in_days);
       const balanceDaysV61426 = Number(dayoffBalanceV61426?.balance_days);
       const pendingAddDayoffV616al = Number(dayoffBalanceV61426?.pending_add_dayoff_requests);
-      const requestableDaysV616al = Number(
-        dayoffBalanceV61426?.requestable_balance_days
-        ?? dayoffBalanceV61426?.balance_days
-      );
+      const requestableDaysV616al = Number(dayoffBalanceV61426?.requestable_balance_days ?? dayoffBalanceV61426?.balance_days);
       const dayoffQuotaDisplayV61478 = Number.isFinite(quotaDaysV61426)
         ? formatNumber(quotaDaysV61426)
         : '-';
@@ -9622,9 +11373,7 @@ window.tcIsDayShiftCode = value =>
             `ตามตาราง ${formatNumber(offDays)} วัน`,
             Number.isFinite(balanceDaysV61426) ? `คงเหลือ ${formatNumber(balanceDaysV61426)} วัน` : '',
             Number.isFinite(requestableDaysV616al) ? `ขอได้อีก ${formatNumber(Math.max(0,requestableDaysV616al))} วัน` : '',
-            Number.isFinite(pendingAddDayoffV616al) && pendingAddDayoffV616al > 0
-              ? `รออนุมัติ ${formatNumber(pendingAddDayoffV616al)} วัน`
-              : '',
+            Number.isFinite(pendingAddDayoffV616al) && pendingAddDayoffV616al > 0 ? `รออนุมัติ ${formatNumber(pendingAddDayoffV616al)} วัน` : '',
             Number.isFinite(carriedDaysV61426) && carriedDaysV61426 !== 0 ? `ยกมา ${formatNumber(carriedDaysV61426)} วัน` : ''
           ].filter(Boolean).join(' • ')
         : 'นับจากตารางกะเดียวกับรายบุคคลเต็มเดือน';
@@ -9687,6 +11436,21 @@ window.tcIsDayShiftCode = value =>
         const attendanceRowV61480 = attendanceByDate.get(workDateV61480) || null;
         const employmentStateV61480 = employeeMonthEmploymentStateV61429(scheduleRows,workDateV61480);
         if (employmentStateV61480 !== 'ACTIVE') continue;
+        const scopeGapV61529F15C = employeeMonthScopeGapMetaV61529F15C(
+          scheduleRowV61480,
+          attendanceRowV61480,
+          workDateV61480,
+          employmentStateV61480
+        );
+        const holidayRowV61529F15N = holidayByDateV61529F15N.get(workDateV61480) || null;
+        const scheduleShiftV61529F15N = scheduleRowV61480
+          ? scheduleResolveShiftMeta(scheduleRowV61480)
+          : null;
+        // FIX15N: count company holidays even outside destination Borrow Scope.
+        if (employeeMonthPublicHolidayV61480(scheduleRowV61480, scheduleShiftV61529F15N, holidayRowV61529F15N)) {
+          holidayDaysV61480 += 1;
+        }
+        if (scopeGapV61529F15C) continue;
         const canonicalV61480 = employeeMonthCanonicalDayV61467(
           scheduleRowV61480,
           attendanceRowV61480,
@@ -9694,9 +11458,8 @@ window.tcIsDayShiftCode = value =>
           employmentStateV61480
         );
         const shiftV61480 = scheduleRowV61480
-          ? scheduleResolveShiftMeta(scheduleRowV61480)
+          ? scheduleShiftV61529F15N
           : (canonicalV61480?.merged ? scheduleResolveShiftMeta(canonicalV61480.merged) : { tone:'off', isWorking:false });
-        if (employeeMonthPublicHolidayV61480(scheduleRowV61480, shiftV61480)) holidayDaysV61480 += 1;
         if (
           canonicalV61480?.flags?.upcoming
           || String(canonicalV61480?.statusMeta?.status || '').toUpperCase() === 'UNPROCESSED'
@@ -9735,7 +11498,7 @@ window.tcIsDayShiftCode = value =>
           <small class="employee-month-quick-filter-help-v61480">เลือกได้ครั้งละ 1 เงื่อนไข • กดซ้ำหรือกด “ทั้งหมด” เพื่อยกเลิก</small>`;
       }
 
-      renderEmployeeMonthHolidayListV61153(scheduleRows);
+      renderEmployeeMonthHolidayListV61153(scheduleRows, holidayRows);
 
       const dowNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
       const firstDow = new Date(bounds.year, bounds.month - 1, 1).getDay();
@@ -9752,19 +11515,32 @@ window.tcIsDayShiftCode = value =>
           : '';
         const scheduleRow = scheduleByDate.get(workDate) || null;
         const attendanceRow = attendanceByDate.get(workDate) || null;
+        const holidayRowV61529F15N = holidayByDateV61529F15N.get(workDate) || null;
         const employmentStateV61429 = employeeMonthEmploymentStateV61429(scheduleRows,workDate);
+        const scopeGapV61529F15C = employeeMonthScopeGapMetaV61529F15C(
+          scheduleRow,
+          attendanceRow,
+          workDate,
+          employmentStateV61429
+        );
         const canonicalDayV61467 = employeeMonthCanonicalDayV61467(
           scheduleRow,
           attendanceRow,
           workDate,
           employmentStateV61429
         );
+        if (scopeGapV61529F15C) {
+          canonicalDayV61467.statusMeta = scopeGapV61529F15C;
+          canonicalDayV61467.useCanonical = false;
+        }
         const merged = canonicalDayV61467.merged;
         const d = new Date(`${workDate}T00:00:00`);
         const dow = d.getDay();
-        const shift = scheduleRow
-          ? scheduleResolveShiftMeta(scheduleRow)
-          : (merged ? scheduleResolveShiftMeta(merged) : { code:'-', label:'-', tone:'off', isWorking:false });
+        const shift = scopeGapV61529F15C
+          ? { code:'-', label:scopeGapV61529F15C.label, tone:'scope', isWorking:false }
+          : scheduleRow
+            ? scheduleResolveShiftMeta(scheduleRow)
+            : (merged ? scheduleResolveShiftMeta(merged) : { code:'-', label:'-', tone:'off', isWorking:false });
         const statusMeta = canonicalDayV61467.statusMeta;
         const actualIn = merged ? scheduleTeamSegmentActualTime(merged, 1, 'IN') : '-';
         const actualOut = merged ? scheduleTeamSegmentActualTime(merged, 1, 'OUT') : '-';
@@ -9788,9 +11564,16 @@ window.tcIsDayShiftCode = value =>
           attendanceHasWorkingShiftOverrideV61155(scheduleRow || merged);
 
         const calendarHoliday = Boolean(
-          scheduleRow?.is_public_holiday
+          holidayRowV61529F15N?.holiday_date
+          || scheduleRow?.is_public_holiday
           || scheduleRow?.day_type === 'PUBLIC_HOLIDAY'
         );
+        const calendarHolidayNameV61529F15N = String(
+          holidayRowV61529F15N?.holiday_name
+          || scheduleRow?.holiday_name
+          || scheduleRow?.public_holiday_name
+          || 'วันหยุดนักขัตฤกษ์'
+        ).trim() || 'วันหยุดนักขัตฤกษ์';
 
         const naturalWeeklyOff = Boolean(
           scheduleRow?.is_weekly_off
@@ -9802,7 +11585,8 @@ window.tcIsDayShiftCode = value =>
         // A real assigned work shift takes precedence over the natural
         // holiday/off calendar classification for attendance purposes.
         const holiday = Boolean(
-          !workingShiftOverride
+          !scopeGapV61529F15C
+          && !workingShiftOverride
           && (
             calendarHoliday
             || shift.tone === 'holiday'
@@ -9810,7 +11594,8 @@ window.tcIsDayShiftCode = value =>
         );
 
         const weeklyOff = Boolean(
-          !workingShiftOverride
+          !scopeGapV61529F15C
+          && !workingShiftOverride
           && !holiday
           && (
             naturalWeeklyOff
@@ -9818,11 +11603,13 @@ window.tcIsDayShiftCode = value =>
           )
         );
 
-        const dayKindClass = employmentStateV61429 === 'BEFORE_START'
-          ? 'month-day-kind-inactive-v61429 month-day-before-start-v61429'
-          : employmentStateV61429 === 'AFTER_RESIGN'
-            ? 'month-day-kind-inactive-v61429 month-day-after-resign-v61429'
-            : workingShiftOverride
+        const dayKindClass = scopeGapV61529F15C
+          ? 'month-day-kind-scope-v61529f15c'
+          : employmentStateV61429 === 'BEFORE_START'
+            ? 'month-day-kind-inactive-v61429 month-day-before-start-v61429'
+            : employmentStateV61429 === 'AFTER_RESIGN'
+              ? 'month-day-kind-inactive-v61429 month-day-after-resign-v61429'
+              : workingShiftOverride
               ? 'month-day-kind-work-v61153 month-day-work-override-v61155'
               : holiday
                 ? 'month-day-kind-holiday-v61153'
@@ -9839,19 +11626,27 @@ window.tcIsDayShiftCode = value =>
           employmentState: employmentStateV61429,
           shift,
           specialMode: specialModeV61459,
-          rawPunchDay: rawPunchDayV61460
+          rawPunchDay: rawPunchDayV61460,
+          scopeGap: scopeGapV61529F15C,
+          holidayRow: holidayRowV61529F15N
         });
 
-        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)} ${activeMonthFilterV61480!=='all' && !dayMatchesFilterV61480 ? 'is-filter-muted-v61479' : ''} ${activeMonthFilterV61480!=='all' && dayMatchesFilterV61480 ? 'is-filter-hit-v61479' : ''}" data-month-date="${safe(workDate)}" data-filter-match="${dayMatchesFilterV61480 ? '1' : '0'}">
+        html += `<div class="employee-month-day employee-month-day-v61149 ${dayKindClass} ${dow===0||dow===6?'weekend':''} ${isToday?'is-today':''} ${holiday?'is-holiday':''} ${calendarHoliday?'is-calendar-public-holiday-v61529f15n':''} ${weeklyOff?'is-weekly-off':''} ${employmentStateV61429==='BEFORE_START'?'is-before-start-v61429':employmentStateV61429==='AFTER_RESIGN'?'is-after-resign-v61429':''} tone-${safe(statusMeta.tone)} ${activeMonthFilterV61480!=='all' && !dayMatchesFilterV61480 ? 'is-filter-muted-v61479' : ''} ${activeMonthFilterV61480!=='all' && dayMatchesFilterV61480 ? 'is-filter-hit-v61479' : ''}" data-month-date="${safe(workDate)}" data-filter-match="${dayMatchesFilterV61480 ? '1' : '0'}">
           <div class="employee-month-day-head">
             <div class="employee-month-date-v61127"><strong>${safe(String(day))}</strong><small>${safe(dayName)}</small></div>
-            <div class="employee-month-day-head-actions-v61460">${rawPunchIndicatorV61460}<span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span></div>
+            <div class="employee-month-day-head-actions-v61460">${rawPunchIndicatorV61460}${calendarHoliday ? `<span class="employee-month-calendar-holiday-badge-v61529f15n" title="${safe(calendarHolidayNameV61529F15N)}">HOL</span>` : ''}<span class="month-day-status-v61127 tone-${safe(statusMeta.tone)}"><i></i>${safe(statusMeta.label)}</span></div>
           </div>
 
           ${employmentStateV61429 !== 'ACTIVE' ? `
             <div class="employee-month-inactive-v61429">
               <strong>${safe(statusMeta.label)}</strong>
               <small>${employmentStateV61429==='BEFORE_START' ? 'ตรงกับช่วงก่อนวันเริ่มงานในตารางกะรายบุคคลเต็มเดือน' : 'ตรงกับช่วงหลังวันลาออกในตารางกะรายบุคคลเต็มเดือน'}</small>
+            </div>
+          ` : scopeGapV61529F15C ? `
+            <div class="employee-month-scope-lock-v61529f15c employee-month-scope-lock-v61529f15l" title="${safe(scopeGapV61529F15C.detail)}">
+              <div class="employee-month-scope-lock-icon-v61529f15c" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></div>
+              <strong>${safe(scopeGapV61529F15C.borrow?'นอกช่วงยืมตัว':'นอกขอบเขต')}</strong>
+              ${calendarHoliday ? `<div class="employee-month-scope-holiday-v61529f15n" title="${safe(calendarHolidayNameV61529F15N)}"><span>HOL</span><b>${safe(calendarHolidayNameV61529F15N)}</b></div>` : ''}
             </div>
           ` : `
             <div class="employee-month-shift tone-${safe(shift.tone)} shift-color-category-${safe(
@@ -9891,7 +11686,13 @@ window.tcIsDayShiftCode = value =>
 
       grid.innerHTML = html;
       $('employeeMonthRecalcBtn')?.classList.toggle('hidden', !state.client);
-      $('employeeMonthEditHint')?.classList.toggle('hidden', !canEdit);
+      const editHintV61529F15C = $('employeeMonthEditHint');
+      if (editHintV61529F15C) {
+        editHintV61529F15C.classList.toggle('hidden', !canEdit);
+        editHintV61529F15C.textContent = canEdit && borrowDestinationContextV61529F15C?.isBorrowDestination
+          ? 'คลิก “จัดกะ” ได้เฉพาะวันที่อยู่ในช่วงยืมตัว • วันนอกช่วงจะแสดงเป็นล็อกและไม่ถูกนับเป็นวันหยุดประจำสัปดาห์/รอประมวลผล • วันหยุดนักขัตฤกษ์ยังแสดงตามปฏิทินบริษัท'
+          : 'คลิก “จัดกะ” ในแต่ละวันเพื่อแก้ไข';
+      }
       modal.classList.remove('hidden');
       modal.setAttribute('aria-hidden','false');
       document.dispatchEvent(new CustomEvent("timeclock:employee-month-rendered", {
@@ -9944,6 +11745,7 @@ window.tcIsDayShiftCode = value =>
       if (cached) {
         employeeMonthCalendarStateV61121.scheduleRows = cached.scheduleRows;
         employeeMonthCalendarStateV61121.attendanceRows = cached.attendanceRows;
+        employeeMonthCalendarStateV61121.holidayRows = cached.holidayRows || [];
         employeeMonthCalendarStateV61121.dayoffBalance = cached.dayoffBalance || null;
         renderEmployeeMonthCalendarV61121();
       } else if ($('employeeMonthScheduleGrid')) {
@@ -9965,6 +11767,8 @@ window.tcIsDayShiftCode = value =>
           employeeMonthCloneRowsV61138(bundle.scheduleRows);
         employeeMonthCalendarStateV61121.attendanceRows =
           employeeMonthCloneRowsV61138(bundle.attendanceRows);
+        employeeMonthCalendarStateV61121.holidayRows =
+          employeeMonthCloneRowsV61138(bundle.holidayRows);
         employeeMonthCalendarStateV61121.dayoffBalance =
           bundle.dayoffBalance && typeof bundle.dayoffBalance === 'object'
             ? { ...bundle.dayoffBalance }
@@ -10093,7 +11897,8 @@ window.tcIsDayShiftCode = value =>
         || val("scheduleTeamFocus")
         || ""
       ).trim();
-      const sourceRows = focusTeam
+      const selectedDepartmentV61529F14B=String(val("scheduleDepartment")||"").trim();
+      const sourceRows = focusTeam && !selectedDepartmentV61529F14B
         ? (rows || []).filter(row => scheduleUnitLabel(row) === focusTeam)
         : (rows || []);
 
@@ -10102,31 +11907,38 @@ window.tcIsDayShiftCode = value =>
       const totalEmployees = new Set();
 
       for (const row of sourceRows) {
-        const unit = scheduleUnitLabel(row);
+        const teamCtxV61526 = scheduleOperationalTeamGroupV61526(row);
+        const unit = teamCtxV61526.label;
+        const teamKeyV61526 = teamCtxV61526.key;
         const date = String(row.work_date || '').slice(0, 10);
         const shiftMeta = scheduleResolveShiftMeta(row);
         totalEmployees.add(String(row.emp_code || ''));
 
-        if (!units.has(unit)) {
-          units.set(unit, {
-            unit,
+        if (!units.has(teamKeyV61526)) {
+          units.set(teamKeyV61526, {
+            unit, filterKey:teamKeyV61526, teamContext:teamCtxV61526,
             employees: new Set(),
+            tempBorrowed: new Set(),
+            tempAssist: new Set(),
             managers: new Map(),
             managerNames: new Map(),
             days: new Map()
           });
         }
 
-        const group = units.get(unit);
+        const group = units.get(teamKeyV61526);
         group.employees.add(String(row.emp_code || ''));
+        if (teamCtxV61526.state === 'BORROW_CROSS_ORG') group.tempBorrowed.add(String(row.emp_code || ''));
+        if (teamCtxV61526.state === 'TEMP_TEAM_ASSIST') group.tempAssist.add(String(row.emp_code || ''));
+        const isTemporaryWorkingRowV61529F14B=['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(teamCtxV61526.state);
         const managerCodeV61121 = scheduleManagerCodeV61121(row);
-        if (managerCodeV61121) {
+        if (managerCodeV61121 && !isTemporaryWorkingRowV61529F14B) {
           group.managers.set(
             managerCodeV61121,
             Number(group.managers.get(managerCodeV61121) || 0) + 1
           );
         }
-        const managerNamesV61123 = Array.isArray(row?._team_manager_names_v61123)
+        const managerNamesV61123 = !isTemporaryWorkingRowV61529F14B && Array.isArray(row?._team_manager_names_v61123)
           ? row._team_manager_names_v61123
           : [];
         managerNamesV61123.forEach(name => {
@@ -10221,15 +12033,31 @@ window.tcIsDayShiftCode = value =>
         return `<th class="schedule-team-head ${dow===0||dow===6?'weekend':''} ${meta.holiday?'public-holiday-head':''}"><small>${safe(thaiDaysLong[dow])}</small><strong>${safe(String(d.getDate()))}</strong><span>${safe(thaiMonths[d.getMonth()])}</span></th>`;
       }).join('');
 
-      let html = `<table class="schedule-team-table"><thead><tr><th class="schedule-team-unit-head">หน่วยงาน</th>${headDays}</tr></thead><tbody>`;
+      let html = `<table class="schedule-team-table"><thead><tr><th class="schedule-team-unit-head">ทีมช่างเทคนิค</th>${headDays}</tr></thead><tbody>`;
 
       if (!teams.length) {
         html += `<tr><td colspan="${period.dates.length + 1}" class="table-empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
       }
 
       for (const team of teams) {
-        const managerLabelV61121 = scheduleTeamManagerLabelV61121(team);
-        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabelV61121)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
+        const teamCtxV61526=team.teamContext||{};
+        const tempCountV61529F14B=Number(team.tempBorrowed?.size||0)+Number(team.tempAssist?.size||0);
+        const managerLabelV61121=tempCountV61529F14B>=team.employees.size && team.employees.size>0
+          ? 'Manager ทีมปลายทาง'
+          : scheduleTeamManagerLabelV61121(team);
+        const baseTeamPolicyV61526=teamCtxV61526.state==='CAR_UNASSIGNED'
+          ? '<span class="team-scope-chip-v61526 warning">⚠ ต้องจัดทีม</span>'
+          : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(teamCtxV61526.state)
+            ? '<span class="team-scope-chip-v61526 warning">⚠ มอเตอร์ไซค์ต้องมีทีม</span>'
+            : teamCtxV61526.state==='UNCLASSIFIED'
+              ? '<span class="team-scope-chip-v61526 warning">⚠ รอกำหนดประเภท</span>'
+              : `<span class="team-scope-chip-v61526">${safe(teamCtxV61526.code||teamCtxV61526.category||'ทีม')}</span>`;
+        const tempTeamPolicyV61529F14B=[
+          team.tempBorrowed?.size ? `<span class="team-scope-chip-v61526 borrowed">↔ ยืมชั่วคราว ${safe(formatNumber(team.tempBorrowed.size))}</span>` : '',
+          team.tempAssist?.size ? `<span class="team-scope-chip-v61526 assist">→ มาช่วย ${safe(formatNumber(team.tempAssist.size))}</span>` : ''
+        ].filter(Boolean).join('');
+        const teamPolicyV61526=baseTeamPolicyV61526+tempTeamPolicyV61529F14B;
+        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115 team-unit-card-v61526"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small>${teamPolicyV61526}<small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabelV61121)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open-key-v61526="${safe(team.filterKey||'')}" data-team-open-label-v61526="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
 
         for (const date of period.dates) {
           const day = team.days.get(date);
@@ -10258,7 +12086,7 @@ window.tcIsDayShiftCode = value =>
             : '';
           const specialModeBadgesV61459 = '';
 
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดกะ">
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card team-day-card-v61115 ${day.review>0?'has-review':''} ${day.changed>0?'has-change-v61117':'is-standard-v61117'}" data-team-day-key-v61526="${safe(team.filterKey||'')}" data-team-day-label-v61526="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดกะ">
             ${changeBadge ? `<div class="team-day-top-v61115 team-day-top-manual-v61117">${changeBadge}</div>` : ''}
             <div class="team-day-counts-v61115 team-day-counts-dynamic-v61115 ${[day.day, day.night, day.split, offTotal].filter(value => value > 0).length <= 2 ? 'is-compact' : ''}">
               ${visibleShiftChips || '<span class="team-day-extra-empty">ไม่มีกะทำงาน</span>'}
@@ -10493,14 +12321,20 @@ window.tcIsDayShiftCode = value =>
       const teamFilter = String(val('scheduleTeamFocus') || '').trim();
       const totalEmployees = new Set();
       for (const row of rows || []) {
-        const unit = scheduleUnitLabel(row);
-        if (teamFilter && unit !== teamFilter) continue;
+        const teamCtxV61526=scheduleOperationalTeamGroupV61526(row);
+        const unit=teamCtxV61526.label;
+        const teamKeyV61526=teamCtxV61526.key;
+        if (teamFilter && !String(val('scheduleDepartment')||'').trim() && scheduleUnitLabel(row) !== teamFilter) continue;
         const date = String(row?.work_date || '').slice(0,10);
         if (!period.dates.includes(date)) continue;
         const emp = String(row?.emp_code || '').trim();
-        if (!teams.has(unit)) teams.set(unit,{unit,employees:new Set(),days:new Map(),managerNames:new Map()});
-        const team = teams.get(unit); team.employees.add(emp); totalEmployees.add(emp);
-        const names = Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : [];
+        if (!teams.has(teamKeyV61526)) teams.set(teamKeyV61526,{unit,filterKey:teamKeyV61526,teamContext:teamCtxV61526,employees:new Set(),tempBorrowed:new Set(),tempAssist:new Set(),days:new Map(),managerNames:new Map()});
+        const team = teams.get(teamKeyV61526); team.employees.add(emp); totalEmployees.add(emp);
+        if (teamCtxV61526.state === 'BORROW_CROSS_ORG') team.tempBorrowed.add(emp);
+        if (teamCtxV61526.state === 'TEMP_TEAM_ASSIST') team.tempAssist.add(emp);
+        const names = ['BORROW_CROSS_ORG','TEMP_TEAM_ASSIST'].includes(teamCtxV61526.state)
+          ? []
+          : (Array.isArray(row?._team_manager_names_v61123) ? row._team_manager_names_v61123 : []);
         names.forEach(name => { const n=String(name||'').trim(); if(n) team.managerNames.set(n,(team.managerNames.get(n)||0)+1); });
         if (!team.days.has(date)) team.days.set(date,{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0});
         const metrics = scheduleTimeMetricsV6146(row, attendanceMap.get(`${emp}|${date}`));
@@ -10531,11 +12365,27 @@ window.tcIsDayShiftCode = value =>
       const thaiDaysLong=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสฯ','ศุกร์','เสาร์'];
       const thaiMonths=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
       const headDays=period.dates.map(date=>{const d=parseLocalISO(date);const dow=d.getDay();const meta=dateMeta.get(date)||{};return `<th class="schedule-team-head ${dow===0||dow===6?'weekend':''} ${meta.holiday?'public-holiday-head':''}"><small>${safe(thaiDaysLong[dow])}</small><strong>${safe(String(d.getDate()))}</strong><span>${safe(thaiMonths[d.getMonth()])}</span></th>`}).join('');
-      let html=`<table class="schedule-team-table schedule-time-table-v6146"><thead><tr><th class="schedule-team-unit-head">หน่วยงาน</th>${headDays}</tr></thead><tbody>`;
+      let html=`<table class="schedule-team-table schedule-time-table-v6146"><thead><tr><th class="schedule-team-unit-head">ทีมช่างเทคนิค</th>${headDays}</tr></thead><tbody>`;
       if (!sorted.length) html += `<tr><td colspan="${period.dates.length+1}" class="table-empty">ไม่พบข้อมูลตามเงื่อนไขที่เลือก</td></tr>`;
       for (const team of sorted) {
-        const managerLabel = scheduleTeamManagerLabelV61121(team);
-        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small><small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
+        const teamCtxV61526=team.teamContext||{};
+        const tempCountV61529F14B=Number(team.tempBorrowed?.size||0)+Number(team.tempAssist?.size||0);
+        const managerLabel=tempCountV61529F14B>=team.employees.size && team.employees.size>0
+          ? 'Manager ทีมปลายทาง'
+          : scheduleTeamManagerLabelV61121(team);
+        const baseTeamPolicyV61526=teamCtxV61526.state==='CAR_UNASSIGNED'
+          ? '<span class="team-scope-chip-v61526 warning">⚠ ต้องจัดทีม</span>'
+          : ['MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL'].includes(teamCtxV61526.state)
+            ? '<span class="team-scope-chip-v61526 warning">⚠ มอเตอร์ไซค์ต้องมีทีม</span>'
+            : teamCtxV61526.state==='UNCLASSIFIED'
+              ? '<span class="team-scope-chip-v61526 warning">⚠ รอกำหนดประเภท</span>'
+              : `<span class="team-scope-chip-v61526">${safe(teamCtxV61526.code||teamCtxV61526.category||'ทีม')}</span>`;
+        const tempTeamPolicyV61529F14B=[
+          team.tempBorrowed?.size ? `<span class="team-scope-chip-v61526 borrowed">↔ ยืมชั่วคราว ${safe(formatNumber(team.tempBorrowed.size))}</span>` : '',
+          team.tempAssist?.size ? `<span class="team-scope-chip-v61526 assist">→ มาช่วย ${safe(formatNumber(team.tempAssist.size))}</span>` : ''
+        ].filter(Boolean).join('');
+        const teamPolicyV61526=baseTeamPolicyV61526+tempTeamPolicyV61529F14B;
+        html += `<tr><td class="schedule-team-unit-cell"><div class="schedule-team-unit-card team-unit-card-v61115 team-unit-card-v61526"><div class="team-unit-copy-v61115"><span class="team-unit-mark-v61115"></span><div class="team-unit-text-v61121"><strong>${safe(team.unit)}</strong><small>${safe(formatNumber(team.employees.size))} คนในทีม</small>${teamPolicyV61526}<small class="team-unit-manager-v61121"><span>Manager</span><b>${safe(managerLabel)}</b></small></div></div><button class="btn btn-light btn-sm schedule-team-open-btn team-unit-open-v61115" type="button" data-team-open-key-v61526="${safe(team.filterKey||'')}" data-team-open-label-v61526="${safe(team.unit)}">รายคน <span>›</span></button></div></td>`;
         for (const date of period.dates) {
           const day=team.days.get(date)||{normal:0,absence:0,late:0,early:0,off:0,leave:0,pending:0,eligible:0,specialCustomer:0,specialWait:0,specialHour:0,specialWarning:0};
           const loading=scheduleTimeAttendanceStateV6146.loading && scheduleTimeAttendanceStateV6146.key===key;
@@ -10559,7 +12409,7 @@ window.tcIsDayShiftCode = value =>
               : '<span class="time-view-empty-v6147">—</span>';
           }
           const timeSpecialBadgesV61459 = '';
-          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''}" data-team-day-unit="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}</button></td>`;
+          html += `<td class="schedule-team-day"><button type="button" class="schedule-team-summary-card schedule-time-summary-card-v6146 ${(day.absence+day.late+day.early)>0?'has-time-alert-v6146':''}" data-team-day-key-v61526="${safe(team.filterKey||'')}" data-team-day-label-v61526="${safe(team.unit)}" data-team-day-date="${safe(date)}" title="คลิกเพื่อดูรายชื่อและรายละเอียดเวลาเข้า–ออก">${body}</button></td>`;
         }
         html+='</tr>';
       }
@@ -10613,6 +12463,7 @@ window.tcIsDayShiftCode = value =>
       }
 
       fillScheduleTeamFocusOptions(periodRows);
+      fillScheduleOperationalTeamOptionsV61526(periodRows);
       if (scheduleCurrentView() === 'TIME') {
         renderScheduleTimeViewV6146(rows, period, dateMeta);
       } else {
@@ -10664,7 +12515,11 @@ window.tcIsDayShiftCode = value =>
         })
         .map(item => item.entry);
 
-      for (const [emp, obj] of personEntriesV61150) {
+      const personSectionsV616T = schedulePersonTeamSectionsV616T(personEntriesV61150, period);
+      for (const personSectionV616T of personSectionsV616T) {
+        html += schedulePersonTeamHeaderV616T(personSectionV616T, period.dates.length + 3);
+        if (String(scheduleViewState.personTeamGroupMode || 'TEAM').toUpperCase() === 'TEAM' && schedulePersonCollapsedTeamsV616T.has(String(personSectionV616T.key||''))) continue;
+        for (const [emp, obj] of personSectionV616T.entries) {
         const rowPattern = scheduleRowPattern(obj.meta);
         const patternClass = rowPattern === "TECH_5D"
           ? "pattern-5d"
@@ -10713,14 +12568,49 @@ window.tcIsDayShiftCode = value =>
             ? ""
             : `data-select-emp="${safe(emp)}"`;
 
+        const borrowWindowV61529F15L = scheduleBorrowDestinationWindowV61529F15L(obj.days);
+        const borrowWindowBadgeV61529F15L = scheduleBorrowWindowBadgeV61529F15L(borrowWindowV61529F15L);
+
+        const personPendingStateV616AV=['UNCLASSIFIED','CAR_UNASSIGNED','MOTORCYCLE_UNASSIGNED','MOTORCYCLE_OPTIONAL','SUPPORT_UNASSIGNED'].includes(String(obj?._personTeamReferenceStateV616AV||'').toUpperCase()) || !String(obj?._personTeamReferenceTeamIdV616AV||'').trim();
+        const previousTeamLabelV616AV=String(obj?._personTeamPreviousLabelV616AV||'').trim();
+        const personTeamStatusBadgeV616AV = personPendingStateV616AV
+          ? `<span class="schedule-person-team-status-v616av is-unassigned" title="${safe(previousTeamLabelV616AV?`เคยอยู่ ${previousTeamLabelV616AV} ในช่วงที่แสดง • วันที่อ้างอิงยังไม่ได้จัดทีม`:'ยังไม่ได้จัด Effective Team ในวันที่อ้างอิง')}">ยังไม่ได้จัดทีม</span>`
+          : '';
+        const readyToV616AW=String(obj?._personTeamReadyToV616AW||'');
+        const blockedFromV616AW=String(obj?._personTeamBlockedFromV616AW||'');
+        const periodMixedReadinessBadgeV616AW = readyToV616AW && blockedFromV616AW
+          ? `<span class="schedule-person-effective-window-v616aw" title="Effective Team ใช้แสดงประวัติทีม • ไม่ใช้ล็อกกะเมื่อยังมี Team ปัจจุบันภายใต้ Authority">มีประวัติเปลี่ยน Team</span>`
+          : '';
+
         const managerOwnBadge =
           managerOwnEmployee
             ? `<span class="schedule-self-readonly-badge" title="ตนเอง • ดูอย่างเดียว — Manager ดูกะของตนเองได้ แต่ไม่สามารถจัดกะให้ตนเอง" aria-label="ตนเอง ดูอย่างเดียว"><svg class="schedule-self-readonly-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.75"></circle></svg></span>`
             : "";
 
-        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(obj.meta.department || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
+        html += `<tr class="${managerOwnEmployee?"manager-self-schedule-row":""}" data-emp-row="${safe(emp)}" data-pattern-code="${safe(rowPattern)}" data-start-date="${safe(employeeStartDate)}" data-resign-date="${safe(employeeResignDate)}"><td class="sticky-col-1 schedule-emp-code" ${employeeSelectAttr} title="${managerOwnEmployee?"ข้อมูลของตนเอง • ดูอย่างเดียว":"เลือกทั้งแถว"}"><div class="person-row-select-v61413"><input type="checkbox" data-month-copy-emp="${safe(emp)}" data-manager-own="${managerOwnEmployee?'true':'false'}" aria-label="เลือก ${safe(displayName)} สำหรับคัดลอกหรือวางกะทั้งเดือน"><span>${safe(emp)}</span></div></td><td class="sticky-col-2 nowrap schedule-emp-name" ${employeeSelectAttr}><div class="schedule-name-line schedule-name-line-v61121"><div class="schedule-name-main-v61121"><strong class="${nameClass}">${safe(displayName)}</strong><span class="schedule-pattern-badge ${patternClass}" title="${safe(schedulePatternLabel(rowPattern))}">${safe(schedulePatternShort(rowPattern))}</span>${personTeamStatusBadgeV616AV}${periodMixedReadinessBadgeV616AW}${borrowWindowBadgeV61529F15L}${managerOwnBadge}</div><button type="button" class="schedule-month-calendar-btn-v61121" data-person-month-calendar="1" data-emp="${safe(emp)}" data-month="${safe(period.month)}" title="ดูปฏิทินกะและเวลาทำงานทั้งเดือน" aria-label="เปิดปฏิทินรายเดือน">▦</button></div><small>${safe(canonicalOrgNameV616Q(obj.meta) || obj.meta.zone || "")}</small></td><td class="sticky-col-3 nowrap schedule-emp-position" title="${safe(employeePosition || "-")}">${safe(employeePosition || "-")}</td>`;
 
-        for (const date of period.dates) {
+        const scopeGapDateV616CI = candidateDate => {
+          const candidate = String(candidateDate || '').slice(0,10);
+          if (!candidate || obj.days[candidate]) return false;
+          if (employeeStartDate && candidate < employeeStartDate) return false;
+          if (employeeResignDate && candidate >= employeeResignDate) return false;
+          if (obj._personTeamGroupV616T) return false;
+          return true;
+        };
+        const compactScheduleRangeV616CI = (fromDate,toDate) => {
+          const from=parseLocalISO(fromDate);
+          const to=parseLocalISO(toDate);
+          if(!from || Number.isNaN(from.getTime()) || !to || Number.isNaN(to.getTime())) return `${fromDate || ''}–${toDate || ''}`;
+          if(from.getFullYear()===to.getFullYear() && from.getMonth()===to.getMonth()){
+            return from.getDate()===to.getDate()
+              ? `${from.getDate()} ${thaiMonths[from.getMonth()]}`
+              : `${from.getDate()}–${to.getDate()} ${thaiMonths[from.getMonth()]}`;
+          }
+          return `${from.getDate()} ${thaiMonths[from.getMonth()]}–${to.getDate()} ${thaiMonths[to.getMonth()]}`;
+        };
+
+        for (let dateIndexV616CI=0; dateIndexV616CI<period.dates.length; dateIndexV616CI++) {
+          const date = period.dates[dateIndexV616CI];
           const r = obj.days[date];
 
           const beforeEmployment =
@@ -10737,16 +12627,48 @@ window.tcIsDayShiftCode = value =>
           const afterResign =
             Boolean(
               employeeResignDate
-              && date > employeeResignDate
+              && date >= employeeResignDate
             );
 
           if(afterResign) {
-            html += `<td class="day-col empty-schedule-day post-resign-day" title="หลังวันลาออก ${safe(formatDate(employeeResignDate))}"><span class="schedule-cell disabled post-resign-cell">ลาออก</span></td>`;
+            html += `<td class="day-col empty-schedule-day post-resign-day" title="ตั้งแต่วันลาออก ${safe(formatDate(employeeResignDate))}"><span class="schedule-cell disabled post-resign-cell">ลาออก</span></td>`;
             continue;
           }
 
           if (!r) {
-            html += `<td class="day-col empty-schedule-day out-of-scope-day" title="ไม่มีสิทธิ์ตาม User Scope ในวันที่นี้"><span class="schedule-cell disabled out-of-scope-cell">นอก Scope</span></td>`;
+            if (obj._personTeamGroupV616T) {
+              html += `<td class="day-col empty-schedule-day team-other-context-day-v616t" title="วันที่นี้อยู่ใน Working Team อื่น"><span class="schedule-cell disabled team-other-context-cell-v616t">·</span></td>`;
+              continue;
+            }
+
+            // FIX16CI Schedule UX: collapse consecutive locked dates into one calm range.
+            // This removes repeated lock icons/text in every day cell while preserving
+            // the exact permission boundary in the tooltip and accessible label.
+            let gapEndIndexV616CI=dateIndexV616CI;
+            while(
+              gapEndIndexV616CI+1<period.dates.length
+              && scopeGapDateV616CI(period.dates[gapEndIndexV616CI+1])
+            ){
+              gapEndIndexV616CI+=1;
+            }
+            const gapFromV616CI=date;
+            const gapToV616CI=period.dates[gapEndIndexV616CI];
+            const gapCountV616CI=gapEndIndexV616CI-dateIndexV616CI+1;
+            const gapRangeV616CI=compactScheduleRangeV616CI(gapFromV616CI,gapToV616CI);
+            const borrowGapV61529F15L=Boolean(borrowWindowV61529F15L);
+            const afterBorrowV616CI=borrowGapV61529F15L && gapFromV616CI>borrowWindowV61529F15L.to;
+            const beforeBorrowV616CI=borrowGapV61529F15L && gapToV616CI<borrowWindowV61529F15L.from;
+            const scopeLabelV61529F15L=borrowGapV61529F15L?'นอกช่วงยืมตัว':'นอกขอบเขตการดูแล';
+            const scopeTitleV61529F15L=borrowGapV61529F15L
+              ? `นอกช่วงยืมตัว • Manager ปลายทางจัดกะได้ ${formatDate(borrowWindowV61529F15L.from)}–${formatDate(borrowWindowV61529F15L.to)} • ล็อก ${gapRangeV616CI}`
+              : `ไม่มีสิทธิ์ดูหรือจัดกะช่วง ${gapRangeV616CI}`;
+            const rangeTextV616CI=afterBorrowV616CI
+              ? `สิ้นสุดช่วงยืม ${formatDate(borrowWindowV61529F15L.to)} • ล็อก ${gapRangeV616CI}`
+              : beforeBorrowV616CI
+                ? `ช่วงยืมเริ่ม ${formatDate(borrowWindowV61529F15L.from)} • ล็อก ${gapRangeV616CI}`
+                : `ล็อก ${gapRangeV616CI}`;
+            html += `<td colspan="${gapCountV616CI}" class="day-col empty-schedule-day out-of-scope-day schedule-scope-range-v616ci ${borrowGapV61529F15L?'borrow-out-of-scope-day-v61529f15l':''}" title="${safe(scopeTitleV61529F15L)}"><div class="schedule-scope-range-content-v616ci ${borrowGapV61529F15L?'is-borrow':''}" aria-label="${safe(scopeLabelV61529F15L)} ${safe(gapRangeV616CI)}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="3"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg><span>${safe(rangeTextV616CI)}</span></div></td>`;
+            dateIndexV616CI=gapEndIndexV616CI;
             continue;
           }
 
@@ -10862,13 +12784,17 @@ window.tcIsDayShiftCode = value =>
                     ? "shift-visual-night"
                     : "shift-visual-day";
 
+          const workingTeamMetaV61529F14B=scheduleTemporaryWorkingMetaV61529F14B(r);
+          const workingTeamReadOnlyV61529F14B=!scheduleWorkingTeamCanEditV61529F14B(r);
           const cls = `shift-${codeClass} ${shiftVisualClass} ${r.schedule_status==='NEED_REVIEW'?'review':''} ${r.schedule_status==='CONFIRMED'?'confirmed':''}`;
           const tdCls = [
             "day-col",
             "schedule-data-cell",
             publicHoliday ? "public-holiday-cell" : "",
             weeklyOff ? "weekly-off-cell" : "",
-            date > today ? "future-schedule-cell" : ""
+            date > today ? "future-schedule-cell" : "",
+            workingTeamMetaV61529F14B ? "temporary-working-cell-v61529f14b" : "",
+            workingTeamReadOnlyV61529F14B ? "working-team-readonly-cell-v61529f14b" : ""
           ].filter(Boolean).join(" ");
 
           const dayLabel = publicHoliday
@@ -10902,15 +12828,26 @@ window.tcIsDayShiftCode = value =>
             `${Number(r.waiting_minutes||0)>0?'<small class="schedule-calc-flag wait">W</small>':''}` +
             `${r.comp_off_earned?'<small class="schedule-calc-flag comp">C</small>':''}`;
 
+          const scheduleReadyV616T=scheduleTeamReadyV616T(r);
+          const scheduleReadinessLabelV616T=scheduleTeamReadinessLabelV616T(r);
+          const scheduleCellReadOnlyV61529F14B=managerOwnEmployee||workingTeamReadOnlyV61529F14B||!scheduleReadyV616T;
           const editAttrs =
             managerOwnEmployee
               ? `data-manager-self-readonly="1"`
-              : `data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}"`;
+              : workingTeamReadOnlyV61529F14B
+                ? `data-working-team-readonly="1"`
+                : !scheduleReadyV616T
+                  ? `data-schedule-readiness-blocked-v616t="1"`
+                  : `data-schedule-cell="1" data-emp="${safe(r.emp_code)}" data-date="${safe(date)}" data-shift="${safe(code)}" data-status="${safe(r.schedule_status)}"`;
 
           const cellTitle =
             managerOwnEmployee
               ? `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | Manager ไม่สามารถจัดกะให้ตนเอง`
-              : `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ดับเบิลคลิกเพื่อแก้ไข`;
+              : workingTeamReadOnlyV61529F14B
+                ? `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ${workingTeamMetaV61529F14B?.label||'Working Team'} • ดูอย่างเดียว • Manager/Acting ทีมปลายทางเป็นผู้จัดกะ`
+                : !scheduleReadyV616T
+                  ? `${displayName} | ${scheduleReadinessLabelV616T} • ต้องกำหนดรูปแบบและจัดเข้าทีมก่อนจัดกะ`
+                  : `${displayName} | ${dayLabel} | ${statusLabel}${calcBits?` | ${calcBits}`:""} | ดับเบิลคลิกเพื่อแก้ไข`;
 
           const secondShiftCodeV61147 =
             splitWorkTemplate
@@ -10926,10 +12863,11 @@ window.tcIsDayShiftCode = value =>
           const iconAriaV6136 = `${personShiftIconMetaV6136.label}${normalizedCode && normalizedCode !== '-' ? ` ${normalizedCode}` : ''}${shiftTimeLabel ? ` ${shiftTimeLabel}` : ''}`;
 
           const personSpecialToneStyleV61458 = schedulePersonSpecialToneStyleV61458(personShiftIconMetaV6136.tone);
-          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${managerOwnEmployee?"manager-self-readonly":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(personShiftTooltipV6136)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
+          html += `<td class="${tdCls} ${managerOwnEmployee?"manager-self-readonly-cell":""}" data-cell-key="${safe(r.emp_code)}|${safe(date)}"><span class="schedule-cell schedule-icon-only-v6136 ${cls} icon-tone-${safe(personShiftIconMetaV6136.tone)} ${scheduleCellReadOnlyV61529F14B?"working-team-readonly-v61529f14b":""} ${!scheduleReadyV616T?"schedule-readiness-blocked-v616t":""}" ${personSpecialToneStyleV61458 ? `style="${personSpecialToneStyleV61458}"` : ''} ${editAttrs} data-shift-tooltip="${safe(cellTitle)}" aria-label="${safe(iconAriaV6136)}">${personShiftIconHtmlV6136}</span></td>`;
         }
 
         html += `</tr>`;
+        }
       }
 
       html += `</tbody></table>`;
@@ -11268,6 +13206,8 @@ window.tcIsDayShiftCode = value =>
       }));
     }
 
+    let scheduleAssignmentSaveInFlightV61530 = false;
+
     async function saveAssignment() {
       const periodCheck = await window.TimeClockSystemPeriods?.checkScheduleDates?.(
         [val("assignWorkDate")],
@@ -11349,6 +13289,17 @@ window.tcIsDayShiftCode = value =>
         return;
       }
 
+      if (scheduleAssignmentSaveInFlightV61530) {
+        toast("กำลังบันทึกกะ กรุณารอให้รายการปัจจุบันเสร็จก่อน", "info");
+        return;
+      }
+      scheduleAssignmentSaveInFlightV61530 = true;
+      const scheduleSaveButtonV61530 = $("saveAssignmentBtn");
+      if (scheduleSaveButtonV61530) {
+        scheduleSaveButtonV61530.disabled = true;
+        scheduleSaveButtonV61530.setAttribute("aria-busy", "true");
+      }
+
       const scheduleSaveStartedV6144 = performance.now();
       showLoading(
         window.TimeClockTeamDailyReturnContext?.source === 'team-daily-detail'
@@ -11357,6 +13308,35 @@ window.tcIsDayShiftCode = value =>
       );
 
       try {
+        // FIX16X: run the canonical Auto Readiness preflight before the write RPC.
+        // This keeps expected business blockers (employment/profile/team readiness)
+        // out of PostgREST HTTP 400 while the DB trigger remains the final authority.
+        const readinessEmpV616X = String(val("assignEmpCode") || "").trim();
+        const readinessDateV616X = String(val("assignWorkDate") || "").slice(0,10);
+        if (readinessEmpV616X && readinessDateV616X) {
+          const readinessResponseV616X = await state.client.rpc(
+            "ta_validate_schedule_readiness_v616t",
+            {
+              p_rows: [{
+                emp_code: readinessEmpV616X,
+                work_date: readinessDateV616X
+              }]
+            }
+          );
+          if (readinessResponseV616X.error) {
+            if (!window.TimeClockShiftAPI?.missingFunction?.(readinessResponseV616X.error)) {
+              throw readinessResponseV616X.error;
+            }
+          } else if (readinessResponseV616X.data?.allowed === false) {
+            const firstBlockV616X = Array.isArray(readinessResponseV616X.data?.blocked)
+              ? readinessResponseV616X.data.blocked[0]
+              : null;
+            const blockerCodeV616X = firstBlockV616X?.code || "SCHEDULE_READINESS_REQUIRED";
+            const blockerMessageV616X = firstBlockV616X?.message || "พนักงานยังไม่พร้อมสำหรับการจัดกะ";
+            throw new Error(`${blockerCodeV616X}: ${blockerMessageV616X}`);
+          }
+        }
+
         const atomicCtxV61510 = window.TimeClockEmployeeRequestAtomicV61510;
         const atomicSpecialV61510 = Boolean(
           atomicCtxV61510
@@ -11672,7 +13652,15 @@ window.tcIsDayShiftCode = value =>
           toast('บันทึกกะเรียบร้อยแล้ว แต่รีเฟรชหน้าจอไม่สำเร็จ กรุณากดรีเฟรชอีกครั้ง','warning');
         }
       } catch (err) { toast(humanError(err), "error"); }
-      finally { hideLoading(); }
+      finally {
+        scheduleAssignmentSaveInFlightV61530 = false;
+        const scheduleSaveButtonAfterV61530 = $("saveAssignmentBtn");
+        if (scheduleSaveButtonAfterV61530) {
+          scheduleSaveButtonAfterV61530.disabled = false;
+          scheduleSaveButtonAfterV61530.removeAttribute("aria-busy");
+        }
+        hideLoading();
+      }
     }
 
     async function deleteAssignment() {
@@ -12906,7 +14894,6 @@ window.tcIsDayShiftCode = value =>
         "department",
         "org_code",
         "pc",
-        "car_team",
         "start_date",
         "resign_date"
       ];
@@ -12955,7 +14942,8 @@ window.tcIsDayShiftCode = value =>
       const managerPages = new Set([
         "schedule",
         "work-patterns",
-        "team-portal"
+        "team-portal",
+        "team-master"
       ]);
 
       if (
@@ -12976,14 +14964,21 @@ window.tcIsDayShiftCode = value =>
           "error"
         );
       }
+      const actingOperationalAuthority =
+        window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.() === true;
+      const actingOperationalPages = new Set(["schedule","team-master","team-portal","work-patterns"]);
+      const actingPageAllowed =
+        actingOperationalAuthority
+        && actingOperationalPages.has(page);
       if (
         managerPages.has(page)
         && !["HR_ADMIN","MANAGER"].includes(
           effectiveRole
         )
+        && !actingPageAllowed
       ) {
         return toast(
-          "Viewer ไม่มีสิทธิ์จัดการกะหรือทีมงาน",
+          "ไม่มีสิทธิ์จัดการกะหรือทีมงานในขอบเขตนี้",
           "error"
         );
       }
@@ -12991,11 +14986,14 @@ window.tcIsDayShiftCode = value =>
       qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
-        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], "team-portal":["สมาชิกทีม / Portal","จัดการ QR/Link, Activation Code และ Reset PIN ของลูกทีม"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
-        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-employee-portal":["Employee Portal","เปิด/ระงับสิทธิ์ Portal ให้พนักงานแบบ Bulk โดยไม่ต้องมี Email"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
+        dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], "team-master":["ทีมช่างเทคนิค","สร้าง Team Master แบบ Auto Generate ตามหน่วยงานใน Scope ของ Manager"], "team-portal":["สมาชิกทีม / Portal","จัดการ QR/Link, Activation Code และ Reset PIN ของลูกทีม"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
+        "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-health":["System Health","ตรวจสุขภาพระบบและการตั้งค่าหลักแบบ Read-only"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-employee-portal":["Employee Portal","เปิด/ระงับสิทธิ์ Portal ให้พนักงานแบบ Bulk โดยไม่ต้องมี Email"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page);
       setText("pageSubtitle", titles[page]?.[1] || "");
+      if(page==="team-portal"){
+        setTimeout(()=>window.TimeClockEmployeePortalV61482?.syncRoleLabels?.(),0);
+      }
       $("sidebar").classList.remove("open");
       $("sidebarScrim")?.classList.remove("active");
       $("mobileMenuBtn")?.setAttribute(
@@ -13007,27 +15005,14 @@ window.tcIsDayShiftCode = value =>
       );
       if (page === "attendance" && !state.attendance.length) loadAttendance();
       if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
+      if (page === "team-master") window.TimeClockTeamMasterV61523?.load?.();
       if (page === "schedule") {
-        const isHrAdminV616ai =
-          scheduleRealRoleV616ai() === "HR_ADMIN";
-
-        if (
-          isHrAdminV616ai
-          && !scheduleHrHasIntentionalScopeV616ai()
-        ) {
-          // Filter-first: open the page immediately without loading the
-          // enterprise-wide Employee x Day calendar.
+        const isHrAdminV616ai=scheduleRealRoleV616ai()==="HR_ADMIN";
+        if(isHrAdminV616ai&&!scheduleHrHasIntentionalScopeV616ai()){
           prepareScheduleFilterFirstV616ai();
-        } else {
-          const personNeedsFullMonth =
-            scheduleCurrentView() === "PERSON"
-            && !schedulePersonLoadMatchesV61149();
-
-          if (!state.schedule.length || personNeedsFullMonth) {
-            loadSchedule();
-          } else {
-            renderSchedule();
-          }
+        }else{
+          const personNeedsFullMonth=scheduleCurrentView()==="PERSON"&&!schedulePersonLoadMatchesV61149();
+          if(!state.schedule.length||personNeedsFullMonth)loadSchedule();else renderSchedule();
         }
       }
 
@@ -13041,6 +15026,7 @@ window.tcIsDayShiftCode = value =>
           ?.load?.();
       }
 
+      if (page === "admin-health") window.TimeClockSystemHealthV616CW?.load?.();
       if (page === "admin-periods") window.TimeClockSystemPeriods?.load?.();
       if (page === "admin-shifts") loadShiftMaster();
       if (page === "admin-holidays") loadHolidays();
@@ -13104,10 +15090,18 @@ window.tcIsDayShiftCode = value =>
         );
       });
       $("loadDashboardBtn").addEventListener("click", loadDashboard);
+      ["dashStart","dashEnd"].forEach(id => $(id)?.addEventListener("change", async () => {
+        await loadScopedAreaDepartmentOptionsV616K({startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true});
+      }));
+      $("dashZone")?.addEventListener("change", async () => {
+        setVal("dashDepartment","");
+        await loadScopedAreaDepartmentOptionsV616K({startId:"dashStart",endId:"dashEnd",areaId:"dashZone",departmentId:"dashDepartment",preserve:true});
+      });
       $("loadAttendanceBtn").addEventListener("click", loadAttendance);
       $("attZone")?.addEventListener(
         "change",
         async () => {
+          attendanceRejectOutOfScopeValueV616K("attZone","พื้นที่");
           setVal("attSubArea","");
           setVal("attDepartment","");
           await loadAttendanceFilterOptions(true);
@@ -13116,6 +15110,7 @@ window.tcIsDayShiftCode = value =>
       $("attSubArea")?.addEventListener(
         "change",
         async () => {
+          attendanceRejectOutOfScopeValueV616K("attSubArea","พื้นที่ย่อย");
           setVal("attDepartment","");
           await loadAttendanceFilterOptions(true);
         }
@@ -13123,11 +15118,14 @@ window.tcIsDayShiftCode = value =>
       $("attDepartment")?.addEventListener(
         "change",
         () => {
+          attendanceRejectOutOfScopeValueV616K("attDepartment","หน่วยงาน");
           invalidateAttendanceEmployeeOptions(
             true
           );
         }
       );
+      $("attTeamV616T")?.addEventListener("change",()=>loadAttendance());
+      $("attCurrentTeamV616BB")?.addEventListener("change",()=>loadAttendance());
       $("attStart")?.addEventListener(
         "change",
         () => loadAttendanceFilterOptions(true)
@@ -13307,21 +15305,12 @@ window.tcIsDayShiftCode = value =>
               val("scheduleZone")
             );
 
-            if (scheduleRealRoleV616ai() === "HR_ADMIN") {
-              // Filter change is cheap; calendar load stays explicit.
-              state.schedule = [];
-              renderSchedule();
-              setScheduleLoadStatus(
-                "info",
-                val("scheduleZone")
-                  ? "เลือกหน่วยงานเพิ่มเติมได้ หรือกด “โหลดตารางกะ” เพื่อโหลดตามพื้นที่ที่เลือก"
-                  : scheduleHrFilterFirstMessageV616ai()
-              );
-            } else if (scheduleCurrentView() === "PERSON") {
+            if(scheduleRealRoleV616ai()==="HR_ADMIN"){
+              state.schedule=[];renderSchedule();
+              setScheduleLoadStatus("info",val("scheduleZone")?"เลือกหน่วยงานเพิ่มเติมได้ หรือกด ‘โหลดตารางกะ’ เพื่อโหลดตามพื้นที่ที่เลือก":scheduleHrFilterFirstMessageV616ai());
+            }else if(scheduleCurrentView()==="PERSON"){
               await loadSchedule();
-            } else {
-              renderSchedule();
-            }
+            }else renderSchedule();
           } catch(error) {
             toast(
               humanError(error),
@@ -13332,26 +15321,13 @@ window.tcIsDayShiftCode = value =>
       );
 
       $("scheduleDepartment")?.addEventListener("change", async () => {
-        setVal("scheduleTeamFocus", val("scheduleDepartment"));
-
-        if (scheduleRealRoleV616ai() === "HR_ADMIN") {
-          state.schedule = [];
-          renderSchedule();
-
-          setScheduleLoadStatus(
-            "info",
-            scheduleHrHasIntentionalScopeV616ai()
-              ? "ตัวกรองพร้อมแล้ว • กด “โหลดตารางกะ” เพื่อดึงข้อมูลเฉพาะ Scope ที่เลือก"
-              : scheduleHrFilterFirstMessageV616ai()
-          );
+        setVal("scheduleTeamFocus", selectedOrgIdV616M("scheduleDepartment") ? "" : val("scheduleDepartment"));
+        if(scheduleRealRoleV616ai()==="HR_ADMIN"){
+          state.schedule=[];renderSchedule();
+          setScheduleLoadStatus("info",scheduleHrHasIntentionalScopeV616ai()?"ตัวกรองพร้อมแล้ว • กด ‘โหลดตารางกะ’ เพื่อดึงข้อมูลเฉพาะ Scope ที่เลือก":scheduleHrFilterFirstMessageV616ai());
           return;
         }
-
-        if (scheduleCurrentView() === "PERSON") {
-          await loadSchedule();
-        } else {
-          renderSchedule();
-        }
+        if(scheduleCurrentView()==="PERSON")await loadSchedule();else renderSchedule();
       });
 
       $("scheduleSearch").addEventListener("input", () => {
@@ -13361,16 +15337,6 @@ window.tcIsDayShiftCode = value =>
 
         const term = val("scheduleSearch").trim();
         const exactEmp = /^\d{4,20}$/.test(term);
-
-        if (
-          scheduleRealRoleV616ai() === "HR_ADMIN"
-          && exactEmp
-        ) {
-          setScheduleLoadStatus(
-            "info",
-            `พร้อมโหลดรหัสพนักงาน ${term} • กด “โหลดตารางกะ”`
-          );
-        }
 
         if (
           exactEmp
@@ -13385,6 +15351,12 @@ window.tcIsDayShiftCode = value =>
       });
       $("schedulePatternFilter")?.addEventListener("change", renderSchedule);
       $("scheduleTeamFocus")?.addEventListener("change", renderSchedule);
+      $("scheduleOperationalTeamV61526")?.addEventListener("change", renderSchedule);
+      document.querySelectorAll('[data-person-team-group-v616t]').forEach(btn=>btn.addEventListener('click',()=>{
+        scheduleViewState.personTeamGroupMode=String(btn.dataset.personTeamGroupV616t||'TEAM').toUpperCase()==='FLAT'?'FLAT':'TEAM';
+        try{localStorage.setItem('timeclock.schedule.personTeamGroupMode',scheduleViewState.personTeamGroupMode);}catch(_){}
+        renderSchedule();
+      }));
       $("scheduleViewSwitch")?.addEventListener("click", async event => {
         const button = event.target.closest('[data-schedule-view]');
         if (!button) return;
@@ -13408,20 +15380,20 @@ window.tcIsDayShiftCode = value =>
         }
       });
       $("scheduleTeamWrap")?.addEventListener("click", async event => {
-        const dayTrigger = event.target.closest('[data-team-day-unit][data-team-day-date]');
+        const dayTrigger = event.target.closest('[data-team-day-key-v61526][data-team-day-date]');
         if (dayTrigger) {
           openScheduleTeamDrawer(
-            String(dayTrigger.dataset.teamDayUnit || ''),
-            String(dayTrigger.dataset.teamDayDate || '')
+            String(dayTrigger.dataset.teamDayKeyV61526 || ''),
+            String(dayTrigger.dataset.teamDayDate || ''),
+            String(dayTrigger.dataset.teamDayLabelV61526 || '')
           );
           return;
         }
 
-        const trigger = event.target.closest('[data-team-open]');
+        const trigger = event.target.closest('[data-team-open-key-v61526]');
         if (!trigger) return;
-        const team = String(trigger.dataset.teamOpen || '');
-        setVal('scheduleDepartment', team);
-        setVal('scheduleTeamFocus', team);
+        const teamKey = String(trigger.dataset.teamOpenKeyV61526 || '');
+        setVal('scheduleOperationalTeamV61526', teamKey);
         setScheduleView('PERSON');
         await loadSchedule();
       });
@@ -13516,6 +15488,13 @@ window.tcIsDayShiftCode = value =>
       $("scheduleTableWrap")?.addEventListener("scroll", hidePersonShiftTooltipV61146, { passive:true });
 
       $("scheduleTableWrap")?.addEventListener("click", event => {
+        const teamToggleV616T=event.target.closest('[data-person-team-toggle-v616t]');
+        if(teamToggleV616T){
+          const key=String(teamToggleV616T.dataset.personTeamToggleV616t||'');
+          if(schedulePersonCollapsedTeamsV616T.has(key))schedulePersonCollapsedTeamsV616T.delete(key);else schedulePersonCollapsedTeamsV616T.add(key);
+          renderSchedule();
+          return;
+        }
         const calendarButton = event.target.closest('[data-person-month-calendar]');
         if (!calendarButton) return;
         event.preventDefault();
@@ -13807,18 +15786,131 @@ window.tcIsDayShiftCode = value =>
       }
       return "badge-gray";
     }
-    function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",DAY_OFF:"วันหยุด",MISSING_IN:"ไม่ลงเวลาเข้า",MISSING_OUT:"ไม่ลงเวลาออก",MISSING_BOTH:"ไม่ลงเวลาทั้งเข้าและออก",LATE_30_PLUS:"เข้าหลังเริ่มกะ ≥30 นาที",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-"; }
+    function attendanceLabel(s) { return ({ NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",DAY_OFF:"วันหยุด",MISSING_IN:"ไม่ลงเวลาเข้า",MISSING_OUT:"ไม่ลงเวลาออก",MISSING_BOTH:"ไม่ลงเวลาทั้งเข้าและออก",LATE_30_PLUS:"เข้าหลังเริ่มกะ ≥30 นาที",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุด",WORKED_ON_HOLIDAY:"ทำงานนักขัตฯ",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"หยุดสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-"; }
     function emptyRow(cols) { return `<tr><td colspan="${cols}" class="table-empty">ไม่พบข้อมูล</td></tr>`; }
+    const ERROR_GUIDE_V616CX = Object.freeze({
+      SCHEDULE_EDIT_PERMISSION_DENIED: "ไม่มีสิทธิ์แก้ไขกะของพนักงานหรือวันที่นี้ กรุณาตรวจ Manager Scope / Acting และช่วงวันที่มีผล",
+      TEAM_MANAGER_ROLE_REQUIRED: "การจัดการทีมต้องใช้สิทธิ์ Manager หรือ Acting Manager ที่ครอบคลุมหน่วยงานของทีม",
+      TEAM_ORG_PERMISSION_DENIED: "ไม่มีสิทธิ์จัดการทีมในหน่วยงานนี้ กรุณาตรวจ Manager Scope หรือช่วง Acting",
+      TEAM_RUNTIME_ACTOR_NOT_FOUND: "ระบบไม่พบสิทธิ์ผู้ใช้งานปัจจุบัน กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่",
+      TEAM_NOT_FOUND: "ไม่พบทีมที่เลือก กรุณาโหลดข้อมูลทีมใหม่แล้วลองอีกครั้ง",
+      TEAM_NOT_READY: "ทีมยังไม่พร้อมใช้งาน กรุณาตรวจสถานะทีมและจำนวนสมาชิกก่อนดำเนินการ",
+      TEAM_ALREADY_INACTIVE: "ทีมนี้ถูกปิดใช้งานแล้ว ไม่สามารถดำเนินการซ้ำได้",
+      TEAM_CATEGORY_REQUIRED: "กรุณาระบุประเภททีมก่อนบันทึก",
+      TEAM_MEMBER_NOT_FOUND: "ไม่พบสมาชิกทีมที่ต้องการดำเนินการ กรุณาโหลดข้อมูลล่าสุดอีกครั้ง",
+      TEAM_MEMBER_OVERLAP: "พนักงานมีช่วงสมาชิกทีมถาวรซ้อนกัน กรุณาตรวจ Effective Date ของทีมเดิมและทีมใหม่",
+      TEAM_MEMBER_ORG_MISMATCH: "พนักงานและทีมอยู่คนละหน่วยงานตามโครงสร้างองค์กร กรุณาตรวจ Org ของพนักงานและทีม",
+      TEAM_MEMBER_CATEGORY_MISMATCH: "ประเภทการปฏิบัติงานของพนักงานไม่ตรงกับประเภททีมที่เลือก",
+      TEAM_MEMBER_OPERATIONAL_TYPE_MISMATCH: "รูปแบบการปฏิบัติงานของพนักงานไม่ตรงกับทีม กรุณาตรวจ รถยนต์ / มอเตอร์ไซค์ / สนับสนุน",
+      TEAM_MEMBERS_MIN: "จำนวนสมาชิกทีมต่ำกว่าขั้นต่ำที่กำหนด กรุณาเพิ่มสมาชิกก่อนยืนยันทีม",
+      TEAM_MEMBERS_MAX: "จำนวนสมาชิกทีมเกินจำนวนสูงสุดที่กำหนด กรุณาปรับสมาชิกก่อนยืนยันทีม",
+      TEAM_FINAL_MEMBERS_MIN: "หลังดำเนินการแล้วจำนวนสมาชิกทีมจะต่ำกว่าขั้นต่ำที่กำหนด",
+      TEAM_FINAL_MEMBERS_MAX: "หลังดำเนินการแล้วจำนวนสมาชิกทีมจะเกินจำนวนสูงสุดที่กำหนด",
+      TEAM_CLOSE_MEMBERS_MUST_REASSIGN: "ยังมีสมาชิกในทีม กรุณากำหนดทีมปลายทางหรือปิดช่วงสมาชิกให้ครบก่อนปิดทีม",
+      TEAM_CLOSE_MEMBER_PLAN_INCOMPLETE: "แผนย้ายสมาชิกก่อนปิดทีมยังไม่ครบ กรุณากำหนดปลายทางให้สมาชิกทุกคน",
+      TEAM_CLOSE_MEMBER_TARGET_INVALID: "ทีมปลายทางของสมาชิกไม่ถูกต้องหรือไม่พร้อมใช้งาน กรุณาเลือกทีมใหม่",
+      TEAM_CLOSE_TARGET_CAPACITY_INVALID: "ทีมปลายทางมีจำนวนสมาชิกไม่รองรับการย้ายทั้งหมด กรุณาเลือกทีมอื่นหรือกระจายสมาชิก",
+      TEAM_CLOSE_DUPLICATE_MEMBER_PLAN: "พบแผนย้ายสมาชิกซ้ำ กรุณาตรวจรายชื่อก่อนปิดทีม",
+      TEAM_CLOSE_UNKNOWN_MEMBER_PLAN: "พบสมาชิกในแผนปิดทีมที่ไม่ตรงกับข้อมูลล่าสุด กรุณาโหลด Preview ใหม่",
+      TEAM_CLOSE_PREVIEW_BLOCKED: "ยังปิดทีมไม่ได้ตามข้อมูลล่าสุด กรุณาตรวจสมาชิก ทีมปลายทาง และรายการยืมตัวก่อน",
+      TEAM_HAS_TEMPORARY_ASSIGNMENTS: "ทีมยังมีรายการยืมตัวที่มีผล กรุณาตรวจ Borrow ก่อนปิดทีม",
+      OPERATIONAL_TEAM_REQUIRED: "พนักงานต้องมี Home Team ที่มีผลก่อนดำเนินการรายการนี้",
+      HOME_TEAM_REQUIRED_BEFORE_TEMP_ASSIGNMENT: "ต้องกำหนด Home Team ให้พนักงานก่อนสร้างรายการยืมตัว",
+      TEMP_ASSIGNMENT_SAME_TEAM: "ทีมต้นทางและทีมปลายทางต้องเป็นคนละทีม",
+      TEMP_ASSIGNMENT_DATE_RANGE_INVALID: "ช่วงวันที่ยืมตัวไม่ถูกต้อง กรุณาตรวจวันที่เริ่มและวันที่สิ้นสุด",
+      TEMP_ASSIGNMENT_DATE_OVERLAP: "พนักงานมีรายการยืมตัวช่วงวันที่ซ้อนกันอยู่แล้ว",
+      TEMP_ASSIGNMENT_BACKDATE_NOT_ALLOWED: "วันที่เริ่มยืมตัวย้อนหลังเกินช่วงที่ระบบอนุญาต กรุณาเลือกตั้งแต่วันแรกของเดือนปัจจุบันเป็นต้นไป",
+      TEMP_ASSIGNMENT_BEFORE_EMPLOYEE_START_DATE: "วันที่เริ่มยืมตัวต้องไม่ก่อนวันเริ่มงานของพนักงาน",
+      TEMP_ASSIGNMENT_AFTER_EMPLOYEE_RESIGN_DATE: "ช่วงยืมตัวต้องไม่เกินวันที่ลาออกของพนักงาน",
+      TEMP_ASSIGNMENT_AUTHORITY_DENIED: "ไม่มีสิทธิ์ดำเนินการยืมตัวของพนักงานรายนี้ กรุณาตรวจ Scope ของ Manager / Acting",
+      TEMP_ASSIGNMENT_COUNTERPART_AUTHORITY_DENIED: "ไม่มีสิทธิ์ฝั่งหน่วยงานคู่กรณีของรายการยืมตัว กรุณาตรวจ Manager / Acting ของต้นทางและปลายทาง",
+      TEMP_ASSIGNMENT_OPERATIONAL_MANAGER_REQUIRED: "รายการยืมตัวต้องมี Manager หรือ Acting Manager ที่รับผิดชอบ Working Org",
+      BORROW_CROSS_DIVISION_NOT_ALLOWED: "การยืมตัวอนุญาตเฉพาะภายใน Division เดียวกัน",
+      BORROW_DESTINATION_AUTHORITY_REQUIRED: "ไม่พบผู้มีอำนาจฝั่งทีมปลายทาง กรุณาตรวจ Manager Scope หรือ Acting ของหน่วยงานปลายทาง",
+      BORROW_DESTINATION_MANAGER_REQUIRED: "ทีมปลายทางยังไม่มี Manager / Acting ที่รับผิดชอบ กรุณากำหนดสิทธิ์ก่อนยืมตัว",
+      BORROW_SOURCE_MANAGER_APPROVAL_REQUIRED: "รายการยืมตัวต้องได้รับการยืนยันจาก Manager ฝั่งต้นทางก่อน",
+      BORROW_NOT_WAITING_SOURCE: "สถานะรายการยืมตัวไม่อยู่ในขั้นตอนรอฝั่งต้นทางดำเนินการ กรุณาโหลดข้อมูลล่าสุด",
+      BORROW_OPERATIONAL_TYPE_MISMATCH: "รูปแบบการปฏิบัติงานของพนักงานไม่ตรงกับทีมปลายทาง",
+      BORROW_SAME_MANAGER_USE_TEAM_TRANSFER: "ต้นทางและปลายทางอยู่ภายใต้ Manager เดียวกัน กรุณาใช้การย้ายทีมถาวรแทนการยืมตัว",
+      BORROW_PREVIEW_BLOCKED: "รายการยืมตัวยังไม่ผ่านเงื่อนไข Preview กรุณาตรวจทีม ช่วงวันที่ และสิทธิ์ Manager / Acting",
+      SOURCE_MANAGER_NOT_FOUND: "ไม่พบ Manager / Acting ที่รับผิดชอบต้นทาง กรุณาตรวจ Manager Scope หรือ Acting",
+      MANAGER_AUTH_ACCOUNT_NOT_FOUND: "ไม่พบบัญชี Auth ของ Manager ที่กำหนด กรุณาตรวจ User Profile และบัญชีเข้าสู่ระบบ",
+      OUTSIDE_MANAGER_SCOPE: "รายการนี้อยู่นอกขอบเขตสิทธิ์ของ Manager ปัจจุบัน",
+      OUTSIDE_BORROW_WINDOW: "วันที่ที่เลือกอยู่นอกช่วงยืมตัวที่มีผล",
+      REQUEST_ID_REQUIRED: "ไม่พบรหัสคำขอ กรุณาโหลดรายการคำขอใหม่แล้วลองอีกครั้ง",
+      ACTIVE_MANAGER_NOT_FOUND_FOR_EMPLOYEE: "ไม่พบ Manager / Acting ที่รับผิดชอบ Working Team ของพนักงานขณะสร้างคำขอ กรุณาตรวจ Manager Scope, Acting และทีม",
+      ATTENDANCE_DAY_NOT_FOUND: "ไม่พบข้อมูล Attendance Day ของพนักงานในวันที่เลือก กรุณาตรวจตารางกะและประมวลผล Attendance ใหม่",
+      AUTH_SESSION_REQUIRED: "ไม่พบ Session การเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่",
+      AUTH_SESSION_EXPIRED: "Session หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่",
+      PASSWORD_RESET_RATE_LIMIT: "มีการขอรีเซ็ตรหัสผ่านถี่เกินไป กรุณารอสักครู่แล้วลองใหม่",
+      NO_MANAGER_SCOPE: "บัญชี Manager ยังไม่มี Scope ที่มีผล กรุณาให้ HR Admin กำหนดขอบเขตหน่วยงานก่อนใช้งาน"
+    });
+
+    function errorCodeV616CX(err, msg) {
+      const direct = String(err?.code || err?.error_code || "").trim().toUpperCase();
+      if (direct && ERROR_GUIDE_V616CX[direct]) return direct;
+      const text = String(msg || err?.message || err?.error_description || "");
+      const matches = text.match(/\b[A-Z][A-Z0-9_]{5,}\b/g) || [];
+      return matches.find(code => ERROR_GUIDE_V616CX[code]) || matches[0] || direct || "";
+    }
+
     function humanError(err) {
       const msg = err?.message || err?.error_description || String(err || "เกิดข้อผิดพลาด");
+      if (msg.includes("TEAM_REQUIRED_FOR_CAR")) return "พนักงานกลุ่มรถยนต์ยังไม่มีทีมที่มีผลในวันที่เลือก กรุณากำหนดทีมก่อนจัดกะ";
+      if (msg.includes("TEAM_REQUIRED_FOR_MOTORCYCLE")) return "พนักงานกลุ่มมอเตอร์ไซค์ยังไม่มีทีมที่มีผลในวันที่เลือก กรุณาจัดเข้าทีมก่อนจัดกะ";
+      if (msg.includes("TEAM_REQUIRED_FOR_SUPPORT")) return "พนักงานกลุ่มสนับสนุนยังไม่มีทีมที่มีผลในวันที่เลือก กรุณาจัดเข้าทีมก่อนจัดกะ";
+      if (msg.includes("TEAM_NOT_READY_FOR_SCHEDULE")) return "ทีมของพนักงานยังไม่พร้อมใช้งานตามจำนวนสมาชิกหรือสถานะทีมในวันที่เลือก กรุณาตรวจทีมก่อนจัดกะ";
+      if (msg.includes("TEAM_MEMBERSHIP_REQUIRED_BEFORE_SCHEDULE")) return "พนักงานยังไม่มีทีมที่มีผลในวันที่เลือก กรุณาจัดเข้าทีมก่อนจัดกะ";
+      if (msg.includes("SCHEDULE_ROW_INVALID")) return "ข้อมูลพนักงานหรือวันที่จัดกะไม่สมบูรณ์ กรุณาตรวจข้อมูลแล้วลองใหม่";
+      if (msg.includes("SCHEDULE_READINESS_REQUIRED")) return "พนักงานยังไม่พร้อมสำหรับการจัดกะ กรุณาตรวจวันเริ่มงาน/วันลาออก รูปแบบการปฏิบัติงาน และทีม";
+      if (msg.includes("EMPLOYEE_RESIGNED") || msg.includes("EMPLOYEE_RESIGN_DATE_REACHED")) return "ไม่สามารถจัดกะตั้งแต่วันที่ลาออกเป็นต้นไป กรุณาตรวจวันที่ลาออกใน Employee Master";
+      if (msg.includes("EMPLOYEE_NOT_STARTED")) return "ไม่สามารถจัดกะก่อนวันเริ่มงานพนักงานได้ กรุณาตรวจวันที่เริ่มงานและวันที่ของกะ";
+      if (msg.includes("EMPLOYEE_START_DATE_REQUIRED")) return "ไม่พบวันเริ่มงานพนักงาน กรุณาตรวจ Employee Master ก่อนดำเนินการ";
+      if (msg.includes("TEAM_ENFORCEMENT_NOT_READY")) return "ยังเปิด Team Enforcement ไม่ได้ กรุณาจัดทีมรถยนต์/ทีมสนับสนุน และกำหนดรูปแบบพนักงานที่รอดำเนินการให้ครบ";
+      if (msg.includes("TEAM_ENFORCEMENT_CAR_UNASSIGNED")) return "ยังเปิด Team Enforcement ไม่ได้ เพราะยังมีช่างรถยนต์ที่ไม่ได้กำหนดทีม";
+      if (msg.includes("OPERATIONAL_TYPE_REQUIRED")) return "พนักงานยังไม่ได้กำหนดรูปแบบการปฏิบัติงาน กรุณาให้ Manager กำหนดเป็น รถยนต์ / มอเตอร์ไซค์ / สนับสนุน ก่อนจัดกะ";
+      if (msg.includes("OPERATIONAL_TYPE_UNCLASSIFIED") || msg.includes("CAR_TEAM_UNSPECIFIED")) return "พนักงานยังรอ Manager กำหนดประเภทการปฏิบัติงาน";
       if (msg.includes("SCHEDULE_HAS_UNCONFIRMED_SHIFTS")) {
         const count = msg.match(/SCHEDULE_HAS_UNCONFIRMED_SHIFTS:\s*(\d+)/)?.[1];
         return `พบรายการจัดกะเดิมที่สถานะยังไม่สมบูรณ์${count ? ` ${Number(count).toLocaleString("th-TH")} รายการ` : ""} กรุณาเปิดรายการและกดบันทึกใหม่ก่อนประกาศหรือล็อกเดือน`;
       }
+      if (msg.includes("DAYOFF_REQUEST_PERIOD_CLOSED")) return "รอบระบบของวันที่เลือกปิดการจัดกะแล้ว ไม่สามารถส่งคำขอวันหยุดจาก Employee Portal ได้";
+      if (msg.includes("DAYOFF_REQUEST_DATE_NO_LONGER_FUTURE")) return "วันที่ในคำขอไม่ใช่วันอนาคตแล้ว กรุณาให้ Manager ดำเนินการจากตารางกะโดยตรง";
+      if (msg.includes("DAYOFF_EMPLOYEE_PORTAL_FUTURE_ONLY")) return "Employee Portal ขอหรือสลับวันหยุดได้เฉพาะวันที่หลังวันปัจจุบัน";
+      if (msg.includes("REQUEST_DATE_CONFLICT")) return "วันที่เลือกมีคำขออื่นที่กำลังดำเนินการและมีผลต่อกะ วันหยุด หรือลาอยู่แล้ว";
+      if (msg.includes("DAYOFF_SWAP_SOURCE_NOT_DAYOFF")) return "วันหยุดเดิมไม่ใช่วันหยุดตามข้อมูลตารางกะล่าสุด";
+      if (msg.includes("DAYOFF_SWAP_TARGET_MUST_BE_WORKDAY")) return "วันที่ต้องการหยุดแทนต้องเป็นวันทำงานตามข้อมูลล่าสุด";
+      if (msg.includes("DAYOFF_SWAP_PUBLIC_HOLIDAY_NOT_ALLOWED")) return "วันหยุดนักขัตฤกษ์ไม่สามารถนำมาสลับวันหยุดได้";
+      if (msg.includes("DAYOFF_SWAP_SAME_MONTH_REQUIRED")) return "วันหยุดเดิมและวันที่หยุดแทนต้องอยู่ภายในเดือนเดียวกัน";
+      if (msg.includes("DAYOFF_SWAP_DATE_MUST_DIFFER")) return "วันหยุดเดิมและวันที่หยุดแทนต้องเป็นคนละวัน";
+      if (msg.includes("DAYOFF_ADD_NO_REQUESTABLE_BALANCE")) return "โควต้าวันหยุดที่สามารถขอเพิ่มได้หมดแล้ว หรือมีคำขออื่นจองโควต้าไว้";
+      if (msg.includes("DAYOFF_ADD_TARGET_MUST_BE_WORKDAY")) return "ขอหยุดเพิ่มได้เฉพาะวันที่เป็นวันทำงาน";
+      if (msg.includes("DAYOFF_ADD_PUBLIC_HOLIDAY_NOT_ALLOWED")) return "วันหยุดนักขัตฤกษ์ไม่สามารถใช้คำขอหยุดเพิ่มได้";
+      if (msg.includes("DAYOFF_PAIRED_SHIFT_NOT_FOUND")) return "กะทำงานของวันที่เลือกยังไม่ได้จับคู่กับกะวันหยุด กรุณาตรวจ Shift Master / กฎจับคู่กะ";
+      if (msg.includes("DAYOFF_SWAP_SOURCE_WORK_SHIFT_NOT_FOUND")) return "ระบบไม่พบกะทำงานที่จะใช้คืนให้วันหยุดเดิม กรุณาตรวจการจับคู่กะวันหยุด";
+      if (msg.includes("DAYOFF_REQUEST_PREFLIGHT_BLOCKED")) return "ข้อมูลล่าสุดของคำขอไม่ผ่านเงื่อนไขก่อนอนุมัติ กรุณากดตรวจข้อมูลล่าสุดอีกครั้ง";
+      if (msg.includes("DAYOFF_REQUEST_WORK_PATTERN_BLOCKED") || msg.includes("DAYOFF_WORK_PATTERN_BLOCKED")) return "กะที่จะใช้หลังอนุมัติไม่ตรงกับรูปแบบการทำงาน 5 วัน/6 วันของพนักงาน";
+      if (msg.includes("DAYOFF_REQUEST_MINIMUM_REST_BLOCKED")) return "อนุมัติไม่ได้ เพราะเวลาพักจากกะก่อนหน้าต่ำกว่า 6 ชั่วโมง";
+      if (msg.includes("DAYOFF_REQUEST_NIGHT_SEQUENCE_BLOCKED")) return "อนุมัติไม่ได้ เพราะผลลัพธ์หลังสลับวันหยุดขัดกับเงื่อนไขลำดับกะดึก";
+      if (msg.includes("DAYOFF_REQUEST_QUOTA_BLOCKED")) return "อนุมัติไม่ได้ เพราะโควต้าวันหยุดไม่เพียงพอตามข้อมูลล่าสุด";
+      if (msg.includes("DAYOFF_REQUEST_FINAL_STATE_MISMATCH")) return "ระบบตรวจผลหลังบันทึกแล้วพบว่าตารางกะไม่ตรงกับผลที่อนุมัติ จึง Rollback รายการทั้งหมดอัตโนมัติ";
+      if (msg.includes("DAYOFF_REQUEST_FINAL_STATUS_MISMATCH")) return "ระบบไม่สามารถปิดคำขอหลังปรับตารางกะได้ จึง Rollback รายการทั้งหมดอัตโนมัติ";
+      if (msg.includes("REQUEST_RETURN_NOTE_REQUIRED")) return "กรุณาระบุเหตุผลที่ส่งคำขอกลับให้พนักงานแก้ไข";
+      if (msg.includes("REQUEST_RETURN_REQUIRES_EMPLOYEE_PORTAL")) return "ส่งกลับให้แก้ไขได้เฉพาะคำขอที่มาจาก Employee Portal";
+      if (msg.includes("REQUEST_RETURN_ONLY_DAYOFF_SUPPORTED")||msg.includes("REQUEST_RETURN_TYPE_NOT_SUPPORTED")) return "รองรับการส่งกลับให้แก้ไขสำหรับคำขอวันหยุดและคำขอลาจาก Employee Portal";
+      if (msg.includes("LEAVE_RANGE_NO_WORKDAY")) return "ช่วงวันที่เลือกไม่มีวันทำงานที่ต้องปรับตารางกะ";
+      if (msg.includes("LEAVE_SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบของวันที่ลาอย่างน้อย 1 วันปิดการแก้ไขตารางกะแล้ว";
+      if (msg.includes("LEAVE_NOT_ALLOWED_NON_WORKDAY")) return "ลาบางส่วนใช้ได้เฉพาะวันที่เป็นวันทำงาน";
+      if (msg.includes("PARTIAL_LEAVE_WINDOW_INVALID")) return "ช่วงลาบางส่วนไม่ผ่านเงื่อนไขกะล่าสุด";
+      if (msg.includes("NIGHT_SEQUENCE_BLOCKED")) return "คำขอนี้ไม่ผ่านเงื่อนไขกะดึกหรือเวลาพักระหว่างกะ";
       if (msg.includes("DAYOFF_QUOTA_EXHAUSTED")) return "วันหยุดคงเหลือไม่เพียงพอ ไม่สามารถกำหนดกะวันหยุดเพิ่มได้ กรุณาตรวจวันหยุดที่ใช้ไปหรือเปลี่ยนวันหยุดเดิมเป็นวันทำงานก่อน";
       if (msg.includes("DAYOFF_QUOTA_GUARD_V6143_REQUIRED")) return "กรุณาติดตั้ง Day-off Quota Guard V6.14.3 เพื่อเปิดใช้การควบคุมโควต้าวันหยุดก่อนบันทึกกะ";
       if (msg.includes("SCHEDULE_MONTH_LOCKED")) return "ตารางกะเดือนนี้ถูกล็อก กรุณาปลดล็อกก่อนแก้ไข";
       if (msg.includes("SCHEDULE_PUBLISH_PERMISSION_DENIED")) return "บัญชีนี้ไม่มีสิทธิ์ประกาศหรือล็อกตารางกะ";
+      if (msg.includes("WORK_MODE_NOT_ALLOWED_FOR_WORKING_ORG")) return "รูปแบบการจัดกะนี้ยังไม่ได้เปิดใช้กับ Working Org ของพนักงานในวันที่เลือก";
+      if (msg.includes("SELECT_AT_LEAST_ONE_ORG_UNIT")) return "กรุณาเลือกอย่างน้อย 1 Organization";
+      if (msg.includes("WORK_MODE_ORG_UNIT_NOT_FOUND_OR_INACTIVE")) return "พบ Organization ที่ไม่ถูกต้องหรือถูกปิดใช้งาน กรุณาโหลดรายการใหม่";
+      if (msg.includes("WORK_MODE_ORG_SCOPE_VALUE_INVALID_OR_AMBIGUOUS")) return "รายการสิทธิ์หน่วยงานเดิมไม่สามารถระบุ Organization ได้ชัดเจน กรุณาเลือกใหม่จาก Organization Master";
       if (msg.includes("HR_ADMIN_REQUIRED")) return "เมนูนี้สำหรับ HR_ADMIN เท่านั้น";
       if (msg.includes("SCHEDULE_LIGHTWEIGHT_RPC_REQUIRED")) return "กรุณารัน SQL V6.13.5 เพื่อเปิดใช้ Schedule Grid แบบ Lightweight";
       if (msg.includes("MONTHLY_PERSONAL_RPC_V6134_REQUIRED")) return "กรุณารัน SQL V6.13.5 เพื่อเปิดใช้ Monthly Personal Overview รุ่นใหม่";
@@ -13827,6 +15919,7 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("SECURE_SCHEDULE_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 ก่อนบันทึกหรือแก้ไขกะ";
       if (msg.includes("SECURE_SCOPE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตัวกรองตาม User Scope";
       if (msg.includes("SECURE_ATTENDANCE_FILTER_RPC_REQUIRED")) return "กรุณารัน SQL V6.11.15 เพื่อโหลดตัวกรอง Attendance ตาม User Scope";
+      if (msg.includes("SECURE_REVIEW_SCOPE_RPC_REQUIRED")) return "ไม่อนุญาตโหลดรายการตรวจสอบแบบไม่จำกัด Scope กรุณาใช้ Secure Review RPC ตาม User Scope";
       if (msg.includes("SYSTEM_PERIOD_SCHEDULE_CLOSED")) return "รอบระบบปิดการแก้ไขตารางกะแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("SYSTEM_PERIOD_CERTIFICATION_CLOSED")) return "รอบระบบปิดการรับรองเวลาทำงานแล้ว กรุณาติดต่อ HR Admin หากจำเป็นต้องเปิดรอบหรือขยาย Deadline";
       if (msg.includes("TIME_CERTIFICATION_FUTURE_DATE_NOT_ALLOWED")) return "รับรองเวลาได้เฉพาะวันที่ปัจจุบันและย้อนหลังเท่านั้น";
@@ -13875,6 +15968,28 @@ window.tcIsDayShiftCode = value =>
       if (msg.includes("PERSONAL_LEAVE_PARTIAL_MIN_60_MINUTES")) return "ลากิจบางส่วนกำหนดขั้นต่ำ 1 ชั่วโมง";
       if (msg.includes("VACATION_LEAVE_PARTIAL_MIN_180_MINUTES")) return "ลาพักร้อนบางส่วนกำหนดขั้นต่ำ 3 ชั่วโมง";
       if (msg.includes("LEAVE_NOT_ALLOWED_NON_WORKDAY")) return "ไม่สามารถอนุมัติลาในวันหยุด วันหยุดนักขัตฤกษ์ หรือวันที่ไม่ใช่วันทำงานได้";
+
+      // V6.15.29 FIX16CX · Human-readable error/action guidance layer.
+      const guideCode = errorCodeV616CX(err, msg);
+      if (guideCode && ERROR_GUIDE_V616CX[guideCode]) return ERROR_GUIDE_V616CX[guideCode];
+
+      if (/invalid login credentials/i.test(msg)) return "Email หรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจข้อมูลแล้วลองใหม่";
+      if (/email rate limit exceeded|rate limit/i.test(msg)) return "ระบบจำกัดการส่ง Email ชั่วคราวเนื่องจากมีการเรียกใช้งานถี่เกินไป กรุณารอสักครู่แล้วลองใหม่";
+      if (/jwt.*expired|token.*expired|refresh token.*invalid|session.*expired/i.test(msg)) return "Session หมดอายุแล้ว กรุณาเข้าสู่ระบบใหม่";
+      if (/PGRST202|could not find the function|schema cache/i.test(msg)) return "ระบบยังไม่พบ RPC ที่ต้องใช้ กรุณาตรวจว่า Backend SQL ติดตั้งแล้ว และ Reload Schema ของ Supabase";
+      if (/42501|permission denied|not authorized|unauthorized/i.test(msg)) return "บัญชีนี้ไม่มีสิทธิ์ดำเนินการรายการนี้ กรุณาตรวจ Role, Manager Scope หรือ Acting";
+      if (/23505|duplicate key/i.test(msg)) return "พบข้อมูลซ้ำกับรายการที่มีอยู่แล้ว กรุณาโหลดข้อมูลล่าสุดและตรวจรายการก่อนบันทึก";
+      if (/23503|foreign key/i.test(msg)) return "ข้อมูลอ้างอิงที่เลือกไม่พบหรือถูกเปลี่ยนแปลง กรุณาโหลดข้อมูลล่าสุดแล้วลองใหม่";
+      if (/23514|check constraint/i.test(msg)) return "ข้อมูลไม่ผ่านกฎตรวจสอบของระบบ กรุณาตรวจค่าที่กรอกและสถานะข้อมูลล่าสุด";
+      if (/42P01|relation .* does not exist/i.test(msg)) return "Backend ยังขาด Table/View ที่ฟังก์ชันนี้ต้องใช้ กรุณาตรวจลำดับการติดตั้ง SQL";
+      if (/42883|function .* does not exist/i.test(msg)) return "Backend ยังขาด Function/RPC ที่ฟังก์ชันนี้ต้องใช้ กรุณาตรวจลำดับการติดตั้ง SQL";
+      if (/tuple concurrently updated|could not serialize|deadlock detected/i.test(msg)) return "ข้อมูลถูกแก้ไขพร้อมกันจากอีก Session กรุณาโหลดข้อมูลล่าสุดแล้วดำเนินการอีกครั้ง";
+      if (/network|failed to fetch|fetch failed|networkerror/i.test(msg)) return "เชื่อมต่อระบบไม่สำเร็จ กรุณาตรวจ Internet แล้วลองใหม่";
+
+      // Do not show raw backend-code-only messages to end users.
+      if (guideCode && /^[A-Z][A-Z0-9_]{5,}$/.test(guideCode) && msg.trim().toUpperCase().startsWith(guideCode)) {
+        return `ระบบไม่สามารถดำเนินการได้ (${guideCode}) กรุณาโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง หากยังเกิดซ้ำให้แจ้ง HR Admin`;
+      }
       return msg;
     }
 
@@ -13894,6 +16009,7 @@ window.tcIsDayShiftCode = value =>
       showLoading,
       hideLoading,
       humanError,
+      errorCodeV616CX,
       formatNumber,
       formatDate,
       formatDateTime,
@@ -13919,6 +16035,29 @@ window.tcIsDayShiftCode = value =>
       attendancePlannedCellV61110,
       enrichAttendanceWorkSegmentsV6118,
       loadAttendanceFilterOptions,
+      loadScopedAreaDepartmentOptionsV616K,
+      loadAuthorizedOrgContractV616L,
+      scopedDepartmentOptionsV616L,
+      loadScopeEmployeeOptionsV616O,
+      canonicalScopeEmployeeMetaMapV616Q,
+      applyCanonicalOrgMetaV616Q,
+      canonicalOrgNameV616Q,
+      canonicalOrgCodeV616Q,
+      canonicalOrgLabelV616Q,
+      canonicalOrgIdentityV616Q,
+      canonicalAreaV616Q,
+      canonicalSubAreaV616Q,
+      attendanceTeamLabelV616U,
+      attendanceTeamCompactLabelV616V,
+      attendanceOrgSublineV616V,
+      attendanceHistoricalTeamLabelV616BA,
+      attendanceHistoricalTeamGroupV616BB,
+      attendanceCurrentTeamCompactLabelV616BB,
+      attendanceCurrentTeamGroupV616BA,
+      selectedOrgIdV616M,
+      selectedLegacyDepartmentV616M,
+      selectedDepartmentDisplayV616M,
+      loadOrgEmployeeCodesV616M,
       loadAttendanceEmployeeOptions,
       attendanceEmployeeCodesForQuery,
       selectAttendanceEmployees,
@@ -14774,6 +16913,108 @@ window.tcIsDayShiftCode = value =>
   function selectByEmp(emp){ selected.clear(); wrap()?.querySelectorAll(`[data-schedule-cell][data-emp="${escapeCss(emp)}"]`).forEach(c=>selected.add(keyOf(c))); activeKey=[...selected][0]||null; anchorKey=activeKey; refreshSelectionUI(); }
   function selectByDate(date){ selected.clear(); wrap()?.querySelectorAll(`[data-schedule-cell][data-date="${escapeCss(date)}"]`).forEach(c=>selected.add(keyOf(c))); activeKey=[...selected][0]||null; anchorKey=activeKey; refreshSelectionUI(); }
 
+  function scheduleReadinessMessageV616BF(blocked=[]){
+    const rows=Array.isArray(blocked)?blocked:[];
+    if(!rows.length)return '';
+    const groups=new Map();
+    rows.forEach(item=>{
+      const message=String(item?.message||'ยังไม่พร้อมสำหรับการจัดกะ').trim();
+      groups.set(message,(groups.get(message)||0)+1);
+    });
+    const lines=[...groups.entries()].slice(0,4).map(([message,count])=>`• ${message}: ${count.toLocaleString('th-TH')} ช่อง`);
+    if(groups.size>4)lines.push(`• อื่น ๆ อีก ${(groups.size-4).toLocaleString('th-TH')} เงื่อนไข`);
+    return lines.join('\n');
+  }
+
+  async function schedulePreflightV616BF(payload=[], {silent=false}={}){
+    const rows=(Array.isArray(payload)?payload:[])
+      .map(item=>({
+        emp_code:String(item?.emp_code||'').trim(),
+        work_date:String(item?.work_date||'').slice(0,10),
+        shift_code:item?.shift_code==null||item?.shift_code===''?null:window.tcShiftCode(item.shift_code)
+      }))
+      .filter(item=>item.emp_code&&item.work_date&&item.shift_code);
+    if(!rows.length)return {allowed:true,blocked:[],blockedKeys:new Set()};
+
+    const client=app()?.state?.client;
+    if(!client)return {allowed:true,blocked:[],blockedKeys:new Set()};
+
+    const blocked=[];
+    const blockedKeys=new Set();
+    const addBlocked=(item)=>{
+      const emp=String(item?.emp_code||'').trim();
+      const date=String(item?.work_date||'').slice(0,10);
+      if(emp&&date)blockedKeys.add(`${emp}|${date}`);
+      blocked.push(item||{});
+    };
+
+    // FIX16BF: Operational Profile + CURRENT Team prerequisite before any
+    // assignment is sent to the schedule writer.  Batch the canonical RPC so
+    // Copy/Paste, Copy Month, Undo/Redo and quick actions all share one guard.
+    try{
+      for(let i=0;i<rows.length;i+=400){
+        const batch=rows.slice(i,i+400).map(x=>({emp_code:x.emp_code,work_date:x.work_date}));
+        const response=await client.rpc('ta_validate_schedule_readiness_v616t',{p_rows:batch});
+        if(response.error)throw response.error;
+        const result=response.data||{};
+        if(result.allowed===false){
+          (Array.isArray(result.blocked)?result.blocked:[]).forEach(addBlocked);
+        }
+      }
+    }catch(error){
+      if(!silent)app()?.toast(`ตรวจ Operational Profile / Team ก่อนจัดกะไม่สำเร็จ: ${app()?.humanError?.(error)||error?.message||error}`,'error');
+      return {allowed:false,blocked:[{message:'ตรวจ Operational Profile / Team ไม่สำเร็จ'}],blockedKeys,error};
+    }
+
+    // FIX16BF: Date-aware edit authority (Manager / Acting / Borrow destination).
+    // Keep batches small because the context RPC returns one row per employee/day.
+    try{
+      const byEmp=new Map();
+      rows.forEach(item=>{
+        if(!byEmp.has(item.emp_code))byEmp.set(item.emp_code,[]);
+        byEmp.get(item.emp_code).push(item.work_date);
+      });
+      const emps=[...byEmp.keys()];
+      for(let i=0;i<emps.length;i+=12){
+        const batchEmps=emps.slice(i,i+12);
+        const dates=batchEmps.flatMap(emp=>byEmp.get(emp)||[]).sort();
+        if(!dates.length)continue;
+        const response=await client.rpc('ta_get_schedule_working_team_context_v61529f14b',{
+          p_emp_codes:batchEmps,
+          p_start_date:dates[0],
+          p_end_date:dates[dates.length-1]
+        });
+        if(response.error)throw response.error;
+        const map=new Map((Array.isArray(response.data)?response.data:[]).map(x=>[
+          `${String(x?.emp_code||'').trim()}|${String(x?.work_date||'').slice(0,10)}`,
+          x
+        ]));
+        rows.filter(x=>batchEmps.includes(x.emp_code)).forEach(item=>{
+          const key=`${item.emp_code}|${item.work_date}`;
+          if(blockedKeys.has(key))return;
+          const ctx=map.get(key);
+          if(ctx&&ctx.can_edit_schedule===false){
+            addBlocked({
+              emp_code:item.emp_code,
+              work_date:item.work_date,
+              code:'SCHEDULE_EDIT_PERMISSION_DENIED',
+              message:'ไม่มีสิทธิ์แก้ไขกะตาม Work Date'
+            });
+          }
+        });
+      }
+    }catch(error){
+      // The database writer remains the final authority.  If this older
+      // context RPC is unavailable, do not create a false-negative preflight.
+      console.warn('FIX16BF schedule authority preflight fallback:',error);
+    }
+
+    if(blocked.length&&!silent){
+      app()?.toast(`มีรายการที่ยังวางกะไม่ได้ ${blocked.length.toLocaleString('th-TH')} ช่อง\n${scheduleReadinessMessageV616BF(blocked)}`,'error');
+    }
+    return {allowed:blocked.length===0,blocked,blockedKeys};
+  }
+
   async function savePayload(payload, reason, confirmNow=false, historyLabel="แก้ไขกะ"){
     if(!payload.length) return false;
 
@@ -14809,6 +17050,9 @@ ${skippedSummary(compatibility.skipped)}
       return false;
     }
 
+    const readinessV616BF=await schedulePreflightV616BF(validPayload,{silent:false});
+    if(readinessV616BF.allowed===false)return false;
+
     const ruleGuardV6120=await window.TimeClockSchedulingRulesV6120?.validateBulk?.(validPayload);
     if(ruleGuardV6120&&ruleGuardV6120.allowed===false)return false;
 
@@ -14833,9 +17077,31 @@ ${skippedSummary(compatibility.skipped)}
     }catch(err){app().toast(app().humanError(err),"error");return false;}finally{app().hideLoading();}
   }
   async function bulkAssign(shiftCode,confirmNow=false){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องกะก่อน","error");await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:shiftCode,note:"กำหนดจาก Schedule Pro"})),`กำหนดกะ ${shiftCode} จาก Schedule Pro`,confirmNow,`กำหนด ${shiftCode}`);}
+  function specialCellCopyMetaV616BF(row){
+    const mode=String(row?.schedule_rule_mode||row?.work_mode_code||'').trim().toUpperCase();
+    const isSpecial=['HOUR_BASED','SPLIT_WAIT_NIGHT','NORMAL_LATE_CUSTOMER'].includes(mode)
+      || Boolean(row?.shift_2_planned_start_at)
+      || Boolean(row?.customer_window_start)
+      || Boolean(row?.custom_start_time);
+    if(!isSpecial)return null;
+    const label=mode==='HOUR_BASED'?'กะนับชั่วโมง'
+      : mode==='SPLIT_WAIT_NIGHT'?'กะเช้า + รอเข้ากะดึก'
+      : mode==='NORMAL_LATE_CUSTOMER'?'กะปกติ + งานลูกค้าช่วงดึก'
+      : 'กะพิเศษ';
+    return {mode:mode||'SPECIAL',label};
+  }
+
   function copySelection(){
     const rows=selectedRows();
     if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการคัดลอก","error");
+    const special=rows.map(x=>({item:x,meta:specialCellCopyMetaV616BF(x.row)})).filter(x=>x.meta);
+    if(special.length){
+      const first=special[0];
+      return app()?.toast(
+        `คัดลอกแบบช่องไม่ได้: พบกะพิเศษ ${special.length.toLocaleString('th-TH')} ช่อง (${first.meta.label}) • กรุณาเปิดวันนั้นแล้วจัดกะพิเศษใหม่ เพื่อให้ Work Mode และช่วงเวลาครบถ้วน`,
+        'warning'
+      );
+    }
     clipboard=rows.map(x=>currentCode(x.row)||null);
     refreshSelectionUI();
     app().toast(`คัดลอก ${clipboard.length.toLocaleString("th-TH")} ช่องแล้ว • เลือกปลายทางแล้วกด วาง`,"success");
@@ -14848,7 +17114,18 @@ ${skippedSummary(compatibility.skipped)}
       const ok=await window.tcConfirm(`คลิปบอร์ดมี ${clipboard.length.toLocaleString("th-TH")} ช่อง แต่เลือกปลายทาง ${targets.length.toLocaleString("th-TH")} ช่อง\n\nระบบจะวางตามลำดับจากซ้ายไปขวาและวนซ้ำเมื่อจำนวนไม่เท่ากัน ต้องการดำเนินการต่อหรือไม่?`);
       if(!ok)return;
     }
-    await savePayload(targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"})),"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");
+    const payload=targets.map((x,i)=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:clipboard[i%clipboard.length],note:"วางจากคลิปบอร์ด"}));
+    const destructiveBlank=targets.filter((x,i)=>{
+      const incoming=clipboard[i%clipboard.length];
+      return (incoming===null||incoming===undefined||incoming==='') && Boolean(currentCode(x.row));
+    });
+    if(destructiveBlank.length){
+      const ok=await window.tcConfirm(
+        `พบช่องว่างในคลิปบอร์ดที่จะล้างกะปลายทาง ${destructiveBlank.length.toLocaleString('th-TH')} ช่อง\n\nการวางครั้งนี้จะลบกะที่มีอยู่ในช่องดังกล่าว ต้องการดำเนินการต่อหรือไม่?`
+      );
+      if(!ok)return;
+    }
+    await savePayload(payload,"คัดลอกและวางกะจาก Schedule Pro",false,"วางกะ");
   }
 
   const monthCopyEscV61413 = value => String(value??'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':'&quot;',"'":"&#39;"}[c]));
@@ -14923,8 +17200,10 @@ ${skippedSummary(compatibility.skipped)}
         status.classList.remove('hidden');
         status.innerHTML=`<div class="month-copy-status-source-v61413 candidate"><span>ต้นทางที่เลือก</span><strong>${monthCopyEscV61413(sourceMeta.emp_code)} • ${monthCopyEscV61413(sourceMeta.full_name||'-')}</strong><small>กด “คัดลอกทั้งเดือน” เพื่อเข้าสู่ขั้นเลือกปลายทาง</small></div>`;
       }else{
-        status.classList.add('hidden');
-        status.innerHTML='';
+        // FIX16BE: keep a compact status slot visible at all times so entering
+        // month-copy mode never pushes the schedule table down.
+        status.classList.remove('hidden');
+        status.innerHTML=`<div class="month-copy-status-idle-v61413"><span>คัดลอกทั้งเดือน</span><small>เลือก Checkbox พนักงานต้นทาง 1 คน แล้วกด “คัดลอกทั้งเดือน”</small></div>`;
       }
     }
 
@@ -15028,79 +17307,197 @@ ${skippedSummary(compatibility.skipped)}
     finally{app()?.hideLoading();}
   }
 
-  function monthCopyPasteModeV61413(){return String($('scheduleMonthCopyModeV61413')?.value||'EMPTY_ONLY');}
+  function monthCopyEffectiveCodeV616BG(row){
+    return window.tcShiftCode(
+      row?.effective_shift_code
+      || row?.assigned_shift_code
+      || row?.auto_shift_code
+      || row?.shift_code
+      || null
+    );
+  }
+
+  function monthCopyPatternLabelV616BG(code){
+    const c=String(code||'').toUpperCase();
+    return c==='TECH_5D'?'5D':c==='TECH_6D'?'6D':(c||'-');
+  }
+
+  async function monthCopyBackendPreviewV616BG(source,targets,month){
+    const client=app()?.state?.client;
+    if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+    const response=await client.rpc('ta_preview_month_copy_v616bg',{
+      p_source_emp:String(source||'').trim(),
+      p_target_emps:(targets||[]).map(x=>String(x||'').trim()).filter(Boolean),
+      p_month:`${String(month||'').slice(0,7)}-01`
+    });
+    if(response.error){
+      if(window.TimeClockShiftAPI?.missingFunction?.(response.error)){
+        throw new Error('MONTH_COPY_V616BG_REQUIRED: กรุณารัน SQL FIX16BG ก่อนใช้คัดลอกกะทั้งเดือน');
+      }
+      throw response.error;
+    }
+    return response.data||{};
+  }
 
   async function buildMonthCopyPlanV61413(showLoading=false){
     const source=String(monthCopySourceV61413||'').trim();
     const targets=[...monthCopyTargetsV61413].filter(emp=>emp&&emp!==source);
     const month=String(monthCopyMonthV61413||monthCopyCurrentMonthV61413()).slice(0,7);
-    const mode=monthCopyPasteModeV61413();
     if(!source||!targets.length||!month)return {payload:[],reason:'กรุณาคัดลอกต้นทางและเลือกพนักงานปลายทางอย่างน้อย 1 คน'};
-    if(showLoading)app()?.showLoading('กำลังตรวจรูปแบบกะของพนักงานปลายทาง...');
+    if(showLoading)app()?.showLoading('กำลังตรวจ 5D / 6D ของต้นทางและปลายทาง...');
     try{
-      const sourceRows=(monthCopySourceRowsV61413.length&&monthCopyMonthV61413===month)
-        ? monthCopySourceRowsV61413
-        : await fetchMonthRowsForCopyV61413([source],month);
-      const targetRows=await fetchMonthRowsForCopyV61413(targets,month);
+      const [sourceRows,targetRows,previewV616BG]=await Promise.all([
+        (monthCopySourceRowsV61413.length&&monthCopyMonthV61413===month)
+          ? Promise.resolve(monthCopySourceRowsV61413)
+          : fetchMonthRowsForCopyV61413([source],month),
+        fetchMonthRowsForCopyV61413(targets,month),
+        monthCopyBackendPreviewV616BG(source,targets,month)
+      ]);
+
       mergeMonthRowsIntoStateV61413([...sourceRows,...targetRows]);
       const rowsByTarget=new Map(targets.map(emp=>[emp,new Map()]));
       targetRows.forEach(r=>{
         const emp=String(r.emp_code||'');const date=String(r.work_date||'').slice(0,10);
         if(rowsByTarget.has(emp)&&date)rowsByTarget.get(emp).set(date,r);
       });
+      const previewTargets=new Map((Array.isArray(previewV616BG.targets)?previewV616BG.targets:[]).map(x=>[String(x.emp_code||''),x]));
       const employees=monthCopyEmployeeListV61413();
       const payload=[];
       const targetSummary=[];
-      const total={workCount:0,offCount:0,skipLeave:0,skipHol:0,skipLegacyOff:0,skipEmployment:0,skipExisting:0,skipSpecial:0};
+      const total={ready:0,workCount:0,offCount:0,specialCount:0,skipSourceLeave:0,skipSourceHol:0,protectedTargetLeave:0,blockedPattern:0};
+
       for(const target of targets){
         const targetMeta=employees.find(e=>e.emp_code===target)||{};
         const targetByDate=rowsByTarget.get(target)||new Map();
-        const q={emp_code:target,full_name:targetMeta.full_name||'',ready:0,workCount:0,offCount:0,skipLeave:0,skipHol:0,skipLegacyOff:0,skipEmployment:0,skipExisting:0,skipSpecial:0};
+        const pv=previewTargets.get(target)||{};
+        const q={
+          emp_code:target,
+          full_name:targetMeta.full_name||'',
+          pattern_code:String(pv.pattern_code||''),
+          pattern_match:pv.pattern_match===true,
+          employment_ok:pv.employment_ok!==false,
+          allowed:pv.allowed===true,
+          ready:0,workCount:0,offCount:0,specialCount:0,
+          skipSourceLeave:0,skipSourceHol:0,protectedTargetLeave:0,
+          block_message:String(pv.message||'')
+        };
+
+        if(!q.allowed){
+          total.blockedPattern++;
+          targetSummary.push(q);
+          continue;
+        }
+
         for(const row of sourceRows){
           const date=String(row.work_date||'').slice(0,10);
-          let code=currentCode(row);
-          if(!date||!code)continue;
-          code=String(code).toUpperCase();
-          if(code==='LV'){q.skipLeave++;continue;}
-          if(code==='HOL'||(row.is_public_holiday===true&&code==='HOL')){q.skipHol++;continue;}
-          if(code==='OFF'){q.skipLegacyOff++;continue;}
-          const ruleMode=String(row.schedule_rule_mode||row.work_mode_code||'').toUpperCase();
-          if(['HOUR_BASED','SPLIT_WAIT_NIGHT','NORMAL_LATE_CUSTOMER'].includes(ruleMode)||row.shift_2_planned_start_at||row.customer_window_start){q.skipSpecial++;continue;}
-          if(targetMeta.start_date&&date<targetMeta.start_date){q.skipEmployment++;continue;}
-          if(targetMeta.resign_date&&date>targetMeta.resign_date){q.skipEmployment++;continue;}
+          let code=monthCopyEffectiveCodeV616BG(row);
+          if(!date)continue;
+          code=code?String(code).toUpperCase():'';
+
+          // Leave belongs to the employee, not to the roster template.
+          if(code==='LV'){q.skipSourceLeave++;total.skipSourceLeave++;continue;}
+
           const targetRow=targetByDate.get(date);
-          if(mode==='EMPTY_ONLY'&&String(targetRow?.assigned_shift_code||'').trim()){q.skipExisting++;continue;}
+          const targetCode=String(monthCopyEffectiveCodeV616BG(targetRow)||'').toUpperCase();
+          const targetLeaveProtected=targetCode==='LV';
+
+          // HOL / an unassigned source day is represented by CLEAR.
+          // This removes an old destination assignment so the destination
+          // resolves its own calendar HOL/default state after the overwrite.
+          if(code==='HOL'||!code){
+            q.skipSourceHol++;total.skipSourceHol++;
+            payload.push({
+              emp_code:target,
+              work_date:date,
+              shift_code:null,
+              note:`คัดลอกกะทั้งเดือนจาก ${source} • คืนค่า HOL/ปฏิทินระบบ • FIX16BG`
+            });
+            if(targetLeaveProtected){
+              q.protectedTargetLeave++;total.protectedTargetLeave++;
+              continue;
+            }
+            q.ready++;total.ready++;
+            continue;
+          }
+
+          // Keep target leave in the payload so Backend can verify this really is
+          // a complete whole-month copy, but Backend will protect the LV day.
+          if(targetLeaveProtected){
+            q.protectedTargetLeave++;total.protectedTargetLeave++;
+            payload.push({
+              emp_code:target,
+              work_date:date,
+              shift_code:code,
+              note:`คัดลอกกะทั้งเดือนจาก ${source} • ปลายทาง LV คงเดิม • FIX16BG`
+            });
+            continue;
+          }
+
           const sm=configuredShift(code);
-          if(sm?.is_workday===false)q.offCount++;else q.workCount++;
-          q.ready++;
-          payload.push({emp_code:target,work_date:date,shift_code:code,note:`คัดลอกรูปแบบกะทั้งเดือนจาก ${source}`});
+          if(sm?.is_workday===false){q.offCount++;total.offCount++;}
+          else{q.workCount++;total.workCount++;}
+
+          const ruleMode=String(row.schedule_rule_mode||row.work_mode_code||'').toUpperCase();
+          if(['HOUR_BASED','SPLIT_WAIT_NIGHT','NORMAL_LATE_CUSTOMER'].includes(ruleMode)){
+            q.specialCount++;total.specialCount++;
+          }
+
+          q.ready++;total.ready++;
+          payload.push({
+            emp_code:target,
+            work_date:date,
+            shift_code:code,
+            note:`คัดลอกกะทั้งเดือนจาก ${source} • FIX16BG`
+          });
         }
-        ['workCount','offCount','skipLeave','skipHol','skipLegacyOff','skipEmployment','skipExisting','skipSpecial'].forEach(k=>total[k]+=q[k]);
         targetSummary.push(q);
       }
-      return {payload,source,targets,month,mode,summary:{...total,targetCount:targets.length,ready:payload.length},targetSummary};
+
+      const firstBlocked=targetSummary.find(x=>!x.allowed);
+      const reason=previewV616BG.allowed===false
+        ? (firstBlocked?.block_message || `วางกะทั้งเดือนไม่ได้: รูปแบบการทำงานต้นทาง ${monthCopyPatternLabelV616BG(previewV616BG?.source?.pattern_code)} ต้องตรงกับปลายทางทุกคน`)
+        : '';
+
+      return {
+        payload,source,targets,month,mode:'OVERWRITE',
+        sourcePattern:String(previewV616BG?.source?.pattern_code||''),
+        previewV616BG,
+        reason,
+        summary:{...total,targetCount:targets.length,payloadRows:payload.length},
+        targetSummary
+      };
     }finally{if(showLoading)app()?.hideLoading();}
   }
 
   function renderMonthCopyTargetListV61413(plan){
     const host=$('scheduleMonthCopyTargetListV61413');if(!host)return;
     host.innerHTML=(plan?.targetSummary||[]).map(q=>{
-      const skipped=q.skipLeave+q.skipHol+q.skipLegacyOff+q.skipEmployment+q.skipExisting+q.skipSpecial;
-      return `<div class="month-copy-target-item-v61413"><div><strong>${monthCopyEscV61413(q.emp_code)} • ${monthCopyEscV61413(q.full_name||'-')}</strong><small>พร้อมวาง ${q.ready.toLocaleString('th-TH')} วัน${skipped?` • ข้าม ${skipped.toLocaleString('th-TH')} วัน`:''}</small></div><span class="${skipped?'has-skip':''}">${q.ready.toLocaleString('th-TH')}</span></div>`;
+      const ok=q.allowed===true;
+      const protectedCount=Number(q.skipSourceLeave||0)+Number(q.skipSourceHol||0)+Number(q.protectedTargetLeave||0);
+      const pattern=monthCopyPatternLabelV616BG(q.pattern_code);
+      const detail=ok
+        ? `พร้อมวางทับ ${Number(q.ready||0).toLocaleString('th-TH')} วัน • ${pattern}${protectedCount?` • LV คงเดิม / HOL คืนค่าระบบ ${protectedCount.toLocaleString('th-TH')} วัน`:''}`
+        : (q.block_message||`รูปแบบ ${pattern} ไม่ตรงกับต้นทาง`);
+      return `<div class="month-copy-target-item-v61413"><div><strong>${monthCopyEscV61413(q.emp_code)} • ${monthCopyEscV61413(q.full_name||'-')}</strong><small>${monthCopyEscV61413(detail)}</small></div><span class="${ok?'':'has-skip'}">${ok?'✓':'!'}</span></div>`;
     }).join('')||'<div class="muted">ยังไม่ได้เลือกพนักงานปลายทาง</div>';
   }
 
   async function refreshMonthCopyPreviewV61413(){
     const box=$('scheduleMonthCopyPreviewV61413');if(!box)return;
-    box.innerHTML='<span class="muted">กำลังสรุปรายการ...</span>';
+    box.innerHTML='<span class="muted">กำลังตรวจรูปแบบการทำงาน 5D / 6D...</span>';
     try{
       const plan=await buildMonthCopyPlanV61413(false);
-      if(plan.reason){box.textContent=plan.reason;renderMonthCopyTargetListV61413(plan);return;}
-      const q=plan.summary;
-      const skipped=q.skipLeave+q.skipHol+q.skipLegacyOff+q.skipEmployment+q.skipExisting+q.skipSpecial;
-      box.innerHTML=`<div class="month-copy-preview-grid-v61413"><span><b>${q.targetCount.toLocaleString('th-TH')}</b><small>พนักงานปลายทาง</small></span><span><b>${q.ready.toLocaleString('th-TH')}</b><small>รายการที่จะวาง</small></span><span><b>${q.workCount.toLocaleString('th-TH')}</b><small>กะทำงาน</small></span><span><b>${q.offCount.toLocaleString('th-TH')}</b><small>วันหยุด</small></span><span><b>${skipped.toLocaleString('th-TH')}</b><small>รายการข้าม</small></span></div><small>ข้ามรวม: ลา ${q.skipLeave} • HOL ${q.skipHol} • กะพิเศษ ${q.skipSpecial} • ก่อนเริ่ม/หลังลาออก ${q.skipEmployment} • มีการจัดกะเดิม ${q.skipExisting}</small>`;
+      const q=plan.summary||{};
+      const sourcePattern=monthCopyPatternLabelV616BG(plan.sourcePattern);
+      const protectedCount=Number(q.skipSourceLeave||0)+Number(q.skipSourceHol||0)+Number(q.protectedTargetLeave||0);
+      box.innerHTML=`<div class="month-copy-preview-grid-v61413"><span><b>${sourcePattern}</b><small>รูปแบบต้นทาง</small></span><span><b>${Number(q.targetCount||0).toLocaleString('th-TH')}</b><small>พนักงานปลายทาง</small></span><span><b>${Number(q.ready||0).toLocaleString('th-TH')}</b><small>รายการวางทับ</small></span><span><b>${Number(q.specialCount||0).toLocaleString('th-TH')}</b><small>กะพิเศษคัดลอกครบ</small></span><span><b>${protectedCount.toLocaleString('th-TH')}</b><small>LV ปลายทางคงเดิม / HOL คืนค่าระบบ</small></span></div><small>Month Copy = วางทับตารางกะทั้งเดือน • ตรวจหลัก 5D ↔ 5D / 6D ↔ 6D • LV ของปลายทางไม่ถูกทับ • LV ของต้นทางไม่ถูกคัดลอก • HOL/วันที่ว่างของต้นทางจะล้างกะเดิมให้กลับไปใช้ปฏิทินระบบ</small>${plan.reason?`<small class="text-danger">${monthCopyEscV61413(plan.reason)}</small>`:''}`;
       renderMonthCopyTargetListV61413(plan);
-    }catch(e){box.textContent=app()?.humanError?.(e)||e.message||String(e);}
+      const applyBtn=$('scheduleMonthCopyApplyV61413');
+      if(applyBtn&&!monthCopyApplyingV61414)applyBtn.disabled=Boolean(plan.reason)||!Number(plan.summary?.ready||0);
+    }catch(e){
+      box.textContent=app()?.humanError?.(e)||e.message||String(e);
+      const applyBtn=$('scheduleMonthCopyApplyV61413');if(applyBtn)applyBtn.disabled=true;
+    }
   }
 
   function openMonthCopyPasteV61413(){
@@ -15122,53 +17519,70 @@ ${skippedSummary(compatibility.skipped)}
     document.body.classList.remove('month-copy-modal-open-v61414');
   }
 
-  // V6.14.14: The preview modal itself is the confirmation surface.
-  // Do not open tcConfirm() on top of it. Close Preview first, then let
-  // savePayload() display any rule-specific warning (6h/48h/quota/etc.) alone.
+  // FIX16BG — Copy Month is an explicit whole-month overwrite operation.
+  // It intentionally does NOT use the daily Copy/Paste validation pipeline.
+  // Backend V616BG verifies: stable same 5D/6D pattern, employment window,
+  // Operational Profile + Team, Work-Date authority and open system period.
+  // Night Sequence / 6h / 48h / Day-off quota are not re-applied row-by-row.
   async function applyMonthCopyV61413(){
     if(monthCopyApplyingV61414)return;
     const applyBtn=$('scheduleMonthCopyApplyV61413');
-    const originalText=applyBtn?.textContent||'ยืนยันวางกะ';
+    const originalText=applyBtn?.textContent||'ยืนยันและวางทับทั้งเดือน';
     monthCopyApplyingV61414=true;
-    if(applyBtn){applyBtn.disabled=true;applyBtn.textContent='กำลังตรวจสอบ...';}
-    let modalClosed=false;
+    if(applyBtn){applyBtn.disabled=true;applyBtn.textContent='กำลังวางทับทั้งเดือน...';}
+    let backendSaved=false;
     try{
-      // Keep validation inside the current preview modal; avoid a second
-      // full-screen loading backdrop while the preview is still visible.
       const plan=await buildMonthCopyPlanV61413(false);
       if(plan.reason){app()?.toast(plan.reason,'error');return;}
-      if(!plan.payload.length){app()?.toast('ไม่มีรายการกะที่สามารถวางได้','warning');return;}
-      const q=plan.summary;
+      if(!Number(plan.summary?.ready||0)){app()?.toast('ไม่มีรายการกะที่ต้องเปลี่ยนหลังหักวันลา LV ของปลายทาง','warning');return;}
 
-      // Clicking this button is the user's final confirmation of the Preview.
-      // Close it BEFORE savePayload(), because savePayload may need to show a
-      // business-rule confirm modal. This guarantees one modal at a time.
       closeMonthCopyPasteV61413();
-      modalClosed=true;
+      app()?.showLoading(`กำลังวางทับกะทั้งเดือน ${plan.payload.length.toLocaleString('th-TH')} รายการ...`);
 
-      const saved=await savePayload(
-        plan.payload,
-        `คัดลอกรูปแบบกะทั้งเดือนจาก ${plan.source} ไป ${q.targetCount} คน`,
-        false,
-        'คัดลอกทั้งเดือน'
-      );
-      if(saved){
-        resetMonthCopyWorkflowV61413({silent:true});
-      }else if(monthCopyPhaseV61413==='TARGET'&&monthCopySourceV61413&&monthCopyTargetsV61413.size){
-        // User may cancel a 48h/quota/compatibility warning. Return to Preview
-        // instead of leaving the workflow in an unclear half-finished state.
-        requestAnimationFrame(()=>openMonthCopyPasteV61413());
+      const response=await app().state.client.rpc('ta_apply_month_copy_v616bg',{
+        p_source_emp:plan.source,
+        p_target_emps:plan.targets,
+        p_month:`${plan.month}-01`,
+        p_rows:plan.payload,
+        p_change_reason:`คัดลอกกะทั้งเดือนจาก ${plan.source} ไป ${plan.targets.length} คน`
+      });
+      if(response.error){
+        if(window.TimeClockShiftAPI?.missingFunction?.(response.error)){
+          throw new Error('MONTH_COPY_V616BG_REQUIRED: กรุณารัน SQL FIX16BG ก่อนใช้คัดลอกกะทั้งเดือน');
+        }
+        throw response.error;
       }
+      backendSaved=true;
+
+      // Canonical Attendance refresh remains after the month transaction so the
+      // writer does not repeat heavy daily calculation inside the DB mutation.
+      await window.TimeClockConsistencyV61415?.finalizeSchedule?.(plan.payload,{source:'schedule-month-copy-v616bg'});
+
+      resetMonthCopyWorkflowV61413({silent:true});
+      await app().loadSchedule();
+      const result=response.data||{};
+      app()?.toast(
+        `วางทับกะทั้งเดือนสำเร็จ ${Number(result.saved_rows??plan.payload.length).toLocaleString('th-TH')} รายการ • ประมวลผล Attendance ใหม่แล้ว`,
+        'success'
+      );
     }catch(e){
-      app()?.toast(app()?.humanError?.(e)||e.message||String(e),'error');
-      if(modalClosed&&monthCopyPhaseV61413==='TARGET'&&monthCopySourceV61413&&monthCopyTargetsV61413.size){
-        requestAnimationFrame(()=>openMonthCopyPasteV61413());
+      const message=app()?.humanError?.(e)||e.message||String(e);
+      if(backendSaved){
+        app()?.toast(`กะทั้งเดือนบันทึกแล้ว แต่ประมวลผล Attendance ไม่สำเร็จ: ${message}`,'warning');
+        try{await app().loadSchedule();}catch(_){ }
+      }else{
+        app()?.toast(message,'error');
+        if(monthCopyPhaseV61413==='TARGET'&&monthCopySourceV61413&&monthCopyTargetsV61413.size){
+          requestAnimationFrame(()=>openMonthCopyPasteV61413());
+        }
       }
     }finally{
+      app()?.hideLoading();
       monthCopyApplyingV61414=false;
       if(applyBtn){applyBtn.disabled=false;applyBtn.textContent=originalText;}
     }
   }
+
   async function clearCells(){const rows=selectedRows();if(!rows.length)return app()?.toast("กรุณาเลือกช่องที่ต้องการล้าง","error");if(!await window.tcConfirm(`ล้างกะที่กำหนดจำนวน ${rows.length} ช่อง?`))return;await savePayload(rows.map(x=>({emp_code:x.emp_code,work_date:x.work_date,shift_code:null,note:"ล้างกะจาก Schedule Pro"})),"ล้างกะจาก Schedule Pro",false,"ล้างกะ");}
   async function applyHistory(item,mode){
     const payload=(mode==="undo"?item.before:item.after).map(x=>({...x,note:`${mode} ${item.label}`}));
@@ -15234,6 +17648,36 @@ ${skippedSummary(compatibility.skipped)}
     window.TimeClockSchedulePeriod?.sync?.();app()?.loadSchedule();
   }
 
+  async function loadEnforcement(){
+    try{
+      state.enforcement=await rpc('ta_get_team_enforcement_state_v61525',{});
+      renderEnforcement();
+    }catch(e){
+      console.warn('Team Enforcement V6.15.25',e);
+      const st=$('teamEnforcementStatusV61525');if(st)st.textContent='ยังไม่ได้ติดตั้ง SQL V6.15.25';
+    }
+  }
+  function renderEnforcement(){
+    const x=state.enforcement||{};
+    const enabled=x.enforcement_enabled===true;
+    const st=$('teamEnforcementStatusV61525');
+    if(st){st.textContent=enabled?'เปิดใช้งาน':'ยังไม่เปิดใช้งาน';st.className='badge '+(enabled?'badge-green':'badge-gray');}
+    const d=$('teamEnforcementDetailV61525');
+    if(d)d.textContent=enabled?'รถยนต์ต้องมี Effective Team ก่อนจัดกะทุกช่องทาง':'โหมดเตรียมข้อมูล — Schedule เดิมยังทำงานได้ตามปกติ';
+    const missing=Number(x.car_without_team||0);
+    const c=$('teamEnforcementMissingV61525');if(c)c.textContent=missing.toLocaleString('th-TH');
+    const btn=$('teamEnforcementToggleV61525');
+    if(btn){btn.classList.toggle('hidden',x.can_toggle!==true);btn.textContent=enabled?'ปิด Team Enforcement':'เปิด Team Enforcement';btn.className='btn '+(enabled?'btn-danger-soft':'btn-primary')+(x.can_toggle===true?'':' hidden');btn.disabled=!enabled&&missing>0;}
+    const note=$('teamEnforcementReadyV61525');
+    if(note)note.textContent=missing===0?'พร้อมเปิดใช้งาน':'ต้องกำหนดทีมให้ช่างรถยนต์อีก '+missing.toLocaleString('th-TH')+' คน';
+  }
+  async function toggleEnforcement(){
+    const x=state.enforcement||{};const enable=x.enforcement_enabled!==true;
+    if(enable&&Number(x.car_without_team||0)>0)return toast('ยังมีช่างรถยนต์ที่ไม่ได้กำหนดทีม ไม่สามารถเปิด Enforcement ได้','warning');
+    const ok=await window.tcConfirm?.({title:enable?'เปิด Team Enforcement':'ปิด Team Enforcement',message:enable?'หลังเปิด ช่างรถยนต์ทุกคนต้องมี Effective Team ก่อนจัดกะทุกช่องทาง รวมคำขอที่แก้ Schedule':'การปิดจะใช้สำหรับช่วง Migration/แก้ข้อมูลเท่านั้น และมี Audit เก็บประวัติ',confirmText:enable?'เปิดใช้งาน':'ปิดชั่วคราว',tone:enable?'primary':'danger'});if(!ok)return;
+    try{app()?.showLoading?.('กำลังปรับ Team Enforcement...');state.enforcement=await rpc('ta_set_team_enforcement_v61525',{p_enabled:enable,p_note:enable?'Enable from Team Master V6.15.25':'Disable from Team Master V6.15.25'});renderEnforcement();toast(enable?'เปิด Team Enforcement แล้ว':'ปิด Team Enforcement แล้ว','success');}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+  }
+
   function bind(){
     document.addEventListener("timeclock:schedule-rendered",()=>{selected.clear();activeKey=null;anchorKey=null;refreshSelectionUI();updateSummary();updateHistoryButtons();updateMonthCopyWorkflowUIV61413();});
     wrap()?.addEventListener("mousedown",e=>{const cell=e.target.closest("[data-schedule-cell]");if(!cell||e.button!==0)return;e.preventDefault();dragging=true;dragMode=(e.ctrlKey||e.metaKey)&&selected.has(keyOf(cell))?"remove":"add";if(!e.shiftKey&&!e.ctrlKey&&!e.metaKey)selected.clear();selectCell(cell,e.ctrlKey||e.metaKey,e.shiftKey);wrap()?.focus();});
@@ -15258,11 +17702,6 @@ ${skippedSummary(compatibility.skipped)}
     $('scheduleMonthCopyCloseV61413')?.addEventListener('click',closeMonthCopyPasteV61413);
     $('scheduleMonthCopyCancelV61413')?.addEventListener('click',closeMonthCopyPasteV61413);
     $('scheduleMonthCopyApplyV61413')?.addEventListener('click',applyMonthCopyV61413);
-    $('scheduleMonthCopyModeV61413')?.addEventListener('change',()=>{
-      const btn=$('scheduleMonthCopyApplyV61413');
-      if(btn&&!monthCopyApplyingV61414)btn.textContent=monthCopyPasteModeV61413()==='OVERWRITE'?'ยืนยันและวางทับ':'ยืนยันวางกะ';
-      refreshMonthCopyPreviewV61413();
-    });
     $('scheduleMonthCopyModalV61413')?.addEventListener('click',e=>{if(e.target?.id==='scheduleMonthCopyModalV61413')closeMonthCopyPasteV61413();});
     $("scheduleTeamWeekSelectV61151")?.addEventListener(
       "change",
@@ -15341,7 +17780,7 @@ ${skippedSummary(compatibility.skipped)}
     });
     $("scheduleContextMenu")?.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.contextSmartShift)smartBulkAssign(b.dataset.contextSmartShift);if(b.dataset.contextShift)bulkAssign(b.dataset.contextShift);if(b.dataset.contextAction==="copy")copySelection();if(b.dataset.contextAction==="paste")pasteSelection();if(b.dataset.contextAction==="clear")clearCells();closeContext();});
     document.addEventListener("click",e=>{if(!e.target.closest("#scheduleContextMenu"))closeContext();});
-    document.addEventListener("keydown",e=>{if(!document.getElementById("page-schedule")?.classList.contains("active"))return;const tag=document.activeElement?.tagName;if(["INPUT","SELECT","TEXTAREA"].includes(tag)&&!(e.ctrlKey||e.metaKey))return;const k=e.key.toLowerCase();if((e.ctrlKey||e.metaKey)&&k==="c"){e.preventDefault();copySelection();}else if((e.ctrlKey||e.metaKey)&&k==="v"){e.preventDefault();pasteSelection();}else if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();e.shiftKey?redo():undo();}else if((e.ctrlKey||e.metaKey)&&k==="y"){e.preventDefault();redo();}else if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();clearCells();}else if(e.key==="Escape")clearSelection();else if(e.key==="ArrowLeft"){e.preventDefault();moveActive(-1,0,e.shiftKey);}else if(e.key==="ArrowRight"){e.preventDefault();moveActive(1,0,e.shiftKey);}else if(e.key==="ArrowUp"){e.preventDefault();moveActive(0,-1,e.shiftKey);}else if(e.key==="ArrowDown"){e.preventDefault();moveActive(0,1,e.shiftKey);}else if(["d","n"].includes(k)&&!e.ctrlKey&&!e.metaKey){e.preventDefault();smartBulkAssign(k==="d"?"NORMAL":"NIGHT");}});
+    document.addEventListener("keydown",e=>{if(!document.getElementById("page-schedule")?.classList.contains("active"))return;const tag=document.activeElement?.tagName;if(["INPUT","SELECT","TEXTAREA"].includes(tag)&&!(e.ctrlKey||e.metaKey))return;const k=String(e?.key||"").toLowerCase();if((e.ctrlKey||e.metaKey)&&k==="c"){e.preventDefault();copySelection();}else if((e.ctrlKey||e.metaKey)&&k==="v"){e.preventDefault();pasteSelection();}else if((e.ctrlKey||e.metaKey)&&k==="z"){e.preventDefault();e.shiftKey?redo():undo();}else if((e.ctrlKey||e.metaKey)&&k==="y"){e.preventDefault();redo();}else if(e.key==="Delete"||e.key==="Backspace"){e.preventDefault();clearCells();}else if(e.key==="Escape")clearSelection();else if(e.key==="ArrowLeft"){e.preventDefault();moveActive(-1,0,e.shiftKey);}else if(e.key==="ArrowRight"){e.preventDefault();moveActive(1,0,e.shiftKey);}else if(e.key==="ArrowUp"){e.preventDefault();moveActive(0,-1,e.shiftKey);}else if(e.key==="ArrowDown"){e.preventDefault();moveActive(0,1,e.shiftKey);}else if(["d","n"].includes(k)&&!e.ctrlKey&&!e.metaKey){e.preventDefault();smartBulkAssign(k==="d"?"NORMAL":"NIGHT");}});
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind);else bind();
 })();
@@ -15804,7 +18243,7 @@ ${skippedSummary(compatibility.skipped)}
     );
   };
   const issueOf = r => String(r?.issue_type || r?.attendance_result || r?.attendance_status || r?.time_pair_status || "NEED_REVIEW").toUpperCase();
-  const statusLabel = s => ({NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",MISSING_IN:"ไม่ลงเวลาเข้า",MISSING_OUT:"ไม่ลงเวลาออก",MISSING_BOTH:"ไม่ลงเวลาทั้งเข้าและออก",LATE_30_PLUS:"เข้าหลังเริ่มกะ ≥30 นาที",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุดประจำสัปดาห์",WORKED_ON_HOLIDAY:"ทำงานวันหยุดนักขัตฤกษ์",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุดประจำสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-";
+  const statusLabel = s => ({NORMAL:"ปกติ",ABSENT:"ขาดงาน",ABSENCE:"ขาดงาน",MISSING_IN:"ไม่ลงเวลาเข้า",MISSING_OUT:"ไม่ลงเวลาออก",MISSING_BOTH:"ไม่ลงเวลาทั้งเข้าและออก",LATE_30_PLUS:"เข้าหลังเริ่มกะ ≥30 นาที",INVALID_TIME:"เวลาไม่ถูกต้อง",LATE:"มาสาย",EARLY_LEAVE:"กลับก่อน",LATE_AND_EARLY:"สายและกลับก่อน",WORKED_ON_OFFDAY:"ทำงานวันหยุด",WORKED_ON_WEEKLY_OFF:"ทำงานวันหยุด",WORKED_ON_HOLIDAY:"ทำงานนักขัตฯ",WORKED_ON_COMP_OFF:"ทำงานวันหยุดชดเชย",OVERTIME:"มี OT",LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",WORKDAY:"วันทำงาน",COMP_OFF:"วันหยุดชดเชย",LEAVE:"วันลา",NEED_REVIEW:"รอตรวจสอบ",HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"หยุดสัปดาห์",INCOMPLETE_TIME:"เวลาไม่ครบ",COMPLETE:"ครบ",NO_TIME:"ไม่มีเวลา",LEAVE_APPROVED:"อนุมัติลา",LEAVE_WITH_TIME:"ลาแต่มีเวลา",PARTIAL_LEAVE:"ลาบางส่วน",PARTIAL_LEAVE_NO_TIME:"ลาบางส่วนแต่ไม่มีเวลา"})[s] || s || "-";
 
   function client(){ return app()?.state?.client || null; }
   async function rpc(name,args={}){
@@ -15822,11 +18261,11 @@ ${skippedSummary(compatibility.skipped)}
   const csvCell=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   function exportCsv(name,rows){download(name,"\ufeff"+rows.map(r=>r.map(csvCell).join(",")).join("\n"),"text/csv;charset=utf-8");}
   function exportExcel(name,rows,title="Time-Clock Report"){
-    const html=`<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,'Noto Sans Thai',sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #94a3b8;padding:6px;font-size:11px}th{background:#dbeafe;font-weight:700}h2{margin:0 0 12px}</style></head><body><h2>${esc(title)}</h2><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><style>@font-face{font-family:TimeClockThai;src:url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Regular.woff2') format('woff2');font-weight:100 500;font-display:swap;unicode-range:U+0E00-0E7F}@font-face{font-family:TimeClockThai;src:url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Bold.woff2') format('woff2');font-weight:600 900;font-display:swap;unicode-range:U+0E00-0E7F}body{font-family:TimeClockThai,Arial,sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #94a3b8;padding:6px;font-size:11px}th{background:#dbeafe;font-weight:700}h2{margin:0 0 12px}</style></head><body><h2>${esc(title)}</h2><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table></body></html>`;
     download(name,`\ufeff${html}`,"application/vnd.ms-excel;charset=utf-8");
   }
   function printRows(rows,title,subtitle=""){
-    const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4 landscape;margin:10mm}body{font-family:'Noto Sans Thai',Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:19px;margin:0}p{font-size:11px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #94a3b8;padding:5px;font-size:9px;vertical-align:top}th{background:#e2e8f0}footer{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:8px;color:#64748b}</style></head><body><h1>${esc(title)}</h1><p>${esc(subtitle)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table><footer>Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer></body></html>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>@page{size:A4 landscape;margin:10mm}@font-face{font-family:TimeClockThai;src:url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Regular.woff2') format('woff2');font-weight:100 500;font-display:swap;unicode-range:U+0E00-0E7F}@font-face{font-family:TimeClockThai;src:url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH-Bold.woff2') format('woff2');font-weight:600 900;font-display:swap;unicode-range:U+0E00-0E7F}body{font-family:TimeClockThai,Arial,sans-serif;color:#0f172a;padding:12px}h1{font-size:19px;margin:0}p{font-size:11px;color:#475569}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{border:1px solid #94a3b8;padding:5px;font-size:9px;vertical-align:top}th{background:#e2e8f0}footer{position:fixed;bottom:0;left:0;right:0;text-align:center;font-size:8px;color:#64748b}</style></head><body><h1>${esc(title)}</h1><p>${esc(subtitle)}</p><table>${rows.map((r,i)=>`<tr>${r.map(v=>i===0?`<th>${esc(v)}</th>`:`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</table><footer>Design by แผนกบริหารระบบข้อมูลบุคคล ซีพี รีเทลลิงค์</footer></body></html>`;
     window.tcPrintPreview({title,html});
   }
 
@@ -15845,6 +18284,12 @@ ${skippedSummary(compatibility.skipped)}
     const adminCards=qs("#page-admin-center .admin-module-grid");
     if(adminCards && !qs('[data-admin-open="admin-employees"]',adminCards)){
       adminCards.insertAdjacentHTML("afterbegin",`<button class="admin-module-card" data-admin-open="admin-employees"><span class="admin-module-icon">♟</span><div><strong>ข้อมูลพนักงาน</strong><small>ค้นหาและตรวจสอบสถานะพนักงานจากฐานข้อมูล</small></div><em>เปิด ›</em></button><button class="admin-module-card" data-admin-open="admin-audit"><span class="admin-module-icon">⌁</span><div><strong>Audit Log</strong><small>ประวัติการจัดกะ การล็อกเดือน และการใช้งานระบบ</small></div><em>เปิด ›</em></button>`);
+    }
+    if(adminCards && !qs('[data-admin-acting-open]',adminCards)){
+      const userScopeCard=qs('[data-admin-open="admin-users"]',adminCards);
+      const actingCard=`<button class="admin-module-card admin-acting-shortcut-v616bx" data-admin-acting-open type="button"><span class="admin-module-icon">A</span><div><strong>จัดการ Acting Manager</strong><small>มอบอำนาจ Manager ชั่วคราวตามหน่วยงานและช่วงวันที่ โดยไม่เปลี่ยน Role / PCgrade</small></div><em>จัดการ ›</em></button>`;
+      if(userScopeCard) userScopeCard.insertAdjacentHTML("afterend",actingCard);
+      else adminCards.insertAdjacentHTML("beforeend",actingCard);
     }
 
     const content=qs(".content"); if(!content) return;
@@ -15867,12 +18312,47 @@ ${skippedSummary(compatibility.skipped)}
 
   function reportPageHtml(){
     const cards=[
-      ["attendance","◷","รายละเอียดเวลาทำงาน","เวลาเข้า–ออก กะ ชั่วโมงสุทธิ สาย และกลับก่อน"],
-      ["schedule","▣","ตารางจัดกะรายเดือน","กะอัตโนมัติ กะที่หัวหน้างานบันทึก รูปแบบช่วงงาน และประเภทวัน"],
-      ["summary","▦","สรุป Dashboard","สรุปจำนวนพนักงานและสถานะสำคัญ"],
-      ["late","◴","ความผิดปกติเวลาเข้า–ออก","สาย 1–29 นาที / เข้าช้า ≥30 นาที / กลับก่อน"]
+      ["attendance","◷","รายละเอียดเวลาทำงาน","เวลาเข้า–ออก กะ ชั่วโมงสุทธิ สาย กลับก่อน และ OT","เวลาทำงาน"],
+      ["schedule","▣","ตารางจัดกะรายเดือน","ดูแผนกะ กะที่กำหนด รูปแบบงาน และประเภทวัน","การจัดกะ"],
+      ["summary","▦","สรุปภาพรวมรายช่วงเวลา","สรุปกำลังคน สถานะเวลา ชั่วโมงปกติ OT และวันหยุด","ภาพรวม"],
+      ["late","◴","ความผิดปกติเวลาเข้า–ออก","รวมรายการสาย ขาดงานจากการมาสาย และกลับก่อน","ติดตาม"],
     ];
-    return `<section id="page-report" class="page report-center-page"><div class="report-hero"><div><span class="eyebrow">ENTERPRISE REPORT CENTER</span><h2>ศูนย์รายงาน Time-Clock</h2><p>สร้างรายงาน CSV, Excel และ Print/PDF โดยไม่กระทบหน้าการทำงานหลัก</p></div><button id="reportRefreshJobsBtn" class="btn btn-light">รีเฟรชประวัติ</button></div><div class="panel section-gap"><div class="panel-body"><div class="report-filter-grid"><div class="field"><label>วันที่เริ่มต้น</label><input id="reportStart" class="input" type="date"></div><div class="field"><label>วันที่สิ้นสุด</label><input id="reportEnd" class="input" type="date"></div><div class="field"><label>พื้นที่</label><select id="reportZone" class="select"><option value="">ทุกพื้นที่</option></select></div><div class="field"><label>หน่วยงาน</label><select id="reportDepartment" class="select"><option value="">ทุกหน่วยงาน</option></select></div></div></div></div><div class="report-card-grid section-gap">${cards.map(c=>`<article class="report-type-card"><div class="report-icon">${c[1]}</div><h3>${c[2]}</h3><p>${c[3]}</p><div class="report-format-actions"><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-orange" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div><div class="panel section-gap"><div class="panel-header"><div><h3>ประวัติการส่งออก</h3><p>เก็บประวัติใน Browser และบันทึก Log ใน Supabase เมื่อพร้อมใช้งาน</p></div><button id="reportClearJobsBtn" class="btn btn-danger-soft">ล้างประวัติ</button></div><div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>รายงาน</th><th>ช่วงข้อมูล</th><th>จำนวนแถว</th><th>สถานะ</th><th>ไฟล์</th></tr></thead><tbody id="reportJobsBody"></tbody></table></div></div></div></section>`;
+    const operationCards=[
+      ["overtime","◷","OT / ทำงานวันหยุด / เวลารอ","รวม OT เวลารอ และชั่วโมงทำงานในวันหยุดสำหรับตรวจต้นทุนกำลังคน","ชั่วโมงพิเศษ"],
+      ["punch","≋","ลงเวลาไม่ครบ / จุดต้องตรวจ","รวมไม่พบเวลาเข้า ไม่พบเวลาออก และวันหลายช่วงงานที่ควรตรวจ Punch เพิ่มเติม","ตรวจสอบ"],
+      ["leave","▤","ลา / วันหยุด / โควต้า","สรุปวันลา วันหยุด การทำงานวันหยุด และวันหยุดชดเชยคงเหลือ","วันหยุด"],
+      ["requests","⌁","คำขอ / รับรองเวลา","ติดตามคำขอ สถานะ ผู้พิจารณา ระยะเวลาดำเนินการ และการรับรองเวลา","Workflow"],
+    ];
+    return `<section id="page-report" class="page report-center-page">
+      <div class="report-minimal-head">
+        <div class="report-minimal-title">
+          <span class="report-minimal-icon">▤</span>
+          <div><span class="eyebrow">REPORT CENTER</span><h2>ศูนย์รายงาน</h2><p>เลือกช่วงข้อมูลครั้งเดียว แล้วส่งออกเฉพาะข้อมูลที่อยู่ใน Scope ของคุณ</p></div>
+        </div>
+        <div class="report-scope-note"><span>●</span><div><strong>Scope-based</strong><small>Manager เห็นเฉพาะทีม/หน่วยงานที่มีสิทธิ์ • HR Admin ตามสิทธิ์องค์กร</small></div></div>
+      </div>
+
+      <div class="report-filter-shell section-gap">
+        <div class="report-filter-head"><div><strong>ตัวกรองรายงาน</strong><span>ใช้ร่วมกับทุกรายงานด้านล่าง</span></div><button id="reportResetFiltersBtn" class="btn btn-light report-reset-btn">↺ รีเซ็ต</button></div>
+        <div class="report-filter-grid">
+          <div class="field"><label>วันที่เริ่มต้น</label><input id="reportStart" class="input" type="date"></div>
+          <div class="field"><label>วันที่สิ้นสุด</label><input id="reportEnd" class="input" type="date"></div>
+          <div class="field"><label>พื้นที่</label><select id="reportZone" class="select"><option value="">ทุกพื้นที่</option></select></div>
+          <div class="field"><label>หน่วยงาน</label><select id="reportDepartment" class="select"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
+        </div>
+      </div>
+
+      <div class="report-section-head section-gap"><div><h3>รายงานใช้งานประจำ</h3><p>ข้อมูลหลักสำหรับตรวจเวลา จัดกะ และสรุปภาพรวม</p></div><span>${cards.length} รายงาน</span></div>
+      <div class="report-card-grid">${cards.map(c=>`<article class="report-type-card report-type-card-minimal"><div class="report-card-top"><div class="report-icon">${c[1]}</div><span class="report-category-chip">${c[4]}</span></div><div class="report-card-copy"><h3>${c[2]}</h3><p>${c[3]}</p></div><div class="report-format-actions report-format-actions-minimal"><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-light" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div>
+
+      <div class="report-section-head section-gap"><div><h3>ติดตามเชิงปฏิบัติการ</h3><p>ช่วย Manager และ HR Admin หาเรื่องที่ต้องติดตามต่อได้เร็วขึ้น</p></div><span>${operationCards.length} รายงาน</span></div>
+      <div class="report-card-grid">${operationCards.map(c=>`<article class="report-type-card report-type-card-minimal"><div class="report-card-top"><div class="report-icon">${c[1]}</div><span class="report-category-chip">${c[4]}</span></div><div class="report-card-copy"><h3>${c[2]}</h3><p>${c[3]}</p></div><div class="report-format-actions report-format-actions-minimal"><button class="btn btn-success" data-run-report-format="${c[0]}|excel">Excel</button><button class="btn btn-light" data-run-report-format="${c[0]}|csv">CSV</button><button class="btn btn-light" data-run-report-format="${c[0]}|print">PDF</button></div></article>`).join("")}</div>
+
+      <details class="report-history-details section-gap">
+        <summary><div><strong>ประวัติการส่งออก</strong><span>เปิดดูไฟล์ที่เคยสร้างใน Browser นี้</span></div><span class="report-history-chevron">⌄</span></summary>
+        <div class="report-history-content"><div class="report-history-tools"><button id="reportRefreshJobsBtn" class="btn btn-light">↻ รีเฟรช</button><button id="reportClearJobsBtn" class="btn btn-danger-soft">ล้างประวัติ</button></div><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>รายงาน</th><th>ช่วงข้อมูล</th><th>จำนวนแถว</th><th>สถานะ</th><th>ไฟล์</th></tr></thead><tbody id="reportJobsBody"></tbody></table></div></div>
+      </details>
+    </section>`;
   }
   function employeePageHtml(){
     return `
@@ -16189,10 +18669,12 @@ ${skippedSummary(compatibility.skipped)}
 
             <div class="employee-edit-grid employee-edit-grid-lower">
               <div class="field">
-                <label>ทีมรถ</label>
+                <label>car_team เดิม (Legacy)</label>
                 <input
                   id="employeeEditCarTeam"
                   class="input"
+                  readonly
+                  title="V6.15.27: ข้อมูลนี้เก็บเพื่ออ้างอิงย้อนหลังเท่านั้น Manager กำหนดประเภทจากเมนูทีมช่างเทคนิค"
                 >
               </div>
 
@@ -16495,7 +18977,7 @@ ${skippedSummary(compatibility.skipped)}
   }
   function attendanceRows(){
     const term=attGrid.search; let rows=[...(app()?.state?.attendance||[])];
-    if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,r.department,r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),statusLabel(attendanceStatus(r))].some(v=>String(v||"").toLowerCase().includes(term)));
+    if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,app()?.canonicalOrgNameV616Q?.(r)||r.department,app()?.canonicalOrgCodeV616Q?.(r),app()?.attendanceTeamLabelV616U?.(r)||"",app()?.attendanceCurrentTeamCompactLabelV616BB?.(r)||"",r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),statusLabel(attendanceStatus(r))].some(v=>String(v||"").toLowerCase().includes(term)));
     const key=attGrid.sortKey,dir=attGrid.sortDir==="asc"?1:-1;
     rows.sort((a,b)=>{let av,bv;if(key==="shift_start"){av=app()?.attendanceShiftTime?.(a,"start");bv=app()?.attendanceShiftTime?.(b,"start");}else if(key==="shift_end"){av=app()?.attendanceShiftTime?.(a,"end");bv=app()?.attendanceShiftTime?.(b,"end");}else if(key==="shift_code"){av=codeOf(a);bv=codeOf(b);}else if(key==="display_status"){av=attendanceStatus(a);bv=attendanceStatus(b);}else{av=a[key];bv=b[key];}if(typeof av==="number"||typeof bv==="number")return (Number(av||0)-Number(bv||0))*dir;return String(av||"").localeCompare(String(bv||""),"th")*dir;});
     return rows;
@@ -16568,7 +19050,7 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="work_date" class="nowrap sticky-att-1"><div class="attendance-date-cell-v61462"><strong>${fmtDate(r.work_date)}</strong><small>${new Date(`${String(r.work_date).slice(0,10)}T00:00:00`).toLocaleDateString("th-TH",{weekday:"short"})}</small></div></td>
             <td data-att-col="emp_code" class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td>
             <td data-att-col="full_name" class="nowrap">${esc(r.full_name)}</td>
-            <td data-att-col="department">${esc(r.department||"-")}</td>
+            <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${esc(app()?.canonicalOrgNameV616Q?.(r)||r.department||"-")}</strong><small>${esc(app()?.attendanceOrgSublineV616V?.(r)||"")}</small></div></td>
             <td data-att-col="zone" class="${optionalClass("zone").trim()}">${esc(r.zone||r.area||"-")}</td>
             <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${esc(r.sub_area||"-")}</td>
             <td data-att-col="pattern_code"><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td>
@@ -16595,7 +19077,11 @@ ${skippedSummary(compatibility.skipped)}
             <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${esc(comp)}</td>
           </tr>`;
         }).join("")
-      : `<tr><td colspan="28" class="fc-empty">ไม่พบข้อมูล</td></tr>`;
+      : `<tr><td colspan="28" class="fc-empty">${
+          (attendanceEmployeeFilter.options || []).length
+            ? `พบพนักงาน ${(attendanceEmployeeFilter.options || []).length.toLocaleString("th-TH")} คน แต่ไม่พบข้อมูลเวลา/ตารางกะในช่วงวันที่และตัวกรองที่เลือก`
+            : "ไม่พบข้อมูลตามช่วงวันที่และตัวกรองที่เลือก"
+        }</td></tr>`;
 
     $("attendanceCount").textContent=
       `${num(all.length)} รายการ`;
@@ -16825,34 +19311,6 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
 
-  async function openAttendanceCalendar(key){
-    const row=attendanceDetailRow(key);
-    if(!row)return;
-
-    const emp=String(row.emp_code);
-    const date=String(row.work_date).slice(0,10);
-
-    $("attendanceDetailDrawer")
-      ?.classList.remove("open");
-
-    app()?.switchPage?.("schedule");
-
-    if($("scheduleSearch")){
-      $("scheduleSearch").value=emp;
-    }
-
-    const start=
-      window.TimeClockSchedulePeriod
-        ?.blockStartForDate?.(date)
-      || date;
-
-    if($("schedulePeriodStart")){
-      $("schedulePeriodStart").value=start;
-    }
-
-    window.TimeClockSchedulePeriod?.sync?.();
-    await app()?.loadSchedule?.();
-  }
 
   function moveAttendanceDetail(delta){
     const rows=attendanceDetailRows();
@@ -17037,16 +19495,27 @@ ${skippedSummary(compatibility.skipped)}
         || row.position_name
         || "-"],
       ["หน่วยงาน",
-        employee.department
+        employee.org_name
+        || app()?.canonicalOrgNameV616Q?.(row)
+        || employee.department
         || row.department
+        || "-"],
+      ["รหัสหน่วยงาน",
+        employee.org_code
+        || app()?.canonicalOrgCodeV616Q?.(row)
+        || "-"],
+      ["ทีม",
+        app()?.attendanceTeamLabelV616U?.(row)
         || "-"],
       ["พื้นที่",
         employee.area
+        || app()?.canonicalAreaV616Q?.(row)
         || row.zone
         || row.area
         || "-"],
       ["พื้นที่ย่อย",
         employee.sub_area
+        || app()?.canonicalSubAreaV616Q?.(row)
         || row.sub_area
         || "-"]
     ];
@@ -17415,10 +19884,7 @@ ${skippedSummary(compatibility.skipped)}
                   ? "ยกเลิกการรับรอง"
                   : "รับรองเวลาทำงาน"
               }</button>
-              <button
-                class="btn btn-light"
-                data-detail-open-calendar="${esc(detailKey)}"
-              >เปิดปฏิทินสัปดาห์</button>`
+`
             : ""
         }
         ${
@@ -17505,26 +19971,20 @@ ${skippedSummary(compatibility.skipped)}
       };
     } else {
       try{
-        detail=await rpc(
-          "ta_get_attendance_day_detail_v650",
+        detail=await window.tcRpcContractV616DF(
+          'attendanceDayDetail',
           {
             p_emp_code:row.emp_code,
             p_work_date:String(row.work_date).slice(0,10)
-          }
+          },
+          rpc
         );
       }catch(error){
-        const messageV61463 = String(error?.message || error || '').toUpperCase();
-        if (!messageV61463.includes('ATTENDANCE_DAY_NOT_FOUND')) {
-          try{
-            detail=await rpc(
-              "ta_get_attendance_day_detail_v640",
-              {
-                p_emp_code:row.emp_code,
-                p_work_date:String(row.work_date).slice(0,10)
-              }
-            );
-          }catch(_){ detail=null; }
-        }
+        console.warn(
+          'Attendance Detail frozen contract failed',
+          error
+        );
+        detail=null;
       }
     }
 
@@ -17628,15 +20088,6 @@ ${skippedSummary(compatibility.skipped)}
           return;
         }
 
-        const calendar=event.target.closest(
-          "[data-detail-open-calendar]"
-        );
-        if(calendar){
-          await openAttendanceCalendar(
-            calendar.dataset.detailOpenCalendar
-          );
-          return;
-        }
 
         const rec=event.target.closest(
           "[data-detail-recalculate]"
@@ -18544,7 +20995,7 @@ ${skippedSummary(compatibility.skipped)}
         "Zone",
         "พื้นที่",
         "พื้นที่ย่อย",
-        "ทีมรถ",
+        "car_team เดิม (Legacy)",
         "วันที่เริ่มงาน",
         "วันที่ลาออก",
         "สถานะ"
@@ -18800,6 +21251,7 @@ ${skippedSummary(compatibility.skipped)}
   }
 
   async function loadAudit(){try{app()?.showLoading?.("กำลังโหลด Audit Log...");auditRows=await rpc("ta_get_system_audit",{p_start_date:$("auditStart")?.value,p_end_date:$("auditEnd")?.value,p_action_type:$("auditType")?.value||null,p_search:$("auditSearch")?.value||null,p_limit:2000})||[];renderAudit();}catch(e){app()?.toast(app()?.humanError?.(e)||e.message,"error");}finally{app()?.hideLoading?.();}}
+
   function renderAudit(){const body=$("auditBody");if(!body)return;body.innerHTML=auditRows.length?auditRows.map(r=>`<tr><td>${fmtDateTime(r.event_at)}</td><td><span class="fc-badge info">${esc(r.event_type)}</span></td><td>${esc(r.action_type||"-")}</td><td>${esc(r.actor_email||"-")}</td><td>${esc(r.entity_key||"-")}</td><td>${esc(r.detail||"-")}</td></tr>`).join(""):`<tr><td colspan="6" class="fc-empty">ไม่พบ Audit Log</td></tr>`;$("auditCount").textContent=`${auditRows.length.toLocaleString("th-TH")} รายการ`;}
   function exportAudit(){const rows=[["วันเวลา","ประเภท","การทำงาน","ผู้ดำเนินการ","รายการ","รายละเอียด"],...auditRows.map(r=>[fmtDateTime(r.event_at),r.event_type,r.action_type,r.actor_email,r.entity_key,r.detail])];exportExcel(`Audit_Log_${$("auditStart")?.value}_${$("auditEnd")?.value}.xls`,rows,"Audit Log");}
 
@@ -18821,9 +21273,140 @@ ${skippedSummary(compatibility.skipped)}
   /* ------------------------------------------------------------------
      Notifications
      ------------------------------------------------------------------ */
+  function noticeTargetV61529F15L(r){
+    const rawTarget=String(r?.target_page||'');
+    if(r?._source==='EMPLOYEE_REQUEST')return 'shift-requests';
+    if(r?._source==='BORROW')return 'team-master';
+    return ["review","leave","time-correction","exception-center"].includes(rawTarget)
+      ? 'attendance'
+      : (rawTarget||'dashboard');
+  }
+
+  function noticeCategoryV61529F15L(r){
+    if(r?._source==='BORROW')return 'BORROW';
+    if(r?._source==='EMPLOYEE_REQUEST')return 'REQUEST';
+    const target=noticeTargetV61529F15L(r);
+    const text=`${r?.title||''} ${r?.message||''}`.toLowerCase();
+    if(target==='schedule'||text.includes('ตารางกะ')||text.includes('กะทำงาน'))return 'SCHEDULE';
+    return 'SYSTEM';
+  }
+
+  function noticeStatusV61529F15L(r){
+    const type=String(r?.notification_type||r?.event_type||r?.type||'').trim().toUpperCase();
+    if(r?._source==='BORROW'){
+      const map={
+        REQUESTED:{label:'รออนุมัติ',tone:'warning',icon:'↔'},
+        APPROVED:{label:'อนุมัติแล้ว',tone:'success',icon:'✓'},
+        REJECTED:{label:'ไม่อนุมัติ',tone:'danger',icon:'!'},
+        CANCELLED:{label:'ยกเลิก',tone:'neutral',icon:'×'},
+        END_EARLY:{label:'ปรับวันสิ้นสุด',tone:'info',icon:'↘'},
+        EXPIRING_3D:{label:'ใกล้ครบกำหนด',tone:'warning',icon:'◷'},
+        EXPIRING_2D:{label:'ใกล้ครบกำหนด',tone:'warning',icon:'◷'},
+        EXPIRING_1D:{label:'ครบกำหนดพรุ่งนี้',tone:'warning',icon:'◷'},
+        EXPIRING_TODAY:{label:'ครบกำหนดวันนี้',tone:'danger',icon:'◷'}
+      };
+      return map[type]||{label:'ยืมตัว',tone:'borrow',icon:'↔'};
+    }
+    if(r?._source==='EMPLOYEE_REQUEST')return {label:'คำขอ',tone:'request',icon:'⌁'};
+    if(noticeCategoryV61529F15L(r)==='SCHEDULE')return {label:'ตารางกะ',tone:'schedule',icon:'▣'};
+    const severity=String(r?.severity||'info').toLowerCase();
+    return {label:'ระบบ',tone:severity==='high'||severity==='danger'?'danger':severity==='medium'||severity==='warning'?'warning':'info',icon:'•'};
+  }
+
+  function noticeDateKeyV61529F15L(r){
+    const raw=r?.event_at||r?.created_at||r?.event_date||'';
+    if(!raw)return '';
+    const d=new Date(raw);
+    if(Number.isNaN(d.getTime()))return String(raw).slice(0,10);
+    try{
+      return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+    }catch(_){return d.toISOString().slice(0,10);}
+  }
+
+  function noticeTimeTextV61529F15L(r){
+    const raw=r?.event_at||r?.created_at||r?.event_date||'';
+    if(!raw)return '-';
+    const d=new Date(raw);
+    if(Number.isNaN(d.getTime()))return fmtDate(raw);
+    const todayKey=window.TimeClockCalendarV61448?.today?.()||new Date().toISOString().slice(0,10);
+    const dateKey=noticeDateKeyV61529F15L(r);
+    const time=d.toLocaleTimeString('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',hour12:false});
+    return dateKey===todayKey?`วันนี้ ${time} น.`:`${fmtDate(raw)} • ${time} น.`;
+  }
+
+  function noticeGroupLabelV61529F15L(dateKey){
+    const today=window.TimeClockCalendarV61448?.today?.()||new Date().toISOString().slice(0,10);
+    const yesterday=window.TimeClockCalendarV61448?.addDays?.(today,-1)||'';
+    if(dateKey===today)return 'วันนี้';
+    if(dateKey===yesterday)return 'เมื่อวาน';
+    return 'ก่อนหน้านี้';
+  }
+
+  function noticeCardHtmlV61529F15L(r){
+    const target=noticeTargetV61529F15L(r);
+    const unread=((r._source==='EMPLOYEE_REQUEST'||r._source==='BORROW')&&r.is_read===false)?' is-unread-v61481':'';
+    const requestAttr=r._source==='EMPLOYEE_REQUEST'&&r.notification_id?` data-employee-request-notification-v61481="${esc(r.notification_id)}"`:'';
+    const borrowAttr=r._source==='BORROW'&&r.notification_id
+      ?` data-borrow-notification-v61529f15g="${esc(r.notification_id)}" data-borrow-assignment-v61529f15g="${esc(r.assignment_id||'')}" data-borrow-workflow-v61529f15g="${esc(r.workflow_filter||'ALL')}" data-borrow-from-v61529f15g="${esc(r.effective_from||'')}" data-borrow-to-v61529f15g="${esc(r.effective_to||'')}"`
+      :'';
+    const meta=noticeStatusV61529F15L(r);
+    const title=String(r.title||'การแจ้งเตือน').trim();
+    const message=String(r.message||'').trim();
+    return `<button class="notice-card notice-card-v61529f15l tone-${esc(meta.tone)}${unread}" data-notice-page="${esc(target)}" data-notice-category-v61529f15l="${esc(noticeCategoryV61529F15L(r))}"${requestAttr}${borrowAttr}>
+      <span class="notice-icon-v61529f15l tone-${esc(meta.tone)}" aria-hidden="true">${esc(meta.icon)}</span>
+      <span class="notice-main-v61529f15l">
+        <span class="notice-topline-v61529f15l"><span class="notice-chip-v61529f15l tone-${esc(meta.tone)}">${esc(meta.label)}</span>${unread?'<i class="notice-unread-dot-v61529f15l" aria-label="ยังไม่ได้อ่าน"></i>':''}</span>
+        <strong>${esc(title)}</strong>
+        ${message?`<p>${esc(message)}</p>`:''}
+        <span class="notice-bottom-v61529f15l"><time>${esc(noticeTimeTextV61529F15L(r))}</time><span class="notice-action-v61529f15l">ดูรายการ <b>→</b></span></span>
+      </span>
+    </button>`;
+  }
+
+  let notificationAuthVerifiedAtV616BQ=0;
+  async function ensureNotificationAuthReadyV616BQ(){
+    const c=client();
+    const s=app()?.state;
+    if(!c?.auth || !s?.profile)return false;
+
+    if(
+      s?.session?.access_token
+      && s?.user?.id
+      && Date.now()-notificationAuthVerifiedAtV616BQ < 30000
+    ) return true;
+
+    try{
+      let sessionResult=await c.auth.getSession();
+      if(sessionResult.error || !sessionResult.data?.session?.access_token)return false;
+
+      let session=sessionResult.data.session;
+      let userResult=await c.auth.getUser();
+
+      if(userResult.error || !userResult.data?.user?.id){
+        const refreshed=await c.auth.refreshSession();
+        if(refreshed.error || !refreshed.data?.session?.access_token)return false;
+        session=refreshed.data.session;
+        userResult=await c.auth.getUser();
+        if(userResult.error || !userResult.data?.user?.id)return false;
+      }
+
+      s.session=session;
+      s.user=userResult.data.user;
+      notificationAuthVerifiedAtV616BQ=Date.now();
+      return true;
+    }catch(_){
+      return false;
+    }
+  }
+
   async function loadNotifications(){
+    const drawer=$("notificationDrawer");
     const body=qs("#notificationDrawer .drawer-body");
     if(!body)return;
+
+    // FIX16BQ: validate the server-side token before protected notification RPCs.
+    if(!await ensureNotificationAuthReadyV616BQ())return;
+
     try{
       const start=window.TimeClockCalendarV61448.addDays(window.TimeClockCalendarV61448.today(),-7);
       const end=window.TimeClockCalendarV61448.today();
@@ -18832,28 +21415,73 @@ ${skippedSummary(compatibility.skipped)}
         if(!window.TimeClockShiftAPI?.missingFunction?.(error))console.warn('Employee request notifications V6.14.81:',error?.message||error);
         return [];
       });
-      const [baseRows,requestRows]=await Promise.all([basePromise,requestPromise]);
-      const rows=[...(baseRows||[]).map(r=>({...r,_source:'BASE'})),...(requestRows||[]).map(r=>({...r,_source:'EMPLOYEE_REQUEST'}))]
+      const borrowPromise=rpc("ta_get_borrow_notifications_v61529f15g",{p_limit:50,p_unread_only:false}).catch(error=>{
+        if(!window.TimeClockShiftAPI?.missingFunction?.(error))console.warn('Borrow notifications FIX15G:',error?.message||error);
+        return [];
+      });
+      const [baseRows,requestRows,borrowRows]=await Promise.all([basePromise,requestPromise,borrowPromise]);
+      window.TimeClockBorrowNotificationsV61529F15G?.observeRows?.(borrowRows||[]);
+      const rows=[
+        ...(baseRows||[]).map(r=>({...r,_source:'BASE'})),
+        ...(requestRows||[]).map(r=>({...r,_source:'EMPLOYEE_REQUEST'})),
+        ...(borrowRows||[]).map(r=>({...r,_source:'BORROW'}))
+      ]
         .sort((a,b)=>String(b.event_at||b.created_at||b.event_date||'').localeCompare(String(a.event_at||a.created_at||a.event_date||'')))
-        .slice(0,50);
-      body.innerHTML=rows.length?rows.map(r=>{
-        const rawTarget=String(r.target_page||'');
-        const target=r._source==='EMPLOYEE_REQUEST'?'shift-requests':(["review","leave","time-correction","exception-center"].includes(rawTarget)?"attendance":(rawTarget||"dashboard"));
-        const unread=r.is_read===false?' is-unread-v61481':'';
-        return `<button class="notice-card severity-${esc(r.severity||'info')}${unread}" data-notice-page="${esc(target)}" ${r.notification_id?`data-employee-request-notification-v61481="${esc(r.notification_id)}"`:''}><span class="notice-dot"></span><div><strong>${esc(r.title)}</strong><p>${esc(r.message)}</p><time>${fmtDate(r.event_date||r.created_at||r.event_at)}</time></div></button>`;
-      }).join(""):`<div class="notification-empty">ไม่มีการแจ้งเตือนใหม่</div>`;
-      const unreadCount=rows.filter(r=>r._source!=='EMPLOYEE_REQUEST'||r.is_read===false).length;
+        .slice(0,60);
+
+      const counts={ALL:rows.length,BORROW:0,REQUEST:0,SCHEDULE:0};
+      rows.forEach(r=>{const c=noticeCategoryV61529F15L(r);if(counts[c]!=null)counts[c]+=1;});
+      Object.entries(counts).forEach(([key,value])=>{
+        const el=qs(`[data-notice-count-v61529f15l="${key}"]`,drawer||document);
+        if(el)el.textContent=String(value);
+      });
+
+      const filter=String(drawer?.dataset.noticeFilter||'ALL').toUpperCase();
+      const visibleRows=filter==='ALL'?rows:rows.filter(r=>noticeCategoryV61529F15L(r)===filter);
+      if(!visibleRows.length){
+        body.innerHTML=`<div class="notification-empty notification-empty-v61529f15l"><span>✓</span><strong>ไม่มีรายการในหมวดนี้</strong><small>การแจ้งเตือนใหม่จะแสดงที่นี่อัตโนมัติ</small></div>`;
+      }else{
+        const groupOrder=['วันนี้','เมื่อวาน','ก่อนหน้านี้'];
+        const groups=new Map(groupOrder.map(label=>[label,[]]));
+        visibleRows.forEach(r=>{
+          const label=noticeGroupLabelV61529F15L(noticeDateKeyV61529F15L(r));
+          if(!groups.has(label))groups.set(label,[]);
+          groups.get(label).push(r);
+        });
+        body.innerHTML=groupOrder.filter(label=>groups.get(label)?.length).map(label=>`
+          <section class="notice-group-v61529f15l">
+            <div class="notice-group-head-v61529f15l"><strong>${esc(label)}</strong><span>${groups.get(label).length} รายการ</span></div>
+            <div class="notice-group-list-v61529f15l">${groups.get(label).map(noticeCardHtmlV61529F15L).join('')}</div>
+          </section>`).join('');
+      }
+
+      const unreadCount=rows.filter(r=>{
+        if(r._source==='EMPLOYEE_REQUEST'||r._source==='BORROW')return r.is_read===false;
+        return true;
+      }).length;
       const badge=$("notificationCount");if(badge)badge.textContent=unreadCount;
       body.onclick=async e=>{
         const b=e.target.closest("[data-notice-page]");
         if(!b)return;
         const notificationId=b.dataset.employeeRequestNotificationV61481;
         if(notificationId){try{await rpc('ta_mark_employee_request_notification_read_v61481',{p_notification_id:notificationId});}catch(_){} }
+        const borrowNotificationId=b.getAttribute('data-borrow-notification-v61529f15g');
+        if(borrowNotificationId){try{await rpc('ta_mark_borrow_notification_read_v61529f15g',{p_notification_id:borrowNotificationId});}catch(_){} }
         app()?.switchPage?.(b.dataset.noticePage);
+        if(borrowNotificationId){
+          const context={
+            assignmentId:b.getAttribute('data-borrow-assignment-v61529f15g')||'',
+            workflowFilter:b.getAttribute('data-borrow-workflow-v61529f15g')||'ALL',
+            effectiveFrom:b.getAttribute('data-borrow-from-v61529f15g')||'',
+            effectiveTo:b.getAttribute('data-borrow-to-v61529f15g')||''
+          };
+          setTimeout(()=>window.TimeClockTemporaryAssignmentV61529F14B?.openFromNotification?.(context),40);
+        }
         $("notificationDrawer")?.classList.remove("open");
+        setTimeout(()=>window.TimeClockFunctional?.loadNotifications?.(),120);
       };
     }catch(e){
-      body.innerHTML=`<div class="notification-empty">ไม่สามารถโหลดการแจ้งเตือนจากฐานข้อมูล<br><small>${esc(e.message||"")}</small></div>`;
+      body.innerHTML=`<div class="notification-empty notification-empty-v61529f15l"><span>!</span><strong>โหลดการแจ้งเตือนไม่สำเร็จ</strong><small>${esc(e.message||"")}</small></div>`;
     }
   }
 
@@ -19012,6 +21640,13 @@ ${skippedSummary(compatibility.skipped)}
     $("assistantSendBtn")?.addEventListener("click",()=>{const q=$("assistantInput")?.value;askAssistant(q);$("assistantInput").value="";});$("assistantInput")?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("assistantSendBtn")?.click();}});qsa(".assistant-prompt").forEach(b=>b.addEventListener("click",()=>askAssistant(b.textContent)));
     document.addEventListener("click",e=>{const b=e.target.closest('[data-admin-open="admin-employees"],[data-admin-open="admin-audit"]');if(!b)return;setTimeout(()=>{const page=b.dataset.adminOpen;const titles={"admin-employees":["ข้อมูลพนักงาน","ค้นหาและตรวจสอบข้อมูลพนักงาน"],"admin-audit":["Audit Log","ประวัติการเปลี่ยนแปลงและการใช้งานระบบ"]};if($("pageTitle"))$("pageTitle").textContent=titles[page][0];if($("pageSubtitle"))$("pageSubtitle").textContent=titles[page][1];page==="admin-employees"?loadEmployees():loadAudit();},0);});
     document.addEventListener("timeclock:profile-ready",loadNotifications);
+    window.addEventListener("timeclock:auth-refreshed",()=>{
+      notificationAuthVerifiedAtV616BQ=0;
+      if(app()?.state?.profile)loadNotifications();
+    });
+    window.addEventListener("timeclock:auth-signed-out",()=>{
+      notificationAuthVerifiedAtV616BQ=0;
+    });
     setTimeout(
       () => {
         if (isEmployeeDirectoryAdmin()) {
@@ -19027,7 +21662,11 @@ ${skippedSummary(compatibility.skipped)}
     if(isEmployeeDirectoryAdmin()){
       loadEmployeeDirectoryFilters().catch(()=>{});
     }
-    loadNotifications();
+    // FIX16BP: profile-ready is the canonical trigger. Keep this delayed
+    // fallback only when authentication/profile are already fully ready.
+    if(app()?.state?.session?.access_token && app()?.state?.profile){
+      loadNotifications();
+    }
   },1800);}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 
@@ -19677,7 +22316,9 @@ ${skippedSummary(compatibility.skipped)}
     const profileRoleV61445=String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'').trim().toUpperCase();
     if(profileRoleV61445==='HR_ADMIN'){
       try{
-        const adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];
+        let adminRows=[];
+        try{adminRows=await rpc('ta_get_work_mode_admin_v616z',{})||[];}
+        catch(e){adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];}
         if(Array.isArray(adminRows)&&adminRows.length){
           wp.templateAccessRows=adminRows
             .filter(r=>WORK_TEMPLATE_MODE_CODES_V61438.includes(String(r?.mode_code||'').toUpperCase()))
@@ -19708,10 +22349,11 @@ ${skippedSummary(compatibility.skipped)}
       const samples=[...representatives.entries()].slice(0,80);
       const results=await Promise.allSettled(samples.map(async([department,row])=>({
         department,
-        rows:await rpc('ta_get_work_modes_for_employee_v6120',{
-          p_emp_code:String(row.emp_code),
-          p_work_date:referenceDate
-        })||[]
+        rows:await (async()=>{
+          const args={p_emp_code:String(row.emp_code),p_work_date:referenceDate};
+          try{return await rpc('ta_get_work_modes_for_employee_v616z',args)||[];}
+          catch(e){return await rpc('ta_get_work_modes_for_employee_v6120',args)||[];}
+        })()
       })));
 
       const agg=new Map();
@@ -21053,7 +23695,7 @@ ${names}${extra}
 })();
 
 
-/* ===== V6.10.2 Role, Manager Hierarchy & Shift Requests ===== */
+/* ===== V6.15.29 FIX16AS Role, Manager Hierarchy & Shift Requests ===== */
 (function TimeClockV680(){
   "use strict";
 
@@ -21079,13 +23721,17 @@ ${names}${extra}
     || "VIEWER"
   ).toUpperCase();
   const isHR = () => role() === "HR_ADMIN";
-  const isManager = () => role() === "MANAGER";
-  const isViewer = () => role() === "VIEWER";
+  const isActingManager = () =>
+    window.TimeClockTemporaryAssignmentV61529F14B?.hasActingAuthority?.() === true;
+  const isManager = () => role() === "MANAGER" || isActingManager();
+  const isViewer = () => role() === "VIEWER" && !isActingManager();
   const canManage = () => isHR() || isManager();
   const fmtDate = value =>
     app()?.formatDate?.(value) || value || "-";
   const fmtDateTime = value =>
     app()?.formatDateTime?.(value) || value || "-";
+  const fmtTime = value =>
+    app()?.formatTime?.(value) || employeeRequestFormatTimeV61481(value) || "-";
   const safeStatus = value =>
     String(value || "").toUpperCase();
   const statusLabel = value => ({
@@ -21098,6 +23744,7 @@ ${names}${extra}
     REVOKED:"ยกเลิกการรับรอง",
     STALE:"ต้องรับรองใหม่",
     IN_REVIEW:"กำลังดำเนินการ",
+    RETURNED:"ส่งกลับให้แก้ไข",
     RESOLVED:"ดำเนินการแล้ว"
   })[safeStatus(value)] || value || "-";
   const statusClass = value => {
@@ -21106,6 +23753,7 @@ ${names}${extra}
       return "success";
     }
     if (["PENDING","IN_REVIEW"].includes(code)) return "warning";
+    if (code === "RETURNED") return "info";
     if (["REJECTED","CANCELLED","REVOKED"].includes(code)) {
       return "danger";
     }
@@ -21115,6 +23763,12 @@ ${names}${extra}
   let shiftRequests = [];
   let employeeRequestsV61481 = [];
   let employeeRequestResolveContextV61481 = null;
+  const employeeRequestConsistencyV61515=new Map();
+
+  let managerRequestRevisionV61513=null;
+  let managerRequestSyncBusyV61513=false;
+  let managerRequestSyncTimerV61513=null;
+  const MANAGER_REQUEST_SYNC_INTERVAL_V61513=20000;
 
   async function rpc(name,args={}) {
     const client = app()?.state?.client;
@@ -21232,7 +23886,13 @@ ${names}${extra}
     if (request.request_type === "LEAVE_REQUEST") {
       const endText = detail.end_date && String(detail.end_date).slice(0,10)!==String(request.work_date).slice(0,10)
         ? ` – ${fmtDate(detail.end_date)}` : "";
-      return `${employeeLeaveTypeLabelV61508(detail.leave_type_label||detail.leave_type)} • ${fmtDate(request.work_date)}${endText}`;
+      const partial=String(request.request_subtype||"").toUpperCase()==="PARTIAL_DAY";
+      const effect=!partial&&detail.affected_workday_count!=null
+        ? ` • ปรับกะ ${detail.affected_workday_count} วัน${Number(detail.skipped_nonworkday_count||0)>0?` / ไม่เปลี่ยน ${detail.skipped_nonworkday_count} วัน`:""}`
+        : partial&&detail.leave_start_time&&detail.leave_end_time
+          ? ` • ${employeeRequestFormatTimeV61481(detail.leave_start_time)}–${employeeRequestFormatTimeV61481(detail.leave_end_time)}`
+          : "";
+      return `${employeeLeaveTypeLabelV61508(detail.leave_type_label||detail.leave_type)} • ${fmtDate(request.work_date)}${endText}${effect}`;
     }
     return "-";
   }
@@ -21286,16 +23946,19 @@ ${names}${extra}
       "schedule",
       "work-patterns"
     ];
+    const actingOperationalAuthorityV616K =
+      window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.() === true;
 
     managerAllowed.forEach(page => {
       const nav = document.querySelector(
         `.nav-item[data-page="${page}"]`
       );
+      const actingAllowed = actingOperationalAuthorityV616K;
       nav?.classList.toggle(
         "hidden",
         !["HR_ADMIN","MANAGER"].includes(
           currentRole
-        )
+        ) && !actingAllowed
       );
     });
 
@@ -21341,6 +24004,8 @@ ${names}${extra}
               }`
             : "ตรวจสอบและพิจารณาคำขอ / แจ้งข้อมูลทั้งหมด";
     }
+
+    if(typeof refreshShiftRequestScopeChipV61529F15S==="function")refreshShiftRequestScopeChipV61529F15S();
 
     [
       "newLeaveBtn",
@@ -21570,8 +24235,9 @@ ${names}${extra}
     }
   }
 
-  async function loadShiftRequests() {
+  async function loadShiftRequests(options={}) {
     if (!$("shiftRequestBody")) return;
+    const silent=!!options.silent;
 
     const start = $("shiftRequestStart")?.value || window.TimeClockCalendarV61448.monthStart(new Date());
     const end = $("shiftRequestEnd")?.value || window.TimeClockCalendarV61448.today();
@@ -21579,7 +24245,7 @@ ${names}${extra}
     const typeFilter = String($("shiftRequestTypeFilter")?.value || "").toUpperCase();
     const search = $("shiftRequestSearch")?.value.trim();
 
-    app()?.showLoading?.("กำลังโหลดคำขอ / แจ้งข้อมูล...");
+    if(!silent)app()?.showLoading?.("กำลังโหลดคำขอ / แจ้งข้อมูล...");
     try {
       const legacyPromise = !typeFilter || typeFilter === "SHIFT_CHANGE"
         ? rpc("ta_get_shift_change_requests_v680", {
@@ -21629,17 +24295,239 @@ ${names}${extra}
         .sort((a,b) => String(b.requested_at || b.created_at || "").localeCompare(String(a.requested_at || a.created_at || "")));
 
       renderShiftRequests();
+      shiftRequestSetLastUpdatedV61529F15S(new Date());
+      refreshShiftRequestScopeChipV61529F15S();
+      if(canManage()){
+        loadRequestConsistencyV61515().catch(()=>{});
+        setManagerRequestSyncBaselineV61513()
+          .catch(()=>{});
+      }
     } catch (error) {
       app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
     } finally {
-      app()?.hideLoading?.();
+      if(!silent)app()?.hideLoading?.();
     }
   }
+
+  function managerRequestLiveStateV61513(state,text){
+    const el=$("managerRequestLiveV61513");
+    if(!el)return;
+    el.className=`manager-request-live-v61513 ${state||"ready"}`;
+    const label=el.querySelector("em");
+    if(label)label.textContent=text||"พร้อม";
+  }
+
+  async function getManagerRequestSyncStateV61513(){
+    return await rpc(
+      "ta_get_employee_request_sync_state_v61513",
+      {}
+    );
+  }
+
+  async function setManagerRequestSyncBaselineV61513(){
+    if(!canManage())return null;
+    try{
+      const state=await getManagerRequestSyncStateV61513();
+      managerRequestRevisionV61513=
+        Number(state?.request_revision||0)||0;
+      managerRequestLiveStateV61513(
+        "ready",
+        "พร้อม"
+      );
+      return state;
+    }catch(e){
+      const m=String(e?.message||e||"");
+      if(
+        m.includes("ta_get_employee_request_sync_state_v61513")
+        || m.includes("PGRST202")
+      ){
+        managerRequestLiveStateV61513(
+          "legacy",
+          "Manual"
+        );
+        return null;
+      }
+      managerRequestLiveStateV61513(
+        "error",
+        "รอตรวจใหม่"
+      );
+      return null;
+    }
+  }
+
+  async function checkManagerRequestSyncV61513(
+    {force=false}={}
+  ){
+    if(
+      managerRequestSyncBusyV61513
+      || !canManage()
+      || document.visibilityState==="hidden"
+      || app()?.state?.currentPage!=="shift-requests"
+    ){
+      return false;
+    }
+
+    managerRequestSyncBusyV61513=true;
+
+    try{
+      const state=await getManagerRequestSyncStateV61513();
+      const next=Number(state?.request_revision||0)||0;
+
+      if(managerRequestRevisionV61513===null){
+        managerRequestRevisionV61513=next;
+        managerRequestLiveStateV61513(
+          "ready",
+          "พร้อม"
+        );
+        return true;
+      }
+
+      if(next===managerRequestRevisionV61513){
+        managerRequestLiveStateV61513(
+          "ready",
+          "ล่าสุด"
+        );
+        return true;
+      }
+
+      managerRequestLiveStateV61513(
+        "syncing",
+        "อัปเดต"
+      );
+
+      await loadShiftRequests(
+        {silent:true}
+      );
+
+      managerRequestRevisionV61513=next;
+
+      managerRequestLiveStateV61513(
+        "ready",
+        "ล่าสุด"
+      );
+
+      if(force!==true){
+        app()?.toast?.(
+          "มีคำขอหรือสถานะใหม่ • อัปเดตรายการแล้ว",
+          "info"
+        );
+      }
+
+      return true;
+    }catch(e){
+      managerRequestLiveStateV61513(
+        "error",
+        "รอตรวจใหม่"
+      );
+      return false;
+    }finally{
+      managerRequestSyncBusyV61513=false;
+    }
+  }
+
+  function startManagerRequestSyncV61513(){
+    if(managerRequestSyncTimerV61513)return;
+
+    managerRequestSyncTimerV61513=setInterval(
+      ()=>{
+        checkManagerRequestSyncV61513()
+          .catch(()=>{});
+      },
+      MANAGER_REQUEST_SYNC_INTERVAL_V61513
+    );
+
+    window.addEventListener(
+      "focus",
+      ()=>{
+        if(
+          app()?.state?.currentPage==="shift-requests"
+        ){
+          checkManagerRequestSyncV61513(
+            {force:true}
+          ).catch(()=>{});
+        }
+      }
+    );
+
+    document.addEventListener(
+      "visibilitychange",
+      ()=>{
+        if(
+          document.visibilityState==="visible"
+          && app()?.state?.currentPage==="shift-requests"
+        ){
+          checkManagerRequestSyncV61513(
+            {force:true}
+          ).catch(()=>{});
+        }
+      }
+    );
+  }
+
+
+
+  function consistencyBadgeV61515(request){
+    if(String(request?.request_source||"")!=="EMPLOYEE_REQUEST_V61481")return"";
+    if(String(request?.status||"").toUpperCase()!=="RESOLVED")return"";
+
+    const audit=employeeRequestConsistencyV61515.get(String(request.request_id));
+    if(!audit){
+      return `<span class="request-consistency-v61515 pending" title="รอผลตรวจ Backend ↔ Portal">◷ รอตรวจ</span>`;
+    }
+
+    const status=String(audit.overall_status||"").toUpperCase();
+    const cls=status==="PASS"?"pass":status==="FAIL"?"fail":"warn";
+    const label=status==="PASS"
+      ?"✓ ตรวจครบ"
+      :status==="FAIL"
+        ?"! ไม่ตรง"
+        :"△ รอ Sync";
+
+    return `<span class="request-consistency-v61515 ${cls}" title="${esc(audit.summary||audit.result_code||"")}">${label}</span>`;
+  }
+
+  async function loadRequestConsistencyV61515(){
+    const ids=employeeRequestsV61481
+      .filter(r=>String(r.status||"").toUpperCase()==="RESOLVED")
+      .map(r=>r.request_id)
+      .filter(Boolean);
+
+    employeeRequestConsistencyV61515.clear();
+
+    if(!ids.length){
+      renderShiftRequests();
+      return;
+    }
+
+    try{
+      const rows=await rpc(
+        "ta_get_employee_request_consistency_v61515",
+        {p_request_ids:ids.slice(0,500)}
+      );
+
+      (Array.isArray(rows)?rows:[]).forEach(row=>{
+        if(row?.request_id){
+          employeeRequestConsistencyV61515.set(String(row.request_id),row);
+        }
+      });
+    }catch(e){
+      const m=String(e?.message||e||"");
+      if(
+        !m.includes("ta_get_employee_request_consistency_v61515")
+        && !m.includes("PGRST202")
+      ){
+        console.warn("V6.15.15 request consistency",e);
+      }
+    }
+
+    renderShiftRequests();
+  }
+
 
   function renderShiftRequests() {
     const pending = shiftRequests.filter(request => ["PENDING","IN_REVIEW"].includes(String(request.status || "").toUpperCase())).length;
     const approved = shiftRequests.filter(request => ["APPROVED","RESOLVED"].includes(String(request.status || "").toUpperCase())).length;
-    const closed = shiftRequests.filter(request => ["REJECTED","CANCELLED"].includes(String(request.status || "").toUpperCase())).length;
+    const closed = shiftRequests.filter(request => ["REJECTED","CANCELLED","RETURNED"].includes(String(request.status || "").toUpperCase())).length;
 
     setText("shiftRequestCount",`${shiftRequests.length.toLocaleString("th-TH")} รายการ`);
     setText("shiftRequestKpiAll",shiftRequests.length.toLocaleString("th-TH"));
@@ -21669,15 +24557,12 @@ ${names}${extra}
             } else if (request.request_type === "SPECIAL_WORK") {
               actions.push(`<button class="btn btn-success btn-sm" data-employee-request-special-review-v61481="${esc(request.request_id)}">ตรวจรายละเอียดและจัดกะ</button>`);
             } else if (request.request_type === "DAYOFF_SWAP") {
-              const dayoffAction=String(request.request_subtype||"").toUpperCase()==="ADD_DAYOFF"
-                ? "เพิ่มวันหยุดจากโควต้า"
-                : "ยืนยันสลับวันหยุด";
-              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">${dayoffAction}</button>`);
+              actions.push(`<button class="btn btn-success btn-sm manager-dayoff-review-btn-v61517" data-employee-request-dayoff-review-v61491="${esc(request.request_id)}">ตรวจและจัดวันหยุด</button>`);
             } else if (request.request_type === "LEAVE_REQUEST") {
-              const leaveAction=String(request.request_subtype||"").toUpperCase()==="PARTIAL_DAY"
-                ? "อนุมัติลาบางส่วน"
-                : "ปรับตารางลาเต็มวัน";
-              actions.push(`<button class="btn btn-success btn-sm" data-employee-request-leave-review-v61491="${esc(request.request_id)}">${leaveAction}</button>`);
+              actions.push(`<button class="btn btn-success btn-sm manager-leave-review-btn-v61520" data-employee-request-leave-review-v61521="${esc(request.request_id)}">ตรวจและปรับตารางกะ</button>`);
+            }
+            if (["DAYOFF_SWAP","LEAVE_REQUEST"].includes(request.request_type)) {
+              actions.push(`<button class="btn btn-light btn-sm manager-return-btn-v61519" data-employee-request-return-v61519="${esc(request.request_id)}">ส่งกลับให้แก้ไข</button>`);
             }
             actions.push(`<button class="btn btn-danger-soft btn-sm" data-employee-request-decision-v61481="${esc(request.request_id)}|REJECTED">ไม่อนุมัติ</button>`);
           }
@@ -21701,13 +24586,13 @@ ${names}${extra}
             <td>${employeeRequestTypeBadgeV61481(requestType)}</td>
             <td><div class="employee-request-detail-v61481"><strong>${esc(detailText)}</strong>${request.request_subtype && requestType !== "SHIFT_CHANGE" ? `<small>${esc(employeeRequestSubtypeLabelV61481(requestType,request.request_subtype))}</small>` : ""}</div></td>
             <td>${esc(request.reason || "-")}</td>
-            <td><span class="v650-status ${statusClass(request.status)}">${esc(statusLabel(request.status))}</span></td>
+            <td><div class="request-status-stack-v61515"><span class="v650-status ${statusClass(request.status)}">${esc(statusLabel(request.status))}</span>${consistencyBadgeV61515(request)}</div></td>
             <td>${fmtDateTime(request.requested_at || request.created_at)}</td>
             <td>${esc(request.decision_note || "-")}</td>
             <td><div class="v650-actions">${actions.join("") || "-"}</div></td>
           </tr>`;
         }).join("")
-      : `<tr><td colspan="10" class="fc-empty">ไม่พบคำขอ / แจ้งข้อมูล</td></tr>`;
+      : `<tr class="shift-request-empty-row-v61529f15s"><td colspan="10" class="fc-empty"><div class="shift-request-empty-v61529f15s"><span class="shift-request-empty-icon-v61529f15s">⌕</span><strong>ไม่พบคำขอ / แจ้งข้อมูล</strong><small>ลองปรับช่วงวันที่ สถานะ ประเภทคำขอ หรือคำค้นหา</small><button type="button" class="btn btn-light btn-sm" data-clear-request-filters-v61529f15s>ล้างตัวกรอง</button></div></td></tr>`;
   }
 
   async function fetchEmployeeRequestAttendanceV61481(empCode,workDate) {
@@ -21769,6 +24654,34 @@ ${names}${extra}
     });
     if(result?.applied===false)return result;
     return result;
+  }
+
+  async function applyEmployeeDayoffAtomicV61519(request,acknowledge48h=false,note=null){
+    if(!request?.request_id)throw new Error('REQUEST_ID_REQUIRED');
+    return await rpc('ta_apply_employee_request_dayoff_v61519',{
+      p_request_id:request.request_id,
+      p_acknowledge_48h:Boolean(acknowledge48h),
+      p_note:note||null
+    });
+  }
+
+  async function refreshAfterEmployeeDayoffApplyV61519(result,review){
+    const rows=Array.isArray(result?.proposed_rows)
+      ? result.proposed_rows
+      : (Array.isArray(review?.proposed_rows)?review.proposed_rows:[]);
+    const keys=rows.map(row=>({
+      emp_code:String(row?.emp_code||''),
+      work_date:String(row?.work_date||'').slice(0,10)
+    })).filter(row=>row.emp_code&&row.work_date);
+
+    if(keys.length){
+      try{window.TimeClockConsistencyV61415?.invalidate?.(keys);}catch(_){}
+    }
+    try{await app()?.loadSchedule?.();}catch(_){}
+    if(app()?.state?.currentPage==='attendance'){
+      try{await app()?.loadAttendance?.();}catch(_){}
+    }
+    try{await checkManagerRequestSyncV61513({force:true});}catch(_){}
   }
 
   function clearEmployeeRequestContextV61494(){
@@ -21895,38 +24808,549 @@ ${names}${extra}
     return out;
   }
 
+  async function loadEmployeeDayoffReviewV61517(requestId){
+    return await rpc("ta_get_employee_request_dayoff_review_v61518",{
+      p_request_id:requestId
+    });
+  }
+
+  function dayoffReviewSignatureV61517(review){
+    const s=review?.source||{},t=review?.target||{},q=review?.quota||{};
+    const blockers=(Array.isArray(review?.blockers)?review.blockers:[]).map(x=>`${x?.code||""}:${x?.message||""}`).join(";");
+    const warnings=(Array.isArray(review?.warnings)?review.warnings:[]).map(x=>`${x?.code||""}:${x?.message||""}`).join(";");
+    const sg=review?.source_schedule_guard||{};
+    const ng=review?.night_sequence_guard||{};
+    return [
+      review?.allowed===true?"1":"0",
+      review?.version||"",
+      s.work_date||"",s.current_shift_code||"",s.proposed_shift_code||"",
+      t.work_date||"",t.current_shift_code||"",t.proposed_shift_code||"",
+      q.balance_days??"",q.pending_add_requests_other??"",q.requestable_for_this_request??"",
+      sg.hard_block===true?"1":"0",sg.warning_48h===true?"1":"0",sg.rest_minutes??"",sg.continuous_minutes_after??"",
+      ng.allowed===false?"0":"1",blockers,warnings
+    ].join("|");
+  }
+
+  function dayoffReviewIssueTextV61517(issue){
+    const raw=String(issue?.message||issue?.code||"");
+    if(!raw)return"-";
+    try{return app()?.humanError?.({message:raw})||raw;}catch(_){return raw;}
+  }
+
+  function dayoffReviewShiftLineV61517(value){
+    const code=String(value?.current_shift_code||"-");
+    const proposed=String(value?.proposed_shift_code||"-");
+    return `${code} → ${proposed}`;
+  }
+
+  function ensureManagerDayoffReviewModalV61517(){
+    let modal=$("managerDayoffReviewModalV61517");
+    if(modal)return modal;
+    document.body.insertAdjacentHTML("beforeend",`
+      <div class="modal-backdrop hidden manager-dayoff-review-modal-v61517" id="managerDayoffReviewModalV61517">
+        <div class="manager-dayoff-review-dialog-v61517" role="dialog" aria-modal="true" aria-labelledby="managerDayoffReviewTitleV61517">
+          <div class="manager-dayoff-review-head-v61517">
+            <div>
+              <span>MANAGER REVIEW</span>
+              <h3 id="managerDayoffReviewTitleV61517">ตรวจและจัดวันหยุด</h3>
+              <p id="managerDayoffReviewSubtitleV61517">ตรวจข้อมูล Backend ล่าสุดก่อนดำเนินการ</p>
+            </div>
+            <button type="button" class="btn btn-light btn-icon" data-dayoff-review-close-v61517 aria-label="ปิด">×</button>
+          </div>
+          <div class="manager-dayoff-review-body-v61517" id="managerDayoffReviewBodyV61517"></div>
+          <div class="manager-dayoff-review-foot-v61517">
+            <button type="button" class="btn btn-light" data-dayoff-review-refresh-v61517>↻ ตรวจข้อมูลล่าสุด</button>
+            <div>
+              <button type="button" class="btn btn-light" data-dayoff-review-close-v61517>ปิด</button>
+              <button type="button" class="btn btn-success" id="managerDayoffReviewConfirmV61517">ยืนยันและดำเนินการ</button>
+            </div>
+          </div>
+        </div>
+      </div>`);
+    return $("managerDayoffReviewModalV61517");
+  }
+
+  function renderManagerDayoffReviewV61517(request,review){
+    const modal=ensureManagerDayoffReviewModalV61517();
+    const body=$("managerDayoffReviewBodyV61517");
+    const confirm=$("managerDayoffReviewConfirmV61517");
+    const subtype=String(request?.request_subtype||review?.request_subtype||"").toUpperCase();
+    const isAdd=subtype==="ADD_DAYOFF";
+    const source=review?.source||{};
+    const target=review?.target||{};
+    const quota=review?.quota||{};
+    const blockers=Array.isArray(review?.blockers)?review.blockers:[];
+    const warnings=Array.isArray(review?.warnings)?review.warnings:[];
+    const allowed=review?.allowed===true;
+    const submitSnapshot=request?.detail?.server_submit_validation_v61517||{};
+
+    if($("managerDayoffReviewTitleV61517")){
+      $("managerDayoffReviewTitleV61517").textContent=isAdd?"ตรวจคำขอหยุดเพิ่ม":"ตรวจคำขอสลับวันหยุด";
+    }
+    if($("managerDayoffReviewSubtitleV61517")){
+      $("managerDayoffReviewSubtitleV61517").textContent=`${request?.request_no||"-"} • ${review?.employee?.emp_code||request?.emp_code||"-"} ${review?.employee?.full_name||request?.full_name||""}`.trim();
+    }
+
+    const transitionHtml=isAdd
+      ? `<div class="manager-dayoff-transition-grid-v61517 single">
+          <article class="manager-dayoff-transition-card-v61517 target">
+            <span>วันที่ขอหยุดเพิ่ม</span>
+            <strong>${esc(fmtDate(target.work_date||request?.work_date))}</strong>
+            <b>${esc(dayoffReviewShiftLineV61517(target))}</b>
+            <small>วันทำงาน → วันหยุดจากกะคู่</small>
+          </article>
+        </div>`
+      : `<div class="manager-dayoff-transition-grid-v61517">
+          <article class="manager-dayoff-transition-card-v61517 source">
+            <span>วันหยุดเดิม</span>
+            <strong>${esc(fmtDate(source.work_date||request?.work_date))}</strong>
+            <b>${esc(dayoffReviewShiftLineV61517(source))}</b>
+            <small>คืนวันเดิมเป็นวันทำงาน</small>
+          </article>
+          <div class="manager-dayoff-transition-arrow-v61517">⇄</div>
+          <article class="manager-dayoff-transition-card-v61517 target">
+            <span>วันที่หยุดแทน</span>
+            <strong>${esc(fmtDate(target.work_date||request?.detail?.target_date))}</strong>
+            <b>${esc(dayoffReviewShiftLineV61517(target))}</b>
+            <small>วันทำงาน → วันหยุด</small>
+          </article>
+        </div>`;
+
+    const checks=[
+      ["ตารางกะปัจจุบัน",blockers.some(x=>/SOURCE_|TARGET_|DAYOFF_SWAP_SOURCE|DAYOFF_SWAP_TARGET|DAYOFF_ADD_TARGET/.test(String(x?.code||"")))?"block":"pass"],
+      ["รูปแบบการทำงาน 5D/6D",blockers.some(x=>String(x?.code||"").includes("WORK_PATTERN"))?"block":"pass"],
+      ["รอบระบบ",blockers.some(x=>String(x?.code||"").includes("PERIOD"))?"block":"pass"],
+      ["คำขอซ้ำ / Conflict",review?.canonical_conflict_ok===false?"block":"pass"],
+      ["โควต้า",blockers.some(x=>String(x?.code||"").includes("QUOTA")||String(x?.code||"").includes("BALANCE"))?"block":"pass"],
+      ["กะดึก / เวลาพัก",blockers.some(x=>String(x?.code||"").includes("NIGHT")||String(x?.code||"").includes("SCHEDULE_GUARD")||String(x?.code||"").includes("MINIMUM_REST"))?"block":warnings.some(x=>String(x?.code||"").includes("NIGHT")||String(x?.code||"").includes("SCHEDULE_GUARD")||String(x?.code||"").includes("GUARD")||String(x?.code||"").includes("48H"))?"warn":"pass"]
+    ];
+
+    const issueHtml=blockers.length||warnings.length
+      ? `<div class="manager-dayoff-review-issues-v61517">
+          ${blockers.map(x=>`<div class="block"><i>!</i><span><strong>ไม่ผ่าน</strong>${esc(dayoffReviewIssueTextV61517(x))}</span></div>`).join("")}
+          ${warnings.map(x=>`<div class="warn"><i>△</i><span><strong>คำเตือน</strong>${esc(dayoffReviewIssueTextV61517(x))}</span></div>`).join("")}
+        </div>`
+      : `<div class="manager-dayoff-review-ok-v61517"><i>✓</i><div><strong>Backend ตรวจครบ</strong><span>ข้อมูลปัจจุบันพร้อมสำหรับขั้นตอนดำเนินการ</span></div></div>`;
+
+    const snapshotText=submitSnapshot?.validated_at
+      ? `ตรวจตอนส่ง ${fmtDateTime(submitSnapshot.validated_at)} • Manager ตรวจล่าสุด ${fmtDateTime(review?.checked_at)}`
+      : `Manager ตรวจล่าสุด ${fmtDateTime(review?.checked_at)}`;
+
+    body.innerHTML=`
+      <div class="manager-dayoff-review-status-v61517 ${allowed?"pass":"block"}">
+        <div><span>${allowed?"✓ ผ่าน Preflight":"! พบเงื่อนไขที่ต้องแก้"}</span><strong>${allowed?"สามารถดำเนินการต่อได้":"ยังไม่ควรแก้ตารางกะ"}</strong></div>
+        <small>${esc(snapshotText)}</small>
+      </div>
+      <div class="manager-dayoff-review-meta-v61517">
+        <div><span>พนักงาน</span><strong>${esc(review?.employee?.emp_code||request?.emp_code||"-")} • ${esc(review?.employee?.full_name||request?.full_name||"-")}</strong></div>
+        <div><span>ประเภท</span><strong>${esc(isAdd?"ขอหยุดเพิ่มจากโควต้า":"สลับวันหยุด")}</strong></div>
+        <div><span>เหตุผล</span><strong>${esc(review?.reason||request?.reason||"-")}</strong></div>
+      </div>
+      ${transitionHtml}
+      <div class="manager-dayoff-quota-card-v61517">
+        <div><span>โควต้าเดือนนี้</span><strong>${esc(quota.month_quota_days??"-")}</strong></div>
+        <div><span>ใช้ไป</span><strong>${esc(quota.used_days??"-")}</strong></div>
+        <div><span>คงเหลือจริง</span><strong>${esc(quota.balance_days??"-")}</strong></div>
+        <div><span>คำขออื่นที่รอ</span><strong>${esc(quota.pending_add_requests_other??0)}</strong></div>
+        <div><span>ใช้ได้กับคำขอนี้</span><strong>${esc(quota.requestable_for_this_request??"-")}</strong></div>
+      </div>
+      <div class="manager-dayoff-checks-v61517">
+        ${checks.map(([label,state])=>`<span class="${state}"><i>${state==="pass"?"✓":state==="warn"?"△":"!"}</i>${esc(label)}</span>`).join("")}
+      </div>
+      ${issueHtml}
+      <div class="manager-dayoff-review-note-v61517">
+        <strong>การทำงานของระบบ</strong>
+        <span>V6.15.19 จะใช้ V6.15.18 ตรวจ 5D/6D, รอบระบบ, โควต้า, พัก ≥ 6 ชม. และ Night Sequence ก่อนเขียน • หลัง Commit จะ Publish ผล Source/Target จริงกลับ Employee Portal พร้อม Notification ใน Transaction เดียว</span>
+      </div>`;
+
+    if(confirm){
+      confirm.disabled=!allowed;
+      confirm.textContent=allowed?(isAdd?"ยืนยันและเพิ่มวันหยุด":"ยืนยันและปรับ Schedule"):"ยังดำเนินการไม่ได้";
+    }
+    modal.classList.remove("hidden");
+  }
+
+  function openManagerDayoffReviewModalV61517(request,review){
+    const modal=ensureManagerDayoffReviewModalV61517();
+    renderManagerDayoffReviewV61517(request,review);
+    return new Promise(resolve=>{
+      let done=false;
+      const finish=value=>{
+        if(done)return;done=true;
+        modal.classList.add("hidden");
+        modal.querySelectorAll("[data-dayoff-review-close-v61517]").forEach(x=>x.onclick=null);
+        const refresh=modal.querySelector("[data-dayoff-review-refresh-v61517]");
+        const confirm=$("managerDayoffReviewConfirmV61517");
+        if(refresh)refresh.onclick=null;
+        if(confirm)confirm.onclick=null;
+        modal.onclick=null;
+        resolve(value);
+      };
+      modal.querySelectorAll("[data-dayoff-review-close-v61517]").forEach(x=>x.onclick=()=>finish("close"));
+      const refresh=modal.querySelector("[data-dayoff-review-refresh-v61517]");
+      if(refresh)refresh.onclick=()=>finish("refresh");
+      const confirm=$("managerDayoffReviewConfirmV61517");
+      if(confirm)confirm.onclick=()=>{if(!confirm.disabled)finish("confirm");};
+      modal.onclick=e=>{if(e.target===modal)finish("close");};
+    });
+  }
+
   async function reviewEmployeeDayoffSwapV61494(request){
     if(!request)return;
-    const subtype=String(request.request_subtype||"").toUpperCase();
-    const target=String(subtype==="ADD_DAYOFF"?(request.work_date||request.detail?.target_date||""):(request.detail?.target_date||"")).slice(0,10);
-    if(!target){app()?.toast?.("คำขอไม่มีวันที่สำหรับดำเนินการ","error");return;}
-
-    const sourceDate=String(request.work_date||"").slice(0,10);
-    const title=subtype==="ADD_DAYOFF"?"เพิ่มวันหยุดจากโควต้า":"ยืนยันสลับวันหยุด";
-    const message=subtype==="ADD_DAYOFF"
-      ? `ระบบจะเปลี่ยนวันที่ ${fmtDate(target)} จากวันทำงานเป็นวันหยุด โดยตรวจโควต้าอีกครั้งที่ Backend และบันทึกพร้อมปิดคำขอใน Transaction เดียว`
-      : `ระบบจะสลับ ${fmtDate(sourceDate)} จากวันหยุดเป็นวันทำงาน และ ${fmtDate(target)} จากวันทำงานเป็นวันหยุดพร้อมกัน\n\nหากวันใดวันหนึ่งไม่ผ่านเงื่อนไข ระบบจะ Rollback ทั้ง 2 วัน`;
-    const ok=await window.TimeClockModal?.confirm?.({
-      title,message,confirmText:subtype==="ADD_DAYOFF"?"เพิ่มวันหยุด":"ยืนยันสลับวันหยุด",tone:"primary"
-    });
-    if(!ok)return;
+    let review=null;
 
     try{
-      app()?.showLoading?.(subtype==="ADD_DAYOFF"?"กำลังตรวจโควต้าและเพิ่มวันหยุด...":"กำลังสลับวันหยุดแบบ Atomic...");
-      const result=await applyEmployeeRequestAtomicV61510(request,{},request.reason||null);
+      app()?.showLoading?.("กำลังตรวจคำขอวันหยุดกับ Backend ล่าสุด...");
+      review=await loadEmployeeDayoffReviewV61517(request.request_id);
+      await markEmployeeRequestInReviewV61481(request.request_id);
+    }catch(e){
+      const msg=String(e?.message||e||"");
+      if(msg.includes("ta_get_employee_request_dayoff_review_v61518")||msg.includes("PGRST202")){
+        app()?.toast?.("กรุณารัน SQL V6.15.18 ก่อนใช้ Manager Review / Approve วันหยุด","error");
+      }else{
+        app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+      }
+      return;
+    }finally{
+      app()?.hideLoading?.();
+    }
+
+    while(review){
+      const beforeSignature=dayoffReviewSignatureV61517(review);
+      const action=await openManagerDayoffReviewModalV61517(request,review);
+      if(action==="close")return;
+
+      try{
+        app()?.showLoading?.("กำลังตรวจข้อมูลล่าสุดอีกครั้ง...");
+        const fresh=await loadEmployeeDayoffReviewV61517(request.request_id);
+        const freshSignature=dayoffReviewSignatureV61517(fresh);
+
+        if(action==="refresh"){
+          review=fresh;
+          continue;
+        }
+
+        if(freshSignature!==beforeSignature){
+          review=fresh;
+          app()?.toast?.("ข้อมูลกะหรือโควต้ามีการเปลี่ยนแปลง • ระบบอัปเดต Review ล่าสุดให้แล้ว","warning");
+          continue;
+        }
+
+        if(fresh?.allowed!==true){
+          review=fresh;
+          app()?.toast?.("คำขอไม่ผ่านเงื่อนไขล่าสุด จึงยังไม่แก้ตารางกะ","warning");
+          continue;
+        }
+
+        const subtype=String(request.request_subtype||"").toUpperCase();
+        const sourceDate=String(request.work_date||"").slice(0,10);
+        const target=String(subtype==="ADD_DAYOFF"?(request.work_date||request.detail?.target_date||""):(request.detail?.target_date||"")).slice(0,10);
+        app()?.showLoading?.(subtype==="ADD_DAYOFF"?"กำลังตรวจและเพิ่มวันหยุดแบบ Atomic...":"กำลังตรวจและสลับวันหยุดแบบ Atomic...");
+
+        let result=await applyEmployeeDayoffAtomicV61519(request,false,null);
+        if(result?.requires_48h_confirmation===true){
+          app()?.hideLoading?.();
+          const hours=Number(result?.continuous_hours_after||0);
+          const ok=await window.TimeClockModal?.confirm?.({
+            title:"ยืนยันชั่วโมงทำงานต่อเนื่องเกิน 48 ชม.",
+            message:`หลังสลับวันหยุด พนักงานอาจมีชั่วโมงทำงานต่อเนื่องประมาณ ${hours.toLocaleString("th-TH",{maximumFractionDigits:2})} ชั่วโมง\n\nระบบแนะนำให้ตรวจวันหยุดรอบข้างอีกครั้ง แต่ Manager สามารถยืนยันดำเนินการต่อได้ โดยระบบจะตรวจ 6 ชั่วโมงและ Night Sequence ซ้ำก่อน Commit`,
+            confirmText:"ยืนยันและดำเนินการต่อ",
+            tone:"warning"
+          });
+          if(!ok)return;
+          app()?.showLoading?.("กำลังยืนยันและปรับ Schedule แบบ Atomic...");
+          result=await applyEmployeeDayoffAtomicV61519(request,true,null);
+        }
+
+        if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
+
+        employeeRequestResolveContextV61481=null;
+        clearEmployeeRequestContextV61494();
+        const actionResult=result?.action_result||{};
+        const finalState=result?.final_state||{};
+        app()?.toast?.(
+          subtype==="ADD_DAYOFF"
+            ? `เพิ่มวันหยุดเรียบร้อย${finalState?.target?.shift_code?` • ${finalState.target.shift_code}`:(actionResult.target_off_shift?` • ${actionResult.target_off_shift}`:"")}`
+            : `สลับวันหยุดเรียบร้อย • ${fmtDate(sourceDate)} → ${finalState?.source?.shift_code||"ทำงาน"} / ${fmtDate(target)} → ${finalState?.target?.shift_code||"หยุด"}`,
+          "success"
+        );
+        await refreshAfterEmployeeDayoffApplyV61519(result,fresh);
+        await loadShiftRequests();
+        return;
+      }catch(e){
+        const msg=String(e?.message||e||"");
+        if(msg.includes("ta_apply_employee_request_dayoff_v61519")||msg.includes("PGRST202")){
+          app()?.toast?.("กรุณารัน SQL V6.15.19 ก่อนอนุมัติคำขอวันหยุด","error");
+        }else{
+          app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+        }
+        return;
+      }finally{
+        app()?.hideLoading?.();
+      }
+    }
+  }
+
+  async function loadEmployeeLeaveReviewV61521(requestId){
+    if(!requestId)throw new Error("REQUEST_ID_REQUIRED");
+    return await rpc("ta_get_employee_request_leave_review_v61521",{p_request_id:requestId});
+  }
+
+  function leaveReviewIssueTextV61520(issue){
+    const raw=String(issue?.message||issue?.code||"");
+    if(!raw)return"-";
+    try{return app()?.humanError?.({message:raw})||raw;}catch(_){return raw;}
+  }
+
+  function leaveReviewSignatureV61520(review){
+    const blockers=JSON.stringify(review?.blockers||[]);
+    const warnings=JSON.stringify(review?.warnings||[]);
+    const days=(review?.days||[]).map(d=>[d.work_date,d.current_shift_code,d.action,d.proposed_shift_code,d.period_allowed]).join(";");
+    const p=review?.partial||{};
+    return [
+      review?.allowed===true?"1":"0",
+      review?.affected_atomic_ready===true?"1":"0",review?.apply_strategy||"",
+      review?.leave_type||"",review?.start_date||"",review?.end_date||"",
+      review?.affected_workday_count??"",review?.skipped_nonworkday_count??"",days,
+      p.shift_code||"",p.leave_start_at||"",p.leave_end_at||"",blockers,warnings
+    ].join("|");
+  }
+
+  function leaveReviewTimelineV61520(partial){
+    if(!partial)return"";
+    const parse=v=>{if(!v)return NaN;const d=new Date(String(v).replace(" ","T"));return d.getTime();};
+    const ss=parse(partial.shift_start_at),se=parse(partial.shift_end_at),ls=parse(partial.leave_start_at),le=parse(partial.leave_end_at);
+    let before=35,leave=30,after=35;
+    if([ss,se,ls,le].every(Number.isFinite)&&se>ss){
+      const total=se-ss;
+      before=Math.max(0,Math.min(100,((ls-ss)/total)*100));
+      leave=Math.max(4,Math.min(100-before,((le-ls)/total)*100));
+      after=Math.max(0,100-before-leave);
+    }
+    return `<div class="manager-leave-timeline-v61520">
+      ${before>1?`<span class="work" style="width:${before.toFixed(2)}%">ทำงาน</span>`:""}
+      <span class="leave" style="width:${leave.toFixed(2)}%">ลา</span>
+      ${after>1?`<span class="work" style="width:${after.toFixed(2)}%">ทำงาน</span>`:""}
+    </div>`;
+  }
+
+  function managerLeaveDayTypeLabelV61520(value){
+    const code=String(value||"").toUpperCase();
+    return ({PUBLIC_HOLIDAY:"นักขัตฤกษ์",WEEKLY_OFF:"วันหยุด",LEAVE:"ลาเดิม",WORKDAY:"วันทำงาน",DAY_OFF:"วันหยุด",OFF:"วันหยุด"})[code]||value||"-";
+  }
+
+  function ensureManagerLeaveReviewModalV61520(){
+    let modal=$("managerLeaveReviewModalV61520");
+    if(modal)return modal;
+    document.body.insertAdjacentHTML("beforeend",`
+      <div class="modal-backdrop hidden manager-leave-review-modal-v61520" id="managerLeaveReviewModalV61520">
+        <div class="manager-leave-review-dialog-v61520" role="dialog" aria-modal="true" aria-labelledby="managerLeaveReviewTitleV61520">
+          <div class="manager-leave-review-head-v61520">
+            <div>
+              <span>MANAGER REVIEW</span>
+              <h3 id="managerLeaveReviewTitleV61520">ตรวจและปรับตารางกะ</h3>
+              <p id="managerLeaveReviewSubtitleV61520">ตรวจผลกระทบต่อตารางกะก่อนดำเนินการ</p>
+            </div>
+            <button type="button" class="btn btn-light btn-icon" data-leave-review-close-v61520 aria-label="ปิด">×</button>
+          </div>
+          <div class="manager-leave-review-body-v61520" id="managerLeaveReviewBodyV61520"></div>
+          <div class="manager-leave-review-foot-v61520">
+            <button type="button" class="btn btn-light" data-leave-review-refresh-v61520>↻ ตรวจข้อมูลล่าสุด</button>
+            <div>
+              <button type="button" class="btn btn-light" data-leave-review-return-v61520>ส่งกลับให้แก้ไข</button>
+              <button type="button" class="btn btn-light" data-leave-review-close-v61520>ปิด</button>
+              <button type="button" class="btn btn-success" id="managerLeaveReviewConfirmV61520">ดำเนินการต่อ</button>
+            </div>
+          </div>
+        </div>
+      </div>`);
+    return $("managerLeaveReviewModalV61520");
+  }
+
+  function renderManagerLeaveReviewV61520(request,review){
+    const modal=ensureManagerLeaveReviewModalV61520();
+    const body=$("managerLeaveReviewBodyV61520");
+    const confirm=$("managerLeaveReviewConfirmV61520");
+    const subtype=String(review?.request_subtype||request?.request_subtype||"").toUpperCase();
+    const isPartial=subtype==="PARTIAL_DAY";
+    const blockers=Array.isArray(review?.blockers)?review.blockers:[];
+    const warnings=Array.isArray(review?.warnings)?review.warnings:[];
+    const allowed=review?.allowed===true;
+    const atomicReady=review?.affected_atomic_ready===true;
+    const days=Array.isArray(review?.days)?review.days:[];
+    const partial=review?.partial||{};
+
+    $("managerLeaveReviewTitleV61520").textContent=isPartial?"ตรวจลาบางส่วนและผลต่อเวลา":"ตรวจลาเต็มวันและผลต่อตารางกะ";
+    $("managerLeaveReviewSubtitleV61520").textContent=`${request?.request_no||"-"} • ${review?.employee?.emp_code||request?.emp_code||"-"} ${review?.employee?.full_name||request?.full_name||""}`.trim();
+
+    const checks=[
+      ["ตารางกะปัจจุบัน",blockers.some(x=>String(x?.code||"").includes("SCHEDULE")&& !String(x?.code||"").includes("PERIOD"))?"block":"pass"],
+      ["รอบระบบ",blockers.some(x=>String(x?.code||"").includes("PERIOD"))?"block":"pass"],
+      ["คำขอซ้ำ / Conflict",review?.canonical_conflict_ok===false?"block":"pass"],
+      ["กะดึกก่อน/หลังวันลา",blockers.some(x=>String(x?.code||"").includes("NIGHT_SEQUENCE"))?"block":warnings.some(x=>String(x?.code||"").includes("NIGHT"))?"warn":"pass"],
+      ["HR Connect", "info"]
+    ];
+
+    let main="";
+    if(isPartial){
+      const mins=Number(partial.leave_minutes||request?.detail?.partial_minutes||0);
+      const duration=mins?`${Math.floor(mins/60)} ชม.${mins%60?` ${mins%60} นาที`:""}`:"-";
+      main=`<div class="manager-leave-partial-v61520">
+        <div class="manager-leave-partial-meta-v61520">
+          <div><span>กะปัจจุบัน</span><strong>${esc(partial.shift_code||days[0]?.current_shift_code||"-")} • ${esc(employeeRequestFormatTimeV61481(partial.shift_start_at||days[0]?.shift_start_time))}–${esc(employeeRequestFormatTimeV61481(partial.shift_end_at||days[0]?.shift_end_time))}</strong></div>
+          <div><span>ช่วงลาที่แจ้ง</span><strong>${esc(employeeRequestFormatTimeV61481(partial.leave_start_at||request?.detail?.leave_start_time))}–${esc(employeeRequestFormatTimeV61481(partial.leave_end_at||request?.detail?.leave_end_time))} • ${esc(duration)}</strong></div>
+        </div>
+        ${leaveReviewTimelineV61520(partial)}
+        <small>ผลที่คาดไว้: กะเดิมคงอยู่ และเพิ่ม Partial Leave Overlay เฉพาะช่วงเวลา</small>
+      </div>`;
+    }else{
+      main=`<div class="manager-leave-counts-v61520">
+        <div><span>วันทำงานที่จะปรับเป็น LV</span><strong>${Number(review?.affected_workday_count||0).toLocaleString("th-TH")}</strong></div>
+        <div><span>วันหยุด / PH / ลาเดิม ไม่เปลี่ยน</span><strong>${Number(review?.skipped_nonworkday_count||0).toLocaleString("th-TH")}</strong></div>
+      </div>
+      <div class="manager-leave-days-v61520">${days.map(d=>{const apply=d.action==="SET_LV";return `<article class="${apply?"apply":"skip"}"><div><span>${esc(fmtDate(d.work_date))}</span><strong>${esc(d.current_shift_code||managerLeaveDayTypeLabelV61520(d.current_day_type))}</strong></div><b>${apply?"→ LV":"ไม่เปลี่ยน"}</b><small>${apply?`${esc(fmtTime(d.shift_start_time))}–${esc(fmtTime(d.shift_end_time))}`:esc(managerLeaveDayTypeLabelV61520(d.current_day_type))}</small></article>`;}).join("")}</div>`;
+    }
+
+    const issues=blockers.length||warnings.length
+      ? `<div class="manager-leave-issues-v61520">${blockers.map(x=>`<div class="block"><i>!</i><span><strong>ไม่ผ่าน</strong>${esc(leaveReviewIssueTextV61520(x))}</span></div>`).join("")}${warnings.map(x=>`<div class="warn"><i>△</i><span><strong>ข้อสังเกต</strong>${esc(leaveReviewIssueTextV61520(x))}</span></div>`).join("")}</div>`
+      : `<div class="manager-leave-ok-v61520"><i>✓</i><span><strong>Backend ตรวจข้อมูลล่าสุดแล้ว</strong><small>ไม่พบ Conflict หรือรอบระบบที่ปิดในวันที่ต้องแก้ Schedule</small></span></div>`;
+
+    const compatibilityNote=!isPartial&&Number(review?.skipped_nonworkday_count||0)>0
+      ? `<div class="manager-leave-step-note-v61520"><strong>Affected-date Atomic Apply</strong><span>ระบบจะปรับเฉพาะ ${Number(review?.affected_workday_count||0).toLocaleString("th-TH")} วันทำงานเป็น LV และคง ${Number(review?.skipped_nonworkday_count||0).toLocaleString("th-TH")} วันหยุด / PH / ลาเดิมไว้โดยไม่แก้ Schedule • หาก Final State ไม่ตรง ระบบจะ Rollback ทั้ง Transaction</span></div>`
+      : `<div class="manager-leave-step-note-v61520"><strong>ขอบเขตการทำงาน</strong><span>Manager กำลังตรวจเพื่อปรับตารางกะใน TimeAttendance เท่านั้น ไม่ใช่การอนุมัติการลาอย่างเป็นทางการ • พนักงานยังต้องดำเนินการใน HR Connect</span></div>`;
+
+    body.innerHTML=`
+      <div class="manager-leave-review-status-v61520 ${allowed?"pass":"block"}">
+        <div><span>${allowed?"✓ ผ่าน Manager Preflight":"! พบเงื่อนไขที่ต้องแก้"}</span><strong>${allowed?"ข้อมูลพร้อมสำหรับขั้นตอนปรับตารางกะ":"ยังไม่ควรแก้ Schedule"}</strong></div>
+        <small>ตรวจล่าสุด ${esc(fmtDateTime(review?.checked_at))}</small>
+      </div>
+      <div class="manager-leave-meta-v61520">
+        <div><span>พนักงาน</span><strong>${esc(review?.employee?.emp_code||request?.emp_code||"-")} • ${esc(review?.employee?.full_name||request?.full_name||"-")}</strong></div>
+        <div><span>ประเภท</span><strong>${esc(review?.leave_type_label||employeeLeaveTypeLabelV61508(request?.detail?.leave_type_label||request?.detail?.leave_type))} • ${esc(isPartial?"ลาบางส่วน":"ลาเต็มวัน")}</strong></div>
+        <div><span>ช่วงวันที่</span><strong>${esc(fmtDate(review?.start_date||request?.work_date))}${String(review?.end_date||request?.work_date)!==String(review?.start_date||request?.work_date)?` – ${esc(fmtDate(review?.end_date))}`:""}</strong></div>
+        <div><span>เหตุผล</span><strong>${esc(review?.reason||request?.reason||"-")}</strong></div>
+      </div>
+      ${main}
+      <div class="manager-leave-checks-v61520">${checks.map(([label,state])=>`<span class="${state}"><i>${state==="pass"?"✓":state==="warn"?"△":state==="block"?"!":"HR"}</i>${esc(label)}</span>`).join("")}</div>
+      ${issues}
+      ${compatibilityNote}`;
+
+    if(confirm){
+      confirm.disabled=!allowed||!atomicReady;
+      confirm.textContent=!allowed?"ยังดำเนินการไม่ได้":atomicReady?"ตรวจครบ • ปรับตารางกะ":"Backend Apply ยังไม่พร้อม";
+    }
+    modal.classList.remove("hidden");
+  }
+
+  function openManagerLeaveReviewModalV61520(request,review){
+    const modal=ensureManagerLeaveReviewModalV61520();
+    renderManagerLeaveReviewV61520(request,review);
+    return new Promise(resolve=>{
+      let done=false;
+      const finish=value=>{
+        if(done)return;done=true;
+        modal.classList.add("hidden");
+        modal.querySelectorAll("[data-leave-review-close-v61520]").forEach(x=>x.onclick=null);
+        const refresh=modal.querySelector("[data-leave-review-refresh-v61520]");
+        const ret=modal.querySelector("[data-leave-review-return-v61520]");
+        const confirm=$("managerLeaveReviewConfirmV61520");
+        if(refresh)refresh.onclick=null;if(ret)ret.onclick=null;if(confirm)confirm.onclick=null;modal.onclick=null;
+        resolve(value);
+      };
+      modal.querySelectorAll("[data-leave-review-close-v61520]").forEach(x=>x.onclick=()=>finish("close"));
+      const refresh=modal.querySelector("[data-leave-review-refresh-v61520]");
+      if(refresh)refresh.onclick=()=>finish("refresh");
+      const ret=modal.querySelector("[data-leave-review-return-v61520]");
+      if(ret)ret.onclick=()=>finish("return");
+      const confirm=$("managerLeaveReviewConfirmV61520");
+      if(confirm)confirm.onclick=()=>{if(!confirm.disabled)finish("confirm");};
+      modal.onclick=e=>{if(e.target===modal)finish("close");};
+    });
+  }
+
+  async function applyReviewedEmployeeLeaveV61521(request,review){
+    const subtype=String(request?.request_subtype||"").toUpperCase();
+    app()?.showLoading?.(subtype==="PARTIAL_DAY"?"กำลังบันทึก Partial Leave Overlay แบบ Atomic...":"กำลังปรับเฉพาะวันทำงานเป็น LV แบบ Atomic...");
+    try{
+      const result=await rpc("ta_apply_employee_request_leave_v61522",{
+        p_request_id:request.request_id,
+        p_note:request.reason||null
+      });
       if(result?.applied===false)throw new Error(result?.message||"EMPLOYEE_REQUEST_ATOMIC_APPLY_NOT_COMPLETED");
+
       employeeRequestResolveContextV61481=null;
       clearEmployeeRequestContextV61494();
-      const actionResult=result?.action_result||{};
-      app()?.toast?.(
-        subtype==="ADD_DAYOFF"
-          ? `เพิ่มวันหยุดเรียบร้อย${actionResult.target_off_shift?` • ${actionResult.target_off_shift}`:""}`
-          : `สลับวันหยุดเรียบร้อย • ${fmtDate(sourceDate)} → ทำงาน / ${fmtDate(target)} → หยุด`,
-        "success"
-      );
+
+      if(subtype==="PARTIAL_DAY"){
+        const overlay=result?.final_state?.overlay||result?.action_result?.action_result?.overlay||{};
+        const start=employeeRequestFormatTimeV61481(overlay.leave_start_at||request?.detail?.leave_start_time);
+        const end=employeeRequestFormatTimeV61481(overlay.leave_end_at||request?.detail?.leave_end_time);
+        app()?.toast?.(`ปรับตารางลาบางส่วน ${start}–${end} เรียบร้อย • กะเดิมยังคงอยู่ • Sync ผลกลับ Employee Portal แล้ว`,`success`);
+      }else{
+        const affected=Number(result?.affected_workday_count??review?.affected_workday_count??0);
+        const skipped=Number(result?.skipped_nonworkday_count??review?.skipped_nonworkday_count??0);
+        app()?.toast?.(`ปรับตารางลาเรียบร้อย • เปลี่ยนเป็น LV ${affected.toLocaleString("th-TH")} วัน${skipped?` • คงวันหยุด/PH เดิม ${skipped.toLocaleString("th-TH")} วัน`:""} • แจ้งผล Employee Portal แล้ว`,`success`);
+      }
+
+      try{await app()?.loadSchedule?.();}catch(_){}
+      if(app()?.state?.currentPage==="attendance"){try{await app()?.loadAttendance?.();}catch(_){}}
+      try{await checkManagerRequestSyncV61513({force:true});}catch(_){}
       await loadShiftRequests();
-    }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
-    finally{app()?.hideLoading?.();}
+      return true;
+    }catch(e){
+      const msg=String(e?.message||e||"");
+      if(msg.includes("ta_apply_employee_request_leave_v61522")||msg.includes("PGRST202")){
+        app()?.toast?.("กรุณารัน SQL V6.15.22 ก่อนปรับตารางกะจากคำขอลา","error");
+      }else app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+      return false;
+    }finally{app()?.hideLoading?.();}
+  }
+
+  async function reviewEmployeeLeaveV61521(request){
+    if(!request)return;
+    let review=null;
+    try{
+      app()?.showLoading?.("กำลังตรวจคำขอลากับ Backend ล่าสุด...");
+      review=await loadEmployeeLeaveReviewV61521(request.request_id);
+      await markEmployeeRequestInReviewV61481(request.request_id);
+    }catch(e){
+      const msg=String(e?.message||e||"");
+      if(msg.includes("ta_get_employee_request_leave_review_v61521")||msg.includes("PGRST202")){
+        app()?.toast?.("กรุณารัน SQL V6.15.21 ก่อนใช้ Manager Review คำขอลา","error");
+      }else app()?.toast?.(app()?.humanError?.(e)||e.message,"error");
+      return;
+    }finally{app()?.hideLoading?.();}
+
+    while(review){
+      const signature=leaveReviewSignatureV61520(review);
+      const action=await openManagerLeaveReviewModalV61520(request,review);
+      if(action==="close")return;
+      if(action==="return"){
+        await returnEmployeeRequestV61519(request.request_id);
+        return;
+      }
+      try{
+        app()?.showLoading?.("กำลังตรวจข้อมูลล่าสุดอีกครั้ง...");
+        const fresh=await loadEmployeeLeaveReviewV61521(request.request_id);
+        if(action==="refresh"){review=fresh;continue;}
+        if(leaveReviewSignatureV61520(fresh)!==signature){
+          review=fresh;
+          app()?.toast?.("ข้อมูลกะหรือรอบระบบมีการเปลี่ยนแปลง • ระบบอัปเดต Review ล่าสุดให้แล้ว","warning");
+          continue;
+        }
+        if(fresh?.allowed!==true){review=fresh;app()?.toast?.("คำขอไม่ผ่านเงื่อนไขล่าสุด จึงยังไม่แก้ตารางกะ","warning");continue;}
+        if(fresh?.affected_atomic_ready!==true){
+          review=fresh;
+          app()?.toast?.("Backend ตรวจผ่านแล้ว แต่ Atomic Apply ยังไม่พร้อม กรุณาตรวจ SQL V6.15.21","warning");
+          continue;
+        }
+        app()?.hideLoading?.();
+        await applyReviewedEmployeeLeaveV61521(request,fresh);
+        return;
+      }catch(e){
+        app()?.toast?.(app()?.humanError?.(e)||e.message,"error");return;
+      }finally{app()?.hideLoading?.();}
+    }
   }
 
   async function reviewEmployeeLeaveV61494(request){
@@ -21993,6 +25417,29 @@ ${names}${extra}
       await loadShiftRequests();
     }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message,"error");}
     finally{app()?.hideLoading?.();}
+  }
+
+  async function returnEmployeeRequestV61519(requestId) {
+    const note = await window.tcPrompt("ระบุสิ่งที่ต้องการให้พนักงานแก้ไขก่อนส่งกลับ");
+    if (note === null) return;
+    if (!String(note || "").trim()) {
+      app()?.toast?.("กรุณาระบุเหตุผลที่ส่งกลับให้แก้ไข","warning");
+      return;
+    }
+    try {
+      app()?.showLoading?.("กำลังส่งคำขอกลับ Employee Portal...");
+      await rpc("ta_return_employee_request_v61519",{
+        p_request_id:requestId,
+        p_note:String(note).trim()
+      });
+      app()?.toast?.("ส่งกลับให้พนักงานแก้ไขแล้ว • Portal จะแจ้งเตือนอัตโนมัติ","success");
+      await loadShiftRequests();
+      try { await checkManagerRequestSyncV61513({force:true}); } catch (_) {}
+    } catch (error) {
+      app()?.toast?.(app()?.humanError?.(error) || error.message,"error");
+    } finally {
+      app()?.hideLoading?.();
+    }
   }
 
   async function decideEmployeeRequestV61481(requestId,decision) {
@@ -22205,6 +25652,60 @@ ${names}${extra}
     );
   }
 
+  function shiftRequestSetLastUpdatedV61529F15S(value=new Date()) {
+    const el=$("shiftRequestLastUpdatedV61529F15S");
+    if(!el)return;
+    try{
+      el.textContent=new Intl.DateTimeFormat("th-TH",{
+        day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false
+      }).format(value);
+    }catch(_){
+      el.textContent=String(value||"—");
+    }
+  }
+
+  function shiftRequestDefaultRangeV61529F15S(){
+    const today=window.TimeClockCalendarV61448.today();
+    return {
+      start:window.TimeClockCalendarV61448.monthStart(new Date()),
+      end:window.TimeClockCalendarV61448.addDays(today,31)
+    };
+  }
+
+  function shiftRequestApplyRangeV61529F15S(mode){
+    const today=window.TimeClockCalendarV61448.today();
+    let start=today,end=today;
+    if(mode==="7D")start=window.TimeClockCalendarV61448.addDays(today,-6);
+    else if(mode==="30D")start=window.TimeClockCalendarV61448.addDays(today,-29);
+    else if(mode==="MONTH")start=window.TimeClockCalendarV61448.monthStart(new Date());
+    $("shiftRequestStart").value=start;
+    $("shiftRequestEnd").value=end;
+    qsa("[data-request-range-v61529f15s]").forEach(btn=>btn.classList.toggle("active",btn.dataset.requestRangeV61529f15s===mode));
+    loadShiftRequests();
+  }
+
+  function clearShiftRequestFiltersV61529F15S({reload=true}={}){
+    const range=shiftRequestDefaultRangeV61529F15S();
+    if($("shiftRequestStart"))$("shiftRequestStart").value=range.start;
+    if($("shiftRequestEnd"))$("shiftRequestEnd").value=range.end;
+    if($("shiftRequestStatus"))$("shiftRequestStatus").value="";
+    if($("shiftRequestTypeFilter"))$("shiftRequestTypeFilter").value="";
+    if($("shiftRequestSearch"))$("shiftRequestSearch").value="";
+    qsa("[data-request-range-v61529f15s]").forEach(btn=>btn.classList.remove("active"));
+    if(reload)loadShiftRequests();
+  }
+
+  function refreshShiftRequestScopeChipV61529F15S(){
+    const chip=$("shiftRequestScopeChipV61529F15S");
+    if(!chip)return;
+    const profile=app()?.state?.profile||{};
+    const currentRole=role();
+    const b=chip.querySelector("b");
+    const em=chip.querySelector("em");
+    if(b)b.textContent=currentRole==="HR_ADMIN"?"HR Admin":currentRole==="MANAGER"?"Manager Scope":"คำขอของฉัน";
+    if(em)em.textContent=currentRole==="MANAGER"?(roleLevelText(profile)||"Active"):currentRole==="HR_ADMIN"?"ทุกขอบเขต":"Self";
+  }
+
   function bind() {
     const today = window.TimeClockCalendarV61448.today();
     const start = window.TimeClockCalendarV61448.monthStart(new Date());
@@ -22241,6 +25742,23 @@ ${names}${extra}
       "click",
       exportShiftRequests
     );
+    $("refreshShiftRequestsV61529F15S")?.addEventListener("click",()=>loadShiftRequests());
+    $("clearShiftRequestFiltersV61529F15S")?.addEventListener("click",()=>clearShiftRequestFiltersV61529F15S());
+    $("shiftRequestSearch")?.addEventListener("keydown",event=>{
+      if(event.key==="Enter"){
+        event.preventDefault();
+        loadShiftRequests();
+      }
+    });
+    qsa("[data-request-range-v61529f15s]").forEach(button=>{
+      button.addEventListener("click",()=>shiftRequestApplyRangeV61529F15S(button.dataset.requestRangeV61529f15s||"TODAY"));
+    });
+    document.addEventListener("click",event=>{
+      if(event.target.closest("[data-clear-request-filters-v61529f15s]")){
+        clearShiftRequestFiltersV61529F15S();
+      }
+    });
+    refreshShiftRequestScopeChipV61529F15S();
 
     qsa("[data-v680-close]").forEach(button => {
       button.addEventListener(
@@ -22313,13 +25831,22 @@ ${names}${extra}
           return;
         }
 
-        const leaveButtonV61491=event.target.closest("[data-employee-request-leave-review-v61491]");
-        if(leaveButtonV61491){
+        const leaveButtonV61520=event.target.closest("[data-employee-request-leave-review-v61521]");
+        if(leaveButtonV61520){
           event.preventDefault();
-          const id=String(leaveButtonV61491.getAttribute("data-employee-request-leave-review-v61491")||"");
+          const id=String(leaveButtonV61520.getAttribute("data-employee-request-leave-review-v61521")||"");
           const request=shiftRequests.find(item=>String(item.request_id)===id);
           if(!request){app()?.toast?.("ไม่พบข้อมูลคำขอ กรุณากดค้นหาใหม่","warning");return;}
-          await reviewEmployeeLeaveV61494(request);
+          await reviewEmployeeLeaveV61521(request);
+          return;
+        }
+
+        const returnButtonV61519 = event.target.closest("[data-employee-request-return-v61519]");
+        if (returnButtonV61519) {
+          event.preventDefault();
+          await returnEmployeeRequestV61519(
+            returnButtonV61519.getAttribute("data-employee-request-return-v61519")
+          );
           return;
         }
 
@@ -22362,7 +25889,15 @@ ${names}${extra}
           '.nav-item[data-page="shift-requests"]'
         );
         if (nav) {
-          setTimeout(loadShiftRequests,0);
+          setTimeout(
+            ()=>{
+              loadShiftRequests();
+              checkManagerRequestSyncV61513(
+                {force:true}
+              ).catch(()=>{});
+            },
+            0
+          );
         }
       }
     );
@@ -22456,6 +25991,7 @@ ${names}${extra}
     );
 
     applyRoleUI();
+    startManagerRequestSyncV61513();
 
     // V6.14.93:
     // boot() may open shift-requests before this enhancement module has set
@@ -31166,7 +34702,7 @@ ${names}${extra}
 /* ===== V6.12.6 Department Shift Scope + Paired Day-off Shift + Scheduling Rules ===== */
 (function TimeClockSchedulingRulesV6120Module(){
   'use strict';
-  const VERSION='6.14.63';
+  const VERSION='6.15.29-FIX16AQ';
   const app=()=>window.TimeClockApp;
   const $=id=>document.getElementById(id);
   const qsa=(s,r=document)=>[...r.querySelectorAll(s)];
@@ -31190,11 +34726,62 @@ ${names}${extra}
     if(code==='LEAVE')return 'lv';
     return 'day';
   }
-  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:'',serverGuardV6141:null,serverGuardKeyV61432:'',scopeDraft:new Set(),scopeSearch:'',scopeFilter:'ALL'};
-  async function rpc(name,args={}){
+  const st={current:null,modes:[],adminRows:[],quota:null,dayoffSettings:null,departmentOptions:[],workModeOrgOptionsV616Z:[],workModeOrgOptionsSourceV616Z1:'',workModeOrgOptionsErrorV616Z1:'',runtimeShiftRules:[],runtimeShiftRulesLoaded:false,adminShiftRules:[],assignmentShiftOptions:[],assignmentShiftOptionsKey:'',serverGuardV6141:null,serverGuardKeyV61432:'',scopeDraft:new Set(),scopeSearch:'',scopeFilter:'ALL'};
+  function isAuthFailureV616Z2(error){
+    const status=Number(error?.status||error?.statusCode||0);
+    const raw=String(error?.message||error?.details||error?.hint||error||'');
+    return status===401
+      || String(error?.code||'').toUpperCase()==='PGRST301'
+      || /unauthorized|invalid jwt|jwt expired|token.*expired|refresh[_ ]?token/i.test(raw);
+  }
+  async function ensureFreshSessionV616Z2(forceRefresh=false){
+    const a=app();
+    const client=a?.state?.client;
+    if(!client?.auth)throw new Error('SUPABASE_CLIENT_NOT_READY');
+
+    let session=a?.state?.session||null;
+    if(!session?.access_token){
+      const {data,error}=await client.auth.getSession();
+      if(error)throw error;
+      session=data?.session||null;
+    }
+    if(!session?.access_token){
+      throw Object.assign(new Error('AUTH_SESSION_REQUIRED'),{status:401});
+    }
+
+    const expiresAt=Number(session.expires_at||0)*1000;
+    const nearExpiry=expiresAt>0 && expiresAt-Date.now()<90_000;
+    if(forceRefresh||nearExpiry){
+      const {data,error}=await client.auth.refreshSession();
+      if(error||!data?.session?.access_token){
+        throw error||Object.assign(new Error('AUTH_SESSION_EXPIRED'),{status:401});
+      }
+      session=data.session;
+      if(a?.state){
+        a.state.session=session;
+        a.state.user=session.user||null;
+      }
+    }
+
+    if(session?.access_token&&client?.realtime?.setAuth){
+      try{
+        const result=client.realtime.setAuth(session.access_token);
+        if(result?.catch)result.catch(()=>{});
+      }catch(_){ }
+    }
+    return session;
+  }
+  async function rpc(name,args={},retryAuth=true){
     const client=app()?.state?.client;
     if(!client)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
-    const {data,error}=await client.rpc(name,args);if(error)throw error;return data;
+    await ensureFreshSessionV616Z2(false);
+    const {data,error}=await client.rpc(name,args);
+    if(error&&retryAuth&&isAuthFailureV616Z2(error)){
+      await ensureFreshSessionV616Z2(true);
+      return rpc(name,args,false);
+    }
+    if(error)throw error;
+    return data;
   }
   const missingRpcV61425=e=>/PGRST202|42883|could not find|does not exist|schema cache/i.test(String(e?.code||'')+' '+String(e?.message||e||''));
   const fmtTime=v=>app()?.formatTime?.(v)||String(v||'-').slice(0,5)||'-';
@@ -31383,7 +34970,26 @@ ${names}${extra}
       || String(sm?.shift_name||'').toLowerCase().includes('กลางคืน')
       || (start!=null&&start>=18*60);
   }
+  /* FIX16BI: Night Sequence month boundary — cross-month Auto/Default rows do not block; explicit schedules still enforce. */
+  function sameCalendarMonthV616BI(a,b){
+    return String(a||'').slice(0,7)===String(b||'').slice(0,7);
+  }
+  function explicitScheduleRowV616BI(r){
+    if(!r)return false;
+    if(r._boundary_explicit_v616bi===true)return true;
+    if(r?._night_state_v61437?.is_explicit_schedule===true)return true;
+    const assigned=String(r.assigned_shift_code||'').trim().toUpperCase();
+    if(assigned)return true;
+    const status=String(r.schedule_status||'').trim().toUpperCase();
+    return ['ASSIGNED','CONFIRMED'].includes(status);
+  }
+  function nightBoundaryNeighborV616BI(row,targetDate,neighborDate){
+    if(!row)return null;
+    if(sameCalendarMonthV616BI(targetDate,neighborDate))return row;
+    return explicitScheduleRowV616BI(row)?row:null;
+  }
   function transitionAgainstPreviousV61431(prev,date,targetStart,targetCode,targetEnd=null){
+    prev=nightBoundaryNeighborV616BI(prev,date,isoAddDays(date,-1));
     if(!prev||isOffRow(prev))return {hardBlock:false,restMinutes:null,nightToMorning:false,nightSequenceBlock:false};
     const pw=rowWindow(prev);
     const prevStart=pw?.secondStart||pw?.start;
@@ -31477,6 +35083,8 @@ ${names}${extra}
     return {exists:Boolean(code),code,night,dayoff,leave,dayWork:Boolean(code)&&!leave&&!dayoff&&!night,start,end};
   }
   function transitionAgainstNeighborsV61435(prev,next,date,targetStart,targetCode,targetEnd=null){
+    prev=nightBoundaryNeighborV616BI(prev,date,isoAddDays(date,-1));
+    next=nightBoundaryNeighborV616BI(next,date,isoAddDays(date,1));
     const base=transitionAgainstPreviousV61431(prev,date,targetStart,targetCode,targetEnd);
     const previous=rowNightStateV61435(prev);
     const target=proposedNightStateV61435(targetCode,targetStart,targetEnd);
@@ -31585,14 +35193,16 @@ ${names}${extra}
     if(!item)return null;
     const target=side==='previous'?isoAddDays(date,-1):side==='next'?isoAddDays(date,1):date;
     if(String(item.emp_code||emp)!==String(emp)||String(item.work_date||'').slice(0,10)!==target)return null;
+    const explicitV616BI=item.is_explicit_schedule===true;
     return {
       emp_code:String(emp),work_date:target,
       effective_shift_code:item.state_code||item.existing_code||'',
-      assigned_shift_code:item.state_code==='LV'?'LV':null,
+      assigned_shift_code:explicitV616BI?(item.state_code||item.existing_code||null):(item.state_code==='LV'?'LV':null),
       shift_start_time:item.start_time||null,shift_end_time:item.end_time||null,
       day_type:item.is_full_day_leave?'LEAVE':item.is_dayoff?'DAY_OFF':'WORKDAY',
       day_override_type:item.is_full_day_leave?'LEAVE':null,
       leave_units:item.is_full_day_leave?1:0,
+      _boundary_explicit_v616bi:explicitV616BI,
       _night_state_v61437:item
     };
   }
@@ -31636,14 +35246,17 @@ ${names}${extra}
   function ensureAssignmentUi(){
     if($('assignWorkModeV6120'))return;
     const info=$('assignEmployeeInfo');if(!info)return;
-    info.insertAdjacentHTML('afterend',`<section class="assign-rule-shell-v6120">
+    info.insertAdjacentHTML('afterend',`<section class="assignment-planning-context-v616y">
+      <div class="assignment-planning-context-head-v616y"><strong>ข้อมูลประกอบการจัดกะ</strong><small>ตรวจพักต่อเนื่องและโควต้าอัตโนมัติ</small></div>
+      <div class="schedule-rule-status-v6120 assignment-planning-status-v616y" id="assignRuleStatusV6120"></div>
+    </section>
+    <section class="assign-rule-shell-v6120">
       <div class="assign-rule-head-v6120"><div><span><b class="assignment-step-v61428">1</b> รูปแบบการทำงานของวันนี้</span><strong id="assignModeTitleV6120">เลือกประเภทการจัดกะ</strong></div><small>เลือก 1 รูปแบบ • ระบบกรองตามสิทธิ์และหน่วยงาน</small></div>
       <input type="hidden" id="assignWorkModeV6120" value="NORMAL">
       <div class="assign-mode-grid-v6120" id="assignModeGridV6120"></div>
       <div class="assign-mode-fields-v6120 hidden" id="assignSplitWaitFieldsV6120"><div class="form-row-3"><div class="field"><label>ออกจากกะช่วงแรก *</label><input class="input" type="time" id="assignFirstEndV6120" value="15:00"><small class="field-help">เช่น 15:00 น.</small></div><div class="field"><label>กลับเข้าทำงาน *</label><input class="input" type="time" id="assignSecondStartV6120" value="21:00"><small class="field-help">ช่วงรอจะไม่นับเป็นเวลาทำงาน</small></div><div class="field"><label>คาดว่างานเสร็จ *</label><input class="input" type="time" id="assignSecondEndV6120" value="01:00"><small class="field-help">ใช้ตรวจพักขั้นต่ำ 6 ชม. กะถัดไป</small></div></div><div class="split-wait-preview-v6120" id="assignSplitPreviewV6120"></div></div>
       <div class="assign-mode-fields-v6120 hidden" id="assignHourFieldsV6120"><div class="form-row"><div class="field"><label>เวลาเริ่มกะ *</label><input class="input" type="time" id="assignHourStartV6120" value="04:00"></div><div class="field"><label>เวลาสิ้นสุดกะ</label><div class="hour-end-preview-v6120" id="assignHourEndV6120">-</div><small class="field-help">คำนวณอัตโนมัติจากชั่วโมงรวมพักของรูปแบบ 5/6 วัน</small></div></div></div>
       <div class="assign-mode-fields-v6120 hidden" id="assignOffFieldsV6120"><div class="dynamic-off-preview-v6120" id="assignOffPreviewV6120">ระบบจะอ้างอิงกะทำงานล่าสุดย้อนหลังข้ามเดือน และใช้กะตั้งต้นเมื่อไม่มีประวัติ</div></div>
-      <div class="schedule-rule-status-v6120" id="assignRuleStatusV6120"></div>
     </section>`);
     const templateField=$('assignWorkTemplate')?.closest('.field');if(templateField)templateField.classList.add('assignment-system-template-v6120');
     const customerRowV61449=$('assignCustomerWindowRow');
@@ -31682,12 +35295,22 @@ ${names}${extra}
   }
   async function modeOptions(emp){
     try{
-      const rows=await rpc('ta_get_work_modes_for_employee_v6120',{p_emp_code:String(emp),p_work_date:$('assignWorkDate')?.value||window.TimeClockCalendarV61448.today()})||[];
+      const args={p_emp_code:String(emp),p_work_date:$('assignWorkDate')?.value||window.TimeClockCalendarV61448.today()};
+      let rows=[];
+      try{
+        rows=await rpc('ta_get_work_modes_for_employee_v616z',args)||[];
+      }catch(e){
+        if(missingRpcV61425(e)){
+          rows=await rpc('ta_get_work_modes_for_employee_v6120',args)||[];
+        }else{
+          throw e;
+        }
+      }
       const out=Array.isArray(rows)?[...rows]:[];
-      if(!out.some(x=>String(x.mode_code||'').toUpperCase()==='LEAVE'))out.push({mode_code:'LEAVE',mode_name:'ลา',is_active:true,is_allowed:true,display_order:95,scope_label:'ใช้ได้ในทุกหน่วยงานที่มีสิทธิ์จัดกะ'});
+      if(!out.some(x=>String(x.mode_code||'').toUpperCase()==='LEAVE'))out.push({mode_code:'LEAVE',mode_name:'ลา',is_active:true,is_allowed:true,display_order:95,scope_label:'ใช้ได้เมื่อมีสิทธิ์จัดกะพนักงานรายนี้'});
       return out;
     }
-    catch(e){return Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:true,is_allowed:true,display_order:i+1,scope_label:'Fallback • กรุณารัน SQL V6.12.0'}));}
+    catch(e){return Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:true,is_allowed:true,display_order:i+1,scope_label:'Fallback • กรุณาติดตั้ง FIX16Z'}));}
   }
   function currentTargetConsumesDayoffQuotaV6142(){
     const r=st.current?.row;
@@ -31927,7 +35550,8 @@ ${names}${extra}
       p_is_off:Boolean(p.off)
     };
     let base=null,sequence=null,sequenceError=null;
-    try{base=await rpc('ta_validate_schedule_guard_v6141',args);}catch(e){}
+    const scheduleGuardContractV616DF=window.TimeClockRpcContractsV616DF.scheduleGuard;
+    try{base=await rpc(scheduleGuardContractV616DF.primary,args);}catch(e){}
     try{
       const sequenceRows=[{
         emp_code:c.empCode,
@@ -31937,13 +35561,11 @@ ${names}${extra}
         proposed_end_time:p.end||null,
         note:'ASSIGNMENT_PREVIEW_V61437'
       }];
-      try{
-        sequence=await rpc('ta_validate_night_sequence_bulk_v61437',{p_rows:sequenceRows});
-      }catch(primaryError){
-        if(missingRpcV61425(primaryError)){
-          sequence=await rpc('ta_validate_night_sequence_bulk_v61435',{p_rows:sequenceRows});
-        }else throw primaryError;
-      }
+      sequence=await window.tcRpcContractV616DF(
+        'nightSequence',
+        {p_rows:sequenceRows},
+        rpc
+      );
     }catch(e){sequenceError=e;}
     if(sequenceError){
       return {...(base||{}),night_sequence_backend_missing:true,night_sequence_backend_error:String(sequenceError?.message||sequenceError||'')};
@@ -31995,9 +35617,7 @@ ${names}${extra}
     const quota=st.quota||{};
     const rest=restMinutes==null?'ตรวจเมื่อมีข้อมูลกะก่อนหน้า':`${(restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})} ชม.`;
     const pendingAddDayoffV616al=Number(quota.pending_add_dayoff_requests||0);
-    const requestableDaysV616al=Number(
-      quota.requestable_balance_days ?? quota.balance_days ?? 0
-    );
+    const requestableDaysV616al=Number(quota.requestable_balance_days ?? quota.balance_days ?? 0);
     const quotaMeta=quota.month_quota_days==null
       ? 'เริ่มแสดงหลังติดตั้ง Day-off Quota'
       : [
@@ -32044,20 +35664,15 @@ ${names}${extra}
       nightSequenceReason,source:authoritative?'SERVER_V61435':'LOCAL'
     };
   }
-  // FIX16AL — Day-off Requestable Balance parity with Employee Portal
   async function loadQuota(){
     st.quota=null;if(!st.current)return;
     const args={p_emp_code:st.current.empCode,p_month:`${String(st.current.workDate).slice(0,7)}-01`};
     try{
       let q;
-      try{
-        q=await rpc('ta_get_dayoff_requestable_balance_v616al',args);
-      }catch(e){
-        if(missingRpcV61425(e)){
-          q=await rpc('ta_get_dayoff_balance_v61425',args);
-        }else{
-          throw e;
-        }
+      try{q=await rpc('ta_get_dayoff_requestable_balance_v616al',args);}
+      catch(e){
+        if(missingRpcV61425(e))q=await rpc('ta_get_dayoff_balance_v61425',args);
+        else throw e;
       }
       st.quota=Array.isArray(q)?q[0]:q;
       renderModeGrid();
@@ -32198,7 +35813,7 @@ ${names}${extra}
       // Keep the old endpoint only as a minimum-rest safety fallback. Its 48-hour
       // calculation reads assigned rows only and is not authoritative anymore.
       try{
-        const legacy=await rpc('ta_validate_schedule_guard_v6120',{p_emp_code:c.empCode,p_work_date:c.workDate,p_proposed_shift_code:$('assignShiftCode').value,p_proposed_start_time:p.start||null,p_proposed_end_time:p.end||null,p_proposed_planned_minutes:Number(p.planned||0),p_is_off:Boolean(p.off)});
+        const legacy=await rpc(window.TimeClockRpcContractsV616DF.scheduleGuard.compatibility[0],{p_emp_code:c.empCode,p_work_date:c.workDate,p_proposed_shift_code:$('assignShiftCode').value,p_proposed_start_time:p.start||null,p_proposed_end_time:p.end||null,p_proposed_planned_minutes:Number(p.planned||0),p_is_off:Boolean(p.off)});
         if(legacy?.hard_block===true)server=legacy;
       }catch(e){}
     }
@@ -32252,7 +35867,9 @@ ${names}${extra}
   function bulkContinuousBefore(map,emp,date){
     let total=0;
     for(let i=1;i<=31;i++){
-      const r=map.get(`${String(emp)}|${isoAddDays(date,-i)}`);
+      const previousDate=isoAddDays(date,-i);
+      const raw=map.get(`${String(emp)}|${previousDate}`);
+      const r=nightBoundaryNeighborV616BI(raw,date,previousDate);
       if(!r||isOffRow(r))break;
       total+=rowPlannedMinutes(r);
     }
@@ -32298,13 +35915,11 @@ ${names}${extra}
       // Canonical sequence check from Backend, including approved full-day leave.
       let sequence=null;
       try{
-        try{
-          sequence=await rpc('ta_validate_night_sequence_bulk_v61437',{p_rows:remaining});
-        }catch(primaryError){
-          if(missingRpcV61425(primaryError)){
-            sequence=await rpc('ta_validate_night_sequence_bulk_v61435',{p_rows:remaining});
-          }else throw primaryError;
-        }
+        sequence=await window.tcRpcContractV616DF(
+          'nightSequence',
+          {p_rows:remaining},
+          rpc
+        );
       }catch(e){
         app()?.toast?.('ตรวจเงื่อนไขลำดับกะดึกไม่สำเร็จ กรุณารัน SQL V6.14.37 ก่อนจัดกะ','error');
         return {allowed:[],blocked:[...blockedByKey.values()],error:e};
@@ -32427,13 +36042,11 @@ ${names}${extra}
     }
     let nightSequenceGuardV61435=null;
     try{
-      try{
-        nightSequenceGuardV61435=await rpc('ta_validate_night_sequence_bulk_v61437',{p_rows:payload});
-      }catch(primaryError){
-        if(missingRpcV61425(primaryError)){
-          nightSequenceGuardV61435=await rpc('ta_validate_night_sequence_bulk_v61435',{p_rows:payload});
-        }else throw primaryError;
-      }
+      nightSequenceGuardV61435=await window.tcRpcContractV616DF(
+        'nightSequence',
+        {p_rows:payload},
+        rpc
+      );
     }catch(e){
       app()?.toast?.('ตรวจเงื่อนไขลำดับกะดึกไม่สำเร็จ กรุณารัน SQL V6.14.37 ก่อนจัดกะ','error');
       return {allowed:false,blocks,warnings,nightSequenceError:e};
@@ -32463,11 +36076,37 @@ ${names}${extra}
     return {allowed:true,blocks,warnings};
   }
   async function saveBulkExtensions(payload=[]){
-    if(!payload.length)return;const items=payload.map(x=>({emp_code:String(x.emp_code||''),work_date:String(x.work_date||'').slice(0,10),shift_code:x.shift_code==null?null:String(x.shift_code).toUpperCase(),note:x.note||null}));
-    try{await rpc('ta_sync_bulk_schedule_rules_v6135',{p_items:items});}
-    catch(e){try{await rpc('ta_sync_bulk_schedule_rules_v6134',{p_items:items});}
-    catch(e2){try{await rpc('ta_sync_bulk_schedule_rules_v6123',{p_items:items});}
-    catch(e3){try{await rpc('ta_sync_bulk_schedule_rules_v6120',{p_items:items});}catch(e4){app()?.toast?.(`บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule บางรายการไม่สำเร็จ: ${e4.message||e4}`,'warning');}}}}
+    if(!payload.length)return;
+    const items=payload.map(x=>({
+      emp_code:String(x.emp_code||''),
+      work_date:String(x.work_date||'').slice(0,10),
+      shift_code:x.shift_code==null?null:String(x.shift_code).toUpperCase(),
+      note:x.note||null
+    }));
+
+    try{
+      await window.tcRpcContractV616DF(
+        'scheduleRuleSync',
+        {p_items:items},
+        rpc
+      );
+    }catch(error){
+      if(window.tcRpcMissingV616DF(error)){
+        app()?.toast?.(
+          'บันทึกตารางกะสำเร็จ แต่ไม่พบ RPC สำหรับซิงก์ Smart OFF/Scheduling Rule กรุณาตรวจสอบ Backend SQL',
+          'warning'
+        );
+        return;
+      }
+      console.warn(
+        'Scheduling Rule frozen contract failed; compatibility fallback blocked',
+        error
+      );
+      app()?.toast?.(
+        `บันทึกตารางกะสำเร็จ แต่ซิงก์ Smart OFF/Scheduling Rule ไม่สำเร็จ: ${error?.message||error}`,
+        'warning'
+      );
+    }
   }
   async function enrichScheduleRows(rows=[]){
     if(!rows.length)return;
@@ -32497,7 +36136,7 @@ ${names}${extra}
   function ensureShiftRuleAdminUi(){
     if($('shiftRuleAdminV6123'))return;const page=$('page-admin-shifts');if(!page)return;const panels=page.querySelectorAll('.panel');const first=panels[0];if(!first)return;
     first.insertAdjacentHTML('afterend',`<div class="panel section-gap shift-rule-admin-v6123" id="shiftRuleAdminV6123"><div class="panel-header"><div><span class="work-pattern-section-kicker-v61111">SHIFT SET UP</span><h3>กฎการเลือกกะตามหน่วยงานและกะวันหยุดคู่กัน</h3><p>กำหนดว่ากะแต่ละรหัสเปิดใช้กับหน่วยงานใด และจับคู่กะทำงาน → กะวันหยุด เพื่อให้ระบบเลือกวันหยุดให้อัตโนมัติ</p></div><button type="button" class="btn btn-light" id="shiftRuleRefreshV6123">↻ รีเฟรช</button></div><div class="panel-body"><div class="shift-rule-hint-v6123"><span>ตัวอย่าง</span><b>STD → OSTD</b><b>S043 → OS043</b><b>S134 → OS134</b><b>S135 → OS135</b><small>กะดึกที่ไม่เปิดในบางหน่วยงานจะไม่แสดงในช่อง “กะทำงาน” ของพนักงานหน่วยงานนั้น</small></div><div class="table-wrap"><table><thead><tr><th>กะทำงาน</th><th>เวลา</th><th>ประเภท</th><th>ขอบเขตหน่วยงาน</th><th>กะวันหยุดคู่กัน</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="shiftRuleAdminBodyV6123"><tr><td colspan="7" class="empty-cell">กำลังโหลด...</td></tr></tbody></table></div></div></div>`);
-    document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop hidden" id="shiftRuleModalV6123"><div class="modal large"><div class="modal-header"><div><h3 id="shiftRuleTitleV6123">ตั้งค่ากะ</h3><p>กำหนดหน่วยงานที่เห็นกะนี้ และกะวันหยุดที่ต้องใช้หลังจากกะทำงานนี้</p></div><button type="button" class="btn btn-light btn-icon" id="shiftRuleCloseV6123">×</button></div><div class="modal-body"><input type="hidden" id="shiftRuleCodeV6123"><label class="mobileta-option-card"><input type="checkbox" id="shiftRuleEnabledV6123" checked><span><strong>เปิดให้ใช้ในการจัดกะ</strong><small>ปิดแล้วกะนี้จะไม่แสดงในช่องเลือกกะปกติ</small></span></label><div class="form-row section-gap"><div class="field"><label>ขอบเขตหน่วยงาน</label><select class="select" id="shiftRuleScopeModeV6123"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select></div><div class="field"><label>กะวันหยุดคู่กัน</label><select class="select" id="shiftRuleOffCodeV6123"></select><small class="field-help">หากเป็นกะวันหยุดแต่เวลายังไม่ตรง ระบบจะปรับเวลาให้ตรงกับกะทำงานเมื่อบันทึก</small></div></div><div class="work-mode-dept-list-v6120 hidden" id="shiftRuleDeptListV6123"></div><div class="shift-rule-pair-preview-v6123" id="shiftRulePairPreviewV6123"></div></div><div class="modal-footer"><button class="btn btn-light" id="shiftRuleCancelV6123">ยกเลิก</button><button class="btn btn-primary" id="shiftRuleSaveV6123">บันทึก Set Up</button></div></div></div>`);
+    document.body.insertAdjacentHTML('beforeend',`<div class="modal-backdrop hidden" id="shiftRuleModalV6123"><div class="modal large"><div class="modal-header"><div><h3 id="shiftRuleTitleV6123">ตั้งค่ากะ</h3><p>กำหนดหน่วยงานที่เห็นกะนี้ และกะวันหยุดที่ต้องใช้หลังจากกะทำงานนี้</p></div><button type="button" class="btn btn-light btn-icon" id="shiftRuleCloseV6123">×</button></div><div class="modal-body"><input type="hidden" id="shiftRuleCodeV6123"><label class="mobileta-option-card"><input type="checkbox" id="shiftRuleEnabledV6123" checked><span><strong>เปิดให้ใช้ในการจัดกะ</strong><small>ปิดแล้วกะนี้จะไม่แสดงในช่องเลือกกะปกติ</small></span></label><div class="form-row section-gap"><div class="field"><label>ขอบเขตหน่วยงาน</label><select class="select" id="shiftRuleScopeModeV6123"><option value="ALL">ทุกหน่วยงานที่ผู้จัดกะมีสิทธิ์</option><option value="SELECTED">เฉพาะ Organization ที่เลือก</option></select></div><div class="field"><label>กะวันหยุดคู่กัน</label><select class="select" id="shiftRuleOffCodeV6123"></select><small class="field-help">หากเป็นกะวันหยุดแต่เวลายังไม่ตรง ระบบจะปรับเวลาให้ตรงกับกะทำงานเมื่อบันทึก</small></div></div><div class="work-mode-dept-list-v6120 hidden" id="shiftRuleDeptListV6123"></div><div class="shift-rule-pair-preview-v6123" id="shiftRulePairPreviewV6123"></div></div><div class="modal-footer"><button class="btn btn-light" id="shiftRuleCancelV6123">ยกเลิก</button><button class="btn btn-primary" id="shiftRuleSaveV6123">บันทึก Set Up</button></div></div></div>`);
     $('shiftRuleRefreshV6123')?.addEventListener('click',()=>loadShiftRuleAdmin(true));$('shiftRuleCloseV6123')?.addEventListener('click',closeShiftRuleModal);$('shiftRuleCancelV6123')?.addEventListener('click',closeShiftRuleModal);$('shiftRuleScopeModeV6123')?.addEventListener('change',renderShiftRuleDepartments);$('shiftRuleOffCodeV6123')?.addEventListener('change',renderShiftRulePairPreview);$('shiftRuleSaveV6123')?.addEventListener('click',saveShiftRuleAdmin);
     document.addEventListener('click',e=>{const b=e.target.closest('[data-edit-shift-rule-v6123]');if(b)openShiftRuleModal(b.dataset.editShiftRuleV6123);});
   }
@@ -32546,7 +36185,7 @@ ${names}${extra}
         <div>
           <span class="work-pattern-section-kicker-v61111">SCHEDULING RULES V6.12</span>
           <h3>รูปแบบการจัดกะและกฎการทำงาน</h3>
-          <p>เปิด/ปิดรูปแบบรายวัน จัดการสิทธิ์ตามหน่วยงาน และตั้งค่าโควต้าวันหยุด</p>
+          <p>เปิด/ปิดรูปแบบรายวัน กำหนดสิทธิ์ด้วย Organization Master และตั้งค่าโควต้าวันหยุด</p>
         </div>
         <button type="button" class="btn btn-light" id="workModeRefreshV6120">↻ รีเฟรช</button>
       </div>
@@ -32570,10 +36209,10 @@ ${names}${extra}
         <div class="modal-body work-mode-scope-body-v61444">
           <input type="hidden" id="workModeScopeCodeV6120">
           <label class="mobileta-option-card work-mode-active-card-v61444"><input type="checkbox" id="workModeActiveV6120"><span><strong>เปิดใช้งานรูปแบบนี้</strong><small>เมื่อปิด ผู้ใช้จะไม่เห็นรูปแบบนี้ในหน้าจัดกะ</small></span><b id="workModeActiveStateV61444">เปิดใช้</b></label>
-          <div class="field section-gap work-mode-scope-type-v61444"><label>ขอบเขตหน่วยงาน</label><select class="select" id="workModeScopeTypeV6120"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select><small id="workModeScopeTypeHintV61444">รูปแบบนี้ใช้งานได้ทุกหน่วยงาน</small></div>
+          <div class="field section-gap work-mode-scope-type-v61444"><label>ขอบเขตหน่วยงาน</label><select class="select" id="workModeScopeTypeV6120"><option value="ALL">ทุกหน่วยงาน</option><option value="SELECTED">เฉพาะหน่วยงานที่เลือก</option></select><small id="workModeScopeTypeHintV61444">รูปแบบนี้ใช้ได้กับทุก Working Org ที่ผู้จัดกะมีสิทธิ์</small></div>
           <section class="work-mode-dept-shell-v61444 hidden" id="workModeDeptShellV61444">
             <div class="work-mode-dept-toolbar-v61444">
-              <div class="work-mode-dept-search-v61444"><span aria-hidden="true">⌕</span><input class="input" id="workModeDeptSearchV61444" type="search" autocomplete="off" placeholder="ค้นหาชื่อหน่วยงาน..."><button type="button" class="work-mode-search-clear-v61444 hidden" id="workModeDeptSearchClearV61444" aria-label="ล้างคำค้น">×</button></div>
+              <div class="work-mode-dept-search-v61444"><span aria-hidden="true">⌕</span><input class="input" id="workModeDeptSearchV61444" type="search" autocomplete="off" placeholder="ค้นหารหัสหรือชื่อหน่วยงาน..."><button type="button" class="work-mode-search-clear-v61444 hidden" id="workModeDeptSearchClearV61444" aria-label="ล้างคำค้น">×</button></div>
               <div class="work-mode-dept-filters-v61444" role="group" aria-label="กรองหน่วยงาน">
                 <button type="button" class="active" data-work-mode-scope-filter-v61444="ALL">ทั้งหมด</button>
                 <button type="button" data-work-mode-scope-filter-v61444="SELECTED">ให้สิทธิ์แล้ว</button>
@@ -32597,7 +36236,7 @@ ${names}${extra}
     $('workModeScopeTypeV6120')?.addEventListener('change',async()=>{
       if($('workModeScopeTypeV6120')?.value==='SELECTED'){
         const box=$('workModeDeptListV6120');if(box)box.innerHTML='<div class="work-mode-dept-loading-v61444">กำลังโหลดรายการหน่วยงาน...</div>';
-        await loadDepartmentOptions();
+        await loadWorkModeOrgOptionsV616Z();
       }
       updateScopeTypeUiV61444();renderDeptScope();
     });
@@ -32605,9 +36244,10 @@ ${names}${extra}
     $('workModeDeptSearchV61444')?.addEventListener('input',e=>{st.scopeSearch=String(e.target.value||'');updateScopeSearchClearV61444();renderDeptScope();});
     $('workModeDeptSearchClearV61444')?.addEventListener('click',()=>{st.scopeSearch='';if($('workModeDeptSearchV61444'))$('workModeDeptSearchV61444').value='';updateScopeSearchClearV61444();renderDeptScope();$('workModeDeptSearchV61444')?.focus();});
     qsa('[data-work-mode-scope-filter-v61444]').forEach(b=>b.addEventListener('click',()=>{st.scopeFilter=String(b.dataset.workModeScopeFilterV61444||'ALL').toUpperCase();renderDeptScope();}));
-    $('workModeDeptListV6120')?.addEventListener('change',e=>{const cb=e.target.closest('[data-work-mode-dept-v6120]');if(!cb)return;const dept=normalizeDepartmentOption(cb.dataset.workModeDeptV6120);if(!dept)return;if(cb.checked)st.scopeDraft.add(dept);else st.scopeDraft.delete(dept);if(st.scopeFilter!=='ALL')renderDeptScope();else updateScopeSelectionSummaryV61444();});
-    $('workModeDeptSelectVisibleV61444')?.addEventListener('click',()=>{scopeVisibleDepartmentsV61444().forEach(d=>st.scopeDraft.add(d));renderDeptScope();});
-    $('workModeDeptClearVisibleV61444')?.addEventListener('click',()=>{scopeVisibleDepartmentsV61444().forEach(d=>st.scopeDraft.delete(d));renderDeptScope();});
+    $('workModeDeptListV6120')?.addEventListener('change',e=>{const cb=e.target.closest('[data-work-mode-org-v616z]');if(!cb)return;const key=String(cb.dataset.workModeOrgV616z||'').trim();if(!key)return;if(cb.checked)st.scopeDraft.add(key);else st.scopeDraft.delete(key);if(st.scopeFilter!=='ALL')renderDeptScope();else updateScopeSelectionSummaryV61444();});
+    $('workModeDeptListV6120')?.addEventListener('click',async e=>{const retry=e.target.closest('#workModeOrgRetryV616Z1');if(!retry)return;retry.disabled=true;retry.textContent='กำลังโหลด...';await loadWorkModeOrgOptionsV616Z(true);renderDeptScope();});
+    $('workModeDeptSelectVisibleV61444')?.addEventListener('click',()=>{scopeVisibleWorkModeOrgsV616Z().forEach(o=>st.scopeDraft.add(o.key));renderDeptScope();});
+    $('workModeDeptClearVisibleV61444')?.addEventListener('click',()=>{scopeVisibleWorkModeOrgsV616Z().forEach(o=>st.scopeDraft.delete(o.key));renderDeptScope();});
     $('workModeScopeSaveV6120')?.addEventListener('click',saveScopeModal);
     document.addEventListener('click',e=>{const b=e.target.closest('[data-edit-work-mode-v6120]');if(b)openScopeModal(b.dataset.editWorkModeV6120);});
   }
@@ -32618,7 +36258,9 @@ ${names}${extra}
     if(!isHr)return;
     const note=$('workModeAdminNoteV6120');
     try{
-      st.adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];
+      try{st.adminRows=await rpc('ta_get_work_mode_admin_v616z',{})||[];}
+      catch(e){st.adminRows=await rpc('ta_get_work_mode_admin_v6120',{})||[];}
+      st.workModeOrgOptionsV616Z=[];st.workModeOrgOptionsSourceV616Z1='';st.workModeOrgOptionsErrorV616Z1='';
       st.dayoffSettings=await rpc('ta_get_dayoff_settings_v6120',{})||{};
       renderAdminRows();
       if($('dayoffStartMonthV6120'))$('dayoffStartMonthV6120').value=String(st.dayoffSettings.effective_start_month||'2026-07-01').slice(0,7);
@@ -32630,22 +36272,27 @@ ${names}${extra}
   }
   function renderAdminRows(fallback=false){
     const box=$('workModeAdminCardsV6120');if(!box)return;
-    const rows=fallback?Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:code!=='SPLIT_WAIT_NIGHT',scope_mode:'ALL',scope_values:[],display_order:i+1})):st.adminRows;
+    const rows=fallback?Object.keys(modeDefs).map((code,i)=>({mode_code:code,mode_name:modeDefs[code].label,is_active:code!=='SPLIT_WAIT_NIGHT',scope_mode:'ALL',scope_org_ids:[],scope_org_labels:[],scope_values:[],legacy_scope_count:0,display_order:i+1})):st.adminRows;
     const activeCount=rows.filter(r=>r.is_active!==false).length;
     const limitedCount=rows.filter(r=>r.is_active!==false&&String(r.scope_mode||'ALL').toUpperCase()==='SELECTED').length;
     const overview=$('workModeAdminOverviewV61444');
-    if(overview)overview.innerHTML=`<div><strong>${activeCount.toLocaleString('th-TH')}</strong><span>รูปแบบเปิดใช้งาน</span></div><div><strong>${limitedCount.toLocaleString('th-TH')}</strong><span>รูปแบบจำกัดหน่วยงาน</span></div><small>กด “จัดการสิทธิ์” เพื่อค้นหา เลือก และกรองหน่วยงานที่ให้สิทธิ์ได้</small>`;
+    if(overview)overview.innerHTML=`<div><strong>${activeCount.toLocaleString('th-TH')}</strong><span>รูปแบบเปิดใช้งาน</span></div><div><strong>${limitedCount.toLocaleString('th-TH')}</strong><span>จำกัดตาม Organization</span></div><small>สิทธิ์ Work Mode ใช้ Working Org ตามวันที่ • Borrow ใช้ Organization ปลายทาง</small>`;
     box.innerHTML=rows.map(r=>{
       const code=String(r.mode_code||'').toUpperCase(),d=modeDefs[code]||{};
-      const selected=(Array.isArray(r.scope_values)?r.scope_values:[]).map(normalizeDepartmentOption).filter(Boolean);
+      const selected=(Array.isArray(r.scope_org_labels)?r.scope_org_labels:(r.scope_values||[])).map(normalizeDepartmentOption).filter(Boolean);
       const allScope=String(r.scope_mode||'ALL').toUpperCase()==='ALL';
-      const scopeTitle=allScope?'ทุกหน่วยงาน':selected.length?`${selected.length.toLocaleString('th-TH')} หน่วยงานที่ให้สิทธิ์`:'ยังไม่ได้เลือกหน่วยงาน';
-      const scopePreview=allScope?'ผู้ใช้ที่มีสิทธิ์ในระบบสามารถใช้งานได้':selected.length?`${selected.slice(0,3).join(' • ')}${selected.length>3?` • +${selected.length-3}`:''}`:'กรุณาเลือกหน่วยงานก่อนใช้งาน';
+      const legacyCount=Number(r.legacy_scope_count||0);
+      const scopeTitle=allScope?'ทุกหน่วยงานที่ผู้จัดกะมีสิทธิ์':selected.length?`${selected.length.toLocaleString('th-TH')} Organization ที่ให้สิทธิ์`:'ยังไม่ได้เลือก Organization';
+      const scopePreview=allScope
+        ?'ยังถูกจำกัดด้วย Manager / Acting Scope และ Working Org ตามวันที่'
+        :selected.length?`${selected.slice(0,2).join(' • ')}${selected.length>2?` • +${selected.length-2}`:''}`:'กรุณาเลือก Organization ก่อนใช้งาน';
+      const legacyNote=legacyCount?`<small class="work-mode-canonical-warning-v616z">⚠ พบ Legacy Scope ${legacyCount.toLocaleString('th-TH')} รายการ • เปิดแล้วบันทึกใหม่เพื่อยืนยัน Canonical Org</small>`:'';
       const toneV61453=workModeToneV61453(code);
       return `<article class="work-mode-admin-card-v6120 mode-tone-${esc(toneV61453)} ${r.is_active!==false?'active':'inactive'}">
         <div class="work-mode-admin-card-head-v6120"><span>${esc(d.icon||'•')}</span><em>${r.is_active!==false?'เปิดใช้':'ปิดใช้'}</em></div>
         <h4>${esc(r.mode_name||d.label||code)}</h4><p>${esc(r.description||d.desc||'')}</p>
-        <div class="scope-chip-v6120 ${allScope?'all':'limited'}"><small>${allScope?'ขอบเขต':'สิทธิ์หน่วยงาน'}</small><strong>${esc(scopeTitle)}</strong><span>${esc(scopePreview)}</span></div>
+        <div class="scope-chip-v6120 ${allScope?'all':'limited'}"><small>${allScope?'ขอบเขต':'สิทธิ์ Organization'}</small><strong>${esc(scopeTitle)}</strong><span>${esc(scopePreview)}</span></div>
+        ${legacyNote}
         <button type="button" class="btn btn-light btn-sm work-mode-manage-btn-v61444" data-edit-work-mode-v6120="${esc(code)}" ${fallback?'disabled':''}>จัดการสิทธิ์</button>
       </article>`;
     }).join('');
@@ -32673,6 +36320,75 @@ ${names}${extra}
     st.departmentOptions=depts.sort((a,b)=>a.localeCompare(b,'th',{numeric:true,sensitivity:'base'}));
     return st.departmentOptions;
   }
+  function workModeOrgOptionKeyV616Z(row){
+    return String(row?.org_id??row?.key??row?.value??'').trim();
+  }
+  function workModeOrgOptionLabelV616Z(row){
+    return String(row?.identity_label??row?.label??row?.name??row?.org_name??'').trim();
+  }
+  async function loadWorkModeOrgOptionsV616Z(force=false){
+    if(st.workModeOrgOptionsV616Z.length&&!force)return st.workModeOrgOptionsV616Z;
+    st.workModeOrgOptionsV616Z=[];
+    st.workModeOrgOptionsSourceV616Z1='';
+    st.workModeOrgOptionsErrorV616Z1='';
+
+    const range=currentScopeDateRange();
+    const normalizeRows=(rows,source)=>{
+      const mapped=(Array.isArray(rows)?rows:[]).map(r=>({
+        ...r,
+        key:workModeOrgOptionKeyV616Z(r),
+        label:workModeOrgOptionLabelV616Z(r),
+        source
+      })).filter(r=>r.key&&r.label);
+      const seen=new Set();
+      return mapped.filter(r=>{
+        if(seen.has(r.key))return false;
+        seen.add(r.key);return true;
+      });
+    };
+    const attempts=[
+      ['WORK_MODE_MASTER',()=>rpc('ta_get_work_mode_org_options_v616z',{})],
+      ['AUTHORIZED_ORG_V616O',()=>rpc('ta_get_authorized_org_units_v616o',{p_start_date:range.start,p_end_date:range.end})],
+      ['AUTHORIZED_ORG_V616M',()=>rpc('ta_get_authorized_org_units_v616m',{p_start_date:range.start,p_end_date:range.end})]
+    ];
+    const errors=[];
+    for(const [source,loader] of attempts){
+      try{
+        const rows=await loader()||[];
+        const mapped=normalizeRows(rows,source);
+        if(mapped.length){
+          st.workModeOrgOptionsV616Z=mapped;
+          st.workModeOrgOptionsSourceV616Z1=source;
+          st.workModeOrgOptionsErrorV616Z1='';
+          return st.workModeOrgOptionsV616Z;
+        }
+        errors.push(`${source}: EMPTY`);
+      }catch(e){
+        errors.push(`${source}: ${String(e?.message||e||'ERROR')}`);
+      }
+    }
+    st.workModeOrgOptionsErrorV616Z1=errors.join(' | ');
+    console.warn('Work Mode Organization options FIX16Z1:',st.workModeOrgOptionsErrorV616Z1);
+    return st.workModeOrgOptionsV616Z;
+  }
+  function scopeVisibleWorkModeOrgsV616Z(){
+    const query=normalizeScopeSearchV61444(st.scopeSearch),filter=String(st.scopeFilter||'ALL').toUpperCase();
+    const rows=st.workModeOrgOptionsV616Z||[];
+    return rows.filter(o=>{
+      const hay=normalizeScopeSearchV61444([o.label,o.org_code,o.org_name,o.org_level_name].filter(Boolean).join(' '));
+      if(query&&!hay.includes(query))return false;
+      const selected=st.scopeDraft.has(o.key);
+      if(filter==='SELECTED'&&!selected)return false;
+      if(filter==='UNSELECTED'&&selected)return false;
+      return true;
+    }).sort((a,b)=>{
+      if(filter==='ALL'){
+        const sa=st.scopeDraft.has(a.key)?0:1,sb=st.scopeDraft.has(b.key)?0:1;
+        if(sa!==sb)return sa-sb;
+      }
+      return String(a.label||'').localeCompare(String(b.label||''),'th',{numeric:true,sensitivity:'base'});
+    });
+  }
   function normalizeScopeSearchV61444(value){return String(value||'').trim().toLocaleLowerCase('th-TH').replace(/\s+/g,' ');}
   function scopeVisibleDepartmentsV61444(){
     const query=normalizeScopeSearchV61444(st.scopeSearch),filter=String(st.scopeFilter||'ALL').toUpperCase();
@@ -32698,13 +36414,13 @@ ${names}${extra}
   function updateScopeTypeUiV61444(){
     const selected=$('workModeScopeTypeV6120')?.value==='SELECTED';
     $('workModeDeptShellV61444')?.classList.toggle('hidden',!selected);
-    const hint=$('workModeScopeTypeHintV61444');if(hint)hint.textContent=selected?'เลือกหน่วยงานที่ต้องการด้านล่าง • สามารถค้นหาและกรองเฉพาะหน่วยงานที่ให้สิทธิ์แล้วได้':'รูปแบบนี้ใช้งานได้ทุกหน่วยงาน';
+    const hint=$('workModeScopeTypeHintV61444');if(hint)hint.textContent=selected?'เลือก Organization จาก Master ด้านล่าง • ใช้ org_id เป็นตัวตนจริง':'ใช้ได้กับทุก Working Org ที่ผู้จัดกะมีสิทธิ์ตามวันที่';
     updateScopeSelectionSummaryV61444();
   }
   function updateScopeSelectionSummaryV61444(){
-    const total=st.departmentOptions.length,selected=st.scopeDraft.size,visible=scopeVisibleDepartmentsV61444().length;
+    const total=st.workModeOrgOptionsV616Z.length,selected=st.scopeDraft.size,visible=scopeVisibleWorkModeOrgsV616Z().length;
     const result=$('workModeDeptResultSummaryV61444');if(result)result.innerHTML=`<strong>${visible.toLocaleString('th-TH')}</strong><span>รายการที่แสดง • เลือกแล้ว ${selected.toLocaleString('th-TH')} / ${total.toLocaleString('th-TH')}</span>`;
-    const save=$('workModeScopeSaveSummaryV61444');if(save)save.innerHTML=$('workModeScopeTypeV6120')?.value==='SELECTED'?`ให้สิทธิ์ <strong>${selected.toLocaleString('th-TH')}</strong> หน่วยงาน`:'ใช้ได้ทุกหน่วยงาน';
+    const save=$('workModeScopeSaveSummaryV61444');if(save)save.innerHTML=$('workModeScopeTypeV6120')?.value==='SELECTED'?`ให้สิทธิ์ <strong>${selected.toLocaleString('th-TH')}</strong> Organization`:'ทุก Working Org ในสิทธิ์ผู้จัดกะ';
     qsa('[data-work-mode-scope-filter-v61444]').forEach(b=>{const active=String(b.dataset.workModeScopeFilterV61444||'ALL').toUpperCase()===String(st.scopeFilter||'ALL').toUpperCase();b.classList.toggle('active',active);b.setAttribute('aria-pressed',active?'true':'false');});
   }
   async function openScopeModal(code){
@@ -32713,14 +36429,18 @@ ${names}${extra}
     $('workModeScopeTitleV6120').textContent=`ตั้งค่า • ${(modeDefs[code]||{}).label||r.mode_name||code}`;
     $('workModeActiveV6120').checked=r.is_active!==false;
     $('workModeScopeTypeV6120').value=String(r.scope_mode||'ALL').toUpperCase();
-    st.scopeDraft=new Set((Array.isArray(r.scope_values)?r.scope_values:[]).map(normalizeDepartmentOption).filter(Boolean));
+    st.scopeDraft=new Set((Array.isArray(r.scope_org_ids)?r.scope_org_ids:[]).map(v=>String(v||'').trim()).filter(Boolean));
     st.scopeSearch='';st.scopeFilter='ALL';
     if($('workModeDeptSearchV61444'))$('workModeDeptSearchV61444').value='';
     $('workModeScopeModalV6120').classList.remove('hidden');
     updateScopeActiveUiV61444();updateScopeSearchClearV61444();updateScopeTypeUiV61444();
     if($('workModeScopeTypeV6120').value==='SELECTED'){
-      const box=$('workModeDeptListV6120');if(box)box.innerHTML='<div class="work-mode-dept-loading-v61444">กำลังโหลดรายการหน่วยงาน...</div>';
-      await loadDepartmentOptions();
+      const box=$('workModeDeptListV6120');if(box)box.innerHTML='<div class="work-mode-dept-loading-v61444">กำลังโหลด Organization Master...</div>';
+      await loadWorkModeOrgOptionsV616Z(true);
+      if(!st.scopeDraft.size&&Array.isArray(r.scope_values)){
+        const wanted=new Set(r.scope_values.map(normalizeDepartmentOption).filter(Boolean));
+        (st.workModeOrgOptionsV616Z||[]).forEach(o=>{if(wanted.has(o.label))st.scopeDraft.add(o.key);});
+      }
     }
     renderDeptScope();
   }
@@ -32728,25 +36448,36 @@ ${names}${extra}
     const box=$('workModeDeptListV6120');if(!box)return;
     const show=$('workModeScopeTypeV6120')?.value==='SELECTED';
     $('workModeDeptShellV61444')?.classList.toggle('hidden',!show);if(!show){updateScopeSelectionSummaryV61444();return;}
-    if(Array.isArray(selected))st.scopeDraft=new Set(selected.map(normalizeDepartmentOption).filter(Boolean));
-    const depts=scopeVisibleDepartmentsV61444();
+    if(Array.isArray(selected))st.scopeDraft=new Set(selected.map(v=>String(v||'').trim()).filter(Boolean));
+    const orgs=scopeVisibleWorkModeOrgsV616Z();
     const query=String(st.scopeSearch||'').trim();
-    box.innerHTML=depts.length?depts.map(d=>{
-      const checked=st.scopeDraft.has(d);
-      return `<label class="work-mode-dept-row-v61444 ${checked?'selected':''}"><input type="checkbox" data-work-mode-dept-v6120="${esc(d)}" ${checked?'checked':''}><span class="work-mode-dept-name-v61444">${esc(d)}</span><em>${checked?'ให้สิทธิ์แล้ว':'ยังไม่ให้สิทธิ์'}</em></label>`;
-    }).join(''):`<div class="work-mode-dept-empty-v6122"><strong>${query?'ไม่พบหน่วยงานที่ตรงกับคำค้น':'ไม่พบรายการหน่วยงานตามตัวกรองนี้'}</strong><small>${query?`ลองค้นหาด้วยคำอื่น หรือเปลี่ยนตัวกรอง`:'เปลี่ยนตัวกรองเพื่อดูรายการอื่น'}</small></div>`;
+    box.innerHTML=orgs.length?orgs.map(o=>{
+      const checked=st.scopeDraft.has(o.key);
+      const meta=[o.org_level_name,o.legacy?'Legacy source':null].filter(Boolean).join(' • ');
+      return `<label class="work-mode-dept-row-v61444 ${checked?'selected':''}"><input type="checkbox" data-work-mode-org-v616z="${esc(o.key)}" ${checked?'checked':''}><span class="work-mode-dept-name-v61444" title="${esc(o.label)}"><strong>${esc(o.label)}</strong>${meta?`<small>${esc(meta)}</small>`:''}</span><em>${checked?'ให้สิทธิ์แล้ว':'ยังไม่ให้สิทธิ์'}</em></label>`;
+    }).join(''):(st.workModeOrgOptionsV616Z.length===0
+      ?`<div class="work-mode-dept-empty-v6122 work-mode-org-load-error-v616z1"><strong>โหลด Organization Master ไม่สำเร็จ</strong><small>${esc(st.workModeOrgOptionsErrorV616Z1||'ไม่พบ Organization จาก Canonical Organization Contract')}</small><button type="button" class="btn btn-light btn-sm" id="workModeOrgRetryV616Z1">↻ ลองใหม่</button></div>`
+      :`<div class="work-mode-dept-empty-v6122"><strong>${query?'ไม่พบ Organization ที่ตรงกับคำค้น':'ไม่พบ Organization ตามตัวกรองนี้'}</strong><small>${query?'ลองค้นหาด้วยรหัสหรือชื่อหน่วยงานอื่น':'เปลี่ยนตัวกรองเพื่อดูรายการอื่น'}</small></div>`);
     updateScopeSelectionSummaryV61444();
   }
   function closeScopeModal(){$('workModeScopeModalV6120')?.classList.add('hidden');st.scopeSearch='';st.scopeFilter='ALL';}
   async function saveScopeModal(){
     const code=$('workModeScopeCodeV6120').value,scope=$('workModeScopeTypeV6120').value;
-    const values=scope==='SELECTED'?[...st.scopeDraft].sort((a,b)=>a.localeCompare(b,'th',{numeric:true,sensitivity:'base'})):[];
-    if(scope==='SELECTED'&&!values.length){app()?.toast?.('กรุณาเลือกอย่างน้อย 1 หน่วยงาน','error');return;}
+    const keys=scope==='SELECTED'?[...st.scopeDraft]:[];
+    if(scope==='SELECTED'&&!keys.length){app()?.toast?.('กรุณาเลือกอย่างน้อย 1 Organization','error');return;}
     const saveBtn=$('workModeScopeSaveV6120');if(saveBtn){saveBtn.disabled=true;saveBtn.textContent='กำลังบันทึก...';}
     try{
-      await rpc('ta_save_work_mode_config_v6120',{p_mode_code:code,p_is_active:$('workModeActiveV6120').checked,p_scope_mode:scope,p_scope_values:values});
-      closeScopeModal();app()?.toast?.('บันทึกการเปิดใช้และสิทธิ์หน่วยงานแล้ว','success');await loadAdminPanel();await window.TimeClockWorkPatterns?.refreshTemplates?.({force:true});
-    }catch(e){app()?.toast?.(e.message||String(e),'error');}
+      let saved=false;
+      try{
+        await rpc('ta_save_work_mode_config_v616z',{p_mode_code:code,p_is_active:$('workModeActiveV6120').checked,p_scope_mode:scope,p_scope_org_ids:keys});
+        saved=true;
+      }catch(e){if(!missingRpcV61425(e))throw e;}
+      if(!saved){
+        const labels=keys.map(key=>(st.workModeOrgOptionsV616Z||[]).find(o=>o.key===key)?.label||key);
+        await rpc('ta_save_work_mode_config_v6120',{p_mode_code:code,p_is_active:$('workModeActiveV6120').checked,p_scope_mode:scope,p_scope_values:labels});
+      }
+      closeScopeModal();app()?.toast?.('บันทึกสิทธิ์ Work Mode ตาม Canonical Organization แล้ว','success');await loadAdminPanel();await window.TimeClockWorkPatterns?.refreshTemplates?.({force:true});
+    }catch(e){app()?.toast?.(app()?.humanError?.(e)||e.message||String(e),'error');}
     finally{if(saveBtn){saveBtn.disabled=false;saveBtn.textContent='บันทึกการตั้งค่า';}}
   }
   async function saveDayoffSettings(){const m=$('dayoffStartMonthV6120')?.value;if(!m){app()?.toast?.('กรุณาเลือกเดือนเริ่มนับวันหยุด','error');return;}try{await rpc('ta_save_dayoff_settings_v6120',{p_effective_start_month:`${m}-01`});app()?.toast?.('บันทึกเดือนเริ่มนับโควต้าวันหยุดแล้ว','success');await loadAdminPanel();}catch(e){app()?.toast?.(e.message||String(e),'error');}}
@@ -33082,11 +36813,59 @@ ${names}${extra}
     }).join(""):'<tr><td colspan="5" class="fc-empty">ไม่พบสมาชิกทีม</td></tr>';
   }
 
+async function loadPortalTeamRowsV616AD(){
+    const pageSizeV616AD=500;
+    let offsetV616AD=0;
+    let totalV616AD=null;
+    const rowsV616AD=[];
+    const seenV616AD=new Set();
+
+    for(let pageNoV616AD=0;pageNoV616AD<20;pageNoV616AD++){
+      const pageV616AD=await rpc("ta_portal_get_my_team_page_v616ad",{
+        p_limit:pageSizeV616AD,
+        p_offset:offsetV616AD
+      });
+      const arrV616AD=Array.isArray(pageV616AD)?pageV616AD:[];
+      if(totalV616AD===null&&arrV616AD.length){
+        const rawTotalV616AD=Number(arrV616AD[0]?.total_count);
+        totalV616AD=Number.isFinite(rawTotalV616AD)?rawTotalV616AD:null;
+      }
+
+      for(const rowV616AD of arrV616AD){
+        const keyV616AD=String(rowV616AD?.emp_code||"").trim();
+        if(!keyV616AD||seenV616AD.has(keyV616AD))continue;
+        seenV616AD.add(keyV616AD);
+        const copyV616AD={...rowV616AD};
+        delete copyV616AD.total_count;
+        rowsV616AD.push(copyV616AD);
+      }
+
+      if(!arrV616AD.length)break;
+      if(totalV616AD!==null&&rowsV616AD.length>=totalV616AD)break;
+      if(arrV616AD.length<pageSizeV616AD)break;
+      offsetV616AD+=pageSizeV616AD;
+    }
+
+    return rowsV616AD;
+  }
+
+
   async function loadTeam(){
     if(!["MANAGER","HR_ADMIN"].includes(role()))return;
     app()?.showLoading?.("กำลังโหลด Employee Portal ของทีม...");
     try{
-      const [rows]=await Promise.all([rpc("ta_portal_get_my_team_v61482"),loadTeamLink(false)]);
+      let rows=[];
+      const usePagedV616an=realRole()==="HR_ADMIN"||role()==="HR_ADMIN";
+      if(usePagedV616an){
+        try{
+          [rows]=await Promise.all([loadPortalTeamRowsV616AD(),loadTeamLink(false)]);
+        }catch(pageErrorV616an){
+          console.warn("Portal paging FIX16AN fallback",pageErrorV616an);
+          [rows]=await Promise.all([rpc("ta_portal_get_my_team_v61482"),loadTeamLink(false)]);
+        }
+      }else{
+        [rows]=await Promise.all([rpc("ta_portal_get_my_team_v61482"),loadTeamLink(false)]);
+      }
       team.rows=Array.isArray(rows)?rows:[];team.filtered=[];renderTeam();
     }catch(e){toast(human(e),"error");if($("teamPortalBodyV61482"))$("teamPortalBodyV61482").innerHTML=`<tr><td colspan="5" class="fc-empty">${esc(human(e))}</td></tr>`;}
     finally{app()?.hideLoading?.();}
@@ -33545,6 +37324,4160 @@ ${names}${extra}
 })();
 
 ;
+
+
+/* ===== V6.15.29 FIX16AN Team Workspace DOM/CSS Recovery ===== */
+(()=>{
+  "use strict";
+  function ensureTeamWorkspaceV616an(){
+    if(!document.getElementById("teamMasterNavV61523")){
+      const ref=document.querySelector('.nav-item[data-page="team-portal"]')||document.querySelector('.nav-item[data-page="schedule"]');
+      if(ref?.parentNode){
+        const b=document.createElement("button");b.type="button";b.className="nav-item hidden";b.id="teamMasterNavV61523";b.dataset.page="team-master";b.innerHTML='<span class="nav-icon">◉</span><span class="nav-text">ทีมช่างเทคนิค</span>';ref.parentNode.insertBefore(b,ref);
+      }
+    }
+    if(!document.getElementById("page-team-master")){
+      const host=document.querySelector('.content');
+      if(host)host.insertAdjacentHTML('beforeend',`<section class="page team-master-page-v61528" id="page-team-master">
+  <div class="team-workspace-hero-v61528">
+    <div class="team-workspace-title-v61528">
+      <span class="eyebrow">TEAM WORKSPACE</span>
+      <h2>ทีมช่างเทคนิค</h2>
+      <p>จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ</p>
+    </div>
+    <div class="team-workspace-hero-actions-v61528">
+      <div class="field team-workspace-org-filter-v61528"><label>หน่วยงาน</label><select class="select" id="teamMasterOrgFilterV61523"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
+      <div class="field team-workspace-reference-date-v616ax"><label>วันที่อ้างอิง</label><input class="input" type="date" id="teamMasterReferenceDateV616AX"/></div>
+      <button class="btn btn-light" id="teamMasterRefreshV61523">↻ รีเฟรช</button>
+      <button class="btn btn-primary btn-secondary-emphasis-v61528" id="teamMasterCreateV61523">＋ สร้างทีม</button>
+    </div>
+  </div>
+
+  <div id="teamRuntimeDiagnosticV61526Fix1" class="team-runtime-diagnostic-v61526f1 hidden" role="status" aria-live="polite"></div>
+
+  <div class="team-workflow-stepper-v61528 section-gap" id="teamWorkflowStepperV61528">
+    <div data-team-step-v61528="1"><b>1</b><span>กำหนดรูปแบบ</span><small>รถยนต์ / มอเตอร์ไซค์ / สนับสนุน</small></div>
+    <i>›</i><div data-team-step-v61528="2"><b>2</b><span>สร้างทีม</span><small>ระบบ Gen ชื่อและ Team Code</small></div>
+    <i>›</i><div data-team-step-v61528="3"><b>3</b><span>จัดสมาชิก</span><small>ตาม Policy ของแต่ละประเภท</small></div>
+    <i>›</i><div data-team-step-v61528="4"><b>4</b><span>พร้อมจัดกะ</span><small>ระบบตรวจ Auto Readiness</small></div>
+  </div>
+
+  <section class="team-next-action-v61528 section-gap" id="teamNextActionV61528">
+    <div class="team-next-action-icon-v61528">✓</div>
+    <div><span>สิ่งที่ต้องดำเนินการ</span><h3 id="teamNextActionTitleV61528">กำลังตรวจความพร้อม...</h3><p id="teamNextActionDetailV61528">ระบบกำลังหาขั้นตอนที่ควรทำต่อ</p></div>
+    <button class="btn btn-primary" id="teamNextActionBtnV61528">ดูรายการ</button>
+  </section>
+
+  <div class="team-quick-actions-v61529f1" aria-label="ทางลัดทีมช่างเทคนิค">
+    <button type="button" id="teamQuickClassifyV61529F1"><span>01</span><div><strong>จัดรูปแบบ</strong><small>กำหนด / เปลี่ยนประเภท</small></div></button>
+    <button type="button" id="teamQuickCreateV61529F1"><span>02</span><div><strong>สร้างทีม</strong><small>สร้าง Team ใหม่</small></div></button>
+    <button type="button" id="teamQuickPeopleV61529F1"><span>03</span><div><strong>สมาชิกและทีม</strong><small>เพิ่ม / ย้าย / นำออก</small></div></button>
+    <button type="button" id="teamQuickEnforcementV61529F1"><span>04</span><div><strong>ความพร้อม</strong><small>ตรวจ Auto Readiness</small></div></button>
+  </div>
+
+  <div class="team-workspace-kpis-v61528 section-gap">
+    <button type="button" data-team-kpi-action-v61528="UNCLASSIFIED"><span>รอกำหนดรูปแบบ</span><strong id="teamKpiUnclassifiedV61528">0</strong><small>คน</small></button>
+    <button type="button" data-team-kpi-action-v61528="CAR"><span>รถยนต์ยังไม่มีทีม</span><strong id="teamKpiCarMissingV61528">0</strong><small>คน · ทีมละ 3–5</small></button>
+    <button type="button" data-team-kpi-action-v61528="SUPPORT"><span>สนับสนุนยังไม่มีทีม</span><strong id="teamKpiSupportMissingV61528">0</strong><small>คน · ต้องมีทีม</small></button>
+    <button type="button" data-team-kpi-action-v61528="ACTIVE"><span>ทีมพร้อมใช้งาน</span><strong id="teamKpiActiveTeamsV61528">0</strong><small>ทีม</small></button>
+    <button type="button" data-team-kpi-action-v61528="MOTORCYCLE"><span>มอเตอร์ไซค์ยังไม่มีทีม</span><strong id="teamKpiMotorcycleOptionalV61528">0</strong><small>คน · ขั้นต่ำ 1</small></button>
+  </div>
+
+  <nav class="team-workspace-tabs-v61528 section-gap" aria-label="Team workspace">
+    <button class="active" data-team-workspace-tab-v61528="OVERVIEW">ภาพรวม</button>
+    <button data-team-workspace-tab-v61528="PEOPLE">พนักงานและทีม</button>
+    <button data-team-workspace-tab-v61528="ASSIGNMENTS" id="teamTemporaryTabV61529F14B">ยืมตัวช่าง <em id="teamTempPendingBadgeV61529F14B" class="hidden">0</em></button>
+    <button class="hidden" data-team-workspace-tab-v61528="CHANGES" id="teamChangesTabV61528">การเปลี่ยนแปลง <em id="teamChangesUnreadBadgeV61528" class="hidden">0</em></button>
+    <button data-team-workspace-tab-v61528="HISTORY">ประวัติ</button>
+  </nav>
+
+  <div data-team-workspace-pane-v61528="OVERVIEW">
+    <section class="panel team-operational-cards-panel-v61528">
+      <div class="panel-header"><div><h3>รูปแบบการปฏิบัติงาน</h3><p>Manager กำหนดประเภทงานให้พนักงานก่อนจัด Team และตารางกะ</p></div><div class="team-operational-head-actions-v616az"><button class="btn btn-light" id="teamOperationalEffectiveFixOpenV616AZ">แก้วันที่มีผล</button><button class="btn btn-primary" id="teamOperationalProfileOpenV61527">กำหนดรูปแบบพนักงาน</button></div></div>
+      <div class="panel-body team-operational-type-cards-v61528">
+        <article class="car"><div class="team-type-icon-v61528">🚗</div><div><h4>รถยนต์</h4><p>งานภาคสนามด้วยรถยนต์</p><strong>ต้องอยู่ทีม · 3–5 คน/ทีม</strong></div></article>
+        <article class="motorcycle"><div class="team-type-icon-v61528">🏍️</div><div><h4>มอเตอร์ไซค์</h4><p>งานภาคสนามด้วยมอเตอร์ไซค์</p><strong>ต้องอยู่ Team ก่อนจัดกะ · ขั้นต่ำ 1 คน</strong></div></article>
+        <article class="support"><div class="team-type-icon-v61528">🧰</div><div><h4>สนับสนุน</h4><p>งานสนับสนุน ไม่ได้ออกวิ่งงาน</p><strong>ต้องอยู่ทีม · ขั้นต่ำ 1 คน</strong></div></article>
+      </div>
+    </section>
+
+    <section class="panel team-enforcement-panel-v61525 section-gap team-enforcement-rollout-panel-v61529">
+      <div class="panel-header">
+        <div><h3>ความพร้อมก่อนจัดกะ</h3><p id="teamEnforcementDetailV61525">ระบบตรวจรูปแบบการปฏิบัติงานและสมาชิกทีมอัตโนมัติ • ไม่ต้องให้ HR เปิดใช้งาน</p></div>
+        <div class="team-enforcement-actions-v61525"><span class="badge badge-gray" id="teamEnforcementStatusV61525">กำลังโหลด</span><button class="btn btn-light btn-sm" id="teamEnforcementRefreshV61525">รีเฟรช</button></div>
+      </div>
+      <div class="panel-body team-enforcement-body-v61525">
+        <div class="team-enforcement-rollout-kpis-v61529">
+          <article class="enabled"><span>พร้อมจัดกะ</span><strong id="teamEnforcementEnabledTeamsV61529">0</strong><small>ทีมผ่าน Auto Readiness</small></article>
+          <article class="ready"><span>ยังไม่พร้อม</span><strong id="teamEnforcementReadyTeamsV61529">0</strong><small>ทีมที่ต้องจัดข้อมูลเพิ่ม</small></article>
+          <article class="blocked"><span>รอกำหนดรูปแบบ</span><strong id="teamEnforcementNotReadyTeamsV61529">0</strong><small>พนักงานที่ยังไม่พร้อม</small></article>
+          <article class="total"><span>ทีมในขอบเขต</span><strong id="teamEnforcementTotalTeamsV61529">0</strong><small id="teamEnforcementScopeLabelV61529">ตาม Scope ที่เลือก</small></article>
+        </div>
+        <div class="team-readiness-checklist-v61528 team-enforcement-prep-v61529">
+          <div><span id="teamCheckClassifiedV61528">○</span><p><strong>กำหนดรูปแบบครบ</strong><small id="teamCheckClassifiedDetailV61528">กำลังตรวจ...</small></p></div>
+          <div><span id="teamCheckCarV61528">○</span><p><strong>รถยนต์มีทีมครบ</strong><small id="teamCheckCarDetailV61528">กำลังตรวจ...</small></p></div>
+          <div><span id="teamCheckMotorcycleV61529F14B">○</span><p><strong>มอเตอร์ไซค์มีทีมครบ</strong><small id="teamCheckMotorcycleDetailV61529F14B">กำลังตรวจ...</small></p></div>
+          <div><span id="teamCheckSupportV61528">○</span><p><strong>ทีมสนับสนุนครบ</strong><small id="teamCheckSupportDetailV61528">กำลังตรวจ...</small></p></div>
+        </div>
+        <div class="team-enforcement-rollout-callout-v61529">
+          <div><strong id="teamEnforcementReadyV61525">กำลังตรวจสอบความพร้อม</strong><span id="teamEnforcementRolloutTextV61529">เมื่อกำหนดรูปแบบและจัดสมาชิกทีมครบ ระบบจะอนุญาตให้จัดกะอัตโนมัติ</span></div>
+          <button class="btn btn-primary hidden" id="teamEnforcementToggleV61525" aria-hidden="true" tabindex="-1">ไม่ใช้แล้ว</button>
+        </div>
+        <span class="hidden" id="teamEnforcementMissingV61525">0</span><span class="hidden" id="teamEnforcementSupportMissingV61528">0</span><span class="hidden" id="teamEnforcementUnclassifiedV61527">0</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="hidden" data-team-workspace-pane-v61528="PEOPLE">
+    <section class="panel team-people-compact-panel-v61529f3">
+      <div class="panel-header team-people-compact-head-v61529f3">
+        <div><h3>พนักงานและทีม</h3><p id="teamMasterMetaV61523">ค้นหาและจัดการ Team จากจุดเดียว</p></div>
+        <div class="team-people-actions-v61528"><button class="btn btn-primary" id="teamOperationalProfileOpenPeopleV61528">จัดรูปแบบ</button><button class="btn btn-light" id="teamMasterCreatePeopleV61528">＋ สร้างทีม</button></div>
+      </div>
+      <div class="panel-body team-people-compact-body-v61529f3">
+        <div class="team-master-toolbar-v61523 team-master-toolbar-modern-v61528">
+          <div class="field"><label>ประเภท</label><select class="select" id="teamMasterCategoryFilterV61524"><option value="">ทุกประเภท</option><option value="CAR">รถยนต์</option><option value="MOTORCYCLE">มอเตอร์ไซค์</option><option value="SUPPORT">สนับสนุน</option></select></div>
+          <div class="field"><label>สถานะ</label><select class="select" id="teamMasterStatusFilterV61523"><option value="MANAGE">พร้อมจัดการ</option><option value="ACTIVE">ใช้งาน</option><option value="DRAFT">รอสมาชิก</option><option value="ALL">ทั้งหมด</option><option value="INACTIVE">ปิดใช้งาน</option></select></div>
+          <div class="field team-master-search-v61523"><label>ค้นหา</label><input class="input" id="teamMasterSearchV61523" placeholder="Team Code / ชื่อทีม / หน่วยงาน"/></div>
+          <div class="team-master-toolbar-actions-v61523"><button class="btn btn-light" id="teamMasterSearchBtnV61523">ค้นหา</button></div>
+        </div>
+        <div class="team-list-compact-meta-v61529f3"><span>รถยนต์ 3–5 คน</span><span>มอเตอร์ไซค์ ≥1 คน</span><span>สนับสนุน ≥1 คน</span><span class="team-master-auto-chip-v61523">AUTO CODE</span></div>
+        <div class="table-wrap team-list-compact-table-v61529f3"><table class="team-master-table-v61523"><thead><tr><th>ทีม</th><th>รูปแบบ</th><th>หน่วยงาน</th><th>สมาชิก</th><th>สถานะ</th><th>ความพร้อม</th><th>จัดการ</th></tr></thead><tbody id="teamMasterBodyV61523"><tr><td colspan="7" class="fc-empty">กำลังโหลด...</td></tr></tbody></table></div>
+      </div>
+    </section>
+  </div>
+
+
+  <div class="hidden" data-team-workspace-pane-v61528="ASSIGNMENTS" id="teamTemporaryWorkspaceV61529F14B">
+    <section class="panel team-temp-panel-v61529f14b">
+      <div class="panel-header team-temp-head-v61529f14b">
+        <div>
+          <span class="eyebrow">BORROW MANAGEMENT</span>
+          <h3>ยืมตัวช่างเทคนิค</h3>
+          <p>ปลายทางเป็นผู้ร้องขอ · ระบบยึด Manager เป็นหลัก · ยืมได้เฉพาะช่างภายใต้ฝ่ายเดียวกันและต่าง Manager</p>
+        </div>
+        <div class="team-temp-head-actions-v61529f14b">
+          <span class="badge badge-gray" id="teamTempAuthorityBadgeV61529F14B">กำลังตรวจสิทธิ์</span>
+          <button class="btn btn-light" id="teamBorrowBrowserNotificationV61529F15G" type="button" title="รับแจ้งเตือนคำขอยืมตัวและรายการใกล้ครบกำหนด">🔔 เปิดแจ้งเตือน</button>
+          <button class="btn btn-light" id="teamBorrowAuditOpenV61529F15I" type="button" title="ดูประวัติการร้องขอ อนุมัติ ยกเลิก และจบก่อนกำหนด">⌁ ประวัติ / Audit</button>
+          <button class="btn btn-light" id="teamTempRefreshV61529F14B">↻ รีเฟรช</button>
+          <button class="btn btn-primary" id="teamTempCreateV61529F14B">＋ ขอยืมช่าง</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="team-temp-rule-v61529f14b" aria-label="หลักการยืมตัวช่าง">
+          <div class="team-temp-rule-card-v61529f14d borrow">
+            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">1</span>
+            <div><strong>ปลายทางเป็นผู้ร้องขอ</strong><small>Manager / Acting เลือก Team ปลายทางของตนก่อน แล้วจึงเลือกช่างที่ต้องการยืม</small></div>
+          </div>
+          <div class="team-temp-rule-card-v61529f14d authority">
+            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">2</span>
+            <div><strong>ต่าง Manager = ยืมตัว</strong><small>ระบบเทียบ Manager ต้นทางกับ Manager ปลายทาง ไม่ใช้หน่วยงานเป็นตัวจำแนก</small></div>
+          </div>
+          <div class="team-temp-rule-card-v61529f14d assist">
+            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">3</span>
+            <div><strong>Manager เดียวกัน = ย้ายทีม</strong><small>ไม่สร้างรายการยืมตัว ให้ใช้ฟังก์ชันย้ายทีมใน Team Membership ที่มีอยู่แล้ว</small></div>
+          </div>
+          <div class="team-temp-rule-card-v61529f14d scope">
+            <span class="team-temp-rule-icon-v61529f14d" aria-hidden="true">4</span>
+            <div><strong>เฉพาะฝ่ายเดียวกัน</strong><small>Candidate จะแสดงเฉพาะช่างที่อยู่ระดับฝ่ายเดียวกับ Team ปลายทาง</small></div>
+          </div>
+        </div>
+        <div class="borrow-notification-policy-v61529f15g">
+          <span class="borrow-notification-policy-icon-v61529f15g" aria-hidden="true">🔔</span>
+          <div><strong>Notification การยืมตัว</strong><small>แจ้งเมื่อมีคำขอใหม่ / อนุมัติ / ไม่อนุมัติ / ยกเลิก / จบก่อนกำหนด และเตือนก่อนครบกำหนดอัตโนมัติ</small></div>
+          <span class="borrow-notification-policy-badge-v61529f15g">3 วัน · 1 วัน · วันครบกำหนด</span>
+        </div>
+        <div class="team-temp-kpis-v61529f14b">
+          <article class="pending" data-borrow-kpi-filter-v61529f15f="ACTION" title="ดูรายการที่รอคุณอนุมัติ"><span>รอฉันอนุมัติ</span><strong id="teamTempKpiPendingV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="active" data-borrow-kpi-filter-v61529f15f="ACTIVE" title="ดูช่างที่กำลังยืมตัว"><span>กำลังยืมตัว</span><strong id="teamTempKpiActiveV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="scheduled" title="รายการอนุมัติแล้วและรอเริ่ม"><span>อนุมัติแล้ว · รอเริ่ม</span><strong id="teamTempKpiScheduledV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="expiring" data-borrow-kpi-filter-v61529f15f="EXPIRING" title="ครบกำหนดภายใน 3 วัน"><span>ใกล้ครบกำหนด</span><strong id="teamTempKpiExpiringV61529F15F">0</strong><small>ภายใน 3 วัน</small></article>
+          <article class="inbound" title="จำนวนรายการยืมเข้าทีม"><span>ยืมเข้าทีม</span><strong id="teamTempKpiInboundV61529F14B">0</strong><small>รายการ</small></article>
+          <article class="outbound" title="จำนวนรายการถูกยืมออก"><span>ถูกยืมออก</span><strong id="teamTempKpiOutboundV61529F14B">0</strong><small>รายการ</small></article>
+        </div>
+        <div class="borrow-workflow-filter-v61529f15f" aria-label="ตัวกรอง Workflow การยืมตัว">
+          <div class="borrow-workflow-filter-head-v61529f15f"><div><strong>Workflow</strong><small>เลือกมุมมองงานที่ต้องดำเนินการ</small></div><span id="teamTempResultLabelV61529F15F">แสดง 0 รายการ</span></div>
+          <div class="borrow-workflow-filter-chips-v61529f15f">
+            <button type="button" class="active" data-borrow-workflow-filter-v61529f15f="ACTION" aria-pressed="true"><span>รอฉันอนุมัติ</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="REQUESTED" aria-pressed="false"><span>คำขอของฉัน</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="ACTIVE" aria-pressed="false"><span>กำลังยืม</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="EXPIRING" aria-pressed="false"><span>ใกล้ครบกำหนด</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="COMPLETED" aria-pressed="false"><span>สิ้นสุดแล้ว</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+            <button type="button" data-borrow-workflow-filter-v61529f15f="ALL" aria-pressed="false"><span>ทั้งหมด</span><b data-borrow-workflow-count-v61529f15f>0</b></button>
+          </div>
+        </div>
+        <div class="team-temp-toolbar-v61529f14b">
+          <div class="field"><label>ตั้งแต่</label><input class="input" type="date" id="teamTempFromV61529F14B"/></div>
+          <div class="field"><label>ถึง</label><input class="input" type="date" id="teamTempToV61529F14B"/></div>
+          <div class="field"><label>สถานะละเอียด</label><select class="select" id="teamTempStatusV61529F14B"><option value="ALL" selected>ทั้งหมด</option><option value="OPEN">กำลังดำเนินการ</option><option value="PENDING">รออนุมัติ</option><option value="ACTIVE">กำลังยืมตัว</option><option value="SCHEDULED">อนุมัติแล้ว · รอเริ่ม</option><option value="COMPLETED">สิ้นสุดแล้ว</option><option value="REJECTED">ไม่อนุมัติ</option><option value="CANCELLED">ยกเลิกแล้ว</option></select></div>
+          <div class="field team-temp-search-v61529f14b"><label>ค้นหา</label><input class="input" id="teamTempSearchV61529F14B" placeholder="รหัส / ชื่อ / หน่วยงาน / Team / ผู้ร้องขอ"/></div>
+        </div>
+        <div class="team-temp-list-v61529f14b" id="teamTempListV61529F14B"><div class="fc-empty">เลือกแท็บนี้เพื่อโหลดรายการ</div></div>
+      </div>
+    </section>
+
+    <section class="panel section-gap team-acting-panel-v61529f14b hidden" id="teamActingPanelV61529F14B">
+      <div class="panel-header">
+        <div><span class="eyebrow">HR ADMIN</span><h3>Acting Manager</h3><p>มอบอำนาจ Operational Authority ชั่วคราวโดยไม่แก้ Role / PCgrade ของพนักงาน</p></div>
+        <div class="team-temp-head-actions-v61529f14b"><button class="btn btn-light" id="teamActingRefreshV61529F14B">↻ รีเฟรช</button><button class="btn btn-primary" id="teamActingCreateV61529F14B">＋ กำหนด Acting</button></div>
+      </div>
+      <div class="panel-body">
+        <div class="team-acting-note-v61529f14b">Acting ใช้ Operational Authority แทน Manager เฉพาะ Scope และช่วงวันที่ที่กำหนด · ปลายทางสามารถร้องขอ และ Acting ต้นทางสามารถอนุมัติแทนได้</div>
+        <p class="team-master-sub-v61523" id="teamActingRangeInfoV616CD">แสดงทุกช่วงวันที่ · รวมกำลังรักษาการ รอเริ่ม สิ้นสุดแล้ว และปิดใช้งาน · ไม่ใช้ตัวกรองช่วงวันที่ของรายการยืมตัว</p>
+        <div class="table-wrap"><table class="team-acting-table-v61529f14b"><thead><tr><th>ผู้รักษาการ</th><th>Scope</th><th>ช่วงวันที่</th><th>สถานะ</th><th>เหตุผล</th><th>จัดการ</th></tr></thead><tbody id="teamActingBodyV61529F14B"><tr><td colspan="6" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="hidden" data-team-workspace-pane-v61528="CHANGES">
+    <section class="panel team-change-inbox-v61528">
+      <div class="panel-header"><div><h3>รายการแจ้งการเปลี่ยนรูปแบบการปฏิบัติงาน</h3><p>Manager บันทึกแล้วมีผลจริงตาม Effective Date · HR Admin รับทราบและติดตามประวัติ โดยไม่ใช่ขั้นตอนอนุมัติ</p></div><div class="team-change-actions-v61528"><button class="btn btn-light btn-sm" id="teamBrowserNotificationV61528">🔔 เปิด Browser Notification</button><select class="select" id="teamChangeStatusV61528"><option value="UNREAD">ยังไม่รับทราบ</option><option value="ALL">ทั้งหมด</option><option value="ACKNOWLEDGED">รับทราบแล้ว</option></select><button class="btn btn-light btn-sm" id="teamChangeRefreshV61528">รีเฟรช</button></div></div>
+      <div class="panel-body"><div id="teamChangeInboxV61528" class="team-change-list-v61528"><div class="fc-empty">กำลังโหลด...</div></div></div>
+    </section>
+  </div>
+
+  <div class="hidden" data-team-workspace-pane-v61528="HISTORY">
+    <section class="panel team-employee-timeline-panel-v616ay">
+      <div class="panel-header">
+        <div><span class="eyebrow">EMPLOYEE TRANSACTION TIMELINE</span><h3>ประวัติความเคลื่อนไหวรายพนักงาน</h3><p>รวม รูปแบบการปฏิบัติงาน • เข้าทีม / ย้ายทีม • ยืมตัว • การแก้วันที่มีผล ใน Timeline เดียว</p></div>
+        <button class="btn btn-light btn-sm" id="teamEmployeeTimelineRefreshV616AY">↻ รีเฟรช</button>
+      </div>
+      <div class="panel-body">
+        <div class="team-timeline-search-v616ay">
+          <div class="field"><label>ค้นหาพนักงาน</label><input class="input" id="teamEmployeeTimelineSearchV616AY" placeholder="รหัสพนักงาน"/></div>
+          <button class="btn btn-primary" id="teamEmployeeTimelineLoadV616AY">ดู Timeline</button>
+          <div class="team-timeline-rule-v616ay"><strong>แก้วันที่มีผล</strong><span>ค้นหารหัสพนักงาน → ที่รายการ “รูปแบบการปฏิบัติงาน” กด <b>แก้วันที่มีผล</b> • ระบบจะตรวจ Schedule/Team และเก็บ Correction Transaction ก่อนบันทึก</span></div>
+        </div>
+        <div id="teamEmployeeTimelineSummaryV616AY" class="team-timeline-summary-v616ay hidden"></div>
+        <div id="teamEmployeeTimelineBodyV616AY" class="team-employee-timeline-v616ay"><div class="fc-empty">กรอกรหัสพนักงานเพื่อดูประวัติ</div></div>
+      </div>
+    </section>
+    <section class="panel section-gap">
+      <div class="panel-header"><div><h3>ประวัติ Team Master</h3><p>Audit การสร้างทีม ปิดทีม และกำหนดสมาชิก</p></div><button class="btn btn-light btn-sm" id="teamMasterAuditRefreshV61523">รีเฟรชประวัติ</button></div>
+      <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลา</th><th>Team Code</th><th>รายการ</th><th>ผู้ดำเนินการ</th><th>เหตุผล / หมายเหตุ</th></tr></thead><tbody id="teamMasterAuditBodyV61523"><tr><td colspan="5" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
+    </section>
+    <section class="panel section-gap">
+      <div class="panel-header"><div><h3>ประวัติ Policy เดิม</h3><p>เก็บ Audit การเปิด/ปิด Team Enforcement เดิมเพื่ออ้างอิง • ไม่มีผลต่อ Auto Readiness ปัจจุบัน</p></div></div>
+      <div class="panel-body"><div class="table-wrap"><table><thead><tr><th>วันเวลาบันทึก</th><th>ขอบเขต</th><th>ทีม / หน่วยงาน</th><th>มีผลวันที่</th><th>สถานะ</th><th>ผู้ดำเนินการ</th><th>เหตุผล / หมายเหตุ</th></tr></thead><tbody id="teamEnforcementAuditBodyV61529"><tr><td colspan="7" class="fc-empty">ยังไม่มีข้อมูล</td></tr></tbody></table></div></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="teamEffectiveCorrectionModalV616AY" aria-hidden="true">
+    <div class="modal team-effective-correction-modal-v616ay" role="dialog" aria-modal="true" aria-labelledby="teamEffectiveCorrectionTitleV616AY">
+      <div class="modal-header">
+        <div><span class="eyebrow">EFFECTIVE DATE CORRECTION</span><h3 id="teamEffectiveCorrectionTitleV616AY">แก้วันที่มีผล</h3><p id="teamEffectiveCorrectionSubtitleV616AZ">ระบบตรวจผลกระทบก่อนบันทึก และเก็บ Correction Transaction โดยไม่ลบประวัติเดิม</p></div>
+        <button class="btn btn-light btn-icon" data-team-effective-correction-close-v616ay>×</button>
+      </div>
+      <div class="modal-body">
+        <div id="teamEffectiveCorrectionContextV616AY" class="team-effective-correction-context-v616ay"></div>
+        <div class="team-effective-correction-grid-v616ay">
+          <div class="field"><label>วันที่มีผลเดิม</label><input class="input" id="teamEffectiveCorrectionOldV616AY" disabled/></div>
+          <div class="field"><label>วันที่มีผลใหม่ <span class="required-mark">*</span></label><input class="input" type="date" id="teamEffectiveCorrectionNewV616AY"/></div>
+        </div>
+        <div class="field"><label>เหตุผลการแก้ไข <span class="required-mark">*</span></label><textarea class="input" id="teamEffectiveCorrectionReasonV616AY" rows="3" maxlength="500" placeholder="เช่น บันทึกวันที่ย้ายทีมผิดจากเอกสารจริง"></textarea></div>
+        <div id="teamEffectiveCorrectionImpactV616AY" class="team-effective-correction-impact-v616ay"><div class="fc-empty">เลือกวันที่ใหม่เพื่อดู Impact Preview</div></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" data-team-effective-correction-close-v616ay>ยกเลิก</button>
+        <button class="btn btn-primary" id="teamEffectiveCorrectionSaveV616AY" disabled>บันทึก Correction</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- compatibility host; no longer shown as a large Scope card -->
+  <div id="teamMasterOrgListV61523" class="hidden"></div>
+  <span class="hidden" id="teamMasterKpiAllV61523">0</span><span class="hidden" id="teamMasterKpiActiveV61523">0</span><span class="hidden" id="teamMasterKpiInactiveV61523">0</span><span class="hidden" id="teamMasterKpiOrgV61523">0</span>
+  <span class="hidden" id="teamReadinessCarV61524">0</span><span class="hidden" id="teamReadinessMotorcycleV61524">0</span><span class="hidden" id="teamReadinessUnspecifiedV61524">0</span><span class="hidden" id="teamOperationalUnclassifiedV61527">0</span>
+</section>
+
+
+
+<!-- V6.15.29 FIX14B Temporary Team Assignment modal -->
+<div class="modal-backdrop hidden" id="teamTempCreateModalV61529F14B" aria-hidden="true">
+  <div class="modal team-temp-create-modal-v61529f14b" role="dialog" aria-modal="true" aria-labelledby="teamTempCreateTitleV61529F14B">
+    <div class="modal-header"><div><span class="eyebrow">DESTINATION REQUEST · BORROW</span><h3 id="teamTempCreateTitleV61529F14B">ขอยืมช่างเทคนิค</h3><p>ปลายทางเลือก Team ของตนก่อน · ระบบจะแสดงช่างภายในฝ่ายเดียวกันที่อยู่ภายใต้ Manager คนอื่น โดยไม่ซ่อนรายชื่อตามประเภท Team ปลายทาง</p></div><button class="btn btn-light btn-icon" data-team-temp-close-v61529f14b>×</button></div>
+    <div class="modal-body">
+      <div class="team-temp-date-grid-v61529f14b"><div class="field"><label>วันที่เริ่ม <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateFromV61529F14B"/><small class="field-hint">เลือกย้อนหลังได้ถึงวันที่ 1 ของเดือนปัจจุบัน</small></div><div class="field"><label>วันที่สิ้นสุด <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempCreateToV61529F14B"/><small class="field-hint">วันที่สิ้นสุดต้องไม่ก่อนวันที่เริ่ม และยังต้องผ่านรอบระบบ</small></div></div>
+      <div class="team-temp-backdate-warning-v616cg hidden" id="teamTempBackdateWarningV616CG" role="status" aria-live="polite"></div>
+      <div class="field"><label>1. Team ปลายทางของคุณ <span class="required-mark">*</span></label><select class="select" id="teamTempDestinationV61529F14B"><option value="">— เลือก Team ปลายทาง —</option></select><small class="field-hint" id="teamTempDestinationHintV61529F14B">เลือก Team ที่ต้องการรับช่างเข้ามาช่วยชั่วคราว</small></div>
+      <div class="field"><label>2. เลือกช่างจาก Manager อื่นภายในฝ่ายเดียวกัน</label><div class="team-temp-search-line-v61529f14b"><input class="input" id="teamTempCandidateSearchV61529F14B" placeholder="รหัสพนักงาน / ชื่อ / หน่วยงาน / Manager / ประเภทงาน"/><button class="btn btn-light" id="teamTempCandidateSearchBtnV61529F14B" type="button">ค้นหา</button></div><small class="field-hint">แสดงทุก Operational Type ภายใต้ Manager อื่นในฝ่ายเดียวกัน · หากประเภทงานไม่ตรง Team ปลายทาง ระบบจะแจ้งเตือนใน Preview</small></div>
+      <div class="field"><label>3. ช่างที่ต้องการยืม <span class="required-mark">*</span></label><select class="select" id="teamTempEmployeeV61529F14B" disabled><option value="">— เลือก Team ปลายทางก่อน —</option></select><small class="field-hint">ระบบไม่แสดงช่างที่อยู่ภายใต้ Manager เดียวกับปลายทาง เพราะกรณีนั้นให้ใช้ “ย้ายทีม” · ช่างต่างประเภท Team ยังแสดงให้เลือกเพื่อตรวจสอบ Preview</small></div>
+      <div class="team-temp-home-card-v61529f14b" id="teamTempHomeCardV61529F14B"><span>ต้นทาง</span><strong>-</strong><small>เลือกช่างเพื่อดู Home Team และ Manager ต้นทาง</small></div>
+      <div class="team-temp-preview-v61529f14b" id="teamTempPreviewV61529F14B"><div class="team-temp-preview-placeholder-v61529f14b">เลือก Team ปลายทาง ช่าง และช่วงวันที่ เพื่อดูเส้นทางคำขอ</div></div>
+      <div class="field"><label>4. เหตุผล / รายละเอียดงาน <span class="required-mark">*</span></label><textarea class="input" id="teamTempNoteV61529F14B" rows="3" maxlength="500" placeholder="เช่น ขอสนับสนุนงานติดตั้งพื้นที่ BN6"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-temp-close-v61529f14b>ยกเลิก</button><button class="btn btn-primary" id="teamTempCreateConfirmV61529F14B" disabled>ส่งคำขอยืมตัว</button></div>
+  </div>
+</div>
+
+<!-- V6.15.29 FIX14B Reject / Cancel / End Early modal -->
+<div class="modal-backdrop hidden" id="teamTempActionModalV61529F14B" aria-hidden="true">
+  <div class="modal team-temp-action-modal-v61529f14b" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">TEMPORARY ASSIGNMENT ACTION</span><h3 id="teamTempActionTitleV61529F14B">ดำเนินการ</h3><p id="teamTempActionSubtitleV61529F14B">-</p></div><button class="btn btn-light btn-icon" data-team-temp-action-close-v61529f14b>×</button></div>
+    <div class="modal-body">
+      <div class="team-temp-action-summary-v61529f14b" id="teamTempActionSummaryV61529F14B"></div>
+      <div class="field hidden" id="teamTempActionEndBoxV61529F14B"><label>ให้สิ้นสุดหลังวันที่ <span class="required-mark">*</span></label><input class="input" type="date" id="teamTempActionEndDateV61529F14B"/></div>
+      <div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea class="input" id="teamTempActionReasonV61529F14B" rows="3" maxlength="500" placeholder="ระบุเหตุผล"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-temp-action-close-v61529f14b>ยกเลิก</button><button class="btn btn-danger" id="teamTempActionConfirmV61529F14B">ยืนยัน</button></div>
+  </div>
+</div>
+
+<!-- V6.15.29 FIX15I Borrow Audit / History Report modal -->
+<div class="modal-backdrop hidden" id="teamBorrowAuditModalV61529F15I" aria-hidden="true">
+  <div class="modal borrow-audit-modal-v61529f15i" role="dialog" aria-modal="true" aria-labelledby="teamBorrowAuditTitleV61529F15I">
+    <div class="modal-header">
+      <div><span class="eyebrow">BORROW AUDIT · READ ONLY</span><h3 id="teamBorrowAuditTitleV61529F15I">ประวัติการยืมตัวช่าง</h3><p id="teamBorrowAuditSubtitleV61529F15I">ติดตามผู้ร้องขอ ผู้อนุมัติ การยกเลิก และการจบก่อนกำหนดแบบ Audit</p></div>
+      <button class="btn btn-light btn-icon" type="button" data-borrow-audit-close-v61529f15i>×</button>
+    </div>
+    <div class="modal-body borrow-audit-body-v61529f15i">
+      <div class="borrow-audit-kpis-v61529f15i">
+        <article><span>เหตุการณ์ทั้งหมด</span><strong id="borrowAuditKpiTotalV61529F15I">0</strong></article>
+        <article class="create"><span>ส่งคำขอ</span><strong id="borrowAuditKpiCreateV61529F15I">0</strong></article>
+        <article class="approve"><span>อนุมัติ</span><strong id="borrowAuditKpiApproveV61529F15I">0</strong></article>
+        <article class="reject"><span>ไม่อนุมัติ</span><strong id="borrowAuditKpiRejectV61529F15I">0</strong></article>
+        <article class="close"><span>ยกเลิก / จบก่อน</span><strong id="borrowAuditKpiCloseV61529F15I">0</strong></article>
+      </div>
+      <div class="borrow-audit-filter-v61529f15i">
+        <div class="field"><label>วันที่เหตุการณ์ ตั้งแต่</label><input class="input" type="date" id="borrowAuditFromV61529F15I"/></div>
+        <div class="field"><label>ถึง</label><input class="input" type="date" id="borrowAuditToV61529F15I"/></div>
+        <div class="field"><label>เหตุการณ์</label><select class="select" id="borrowAuditActionV61529F15I"><option value="ALL">ทั้งหมด</option><option value="CREATE">ส่งคำขอ</option><option value="APPROVE">อนุมัติ</option><option value="REJECT">ไม่อนุมัติ</option><option value="CANCEL">ยกเลิก</option><option value="END_EARLY">จบก่อนกำหนด</option></select></div>
+        <div class="field borrow-audit-search-v61529f15i"><label>ค้นหา</label><input class="input" id="borrowAuditSearchV61529F15I" placeholder="รหัส / ชื่อ / Team / Manager / ผู้ดำเนินการ"/></div>
+        <div class="borrow-audit-filter-actions-v61529f15i"><button class="btn btn-primary" type="button" id="borrowAuditLoadV61529F15I">ค้นหา</button><button class="btn btn-success" type="button" id="borrowAuditExportV61529F15I">Export CSV</button></div>
+      </div>
+      <div class="borrow-audit-scope-v61529f15i" id="borrowAuditScopeV61529F15I">Audit เป็นข้อมูลอ่านอย่างเดียว · Manager/Acting เห็นเฉพาะรายการในขอบเขตสิทธิ์</div>
+      <div class="table-wrap borrow-audit-table-wrap-v61529f15i">
+        <table class="borrow-audit-table-v61529f15i">
+          <thead><tr><th>วันเวลา</th><th>พนักงาน</th><th>เหตุการณ์</th><th>ต้นทาง → ปลายทาง</th><th>ช่วงยืม</th><th>ผู้ดำเนินการ</th><th>Authority</th><th>เหตุผล / หมายเหตุ</th></tr></thead>
+          <tbody id="borrowAuditBodyV61529F15I"><tr><td colspan="8" class="fc-empty">กดค้นหาเพื่อโหลดประวัติ</td></tr></tbody>
+        </table>
+      </div>
+      <div class="borrow-audit-footer-note-v61529f15i" id="borrowAuditFooterV61529F15I">-</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" type="button" data-borrow-audit-close-v61529f15i>ปิด</button></div>
+  </div>
+</div>
+
+<!-- V6.15.29 FIX14B Acting Manager modal -->
+<div class="modal-backdrop hidden" id="teamActingModalV61529F14B" aria-hidden="true">
+  <div class="modal team-acting-modal-v61529f14b" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">DELEGATED OPERATIONAL AUTHORITY</span><h3 id="teamActingModalTitleV61529F14B">กำหนด Acting Manager</h3><p>สิทธิ์มีผลเฉพาะ Scope และช่วงวันที่ โดยไม่เปลี่ยน Role / PCgrade</p></div><button class="btn btn-light btn-icon" data-team-acting-close-v61529f14b>×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>ค้นหาผู้รักษาการ</label><div class="team-temp-search-line-v61529f14b"><input class="input" id="teamActingSearchV61529F14B" placeholder="ชื่อ / Email / รหัสพนักงาน"/><button type="button" class="btn btn-light" id="teamActingSearchBtnV61529F14B">ค้นหา</button></div></div>
+      <div class="field"><label>ผู้รักษาการ <span class="required-mark">*</span></label><select class="select" id="teamActingPersonV61529F14B"></select></div>
+      <div class="field"><label>หน่วยงาน / Scope <span class="required-mark">*</span></label><select class="select" id="teamActingOrgV61529F14B"></select></div>
+      <label class="team-acting-descendants-v61529f14b"><input type="checkbox" id="teamActingDescendantsV61529F14B"/><span><strong>รวมหน่วยงานภายใต้ Scope นี้</strong><small>ใช้เมื่อ Acting ต้องดูแลทีมย่อยทั้งหมดภายใต้หน่วยงานที่เลือก</small></span></label>
+      <div class="team-temp-date-grid-v61529f14b"><div class="field"><label>เริ่มรักษาการ <span class="required-mark">*</span></label><input class="input" type="date" id="teamActingFromV61529F14B"/></div><div class="field"><label>สิ้นสุดรักษาการ <span class="required-mark">*</span></label><input class="input" type="date" id="teamActingToV61529F14B"/></div></div>
+      <div class="field"><label>เหตุผล <span class="required-mark">*</span></label><textarea class="input" id="teamActingReasonV61529F14B" rows="3" maxlength="500" placeholder="เช่น Manager ลาพักร้อน / รักษาการแทน"></textarea></div>
+      <label class="team-acting-active-v61529f14b"><input type="checkbox" id="teamActingActiveV61529F14B" checked/><span>เปิดใช้งาน Acting Assignment</span></label>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-acting-close-v61529f14b>ยกเลิก</button><button class="btn btn-primary" id="teamActingSaveV61529F14B">บันทึก Acting</button></div>
+  </div>
+</div>
+
+<!-- V6.15.28 Team modals -->
+<!-- V6.15.28 Create Team modal -->
+<div class="modal-backdrop hidden" id="teamMasterCreateModalV61523" aria-hidden="true">
+  <div class="modal team-master-create-modal-v61523" role="dialog" aria-modal="true">
+    <div class="modal-header"><div><span class="eyebrow">AUTO-GENERATED TEAM</span><h3>สร้างทีมช่างเทคนิค</h3><p>เลือกหน่วยงานและรูปแบบ ระบบสร้าง Team Name / Team Code ให้เอง</p></div><button class="btn btn-light btn-icon" data-team-master-close-v61523>×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>หน่วยงาน <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateOrgV61523"></select></div>
+      <div class="field"><label>รูปแบบทีม <span class="required-mark">*</span></label><select class="select" id="teamMasterCreateCategoryV61524"><option value="CAR">รถยนต์ · 3–5 คน</option><option value="MOTORCYCLE">มอเตอร์ไซค์ · ขั้นต่ำ 1 คน</option><option value="SUPPORT">สนับสนุน · ขั้นต่ำ 1 คน</option></select></div>
+      <div class="team-master-preview-v61523"><span>ทีมที่จะสร้าง</span><div><strong id="teamMasterPreviewNameV61523">-</strong><code id="teamMasterPreviewCodeV61523">-</code></div><small id="teamMasterPreviewOrgV61523">เลือกหน่วยงานและรูปแบบ</small></div>
+      <div class="field"><label>หมายเหตุ</label><textarea class="input" id="teamMasterCreateNoteV61523" rows="3" maxlength="500" placeholder="ไม่บังคับ"></textarea></div>
+      <div class="team-master-create-note-v61523"><i>✓</i><div><strong>ชื่อและ Team Code สร้างอัตโนมัติ</strong><span>เลขทีมเดิมจะไม่ถูกนำกลับมาใช้เมื่อปิดทีม</span></div></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-light" data-team-master-close-v61523>ยกเลิก</button><button class="btn btn-primary" id="teamMasterCreateConfirmV61523">สร้างทีม</button></div>
+  </div>
+</div>
+
+<!-- V6.15.29 FIX15V Team Membership — Minimal Working-Team Workspace -->
+<div class="modal-backdrop hidden" id="teamMembershipModalV61524" aria-hidden="true">
+  <div class="modal team-membership-modal-v61524 team-membership-dual-modal-v61528f1 team-membership-modal-v61529f15v" role="dialog" aria-modal="true">
+    <div class="modal-header team-membership-header-v61529f15v">
+      <div class="team-membership-heading-v61529f15v">
+        <div class="team-membership-heading-icon-v61529f15v" aria-hidden="true">◎</div>
+        <div><span class="eyebrow">TEAM MEMBERSHIP</span><h3 id="teamMembershipTitleV61524">จัดสมาชิกทีม</h3><p id="teamMembershipMetaV61524">สมาชิกประจำ + Working Team ตามวันที่อ้างอิง</p></div>
+      </div>
+      <div class="team-membership-header-actions-v61529f15v">
+        <span class="team-membership-mode-chip-v61529f15v">Effective-dated</span>
+        <button class="btn btn-light btn-icon" data-team-membership-close-v61524 aria-label="ปิด">×</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="team-membership-summary-v61524 team-membership-summary-modern-v61528f1 team-membership-summary-v61529f15q team-membership-summary-v61529f15v">
+        <div><span>รูปแบบทีม</span><strong id="teamMembershipCategoryV61524">-</strong></div>
+        <div class="team-membership-date-card-v61529f15v"><span>วันที่มีผลการจัด / ย้ายทีม</span><input class="input" type="date" id="teamMembershipEffectiveV61524"/><small>แก้วันที่นี้ก่อนบันทึก • ใช้ตรวจสมาชิกและ Team ต้นทาง/ปลายทาง ณ วันนั้น</small></div>
+        <div><span>สมาชิกประจำ</span><strong id="teamMembershipCurrentV61528F1">0 คน</strong><small>ก่อนแก้ไข</small></div>
+        <div class="borrow-stat-v61529f15v"><span>ยืมเข้า</span><strong id="teamMembershipBorrowedInV61529F15Q">0 คน</strong><small>อ่านอย่างเดียว</small></div>
+        <div class="working-stat-v61529f15v"><span>ปฏิบัติงาน ณ วันนั้น</span><strong id="teamMembershipWorkingNowV61529F15Q">0 คน</strong><small>รวมยืมเข้า − ยืมออก</small></div>
+        <div><span>สมาชิกประจำหลังบันทึก</span><strong id="teamMembershipSelectedV61524">0 คน</strong><small id="teamMembershipDeltaV61528F1">ยังไม่มีการเปลี่ยนแปลง</small></div>
+      </div>
+      <div class="team-membership-warning-v61524 team-membership-policy-modern-v61528f1 team-membership-policy-v61529f15v" id="teamMembershipPolicyV61524"></div>
+
+      <div class="team-membership-dual-v61528f1 team-membership-dual-v61529f15v">
+        <section class="team-transfer-pane-v61528f1 source">
+          <div class="team-transfer-pane-head-v61528f1">
+            <div><span>AVAILABLE</span><h4>พนักงานที่เลือกได้</h4><small id="teamMembershipSourceCountV61528F1">0 คน</small></div>
+            <button type="button" class="btn btn-light btn-sm" id="teamMembershipSelectAllLeftV61528F1">เลือกทั้งหมด</button>
+          </div>
+          <div class="team-transfer-tools-v61528f1">
+            <input class="input" id="teamMembershipSearchV61524" placeholder="ค้นหารหัส ชื่อ ตำแหน่ง หรือทีม"/>
+            <select class="input" id="teamMembershipSourceFilterV61528F1">
+              <option value="ALL">ทั้งหมด</option>
+              <option value="NO_TEAM">ยังไม่มีทีม</option>
+              <option value="OTHER_TEAM">อยู่ทีมอื่น</option>
+              <option value="REMOVED">นำออกจากทีมนี้</option>
+            </select>
+          </div>
+          <div class="team-transfer-list-v61528f1" id="teamMembershipListV61524"><div class="fc-empty">กำลังโหลด...</div></div>
+        </section>
+
+        <div class="team-transfer-arrows-v61528f1 team-transfer-arrows-v61529f15v" aria-label="ย้ายสมาชิก">
+          <button type="button" class="btn btn-primary" id="teamMembershipMoveRightV61528F1" disabled title="ย้ายพนักงานที่เลือกเข้าทีม"><span>ย้ายเข้า</span><b>→</b></button>
+          <button type="button" class="btn btn-light" id="teamMembershipMoveLeftV61528F1" disabled title="นำสมาชิกที่เลือกออกจากทีม"><b>←</b><span>นำออก</span></button>
+        </div>
+
+        <section class="team-transfer-pane-v61528f1 target">
+          <div class="team-transfer-pane-head-v61528f1">
+            <div><span>WORKING TEAM</span><h4>สมาชิกทีมตามวันที่อ้างอิง</h4><small id="teamMembershipTargetCountV61528F1">0 คน</small></div>
+            <div class="team-capacity-pill-v61528f1" id="teamMembershipCapacityV61528F1">0 คน</div>
+          </div>
+          <div class="team-target-guide-v61528f1"><span>สมาชิกเดิม</span><span>เพิ่มใหม่</span><span>ย้ายจากทีมอื่น</span><span class="borrow-guide-v61529f15q">↔ ยืมตัว</span></div>
+          <div class="team-transfer-list-v61528f1 target-list" id="teamMembershipTargetListV61528F1"><div class="fc-empty">ยังไม่มีสมาชิกประจำในทีม</div></div>
+          <div class="team-borrow-overlay-v61529f15q team-borrow-overlay-v61529f15v">
+            <div class="team-borrow-overlay-head-v61529f15q"><div><span>TEMPORARY</span><strong>สมาชิกยืมเข้าตามวันที่อ้างอิง</strong></div><small id="teamMembershipBorrowCountV61529F15Q">0 คน</small></div>
+            <div class="team-borrow-overlay-note-v61529f15q">Read-only • ไม่เปลี่ยน Permanent Home Team • แก้ช่วงยืมตัวที่ Borrow Workflow</div>
+            <div class="team-borrow-overlay-list-v61529f15q" id="teamMembershipBorrowListV61529F15Q"><div class="team-borrow-overlay-empty-v61529f15q">กำลังโหลดข้อมูลยืมตัว...</div></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="team-membership-bottom-grid-v61529f15v">
+        <div>
+          <div class="team-membership-change-strip-v61528f1" id="teamMembershipChangeStripV61528F1">
+            <div><span>เพิ่มเข้า</span><strong>0</strong><small>คน</small></div><div><span>นำออก</span><strong>0</strong><small>คน</small></div><div><span>สถานะ</span><strong>รอตรวจ</strong><small>Impact Preview</small></div>
+          </div>
+          <div class="team-impact-preview-v61528" id="teamMembershipImpactV61528"><div class="team-impact-placeholder-v61528">ย้ายสมาชิกเพื่อดูผลกระทบก่อนบันทึก</div></div>
+        </div>
+        <div class="field team-membership-note-v61528f1 team-membership-note-v61529f15v"><label>หมายเหตุ</label><textarea class="input" id="teamMembershipNoteV61524" rows="3" maxlength="500" placeholder="ไม่บังคับ เช่น ปรับโครงสร้างทีม / ย้ายพื้นที่รับผิดชอบ"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer team-membership-sticky-footer-v61528f1 team-membership-footer-v61529f15v"><div class="team-membership-footer-status-v61528f1" id="teamMembershipFooterStatusV61528F1">ยังไม่มีการเปลี่ยนแปลง</div><button class="btn btn-light" data-team-membership-close-v61524>ยกเลิก</button><button class="btn btn-primary" id="teamMembershipSaveV61524" disabled>บันทึกสมาชิกทีม</button></div>
+  </div>
+</div>
+
+<!-- V6.15.29 FIX12 Safe Team Closure — guided member reassignment before close -->
+<div class="modal-backdrop hidden" id="teamClosureModalV61529F12" aria-hidden="true">
+  <div class="modal team-closure-modal-v61529f12" role="dialog" aria-modal="true" aria-labelledby="teamClosureTitleV61529F12">
+    <div class="modal-header team-closure-header-v61529f12">
+      <div><span class="eyebrow">SAFE TEAM CLOSURE</span><h3 id="teamClosureTitleV61529F12">เตรียมปิดทีม</h3><p id="teamClosureMetaV61529F12">ตรวจสมาชิก ย้ายปลายทาง และผลกระทบตารางกะก่อนปิดทีม</p></div>
+      <button class="btn btn-light btn-icon" data-team-closure-close-v61529f12 aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="team-closure-stepper-v61529f12" aria-label="ขั้นตอนปิดทีม">
+        <span class="active"><b>1</b>ตรวจทีม</span><i>→</i><span><b>2</b>จัดสมาชิก</span><i>→</i><span><b>3</b>ตรวจผลกระทบ</span><i>→</i><span><b>4</b>ยืนยันปิด</span>
+      </div>
+
+      <section class="team-closure-hero-v61529f12">
+        <div class="team-closure-team-v61529f12"><span id="teamClosureIconV61529F12">🚗</span><div><strong id="teamClosureTeamNameV61529F12">-</strong><code id="teamClosureTeamCodeV61529F12">-</code></div></div>
+        <div class="team-closure-kpis-v61529f12">
+          <div><span>สมาชิกต้องจัดการ</span><strong id="teamClosureMemberCountV61529F12">0</strong><small>คน</small></div>
+          <div><span>กะตั้งแต่วันนี้</span><strong id="teamClosureScheduleCountV61529F12">0</strong><small>รายการ · ไม่ลบ</small></div>
+          <div><span>Enforcement</span><strong id="teamClosureEnforcementV61529F12">-</strong><small id="teamClosureEnforcementHintV61529F12">ตรวจสถานะ</small></div>
+          <div><span>วันที่ปิดทีม</span><strong id="teamClosureEffectiveV61529F12">-</strong><small>ระบบกำหนดเป็นวันนี้</small></div>
+        </div>
+      </section>
+
+      <div class="team-closure-notice-v61529f12"><span>ℹ️</span><div><strong>ตารางกะเดิมจะไม่ถูกลบ</strong><small>ระบบเปลี่ยนเฉพาะ Team Context ตั้งแต่วันที่ย้ายสมาชิก และตรวจ Capacity/Policy ก่อนบันทึก</small></div></div>
+
+      <section class="team-closure-members-v61529f12">
+        <div class="team-closure-section-head-v61529f12">
+          <div><span>สมาชิกในทีม</span><h4>กำหนดปลายทางให้ครบทุกคนก่อนปิด</h4><small id="teamClosureProgressV61529F12">0 / 0 คน</small></div>
+          <div class="team-closure-bulk-v61529f12">
+            <button type="button" class="btn btn-light btn-sm" id="teamClosureSelectAllV61529F12">เลือกทั้งหมด</button>
+            <select class="select" id="teamClosureBulkTargetV61529F12"><option value="">เลือกปลายทางสำหรับรายการที่เลือก</option></select>
+            <button type="button" class="btn btn-primary btn-sm" id="teamClosureApplyBulkV61529F12" disabled>กำหนดปลายทาง</button>
+          </div>
+        </div>
+        <div class="team-closure-list-v61529f12" id="teamClosureMemberListV61529F12"><div class="fc-empty">กำลังตรวจสมาชิก...</div></div>
+      </section>
+
+      <section class="team-closure-impact-v61529f12">
+        <div class="team-closure-section-head-v61529f12"><div><span>Impact Preview</span><h4>ผลหลังปิดทีม</h4></div><span class="badge badge-gray" id="teamClosureReadinessV61529F12">รอตรวจ</span></div>
+        <div id="teamClosureImpactV61529F12"><div class="team-impact-placeholder-v61528">กำหนดทีมปลายทางเพื่อดูผลกระทบ</div></div>
+      </section>
+
+      <div class="field team-closure-reason-v61529f12"><label>เหตุผลการปิดทีม <span class="required-mark">*</span></label><textarea class="input" id="teamClosureReasonV61529F12" rows="2" maxlength="500" placeholder="เช่น ปรับโครงสร้างทีม / รวมทีม / เปลี่ยนพื้นที่รับผิดชอบ"></textarea><small>ใช้เก็บ Audit การปิดทีมและการย้ายสมาชิก</small></div>
+    </div>
+    <div class="modal-footer team-closure-footer-v61529f12"><div id="teamClosureFooterStatusV61529F12">กำลังตรวจข้อมูล...</div><button class="btn btn-light" data-team-closure-close-v61529f12>ยกเลิก</button><button class="btn btn-danger-soft" id="teamClosureConfirmV61529F12" disabled>ยืนยันปิดทีม</button></div>
+  </div>
+</div>
+
+
+<!-- V6.15.29 FIX9 Operational Profile — Start Date aligned Effective Date + Schedule Guard -->
+<div class="modal-backdrop hidden" id="teamOperationalProfileModalV61527" aria-hidden="true">
+  <div class="modal operational-profile-modal-v61527 operational-profile-dual-modal-v61528f2 operational-profile-split-modal-v61529f5" role="dialog" aria-modal="true">
+    <div class="modal-header operational-profile-header-v61529f5">
+      <div><span class="eyebrow">OPERATIONAL PROFILE · MANAGER OWNED</span><h3 id="teamOperationalProfileTitleV61529F5">กำหนดรูปแบบการปฏิบัติงาน</h3><p id="teamOperationalProfileMetaV61527">เลือกพนักงานที่ยังไม่ได้กำหนด → เลือกรูปแบบและ Team → ตรวจผล → บันทึก</p></div>
+      <button class="btn btn-light btn-icon" data-operational-profile-close-v61527 aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="operational-mode-switch-v61529f5" role="tablist" aria-label="ประเภทการดำเนินการ">
+        <button type="button" class="active" data-operational-mode-v61529f5="ASSIGN" role="tab" aria-selected="true"><span class="operational-mode-icon-v61529f5">＋</span><div><strong>กำหนดรูปแบบ</strong><small>สำหรับพนักงานที่ยังไม่มีรูปแบบ</small></div></button>
+        <button type="button" data-operational-mode-v61529f5="CHANGE" role="tab" aria-selected="false"><span class="operational-mode-icon-v61529f5">⇄</span><div><strong>เปลี่ยนรูปแบบ</strong><small>เปลี่ยนจากรูปแบบเดิมไปอีกประเภท</small></div></button>
+      </div>
+
+      <div class="operational-mode-guide-v61529f5" id="teamOperationalModeGuideV61529F5">
+        <div><strong>กำหนดครั้งแรก</strong><span>แสดงเฉพาะพนักงานที่ “รอกำหนดรูปแบบ” และไม่ต้องระบุเหตุผล</span></div>
+        <span class="operational-mode-guide-chip-v61529f5">ขั้นตอนแนะนำ</span>
+      </div>
+
+      <div class="operational-transfer-summary-v61528f2 operational-transfer-summary-split-v61529f5">
+        <div class="field"><label>หน่วยงาน</label><select class="select" id="teamOperationalProfileOrgV61527"></select></div>
+        <div class="field operational-effective-field-v61529f6"><label id="teamOperationalEffectiveLabelV61529F6">วันที่มีผล</label><input class="input" type="date" id="teamOperationalProfileEffectiveV61527"/><small class="operational-effective-help-v61529f6" id="teamOperationalEffectiveHelpV61529F6"></small></div>
+        <div class="field operational-source-fixed-v61529f5" id="teamOperationalSourceFixedV61529F5"><label>พนักงานกลุ่ม</label><div class="operational-source-fixed-value-v61529f5">⚠️ <strong>รอกำหนดรูปแบบ</strong></div></div>
+        <div class="field operational-source-select-v61529f5 hidden" id="teamOperationalSourceSelectV61529F5"><label>จากรูปแบบ</label><select class="select" id="teamOperationalProfileShowV61527"><option value="UNCLASSIFIED">⚠ รอกำหนดรูปแบบ</option><option value="CAR">🚗 รถยนต์</option><option value="MOTORCYCLE">🏍️ มอเตอร์ไซค์</option><option value="SUPPORT">🧰 สนับสนุน</option></select></div>
+        <div class="operational-transfer-arrow-label-v61528f2" aria-hidden="true">→</div>
+        <div class="field"><label id="teamOperationalTargetLabelV61529F5">กำหนดเป็น</label><select class="select" id="teamOperationalProfileTargetV61527"><option value="CAR">🚗 รถยนต์</option><option value="MOTORCYCLE">🏍️ มอเตอร์ไซค์</option><option value="SUPPORT">🧰 สนับสนุน</option></select></div>
+      </div>
+
+      <div class="operational-same-type-guide-v61529f5 hidden" id="teamOperationalSameTypeGuideV61529F5"><span>ℹ️</span><div><strong>ต้องการเปลี่ยน Team แต่ยังเป็นรูปแบบเดิม?</strong><small>เช่น รถยนต์ C01 → รถยนต์ C02 ให้ใช้ <b>TEAM MEMBERSHIP</b> เพื่อย้ายทีม โดยไม่สร้างประวัติเปลี่ยนรูปแบบ</small></div></div>
+
+      <div class="operational-transfer-layout-v61528f2">
+        <section class="team-transfer-pane-v61528f1 source operational-source-pane-v61528f2">
+          <div class="team-transfer-pane-head-v61528f1">
+            <div><span>ต้นทาง</span><h4>พนักงานที่เลือกได้</h4><small id="teamOperationalProfileSourceCountV61528F2">0 คน</small></div>
+            <button type="button" class="btn btn-light btn-sm" id="teamOperationalProfileSelectAllLeftV61528F2">เลือกทั้งหมด</button>
+          </div>
+          <div class="operational-transfer-search-v61528f2">
+            <input class="input" id="teamOperationalProfileSearchV61527" placeholder="ค้นหารหัส / ชื่อ / ตำแหน่ง"/>
+            <button class="btn btn-light" id="teamOperationalProfileSearchBtnV61527" type="button">ค้นหา</button>
+          </div>
+          <div class="team-transfer-list-v61528f1" id="teamOperationalProfileListV61527"><div class="fc-empty">กำลังโหลด...</div></div>
+        </section>
+
+        <div class="team-transfer-arrows-v61528f1 operational-transfer-arrows-v61528f2">
+          <button type="button" class="btn btn-primary" id="teamOperationalProfileMoveRightV61528F2" disabled><span>ย้ายเข้า</span><b>→</b></button>
+          <button type="button" class="btn btn-light" id="teamOperationalProfileMoveLeftV61528F2" disabled><b>←</b><span>นำออก</span></button>
+        </div>
+
+        <section class="team-transfer-pane-v61528f1 target operational-target-pane-v61528f2">
+          <div class="team-transfer-pane-head-v61528f1">
+            <div><span>ปลายทาง</span><h4 id="teamOperationalTargetTitleV61528F2">รายการที่จะเปลี่ยน</h4><small id="teamOperationalProfileTargetCountV61528F2">0 คน</small></div>
+            <div class="team-capacity-pill-v61528f1" id="teamOperationalProfileCapacityV61528F2">เลือก Team</div>
+          </div>
+          <div class="operational-target-config-v61528f2">
+            <div class="field"><label>Team หลังมีผล</label><select class="select" id="teamOperationalProfileTeamV61527"></select><small id="teamOperationalProfileTeamHintV61527">รถยนต์และสนับสนุนต้องเลือก Team</small></div>
+            <div class="operational-reason-alert-v61528f3 hidden" id="teamOperationalReasonAlertV61528F3"></div>
+            <div class="field operational-reason-box-v61528f2 optional" id="teamOperationalReasonBoxV61528F2"><label>เหตุผลการเปลี่ยน / หมายเหตุ <span id="teamOperationalReasonRequiredV61528"></span></label><textarea class="input" id="teamOperationalProfileNoteV61527" rows="2" maxlength="500" placeholder="หมายเหตุเพิ่มเติม (ไม่บังคับ)"></textarea><small id="teamOperationalReasonHintV61528F2">กำหนดครั้งแรกไม่บังคับเหตุผล • เมื่อเป็นการเปลี่ยนประเภทเดิม HR Admin จะได้รับแจ้งทันที</small></div>
+          </div>
+          <div class="operational-target-guide-v61528f2"><span id="teamOperationalTargetTypeV61528F2">🚗 รถยนต์</span><strong id="teamOperationalProfileSelectedV61527">ยังไม่มีรายการ</strong></div>
+          <div class="team-transfer-list-v61528f1 target-list" id="teamOperationalProfileTargetListV61528F2"><div class="fc-empty">ยังไม่มีรายการรอบันทึก</div></div>
+        </section>
+      </div>
+
+      <div class="operational-transfer-status-strip-v61528f2" id="teamOperationalTransferStatusV61528F2">
+        <div><span>รอบันทึก</span><strong>0</strong><small>คน</small></div>
+        <div><span>ปลายทาง</span><strong>—</strong><small>รูปแบบ / Team</small></div>
+        <div><span>สถานะ</span><strong>รอรายการ</strong><small>Impact Preview</small></div>
+      </div>
+
+      <div class="team-impact-preview-v61528" id="teamOperationalImpactV61528"><div class="team-impact-placeholder-v61528">เลือกพนักงานทางซ้าย แล้วกด “ย้ายเข้า →” เพื่อดูผลก่อนบันทึก</div></div>
+    </div>
+    <div class="modal-footer operational-profile-sticky-footer-v61528f2"><div class="operational-profile-footer-status-v61528f2" id="teamOperationalFooterStatusV61528F2">ยังไม่มีรายการรอบันทึก</div><button class="btn btn-light" data-operational-profile-close-v61527>ยกเลิก</button><button class="btn btn-primary" id="teamOperationalProfileSaveV61527" disabled>บันทึกการเปลี่ยนแปลง</button></div>
+  </div>
+</div>
+
+
+<!-- Legacy Team Enforcement Rollout retained in DOM for historical compatibility; FIX16T hides it from operational UI. -->
+<div class="modal-backdrop hidden" id="teamEnforcementRolloutModalV61529" aria-hidden="true" data-legacy-only-v616t="true">
+  <div class="modal team-enforcement-rollout-modal-v61529" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div><span class="eyebrow">TEAM ENFORCEMENT</span><h3>เปิด / ปิด Team Enforcement</h3><p>เลือกขอบเขตและวันที่มีผล ระบบจะแสดงเฉพาะรายการที่ดำเนินการได้</p></div>
+      <button class="btn btn-light btn-icon" data-team-enforcement-close-v61529 aria-label="ปิด">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="team-enforcement-rollout-config-v61529">
+        <div class="field"><label>มีผลตั้งแต่</label><input class="input" type="date" id="teamEnforcementEffectiveV61529"/></div>
+        <div class="field"><label>หน่วยงาน</label><select class="select" id="teamEnforcementOrgV61529"><option value="">ทุกหน่วยงานใน Scope</option></select></div>
+        <div class="field"><label>ต้องการ</label><select class="select" id="teamEnforcementActionV61529"><option value="ENABLE">เปิดใช้งาน</option><option value="DISABLE">ปิดใช้งาน</option></select></div>
+      </div>
+      <div class="team-enforcement-scope-tabs-v61529" role="tablist">
+        <button type="button" class="active" data-enforcement-scope-v61529="TEAM">รายทีม</button>
+        <button type="button" data-enforcement-scope-v61529="ORG">ทั้งหน่วยงาน</button>
+        <button type="button" data-enforcement-scope-v61529="GLOBAL">ทั้งระบบ</button>
+      </div>
+      <div class="team-enforcement-action-summary-v61529f1" id="teamEnforcementActionSummaryV61529F1">เลือกขอบเขตและรายการที่ต้องการดำเนินการ</div>
+
+      <div data-enforcement-scope-pane-v61529="TEAM">
+        <div class="team-enforcement-team-toolbar-v61529">
+          <div class="field"><label>แสดง</label><select class="select" id="teamEnforcementTeamStatusV61529"><option value="ALL">ทุกสถานะ</option><option value="READY">พร้อมเปิด</option><option value="ENABLED">เปิดใช้งานแล้ว</option><option value="NOT_READY">ยังไม่พร้อม</option></select></div>
+          <button type="button" class="btn btn-light btn-sm" id="teamEnforcementSelectReadyV61529">เลือกทีมที่พร้อมทั้งหมด</button>
+          <div class="team-enforcement-selection-v61529">เลือก <strong id="teamEnforcementSelectedCountV61529">0</strong> ทีม</div>
+        </div>
+        <div class="team-enforcement-team-list-v61529" id="teamEnforcementTeamListV61529"><div class="fc-empty">กำลังโหลด...</div></div>
+      </div>
+
+      <div class="hidden" data-enforcement-scope-pane-v61529="ORG">
+        <div class="team-enforcement-scope-summary-v61529" id="teamEnforcementOrgSummaryV61529"><div class="fc-empty">เลือกหน่วยงานเพื่อดูความพร้อม</div></div>
+      </div>
+
+      <div class="hidden" data-enforcement-scope-pane-v61529="GLOBAL">
+        <div class="team-enforcement-scope-summary-v61529" id="teamEnforcementGlobalSummaryV61529"><div class="fc-empty">กำลังตรวจความพร้อมทั้งระบบ...</div></div>
+      </div>
+
+      <div class="field team-enforcement-note-v61529"><label id="teamEnforcementNoteLabelV61529">หมายเหตุ</label><textarea class="input" id="teamEnforcementNoteV61529" rows="2" maxlength="500" placeholder="ไม่บังคับสำหรับการเปิดใช้งาน"></textarea><small id="teamEnforcementNoteHintV61529">การปิดใช้งานต้องระบุเหตุผล และระบบจะเก็บประวัติไว้ทั้งหมด</small></div>
+      <div class="team-enforcement-effective-note-v61529"><span>ℹ</span><p><strong>Enforcement อ้างอิงวันที่ของกะ</strong><small>เช่น มีผล 01/09/2026 → กะวันที่ 31/08 ยังใช้ Policy เดิม ส่วนกะตั้งแต่ 01/09 เป็นต้นไปใช้ Enforcement ตาม Scope</small></p></div>
+    </div>
+    <div class="modal-footer team-enforcement-rollout-footer-v61529"><div id="teamEnforcementFooterStatusV61529">กรุณาเลือกรายการ</div><button class="btn btn-light" data-team-enforcement-close-v61529>ยกเลิก</button><button class="btn btn-primary" id="teamEnforcementApplyV61529" disabled>ยืนยัน</button></div>
+  </div>
+</div>`);
+    }
+    if(!document.getElementById("teamWorkspaceRecoveryStyleV616an")){
+      const st=document.createElement('style');st.id='teamWorkspaceRecoveryStyleV616an';st.textContent=`.team-master-page-v61523{padding-bottom:32px}
+.team-master-hero-v61523{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:24px;
+  padding:26px 28px;border:1px solid #dbe8f2;border-radius:24px;background:#f8fbfe;
+  box-shadow:0 12px 34px rgba(28,72,104,.06)
+}
+.team-master-hero-v61523 h2{margin:5px 0 7px;color:#173f5f;font-size:25px;letter-spacing:-.3px}
+.team-master-hero-v61523 p{max-width:760px;margin:0;color:#58748a;line-height:1.65}
+.team-master-hero-badges-v61523{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.team-master-hero-badges-v61523 span{
+  padding:6px 9px;border:1px solid #cfe1ee;border-radius:999px;background:#fff;color:#33739e;font-size:10.5px;font-weight:900
+}
+.team-master-hero-actions-v61523{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+.team-master-foundation-note-v61523{
+  display:grid;grid-template-columns:58px minmax(0,1fr);gap:14px;align-items:center;padding:14px 16px;
+  border:1px solid #f0d8af;border-radius:18px;background:#fffaf1
+}
+.team-master-foundation-note-v61523>i{
+  display:flex;align-items:center;justify-content:center;height:42px;border-radius:12px;background:#fff0d4;color:#b56a14;font-style:normal;font-size:11px;font-weight:950
+}
+.team-master-foundation-note-v61523 strong{display:block;color:#7d551e;font-size:11px}
+.team-master-foundation-note-v61523 span{display:block;margin-top:3px;color:#92744e;font-size:10.5px;line-height:1.55}
+.team-master-kpis-v61523{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.team-master-kpis-v61523 article{
+  min-height:108px;padding:16px 17px;border:1px solid #dce8f1;border-radius:19px;background:#fff;box-shadow:0 8px 24px rgba(19,65,98,.045)
+}
+.team-master-kpis-v61523 article span{display:block;color:#6b8295;font-size:10.5px;font-weight:850}
+.team-master-kpis-v61523 article strong{display:block;margin-top:7px;color:#183f5d;font-size:25px;line-height:1}
+.team-master-kpis-v61523 article small{display:block;margin-top:8px;color:#8497a6;font-size:10.5px;line-height:1.35}
+.team-master-kpis-v61523 article.success{border-color:#cce9da;background:#f8fdfa}
+.team-master-kpis-v61523 article.success strong{color:#21855c}
+.team-master-kpis-v61523 article.neutral{border-color:#e0e5ea;background:#fafbfc}
+.team-master-kpis-v61523 article.neutral strong{color:#647788}
+.team-master-kpis-v61523 article.info{border-color:#cfe4f3;background:#f8fcff}
+.team-master-kpis-v61523 article.info strong{color:#176fa9}
+.team-master-toolbar-v61523{display:grid;grid-template-columns:minmax(210px,1fr) 170px minmax(250px,1.2fr) auto;gap:12px;align-items:end}
+.team-master-search-v61523{min-width:0}
+.team-master-toolbar-actions-v61523{display:flex;align-items:flex-end}
+.team-master-layout-v61523{display:grid;grid-template-columns:minmax(280px,.72fr) minmax(560px,1.7fr);gap:14px;align-items:start}
+.team-master-org-panel-v61523,.team-master-list-panel-v61523{min-width:0}
+.team-master-org-list-v61523{display:flex;flex-direction:column;gap:9px;max-height:560px;overflow:auto;padding-right:3px}
+.team-master-org-card-v61523{
+  display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:10px;position:relative;width:100%;padding:12px 13px;
+  border:1px solid #dce8f1;border-radius:15px;background:#fff;text-align:left;cursor:pointer;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease
+}
+.team-master-org-card-v61523:hover{border-color:#9fc9e4;box-shadow:0 7px 20px rgba(29,91,132,.07);transform:translateY(-1px)}
+.team-master-org-card-v61523.active{border-color:#3690ca;box-shadow:0 0 0 2px rgba(54,144,202,.11);background:#f8fcff}
+.team-master-org-main-v61523{min-width:0}
+.team-master-org-main-v61523>span{display:block;color:#1672ae;font-size:10.5px;font-weight:950}
+.team-master-org-main-v61523>strong{display:block;margin-top:3px;overflow:hidden;color:#234d69;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.team-master-org-main-v61523>small{display:block;margin-top:4px;color:#8093a2;font-size:10.5px}
+.team-master-org-stats-v61523{grid-row:1;grid-column:2;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:1px solid #edf2f6}
+.team-master-org-stats-v61523 b{color:#1d6f9f;font-size:18px}
+.team-master-org-stats-v61523 small{color:#8aa0b0;font-size:10.5px;font-weight:800}
+.team-master-next-v61523{grid-column:1 / -1;display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px dashed #e4edf3}
+.team-master-next-v61523 span{color:#8a9caa;font-size:10.5px;font-weight:800}
+.team-master-next-v61523 code{padding:3px 7px;border-radius:7px;background:#edf7fd;color:#13699f;font-size:10.5px;font-weight:900}
+.team-master-auto-chip-v61523{padding:6px 9px;border-radius:999px;background:#eaf6fd;color:#1672aa;font-size:10.5px;font-weight:950;white-space:nowrap}
+.team-master-table-v61523 td{vertical-align:middle}
+.team-master-team-cell-v61523{display:flex;align-items:center;gap:10px;min-width:150px}
+.team-master-team-icon-v61523{display:flex;flex:0 0 38px;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;background:#eaf5fc;color:#1673ac;font-size:12px;font-weight:950}
+.team-master-team-cell-v61523 strong{display:block;color:#1d4866;font-size:11px}
+.team-master-team-cell-v61523 code{display:inline-block;margin-top:3px;color:#598095;font-size:10.5px;font-weight:850}
+.team-master-sub-v61523{display:block;margin-top:3px;color:#8193a0;font-size:10.5px}
+.team-master-row-inactive-v61523{opacity:.67;background:#fafbfc}
+.team-master-locked-v61523{display:inline-flex;padding:5px 8px;border-radius:8px;background:#f0f3f5;color:#7e8d98;font-size:10.5px;font-weight:850}
+.team-master-empty-v61523{display:flex;min-height:170px;flex-direction:column;align-items:center;justify-content:center;padding:22px;text-align:center}
+.team-master-empty-v61523 strong{color:#4e697c;font-size:11px}
+.team-master-empty-v61523 span{max-width:260px;margin-top:6px;color:#8a9ba8;font-size:10.5px;line-height:1.5}
+.team-master-create-modal-v61523{max-width:620px}
+.team-master-preview-v61523{margin:14px 0;padding:16px;border:1px solid #cfe4f1;border-radius:18px;background:#f7fcff}
+.team-master-preview-v61523>span{display:block;color:#7892a4;font-size:10.5px;font-weight:850}
+.team-master-preview-v61523>div{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:7px}
+.team-master-preview-v61523 strong{color:#174968;font-size:20px}
+.team-master-preview-v61523 code{padding:8px 11px;border:1px solid #c9e1f0;border-radius:10px;background:#fff;color:#1671aa;font-size:12px;font-weight:950}
+.team-master-preview-v61523 small{display:block;margin-top:8px;color:#728a9c;font-size:10.5px;line-height:1.4}
+.team-master-create-note-v61523{display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:center;margin-top:14px;padding:11px 12px;border:1px solid #d7eadf;border-radius:14px;background:#f7fcf9}
+.team-master-create-note-v61523>i{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#e3f5ea;color:#218256;font-style:normal;font-weight:950}
+.team-master-create-note-v61523 strong{display:block;color:#37694f;font-size:10.5px}
+.team-master-create-note-v61523 span{display:block;margin-top:3px;color:#718a7c;font-size:10.5px;line-height:1.45}
+
+body.dark-mode .team-master-hero-v61523,
+[data-theme="dark"] .team-master-hero-v61523{background:#18242d;border-color:#334752;box-shadow:none}
+body.dark-mode .team-master-hero-v61523 h2,
+[data-theme="dark"] .team-master-hero-v61523 h2{color:#e4f0f7}
+body.dark-mode .team-master-hero-v61523 p,
+[data-theme="dark"] .team-master-hero-v61523 p{color:#9fb5c4}
+body.dark-mode .team-master-hero-badges-v61523 span,
+[data-theme="dark"] .team-master-hero-badges-v61523 span{background:#1e303b;border-color:#3a5362;color:#8fc6e7}
+body.dark-mode .team-master-kpis-v61523 article,
+[data-theme="dark"] .team-master-kpis-v61523 article,
+body.dark-mode .team-master-org-card-v61523,
+[data-theme="dark"] .team-master-org-card-v61523{background:#1b2932;border-color:#354954;box-shadow:none}
+body.dark-mode .team-master-kpis-v61523 article strong,
+[data-theme="dark"] .team-master-kpis-v61523 article strong,
+body.dark-mode .team-master-org-main-v61523>strong,
+[data-theme="dark"] .team-master-org-main-v61523>strong,
+body.dark-mode .team-master-team-cell-v61523 strong,
+[data-theme="dark"] .team-master-team-cell-v61523 strong{color:#dceaf2}
+body.dark-mode .team-master-org-card-v61523.active,
+[data-theme="dark"] .team-master-org-card-v61523.active{background:#20333e;border-color:#4c92b9}
+body.dark-mode .team-master-preview-v61523,
+[data-theme="dark"] .team-master-preview-v61523{background:#1b2d38;border-color:#395566}
+body.dark-mode .team-master-preview-v61523 strong,
+[data-theme="dark"] .team-master-preview-v61523 strong{color:#e0eff7}
+body.dark-mode .team-master-preview-v61523 code,
+[data-theme="dark"] .team-master-preview-v61523 code{background:#17242d;border-color:#3a5667;color:#83c4e7}
+body.dark-mode .team-master-foundation-note-v61523,
+[data-theme="dark"] .team-master-foundation-note-v61523{background:#2a251c;border-color:#55472f}
+body.dark-mode .team-master-create-note-v61523,
+[data-theme="dark"] .team-master-create-note-v61523{background:#1c2a23;border-color:#385043}
+
+@media(max-width:1100px){
+  .team-master-layout-v61523{grid-template-columns:1fr}
+  .team-master-org-list-v61523{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}
+  .team-master-toolbar-v61523{grid-template-columns:1fr 160px 1fr auto}
+}
+@media(max-width:760px){
+  .team-master-hero-v61523{flex-direction:column;padding:20px;border-radius:19px}
+  .team-master-hero-actions-v61523{width:100%;justify-content:flex-start}
+  .team-master-kpis-v61523{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .team-master-toolbar-v61523{grid-template-columns:1fr 1fr}
+  .team-master-search-v61523{grid-column:1 / -1}
+  .team-master-toolbar-actions-v61523{grid-column:1 / -1}
+  .team-master-toolbar-actions-v61523 .btn{width:100%}
+  .team-master-org-list-v61523{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .team-master-kpis-v61523{grid-template-columns:1fr 1fr;gap:8px}
+  .team-master-kpis-v61523 article{min-height:94px;padding:13px}
+  .team-master-preview-v61523>div{align-items:flex-start;flex-direction:column}
+  .team-master-foundation-note-v61523{grid-template-columns:48px 1fr}
+}
+
+/* V6.15.24 — Team Category + Membership */
+.team-membership-modal-v61524{width:min(860px,94vw);max-height:90vh;display:flex;flex-direction:column}
+.team-membership-modal-v61524 .modal-body{overflow:auto}
+.team-membership-summary-v61524{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.team-membership-summary-v61524>div{border:1px solid var(--border,#dfe5ec);border-radius:14px;padding:12px;background:var(--surface-soft,#f8fafc)}
+.team-membership-summary-v61524 span{display:block;font-size:12px;color:var(--text-muted,#64748b);margin-bottom:4px}
+.team-membership-summary-v61524 strong{font-size:16px}
+.team-membership-warning-v61524{padding:12px 14px;border-radius:12px;background:var(--surface-soft,#f8fafc);margin-bottom:14px;font-size:13px}
+.team-membership-list-v61524{border:1px solid var(--border,#dfe5ec);border-radius:14px;max-height:380px;overflow:auto;margin:10px 0 14px}
+.team-membership-row-v61524{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--border,#e5e7eb);cursor:pointer}
+.team-membership-row-v61524:last-child{border-bottom:0}
+.team-membership-row-v61524.selected{background:rgba(59,130,246,.07)}
+.team-membership-row-v61524 input{margin-top:4px;width:18px;height:18px}
+.team-membership-row-v61524 div{display:flex;flex-direction:column;gap:3px}
+.team-membership-row-v61524 span,.team-membership-row-v61524 small{color:var(--text-muted,#64748b);font-size:12px}
+.team-master-table-v61523 .org-row-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:720px){.team-membership-summary-v61524{grid-template-columns:1fr}.team-membership-modal-v61524{width:96vw}.team-master-toolbar-v61523{grid-template-columns:1fr!important}}
+.team-membership-readiness-v61524{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.team-membership-readiness-v61524 article{padding:14px 16px;border:1px solid var(--border,#dfe5ec);border-radius:14px;background:var(--surface,#fff)}
+.team-membership-readiness-v61524 span,.team-membership-readiness-v61524 small{display:block;color:var(--text-muted,#64748b);font-size:12px}.team-membership-readiness-v61524 strong{display:block;font-size:26px;margin:3px 0}
+@media(max-width:720px){.team-membership-readiness-v61524{grid-template-columns:1fr}}
+
+
+/* V6.15.25 — Team Enforcement */
+.team-enforcement-panel-v61525{overflow:hidden}.team-enforcement-actions-v61525{display:flex;gap:8px;align-items:center}.team-enforcement-body-v61525{display:grid;gap:14px}.team-enforcement-policy-v61525{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.team-enforcement-policy-v61525>div{border:1px solid var(--border,#dbe3ee);border-radius:12px;padding:12px;display:grid;gap:4px;background:var(--surface-soft,#f8fafc)}.team-enforcement-policy-v61525 span{font-size:12px;opacity:.72}.team-enforcement-policy-v61525 strong{font-size:14px}.team-enforcement-go-v61525{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid var(--border,#dbe3ee);border-radius:14px;padding:14px 16px}.team-enforcement-go-v61525>div{display:grid;gap:3px}.team-enforcement-go-v61525 b{font-size:22px}.team-enforcement-go-v61525 small{opacity:.7}.team-enforcement-note-v61525{margin:0;font-size:12px;opacity:.72}@media(max-width:760px){.team-enforcement-policy-v61525{grid-template-columns:1fr}.team-enforcement-go-v61525{align-items:stretch;flex-direction:column}}
+
+/* V6.15.26 — 4D.1D Team Schedule View */
+.schedule-operational-team-field-v61526{min-width:210px}
+.schedule-operational-team-field-v61526 small{display:block;margin-top:4px;color:var(--muted,#64748b);font-size:11px;line-height:1.25}
+.team-unit-card-v61526 .team-unit-text-v61121{gap:3px}
+.team-scope-chip-v61526{display:inline-flex;align-items:center;width:max-content;max-width:100%;padding:2px 7px;border-radius:999px;background:rgba(37,99,235,.09);color:#1d4ed8;font-size:10.5px;font-weight:700;line-height:1.35}
+.team-scope-chip-v61526.warning{background:rgba(245,158,11,.12);color:#b45309}
+.team-scope-chip-v61526.optional{background:rgba(14,165,233,.10);color:#0369a1}
+[data-theme="dark"] .team-scope-chip-v61526{background:rgba(96,165,250,.16);color:#bfdbfe}
+[data-theme="dark"] .team-scope-chip-v61526.warning{background:rgba(251,191,36,.16);color:#fde68a}
+[data-theme="dark"] .team-scope-chip-v61526.optional{background:rgba(56,189,248,.15);color:#bae6fd}
+@media(max-width:900px){.schedule-operational-team-field-v61526{min-width:180px}}
+
+
+/* V6.15.26 FIX1 — Team Runtime Session diagnostics */
+.team-runtime-diagnostic-v61526f1{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding:13px 16px;border:1px solid var(--border,#dbe5f0);border-radius:14px;background:var(--panel,#fff)}
+.team-runtime-diagnostic-v61526f1.hidden{display:none}
+.team-runtime-diagnostic-v61526f1>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.team-runtime-diagnostic-v61526f1 strong{font-size:14px;color:var(--text,#102033)}
+.team-runtime-diagnostic-v61526f1 span{font-size:12px;color:var(--muted,#66758a);overflow-wrap:anywhere}
+.team-runtime-diagnostic-v61526f1.success{border-color:#bfe7d2;background:#f4fbf7}
+.team-runtime-diagnostic-v61526f1.warning{border-color:#f0d9a7;background:#fffaf0}
+.team-runtime-diagnostic-v61526f1.error{border-color:#f1bfc3;background:#fff6f6}
+.team-runtime-error-v61526f1 code,.team-runtime-table-error-v61526f1 code{display:inline-block;margin-top:6px;font-size:11px;opacity:.72}
+.team-runtime-table-error-v61526f1{display:flex;flex-direction:column;align-items:center;gap:4px;padding:24px 12px;text-align:center}
+.team-runtime-table-error-v61526f1 strong{color:var(--text,#102033)}
+.team-runtime-table-error-v61526f1 span{font-size:12px;color:var(--muted,#66758a)}
+@media(max-width:720px){.team-runtime-diagnostic-v61526f1{align-items:flex-start;flex-direction:column}.team-runtime-diagnostic-v61526f1 .btn{width:100%}}
+
+/* V6.15.27 — 4D.1E Manager-owned Operational Profile */
+.operational-profile-panel-v61527{overflow:hidden}
+.operational-profile-overview-v61527{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.operational-profile-overview-v61527 article{padding:15px 16px;border:1px solid var(--border,#dfe5ec);border-radius:14px;background:var(--surface-soft,#f8fafc)}
+.operational-profile-overview-v61527 span,.operational-profile-overview-v61527 small{display:block;color:var(--text-muted,#64748b);font-size:12px}
+.operational-profile-overview-v61527 strong{display:block;margin:5px 0;color:var(--text,#102033);font-size:17px}
+.operational-profile-modal-v61527{width:min(920px,95vw);max-height:92vh;display:flex;flex-direction:column}
+.operational-profile-modal-v61527 .modal-body{overflow:auto}
+.operational-profile-form-v61527{display:grid;grid-template-columns:1.2fr .8fr 1fr 1fr;gap:12px}
+.operational-profile-team-box-v61527{margin:12px 0;padding:12px 14px;border:1px solid var(--border,#dfe5ec);border-radius:14px;background:var(--surface-soft,#f8fafc)}
+.operational-profile-team-box-v61527 small{display:block;margin-top:6px;color:var(--text-muted,#64748b);font-size:12px}
+.operational-profile-search-v61527{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:end;margin-top:12px}
+.operational-profile-search-v61527 strong{padding:10px 12px;border-radius:10px;background:var(--surface-soft,#f8fafc);font-size:12px;white-space:nowrap}
+.operational-profile-row-v61527 small{line-height:1.45}
+.team-enforcement-secondary-v61527{display:block;margin-top:4px;color:var(--text-muted,#64748b);font-size:12px}
+.team-enforcement-secondary-v61527 b{font-size:13px}
+@media(max-width:900px){.operational-profile-form-v61527{grid-template-columns:1fr 1fr}.operational-profile-overview-v61527{grid-template-columns:1fr}.operational-profile-search-v61527{grid-template-columns:1fr}.operational-profile-search-v61527 .btn{width:100%}}
+@media(max-width:620px){.operational-profile-form-v61527{grid-template-columns:1fr}.operational-profile-modal-v61527{width:97vw}}
+
+/* ==========================================================================
+   V6.15.28 — Team Workspace UX
+   ========================================================================== */
+.team-master-page-v61528{padding-bottom:32px}
+.team-workspace-hero-v61528{display:flex;justify-content:space-between;gap:24px;align-items:flex-end;padding:28px;border-radius:24px;background:linear-gradient(135deg,rgba(37,99,235,.10),rgba(14,165,233,.06));border:1px solid var(--border,#dbe4f0)}
+.team-workspace-title-v61528 h2{margin:6px 0 8px;font-size:30px;letter-spacing:-.02em}.team-workspace-title-v61528 p{max-width:760px;margin:0;color:var(--text-muted,#64748b);line-height:1.7}
+.team-workspace-hero-actions-v61528{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end}.team-workspace-org-filter-v61528{min-width:280px;margin:0}.team-workspace-org-filter-v61528 label{font-size:12px;color:var(--text-muted,#64748b)}
+.team-workflow-stepper-v61528{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr auto 1fr;gap:10px;align-items:center;padding:16px 18px;background:var(--panel,#fff);border:1px solid var(--border,#e2e8f0);border-radius:20px;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.team-workflow-stepper-v61528>div{display:grid;grid-template-columns:36px 1fr;column-gap:10px;align-items:center;padding:10px;border-radius:14px;min-width:0}.team-workflow-stepper-v61528>div b{grid-row:1/3;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--surface-2,#f1f5f9);color:var(--text-muted,#64748b)}.team-workflow-stepper-v61528>div span{font-weight:800;font-size:13px}.team-workflow-stepper-v61528>div small{color:var(--text-muted,#64748b);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.team-workflow-stepper-v61528>i{font-style:normal;color:#94a3b8;font-size:22px}.team-workflow-stepper-v61528>div.active{background:rgba(37,99,235,.08)}.team-workflow-stepper-v61528>div.active b{background:#2563eb;color:#fff}.team-workflow-stepper-v61528>div.done b{background:#dcfce7;color:#15803d}
+.team-next-action-v61528{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:20px 22px;border:1px solid rgba(37,99,235,.20);background:linear-gradient(135deg,rgba(37,99,235,.08),rgba(255,255,255,.6));border-radius:20px}.team-next-action-icon-v61528{display:grid;place-items:center;width:46px;height:46px;border-radius:15px;background:#2563eb;color:#fff;font-size:22px;font-weight:900}.team-next-action-v61528 span{font-size:12px;color:#2563eb;font-weight:800}.team-next-action-v61528 h3{margin:3px 0 4px;font-size:18px}.team-next-action-v61528 p{margin:0;color:var(--text-muted,#64748b)}
+.team-workspace-kpis-v61528{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.team-workspace-kpis-v61528 button{appearance:none;text-align:left;border:1px solid var(--border,#e2e8f0);background:var(--panel,#fff);border-radius:18px;padding:16px;cursor:pointer;transition:.2s ease;color:inherit}.team-workspace-kpis-v61528 button:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(15,23,42,.08);border-color:rgba(37,99,235,.28)}.team-workspace-kpis-v61528 span{display:block;font-size:12px;color:var(--text-muted,#64748b);font-weight:700}.team-workspace-kpis-v61528 strong{display:inline-block;font-size:28px;margin:7px 5px 0 0}.team-workspace-kpis-v61528 small{color:var(--text-muted,#64748b)}
+.team-workspace-tabs-v61528{display:flex;gap:6px;padding:5px;background:var(--surface-2,#f1f5f9);border-radius:14px;width:max-content;max-width:100%;overflow:auto}.team-workspace-tabs-v61528 button{border:0;background:transparent;color:var(--text-muted,#64748b);font-weight:800;border-radius:10px;padding:9px 14px;white-space:nowrap;cursor:pointer}.team-workspace-tabs-v61528 button.active{background:var(--panel,#fff);color:var(--text,#0f172a);box-shadow:0 2px 8px rgba(15,23,42,.08)}.team-workspace-tabs-v61528 em{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#ef4444;color:#fff;font-style:normal;font-size:11px;margin-left:4px}
+.team-operational-type-cards-v61528{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.team-operational-type-cards-v61528 article{display:flex;gap:14px;align-items:flex-start;border:1px solid var(--border,#e2e8f0);border-radius:18px;padding:18px;background:var(--panel,#fff)}.team-type-icon-v61528{font-size:28px;width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:var(--surface-2,#f1f5f9)}.team-operational-type-cards-v61528 h4{margin:1px 0 4px;font-size:16px}.team-operational-type-cards-v61528 p{margin:0 0 8px;color:var(--text-muted,#64748b);font-size:13px}.team-operational-type-cards-v61528 strong{font-size:12px}.team-operational-type-cards-v61528 .car{border-left:4px solid #2563eb}.team-operational-type-cards-v61528 .motorcycle{border-left:4px solid #f59e0b}.team-operational-type-cards-v61528 .support{border-left:4px solid #7c3aed}
+.team-readiness-checklist-v61528{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}.team-readiness-checklist-v61528>div{display:flex;gap:10px;align-items:center;border:1px solid var(--border,#e2e8f0);border-radius:14px;padding:12px}.team-readiness-checklist-v61528>div>span{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;font-weight:900;background:#fef3c7;color:#b45309}.team-readiness-checklist-v61528>div>span.ok{background:#dcfce7;color:#15803d}.team-readiness-checklist-v61528 p{margin:0}.team-readiness-checklist-v61528 p strong,.team-readiness-checklist-v61528 p small{display:block}.team-readiness-checklist-v61528 p small{color:var(--text-muted,#64748b);margin-top:2px}
+.team-people-toolbar-v61528{display:flex;justify-content:space-between;gap:16px;align-items:center}.team-people-toolbar-v61528 h3{margin:0}.team-people-toolbar-v61528 p{margin:4px 0 0;color:var(--text-muted,#64748b)}.team-people-actions-v61528{display:flex;gap:8px}.team-master-toolbar-modern-v61528{grid-template-columns:180px 170px minmax(240px,1fr) auto}.team-master-table-v61523 td{vertical-align:middle}.team-master-team-icon-v61523{font-size:18px}
+.badge-purple{background:rgba(124,58,237,.12);color:#6d28d9;border:1px solid rgba(124,58,237,.18)}
+.team-impact-preview-v61528{border:1px solid var(--border,#e2e8f0);border-radius:16px;padding:14px;background:var(--surface-1,#f8fafc);margin:12px 0}.team-impact-placeholder-v61528{color:var(--text-muted,#64748b);text-align:center;padding:6px}.team-impact-title-v61528{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.team-impact-title-v61528 span{font-size:12px;font-weight:900;padding:5px 9px;border-radius:999px}.team-impact-title-v61528 span.ok{background:#dcfce7;color:#15803d}.team-impact-title-v61528 span.blocked{background:#fee2e2;color:#b91c1c}.team-impact-target-v61528{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;border-radius:12px;padding:12px;background:var(--panel,#fff);border:1px solid var(--border,#e2e8f0)}.team-impact-target-v61528 span{font-weight:800}.team-impact-target-v61528 strong{font-size:16px}.team-impact-target-v61528 small{grid-column:1/3;color:var(--text-muted,#64748b)}.team-impact-sources-v61528{display:grid;gap:8px;margin-top:8px}.team-impact-sources-v61528>div{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:10px 12px;border-radius:12px;background:var(--panel,#fff);border:1px solid var(--border,#e2e8f0)}.team-impact-sources-v61528>div small{grid-column:1/3;color:var(--text-muted,#64748b)}.team-impact-sources-v61528>div.blocked{border-color:#fecaca;background:#fff7f7}.team-impact-blockers-v61528{margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff7f7;border:1px solid #fecaca;color:#991b1b}.team-impact-blockers-v61528 p{margin:3px 0}.team-impact-summary-grid-v61528{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.team-impact-summary-grid-v61528>div{padding:10px;border-radius:12px;background:var(--panel,#fff);border:1px solid var(--border,#e2e8f0)}.team-impact-summary-grid-v61528 span,.team-impact-summary-grid-v61528 strong{display:block}.team-impact-summary-grid-v61528 span{font-size:11px;color:var(--text-muted,#64748b);margin-bottom:3px}.team-hr-notify-note-v61528{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(37,99,235,.08);color:#1d4ed8;font-weight:700;font-size:12px}
+.operational-wizard-step-v61528{display:flex;gap:10px;align-items:center;margin:4px 0 10px}.operational-wizard-step-v61528>b{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#2563eb;color:#fff}.operational-wizard-step-v61528 strong,.operational-wizard-step-v61528 span{display:block}.operational-wizard-step-v61528 span{font-size:12px;color:var(--text-muted,#64748b)}
+.team-change-actions-v61528{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.team-change-list-v61528{display:grid;gap:12px}.team-change-card-v61528{border:1px solid var(--border,#e2e8f0);border-radius:18px;padding:16px;background:var(--panel,#fff)}.team-change-card-v61528.unread{border-left:4px solid #2563eb}.team-change-card-head-v61528{display:flex;justify-content:space-between;gap:12px}.team-change-card-head-v61528>div span,.team-change-card-head-v61528>div strong,.team-change-card-head-v61528>div small{display:block}.team-change-card-head-v61528>div span{font-size:11px;color:#2563eb;font-weight:900;margin-bottom:4px}.team-change-card-head-v61528>div small,.team-change-card-head-v61528 time{color:var(--text-muted,#64748b);font-size:12px}.team-change-flow-v61528{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center;margin:14px 0;padding:12px;border-radius:14px;background:var(--surface-1,#f8fafc)}.team-change-flow-v61528>div small,.team-change-flow-v61528>div strong,.team-change-flow-v61528>div span{display:block}.team-change-flow-v61528>div span{font-size:12px;color:var(--text-muted,#64748b);margin-top:3px}.team-change-flow-v61528>b{color:#94a3b8}.team-change-meta-v61528{display:flex;gap:16px;color:var(--text-muted,#64748b);font-size:12px}.team-change-reason-v61528{margin:10px 0 0}.team-change-review-note-v61528{padding:8px 10px;border-radius:10px;background:#fff7ed;color:#9a3412}.team-change-card-actions-v61528{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+@media(max-width:1100px){.team-workflow-stepper-v61528{grid-template-columns:1fr;}.team-workflow-stepper-v61528>i{display:none}.team-workspace-kpis-v61528{grid-template-columns:repeat(2,minmax(0,1fr))}.team-operational-type-cards-v61528,.team-readiness-checklist-v61528{grid-template-columns:1fr}.team-workspace-hero-v61528{align-items:stretch;flex-direction:column}.team-workspace-hero-actions-v61528{justify-content:flex-start}.team-workspace-org-filter-v61528{min-width:min(100%,320px)}}
+@media(max-width:680px){.team-workspace-kpis-v61528{grid-template-columns:1fr}.team-next-action-v61528{grid-template-columns:auto 1fr}.team-next-action-v61528>.btn{grid-column:1/3}.team-impact-summary-grid-v61528{grid-template-columns:1fr}.team-change-flow-v61528{grid-template-columns:1fr}.team-change-flow-v61528>b{transform:rotate(90deg);justify-self:center}.team-people-toolbar-v61528{align-items:flex-start;flex-direction:column}}
+
+
+/* ==========================================================================
+   V6.15.28 FIX1 — Dual-pane Team Membership UX
+   ========================================================================== */
+.team-membership-dual-modal-v61528f1{width:min(1180px,96vw);max-height:94vh}
+.team-membership-dual-modal-v61528f1 .modal-body{padding:18px 20px 20px;overflow:auto}
+.team-membership-summary-modern-v61528f1{grid-template-columns:1fr 1fr 1fr 1.15fr;position:sticky;top:-18px;z-index:4;background:var(--panel,#fff);padding:4px 0 12px;margin-bottom:0}
+.team-membership-summary-modern-v61528f1>div{min-height:74px;display:flex;flex-direction:column;justify-content:center}
+.team-membership-summary-modern-v61528f1 small{display:block;margin-top:3px;color:var(--text-muted,#64748b);font-size:11px}
+.team-membership-policy-modern-v61528f1{display:flex;justify-content:space-between;gap:16px;align-items:center;margin:0 0 14px;border:1px solid rgba(37,99,235,.12);background:rgba(37,99,235,.05)}
+.team-membership-policy-modern-v61528f1>div{display:grid;gap:2px}.team-membership-policy-modern-v61528f1 span,.team-membership-policy-modern-v61528f1 small{color:var(--text-muted,#64748b)}
+.team-membership-dual-v61528f1{display:grid;grid-template-columns:minmax(0,1fr) 104px minmax(0,1fr);gap:14px;align-items:stretch}
+.team-transfer-pane-v61528f1{border:1px solid var(--border,#dfe5ec);border-radius:18px;background:var(--panel,#fff);min-width:0;overflow:hidden;display:flex;flex-direction:column;min-height:430px}
+.team-transfer-pane-v61528f1.source{box-shadow:inset 4px 0 0 rgba(100,116,139,.22)}.team-transfer-pane-v61528f1.target{box-shadow:inset -4px 0 0 rgba(37,99,235,.35)}
+.team-transfer-pane-head-v61528f1{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border,#e2e8f0);background:var(--surface-soft,#f8fafc)}
+.team-transfer-pane-head-v61528f1 span{display:block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:900;color:#64748b}.team-transfer-pane-head-v61528f1 h4{margin:2px 0;font-size:15px}.team-transfer-pane-head-v61528f1 small{color:var(--text-muted,#64748b)}
+.team-transfer-tools-v61528f1{display:grid;grid-template-columns:minmax(0,1fr) 145px;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border,#e2e8f0)}
+.team-transfer-tools-v61528f1 .input{min-width:0}
+.team-transfer-list-v61528f1{overflow:auto;min-height:0;flex:1;max-height:430px;background:var(--panel,#fff)}
+.team-transfer-row-v61528f1{display:flex;gap:11px;align-items:flex-start;padding:11px 13px;border-bottom:1px solid var(--border,#eef2f7);cursor:pointer;transition:.16s ease}
+.team-transfer-row-v61528f1:last-child{border-bottom:0}.team-transfer-row-v61528f1:hover{background:rgba(37,99,235,.035)}.team-transfer-row-v61528f1.picked{background:rgba(37,99,235,.08)}
+.team-transfer-row-v61528f1 input{width:18px;height:18px;margin-top:2px;flex:0 0 auto;accent-color:#2563eb}.team-transfer-person-v61528f1{display:grid;gap:3px;min-width:0}.team-transfer-person-v61528f1 strong{font-size:13px;overflow-wrap:anywhere}.team-transfer-person-v61528f1>span{font-size:11px;color:var(--text-muted,#64748b)}
+.team-transfer-person-v61528f1 small.origin,.team-transfer-person-v61528f1 small.target-badge{width:max-content;max-width:100%;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:800}
+.team-transfer-person-v61528f1 .origin.none{background:#f1f5f9;color:#64748b}.team-transfer-person-v61528f1 .origin.other{background:#fff7ed;color:#b45309}.team-transfer-person-v61528f1 .origin.removed{background:#fee2e2;color:#b91c1c}
+.team-transfer-person-v61528f1 .target-badge.existing{background:#e0f2fe;color:#0369a1}.team-transfer-person-v61528f1 .target-badge.added{background:#dcfce7;color:#15803d}.team-transfer-person-v61528f1 .target-badge.moved{background:#ede9fe;color:#6d28d9}
+.team-transfer-arrows-v61528f1{display:flex;flex-direction:column;align-items:stretch;justify-content:center;gap:10px}.team-transfer-arrows-v61528f1 .btn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:8px 10px}.team-transfer-arrows-v61528f1 b{font-size:18px}.team-transfer-arrows-v61528f1 span{font-size:12px}
+.team-capacity-pill-v61528f1{padding:6px 10px;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:900;white-space:nowrap}.team-capacity-pill-v61528f1.full{background:#fff7ed;color:#b45309}.team-capacity-pill-v61528f1.blocked{background:#fee2e2;color:#b91c1c}
+.team-target-guide-v61528f1{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--border,#e2e8f0)}.team-target-guide-v61528f1 span{font-size:10.5px;padding:3px 7px;border-radius:999px;background:var(--surface-soft,#f8fafc);color:var(--text-muted,#64748b)}
+.team-membership-change-strip-v61528f1{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0 0}.team-membership-change-strip-v61528f1>div{display:grid;grid-template-columns:1fr auto auto;gap:5px;align-items:baseline;padding:10px 12px;border:1px solid var(--border,#e2e8f0);border-radius:12px;background:var(--surface-soft,#f8fafc)}.team-membership-change-strip-v61528f1 span{font-size:11px;color:var(--text-muted,#64748b)}.team-membership-change-strip-v61528f1 strong{font-size:14px}.team-membership-change-strip-v61528f1 small{font-size:10.5px;color:var(--text-muted,#64748b)}.team-membership-change-strip-v61528f1.ok>div:last-child{border-color:#bbf7d0;background:#f0fdf4}.team-membership-change-strip-v61528f1.blocked>div:last-child{border-color:#fecaca;background:#fff7f7}
+.team-membership-note-v61528f1{margin-top:12px}.team-membership-sticky-footer-v61528f1{position:sticky;bottom:0;z-index:6;background:var(--panel,#fff);border-top:1px solid var(--border,#e2e8f0)}.team-membership-footer-status-v61528f1{margin-right:auto;font-size:12px;color:var(--text-muted,#64748b);font-weight:700}
+[data-theme="dark"] .team-membership-policy-modern-v61528f1{background:rgba(59,130,246,.10)}[data-theme="dark"] .team-transfer-row-v61528f1:hover{background:rgba(96,165,250,.07)}[data-theme="dark"] .team-transfer-row-v61528f1.picked{background:rgba(96,165,250,.12)}
+@media(max-width:980px){.team-membership-dual-v61528f1{grid-template-columns:1fr}.team-transfer-arrows-v61528f1{display:grid;grid-template-columns:1fr 1fr}.team-transfer-arrows-v61528f1 .btn:first-child b{transform:rotate(90deg)}.team-transfer-arrows-v61528f1 .btn:last-child b{transform:rotate(90deg)}.team-membership-summary-modern-v61528f1{grid-template-columns:1fr 1fr}.team-transfer-pane-v61528f1{min-height:320px}.team-transfer-list-v61528f1{max-height:320px}}
+@media(max-width:620px){.team-membership-dual-modal-v61528f1{width:98vw}.team-membership-summary-modern-v61528f1{grid-template-columns:1fr}.team-transfer-tools-v61528f1{grid-template-columns:1fr}.team-membership-change-strip-v61528f1{grid-template-columns:1fr}.team-membership-policy-modern-v61528f1{align-items:flex-start;flex-direction:column}.team-membership-sticky-footer-v61528f1{flex-wrap:wrap}.team-membership-footer-status-v61528f1{width:100%;margin:0 0 4px}}
+
+
+/* ==========================================================================
+   V6.15.28 FIX2 — Dual-pane Operational Profile UX
+   ========================================================================== */
+.operational-profile-dual-modal-v61528f2{width:min(1240px,97vw);max-height:95vh;display:flex;flex-direction:column}
+.operational-profile-dual-modal-v61528f2 .modal-body{padding:18px 20px 20px;overflow:auto}
+.operational-transfer-summary-v61528f2{display:grid;grid-template-columns:minmax(220px,1.15fr) 170px minmax(170px,.8fr) 36px minmax(180px,.85fr);gap:10px;align-items:end;padding:0 0 14px;margin-bottom:14px;border-bottom:1px solid var(--border,#e2e8f0)}
+.operational-transfer-summary-v61528f2 .field{margin:0}.operational-transfer-arrow-label-v61528f2{display:grid;place-items:center;height:42px;font-size:24px;font-weight:900;color:#2563eb}
+.operational-transfer-layout-v61528f2{display:grid;grid-template-columns:minmax(0,1fr) 104px minmax(0,1fr);gap:14px;align-items:stretch}
+.operational-source-pane-v61528f2,.operational-target-pane-v61528f2{min-height:440px}.operational-transfer-search-v61528f2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border,#e2e8f0)}
+.operational-target-config-v61528f2{padding:11px 12px;border-bottom:1px solid var(--border,#e2e8f0);background:rgba(37,99,235,.035)}.operational-target-config-v61528f2 .field{margin:0}.operational-target-config-v61528f2 small{display:block;margin-top:5px;color:var(--text-muted,#64748b);font-size:11px}
+.operational-target-guide-v61528f2{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border,#e2e8f0);background:var(--surface-soft,#f8fafc)}.operational-target-guide-v61528f2 span{font-size:12px;font-weight:800}.operational-target-guide-v61528f2 strong{font-size:11px;color:#1d4ed8;background:#eff6ff;padding:4px 8px;border-radius:999px;white-space:nowrap}
+.operational-transfer-status-strip-v61528f2{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:14px 0 0}.operational-transfer-status-strip-v61528f2>div{display:grid;grid-template-columns:1fr auto auto;gap:5px;align-items:baseline;padding:10px 12px;border:1px solid var(--border,#e2e8f0);border-radius:12px;background:var(--surface-soft,#f8fafc)}.operational-transfer-status-strip-v61528f2 span{font-size:11px;color:var(--text-muted,#64748b)}.operational-transfer-status-strip-v61528f2 strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.operational-transfer-status-strip-v61528f2 small{font-size:10.5px;color:var(--text-muted,#64748b)}.operational-transfer-status-strip-v61528f2.ok>div:last-child{border-color:#bbf7d0;background:#f0fdf4}.operational-transfer-status-strip-v61528f2.blocked>div:last-child{border-color:#fecaca;background:#fff7f7}
+.operational-reason-box-v61528f2{margin-top:12px}.operational-reason-box-v61528f2 small{display:block;margin-top:5px;color:var(--text-muted,#64748b)}
+.operational-profile-sticky-footer-v61528f2{position:sticky;bottom:0;z-index:7;background:var(--panel,#fff);border-top:1px solid var(--border,#e2e8f0)}.operational-profile-footer-status-v61528f2{margin-right:auto;font-size:12px;color:var(--text-muted,#64748b);font-weight:800}
+[data-theme="dark"] .operational-target-config-v61528f2{background:rgba(59,130,246,.07)}[data-theme="dark"] .operational-target-guide-v61528f2 strong{background:rgba(59,130,246,.14);color:#93c5fd}
+@media(max-width:1050px){.operational-transfer-summary-v61528f2{grid-template-columns:1fr 1fr}.operational-transfer-arrow-label-v61528f2{display:none}.operational-transfer-layout-v61528f2{grid-template-columns:1fr}.operational-transfer-arrows-v61528f2{display:grid;grid-template-columns:1fr 1fr}.operational-transfer-arrows-v61528f2 .btn:first-child b,.operational-transfer-arrows-v61528f2 .btn:last-child b{transform:rotate(90deg)}.operational-source-pane-v61528f2,.operational-target-pane-v61528f2{min-height:320px}.operational-source-pane-v61528f2 .team-transfer-list-v61528f1,.operational-target-pane-v61528f2 .team-transfer-list-v61528f1{max-height:320px}}
+@media(max-width:650px){.operational-profile-dual-modal-v61528f2{width:99vw}.operational-transfer-summary-v61528f2{grid-template-columns:1fr}.operational-transfer-search-v61528f2{grid-template-columns:1fr}.operational-transfer-status-strip-v61528f2{grid-template-columns:1fr}.operational-profile-sticky-footer-v61528f2{flex-wrap:wrap}.operational-profile-footer-status-v61528f2{width:100%;margin:0 0 4px}}
+
+/* V6.15.28 FIX3 — Operational Change Reason UX */
+.operational-target-config-v61528f2{display:grid;gap:10px}
+.operational-reason-alert-v61528f3{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:9px 11px;border:1px solid #f59e0b;border-radius:12px;background:#fffbeb;color:#92400e;font-size:12px}.operational-reason-alert-v61528f3.hidden{display:none}.operational-reason-alert-v61528f3 strong{font-size:12px}.operational-reason-alert-v61528f3 span{color:#a16207}.operational-reason-alert-v61528f3.complete{border-color:#86efac;background:#f0fdf4;color:#166534}.operational-reason-alert-v61528f3.complete span{color:#15803d}
+.operational-reason-box-v61528f2{margin-top:0;padding:10px 11px;border:1px solid var(--border,#e2e8f0);border-radius:12px;background:var(--panel,#fff)}.operational-reason-box-v61528f2.required{border-color:#fbbf24;background:#fffdf5}.operational-reason-box-v61528f2.missing textarea{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.10)}.operational-reason-box-v61528f2 label span{font-size:11px;font-weight:900;color:#b45309}.operational-reason-box-v61528f2.optional{background:rgba(148,163,184,.045)}
+.operational-readiness-check-v61528f3{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.operational-readiness-check-v61528f3 span{display:inline-flex;align-items:center;min-height:29px;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800;background:var(--surface-2,#f1f5f9);color:var(--text-muted,#64748b)}.operational-readiness-check-v61528f3 .ok{background:#ecfdf5;color:#15803d}.operational-readiness-check-v61528f3 .warning{background:#fffbeb;color:#b45309}.operational-readiness-check-v61528f3 .blocked{background:#fef2f2;color:#b91c1c}.operational-readiness-check-v61528f3 .notify{background:#eff6ff;color:#1d4ed8}
+.team-impact-title-v61528 span.warning{background:#fffbeb;color:#b45309;border-color:#fde68a}.operational-profile-footer-status-v61528f2.warning{color:#b45309}.operational-profile-footer-status-v61528f2.ok{color:#15803d}.operational-profile-footer-status-v61528f2.blocked{color:#b91c1c}
+[data-theme="dark"] .operational-reason-alert-v61528f3{background:rgba(245,158,11,.10);border-color:rgba(245,158,11,.45);color:#fcd34d}[data-theme="dark"] .operational-reason-alert-v61528f3 span{color:#fbbf24}[data-theme="dark"] .operational-reason-alert-v61528f3.complete{background:rgba(34,197,94,.09);border-color:rgba(34,197,94,.35);color:#86efac}[data-theme="dark"] .operational-reason-alert-v61528f3.complete span{color:#86efac}[data-theme="dark"] .operational-reason-box-v61528f2.required{background:rgba(245,158,11,.05)}
+
+/* ========================================================================== 
+   V6.15.29 — Scoped Team Enforcement Rollout
+   ========================================================================== */
+.team-enforcement-rollout-panel-v61529{overflow:hidden}
+.team-enforcement-rollout-kpis-v61529{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.team-enforcement-rollout-kpis-v61529 article{border:1px solid var(--border-color,#dbe4ef);border-radius:15px;padding:14px 16px;background:var(--surface,#fff);min-width:0}
+.team-enforcement-rollout-kpis-v61529 article span{display:block;font-size:12px;color:var(--text-muted,#667085);margin-bottom:5px}
+.team-enforcement-rollout-kpis-v61529 article strong{display:block;font-size:26px;line-height:1.05;color:var(--text-primary,#172033)}
+.team-enforcement-rollout-kpis-v61529 article small{display:block;margin-top:5px;color:var(--text-muted,#7b8799)}
+.team-enforcement-rollout-kpis-v61529 article.enabled{background:color-mix(in srgb,#16a34a 7%,var(--surface,#fff));border-color:color-mix(in srgb,#16a34a 25%,var(--border-color,#dbe4ef))}
+.team-enforcement-rollout-kpis-v61529 article.ready{background:color-mix(in srgb,#2563eb 6%,var(--surface,#fff));border-color:color-mix(in srgb,#2563eb 22%,var(--border-color,#dbe4ef))}
+.team-enforcement-rollout-kpis-v61529 article.blocked{background:color-mix(in srgb,#f59e0b 7%,var(--surface,#fff));border-color:color-mix(in srgb,#f59e0b 24%,var(--border-color,#dbe4ef))}
+.team-enforcement-prep-v61529{margin-top:2px}
+.team-enforcement-rollout-callout-v61529{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:14px;padding:15px 16px;border-radius:15px;border:1px solid color-mix(in srgb,#2563eb 20%,var(--border-color,#dbe4ef));background:color-mix(in srgb,#2563eb 5%,var(--surface,#fff))}
+.team-enforcement-rollout-callout-v61529>div{display:flex;flex-direction:column;gap:4px;min-width:0}.team-enforcement-rollout-callout-v61529 strong{font-size:14px}.team-enforcement-rollout-callout-v61529 span{font-size:12px;color:var(--text-muted,#667085)}
+.team-enforcement-rollout-modal-v61529{width:min(1160px,calc(100vw - 34px));max-width:1160px;height:min(850px,calc(100vh - 30px));display:flex;flex-direction:column;overflow:hidden}
+.team-enforcement-rollout-modal-v61529 .modal-body{overflow:auto;flex:1;padding-bottom:24px}
+.team-enforcement-rollout-config-v61529{display:grid;grid-template-columns:180px minmax(260px,1fr) 190px;gap:12px;align-items:end}
+.team-enforcement-scope-tabs-v61529{display:flex;gap:6px;padding:5px;margin:16px 0;border-radius:13px;background:var(--surface-soft,#f4f7fb);border:1px solid var(--border-color,#dbe4ef);width:max-content;max-width:100%}
+.team-enforcement-scope-tabs-v61529 button{border:0;background:transparent;border-radius:9px;padding:9px 15px;font:inherit;font-weight:700;color:var(--text-muted,#667085);cursor:pointer;white-space:nowrap}
+.team-enforcement-scope-tabs-v61529 button.active{background:var(--surface,#fff);color:var(--primary,#246dcc);box-shadow:0 1px 4px rgba(15,23,42,.09)}
+.team-enforcement-team-toolbar-v61529{display:flex;align-items:flex-end;gap:10px;margin-bottom:10px;flex-wrap:wrap}.team-enforcement-team-toolbar-v61529 .field{min-width:190px;margin:0}.team-enforcement-selection-v61529{margin-left:auto;align-self:center;font-size:13px;color:var(--text-muted,#667085);padding:8px 11px;border-radius:10px;background:var(--surface-soft,#f5f7fb)}
+.team-enforcement-team-list-v61529{border:1px solid var(--border-color,#dbe4ef);border-radius:16px;overflow:hidden;background:var(--surface,#fff)}
+.team-enforcement-team-row-v61529{display:grid;grid-template-columns:34px minmax(220px,1.4fr) minmax(145px,.8fr) minmax(155px,.8fr) minmax(160px,.8fr);gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border-color,#e5eaf1)}.team-enforcement-team-row-v61529:last-child{border-bottom:0}.team-enforcement-team-row-v61529:hover{background:var(--surface-soft,#f8fafc)}
+.team-enforcement-team-row-v61529.disabled{opacity:.62}.team-enforcement-team-row-v61529 input[type=checkbox]{width:18px;height:18px}.team-enforcement-team-name-v61529 strong{display:block;font-size:13px}.team-enforcement-team-name-v61529 code{display:inline-block;margin-top:3px;font-size:11px;color:var(--text-muted,#667085)}
+.team-enforcement-team-row-v61529 small{display:block;margin-top:3px;color:var(--text-muted,#718096);font-size:11px}.team-enforcement-ready-v61529{font-size:12px;font-weight:700}.team-enforcement-ready-v61529.ok{color:#15803d}.team-enforcement-ready-v61529.warn{color:#b45309}.team-enforcement-ready-v61529.on{color:#1d4ed8}
+.team-enforcement-scope-summary-v61529{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:14px;border:1px solid var(--border-color,#dbe4ef);border-radius:16px;background:var(--surface-soft,#f8fafc)}.team-enforcement-scope-summary-v61529 article{background:var(--surface,#fff);border:1px solid var(--border-color,#dbe4ef);border-radius:13px;padding:13px}.team-enforcement-scope-summary-v61529 article span{display:block;color:var(--text-muted,#667085);font-size:11px}.team-enforcement-scope-summary-v61529 article strong{display:block;font-size:20px;margin-top:4px}.team-enforcement-scope-summary-v61529 .scope-summary-message-v61529{grid-column:1/-1;padding:13px 14px;border-radius:12px;background:var(--surface,#fff);font-size:13px}.team-enforcement-scope-summary-v61529 .scope-summary-message-v61529.ok{border:1px solid #bbf7d0;color:#166534}.team-enforcement-scope-summary-v61529 .scope-summary-message-v61529.warn{border:1px solid #fde68a;color:#92400e}
+.team-enforcement-note-v61529{margin-top:16px}.team-enforcement-effective-note-v61529{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--surface-soft,#f5f7fb);color:var(--text-muted,#667085)}.team-enforcement-effective-note-v61529>span{font-size:18px}.team-enforcement-effective-note-v61529 p{margin:0}.team-enforcement-effective-note-v61529 strong,.team-enforcement-effective-note-v61529 small{display:block}.team-enforcement-effective-note-v61529 small{margin-top:3px}
+.team-enforcement-rollout-footer-v61529{position:sticky;bottom:0;background:var(--surface,#fff);z-index:2}.team-enforcement-rollout-footer-v61529>div:first-child{margin-right:auto;font-size:12px;color:var(--text-muted,#667085);font-weight:700}
+@media(max-width:900px){.team-enforcement-rollout-kpis-v61529{grid-template-columns:repeat(2,minmax(0,1fr))}.team-enforcement-rollout-config-v61529{grid-template-columns:1fr 1fr}.team-enforcement-rollout-config-v61529 .field:nth-child(2){grid-column:span 1}.team-enforcement-team-row-v61529{grid-template-columns:28px 1fr 120px}.team-enforcement-team-row-v61529>[data-col-v61529="readiness"],.team-enforcement-team-row-v61529>[data-col-v61529="effective"]{display:none}.team-enforcement-scope-summary-v61529{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.team-enforcement-rollout-kpis-v61529{grid-template-columns:1fr 1fr}.team-enforcement-rollout-callout-v61529{align-items:stretch;flex-direction:column}.team-enforcement-rollout-config-v61529{grid-template-columns:1fr}.team-enforcement-scope-tabs-v61529{width:100%;overflow:auto}.team-enforcement-scope-tabs-v61529 button{flex:1}.team-enforcement-team-row-v61529{grid-template-columns:28px 1fr}.team-enforcement-team-row-v61529>[data-col-v61529="capacity"]{display:none}.team-enforcement-scope-summary-v61529{grid-template-columns:1fr 1fr}.team-enforcement-team-toolbar-v61529 .field{width:100%}.team-enforcement-selection-v61529{margin-left:0}}
+
+
+/* ========================================================================== 
+   V6.15.29 FIX1 — Modern Team Workspace UX
+   Compact hierarchy, clear next action, consistent operational controls
+   ========================================================================== */
+.team-master-page-v61528{--team-radius:16px;--team-soft:color-mix(in srgb,var(--primary,#2563eb) 5%,var(--surface,#fff));padding-bottom:24px}
+.team-master-page-v61528 .section-gap{margin-top:12px}
+.team-workspace-hero-v61528{align-items:center;padding:18px 20px;border-radius:18px;background:var(--surface,#fff);border:1px solid var(--border-color,#dbe4ef);box-shadow:0 8px 24px rgba(15,23,42,.045)}
+.team-workspace-title-v61528 h2{margin:2px 0 3px;font-size:24px;letter-spacing:-.02em}.team-workspace-title-v61528 p{margin:0;max-width:760px;font-size:12px;color:var(--text-muted,#667085)}
+.team-workspace-title-v61528 .eyebrow{font-size:10.5px;letter-spacing:.08em;color:var(--primary,#2563eb)}
+.team-workspace-hero-actions-v61528{align-items:flex-end;gap:7px}.team-workspace-hero-actions-v61528 .field{margin:0}.team-workspace-org-filter-v61528{min-width:265px}.team-workspace-hero-actions-v61528 .btn{min-height:40px}
+.team-workflow-stepper-v61528{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;padding:6px;border-radius:15px;box-shadow:none;background:var(--surface-soft,#f6f8fb)}
+.team-workflow-stepper-v61528>i{display:none}.team-workflow-stepper-v61528>div{display:grid;grid-template-columns:28px 1fr;column-gap:8px;min-height:48px;padding:7px 9px;border-radius:11px}.team-workflow-stepper-v61528>div b{grid-row:1/3;width:28px;height:28px;font-size:11px}.team-workflow-stepper-v61528>div span{font-size:11px;align-self:end}.team-workflow-stepper-v61528>div small{display:none;font-size:10.5px}.team-workflow-stepper-v61528>div.active{background:var(--surface,#fff);box-shadow:0 1px 5px rgba(15,23,42,.08)}.team-workflow-stepper-v61528>div.active small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.team-workflow-stepper-v61528>div.done{opacity:.88}
+.team-next-action-v61528{grid-template-columns:auto 1fr auto;gap:13px;padding:14px 16px;border-radius:15px;background:var(--surface,#fff);border:1px solid color-mix(in srgb,var(--primary,#2563eb) 24%,var(--border-color,#dbe4ef));box-shadow:none}.team-next-action-icon-v61528{width:38px;height:38px;border-radius:11px;font-size:16px}.team-next-action-v61528 h3{font-size:15px;margin:1px 0 2px}.team-next-action-v61528 p{font-size:11px}.team-next-action-v61528 span{font-size:10.5px}.team-next-action-v61528[data-state="ready"]{border-color:color-mix(in srgb,#16a34a 30%,var(--border-color,#dbe4ef));background:color-mix(in srgb,#16a34a 4%,var(--surface,#fff))}.team-next-action-v61528[data-state="ready"] .team-next-action-icon-v61528{background:#16a34a}
+.team-quick-actions-v61529f1{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:10px}.team-quick-actions-v61529f1 button{appearance:none;display:grid;grid-template-columns:30px 1fr;gap:9px;align-items:center;text-align:left;padding:10px 11px;border:1px solid var(--border-color,#dbe4ef);border-radius:13px;background:var(--surface,#fff);color:inherit;cursor:pointer;transition:.15s ease}.team-quick-actions-v61529f1 button:hover{border-color:color-mix(in srgb,var(--primary,#2563eb) 35%,var(--border-color,#dbe4ef));box-shadow:0 6px 16px rgba(15,23,42,.055);transform:translateY(-1px)}.team-quick-actions-v61529f1 button>span{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--surface-soft,#f4f7fb);color:var(--primary,#2563eb);font-size:10.5px;font-weight:900}.team-quick-actions-v61529f1 strong,.team-quick-actions-v61529f1 small{display:block}.team-quick-actions-v61529f1 strong{font-size:11px}.team-quick-actions-v61529f1 small{margin-top:2px;font-size:10.5px;color:var(--text-muted,#667085);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-workspace-kpis-v61528{gap:8px}.team-workspace-kpis-v61528 button{border-radius:14px;padding:11px 12px;min-height:78px}.team-workspace-kpis-v61528 strong{font-size:23px;margin-top:4px}.team-workspace-kpis-v61528 span{font-size:10.5px}.team-workspace-kpis-v61528 small{font-size:10.5px}.team-workspace-kpis-v61528 button:hover{transform:none;box-shadow:0 5px 14px rgba(15,23,42,.055)}
+.team-workspace-tabs-v61528{width:100%;padding:3px;border-radius:12px;gap:3px;background:var(--surface-soft,#f4f7fb);border:1px solid var(--border-color,#e2e8f0)}.team-workspace-tabs-v61528 button{flex:0 0 auto;padding:8px 13px;font-size:11px;border-radius:9px}.team-workspace-tabs-v61528 button.active{box-shadow:0 1px 4px rgba(15,23,42,.08)}
+.team-operational-cards-panel-v61528 .panel-header,.team-enforcement-rollout-panel-v61529 .panel-header{padding-top:14px;padding-bottom:12px}.team-operational-type-cards-v61528{gap:8px}.team-operational-type-cards-v61528 article{padding:11px 12px;border-radius:13px}.team-operational-type-cards-v61528 h4{font-size:12px}.team-operational-type-cards-v61528 p,.team-operational-type-cards-v61528 strong{font-size:10.5px}.team-type-icon-v61528{font-size:20px}
+.team-enforcement-rollout-kpis-v61529{gap:8px;margin-bottom:10px}.team-enforcement-rollout-kpis-v61529 article{padding:10px 12px;border-radius:12px}.team-enforcement-rollout-kpis-v61529 article strong{font-size:21px}.team-enforcement-rollout-kpis-v61529 article span,.team-enforcement-rollout-kpis-v61529 article small{font-size:10.5px}.team-readiness-checklist-v61528{gap:8px}.team-readiness-checklist-v61528>div{padding:9px 10px;border-radius:11px}.team-enforcement-rollout-callout-v61529{margin-top:10px;padding:11px 12px;border-radius:12px}.team-enforcement-rollout-callout-v61529 strong{font-size:12px}.team-enforcement-rollout-callout-v61529 span{font-size:10.5px}
+.team-people-toolbar-v61528{padding:3px 1px}.team-people-toolbar-v61528 h3{font-size:17px}.team-people-toolbar-v61528 p{font-size:11px}.team-people-actions-v61528 .btn{min-height:38px}.team-master-toolbar-modern-v61528{grid-template-columns:160px 160px minmax(220px,1fr) auto;gap:8px}.team-master-toolbar-modern-v61528 .field{margin:0}.team-master-table-v61523 thead th{font-size:10.5px;text-transform:none;white-space:nowrap;background:var(--surface-soft,#f7f9fc)}.team-master-table-v61523 td{padding-top:10px;padding-bottom:10px}.team-master-table-v61523 .btn-sm{padding:6px 9px}.team-master-auto-chip-v61523{font-size:10.5px;padding:5px 8px}
+.team-enforcement-rollout-modal-v61529{width:min(1080px,calc(100vw - 28px));max-width:1080px;height:min(800px,calc(100vh - 24px));border-radius:18px}.team-enforcement-rollout-modal-v61529 .modal-header{padding-top:16px;padding-bottom:13px}.team-enforcement-rollout-modal-v61529 .modal-header h3{font-size:19px}.team-enforcement-rollout-modal-v61529 .modal-header p{font-size:11px;margin-top:3px}.team-enforcement-rollout-config-v61529{grid-template-columns:170px minmax(260px,1fr) 170px;gap:8px}.team-enforcement-rollout-config-v61529 .field{margin:0}.team-enforcement-scope-tabs-v61529{margin:12px 0 8px;padding:3px;border-radius:11px}.team-enforcement-scope-tabs-v61529 button{padding:8px 13px;font-size:11px}.team-enforcement-action-summary-v61529f1{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 11px;margin-bottom:10px;border:1px solid var(--border-color,#dbe4ef);border-radius:11px;background:var(--surface-soft,#f7f9fc);font-size:11px}.team-enforcement-action-summary-v61529f1 strong{font-size:11px}.team-enforcement-action-summary-v61529f1 span{color:var(--text-muted,#667085)}.team-enforcement-action-summary-v61529f1.enable{border-color:color-mix(in srgb,#2563eb 20%,var(--border-color,#dbe4ef))}.team-enforcement-action-summary-v61529f1.disable{border-color:color-mix(in srgb,#dc2626 22%,var(--border-color,#dbe4ef));background:color-mix(in srgb,#dc2626 3%,var(--surface,#fff))}
+.team-enforcement-team-toolbar-v61529{align-items:center;margin-bottom:8px}.team-enforcement-team-toolbar-v61529 .field{min-width:165px}.team-enforcement-selection-v61529{font-size:10.5px;padding:7px 9px;border-radius:999px}.team-enforcement-team-row-v61529{grid-template-columns:30px minmax(210px,1.5fr) 130px 145px 150px;padding:10px 12px}.team-enforcement-team-name-v61529 strong{font-size:12px}.team-enforcement-team-name-v61529 code{font-size:10.5px}.team-enforcement-team-row-v61529 small{font-size:10.5px}.team-enforcement-team-row-v61529.disabled{opacity:.52}.team-enforcement-disabled-reason-v61529f1{color:#a16207!important;font-weight:700}.team-enforcement-note-v61529{margin-top:11px;padding:10px;border:1px solid var(--border-color,#e2e8f0);border-radius:11px;background:var(--surface-soft,#f8fafc)}.team-enforcement-note-v61529.required{border-color:#fbbf24;background:#fffdf5}.team-enforcement-note-v61529 textarea{min-height:58px}.team-enforcement-effective-note-v61529{margin-top:8px;padding:9px 11px;border-radius:10px}.team-enforcement-effective-note-v61529 small{font-size:10.5px}.team-enforcement-rollout-footer-v61529{min-height:62px;border-top:1px solid var(--border-color,#e2e8f0)}.team-enforcement-rollout-footer-v61529>div:first-child{font-size:11px}.team-enforcement-rollout-footer-v61529>div:first-child.ok{color:#15803d}.team-enforcement-rollout-footer-v61529>div:first-child.warning{color:#b45309}
+@media(max-width:1000px){.team-quick-actions-v61529f1{grid-template-columns:repeat(2,minmax(0,1fr))}.team-workflow-stepper-v61528{grid-template-columns:repeat(5,minmax(120px,1fr));overflow:auto}.team-workflow-stepper-v61528>div{min-width:120px}.team-master-toolbar-modern-v61528{grid-template-columns:1fr 1fr}.team-master-toolbar-modern-v61528 .team-master-search-v61523{grid-column:1/-1}}
+@media(max-width:680px){.team-workspace-hero-v61528{padding:14px}.team-workspace-hero-actions-v61528{display:grid;grid-template-columns:1fr auto}.team-workspace-org-filter-v61528{grid-column:1/-1;min-width:0}.team-workspace-title-v61528 h2{font-size:21px}.team-quick-actions-v61529f1{grid-template-columns:1fr 1fr}.team-quick-actions-v61529f1 small{display:none}.team-workspace-kpis-v61528{grid-template-columns:1fr 1fr}.team-next-action-v61528{grid-template-columns:auto 1fr}.team-next-action-v61528>.btn{grid-column:1/-1}.team-enforcement-action-summary-v61529f1{align-items:flex-start;flex-direction:column}.team-enforcement-rollout-config-v61529{grid-template-columns:1fr}.team-enforcement-team-row-v61529{grid-template-columns:28px 1fr}.team-master-toolbar-modern-v61528{grid-template-columns:1fr}.team-master-toolbar-modern-v61528 .team-master-search-v61523{grid-column:auto}.team-people-actions-v61528{width:100%}.team-people-actions-v61528 .btn{flex:1}}
+
+/* V6.15.29 FIX2 — actionable Membership Impact guidance */
+.team-impact-recovery-v61529f2{
+  margin-top:10px;padding:12px 14px;border:1px solid var(--border,#dbe4ef);border-radius:12px;
+  background:color-mix(in srgb,var(--surface,#fff) 88%,#f59e0b 12%);display:flex;gap:8px 14px;align-items:flex-start;flex-wrap:wrap;
+}
+.team-impact-recovery-v61529f2 strong{font-weight:800;color:var(--text,#172033);white-space:nowrap}
+.team-impact-recovery-v61529f2 span{color:var(--muted,#64748b);line-height:1.45;flex:1;min-width:220px}
+
+/* =====================================================================
+   V6.15.29 FIX3 — Compact Team Workspace
+   Reduce visual noise while preserving all Team/Operational/Enforcement flows.
+   ===================================================================== */
+#page-team-master{--team-gap:8px}
+#page-team-master.section-gap,#page-team-master .section-gap{margin-top:var(--team-gap)!important}
+#page-team-master .panel{border-radius:14px;box-shadow:0 3px 12px rgba(15,23,42,.035)}
+#page-team-master .panel-header{padding:11px 13px}
+#page-team-master .panel-header h3{font-size:14px;line-height:1.2;margin:0}
+#page-team-master .panel-header p{font-size:10.5px;line-height:1.35;margin-top:2px;color:var(--text-muted,#667085)}
+#page-team-master .panel-body{padding:11px 13px}
+
+/* Header: one compact command row */
+#page-team-master .team-workspace-hero-v61528{padding:12px 14px;border-radius:14px;gap:14px;align-items:center;box-shadow:none;background:var(--surface,#fff)}
+#page-team-master .team-workspace-title-v61528{min-width:245px}
+#page-team-master .team-workspace-title-v61528 .eyebrow{font-size:10.5px;letter-spacing:.08em;margin-bottom:1px}
+#page-team-master .team-workspace-title-v61528 h2{font-size:20px;line-height:1.15;margin:0}
+#page-team-master .team-workspace-title-v61528 p{font-size:10.5px;margin:3px 0 0;white-space:nowrap;color:var(--text-muted,#667085)}
+#page-team-master .team-workspace-hero-actions-v61528{gap:6px;align-items:end;flex-wrap:nowrap}
+#page-team-master .team-workspace-org-filter-v61528{min-width:250px}
+#page-team-master .team-workspace-hero-actions-v61528 .field{margin:0}
+#page-team-master .team-workspace-hero-actions-v61528 label{font-size:10.5px;margin-bottom:3px}
+#page-team-master .team-workspace-hero-actions-v61528 .select{min-height:34px;height:34px;font-size:10.5px;padding-top:5px;padding-bottom:5px}
+#page-team-master .team-workspace-hero-actions-v61528 .btn{min-height:34px;height:34px;padding:0 11px;font-size:10.5px;border-radius:9px}
+
+/* Process becomes a slim progress rail */
+#page-team-master .team-workflow-stepper-v61528{margin-top:8px!important;padding:3px;gap:3px;border-radius:11px;min-height:38px}
+#page-team-master .team-workflow-stepper-v61528>div{grid-template-columns:22px 1fr;column-gap:6px;min-height:34px;padding:4px 7px;border-radius:8px}
+#page-team-master .team-workflow-stepper-v61528>div b{width:22px;height:22px;font-size:10.5px}
+#page-team-master .team-workflow-stepper-v61528>div span{font-size:10.5px;line-height:1.15;align-self:center}
+#page-team-master .team-workflow-stepper-v61528>div small{display:none!important}
+
+/* Next action = one slim decision bar */
+#page-team-master .team-next-action-v61528{margin-top:8px!important;grid-template-columns:28px 1fr auto;gap:9px;padding:8px 10px;border-radius:11px}
+#page-team-master .team-next-action-icon-v61528{width:28px;height:28px;border-radius:8px;font-size:12px}
+#page-team-master .team-next-action-v61528>div:nth-child(2)>span{display:none}
+#page-team-master .team-next-action-v61528 h3{font-size:12px;margin:0 0 1px}
+#page-team-master .team-next-action-v61528 p{font-size:10.5px;line-height:1.3;margin:0}
+#page-team-master .team-next-action-v61528 .btn{min-height:32px;height:32px;padding:0 10px;font-size:10.5px;border-radius:8px}
+
+/* Quick actions become a compact command toolbar */
+#page-team-master .team-quick-actions-v61529f1{display:flex;gap:5px;margin-top:7px;overflow-x:auto;padding-bottom:1px}
+#page-team-master .team-quick-actions-v61529f1 button{flex:1 1 0;min-width:130px;grid-template-columns:22px 1fr;gap:6px;padding:6px 8px;border-radius:9px;box-shadow:none}
+#page-team-master .team-quick-actions-v61529f1 button>span{width:22px;height:22px;border-radius:6px;font-size:10.5px}
+#page-team-master .team-quick-actions-v61529f1 strong{font-size:10.5px;line-height:1.15}
+#page-team-master .team-quick-actions-v61529f1 small{font-size:10.5px;margin-top:1px}
+#page-team-master .team-quick-actions-v61529f1 button:hover{transform:none;box-shadow:none}
+
+/* KPI cards become status chips */
+#page-team-master .team-workspace-kpis-v61528{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;margin-top:7px!important}
+#page-team-master .team-workspace-kpis-v61528 button{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;column-gap:6px;align-items:center;min-height:49px;padding:7px 9px;border-radius:10px;text-align:left}
+#page-team-master .team-workspace-kpis-v61528 button span{font-size:10.5px;line-height:1.15;align-self:end}
+#page-team-master .team-workspace-kpis-v61528 button strong{grid-row:1/3;grid-column:2;font-size:20px;line-height:1;margin:0}
+#page-team-master .team-workspace-kpis-v61528 button small{font-size:10.5px;line-height:1.1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Tabs: slim and sticky-looking */
+#page-team-master .team-workspace-tabs-v61528{margin-top:8px!important;padding:2px;border-radius:10px;gap:2px}
+#page-team-master .team-workspace-tabs-v61528 button{padding:6px 11px;font-size:10.5px;border-radius:7px}
+
+/* Overview policy strip */
+#page-team-master .team-operational-cards-panel-v61528{margin-top:0}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header{display:flex;align-items:center;min-height:45px}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header p{display:none}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header .btn{min-height:32px;height:32px;padding:0 10px;font-size:10.5px}
+#page-team-master .team-operational-type-cards-v61528{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding-top:8px;padding-bottom:8px}
+#page-team-master .team-operational-type-cards-v61528 article{display:grid;grid-template-columns:28px 1fr;gap:7px;align-items:center;padding:7px 9px;border-radius:9px;min-height:54px}
+#page-team-master .team-type-icon-v61528{font-size:17px;width:28px;height:28px;display:grid;place-items:center}
+#page-team-master .team-operational-type-cards-v61528 h4{font-size:10.5px;margin:0}
+#page-team-master .team-operational-type-cards-v61528 p{display:none}
+#page-team-master .team-operational-type-cards-v61528 strong{font-size:10.5px;line-height:1.2;margin-top:2px}
+
+/* Enforcement overview collapses vertically */
+#page-team-master .team-enforcement-rollout-panel-v61529 .panel-header{min-height:45px}
+#page-team-master .team-enforcement-rollout-panel-v61529 .panel-header p{display:none}
+#page-team-master .team-enforcement-actions-v61525{gap:5px}
+#page-team-master .team-enforcement-actions-v61525 .btn{min-height:30px;height:30px;padding:0 8px;font-size:10.5px}
+#page-team-master .team-enforcement-body-v61525{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);grid-template-areas:"kpi ready" "call call";gap:7px 10px}
+#page-team-master .team-enforcement-rollout-kpis-v61529{grid-area:kpi;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:0}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article{display:grid;grid-template-columns:1fr auto;align-items:center;padding:7px 8px;border-radius:9px;min-height:48px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article span{font-size:10.5px;line-height:1.1}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article strong{font-size:18px;grid-row:1/3;grid-column:2;margin-left:4px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article small{font-size:10.5px;line-height:1.1;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#page-team-master .team-readiness-checklist-v61528{grid-area:ready;display:grid;grid-template-columns:1fr;gap:4px}
+#page-team-master .team-readiness-checklist-v61528>div{display:grid;grid-template-columns:22px 1fr;gap:5px;align-items:center;padding:5px 7px;border-radius:8px;min-height:30px}
+#page-team-master .team-readiness-checklist-v61528>div>span{width:20px;height:20px;font-size:10.5px}
+#page-team-master .team-readiness-checklist-v61528 strong{font-size:10.5px}
+#page-team-master .team-readiness-checklist-v61528 small{font-size:10.5px}
+#page-team-master .team-enforcement-rollout-callout-v61529{grid-area:call;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0;padding:7px 9px;border-radius:9px}
+#page-team-master .team-enforcement-rollout-callout-v61529 strong{font-size:10.5px}
+#page-team-master .team-enforcement-rollout-callout-v61529 span{font-size:10.5px;margin-left:5px}
+#page-team-master .team-enforcement-rollout-callout-v61529 .btn{min-height:31px;height:31px;padding:0 9px;font-size:10.5px}
+
+/* People tab: one panel instead of stacked panel + toolbar + panel */
+#page-team-master .team-people-compact-panel-v61529f3{margin-top:0}
+#page-team-master .team-people-compact-head-v61529f3{align-items:center}
+#page-team-master .team-people-compact-head-v61529f3 .team-people-actions-v61528{gap:5px}
+#page-team-master .team-people-compact-head-v61529f3 .btn{min-height:31px;height:31px;padding:0 9px;font-size:10.5px}
+#page-team-master .team-people-compact-body-v61529f3{padding-top:8px}
+#page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:130px 140px minmax(200px,1fr) auto;gap:6px;padding:0;margin:0}
+#page-team-master .team-master-toolbar-modern-v61528 label{font-size:10.5px;margin-bottom:2px}
+#page-team-master .team-master-toolbar-modern-v61528 .select,#page-team-master .team-master-toolbar-modern-v61528 .input{min-height:32px;height:32px;font-size:10.5px;padding-top:4px;padding-bottom:4px}
+#page-team-master .team-master-toolbar-actions-v61523{align-self:end}
+#page-team-master .team-master-toolbar-actions-v61523 .btn{min-height:32px;height:32px;padding:0 10px;font-size:10.5px}
+#page-team-master .team-list-compact-meta-v61529f3{display:flex;align-items:center;gap:5px;margin:7px 0 5px;padding:5px 0;border-top:1px solid var(--border-color,#e8edf4);color:var(--text-muted,#667085);font-size:10.5px}
+#page-team-master .team-list-compact-meta-v61529f3>span:not(:last-child){padding-right:7px;border-right:1px solid var(--border-color,#e8edf4)}
+#page-team-master .team-list-compact-meta-v61529f3 .team-master-auto-chip-v61523{margin-left:auto;font-size:10.5px;padding:3px 6px}
+#page-team-master .team-list-compact-table-v61529f3{border-top:1px solid var(--border-color,#e8edf4)}
+#page-team-master .team-master-table-v61523 thead th{font-size:10.5px;padding:7px 8px}
+#page-team-master .team-master-table-v61523 td{padding:7px 8px;font-size:10.5px}
+#page-team-master .team-master-table-v61523 td strong{font-size:10.5px}
+#page-team-master .team-master-table-v61523 td small,#page-team-master .team-master-table-v61523 td code{font-size:10.5px}
+
+/* Changes & history: dense audit/inbox */
+#page-team-master .team-change-inbox-v61528 .panel-header{align-items:center}
+#page-team-master .team-change-actions-v61528{gap:5px;flex-wrap:wrap}
+#page-team-master .team-change-actions-v61528 .btn,#page-team-master .team-change-actions-v61528 .select{min-height:30px;height:30px;font-size:10.5px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] .panel+.panel{margin-top:8px!important}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table th{font-size:10.5px;padding:7px 8px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table td{font-size:10.5px;padding:7px 8px}
+
+/* Compact Team-related dialogs */
+#teamMasterCreateModalV61523 .modal,#teamMembershipModalV61524 .modal,.operational-profile-dual-modal-v61528f2,.team-enforcement-rollout-modal-v61529{border-radius:14px}
+#teamMasterCreateModalV61523 .modal-header,#teamMembershipModalV61524 .modal-header,.operational-profile-dual-modal-v61528f2 .modal-header,.team-enforcement-rollout-modal-v61529 .modal-header{padding:12px 14px}
+#teamMasterCreateModalV61523 .modal-header h3,#teamMembershipModalV61524 .modal-header h3,.operational-profile-dual-modal-v61528f2 .modal-header h3,.team-enforcement-rollout-modal-v61529 .modal-header h3{font-size:17px}
+#teamMasterCreateModalV61523 .modal-header p,#teamMembershipModalV61524 .modal-header p,.operational-profile-dual-modal-v61528f2 .modal-header p,.team-enforcement-rollout-modal-v61529 .modal-header p{font-size:10.5px;margin-top:2px}
+#teamMasterCreateModalV61523 .modal-body,#teamMembershipModalV61524 .modal-body,.operational-profile-dual-modal-v61528f2 .modal-body,.team-enforcement-rollout-modal-v61529 .modal-body{padding:11px 14px}
+#teamMasterCreateModalV61523 .modal-footer,#teamMembershipModalV61524 .modal-footer,.operational-profile-dual-modal-v61528f2 .modal-footer,.team-enforcement-rollout-modal-v61529 .modal-footer{min-height:54px;padding:8px 14px}
+#teamMasterCreateModalV61523 .modal-footer .btn,#teamMembershipModalV61524 .modal-footer .btn,.operational-profile-dual-modal-v61528f2 .modal-footer .btn,.team-enforcement-rollout-modal-v61529 .modal-footer .btn{min-height:34px;height:34px;font-size:10.5px;padding:0 11px}
+
+/* Dark mode remains neutral and low-noise */
+body.theme-dark #page-team-master .team-workspace-hero-v61528,.dark #page-team-master .team-workspace-hero-v61528,
+body.theme-dark #page-team-master .panel,.dark #page-team-master .panel{box-shadow:none}
+
+@media(max-width:1100px){
+  #page-team-master .team-workspace-hero-v61528{align-items:stretch}
+  #page-team-master .team-workspace-title-v61528 p{white-space:normal}
+  #page-team-master .team-workspace-hero-actions-v61528{flex-wrap:wrap}
+  #page-team-master .team-workspace-kpis-v61528{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #page-team-master .team-enforcement-body-v61525{grid-template-columns:1fr;grid-template-areas:"kpi" "ready" "call"}
+  #page-team-master .team-readiness-checklist-v61528{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:760px){
+  #page-team-master{--team-gap:6px}
+  #page-team-master .team-workspace-hero-v61528{padding:10px}
+  #page-team-master .team-workspace-hero-actions-v61528{display:grid;grid-template-columns:1fr auto auto}
+  #page-team-master .team-workspace-org-filter-v61528{grid-column:1/-1;min-width:0}
+  #page-team-master .team-workflow-stepper-v61528{grid-template-columns:repeat(5,minmax(94px,1fr));overflow-x:auto}
+  #page-team-master .team-workflow-stepper-v61528>div{min-width:94px}
+  #page-team-master .team-quick-actions-v61529f1 button{min-width:116px}
+  #page-team-master .team-quick-actions-v61529f1 small{display:none}
+  #page-team-master .team-workspace-kpis-v61528{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #page-team-master .team-operational-type-cards-v61528{grid-template-columns:1fr}
+  #page-team-master .team-enforcement-rollout-kpis-v61529{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #page-team-master .team-readiness-checklist-v61528{grid-template-columns:1fr}
+  #page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:1fr 1fr}
+  #page-team-master .team-master-toolbar-modern-v61528 .team-master-search-v61523{grid-column:1/-1}
+}
+
+/* =====================================================================
+   V6.15.29 FIX4 — Readable Compact Team Workspace
+   Keep the compact layout from FIX3, but restore comfortable enterprise
+   typography, clearer controls, and stronger visual hierarchy.
+   ===================================================================== */
+#page-team-master{--team-readable-body:12px;--team-readable-small:11px;--team-readable-label:11px}
+
+/* Main workspace typography */
+#page-team-master .panel-header h3{font-size:16px;line-height:1.25}
+#page-team-master .panel-header p{font-size:11px;line-height:1.45}
+#page-team-master .team-workspace-title-v61528 .eyebrow{font-size:10.5px;letter-spacing:.06em}
+#page-team-master .team-workspace-title-v61528 h2{font-size:23px;line-height:1.18}
+#page-team-master .team-workspace-title-v61528 p{font-size:12px;line-height:1.4}
+#page-team-master .team-workspace-hero-actions-v61528 label,
+#page-team-master .team-master-toolbar-modern-v61528 label{font-size:11px;font-weight:700}
+#page-team-master .team-workspace-hero-actions-v61528 .select,
+#page-team-master .team-master-toolbar-modern-v61528 .select,
+#page-team-master .team-master-toolbar-modern-v61528 .input{font-size:12px;min-height:36px;height:36px}
+#page-team-master .team-workspace-hero-actions-v61528 .btn,
+#page-team-master .team-master-toolbar-actions-v61523 .btn{font-size:12px;min-height:36px;height:36px}
+
+/* Workflow + next action */
+#page-team-master .team-workflow-stepper-v61528>div span{font-size:11px;font-weight:700}
+#page-team-master .team-workflow-stepper-v61528>div b{font-size:10.5px}
+#page-team-master .team-next-action-v61528 strong{font-size:13px}
+#page-team-master .team-next-action-v61528 span,
+#page-team-master .team-next-action-v61528 small{font-size:11px;line-height:1.4}
+#page-team-master .team-next-action-v61528 .btn{font-size:12px;min-height:35px}
+
+/* Quick actions stay compact but become readable */
+#page-team-master .team-quick-actions-v61529f1 button{min-height:48px;padding:8px 10px}
+#page-team-master .team-quick-actions-v61529f1 strong{font-size:12px;line-height:1.25}
+#page-team-master .team-quick-actions-v61529f1 small{font-size:10.5px;line-height:1.25}
+#page-team-master .team-quick-actions-v61529f1 .team-quick-icon-v61529f1{font-size:18px}
+
+/* KPI chips/cards */
+#page-team-master .team-workspace-kpis-v61528 button{min-height:60px;padding:8px 10px}
+#page-team-master .team-workspace-kpis-v61528 strong{font-size:20px}
+#page-team-master .team-workspace-kpis-v61528 span{font-size:11px;font-weight:700}
+#page-team-master .team-workspace-kpis-v61528 small{font-size:10.5px}
+#page-team-master .team-workspace-tabs-v61528 button{font-size:12px;font-weight:700;padding:7px 12px}
+
+/* Operational policy strip */
+#page-team-master .team-operational-type-cards-v61528 h4{font-size:12px}
+#page-team-master .team-operational-type-cards-v61528 strong{font-size:10.5px;line-height:1.3}
+#page-team-master .team-type-icon-v61528{font-size:19px}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header .btn{font-size:12px;min-height:34px;height:34px}
+
+/* Enforcement overview */
+#page-team-master .team-enforcement-actions-v61525 .btn{font-size:11px;min-height:33px;height:33px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article span{font-size:10.5px;line-height:1.25}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article strong{font-size:20px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article small{font-size:10.5px;line-height:1.25}
+#page-team-master .team-readiness-checklist-v61528 strong{font-size:11px}
+#page-team-master .team-readiness-checklist-v61528 small{font-size:10.5px;line-height:1.3}
+#page-team-master .team-enforcement-rollout-callout-v61529 strong{font-size:12px}
+#page-team-master .team-enforcement-rollout-callout-v61529 span{font-size:10.5px;line-height:1.35}
+#page-team-master .team-enforcement-rollout-callout-v61529 .btn{font-size:11px;min-height:33px;height:33px}
+
+/* People / Team Master */
+#page-team-master .team-people-compact-head-v61529f3 .btn{font-size:11px;min-height:34px;height:34px}
+#page-team-master .team-list-compact-meta-v61529f3{font-size:10.5px;line-height:1.35}
+#page-team-master .team-list-compact-meta-v61529f3 .team-master-auto-chip-v61523{font-size:10.5px}
+#page-team-master .team-master-table-v61523 thead th{font-size:10.5px;padding:8px 9px;letter-spacing:.01em}
+#page-team-master .team-master-table-v61523 td{font-size:11px;line-height:1.35;padding:8px 9px}
+#page-team-master .team-master-table-v61523 td strong{font-size:12px}
+#page-team-master .team-master-table-v61523 td small,
+#page-team-master .team-master-table-v61523 td code{font-size:10.5px;line-height:1.3}
+#page-team-master .team-master-table-v61523 .btn-sm{font-size:10.5px;min-height:30px}
+
+/* Changes + History */
+#page-team-master .team-change-actions-v61528 .btn,
+#page-team-master .team-change-actions-v61528 .select{font-size:11px;min-height:33px;height:33px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table th{font-size:10.5px;padding:8px 9px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table td{font-size:11px;line-height:1.35;padding:8px 9px}
+
+/* Team-related modals: larger text without returning to oversized spacing */
+#teamMasterCreateModalV61523 .modal-header h3,
+#teamMembershipModalV61524 .modal-header h3,
+.operational-profile-dual-modal-v61528f2 .modal-header h3,
+.team-enforcement-rollout-modal-v61529 .modal-header h3{font-size:19px;line-height:1.25}
+#teamMasterCreateModalV61523 .modal-header p,
+#teamMembershipModalV61524 .modal-header p,
+.operational-profile-dual-modal-v61528f2 .modal-header p,
+.team-enforcement-rollout-modal-v61529 .modal-header p{font-size:11px;line-height:1.4}
+#teamMasterCreateModalV61523 .modal-footer .btn,
+#teamMembershipModalV61524 .modal-footer .btn,
+.operational-profile-dual-modal-v61528f2 .modal-footer .btn,
+.team-enforcement-rollout-modal-v61529 .modal-footer .btn{font-size:12px;min-height:37px;height:37px}
+
+/* Dual-pane membership */
+.team-membership-summary-modern-v61528f1 small{font-size:11px}
+.team-membership-summary-modern-v61528f1 strong{font-size:15px}
+.team-membership-policy-modern-v61528f1 span,
+.team-membership-policy-modern-v61528f1 small{font-size:11px;line-height:1.4}
+.team-transfer-pane-head-v61528f1 span{font-size:11px;letter-spacing:.06em}
+.team-transfer-pane-head-v61528f1 h4{font-size:16px}
+.team-transfer-pane-head-v61528f1 small{font-size:11px}
+.team-transfer-row-v61528f1{padding:12px 13px}
+.team-transfer-person-v61528f1 strong{font-size:14px;line-height:1.3}
+.team-transfer-person-v61528f1>span{font-size:12px;line-height:1.35}
+.team-transfer-person-v61528f1 small.origin,
+.team-transfer-person-v61528f1 small.target-badge{font-size:11px;padding:3px 7px}
+.team-target-guide-v61528f1 span{font-size:11px}
+.team-transfer-arrows-v61528f1 span{font-size:12px;font-weight:700}
+.team-capacity-pill-v61528f1{font-size:12px}
+.team-membership-change-strip-v61528f1 span{font-size:12px}
+.team-membership-change-strip-v61528f1 strong{font-size:15px}
+.team-membership-change-strip-v61528f1 small{font-size:11px}
+.team-membership-footer-status-v61528f1{font-size:12px}
+.team-impact-recovery-v61529f2{font-size:12px;line-height:1.45}
+
+/* Dual-pane Operational Profile */
+.operational-transfer-summary-v61528f2 label,
+.operational-target-config-v61528f2 label,
+.operational-reason-box-v61528f2 label{font-size:11px;font-weight:700}
+.operational-transfer-summary-v61528f2 .select,
+.operational-transfer-summary-v61528f2 .input,
+.operational-target-config-v61528f2 .select,
+.operational-target-config-v61528f2 .input,
+.operational-reason-box-v61528f2 textarea{font-size:12px}
+.operational-target-config-v61528f2 small{font-size:11px;line-height:1.4}
+.operational-target-guide-v61528f2 span{font-size:12px}
+.operational-target-guide-v61528f2 strong{font-size:11px}
+.operational-transfer-status-strip-v61528f2 span{font-size:12px}
+.operational-transfer-status-strip-v61528f2 strong{font-size:14px}
+.operational-transfer-status-strip-v61528f2 small{font-size:11px}
+.operational-reason-alert-v61528f3,
+.operational-reason-alert-v61528f3 strong{font-size:12px;line-height:1.4}
+.operational-reason-box-v61528f2 label span{font-size:11px}
+.operational-readiness-check-v61528f3 span{font-size:11px}
+.operational-profile-footer-status-v61528f2{font-size:12px}
+
+/* Enforcement Rollout dialog */
+.team-enforcement-rollout-config-v61529 label,
+.team-enforcement-team-toolbar-v61529 label,
+.team-enforcement-note-v61529 label{font-size:11px;font-weight:700}
+.team-enforcement-rollout-config-v61529 .select,
+.team-enforcement-rollout-config-v61529 .input,
+.team-enforcement-team-toolbar-v61529 .select,
+.team-enforcement-note-v61529 textarea{font-size:12px}
+.team-enforcement-scope-tabs-v61529 button{font-size:12px;font-weight:700}
+.team-enforcement-action-summary-v61529f1,
+.team-enforcement-action-summary-v61529f1 strong{font-size:12px}
+.team-enforcement-action-summary-v61529f1 span{font-size:11px}
+.team-enforcement-selection-v61529{font-size:11px}
+.team-enforcement-team-name-v61529 strong{font-size:13px}
+.team-enforcement-team-name-v61529 code{font-size:11px}
+.team-enforcement-team-row-v61529>div[data-col-v61529] strong{font-size:12px}
+.team-enforcement-team-row-v61529 small{font-size:10.5px;line-height:1.35}
+.team-enforcement-effective-note-v61529 small{font-size:10.5px;line-height:1.4}
+.team-enforcement-rollout-footer-v61529>div:first-child{font-size:12px;font-weight:700}
+
+/* Form controls in Team dialogs should not fall below a comfortable size */
+#teamMasterCreateModalV61523 .field label,
+#teamMembershipModalV61524 .field label,
+.operational-profile-dual-modal-v61528f2 .field label,
+.team-enforcement-rollout-modal-v61529 .field label{font-size:11px}
+#teamMasterCreateModalV61523 .input,#teamMasterCreateModalV61523 .select,
+#teamMembershipModalV61524 .input,#teamMembershipModalV61524 .select,
+.operational-profile-dual-modal-v61528f2 .input,.operational-profile-dual-modal-v61528f2 .select,
+.team-enforcement-rollout-modal-v61529 .input,.team-enforcement-rollout-modal-v61529 .select{font-size:12px;min-height:38px}
+
+/* Keep readable on smaller notebook screens as well */
+@media(max-width:1100px){
+  #page-team-master .team-workspace-title-v61528 h2{font-size:21px}
+  #page-team-master .team-workspace-title-v61528 p{font-size:11px}
+  #page-team-master .team-master-table-v61523 td{font-size:11px}
+}
+
+
+/* ==========================================================================
+   V6.15.29 FIX5 — Modern Split Operational Profile: Assign vs Change
+   ========================================================================== */
+.operational-profile-split-modal-v61529f5{width:min(1260px,97vw)}
+.operational-profile-header-v61529f5{padding-bottom:13px}
+.operational-profile-header-v61529f5 .eyebrow{letter-spacing:.07em;color:#64748b}
+.operational-profile-header-v61529f5 h3{margin-top:3px;font-size:20px!important}
+.operational-profile-header-v61529f5 p{margin-top:4px;font-size:12px!important;color:var(--text-muted,#64748b)}
+.operational-mode-switch-v61529f5{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:5px;border:1px solid var(--border,#dbe3ee);border-radius:16px;background:var(--surface-soft,#f8fafc);margin-bottom:10px}
+.operational-mode-switch-v61529f5 button{border:0;border-radius:12px;background:transparent;color:var(--text,#0f172a);padding:10px 13px;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;transition:background .16s ease,box-shadow .16s ease,color .16s ease}
+.operational-mode-switch-v61529f5 button:hover{background:rgba(37,99,235,.05)}
+.operational-mode-switch-v61529f5 button.active{background:var(--panel,#fff);box-shadow:0 2px 10px rgba(15,23,42,.08);color:#1d4ed8}
+.operational-mode-switch-v61529f5 button strong{display:block;font-size:14px;line-height:1.25}
+.operational-mode-switch-v61529f5 button small{display:block;margin-top:2px;font-size:11px;line-height:1.35;color:var(--text-muted,#64748b);font-weight:500}
+.operational-mode-icon-v61529f5{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:0 0 auto;background:#eaf2ff;color:#2563eb;font-size:17px;font-weight:900}
+.operational-mode-switch-v61529f5 button.active .operational-mode-icon-v61529f5{background:#2563eb;color:#fff}
+.operational-mode-guide-v61529f5{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 12px;margin-bottom:12px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff}
+.operational-mode-guide-v61529f5.change{border-color:#ddd6fe;background:#faf9ff}
+.operational-mode-guide-v61529f5>div{display:flex;align-items:baseline;gap:8px;min-width:0}
+.operational-mode-guide-v61529f5 strong{font-size:12px;color:#1e40af;white-space:nowrap}.operational-mode-guide-v61529f5.change strong{color:#6d28d9}
+.operational-mode-guide-v61529f5 span:not(.operational-mode-guide-chip-v61529f5){font-size:11px;line-height:1.4;color:var(--text-muted,#64748b)}
+.operational-mode-guide-chip-v61529f5{padding:4px 8px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:10.5px;font-weight:800;white-space:nowrap}
+.operational-mode-guide-v61529f5.change .operational-mode-guide-chip-v61529f5{background:#ede9fe;color:#6d28d9}
+.operational-transfer-summary-split-v61529f5{grid-template-columns:minmax(220px,1.15fr) 170px minmax(180px,.8fr) 34px minmax(185px,.85fr);padding:0 0 12px;margin-bottom:10px}
+.operational-source-fixed-value-v61529f5{height:38px;border:1px solid var(--border,#d6dfeb);border-radius:10px;background:var(--surface-soft,#f8fafc);display:flex;align-items:center;gap:6px;padding:0 11px;font-size:12px;color:#475569}
+.operational-source-fixed-value-v61529f5 strong{color:var(--text,#0f172a);font-size:12px}
+.operational-same-type-guide-v61529f5{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;margin:0 0 12px;border-radius:12px;border:1px solid #e2e8f0;background:var(--surface-soft,#f8fafc)}
+.operational-same-type-guide-v61529f5>span{font-size:15px;line-height:1.2}.operational-same-type-guide-v61529f5 div{display:grid;gap:2px}
+.operational-same-type-guide-v61529f5 strong{font-size:11px;color:#334155}.operational-same-type-guide-v61529f5 small{font-size:10.5px;line-height:1.4;color:var(--text-muted,#64748b)}.operational-same-type-guide-v61529f5 b{color:#1d4ed8}
+.operational-profile-split-modal-v61529f5 .operational-target-config-v61528f2{border-radius:0;background:linear-gradient(180deg,rgba(37,99,235,.035),rgba(37,99,235,.015))}
+.operational-profile-split-modal-v61529f5 .team-transfer-pane-v61528f1{border-radius:16px;min-height:410px}
+.operational-profile-split-modal-v61529f5 .team-transfer-list-v61528f1{max-height:400px}
+.operational-profile-split-modal-v61529f5 .team-transfer-pane-head-v61528f1{padding:12px 14px}
+.operational-profile-split-modal-v61529f5 .team-transfer-pane-head-v61528f1 h4{font-size:15px}
+.operational-profile-split-modal-v61529f5 .team-transfer-row-v61528f1{padding:10px 12px}
+.operational-profile-split-modal-v61529f5 .team-transfer-person-v61528f1 strong{font-size:13px}
+.operational-profile-split-modal-v61529f5 .team-transfer-person-v61528f1>span{font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-reason-box-v61528f2.required{border:1px solid #fde68a;border-radius:11px;padding:9px;background:#fffdf5}
+.operational-profile-split-modal-v61529f5 .operational-profile-sticky-footer-v61528f2{padding-top:10px;padding-bottom:10px}
+[data-theme="dark"] .operational-mode-switch-v61529f5 button.active{background:#172033;box-shadow:none}
+[data-theme="dark"] .operational-mode-icon-v61529f5{background:rgba(59,130,246,.14);color:#93c5fd}
+[data-theme="dark"] .operational-mode-switch-v61529f5 button.active .operational-mode-icon-v61529f5{background:#2563eb;color:#fff}
+[data-theme="dark"] .operational-mode-guide-v61529f5{background:rgba(37,99,235,.08);border-color:rgba(96,165,250,.24)}
+[data-theme="dark"] .operational-mode-guide-v61529f5.change{background:rgba(124,58,237,.08);border-color:rgba(167,139,250,.22)}
+[data-theme="dark"] .operational-source-fixed-value-v61529f5,[data-theme="dark"] .operational-same-type-guide-v61529f5{background:rgba(148,163,184,.06)}
+[data-theme="dark"] .operational-profile-split-modal-v61529f5 .operational-reason-box-v61528f2.required{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.24)}
+@media(max-width:1050px){.operational-transfer-summary-split-v61529f5{grid-template-columns:1fr 1fr}.operational-transfer-summary-split-v61529f5 .operational-transfer-arrow-label-v61528f2{display:none}.operational-mode-guide-v61529f5>div{align-items:flex-start;flex-direction:column;gap:2px}}
+@media(max-width:700px){.operational-mode-switch-v61529f5{grid-template-columns:1fr}.operational-mode-guide-v61529f5{align-items:flex-start;flex-direction:column}.operational-transfer-summary-split-v61529f5{grid-template-columns:1fr}.operational-profile-header-v61529f5 h3{font-size:18px!important}}
+
+
+/* V6.15.29 FIX6 — Operational Profile effective-date policy */
+.operational-effective-field-v61529f6{min-width:188px}
+.operational-effective-help-v61529f6{display:block;margin-top:6px;font-size:12px;line-height:1.35;color:var(--muted,#64748b)}
+.operational-effective-help-v61529f6 strong{color:var(--text,#0f172a);font-weight:700}
+.operational-effective-help-v61529f6.locked{color:#475569}
+.operational-effective-locked-v61529f6:disabled{opacity:1;cursor:not-allowed;background:linear-gradient(180deg,#f8fafc,#f1f5f9);color:#334155;border-color:#cbd5e1}
+html[data-theme="dark"] .operational-effective-help-v61529f6 strong{color:#e2e8f0}
+html[data-theme="dark"] .operational-effective-locked-v61529f6:disabled{background:#172033;color:#e2e8f0;border-color:#334155}
+@media(max-width:900px){.operational-effective-field-v61529f6{min-width:0}}
+
+.operational-effective-help-v61529f6.important{color:#9a6700}.operational-effective-help-v61529f6.important strong{color:#7c4a00}
+html[data-theme="dark"] .operational-effective-help-v61529f6.important{color:#facc15}html[data-theme="dark"] .operational-effective-help-v61529f6.important strong{color:#fde68a}
+
+/* ============================================================================
+   V6.15.29 FIX7 — Polished + Readable Team Workspace
+   Purpose: reduce visual noise, strengthen hierarchy, and keep all Team dialogs
+   comfortably readable without making the workspace oversized.
+   ============================================================================ */
+#page-team-master{
+  --team-fs-xs:11px;
+  --team-fs-sm:12px;
+  --team-fs-md:13px;
+  --team-fs-lg:15px;
+  --team-fs-title:24px;
+  --team-radius:14px;
+  --team-shadow:0 8px 24px rgba(15,23,42,.055);
+}
+
+/* Global workspace rhythm / hierarchy */
+#page-team-master .panel{
+  border-radius:var(--team-radius);
+  border-color:color-mix(in srgb,var(--border-color,#dbe4ef) 92%,#94a3b8);
+  box-shadow:0 4px 16px rgba(15,23,42,.04);
+}
+#page-team-master .panel-header{padding:14px 16px}
+#page-team-master .panel-body{padding:14px 16px}
+#page-team-master .panel-header h3{font-size:17px;line-height:1.25;font-weight:800;letter-spacing:-.01em}
+#page-team-master .panel-header p{font-size:12px;line-height:1.45;margin-top:3px}
+#page-team-master .btn{font-weight:700}
+
+/* Hero: readable, clean command header */
+#page-team-master .team-workspace-hero-v61528{
+  padding:16px 18px;
+  border-radius:16px;
+  align-items:center;
+  background:linear-gradient(135deg,color-mix(in srgb,#2563eb 5%,var(--surface,#fff)),var(--surface,#fff) 62%);
+  border-color:color-mix(in srgb,#2563eb 13%,var(--border-color,#dbe4ef));
+  box-shadow:var(--team-shadow);
+}
+#page-team-master .team-workspace-title-v61528{min-width:300px}
+#page-team-master .team-workspace-title-v61528 .eyebrow{font-size:11px;font-weight:800;letter-spacing:.08em;color:#2563eb}
+#page-team-master .team-workspace-title-v61528 h2{font-size:var(--team-fs-title);line-height:1.15;margin:2px 0 0;font-weight:850;letter-spacing:-.025em}
+#page-team-master .team-workspace-title-v61528 p{font-size:12.5px;line-height:1.45;margin-top:5px;color:var(--text-muted,#64748b)}
+#page-team-master .team-workspace-hero-actions-v61528{gap:8px;flex-wrap:wrap}
+#page-team-master .team-workspace-org-filter-v61528{min-width:280px}
+#page-team-master .team-workspace-hero-actions-v61528 label{font-size:11.5px;font-weight:800;color:var(--text,#0f172a)}
+#page-team-master .team-workspace-hero-actions-v61528 .select{font-size:13px;min-height:40px;height:40px;border-radius:10px}
+#page-team-master .team-workspace-hero-actions-v61528 .btn{font-size:12.5px;min-height:40px;height:40px;border-radius:10px;padding:0 13px}
+
+/* Runtime diagnostic becomes a subtle status strip, not a second hero */
+#page-team-master .team-runtime-diagnostic-v61526f1{
+  min-height:46px;
+  margin-top:10px;
+  padding:9px 14px;
+  border-radius:12px;
+  box-shadow:none;
+}
+#page-team-master .team-runtime-diagnostic-v61526f1 strong{font-size:13px;font-weight:800}
+#page-team-master .team-runtime-diagnostic-v61526f1 span{font-size:11.5px;line-height:1.35}
+#page-team-master .team-runtime-diagnostic-v61526f1 .btn{min-height:32px;height:32px;font-size:11.5px}
+
+/* Workflow rail: clear enough to guide, visually lighter than content panels */
+#page-team-master .team-workflow-stepper-v61528{
+  margin-top:10px!important;
+  min-height:46px;
+  padding:5px;
+  gap:4px;
+  border-radius:12px;
+  background:color-mix(in srgb,var(--surface-soft,#f8fafc) 86%,#eaf2ff);
+  box-shadow:none;
+}
+#page-team-master .team-workflow-stepper-v61528>div{min-height:36px;padding:5px 8px;grid-template-columns:25px 1fr;column-gap:7px;border-radius:9px}
+#page-team-master .team-workflow-stepper-v61528>div b{width:25px;height:25px;font-size:11px;font-weight:900}
+#page-team-master .team-workflow-stepper-v61528>div span{font-size:12px;line-height:1.2;font-weight:800}
+#page-team-master .team-workflow-stepper-v61528>i{font-size:18px;color:#94a3b8}
+#page-team-master .team-workflow-stepper-v61528>div.active{background:var(--surface,#fff);box-shadow:0 2px 8px rgba(37,99,235,.10)}
+
+/* Primary next action: strongest visual cue on the page */
+#page-team-master .team-next-action-v61528{
+  margin-top:10px!important;
+  grid-template-columns:34px 1fr auto;
+  gap:11px;
+  padding:11px 12px;
+  border-radius:12px;
+  border:1px solid color-mix(in srgb,#2563eb 28%,var(--border-color,#dbe4ef));
+  background:linear-gradient(90deg,color-mix(in srgb,#2563eb 8%,var(--surface,#fff)),var(--surface,#fff));
+}
+#page-team-master .team-next-action-icon-v61528{width:34px;height:34px;border-radius:9px;font-size:15px}
+#page-team-master .team-next-action-v61528 h3{font-size:14px;line-height:1.25;margin:0 0 2px;font-weight:850}
+#page-team-master .team-next-action-v61528 p{font-size:11.5px;line-height:1.4}
+#page-team-master .team-next-action-v61528 .btn{font-size:12px;min-height:36px;height:36px;padding:0 12px}
+
+/* Quick actions were duplicating the workflow, hero and tab actions. Keep them out
+   of the primary reading flow; all functions remain available in their panels. */
+#page-team-master .team-quick-actions-v61529f1{display:none!important}
+
+/* KPI row: readable status cards, still compact */
+#page-team-master .team-workspace-kpis-v61528{gap:7px;margin-top:9px!important}
+#page-team-master .team-workspace-kpis-v61528 button{
+  min-height:68px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:var(--surface,#fff);
+  box-shadow:none;
+}
+#page-team-master .team-workspace-kpis-v61528 button:hover{transform:translateY(-1px);box-shadow:0 7px 16px rgba(15,23,42,.055)}
+#page-team-master .team-workspace-kpis-v61528 span{font-size:11.5px;line-height:1.25;font-weight:800;color:var(--text,#0f172a)}
+#page-team-master .team-workspace-kpis-v61528 strong{font-size:25px;line-height:1;font-weight:850}
+#page-team-master .team-workspace-kpis-v61528 small{font-size:10.5px;line-height:1.25;color:var(--text-muted,#64748b)}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(1){border-left:3px solid #f59e0b}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(2){border-left:3px solid #2563eb}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(3){border-left:3px solid #7c3aed}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(4){border-left:3px solid #16a34a}
+#page-team-master .team-workspace-kpis-v61528 button:nth-child(5){border-left:3px solid #0ea5e9}
+
+/* Tabs: stronger current-location cue */
+#page-team-master .team-workspace-tabs-v61528{margin-top:10px!important;padding:4px;border-radius:12px;gap:3px}
+#page-team-master .team-workspace-tabs-v61528 button{font-size:12.5px;font-weight:800;padding:8px 14px;border-radius:9px}
+#page-team-master .team-workspace-tabs-v61528 button.active{color:#1d4ed8;box-shadow:0 2px 8px rgba(15,23,42,.07)}
+
+/* Overview cards: enough text to understand policy, without becoming tall */
+#page-team-master .team-operational-cards-panel-v61528 .panel-header{min-height:54px}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header p{display:block;font-size:11.5px}
+#page-team-master .team-operational-cards-panel-v61528 .panel-header .btn{font-size:12px;min-height:36px;height:36px}
+#page-team-master .team-operational-type-cards-v61528{gap:8px;padding-top:10px;padding-bottom:10px}
+#page-team-master .team-operational-type-cards-v61528 article{grid-template-columns:34px 1fr;gap:9px;min-height:70px;padding:10px 12px;border-radius:11px}
+#page-team-master .team-type-icon-v61528{width:34px;height:34px;font-size:21px;border-radius:10px}
+#page-team-master .team-operational-type-cards-v61528 h4{font-size:13px;line-height:1.2;font-weight:850}
+#page-team-master .team-operational-type-cards-v61528 p{display:block;font-size:10.5px;line-height:1.3;margin:2px 0 3px}
+#page-team-master .team-operational-type-cards-v61528 strong{font-size:11px;line-height:1.3}
+
+/* Enforcement overview: retain dense layout, improve scanability */
+#page-team-master .team-enforcement-rollout-panel-v61529 .panel-header{min-height:54px}
+#page-team-master .team-enforcement-rollout-panel-v61529 .panel-header p{display:block;font-size:11.5px}
+#page-team-master .team-enforcement-rollout-kpis-v61529{gap:7px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article{min-height:58px;padding:9px 10px;border-radius:10px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article span{font-size:10.5px;font-weight:700}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article strong{font-size:22px}
+#page-team-master .team-enforcement-rollout-kpis-v61529 article small{font-size:10.5px}
+#page-team-master .team-readiness-checklist-v61528>div{min-height:36px;padding:6px 8px}
+#page-team-master .team-readiness-checklist-v61528 strong{font-size:11.5px}
+#page-team-master .team-readiness-checklist-v61528 small{font-size:10.5px}
+#page-team-master .team-enforcement-rollout-callout-v61529{padding:9px 11px;border-radius:10px}
+#page-team-master .team-enforcement-rollout-callout-v61529 strong{font-size:12.5px}
+#page-team-master .team-enforcement-rollout-callout-v61529 span{font-size:10.5px}
+#page-team-master .team-enforcement-rollout-callout-v61529 .btn{font-size:11.5px;min-height:35px;height:35px}
+
+/* People + Team table: enterprise-readable rather than micro typography */
+#page-team-master .team-people-compact-head-v61529f3 .btn{font-size:12px;min-height:36px;height:36px}
+#page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:150px 160px minmax(260px,1fr) auto;gap:8px}
+#page-team-master .team-master-toolbar-modern-v61528 label{font-size:11.5px;font-weight:800;margin-bottom:4px}
+#page-team-master .team-master-toolbar-modern-v61528 .select,
+#page-team-master .team-master-toolbar-modern-v61528 .input{font-size:12.5px;min-height:38px;height:38px;border-radius:9px}
+#page-team-master .team-master-toolbar-actions-v61523 .btn{font-size:12px;min-height:38px;height:38px}
+#page-team-master .team-list-compact-meta-v61529f3{font-size:10.5px;line-height:1.4;margin:9px 0 7px;padding:7px 0}
+#page-team-master .team-list-compact-meta-v61529f3 .team-master-auto-chip-v61523{font-size:10.5px}
+#page-team-master .team-master-table-v61523 thead th{font-size:11px;line-height:1.3;padding:10px 10px;font-weight:800;color:var(--text-muted,#64748b)}
+#page-team-master .team-master-table-v61523 td{font-size:12px;line-height:1.4;padding:11px 10px}
+#page-team-master .team-master-table-v61523 td strong{font-size:13px;line-height:1.3}
+#page-team-master .team-master-table-v61523 td small,
+#page-team-master .team-master-table-v61523 td code{font-size:10.5px;line-height:1.35}
+#page-team-master .team-master-table-v61523 .btn-sm{font-size:11px;min-height:31px;padding:0 9px}
+
+/* Changes / history */
+#page-team-master .team-change-actions-v61528 .btn,
+#page-team-master .team-change-actions-v61528 .select{font-size:11.5px;min-height:35px;height:35px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table th{font-size:11px;padding:10px}
+#page-team-master [data-team-workspace-pane-v61528="HISTORY"] table td{font-size:12px;line-height:1.4;padding:10px}
+
+/* --------------------------------------------------------------------------
+   Team dialogs — consistent readable hierarchy
+   -------------------------------------------------------------------------- */
+#teamMasterCreateModalV61523 .modal,
+#teamMembershipModalV61524 .modal,
+.operational-profile-dual-modal-v61528f2,
+.team-enforcement-rollout-modal-v61529{
+  border-radius:18px;
+  box-shadow:0 22px 64px rgba(15,23,42,.22);
+}
+#teamMasterCreateModalV61523 .modal-header,
+#teamMembershipModalV61524 .modal-header,
+.operational-profile-dual-modal-v61528f2 .modal-header,
+.team-enforcement-rollout-modal-v61529 .modal-header{padding:16px 18px;border-bottom:1px solid var(--border-color,#e2e8f0)}
+#teamMasterCreateModalV61523 .modal-header h3,
+#teamMembershipModalV61524 .modal-header h3,
+.operational-profile-dual-modal-v61528f2 .modal-header h3,
+.team-enforcement-rollout-modal-v61529 .modal-header h3{font-size:21px;line-height:1.2;font-weight:850;letter-spacing:-.015em}
+#teamMasterCreateModalV61523 .modal-header p,
+#teamMembershipModalV61524 .modal-header p,
+.operational-profile-dual-modal-v61528f2 .modal-header p,
+.team-enforcement-rollout-modal-v61529 .modal-header p{font-size:12px;line-height:1.45;margin-top:5px;color:var(--text-muted,#64748b)}
+#teamMasterCreateModalV61523 .modal-body,
+#teamMembershipModalV61524 .modal-body,
+.operational-profile-dual-modal-v61528f2 .modal-body,
+.team-enforcement-rollout-modal-v61529 .modal-body{padding:15px 18px 18px}
+#teamMasterCreateModalV61523 .modal-footer,
+#teamMembershipModalV61524 .modal-footer,
+.operational-profile-dual-modal-v61528f2 .modal-footer,
+.team-enforcement-rollout-modal-v61529 .modal-footer{min-height:62px;padding:10px 18px;border-top:1px solid var(--border-color,#e2e8f0)}
+#teamMasterCreateModalV61523 .modal-footer .btn,
+#teamMembershipModalV61524 .modal-footer .btn,
+.operational-profile-dual-modal-v61528f2 .modal-footer .btn,
+.team-enforcement-rollout-modal-v61529 .modal-footer .btn{font-size:12.5px;min-height:40px;height:40px;padding:0 14px;border-radius:10px}
+
+/* Form controls in every Team dialog */
+#teamMasterCreateModalV61523 .field label,
+#teamMembershipModalV61524 .field label,
+.operational-profile-dual-modal-v61528f2 .field label,
+.team-enforcement-rollout-modal-v61529 .field label{font-size:12px;line-height:1.3;font-weight:800;margin-bottom:5px;color:var(--text,#0f172a)}
+#teamMasterCreateModalV61523 .input,#teamMasterCreateModalV61523 .select,
+#teamMembershipModalV61524 .input,#teamMembershipModalV61524 .select,
+.operational-profile-dual-modal-v61528f2 .input,.operational-profile-dual-modal-v61528f2 .select,
+.team-enforcement-rollout-modal-v61529 .input,.team-enforcement-rollout-modal-v61529 .select{font-size:13px;min-height:42px;border-radius:10px}
+
+/* Membership dual pane */
+#teamMembershipModalV61524 .team-membership-summary-modern-v61528f1 small{font-size:11.5px}
+#teamMembershipModalV61524 .team-membership-summary-modern-v61528f1 strong{font-size:16px}
+#teamMembershipModalV61524 .team-membership-policy-modern-v61528f1 span,
+#teamMembershipModalV61524 .team-membership-policy-modern-v61528f1 small{font-size:11.5px;line-height:1.45}
+#teamMembershipModalV61524 .team-transfer-pane-v61528f1{border-radius:15px;min-height:400px}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1{padding:13px 14px;background:color-mix(in srgb,var(--surface-soft,#f8fafc) 90%,#eaf2ff)}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 span{font-size:11.5px;font-weight:800}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 h4{font-size:16px;line-height:1.25}
+#teamMembershipModalV61524 .team-transfer-pane-head-v61528f1 small{font-size:11.5px}
+#teamMembershipModalV61524 .team-transfer-row-v61528f1{padding:12px 13px;min-height:66px}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 strong{font-size:13.5px;line-height:1.3}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1>span{font-size:11.5px;line-height:1.4}
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 small.origin,
+#teamMembershipModalV61524 .team-transfer-person-v61528f1 small.target-badge{font-size:10.5px;padding:3px 7px}
+#teamMembershipModalV61524 .team-transfer-arrows-v61528f1 .btn{font-size:12px;min-height:38px}
+#teamMembershipModalV61524 .team-transfer-arrows-v61528f1 span{font-size:11.5px}
+#teamMembershipModalV61524 .team-capacity-pill-v61528f1{font-size:11.5px;font-weight:800}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1 span{font-size:11.5px}
+#teamMembershipModalV61524 .team-membership-change-strip-v61528f1 strong{font-size:15px}
+#teamMembershipModalV61524 .team-membership-footer-status-v61528f1{font-size:12px;font-weight:800}
+#teamMembershipModalV61524 .team-impact-preview-v61528{font-size:12px}
+#teamMembershipModalV61524 .team-impact-title-v61528 strong{font-size:13px}
+#teamMembershipModalV61524 .team-impact-blockers-v61528 p,
+#teamMembershipModalV61524 .team-impact-recovery-v61529f2{font-size:11.5px;line-height:1.5}
+
+/* Operational Profile split mode */
+.operational-profile-split-modal-v61529f5{width:min(1280px,97vw)}
+.operational-profile-split-modal-v61529f5 .operational-profile-header-v61529f5 h3{font-size:21px!important}
+.operational-profile-split-modal-v61529f5 .operational-profile-header-v61529f5 p{font-size:12px!important}
+.operational-profile-split-modal-v61529f5 .operational-mode-switch-v61529f5{padding:6px;gap:8px;border-radius:14px}
+.operational-profile-split-modal-v61529f5 .operational-mode-switch-v61529f5 button{padding:11px 13px;border-radius:10px}
+.operational-profile-split-modal-v61529f5 .operational-mode-switch-v61529f5 button strong{font-size:14px}
+.operational-profile-split-modal-v61529f5 .operational-mode-switch-v61529f5 button small{font-size:11.5px;line-height:1.4}
+.operational-profile-split-modal-v61529f5 .operational-mode-guide-v61529f5{padding:10px 12px;border-radius:10px}
+.operational-profile-split-modal-v61529f5 .operational-mode-guide-v61529f5 strong{font-size:12px}
+.operational-profile-split-modal-v61529f5 .operational-mode-guide-v61529f5 span:not(.operational-mode-guide-chip-v61529f5){font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 label,
+.operational-profile-split-modal-v61529f5 .operational-target-config-v61528f2 label,
+.operational-profile-split-modal-v61529f5 .operational-reason-box-v61528f2 label{font-size:12px}
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 .select,
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 .input,
+.operational-profile-split-modal-v61529f5 .operational-target-config-v61528f2 .select,
+.operational-profile-split-modal-v61529f5 .operational-target-config-v61528f2 .input,
+.operational-profile-split-modal-v61529f5 .operational-reason-box-v61528f2 textarea{font-size:13px;min-height:42px}
+.operational-profile-split-modal-v61529f5 .operational-effective-help-v61529f6{font-size:11.5px;line-height:1.45}
+.operational-profile-split-modal-v61529f5 .team-transfer-pane-v61528f1{min-height:400px}
+.operational-profile-split-modal-v61529f5 .team-transfer-pane-head-v61528f1 h4{font-size:16px}
+.operational-profile-split-modal-v61529f5 .team-transfer-row-v61528f1{padding:12px 13px}
+.operational-profile-split-modal-v61529f5 .team-transfer-person-v61528f1 strong{font-size:13.5px}
+.operational-profile-split-modal-v61529f5 .team-transfer-person-v61528f1>span{font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-target-guide-v61528f2 span{font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-transfer-status-strip-v61528f2 span{font-size:11.5px}
+.operational-profile-split-modal-v61529f5 .operational-transfer-status-strip-v61528f2 strong{font-size:14px}
+.operational-profile-split-modal-v61529f5 .operational-reason-alert-v61528f3,
+.operational-profile-split-modal-v61529f5 .operational-reason-alert-v61528f3 strong{font-size:11.5px;line-height:1.5}
+.operational-profile-split-modal-v61529f5 .operational-profile-footer-status-v61528f2{font-size:12px;font-weight:800}
+
+/* Enforcement Rollout dialog */
+.team-enforcement-rollout-modal-v61529{width:min(1180px,96vw)}
+.team-enforcement-rollout-config-v61529 label,
+.team-enforcement-team-toolbar-v61529 label,
+.team-enforcement-note-v61529 label{font-size:12px;font-weight:800}
+.team-enforcement-rollout-config-v61529 .select,
+.team-enforcement-rollout-config-v61529 .input,
+.team-enforcement-team-toolbar-v61529 .select,
+.team-enforcement-note-v61529 textarea{font-size:13px;min-height:42px}
+.team-enforcement-scope-tabs-v61529 button{font-size:12.5px;font-weight:800;padding:9px 15px}
+.team-enforcement-action-summary-v61529f1,
+.team-enforcement-action-summary-v61529f1 strong{font-size:12px;line-height:1.4}
+.team-enforcement-action-summary-v61529f1 span{font-size:11.5px}
+.team-enforcement-selection-v61529{font-size:11.5px}
+.team-enforcement-team-row-v61529{padding:12px 14px;min-height:66px}
+.team-enforcement-team-name-v61529 strong{font-size:13.5px}
+.team-enforcement-team-name-v61529 code{font-size:10.5px}
+.team-enforcement-team-row-v61529>div[data-col-v61529] strong{font-size:12.5px}
+.team-enforcement-team-row-v61529 small{font-size:10.5px;line-height:1.4}
+.team-enforcement-ready-v61529{font-size:11.5px}
+.team-enforcement-effective-note-v61529{font-size:12px}
+.team-enforcement-effective-note-v61529 small{font-size:10.5px;line-height:1.45}
+.team-enforcement-rollout-footer-v61529>div:first-child{font-size:12px;font-weight:800}
+
+/* Create Team dialog helper/readability */
+#teamMasterCreateModalV61523 .modal-body small,
+#teamMasterCreateModalV61523 .modal-body p{font-size:11.5px;line-height:1.45}
+#teamMasterCreateModalV61523 .badge{font-size:11px}
+
+/* Dark theme polish */
+[data-theme="dark"] #page-team-master .team-workspace-hero-v61528,
+[data-theme="dark"] #page-team-master .team-next-action-v61528{background:#111b2c}
+[data-theme="dark"] #page-team-master .team-workspace-kpis-v61528 button{background:#111b2c}
+[data-theme="dark"] #page-team-master .team-workflow-stepper-v61528{background:#0f1726}
+[data-theme="dark"] #page-team-master .team-workflow-stepper-v61528>div.active{background:#172033}
+
+/* Responsive: keep readable without ballooning the page */
+@media(max-width:1200px){
+  #page-team-master .team-workspace-kpis-v61528{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:1fr 1fr}
+  #page-team-master .team-master-toolbar-modern-v61528 .team-master-search-v61523{grid-column:1/-1}
+}
+@media(max-width:900px){
+  #page-team-master .team-workspace-hero-v61528{align-items:stretch;flex-direction:column}
+  #page-team-master .team-workspace-hero-actions-v61528{justify-content:flex-start}
+  #page-team-master .team-workspace-org-filter-v61528{min-width:min(100%,360px)}
+  #page-team-master .team-workflow-stepper-v61528{grid-template-columns:repeat(5,minmax(145px,1fr));overflow-x:auto}
+  #page-team-master .team-workspace-kpis-v61528{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:640px){
+  #page-team-master .team-workspace-title-v61528 h2{font-size:22px}
+  #page-team-master .team-workspace-kpis-v61528{grid-template-columns:1fr 1fr}
+  #page-team-master .team-next-action-v61528{grid-template-columns:34px 1fr}
+  #page-team-master .team-next-action-v61528>.btn{grid-column:1/-1;width:100%}
+  #page-team-master .team-master-toolbar-modern-v61528{grid-template-columns:1fr}
+  #page-team-master .team-master-toolbar-modern-v61528 .team-master-search-v61523{grid-column:auto}
+  #teamMembershipModalV61524 .team-transfer-pane-v61528f1,
+  .operational-profile-split-modal-v61529f5 .team-transfer-pane-v61528f1{min-height:320px}
+}
+
+
+/* ============================================================================
+   V6.15.29 FIX8 — Operational effective-date row polish
+   Align all top controls, give the date policy enough breathing room, and keep
+   the source/target selectors on one clean baseline.
+   ============================================================================ */
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2{
+  grid-template-columns:minmax(270px,1.18fr) minmax(225px,.78fr) minmax(220px,.82fr) 34px minmax(220px,.82fr);
+  gap:12px;
+  align-items:start;
+  padding-bottom:13px;
+}
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 .field{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  align-self:start;
+}
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 .field>label{
+  display:flex;
+  align-items:center;
+  min-height:20px;
+  margin:0 0 6px;
+  line-height:1.25;
+  font-weight:800;
+}
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 .select,
+.operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2 .input,
+.operational-profile-split-modal-v61529f5 .operational-source-fixed-value-v61529f5{
+  min-height:44px;
+  height:44px;
+}
+.operational-profile-split-modal-v61529f5 .operational-transfer-arrow-label-v61528f2{
+  align-self:start;
+  height:44px;
+  margin-top:26px;
+  font-size:23px;
+}
+.operational-profile-split-modal-v61529f5 .operational-effective-field-v61529f6{
+  min-width:0;
+}
+.operational-profile-split-modal-v61529f5 .operational-effective-help-v61529f6{
+  display:flex;
+  align-items:flex-start;
+  min-height:31px;
+  margin-top:6px;
+  padding:6px 8px;
+  border-radius:8px;
+  background:rgba(148,163,184,.08);
+  color:var(--text-muted,#64748b);
+  font-size:11.5px;
+  line-height:1.35;
+}
+.operational-profile-split-modal-v61529f5 .operational-effective-help-v61529f6.locked{
+  background:#f8fafc;
+  color:#475569;
+}
+.operational-profile-split-modal-v61529f5 .operational-effective-help-v61529f6.important{
+  background:#fffbeb;
+  color:#92400e;
+}
+[data-theme="dark"] .operational-profile-split-modal-v61529f5 .operational-effective-help-v61529f6{
+  background:rgba(148,163,184,.08);
+}
+[data-theme="dark"] .operational-profile-split-modal-v61529f5 .operational-effective-help-v61529f6.locked{
+  background:rgba(148,163,184,.07);
+  color:#cbd5e1;
+}
+[data-theme="dark"] .operational-profile-split-modal-v61529f5 .operational-effective-help-v61529f6.important{
+  background:rgba(245,158,11,.10);
+  color:#fde68a;
+}
+@media(max-width:1120px){
+  .operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2{
+    grid-template-columns:minmax(250px,1fr) minmax(220px,.8fr) minmax(220px,.9fr) minmax(220px,.9fr);
+  }
+  .operational-profile-split-modal-v61529f5 .operational-transfer-arrow-label-v61528f2{display:none}
+}
+@media(max-width:820px){
+  .operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2{grid-template-columns:1fr 1fr}
+}
+@media(max-width:620px){
+  .operational-profile-split-modal-v61529f5 .operational-transfer-summary-v61528f2{grid-template-columns:1fr}
+}
+
+/* ===== V6.15.29 FIX9 · Start Date aligned Operational Effective Date ===== */
+.operational-effective-help-v61529f6.start-date-aware-v61529f9{
+  padding:8px 10px;border:1px solid rgba(37,99,235,.18);border-radius:10px;
+  background:rgba(37,99,235,.055);color:#475569;font-size:12px;line-height:1.45
+}
+.operational-effective-summary-v61529f9{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin:8px 0 10px;padding:11px 12px;border:1px solid rgba(37,99,235,.16);
+  border-radius:12px;background:rgba(37,99,235,.045)
+}
+.operational-effective-summary-v61529f9>div{min-width:0}
+.operational-effective-summary-v61529f9 span,.operational-effective-summary-v61529f9 strong,.operational-effective-summary-v61529f9 small{display:block}
+.operational-effective-summary-v61529f9>div>span{font-size:11.5px;color:var(--text-muted,#64748b);margin-bottom:2px}
+.operational-effective-summary-v61529f9>div>strong{font-size:14px;color:var(--text,#0f172a)}
+.operational-effective-summary-v61529f9>div>small{font-size:11.5px;color:var(--text-muted,#64748b);margin-top:2px;line-height:1.35}
+.operational-effective-summary-v61529f9>span{flex:0 0 auto;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:800}
+.operational-effective-summary-v61529f9>span.adjusted{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa}
+.operational-effective-summary-v61529f9>span.base{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.operational-effective-people-v61529f9{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 10px}
+.operational-effective-people-v61529f9 span{padding:5px 8px;border-radius:9px;background:var(--panel,#fff);border:1px solid var(--border,#e2e8f0);font-size:11.5px;color:var(--text-muted,#64748b)}
+.operational-effective-people-v61529f9 b{color:var(--text,#0f172a)}
+[data-theme="dark"] .operational-effective-help-v61529f6.start-date-aware-v61529f9,
+[data-theme="dark"] .operational-effective-summary-v61529f9{background:rgba(59,130,246,.10);border-color:rgba(96,165,250,.25)}
+[data-theme="dark"] .operational-effective-summary-v61529f9>div>strong,
+[data-theme="dark"] .operational-effective-people-v61529f9 b{color:#e2e8f0}
+@media(max-width:720px){.operational-effective-summary-v61529f9{align-items:flex-start;flex-direction:column}.operational-effective-summary-v61529f9>span{align-self:flex-start}}
+
+/* V6.15.29 FIX11 — Manager owns change; HR Admin acknowledge-only */
+.team-change-effective-badge-v61529f11{display:inline-flex;align-items:center;min-height:24px;padding:3px 8px;border-radius:999px;background:#ecfdf5;color:#047857;font-weight:800;font-size:11px;border:1px solid #a7f3d0}.team-change-card-v61528.unread .team-change-card-head-v61528>div span{color:#2563eb}.team-change-card-actions-v61528 .btn-primary{min-width:112px}
+
+/* ========================================================================== 
+   V6.15.29 FIX12 — Safe Team Closure UX
+   ========================================================================== */
+.team-closure-modal-v61529f12{width:min(1180px,calc(100vw - 32px));max-height:min(900px,calc(100vh - 28px));display:flex;flex-direction:column;border-radius:22px;overflow:hidden}
+.team-closure-modal-v61529f12 .modal-body{padding:18px 22px 20px;overflow:auto;background:linear-gradient(180deg,rgba(248,250,252,.86),rgba(255,255,255,.98))}
+.team-closure-header-v61529f12{padding:18px 22px;border-bottom:1px solid var(--border,#e5e7eb)}
+.team-closure-header-v61529f12 h3{font-size:21px;line-height:1.25;margin:2px 0 4px;font-weight:800}
+.team-closure-header-v61529f12 p{font-size:13px;line-height:1.55;margin:0;color:var(--muted,#64748b)}
+.team-closure-stepper-v61529f12{display:flex;align-items:center;gap:8px;padding:8px 11px;margin-bottom:14px;border:1px solid #dbe4ee;background:#fff;border-radius:14px;overflow:auto}
+.team-closure-stepper-v61529f12 span{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:12px;font-weight:700;color:#64748b}
+.team-closure-stepper-v61529f12 span b{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#eef2f7;color:#475569;font-size:11px}
+.team-closure-stepper-v61529f12 span.active{color:#0f4c81}.team-closure-stepper-v61529f12 span.active b{background:#dbeafe;color:#0f4c81}.team-closure-stepper-v61529f12 i{color:#cbd5e1;font-style:normal}
+.team-closure-hero-v61529f12{display:grid;grid-template-columns:minmax(250px,1.1fr) minmax(520px,2fr);gap:14px;margin-bottom:12px}
+.team-closure-team-v61529f12{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid #dbe4ee;background:#fff;border-radius:16px;box-shadow:0 6px 18px rgba(15,23,42,.04)}
+.team-closure-team-v61529f12>span{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:#eff6ff;font-size:22px}
+.team-closure-team-v61529f12 strong{display:block;font-size:16px;font-weight:800;color:#0f172a;margin-bottom:4px}.team-closure-team-v61529f12 code{font-size:12px;color:#475569;background:#f1f5f9;padding:3px 7px;border-radius:7px}
+.team-closure-kpis-v61529f12{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.team-closure-kpis-v61529f12>div{padding:11px 12px;border:1px solid #dbe4ee;background:#fff;border-radius:14px;min-width:0}.team-closure-kpis-v61529f12 span{display:block;font-size:11px;color:#64748b;font-weight:700;margin-bottom:3px}.team-closure-kpis-v61529f12 strong{font-size:16px;line-height:1.1;color:#0f172a;font-weight:850}.team-closure-kpis-v61529f12 small{font-size:10.5px;color:#64748b;margin-left:4px}
+.team-closure-notice-v61529f12{display:flex;gap:10px;align-items:center;padding:10px 13px;margin-bottom:12px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:13px;color:#1e3a8a}.team-closure-notice-v61529f12>span{font-size:17px}.team-closure-notice-v61529f12 strong{display:block;font-size:12.5px}.team-closure-notice-v61529f12 small{font-size:11px;color:#475569}
+.team-closure-members-v61529f12,.team-closure-impact-v61529f12{border:1px solid #dbe4ee;background:#fff;border-radius:16px;padding:14px;margin-bottom:12px}
+.team-closure-section-head-v61529f12{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.team-closure-section-head-v61529f12 span{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:#64748b;font-weight:800}.team-closure-section-head-v61529f12 h4{font-size:14px;margin:2px 0 0;color:#0f172a;font-weight:800}.team-closure-section-head-v61529f12 small{font-size:11px;color:#64748b}
+.team-closure-bulk-v61529f12{display:flex;align-items:center;gap:7px}.team-closure-bulk-v61529f12 .select{min-width:260px;height:34px;font-size:12px}
+.team-closure-list-v61529f12{display:grid;gap:7px;max-height:340px;overflow:auto;padding-right:3px}
+.team-closure-member-row-v61529f12{display:grid;grid-template-columns:30px minmax(250px,1fr) minmax(310px,.95fr);gap:10px;align-items:center;border:1px solid #e2e8f0;border-radius:13px;padding:10px 11px;background:#fff;transition:.15s ease}.team-closure-member-row-v61529f12:hover{border-color:#bfdbfe;box-shadow:0 5px 14px rgba(15,23,42,.04)}.team-closure-member-row-v61529f12.planned{border-color:#bbf7d0;background:#fbfffc}
+.team-closure-check-v61529f12{display:grid;place-items:center}.team-closure-check-v61529f12 input{width:17px;height:17px}
+.team-closure-person-v61529f12 strong{display:block;font-size:13px;font-weight:800;color:#0f172a}.team-closure-person-v61529f12 span{display:block;font-size:11.5px;color:#475569;margin-top:2px}.team-closure-person-v61529f12 small{display:block;font-size:10.5px;color:#64748b;margin-top:3px}
+.team-closure-target-v61529f12 label{display:block;font-size:10.5px;color:#64748b;font-weight:750;margin-bottom:4px}.team-closure-target-v61529f12 .select{width:100%;height:36px;font-size:12px}.team-closure-target-v61529f12 small{display:block;margin-top:4px;font-size:10.5px}.team-closure-target-v61529f12 small.ok{color:#15803d}.team-closure-target-v61529f12 small.warn{color:#b45309}
+.team-closure-empty-v61529f12{display:flex;align-items:center;gap:10px;padding:16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:13px}.team-closure-empty-v61529f12>span{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#dcfce7;color:#15803d;font-weight:900}.team-closure-empty-v61529f12 strong{display:block;font-size:13px}.team-closure-empty-v61529f12 small{font-size:11px;color:#64748b}
+.team-closure-target-impact-grid-v61529f12{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:7px;margin-bottom:8px}.team-closure-target-impact-grid-v61529f12>div{padding:10px 11px;border-radius:12px;border:1px solid #dbe4ee}.team-closure-target-impact-grid-v61529f12 .ok{background:#f0fdf4;border-color:#bbf7d0}.team-closure-target-impact-grid-v61529f12 .blocked{background:#fff7ed;border-color:#fed7aa}.team-closure-target-impact-grid-v61529f12 span,.team-closure-target-impact-grid-v61529f12 small{display:block;font-size:10.5px;color:#64748b}.team-closure-target-impact-grid-v61529f12 strong{display:block;font-size:13px;margin:2px 0;color:#0f172a}
+.team-closure-schedule-impact-v61529f12{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;margin-bottom:8px}.team-closure-schedule-impact-v61529f12>span{font-size:18px}.team-closure-schedule-impact-v61529f12 strong{display:block;font-size:12.5px}.team-closure-schedule-impact-v61529f12 small{font-size:11px;color:#64748b}
+.team-closure-blockers-v61529f12{padding:9px 11px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa}.team-closure-blockers-v61529f12 p{margin:2px 0;font-size:11.5px;color:#9a3412;font-weight:650}.team-closure-ready-v61529f12{padding:10px 12px;border-radius:12px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:12px;font-weight:750}
+.team-closure-reason-v61529f12{padding:12px 14px;border:1px solid #fecaca;background:#fffafa;border-radius:14px}.team-closure-reason-v61529f12 label{font-size:12px;font-weight:800}.team-closure-reason-v61529f12 textarea{font-size:12px;min-height:62px}.team-closure-reason-v61529f12 small{font-size:10.5px;color:#64748b}
+.team-closure-footer-v61529f12{position:sticky;bottom:0;padding:12px 18px;border-top:1px solid #dbe4ee;background:rgba(255,255,255,.97);backdrop-filter:blur(10px)}.team-closure-footer-v61529f12>div:first-child{margin-right:auto;font-size:12px;font-weight:750;color:#64748b}.team-closure-footer-v61529f12>div:first-child.ok{color:#15803d}.team-closure-footer-v61529f12>div:first-child.warning{color:#b45309}
+@media(max-width:900px){.team-closure-hero-v61529f12{grid-template-columns:1fr}.team-closure-kpis-v61529f12{grid-template-columns:repeat(2,1fr)}.team-closure-member-row-v61529f12{grid-template-columns:28px 1fr}.team-closure-target-v61529f12{grid-column:2}.team-closure-section-head-v61529f12{align-items:flex-start;flex-direction:column}.team-closure-bulk-v61529f12{width:100%;flex-wrap:wrap}.team-closure-bulk-v61529f12 .select{flex:1;min-width:190px}}
+@media(max-width:560px){.team-closure-modal-v61529f12{width:100vw;max-height:100vh;border-radius:0}.team-closure-modal-v61529f12 .modal-body{padding:13px}.team-closure-kpis-v61529f12{grid-template-columns:1fr 1fr}.team-closure-stepper-v61529f12{gap:5px}.team-closure-stepper-v61529f12 span{font-size:10.5px}.team-closure-member-row-v61529f12{grid-template-columns:26px 1fr;padding:9px}.team-closure-footer-v61529f12{flex-wrap:wrap}.team-closure-footer-v61529f12>div:first-child{width:100%;margin-bottom:4px}}
+[data-theme="dark"] .team-closure-modal-v61529f12 .modal-body,[data-theme="dark"] .team-closure-team-v61529f12,[data-theme="dark"] .team-closure-kpis-v61529f12>div,[data-theme="dark"] .team-closure-members-v61529f12,[data-theme="dark"] .team-closure-impact-v61529f12,[data-theme="dark"] .team-closure-member-row-v61529f12{background:#111827;border-color:#334155}[data-theme="dark"] .team-closure-team-v61529f12 strong,[data-theme="dark"] .team-closure-kpis-v61529f12 strong,[data-theme="dark"] .team-closure-section-head-v61529f12 h4,[data-theme="dark"] .team-closure-person-v61529f12 strong{color:#f8fafc}
+
+/* ========================================================================== */
+/* V6.15.29 FIX14B — Temporary Team Assignment / Borrow + Acting Manager UX  */
+/* ========================================================================== */
+.team-temp-panel-v61529f14b{overflow:hidden}
+.team-temp-head-v61529f14b{align-items:flex-start;gap:18px}
+.team-temp-head-v61529f14b>div:first-child{min-width:0}
+.team-temp-head-v61529f14b h3{margin-bottom:4px}
+.team-temp-head-actions-v61529f14b{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+#teamTempPendingBadgeV61529F14B{display:inline-grid;place-items:center;min-width:21px;height:21px;margin-left:4px;padding:0 6px;border-radius:999px;background:#dc2626;color:#fff;font-size:10.5px;font-style:normal;font-weight:800;line-height:1}
+
+.team-temp-rule-v61529f14b{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:14px 16px;border-top:1px solid var(--slate-200);border-bottom:1px solid var(--slate-200);background:#f8fbff}
+.team-temp-rule-v61529f14b>div{display:flex;gap:10px;align-items:flex-start;min-width:0;padding:10px 12px;border:1px solid #dbe7f5;border-radius:13px;background:#fff}
+.team-temp-rule-v61529f14b>div>span{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:10px;background:#eaf3ff;color:#1554a0;font-size:14px;font-weight:900}
+.team-temp-rule-v61529f14b strong,.team-temp-rule-v61529f14b small{display:block}
+.team-temp-rule-v61529f14b strong{font-size:12px;color:#1e293b}
+.team-temp-rule-v61529f14b small{margin-top:2px;font-size:10.5px;line-height:1.45;color:#64748b}
+
+.team-temp-kpis-v61529f14b{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;padding:16px 16px 4px}
+.team-temp-kpis-v61529f14b article{position:relative;min-width:0;padding:13px 14px;border:1px solid var(--slate-200);border-radius:14px;background:#fff;overflow:hidden}
+.team-temp-kpis-v61529f14b article::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:#94a3b8}
+.team-temp-kpis-v61529f14b article.pending::before{background:#f59e0b}.team-temp-kpis-v61529f14b article.active::before{background:#16a34a}.team-temp-kpis-v61529f14b article.scheduled::before{background:#2563eb}.team-temp-kpis-v61529f14b article.inbound::before{background:#7c3aed}.team-temp-kpis-v61529f14b article.outbound::before{background:#0f766e}
+.team-temp-kpis-v61529f14b span,.team-temp-kpis-v61529f14b small{display:block;color:#64748b;font-size:10.5px;font-weight:700}
+.team-temp-kpis-v61529f14b strong{display:inline-block;margin:5px 4px 0 0;font-size:24px;line-height:1;color:#0f2744}
+.team-temp-kpis-v61529f14b small{display:inline}
+
+.team-temp-toolbar-v61529f14b{display:grid;grid-template-columns:155px 155px 210px minmax(240px,1fr);gap:10px;align-items:end;padding:12px 16px 16px}
+.team-temp-toolbar-v61529f14b .field{margin:0}.team-temp-toolbar-v61529f14b label{font-size:10.5px}
+.team-temp-search-v61529f14b{min-width:0}
+.team-temp-list-v61529f14b{display:grid;gap:10px;padding:0 16px 18px}
+
+.team-temp-card-v61529f14b{border:1px solid #dbe4ef;border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(15,35,65,.045);overflow:hidden;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+.team-temp-card-v61529f14b:hover{transform:translateY(-1px);border-color:#b9cee7;box-shadow:0 9px 22px rgba(15,53,96,.075)}
+.team-temp-card-v61529f14b.pending{border-left:4px solid #f59e0b}.team-temp-card-v61529f14b.active{border-left:4px solid #16a34a}.team-temp-card-v61529f14b.scheduled{border-left:4px solid #2563eb}.team-temp-card-v61529f14b.completed,.team-temp-card-v61529f14b.cancelled,.team-temp-card-v61529f14b.rejected{border-left:4px solid #94a3b8}
+.team-temp-card-main-v61529f14b{display:grid;grid-template-columns:minmax(250px,1.15fr) minmax(300px,1.55fr) minmax(145px,.65fr) minmax(170px,.75fr);gap:14px;align-items:center;padding:14px 15px}
+.team-temp-person-v61529f14b{display:flex;align-items:flex-start;gap:10px;min-width:0}
+.team-temp-type-icon-v61529f14b{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:12px;background:#eef5ff;color:#1554a0;font-size:17px;font-weight:900}
+.team-temp-person-v61529f14b>div{min-width:0}.team-temp-person-v61529f14b strong,.team-temp-person-v61529f14b small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-temp-person-v61529f14b strong{font-size:12px;color:#17233b}.team-temp-person-v61529f14b small{margin-top:2px;font-size:10.5px;color:#64748b}
+.team-temp-type-chip-v61529f14b{display:inline-flex;align-items:center;margin-top:6px;padding:3px 7px;border-radius:999px;background:#eaf3ff;color:#1d4ed8;font-size:10.5px;font-weight:800}
+.team-temp-type-chip-v61529f14b.borrow_cross_org{background:#f3e8ff;color:#7e22ce}.team-temp-type-chip-v61529f14b.temp_team_assist{background:#e8f7f1;color:#047857}
+.team-temp-flow-v61529f14b{display:grid;grid-template-columns:minmax(0,1fr) 26px minmax(0,1fr);gap:8px;align-items:center;min-width:0}
+.team-temp-flow-v61529f14b>div{min-width:0;padding:8px 10px;border-radius:11px;background:#f7f9fc;border:1px solid #e7edf5}
+.team-temp-flow-v61529f14b>div>span,.team-temp-flow-v61529f14b>div>small{display:block;color:#64748b;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-temp-flow-v61529f14b>div>strong{display:block;margin:2px 0;font-size:13px;color:#142842;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-temp-flow-v61529f14b>b{text-align:center;color:#64748b;font-size:16px}
+.team-temp-period-v61529f14b span,.team-temp-period-v61529f14b small,.team-temp-status-v61529f14b small{display:block;font-size:10.5px;color:#64748b}
+.team-temp-period-v61529f14b strong{display:block;margin:3px 0 1px;font-size:12px;color:#17233b}
+.team-temp-status-v61529f14b{min-width:0}
+.team-temp-status-chip-v61529f14b{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:10.5px;font-weight:900;white-space:nowrap;background:#eef2f7;color:#475569}
+.team-temp-status-chip-v61529f14b.pending{background:#fff5d8;color:#a16207}.team-temp-status-chip-v61529f14b.active{background:#dcfce7;color:#15803d}.team-temp-status-chip-v61529f14b.scheduled{background:#dbeafe;color:#1d4ed8}.team-temp-status-chip-v61529f14b.rejected{background:#fee2e2;color:#b91c1c}.team-temp-status-chip-v61529f14b.cancelled,.team-temp-status-chip-v61529f14b.completed{background:#f1f5f9;color:#64748b}
+.team-temp-status-v61529f14b small{margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-temp-card-foot-v61529f14b{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:9px 15px;border-top:1px solid #edf1f6;background:#fbfcfe}
+.team-temp-card-foot-v61529f14b p{margin:0;min-width:0;font-size:10.5px;color:#526174;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-temp-card-foot-v61529f14b>div{display:flex;align-items:center;gap:12px;min-width:0}.team-temp-card-foot-v61529f14b>div>span{font-size:10.5px;color:#7c8797;white-space:nowrap}
+.team-temp-actions-v61529f14b{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}.team-temp-no-action-v61529f14b{font-size:10.5px;color:#94a3b8}
+.team-temp-empty-v61529f14b{display:flex;align-items:center;justify-content:center;gap:12px;min-height:150px;padding:24px;border:1px dashed #d6e0ec;border-radius:14px;background:#fbfcfe;color:#64748b;text-align:left}
+.team-temp-empty-v61529f14b>span{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#e8f7f1;color:#16845b;font-size:17px;font-weight:900}.team-temp-empty-v61529f14b strong,.team-temp-empty-v61529f14b small{display:block}.team-temp-empty-v61529f14b strong{font-size:12px;color:#334155}.team-temp-empty-v61529f14b small{margin-top:2px;font-size:10.5px}
+
+.team-temp-create-modal-v61529f14b{width:min(760px,calc(100vw - 32px));max-height:90vh;overflow:auto}.team-temp-action-modal-v61529f14b{width:min(590px,calc(100vw - 32px))}.team-acting-modal-v61529f14b{width:min(700px,calc(100vw - 32px));max-height:90vh;overflow:auto}
+.team-temp-date-grid-v61529f14b{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.team-temp-search-line-v61529f14b{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.team-temp-home-card-v61529f14b{margin:4px 0 14px;padding:12px 14px;border:1px solid #dbe7f5;border-radius:13px;background:#f6faff}.team-temp-home-card-v61529f14b span,.team-temp-home-card-v61529f14b small{display:block;font-size:10.5px;color:#64748b}.team-temp-home-card-v61529f14b strong{display:block;margin:3px 0;font-size:13px;color:#17365d}
+.team-temp-preview-v61529f14b{margin:13px 0;padding:13px;border:1px solid #d8e5f4;border-radius:14px;background:#f8fbff;min-height:86px}.team-temp-preview-placeholder-v61529f14b{padding:14px;color:#64748b;font-size:11px;text-align:center}.team-temp-preview-v61529f14b .team-temp-preview-type-v61529f14b{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}.team-temp-preview-v61529f14b .team-temp-preview-type-v61529f14b strong{font-size:13px;color:#17365d}.team-temp-preview-v61529f14b .team-temp-preview-flow-v61529f14b{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10.5px;color:#526174}.team-temp-preview-v61529f14b .team-temp-preview-flow-v61529f14b b{color:#2563eb}.team-temp-preview-v61529f14b .team-temp-preview-approval-v61529f14b{margin-top:9px;padding-top:9px;border-top:1px solid #e2eaf4;font-size:10.5px;color:#475569}
+.team-temp-action-summary-v61529f14b{margin-bottom:14px;padding:12px 14px;border-radius:13px;background:#f7f9fc;border:1px solid #e2e8f0;color:#475569;font-size:11px;line-height:1.55}
+
+.team-acting-panel-v61529f14b{overflow:hidden}
+.team-acting-note-v61529f14b{margin:0 16px 13px;padding:10px 12px;border-radius:12px;background:#f3e8ff;color:#6b21a8;font-size:10.5px;font-weight:700;line-height:1.5}
+.team-acting-table-v61529f14b{min-width:980px}.team-acting-table-v61529f14b td{vertical-align:top}
+.team-acting-descendants-v61529f14b{display:flex;align-items:flex-start;gap:9px;margin:6px 0 14px;padding:11px 12px;border:1px solid #e2e8f0;border-radius:12px;background:#fafbfd;cursor:pointer}.team-acting-descendants-v61529f14b input{margin-top:2px}.team-acting-descendants-v61529f14b strong,.team-acting-descendants-v61529f14b small{display:block}.team-acting-descendants-v61529f14b strong{font-size:11px}.team-acting-descendants-v61529f14b small{margin-top:2px;font-size:10.5px;color:#64748b}
+.team-acting-active-v61529f14b{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;font-weight:700;color:#334155}
+
+/* Acting-only users enter the temporary-assignment workspace without exposing Team Master writes. */
+.acting-base-hidden-v61529f14b{display:none!important}
+.team-master-page-v61528.acting-only-v61529f14b .team-workspace-hero-actions-v61528,
+.team-master-page-v61528.acting-only-v61529f14b .team-kpi-grid-v61528,
+.team-master-page-v61528.acting-only-v61529f14b .team-flow-stepper-v61528,
+.team-master-page-v61528.acting-only-v61529f14b .team-next-action-v61528{display:none!important}
+
+/* Schedule Working Team indicators (read context only; write authority stays canonical). */
+.team-scope-chip-v61526.borrowed{background:rgba(124,58,237,.11);color:#6d28d9}.team-scope-chip-v61526.assist{background:rgba(5,150,105,.10);color:#047857}
+
+html[data-theme="dark"] .team-temp-rule-v61529f14b,body.dark .team-temp-rule-v61529f14b{background:#0e1b2d;border-color:#26364f}
+html[data-theme="dark"] .team-temp-rule-v61529f14b>div,body.dark .team-temp-rule-v61529f14b>div,
+html[data-theme="dark"] .team-temp-kpis-v61529f14b article,body.dark .team-temp-kpis-v61529f14b article,
+html[data-theme="dark"] .team-temp-card-v61529f14b,body.dark .team-temp-card-v61529f14b{background:#10243d;border-color:#29415d}
+html[data-theme="dark"] .team-temp-rule-v61529f14b strong,body.dark .team-temp-rule-v61529f14b strong,
+html[data-theme="dark"] .team-temp-kpis-v61529f14b strong,body.dark .team-temp-kpis-v61529f14b strong,
+html[data-theme="dark"] .team-temp-person-v61529f14b strong,body.dark .team-temp-person-v61529f14b strong,
+html[data-theme="dark"] .team-temp-period-v61529f14b strong,body.dark .team-temp-period-v61529f14b strong{color:#e7eef8}
+html[data-theme="dark"] .team-temp-flow-v61529f14b>div,body.dark .team-temp-flow-v61529f14b>div,
+html[data-theme="dark"] .team-temp-card-foot-v61529f14b,body.dark .team-temp-card-foot-v61529f14b,
+html[data-theme="dark"] .team-temp-empty-v61529f14b,body.dark .team-temp-empty-v61529f14b,
+html[data-theme="dark"] .team-temp-home-card-v61529f14b,body.dark .team-temp-home-card-v61529f14b,
+html[data-theme="dark"] .team-temp-preview-v61529f14b,body.dark .team-temp-preview-v61529f14b,
+html[data-theme="dark"] .team-temp-action-summary-v61529f14b,body.dark .team-temp-action-summary-v61529f14b,
+html[data-theme="dark"] .team-acting-descendants-v61529f14b,body.dark .team-acting-descendants-v61529f14b{background:#0e1b2d;border-color:#26364f}
+html[data-theme="dark"] .team-temp-flow-v61529f14b>div>strong,body.dark .team-temp-flow-v61529f14b>div>strong,
+html[data-theme="dark"] .team-temp-home-card-v61529f14b strong,body.dark .team-temp-home-card-v61529f14b strong,
+html[data-theme="dark"] .team-temp-preview-v61529f14b .team-temp-preview-type-v61529f14b strong,body.dark .team-temp-preview-v61529f14b .team-temp-preview-type-v61529f14b strong,
+html[data-theme="dark"] .team-temp-empty-v61529f14b strong,body.dark .team-temp-empty-v61529f14b strong{color:#dbeafe}
+html[data-theme="dark"] .team-acting-note-v61529f14b,body.dark .team-acting-note-v61529f14b{background:rgba(147,51,234,.14);color:#e9d5ff}
+html[data-theme="dark"] .team-scope-chip-v61526.borrowed,body.dark .team-scope-chip-v61526.borrowed{background:rgba(167,139,250,.16);color:#ddd6fe}
+html[data-theme="dark"] .team-scope-chip-v61526.assist,body.dark .team-scope-chip-v61526.assist{background:rgba(52,211,153,.13);color:#a7f3d0}
+
+@media(max-width:1280px){
+  .team-temp-kpis-v61529f14b{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .team-temp-card-main-v61529f14b{grid-template-columns:minmax(230px,1fr) minmax(280px,1.35fr) minmax(150px,.7fr)}
+  .team-temp-status-v61529f14b{grid-column:1/-1;display:flex;align-items:center;gap:8px}.team-temp-status-v61529f14b small{margin:0}
+}
+@media(max-width:980px){
+  .team-temp-rule-v61529f14b{grid-template-columns:1fr}.team-temp-toolbar-v61529f14b{grid-template-columns:1fr 1fr}.team-temp-search-v61529f14b{grid-column:1/-1}
+  .team-temp-card-main-v61529f14b{grid-template-columns:1fr 1fr}.team-temp-flow-v61529f14b{grid-column:1/-1;grid-row:2}.team-temp-status-v61529f14b{grid-column:auto;display:block}.team-temp-status-v61529f14b small{margin-top:4px}
+  .team-temp-card-foot-v61529f14b{grid-template-columns:1fr}.team-temp-card-foot-v61529f14b>div{justify-content:space-between;flex-wrap:wrap}
+}
+@media(max-width:680px){
+  .team-temp-head-v61529f14b{flex-direction:column}.team-temp-head-actions-v61529f14b{width:100%;justify-content:flex-start}.team-temp-head-actions-v61529f14b .btn{flex:1}
+  .team-temp-kpis-v61529f14b{grid-template-columns:repeat(2,minmax(0,1fr))}.team-temp-toolbar-v61529f14b{grid-template-columns:1fr}.team-temp-search-v61529f14b{grid-column:auto}
+  .team-temp-card-main-v61529f14b{grid-template-columns:1fr}.team-temp-flow-v61529f14b{grid-column:auto;grid-row:auto}.team-temp-period-v61529f14b,.team-temp-status-v61529f14b{padding-left:48px}.team-temp-card-foot-v61529f14b>div>span{white-space:normal}.team-temp-actions-v61529f14b{width:100%;justify-content:stretch}.team-temp-actions-v61529f14b .btn{flex:1}
+  .team-temp-date-grid-v61529f14b,.team-temp-search-line-v61529f14b{grid-template-columns:1fr}
+}
+/* FIX14B preview/result details */
+.team-temp-preview-head-v61529f14b{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}.team-temp-preview-head-v61529f14b span,.team-temp-preview-head-v61529f14b strong{display:block}.team-temp-preview-head-v61529f14b>div>span{font-size:10.5px;color:#64748b}.team-temp-preview-head-v61529f14b>div>strong{margin-top:2px;font-size:13px;color:#17365d}.team-temp-preview-head-v61529f14b>span{padding:4px 8px;border-radius:999px;font-size:10.5px;font-weight:900;white-space:nowrap}.team-temp-preview-head-v61529f14b>span.ok{background:#dcfce7;color:#15803d}.team-temp-preview-head-v61529f14b>span.blocked{background:#fee2e2;color:#b91c1c}
+.team-temp-preview-flow-v61529f14b{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1fr);gap:8px;align-items:center}.team-temp-preview-flow-v61529f14b>div{padding:9px 10px;border-radius:11px;background:#fff;border:1px solid #e2eaf4;min-width:0}.team-temp-preview-flow-v61529f14b small,.team-temp-preview-flow-v61529f14b strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.team-temp-preview-flow-v61529f14b small{font-size:10.5px;color:#64748b}.team-temp-preview-flow-v61529f14b strong{margin-top:2px;font-size:11px;color:#1e3a5f}.team-temp-preview-flow-v61529f14b>b{text-align:center;color:#2563eb}
+.team-temp-workflow-v61529f14b{margin-top:10px;padding-top:10px;border-top:1px solid #e2eaf4}.team-temp-workflow-v61529f14b strong,.team-temp-workflow-v61529f14b span,.team-temp-workflow-v61529f14b small{display:block}.team-temp-workflow-v61529f14b strong{font-size:10.5px;color:#334155}.team-temp-workflow-v61529f14b span{margin-top:3px;font-size:10.5px;color:#1d4ed8;font-weight:700}.team-temp-workflow-v61529f14b small{margin-top:3px;font-size:10.5px;color:#64748b}
+.team-temp-blockers-v61529f14b{margin-top:10px;padding:8px 10px;border-radius:10px;background:#fff1f2;color:#b91c1c}.team-temp-blockers-v61529f14b p{margin:2px 0;font-size:10.5px;font-weight:700}
+.team-temp-action-summary-v61529f14b{display:grid;grid-template-columns:1fr 1fr;gap:8px}.team-temp-action-summary-v61529f14b>div{min-width:0}.team-temp-action-summary-v61529f14b span,.team-temp-action-summary-v61529f14b strong{display:block}.team-temp-action-summary-v61529f14b span{font-size:10.5px;color:#64748b}.team-temp-action-summary-v61529f14b strong{margin-top:2px;font-size:11px;color:#334155}
+html[data-theme="dark"] .team-temp-preview-flow-v61529f14b>div,body.dark .team-temp-preview-flow-v61529f14b>div{background:#10243d;border-color:#29415d}
+html[data-theme="dark"] .team-temp-preview-head-v61529f14b>div>strong,body.dark .team-temp-preview-head-v61529f14b>div>strong,
+html[data-theme="dark"] .team-temp-preview-flow-v61529f14b strong,body.dark .team-temp-preview-flow-v61529f14b strong,
+html[data-theme="dark"] .team-temp-workflow-v61529f14b strong,body.dark .team-temp-workflow-v61529f14b strong,
+html[data-theme="dark"] .team-temp-action-summary-v61529f14b strong,body.dark .team-temp-action-summary-v61529f14b strong{color:#dbeafe}
+html[data-theme="dark"] .team-temp-blockers-v61529f14b,body.dark .team-temp-blockers-v61529f14b{background:rgba(239,68,68,.12);color:#fecaca}
+@media(max-width:680px){.team-temp-preview-head-v61529f14b{flex-direction:column}.team-temp-preview-flow-v61529f14b{grid-template-columns:1fr}.team-temp-preview-flow-v61529f14b>b{transform:rotate(90deg)}.team-temp-action-summary-v61529f14b{grid-template-columns:1fr}}
+.team-closure-temp-impact-v61529f14b{display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:11px 12px;border:1px solid #fecaca;border-radius:12px;background:#fff7f7;color:#991b1b}.team-closure-temp-impact-v61529f14b>span{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:10px;background:#fee2e2;font-size:15px;font-weight:900}.team-closure-temp-impact-v61529f14b strong,.team-closure-temp-impact-v61529f14b small,.team-closure-temp-impact-v61529f14b em{display:block}.team-closure-temp-impact-v61529f14b strong{font-size:11px}.team-closure-temp-impact-v61529f14b small{margin:2px 0 6px;font-size:10.5px;color:#b91c1c}.team-closure-temp-impact-v61529f14b em{margin-top:3px;font-size:10.5px;font-style:normal;color:#7f1d1d}
+html[data-theme="dark"] .team-closure-temp-impact-v61529f14b,body.dark .team-closure-temp-impact-v61529f14b{background:rgba(239,68,68,.10);border-color:rgba(248,113,113,.35);color:#fecaca}html[data-theme="dark"] .team-closure-temp-impact-v61529f14b>span,body.dark .team-closure-temp-impact-v61529f14b>span{background:rgba(239,68,68,.16)}html[data-theme="dark"] .team-closure-temp-impact-v61529f14b small,body.dark .team-closure-temp-impact-v61529f14b small,html[data-theme="dark"] .team-closure-temp-impact-v61529f14b em,body.dark .team-closure-temp-impact-v61529f14b em{color:#fecaca}
+
+/* ============================================================================
+   V6.15.29 FIX14B FINAL — Working Team / Borrow schedule authority UX
+   ============================================================================ */
+.team-employee-temp-chip-v61529f14b{margin-top:5px;max-width:max-content}
+.team-working-readonly-v61529f14b{display:inline-flex;align-items:center;justify-content:center;padding:5px 9px;border:1px solid rgba(100,116,139,.22);border-radius:999px;background:rgba(148,163,184,.10);color:#64748b;font-size:11px;font-weight:800;white-space:nowrap}
+.temporary-working-cell-v61529f14b .schedule-cell{box-shadow:inset 0 0 0 1px rgba(124,58,237,.18)}
+.working-team-readonly-cell-v61529f14b .schedule-cell,.schedule-cell.working-team-readonly-v61529f14b{cursor:not-allowed;opacity:.72}
+.working-team-readonly-cell-v61529f14b .schedule-cell:hover{transform:none;box-shadow:inset 0 0 0 1px rgba(100,116,139,.25)}
+html[data-theme="dark"] .team-working-readonly-v61529f14b,body.dark .team-working-readonly-v61529f14b{border-color:rgba(148,163,184,.25);background:rgba(148,163,184,.10);color:#cbd5e1}
+html[data-theme="dark"] .temporary-working-cell-v61529f14b .schedule-cell,body.dark .temporary-working-cell-v61529f14b .schedule-cell{box-shadow:inset 0 0 0 1px rgba(167,139,250,.24)}
+
+/* ========================================================================== */
+/* V6.15.29 FIX14D — Temporary Assignment layout polish                      */
+/* Fixes explainer-card markup mismatch + KPI wrapping at desktop widths.    */
+/* ========================================================================== */
+.team-temp-rule-v61529f14b{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  padding:14px 16px;
+  align-items:stretch;
+}
+.team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr);
+  gap:11px;
+  align-items:center;
+  min-width:0;
+  min-height:72px;
+  padding:12px 14px;
+  border:1px solid #dbe7f5;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 2px 8px rgba(15,53,96,.035);
+}
+.team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d>div{min-width:0}
+.team-temp-rule-v61529f14b .team-temp-rule-icon-v61529f14d{
+  display:grid;
+  place-items:center;
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  background:#eaf3ff;
+  color:#1554a0;
+  font-size:18px;
+  font-weight:900;
+  line-height:1;
+}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.borrow .team-temp-rule-icon-v61529f14d{background:#f3e8ff;color:#7e22ce}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.authority .team-temp-rule-icon-v61529f14d{background:#e8f7f1;color:#047857}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong{
+  display:block;
+  margin:0;
+  color:#17233b;
+  font-size:13px;
+  font-weight:850;
+  line-height:1.25;
+  white-space:nowrap;
+}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small{
+  display:block;
+  margin-top:4px;
+  color:#64748b;
+  font-size:10.5px;
+  font-weight:600;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+.team-temp-kpis-v61529f14b{
+  grid-template-columns:repeat(5,minmax(150px,1fr));
+  gap:10px;
+  padding:16px 16px 6px;
+}
+.team-temp-kpis-v61529f14b article{min-height:86px;padding:13px 15px 12px 17px}
+.team-temp-kpis-v61529f14b article>span{min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-temp-toolbar-v61529f14b{padding-top:14px}
+
+@media(max-width:1120px){
+  .team-temp-kpis-v61529f14b{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:900px){
+  .team-temp-rule-v61529f14b{grid-template-columns:1fr}
+  .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{min-height:64px}
+}
+@media(max-width:680px){
+  .team-temp-kpis-v61529f14b{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .team-temp-rule-v61529f14b{padding:12px}
+  .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{grid-template-columns:36px minmax(0,1fr);padding:11px 12px}
+  .team-temp-rule-v61529f14b .team-temp-rule-icon-v61529f14d{width:36px;height:36px;border-radius:11px;font-size:16px}
+}
+@media(max-width:440px){
+  .team-temp-kpis-v61529f14b{grid-template-columns:1fr}
+}
+
+html[data-theme="dark"] .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d,
+body.dark .team-temp-rule-v61529f14b>.team-temp-rule-card-v61529f14d{background:#10243d;border-color:#29415d;box-shadow:none}
+html[data-theme="dark"] .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong,
+body.dark .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong{color:#e7eef8}
+html[data-theme="dark"] .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small,
+body.dark .team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d small{color:#9fb0c5}
+
+/* ========================================================================== */
+/* V6.15.29 FIX15 — Manager-based Borrow Workflow                            */
+/* Destination requester + different Manager classifier                      */
+/* ========================================================================== */
+.team-temp-rule-v61529f14b{grid-template-columns:repeat(4,minmax(0,1fr))}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d.scope .team-temp-rule-icon-v61529f14d{background:#fff4df;color:#b45309}
+.team-temp-rule-v61529f14b .team-temp-rule-card-v61529f14d strong{white-space:normal}
+.team-temp-preview-flow-v61529f14b>div>span{display:block;margin-top:3px;font-size:10.5px;font-weight:650;color:#64748b;overflow-wrap:anywhere}
+@media(max-width:1280px){.team-temp-rule-v61529f14b{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.team-temp-rule-v61529f14b{grid-template-columns:1fr}}
+html[data-theme="dark"] .team-temp-preview-flow-v61529f14b>div>span,body.dark .team-temp-preview-flow-v61529f14b>div>span{color:#9fb0c5}
+
+/* V6.15.29 FIX15A — Borrow Candidate compatibility */
+.team-temp-compat-v61529f15a{margin-top:8px;padding:7px 9px;border-radius:9px;font-size:10.5px;font-weight:750;line-height:1.45}
+.team-temp-compat-v61529f15a.ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.team-temp-compat-v61529f15a.warning{background:#fffbeb;color:#a16207;border:1px solid #fde68a}
+.team-temp-warnings-v61529f15a{margin-top:10px;padding:8px 10px;border-radius:10px;background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+.team-temp-warnings-v61529f15a p{margin:2px 0;font-size:10.5px;font-weight:750;line-height:1.45}
+html[data-theme="dark"] .team-temp-compat-v61529f15a.ok,body.dark .team-temp-compat-v61529f15a.ok{background:rgba(16,185,129,.12);color:#a7f3d0;border-color:rgba(16,185,129,.3)}
+html[data-theme="dark"] .team-temp-compat-v61529f15a.warning,body.dark .team-temp-compat-v61529f15a.warning,html[data-theme="dark"] .team-temp-warnings-v61529f15a,body.dark .team-temp-warnings-v61529f15a{background:rgba(245,158,11,.12);color:#fde68a;border-color:rgba(245,158,11,.3)}
+
+/* ========================================================================== */
+/* V6.15.29 FIX15C — Borrow effective-window display in Monthly Personal      */
+/* Active dates with no schedule-access row are authority gaps, not OFF days. */
+/* ========================================================================== */
+.employee-month-day.month-day-kind-scope-v61529f15c{
+  background:linear-gradient(180deg,rgba(248,250,252,.98),rgba(241,245,249,.98));
+  border-color:#cbd5e1;
+  box-shadow:none;
+}
+.employee-month-day.month-day-kind-scope-v61529f15c .employee-month-date-v61127 strong{
+  color:#64748b;
+  border-color:#cbd5e1;
+  background:#f8fafc;
+}
+.employee-month-day.month-day-kind-scope-v61529f15c .month-day-status-v61127{
+  color:#475569;
+  border-color:#cbd5e1;
+  background:#f1f5f9;
+}
+.employee-month-day.month-day-kind-scope-v61529f15c .month-day-status-v61127 i{
+  background:#94a3b8;
+}
+.employee-month-scope-lock-v61529f15c{
+  min-height:94px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:12px 10px;
+  border:1px dashed #cbd5e1;
+  border-radius:12px;
+  background:rgba(248,250,252,.9);
+  text-align:center;
+  color:#475569;
+}
+.employee-month-scope-lock-icon-v61529f15c{
+  font-size:16px;
+  line-height:1;
+  filter:grayscale(1);
+  opacity:.72;
+}
+.employee-month-scope-lock-v61529f15c strong{
+  font-size:12px;
+  font-weight:800;
+  color:#334155;
+}
+.employee-month-scope-lock-v61529f15c small{
+  max-width:190px;
+  font-size:10.5px;
+  line-height:1.4;
+  color:#64748b;
+}
+html.dark .employee-month-day.month-day-kind-scope-v61529f15c,
+body.dark .employee-month-day.month-day-kind-scope-v61529f15c{
+  background:linear-gradient(180deg,rgba(30,41,59,.94),rgba(15,23,42,.96));
+  border-color:#475569;
+}
+html.dark .employee-month-scope-lock-v61529f15c,
+body.dark .employee-month-scope-lock-v61529f15c{
+  background:rgba(15,23,42,.72);
+  border-color:#475569;
+  color:#cbd5e1;
+}
+html.dark .employee-month-scope-lock-v61529f15c strong,
+body.dark .employee-month-scope-lock-v61529f15c strong{
+  color:#e2e8f0;
+}
+html.dark .employee-month-scope-lock-v61529f15c small,
+body.dark .employee-month-scope-lock-v61529f15c small{
+  color:#94a3b8;
+}
+
+
+/* ========================================================================== */
+/* V6.15.29 FIX15F — Borrow Workflow Completion                               */
+/* ========================================================================== */
+.team-temp-kpis-v61529f14b{grid-template-columns:repeat(6,minmax(135px,1fr))}
+.team-temp-kpis-v61529f14b article.expiring::before{background:#ea580c}
+.team-temp-kpis-v61529f14b article[data-borrow-kpi-filter-v61529f15f]{cursor:pointer;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.team-temp-kpis-v61529f14b article[data-borrow-kpi-filter-v61529f15f]:hover{transform:translateY(-1px);border-color:#b8cee8;box-shadow:0 7px 18px rgba(15,53,96,.07)}
+
+.borrow-workflow-filter-v61529f15f{margin:12px 16px 0;padding:12px 13px;border:1px solid #dbe5f0;border-radius:15px;background:#f8fbff}
+.borrow-workflow-filter-head-v61529f15f{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.borrow-workflow-filter-head-v61529f15f>div{min-width:0}.borrow-workflow-filter-head-v61529f15f strong,.borrow-workflow-filter-head-v61529f15f small{display:block}
+.borrow-workflow-filter-head-v61529f15f strong{font-size:11px;color:#18324f}.borrow-workflow-filter-head-v61529f15f small{margin-top:1px;font-size:10.5px;color:#64748b}
+.borrow-workflow-filter-head-v61529f15f>span{font-size:10.5px;font-weight:700;color:#64748b;white-space:nowrap}
+.borrow-workflow-filter-chips-v61529f15f{display:flex;align-items:center;gap:7px;overflow-x:auto;padding-bottom:1px;scrollbar-width:thin}
+.borrow-workflow-filter-chips-v61529f15f button{display:inline-flex;align-items:center;gap:7px;flex:0 0 auto;min-height:34px;padding:6px 9px 6px 11px;border:1px solid #dbe4ef;border-radius:999px;background:#fff;color:#526174;font:inherit;font-size:10.5px;font-weight:750;cursor:pointer;transition:.15s ease}
+.borrow-workflow-filter-chips-v61529f15f button:hover{border-color:#9fc0e8;background:#f5f9ff;color:#1d4ed8}
+.borrow-workflow-filter-chips-v61529f15f button.active{border-color:#60a5fa;background:#eaf3ff;color:#1554a0;box-shadow:0 0 0 2px rgba(59,130,246,.08)}
+.borrow-workflow-filter-chips-v61529f15f button b{display:grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#eef2f7;color:#475569;font-size:10.5px;line-height:1}
+.borrow-workflow-filter-chips-v61529f15f button.active b{background:#fff;color:#1554a0}
+
+.borrow-meta-chips-v61529f15f{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:5px}
+.borrow-meta-chip-v61529f15f{display:inline-flex;align-items:center;padding:3px 6px;border-radius:999px;font-size:10.5px;font-weight:800;line-height:1.1}
+.borrow-meta-chip-v61529f15f.mine{background:#e0f2fe;color:#0369a1}.borrow-meta-chip-v61529f15f.action{background:#fff4d6;color:#a16207}.borrow-meta-chip-v61529f15f.expiring{background:#ffedd5;color:#c2410c}
+
+.borrow-workflow-stepper-v61529f15f{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0 15px 9px;padding:9px 10px;border:1px solid #e5ebf3;border-radius:12px;background:#fafcff}
+.borrow-workflow-stepper-v61529f15f>div{position:relative;display:flex;align-items:center;gap:6px;min-width:0;color:#94a3b8}
+.borrow-workflow-stepper-v61529f15f>div:not(:last-child)::after{content:"";position:absolute;left:calc(100% - 4px);right:4px;top:50%;height:1px;background:#dbe3ed;transform:translateY(-50%);z-index:0}
+.borrow-workflow-stepper-v61529f15f>div>span{position:relative;z-index:1;display:grid;place-items:center;flex:0 0 22px;width:22px;height:22px;border:1px solid #dbe3ed;border-radius:50%;background:#fff;color:#94a3b8;font-size:10.5px;font-weight:900}
+.borrow-workflow-stepper-v61529f15f>div>small{position:relative;z-index:1;display:inline-block;padding-right:7px;background:#fafcff;font-size:10.5px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.borrow-workflow-stepper-v61529f15f>div.done{color:#15803d}.borrow-workflow-stepper-v61529f15f>div.done>span{border-color:#86efac;background:#dcfce7;color:#15803d}.borrow-workflow-stepper-v61529f15f>div.done:not(:last-child)::after{background:#86efac}
+.borrow-workflow-stepper-v61529f15f>div.current{color:#1d4ed8}.borrow-workflow-stepper-v61529f15f>div.current>span{border-color:#93c5fd;background:#dbeafe;color:#1d4ed8;box-shadow:0 0 0 3px rgba(59,130,246,.08)}
+.borrow-workflow-stepper-v61529f15f>div.stop{color:#b91c1c}.borrow-workflow-stepper-v61529f15f>div.stop>span{border-color:#fecaca;background:#fee2e2;color:#b91c1c}
+
+html[data-theme="dark"] .borrow-workflow-filter-v61529f15f,body.dark .borrow-workflow-filter-v61529f15f,
+html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f,body.dark .borrow-workflow-stepper-v61529f15f{background:#0e1b2d;border-color:#29415d}
+html[data-theme="dark"] .borrow-workflow-filter-head-v61529f15f strong,body.dark .borrow-workflow-filter-head-v61529f15f strong{color:#e7eef8}
+html[data-theme="dark"] .borrow-workflow-filter-chips-v61529f15f button,body.dark .borrow-workflow-filter-chips-v61529f15f button{background:#10243d;border-color:#29415d;color:#aebed1}
+html[data-theme="dark"] .borrow-workflow-filter-chips-v61529f15f button.active,body.dark .borrow-workflow-filter-chips-v61529f15f button.active{background:#153458;border-color:#3b82f6;color:#bfdbfe}
+html[data-theme="dark"] .borrow-workflow-filter-chips-v61529f15f button b,body.dark .borrow-workflow-filter-chips-v61529f15f button b{background:#1a304c;color:#c3d1e2}
+html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f>div>small,body.dark .borrow-workflow-stepper-v61529f15f>div>small{background:#0e1b2d}
+html[data-theme="dark"] .borrow-workflow-stepper-v61529f15f>div>span,body.dark .borrow-workflow-stepper-v61529f15f>div>span{background:#10243d;border-color:#36516f}
+
+@media(max-width:1280px){.team-temp-kpis-v61529f14b{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){
+  .borrow-workflow-filter-head-v61529f15f{align-items:flex-start;flex-direction:column;gap:4px}
+  .borrow-workflow-stepper-v61529f15f{grid-template-columns:1fr 1fr;gap:8px}.borrow-workflow-stepper-v61529f15f>div::after{display:none}
+}
+@media(max-width:520px){.borrow-workflow-stepper-v61529f15f{grid-template-columns:1fr}.borrow-workflow-filter-v61529f15f{margin-left:12px;margin-right:12px}}
+
+
+/* ===== V6.15.29 FIX15G — Borrow Notification + Expiry Reminder ===== */
+.borrow-notification-policy-v61529f15g{display:flex;align-items:center;gap:12px;margin:14px 0;padding:12px 14px;border:1px solid #d9e8f7;border-radius:16px;background:linear-gradient(180deg,#f7fbff,#f1f7fd);color:#173b5c}
+.borrow-notification-policy-icon-v61529f15g{display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:12px;background:#e2f0ff;font-size:18px}
+.borrow-notification-policy-v61529f15g>div{min-width:0;flex:1}.borrow-notification-policy-v61529f15g strong{display:block;font-size:13px;font-weight:900}.borrow-notification-policy-v61529f15g small{display:block;margin-top:2px;color:#607a91;font-size:11px;line-height:1.45}
+.borrow-notification-policy-badge-v61529f15g{flex:0 0 auto;padding:6px 10px;border-radius:999px;background:#fff4db;color:#9a5a00;border:1px solid #f4d79c;font-size:10.5px;font-weight:900;white-space:nowrap}
+#teamBorrowBrowserNotificationV61529F15G.borrow-notify-enabled-v61529f15g{border-color:#b9e5ce;background:#edf9f2;color:#087447}
+.notice-borrow-v61529f15g{position:relative}.notice-source-label-v61529f15g{display:inline-flex;width:max-content;margin-bottom:4px;padding:2px 7px;border-radius:999px;background:#eaf3ff;color:#1d62a7;font-size:10.5px;font-weight:900;letter-spacing:.03em}
+.borrow-notification-highlight-v61529f15g{animation:borrowNotificationPulseV61529F15G 1.05s ease-in-out 0s 3;box-shadow:0 0 0 3px rgba(37,132,255,.16),0 18px 40px rgba(20,76,130,.14)!important}
+@keyframes borrowNotificationPulseV61529F15G{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px);box-shadow:0 0 0 5px rgba(37,132,255,.12),0 18px 44px rgba(20,76,130,.16)}}
+html[data-theme="dark"] .borrow-notification-policy-v61529f15g,body.dark .borrow-notification-policy-v61529f15g{border-color:#31506d;background:#16293d;color:#e7f1fb}
+html[data-theme="dark"] .borrow-notification-policy-v61529f15g small,body.dark .borrow-notification-policy-v61529f15g small{color:#9fb7cb}
+html[data-theme="dark"] .borrow-notification-policy-icon-v61529f15g,body.dark .borrow-notification-policy-icon-v61529f15g{background:#203e5b}
+html[data-theme="dark"] .borrow-notification-policy-badge-v61529f15g,body.dark .borrow-notification-policy-badge-v61529f15g{background:#3a301d;border-color:#6b5530;color:#ffd58b}
+@media(max-width:900px){.borrow-notification-policy-v61529f15g{align-items:flex-start;flex-wrap:wrap}.borrow-notification-policy-badge-v61529f15g{margin-left:48px}}
+
+/* ===== V6.15.29 FIX15I Borrow Audit / History ===== */
+.borrow-audit-modal-v61529f15i{width:min(1460px,calc(100vw - 32px));max-width:1460px;max-height:92vh}
+.borrow-audit-body-v61529f15i{display:flex;flex-direction:column;gap:14px}
+.borrow-audit-kpis-v61529f15i{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.borrow-audit-kpis-v61529f15i article{padding:13px 14px;border:1px solid #dfe8f1;border-radius:15px;background:#fff;display:flex;flex-direction:column;gap:4px;min-width:0}
+.borrow-audit-kpis-v61529f15i article span{font-size:12px;font-weight:800;color:#6b7f92}.borrow-audit-kpis-v61529f15i article strong{font-size:25px;line-height:1;color:#15324a}
+.borrow-audit-kpis-v61529f15i article.create{border-left:4px solid #3b82f6}.borrow-audit-kpis-v61529f15i article.approve{border-left:4px solid #10b981}.borrow-audit-kpis-v61529f15i article.reject{border-left:4px solid #ef4444}.borrow-audit-kpis-v61529f15i article.close{border-left:4px solid #f59e0b}
+.borrow-audit-filter-v61529f15i{display:grid;grid-template-columns:180px 180px 190px minmax(260px,1fr) auto;gap:10px;align-items:end;padding:12px;border:1px solid #e1eaf2;border-radius:16px;background:#f8fbfe}
+.borrow-audit-filter-actions-v61529f15i{display:flex;gap:8px;align-items:center;white-space:nowrap}.borrow-audit-filter-actions-v61529f15i .btn{min-height:42px}
+.borrow-audit-scope-v61529f15i{padding:9px 12px;border-radius:12px;background:#eef6ff;border:1px solid #cfe4fb;color:#285b85;font-size:12px;font-weight:800}
+.borrow-audit-table-wrap-v61529f15i{max-height:52vh;border:1px solid #e1e8ef;border-radius:15px;background:#fff}
+.borrow-audit-table-v61529f15i{min-width:1180px}.borrow-audit-table-v61529f15i th{position:sticky;top:0;z-index:1;background:#f4f8fb;color:#526c80;font-size:11px}.borrow-audit-table-v61529f15i td{vertical-align:top;font-size:12px}.borrow-audit-table-v61529f15i td strong{display:block;color:#1e3446}.borrow-audit-table-v61529f15i td small{display:block;margin-top:3px;color:#7a8e9f}
+.borrow-audit-action-v61529f15i{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;border:1px solid #d8e4ee;background:#f5f8fb;color:#536a7c;font-size:11px;font-weight:900;white-space:nowrap}.borrow-audit-action-v61529f15i.create{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}.borrow-audit-action-v61529f15i.approve{background:#ecfdf5;border-color:#a7f3d0;color:#047857}.borrow-audit-action-v61529f15i.reject{background:#fff1f2;border-color:#fecdd3;color:#be123c}.borrow-audit-action-v61529f15i.cancel,.borrow-audit-action-v61529f15i.end{background:#fff7ed;border-color:#fed7aa;color:#c2410c}
+.borrow-audit-note-v61529f15i{max-width:300px;white-space:normal;line-height:1.45}.borrow-audit-footer-note-v61529f15i{text-align:right;color:#71869a;font-size:11px;font-weight:700}
+html[data-theme="dark"] .borrow-audit-kpis-v61529f15i article,body.dark .borrow-audit-kpis-v61529f15i article,html[data-theme="dark"] .borrow-audit-table-wrap-v61529f15i,body.dark .borrow-audit-table-wrap-v61529f15i{background:#10243d;border-color:#29415d}
+html[data-theme="dark"] .borrow-audit-kpis-v61529f15i article strong,body.dark .borrow-audit-kpis-v61529f15i article strong,html[data-theme="dark"] .borrow-audit-table-v61529f15i td strong,body.dark .borrow-audit-table-v61529f15i td strong{color:#e7eef8}
+html[data-theme="dark"] .borrow-audit-kpis-v61529f15i article span,body.dark .borrow-audit-kpis-v61529f15i article span,html[data-theme="dark"] .borrow-audit-table-v61529f15i td small,body.dark .borrow-audit-table-v61529f15i td small{color:#9fb0c5}
+html[data-theme="dark"] .borrow-audit-filter-v61529f15i,body.dark .borrow-audit-filter-v61529f15i{background:#0e1b2d;border-color:#29415d}
+html[data-theme="dark"] .borrow-audit-scope-v61529f15i,body.dark .borrow-audit-scope-v61529f15i{background:#15304a;border-color:#31506d;color:#b9daf4}
+html[data-theme="dark"] .borrow-audit-table-v61529f15i th,body.dark .borrow-audit-table-v61529f15i th{background:#142940;color:#a9bac9}
+@media(max-width:1100px){.borrow-audit-kpis-v61529f15i{grid-template-columns:repeat(3,minmax(0,1fr))}.borrow-audit-filter-v61529f15i{grid-template-columns:repeat(2,minmax(0,1fr))}.borrow-audit-search-v61529f15i{grid-column:1/-1}.borrow-audit-filter-actions-v61529f15i{grid-column:1/-1;justify-content:flex-end}}
+@media(max-width:680px){.borrow-audit-modal-v61529f15i{width:100vw;max-width:none;max-height:96vh}.borrow-audit-kpis-v61529f15i{grid-template-columns:repeat(2,minmax(0,1fr))}.borrow-audit-filter-v61529f15i{grid-template-columns:1fr}.borrow-audit-search-v61529f15i,.borrow-audit-filter-actions-v61529f15i{grid-column:auto}.borrow-audit-filter-actions-v61529f15i{justify-content:stretch}.borrow-audit-filter-actions-v61529f15i .btn{flex:1}}
+
+
+/* ========================================================================== */
+/* V6.15.29 FIX15L — Borrow UX Modernization                                 */
+/* A) Modern Notification Drawer                                              */
+/* B) Borrow effective-window / out-of-scope schedule states                  */
+/* ========================================================================== */
+.notification-drawer-v61529f15l{
+  width:min(430px,96vw);
+  background:#f8fafc;
+  border-left:1px solid #e2e8f0;
+  box-shadow:-24px 0 70px rgba(15,23,42,.16);
+}
+.drawer-head-v61529f15l{padding:18px 18px 14px;background:rgba(255,255,255,.96);backdrop-filter:blur(14px)}
+.drawer-title-v61529f15l{display:flex;align-items:flex-start;gap:11px;min-width:0}
+.drawer-title-icon-v61529f15l{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:11px;background:#eaf3ff;color:#1d4ed8;font-size:13px;font-weight:900;box-shadow:inset 0 0 0 1px #d8e8ff}
+.drawer-title-v61529f15l small{display:block;font-size:10.5px;letter-spacing:.12em;color:#64748b;font-weight:800}
+.drawer-title-v61529f15l h3{font-size:18px;line-height:1.25;color:#0f172a}
+.drawer-title-v61529f15l p{margin:3px 0 0;font-size:10.5px;line-height:1.45;color:#64748b}
+.drawer-close-v61529f15l{border-radius:11px!important}
+.drawer-tabs-v61529f15l{gap:7px;padding:11px 14px;background:#fff;overflow-x:auto;scrollbar-width:none}
+.drawer-tabs-v61529f15l::-webkit-scrollbar{display:none}
+.drawer-tabs-v61529f15l .drawer-tab{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;min-height:34px;padding:7px 10px;border:1px solid #e2e8f0;background:#fff;color:#64748b;font-size:10.5px;font-weight:800;transition:.15s ease}
+.drawer-tabs-v61529f15l .drawer-tab:hover{border-color:#bfd6f2;background:#f7fbff;color:#1e5ea8}
+.drawer-tabs-v61529f15l .drawer-tab.active{border-color:#b8d5ff;background:#eaf3ff;color:#1554a0;box-shadow:0 0 0 2px rgba(59,130,246,.05)}
+.drawer-tabs-v61529f15l .drawer-tab b{display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#f1f5f9;color:#64748b;font-size:10.5px;line-height:1}
+.drawer-tabs-v61529f15l .drawer-tab.active b{background:#fff;color:#1554a0}
+.notification-drawer-v61529f15l .drawer-body{padding:12px 13px 16px;background:#f8fafc}
+.notice-group-v61529f15l+.notice-group-v61529f15l{margin-top:15px}
+.notice-group-head-v61529f15l{display:flex;align-items:center;justify-content:space-between;padding:0 3px 7px;color:#475569}
+.notice-group-head-v61529f15l strong{font-size:10.5px;font-weight:900;color:#334155}
+.notice-group-head-v61529f15l span{font-size:10.5px;color:#94a3b8;font-weight:700}
+.notice-group-list-v61529f15l{display:grid;gap:8px}
+.notification-drawer-v61529f15l .notice-card-v61529f15l{position:relative;width:100%;display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;padding:12px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;text-align:left;box-shadow:0 3px 12px rgba(15,23,42,.035);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease;cursor:pointer}
+.notification-drawer-v61529f15l .notice-card-v61529f15l:hover{transform:translateY(-1px);border-color:#bfd6f2;box-shadow:0 8px 22px rgba(15,23,42,.07)}
+.notification-drawer-v61529f15l .notice-card-v61529f15l.is-unread-v61481{background:linear-gradient(90deg,#f7fbff 0,#fff 32%);border-color:#cfe2fb}
+.notice-icon-v61529f15l{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#eef2f7;color:#475569;font-size:14px;font-weight:900;border:1px solid rgba(148,163,184,.18)}
+.notice-icon-v61529f15l.tone-success{background:#ecfdf5;color:#047857}.notice-icon-v61529f15l.tone-warning{background:#fff7ed;color:#c2410c}.notice-icon-v61529f15l.tone-danger{background:#fff1f2;color:#be123c}.notice-icon-v61529f15l.tone-info,.notice-icon-v61529f15l.tone-schedule{background:#eff6ff;color:#1d4ed8}.notice-icon-v61529f15l.tone-borrow{background:#eef2ff;color:#4f46e5}.notice-icon-v61529f15l.tone-request{background:#f5f3ff;color:#7c3aed}
+.notice-main-v61529f15l{display:block;min-width:0}
+.notice-topline-v61529f15l{display:flex;align-items:center;gap:6px;min-height:19px;margin-bottom:4px}
+.notice-chip-v61529f15l{display:inline-flex;align-items:center;min-height:19px;padding:2px 7px;border-radius:999px;background:#f1f5f9;color:#64748b;font-size:10.5px;font-weight:900;line-height:1}
+.notice-chip-v61529f15l.tone-success{background:#ecfdf5;color:#047857}.notice-chip-v61529f15l.tone-warning{background:#fff7ed;color:#b45309}.notice-chip-v61529f15l.tone-danger{background:#fff1f2;color:#be123c}.notice-chip-v61529f15l.tone-info,.notice-chip-v61529f15l.tone-schedule{background:#eff6ff;color:#1d4ed8}.notice-chip-v61529f15l.tone-borrow{background:#eef2ff;color:#4f46e5}.notice-chip-v61529f15l.tone-request{background:#f5f3ff;color:#7c3aed}
+.notice-unread-dot-v61529f15l{width:6px;height:6px;border-radius:50%;background:#2563eb;box-shadow:0 0 0 3px #dbeafe}
+.notification-drawer-v61529f15l .notice-card-v61529f15l strong{font-size:12px;line-height:1.42;color:#0f172a;font-weight:850}
+.notification-drawer-v61529f15l .notice-card-v61529f15l p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:4px 0 7px;color:#64748b;font-size:10.5px;line-height:1.5}
+.notice-bottom-v61529f15l{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:3px}
+.notification-drawer-v61529f15l .notice-card-v61529f15l time{font-size:10.5px;color:#94a3b8;font-weight:650}
+.notice-action-v61529f15l{display:inline-flex;align-items:center;gap:4px;color:#2563eb;font-size:10.5px;font-weight:850;white-space:nowrap}
+.notice-action-v61529f15l b{font-size:11px}
+.notification-empty-v61529f15l{min-height:220px;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;color:#64748b}
+.notification-empty-v61529f15l>span{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:#eef6ff;color:#2563eb;font-weight:900;font-size:16px}
+.notification-empty-v61529f15l strong{font-size:12px;color:#334155}.notification-empty-v61529f15l small{max-width:260px;font-size:10.5px;line-height:1.5;color:#94a3b8}
+.drawer-foot-v61529f15l{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #e2e8f0;background:#fff}
+.drawer-foot-v61529f15l span{font-size:10.5px;color:#94a3b8}.drawer-foot-v61529f15l button{border:0;background:transparent;color:#2563eb;font:inherit;font-size:10.5px;font-weight:850;cursor:pointer}
+
+/* Full-month personal table: modern authority-gap cells */
+.out-of-scope-day{background:#f8fafc!important;cursor:not-allowed!important;box-shadow:inset 0 0 0 1px rgba(203,213,225,.25)}
+.out-of-scope-day.borrow-out-of-scope-day-v61529f15l{background:linear-gradient(180deg,#f8fbff,#f3f7fc)!important}
+.out-of-scope-cell-v61529f15l{display:grid!important;place-items:center!important;width:100%!important;min-width:0!important;height:100%!important;min-height:38px!important;padding:0!important;color:#94a3b8!important}
+.out-of-scope-cell-v61529f15l svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.72}
+.borrow-out-of-scope-day-v61529f15l .out-of-scope-cell-v61529f15l{color:#7f9fc3!important}
+.schedule-borrow-window-badge-v61529f15l{display:inline-flex;align-items:center;gap:4px;min-height:21px;padding:3px 6px;border:1px solid #cfe2fb;border-radius:999px;background:#f0f7ff;color:#245e9b;font-size:10.5px;font-weight:800;line-height:1;white-space:nowrap}
+.schedule-borrow-window-badge-v61529f15l>span{font-size:10.5px}.schedule-borrow-window-badge-v61529f15l strong{font-size:10.5px!important;color:inherit!important;font-weight:850!important}
+
+/* Monthly Personal: one contextual banner, compact lock cards */
+.employee-month-borrow-scope-banner-v61529f15l{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:11px;margin:10px 0 12px;padding:11px 13px;border:1px solid #cfe2fb;border-radius:14px;background:linear-gradient(90deg,#f0f7ff,#f8fbff);color:#245e9b}
+.employee-month-borrow-banner-icon-v61529f15l{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:#fff;color:#2563eb;border:1px solid #dbeafe;font-size:14px;font-weight:900}
+.employee-month-borrow-scope-banner-v61529f15l>div{min-width:0}.employee-month-borrow-scope-banner-v61529f15l strong,.employee-month-borrow-scope-banner-v61529f15l span{display:block}.employee-month-borrow-scope-banner-v61529f15l strong{font-size:11px;color:#174a7e}.employee-month-borrow-scope-banner-v61529f15l>div>span{margin-top:2px;font-size:10.5px;color:#54779d}.employee-month-borrow-scope-banner-v61529f15l>small{max-width:280px;font-size:10.5px;line-height:1.45;color:#6985a3;text-align:right}
+.employee-month-scope-lock-v61529f15l{min-height:72px!important;gap:7px!important;border-style:solid!important;background:rgba(248,250,252,.78)!important}
+.employee-month-scope-lock-v61529f15l .employee-month-scope-lock-icon-v61529f15c{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:#f1f5f9;filter:none;opacity:1}
+.employee-month-scope-lock-v61529f15l .employee-month-scope-lock-icon-v61529f15c svg{width:14px;height:14px;fill:none;stroke:#94a3b8;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.employee-month-scope-lock-v61529f15l strong{font-size:10.5px!important;color:#64748b!important}
+
+@media(max-width:760px){
+  .notification-drawer-v61529f15l{width:100vw}
+  .employee-month-borrow-scope-banner-v61529f15l{grid-template-columns:34px minmax(0,1fr)}
+  .employee-month-borrow-scope-banner-v61529f15l>small{grid-column:2;text-align:left;max-width:none}
+}
+
+body.theme-dark .notification-drawer-v61529f15l,html[data-theme="dark"] .notification-drawer-v61529f15l{background:#0f1c2d;border-color:#24364d}
+body.theme-dark .drawer-head-v61529f15l,body.theme-dark .drawer-tabs-v61529f15l,body.theme-dark .drawer-foot-v61529f15l,html[data-theme="dark"] .drawer-head-v61529f15l,html[data-theme="dark"] .drawer-tabs-v61529f15l,html[data-theme="dark"] .drawer-foot-v61529f15l{background:#122238;border-color:#29405b}
+body.theme-dark .drawer-title-v61529f15l h3,html[data-theme="dark"] .drawer-title-v61529f15l h3{color:#e7eef8}
+body.theme-dark .notification-drawer-v61529f15l .drawer-body,html[data-theme="dark"] .notification-drawer-v61529f15l .drawer-body{background:#0f1c2d}
+body.theme-dark .drawer-tabs-v61529f15l .drawer-tab,html[data-theme="dark"] .drawer-tabs-v61529f15l .drawer-tab{background:#172a42;border-color:#2a405a;color:#aebed1}
+body.theme-dark .drawer-tabs-v61529f15l .drawer-tab.active,html[data-theme="dark"] .drawer-tabs-v61529f15l .drawer-tab.active{background:#18395f;border-color:#315f92;color:#cde4ff}
+body.theme-dark .notification-drawer-v61529f15l .notice-card-v61529f15l,html[data-theme="dark"] .notification-drawer-v61529f15l .notice-card-v61529f15l{background:#14263d;border-color:#29415d;box-shadow:none}
+body.theme-dark .notification-drawer-v61529f15l .notice-card-v61529f15l.is-unread-v61481,html[data-theme="dark"] .notification-drawer-v61529f15l .notice-card-v61529f15l.is-unread-v61481{background:linear-gradient(90deg,#17395f,#14263d 38%);border-color:#315f92}
+body.theme-dark .notification-drawer-v61529f15l .notice-card-v61529f15l strong,html[data-theme="dark"] .notification-drawer-v61529f15l .notice-card-v61529f15l strong{color:#e7eef8}
+body.theme-dark .notification-drawer-v61529f15l .notice-card-v61529f15l p,html[data-theme="dark"] .notification-drawer-v61529f15l .notice-card-v61529f15l p{color:#9fb0c5}
+body.theme-dark .out-of-scope-day,html[data-theme="dark"] .out-of-scope-day{background:#101b2a!important;box-shadow:inset 0 0 0 1px rgba(71,85,105,.18)}
+body.theme-dark .out-of-scope-day.borrow-out-of-scope-day-v61529f15l,html[data-theme="dark"] .out-of-scope-day.borrow-out-of-scope-day-v61529f15l{background:linear-gradient(180deg,#11233a,#0f1d30)!important}
+body.theme-dark .out-of-scope-cell-v61529f15l,html[data-theme="dark"] .out-of-scope-cell-v61529f15l{color:#60748c!important}
+body.theme-dark .schedule-borrow-window-badge-v61529f15l,html[data-theme="dark"] .schedule-borrow-window-badge-v61529f15l{background:#153453;border-color:#2b5c8c;color:#b9dbff}
+body.theme-dark .employee-month-borrow-scope-banner-v61529f15l,html[data-theme="dark"] .employee-month-borrow-scope-banner-v61529f15l{background:linear-gradient(90deg,#153453,#12263f);border-color:#2b5c8c;color:#b9dbff}
+body.theme-dark .employee-month-borrow-scope-banner-v61529f15l strong,html[data-theme="dark"] .employee-month-borrow-scope-banner-v61529f15l strong{color:#d7eaff}
+body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>small,html[data-theme="dark"] .employee-month-borrow-scope-banner-v61529f15l>div>span,html[data-theme="dark"] .employee-month-borrow-scope-banner-v61529f15l>small{color:#9db8d5}
+
+`;document.head.appendChild(st);
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureTeamWorkspaceV616an,{once:true});else ensureTeamWorkspaceV616an();
+  window.TimeClockTeamWorkspaceRecoveryV616AN={ensure:ensureTeamWorkspaceV616an,version:'6.15.29-FIX16AN'};
+})();
+
+/* ============================================================================
+   V6.15.29 FIX3 — Compact Team Workspace + Stable Scoped Enforcement Reader
+   ============================================================================ */
+(()=>{
+  'use strict';
+  const VERSION='6.15.29 FIX16CG BORROW MONTH-START BACKDATE';
+  const $=id=>document.getElementById(id);
+  const app=()=>window.TimeClockApp;
+  const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const role=()=>String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'VIEWER').toUpperCase();
+  const baseTeamRole=()=>['MANAGER','HR_ADMIN'].includes(role());
+  const actingTeamAccess=()=>window.TimeClockTemporaryAssignmentV61529F14B?.hasOperationalAuthority?.()===true;
+  const allowedRole=()=>baseTeamRole()||actingTeamAccess();
+  const isHr=()=>role()==='HR_ADMIN';
+  const toast=(m,t='info')=>app()?.toast?.(m,t);
+  const state={
+    orgs:[],teams:[],summary:null,audit:[],activeTab:'OVERVIEW',activeTeam:null,members:[],workingMembers:[],selected:new Set(),initialMembership:new Set(),membershipLeftPicked:new Set(),membershipRightPicked:new Set(),membershipPreview:null,
+    enforcement:null,enforcementRows:[],enforcementSelected:new Set(),enforcementScope:'TEAM',enforcementModalState:null,runtime:null,runtimeCheckedAt:0,runtimePromise:null,
+    opPool:[],opTeams:[],opSelected:new Set(),opLeftPicked:new Set(),opRightPicked:new Set(),opPreview:null,opLoading:false,opMode:'ASSIGN',opPendingSearch:'',
+    changeRows:[],enforcementAudit:[],changeChannel:null,changeTimer:null,
+    closureTeam:null,closurePreview:null,closureTempImpact:null,closureMoves:new Map(),closurePicked:new Set(),closureLoading:false,closureReturnFocus:null,
+    loading:false,reloadRequested:false,lastError:null,
+    employeeTimeline:null,effectiveCorrection:null,effectiveCorrectionPreview:null
+  };
+  const RUNTIME_TTL=5*60*1000;
+  let membershipPreviewTimer=null,operationalPreviewTimer=null;
+  const changeNotifyBatches=new Map();
+
+  const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+  const fmtDate=v=>{const m=String(v||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v||'-');};
+  const fmtDateTime=v=>{if(!v)return '-';try{return app()?.formatDateTime?.(v)||new Date(v).toLocaleString('th-TH');}catch{return String(v);}};
+  function isAuthFailure(error){
+    const status=Number(error?.status||error?.statusCode||0);
+    const raw=String(error?.message||error?.details||error?.hint||error||'');
+    return status===401
+      || /unauthorized|invalid jwt|jwt expired|token.*expired|refresh[_ ]?token/i.test(raw)
+      || String(error?.code||'').toUpperCase()==='PGRST301';
+  }
+  function stopChangeRealtime(){
+    clearInterval(state.changeTimer);
+    state.changeTimer=null;
+    const c=app()?.state?.client;
+    if(state.changeChannel){
+      try{c?.removeChannel?.(state.changeChannel);}catch(_){}
+      state.changeChannel=null;
+    }
+  }
+  async function ensureFreshSession(forceRefresh=false){
+    const a=app(),c=a?.state?.client;
+    if(!c?.auth)throw new Error('SUPABASE_CLIENT_NOT_READY');
+
+    let session=a?.state?.session||null;
+    if(!session?.access_token){
+      const {data,error}=await c.auth.getSession();
+      if(error)throw error;
+      session=data?.session||null;
+    }
+
+    if(!session?.access_token){
+      stopChangeRealtime();
+      throw Object.assign(new Error('AUTH_SESSION_REQUIRED'),{status:401});
+    }
+
+    const expiresAt=Number(session.expires_at||0)*1000;
+    const nearExpiry=expiresAt>0 && expiresAt-Date.now()<90_000;
+    if(forceRefresh||nearExpiry){
+      const {data,error}=await c.auth.refreshSession();
+      if(error||!data?.session?.access_token){
+        stopChangeRealtime();
+        try{await c.auth.signOut({scope:'local'});}catch(_){}
+        throw error||Object.assign(new Error('AUTH_SESSION_EXPIRED'),{status:401});
+      }
+      session=data.session;
+      if(a?.state){
+        a.state.session=session;
+        a.state.user=session.user||null;
+      }
+    }
+
+    if(session?.access_token&&c?.realtime?.setAuth){
+      try{
+        const result=c.realtime.setAuth(session.access_token);
+        if(result?.catch)result.catch(()=>{});
+      }catch(_){}
+    }
+    return session;
+  }
+  async function rpc(name,args={},retryAuth=true){
+    const c=app()?.state?.client;
+    if(!c)throw new Error('ยังไม่ได้เชื่อมต่อ Supabase');
+    await ensureFreshSession(false);
+    const {data,error}=await c.rpc(name,args);
+    if(error&&retryAuth&&isAuthFailure(error)){
+      await ensureFreshSession(true);
+      return rpc(name,args,false);
+    }
+    if(error)throw error;
+    return data;
+  }
+  function catLabel(c){const t=String(c||'UNCLASSIFIED').toUpperCase();return t==='CAR'?'รถยนต์':t==='MOTORCYCLE'?'มอเตอร์ไซค์':t==='SUPPORT'?'สนับสนุน':'รอกำหนดรูปแบบ';}
+  function catIcon(c){const t=String(c||'').toUpperCase();return t==='CAR'?'🚗':t==='MOTORCYCLE'?'🏍️':t==='SUPPORT'?'🧰':'⚠';}
+  function catChip(c){const t=String(c||'').toUpperCase();const cls=t==='CAR'?'badge-blue':t==='MOTORCYCLE'?'badge-orange':t==='SUPPORT'?'badge-purple':'badge-amber';return `<span class="badge ${cls}">${catIcon(t)} ${esc(catLabel(t))}</span>`;}
+  function policy(c){const t=String(c||'').toUpperCase();if(t==='CAR')return{min:3,max:5,required:true,label:'3–5 คน'};if(t==='MOTORCYCLE')return{min:1,max:null,required:true,label:'ขั้นต่ำ 1 คน'};if(t==='SUPPORT')return{min:1,max:null,required:true,label:'ขั้นต่ำ 1 คน'};return{min:0,max:null,required:true,label:'ต้องกำหนดรูปแบบก่อน'};}
+  function teamLifecycle(t){const s=String(t?.team_status||'').toUpperCase();if(['ACTIVE','DRAFT','INACTIVE'].includes(s))return s;if(t?.is_active===false)return'INACTIVE';const p=policy(t?.team_category),n=Number(t?.active_member_count||0);return n>=p.min&&(p.max==null||n<=p.max)?'ACTIVE':'DRAFT';}
+  function statusBadge(t){const s=teamLifecycle(t);return s==='ACTIVE'?'<span class="badge badge-green">ใช้งาน</span>':s==='DRAFT'?'<span class="badge badge-amber">รอสมาชิก</span>':'<span class="badge badge-gray">ปิดใช้งาน</span>';}
+  function selectedOrgId(){return $('teamMasterOrgFilterV61523')?.value||'';}
+  function teamWorkspaceReferenceDateV616AX(){return $('teamMasterReferenceDateV616AX')?.value||today();}
+  function orgById(id){return state.orgs.find(o=>String(o.org_id)===String(id))||null;}
+  function human(error){
+    const raw=String(app()?.humanError?.(error)||error?.message||error||'เกิดข้อผิดพลาด');
+    if(raw.includes('TEAM_MANAGER_ROLE_REQUIRED'))return 'เมนูทีมช่างเทคนิคสำหรับ Manager และ HR Admin เท่านั้น';
+    if(raw.includes('TEAM_ORG_PERMISSION_DENIED'))return 'ไม่มีสิทธิ์จัดการทีมในหน่วยงานนี้';
+    if(raw.includes('TEAM_HAS_TEMPORARY_ASSIGNMENTS'))return 'ยังปิดทีมไม่ได้ เพราะมีรายการไปช่วยทีม / ยืมตัวที่กำลังใช้งาน รอเริ่ม หรือรออนุมัติ';
+    if(raw.includes('TEAM_CATEGORY_REQUIRED'))return 'กรุณาเลือกรูปแบบทีม รถยนต์ / มอเตอร์ไซค์ / สนับสนุน';
+    if(raw.includes('TEAM_MEMBERS_MAX')||raw.includes('TEAM_FINAL_MEMBERS_MAX')||raw.includes('TARGET_TEAM_ABOVE_MAX')){
+      const team=(raw.match(/TEAM=([^:]+)/)||[])[1],count=(raw.match(/COUNT=(\d+)/)||[])[1],max=(raw.match(/MAX=(\d+)/)||[])[1];
+      return team?`ทีม ${team} จะมี ${count||'-'} คน เกินจำนวนสูงสุด ${max||5} คน`:'ทีมรถยนต์มีสมาชิกได้ไม่เกิน 5 คน';
+    }
+    if(raw.includes('SOURCE_TEAM_BELOW_MIN')){
+      const team=(raw.match(/TEAM=([^:]+)/)||[])[1],remain=(raw.match(/REMAINING=(\d+)/)||[])[1],min=(raw.match(/MIN=(\d+)/)||[])[1];
+      return team?`ทีมต้นทาง ${team} จะเหลือ ${remain||'-'} คน ซึ่งต่ำกว่าขั้นต่ำ ${min||'-'} คน`:'ทีมต้นทางจะเหลือสมาชิกต่ำกว่าขั้นต่ำ กรุณาปรับแผนการย้าย';
+    }
+    if(raw.includes('TEAM_MEMBERS_MIN')||raw.includes('TEAM_FINAL_MEMBERS_MIN')||raw.includes('TARGET_TEAM_BELOW_MIN'))return 'จำนวนสมาชิกยังต่ำกว่าขั้นต่ำของทีม';
+    if(raw.includes('TEAM_MEMBER_OPERATIONAL_TYPE_MISMATCH')||raw.includes('TEAM_MEMBER_CATEGORY_MISMATCH'))return 'รูปแบบการปฏิบัติงานของพนักงานไม่ตรงกับประเภททีม';
+    if(raw.includes('OPERATIONAL_TYPE_REQUIRED'))return 'กรุณากำหนดรูปแบบการปฏิบัติงานเป็น รถยนต์ / มอเตอร์ไซค์ / สนับสนุน';
+    if(raw.includes('OPERATIONAL_TEAM_REQUIRED'))return 'รถยนต์และทีมสนับสนุนต้องเลือก Effective Team พร้อมกัน';
+    if(raw.includes('OPERATIONAL_CHANGE_REASON_REQUIRED'))return 'กรุณาระบุเหตุผลการเปลี่ยนรูปแบบการปฏิบัติงาน เพื่อแจ้ง HR Admin';
+    if(raw.includes('EMPLOYEE_START_DATE_REQUIRED'))return 'ไม่พบวันเริ่มงานพนักงาน กรุณาตรวจ Employee Master ก่อนกำหนดหรือเปลี่ยนรูปแบบ';
+    if(raw.includes('OPERATIONAL_ASSIGN_EFFECTIVE_MUST_CURRENT_MONTH_START'))return 'ฐานวันที่กำหนดรูปแบบครั้งแรกเป็นต้นเดือนปัจจุบัน และระบบจะเลื่อนไปวันเริ่มงานของพนักงานแต่ละคนอัตโนมัติ';
+    if(raw.includes('OPERATIONAL_CHANGE_EFFECTIVE_BEFORE_CURRENT_MONTH'))return 'ไม่สามารถเปลี่ยนรูปแบบย้อนหลังไปก่อนเดือนปัจจุบันได้';
+    if(raw.includes('OPERATIONAL_CHANGE_EFFECTIVE_BEFORE_START_DATE'))return 'วันที่มีผลเปลี่ยนรูปแบบต้องไม่ก่อนวันเริ่มงานพนักงาน';
+    if(raw.includes('OPERATIONAL_CHANGE_EFFECTIVE_TOO_EARLY'))return 'วันที่มีผลเปลี่ยนรูปแบบต้องไม่ก่อนวันที่กำหนดรูปแบบครั้งแรกของพนักงาน';
+    if(raw.includes('OPERATIONAL_PROFILE_MIXED_ASSIGN_CHANGE_NOT_ALLOWED'))return 'ไม่สามารถรวมพนักงานกำหนดครั้งแรกและเปลี่ยนรูปแบบไว้ในรายการเดียวกัน';
+    if(raw.includes('OPERATIONAL_PROFILE_PREVIEW_BLOCKED'))return 'ยังไม่สามารถบันทึกได้ กรุณาตรวจ Impact Preview';
+    if(raw.includes('OPERATIONAL_PROFILE_ORG_MISMATCH'))return 'พนักงานที่เลือกไม่ได้อยู่ในหน่วยงานนี้';
+    if(raw.includes('OPERATIONAL_PROFILE_OVERLAP'))return 'พบประวัติรูปแบบการปฏิบัติงานซ้อนกันในช่วงวันที่มีผล';
+    if(raw.includes('TEAM_MEMBER_ORG_MISMATCH'))return 'สมาชิกต้องอยู่ในหน่วยงานเดียวกับ Team Master';
+    if(raw.includes('TEAM_MEMBER_OVERLAP'))return 'พนักงานบางคนมี Team Membership ซ้อนกัน';
+    if(raw.includes('TEAM_MEMBER_NOT_FOUND'))return 'ไม่พบพนักงานที่เลือกใน Employee Master';
+    if(raw.includes('TEAM_NOT_FOUND'))return 'ไม่พบ Team Master ที่เลือก';
+    if(raw.includes('TEAM_CLOSE_MEMBERS_MUST_REASSIGN'))return 'ทีมนี้ยังมีสมาชิก กรุณาใช้ขั้นตอน “เตรียมปิดทีม” เพื่อจัดสมาชิกก่อนปิด';
+    if(raw.includes('TEAM_CLOSE_MEMBER_PLAN_INCOMPLETE'))return 'ยังมีสมาชิกที่ไม่ได้กำหนดปลายทางก่อนปิดทีม';
+    if(raw.includes('TEAM_CLOSE_MEMBER_TARGET_INVALID'))return 'ทีมปลายทางของสมาชิกบางคนไม่ถูกต้องหรือไม่ตรงรูปแบบการปฏิบัติงาน';
+    if(raw.includes('TEAM_CLOSE_TARGET_CAPACITY_INVALID'))return 'ทีมปลายทางบางทีมจะมีสมาชิกต่ำ/เกินเกณฑ์หลังการย้าย';
+    if(raw.includes('TEAM_CLOSE_PREVIEW_BLOCKED'))return 'ยังปิดทีมไม่ได้ กรุณาตรวจ Impact Preview และจัดสมาชิกให้ครบ';
+    if(raw.includes('TEAM_ALREADY_INACTIVE'))return 'ทีมนี้ปิดใช้งานแล้ว';
+    if(raw.includes('HR_ADMIN_REQUIRED'))return 'รายการนี้สำหรับ HR Admin เท่านั้น';
+    if(raw.includes('TEAM_ENFORCEMENT_DISABLE_REASON_REQUIRED'))return 'กรุณาระบุเหตุผลเมื่อต้องการปิด Team Enforcement';
+    if(raw.includes('TEAM_ENFORCEMENT_TEAM_NOT_READY')){const team=(raw.match(/TEAM=([^:]+)/)||[])[1];return team?`ทีม ${team} ยังไม่ผ่าน Readiness จึงยังเปิด Enforcement ไม่ได้`:'ทีมที่เลือกยังไม่ผ่าน Readiness';}
+    if(raw.includes('TEAM_ENFORCEMENT_ORG_NOT_READY'))return 'หน่วยงานนี้ยังมีพนักงานหรือทีมที่ไม่พร้อม กรุณาจัดข้อมูลให้ครบก่อนเปิดระดับหน่วยงาน';
+    if(raw.includes('TEAM_ENFORCEMENT_GLOBAL_NOT_READY'))return 'ยังไม่พร้อมเปิด Enforcement ทั้งระบบ กรุณาจัด Operational Profile และ Team ที่จำเป็นให้ครบก่อน';
+    if(raw.includes('TEAM_ENFORCEMENT_SCOPE_ID_REQUIRED'))return 'กรุณาเลือกทีม หรือหน่วยงานที่ต้องการดำเนินการ';
+    if(raw.includes('TEAM_ENFORCEMENT_SCOPE_TYPE_REQUIRED'))return 'ขอบเขต Team Enforcement ไม่ถูกต้อง';
+    if(raw.includes('OPERATIONAL_CHANGE_ACKNOWLEDGE_ONLY'))return 'รายการเปลี่ยนรูปแบบมีผลแล้วตาม Effective Date • HR Admin ทำได้เฉพาะรับทราบ';
+    if(raw.includes('OPERATIONAL_CHANGE_REVIEW_NOTE_REQUIRED'))return 'Workflow ส่งกลับถูกยกเลิกแล้ว • ใช้การรับทราบเท่านั้น';
+    if(raw.includes('PGRST202')||raw.includes('Could not find the function'))return 'กรุณารัน SQL V6.15.29 และ Hard Refresh Web App';
+    return raw;
+  }
+
+  function syncNav(){ $('teamMasterNavV61523')?.classList.toggle('hidden',!allowedRole()); $('teamChangesTabV61528')?.classList.toggle('hidden',!baseTeamRole()); const n=$('teamBrowserNotificationV61528'); if(n)n.classList.toggle('hidden',!isHr()); }
+  function setRuntimeBanner(kind,title,detail=''){
+    const box=$('teamRuntimeDiagnosticV61526Fix1');if(!box)return;
+    box.className=`team-runtime-diagnostic-v61526f1 ${kind||'info'}`;
+    box.innerHTML=`<div><strong>${esc(title)}</strong><span>${esc(detail)}</span></div><button type="button" class="btn btn-light btn-sm" id="teamRuntimeRetryV61526Fix1">ลองใหม่</button>`;
+    box.classList.remove('hidden');$('teamRuntimeRetryV61526Fix1')?.addEventListener('click',()=>loadRuntimeDiagnostic({force:true,silent:false}));
+  }
+  async function loadRuntimeDiagnostic({force=false,silent=true}={}){
+    if(!force&&state.runtime&&Date.now()-state.runtimeCheckedAt<RUNTIME_TTL)return state.runtime;
+    if(state.runtimePromise)return state.runtimePromise;
+    state.runtimePromise=(async()=>{
+      const c=app()?.state?.client;if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');
+      const {data:s,error}=await c.auth.getSession();if(error)throw error;if(!s?.session?.user?.id)throw new Error('TEAM_RUNTIME_ACTOR_NOT_FOUND');
+      const d=await rpc('ta_get_team_runtime_diagnostic_v61526_fix1',{});state.runtime=d||{};state.runtimeCheckedAt=Date.now();
+      if(state.runtime.actor_found!==true)throw new Error('TEAM_RUNTIME_ACTOR_NOT_FOUND');
+      setRuntimeBanner('success','Team Runtime พร้อมใช้งาน · Auto Readiness',`${state.runtime.actor_role||'-'} • Scope ${Number(state.runtime.allowed_org_count||0).toLocaleString('th-TH')} หน่วยงาน • พนักงาน ${Number(state.runtime.employee_in_allowed_org||0).toLocaleString('th-TH')} คน`);
+      return state.runtime;
+    })();
+    try{return await state.runtimePromise;}catch(e){if(!silent)toast(human(e),'error');else console.warn('Team runtime V6.15.28',e);setRuntimeBanner('warning','ตรวจ Team Runtime ไม่สำเร็จ',human(e));return null;}finally{state.runtimePromise=null;}
+  }
+
+  function renderOrgOptions(){
+    const sel=$('teamMasterOrgFilterV61523'),current=sel?.value||'';
+    const opts=state.orgs.map(o=>`<option value="${esc(o.org_id)}">${esc(o.org_code)} · ${esc(o.org_name)}</option>`).join('');
+    if(sel){sel.innerHTML=`<option value="">ทุกหน่วยงานใน Scope</option>${opts}`;if(state.orgs.some(o=>String(o.org_id)===String(current)))sel.value=current;}
+    for(const id of ['teamMasterCreateOrgV61523','teamOperationalProfileOrgV61527']){
+      const x=$(id);if(!x)continue;const keep=x.value;x.innerHTML=state.orgs.length?opts:'<option value="">ไม่พบหน่วยงานใน Scope</option>';if(state.orgs.some(o=>String(o.org_id)===String(keep)))x.value=keep;
+    }
+  }
+  function renderSummary(){
+    const s=state.summary||{};
+    const put=(id,v)=>{const x=$(id);if(x)x.textContent=Number(v||0).toLocaleString('th-TH');};
+    put('teamKpiUnclassifiedV61528',s.unclassified_total);put('teamKpiCarMissingV61528',s.car_without_team);put('teamKpiSupportMissingV61528',s.support_without_team);put('teamKpiActiveTeamsV61528',s.active_team_count);put('teamKpiMotorcycleOptionalV61528',s.motorcycle_without_team);
+    put('teamMasterKpiAllV61523',Number(s.active_team_count||0)+Number(s.draft_team_count||0)+Number(s.inactive_team_count||0));put('teamMasterKpiActiveV61523',s.active_team_count);put('teamMasterKpiInactiveV61523',s.inactive_team_count);put('teamMasterKpiOrgV61523',state.orgs.length);
+    put('teamReadinessCarV61524',s.car_without_team);put('teamReadinessMotorcycleV61524',s.motorcycle_without_team);put('teamReadinessUnspecifiedV61524',s.unclassified_total);put('teamOperationalUnclassifiedV61527',s.unclassified_total);
+    renderWorkflow();renderEnforcementChecklist();
+  }
+  function renderWorkflow(){
+    const s=state.summary||{},a=String(s.next_action||'CLASSIFY');
+    const readyState=['REVIEW_AND_ENABLE','READY'].includes(a);
+    const map={CLASSIFY:1,ASSIGN_CAR_TEAM:3,ASSIGN_MOTORCYCLE_TEAM:3,ASSIGN_SUPPORT_TEAM:3,REVIEW_AND_ENABLE:4,READY:4};
+    const active=map[a]||1;
+    document.querySelectorAll('[data-team-step-v61528]').forEach(n=>{const i=Number(n.dataset.teamStepV61528);n.classList.toggle('active',i===active);n.classList.toggle('done',i<active);});
+    let title='พร้อมจัดกะอัตโนมัติ',detail='รูปแบบการปฏิบัติงานและทีมพร้อมตามวันที่ • Manager จัดกะได้ทันที',btn='ดูทีม';
+    if(a==='CLASSIFY'){title=`ยังมีพนักงานรอกำหนดรูปแบบ ${Number(s.unclassified_total||0).toLocaleString('th-TH')} คน`;detail='ต้องกำหนด รถยนต์ / มอเตอร์ไซค์ / สนับสนุน ก่อนจัดเข้าทีมและจัดกะ';btn='กำหนดรูปแบบพนักงาน';}
+    else if(a==='ASSIGN_CAR_TEAM'){title=`รถยนต์ยังไม่มีทีม ${Number(s.car_without_team||0).toLocaleString('th-TH')} คน`;detail='รถยนต์ต้องอยู่ Effective Team และทีมละ 3–5 คนก่อนจัดกะ';btn='จัดพนักงานและทีม';}
+    else if(a==='ASSIGN_MOTORCYCLE_TEAM'){title=`มอเตอร์ไซค์ยังไม่มีทีม ${Number(s.motorcycle_without_team||0).toLocaleString('th-TH')} คน`;detail='มอเตอร์ไซค์ต้องมี Effective Team ก่อนจัดกะ · ขั้นต่ำ 1 คน';btn='จัดพนักงานและทีม';}
+    else if(a==='ASSIGN_SUPPORT_TEAM'){title=`กลุ่มสนับสนุนยังไม่มีทีม ${Number(s.support_without_team||0).toLocaleString('th-TH')} คน`;detail='ทีมสนับสนุนต้องมี Effective Team ขั้นต่ำ 1 คนก่อนจัดกะ';btn='จัดพนักงานและทีม';}
+    else if(readyState){title='พร้อมจัดกะอัตโนมัติ';detail='ไม่ต้องรอ HR Admin เปิด Team Enforcement • ระบบตรวจความพร้อมตามวันที่ทุกครั้ง';btn='ดูทีม';}
+    $('teamNextActionTitleV61528')&&($('teamNextActionTitleV61528').textContent=title);$('teamNextActionDetailV61528')&&($('teamNextActionDetailV61528').textContent=detail);$('teamNextActionBtnV61528')&&($('teamNextActionBtnV61528').textContent=btn);
+    const card=$('teamNextActionV61528');if(card){card.dataset.action=a;card.dataset.state=readyState?'ready':'action';}
+    const icon=card?.querySelector('.team-next-action-icon-v61528');if(icon)icon.textContent=readyState?'✓':'→';
+  }
+  function renderEnforcementChecklist(){
+    const s=state.summary||{};
+    const set=(iconId,detailId,ok,detail)=>{const i=$(iconId),d=$(detailId);if(i){i.textContent=ok?'✓':'!';i.className=ok?'ok':'warn';}if(d)d.textContent=detail;};
+    set('teamCheckClassifiedV61528','teamCheckClassifiedDetailV61528',Number(s.unclassified_total||0)===0,Number(s.unclassified_total||0)===0?'ครบแล้ว':`เหลือ ${Number(s.unclassified_total||0).toLocaleString('th-TH')} คน`);
+    set('teamCheckCarV61528','teamCheckCarDetailV61528',Number(s.car_without_team||0)===0,Number(s.car_without_team||0)===0?'ครบแล้ว':`เหลือ ${Number(s.car_without_team||0).toLocaleString('th-TH')} คน`);
+    set('teamCheckMotorcycleV61529F14B','teamCheckMotorcycleDetailV61529F14B',Number(s.motorcycle_without_team||0)===0,Number(s.motorcycle_without_team||0)===0?'ครบแล้ว':`เหลือ ${Number(s.motorcycle_without_team||0).toLocaleString('th-TH')} คน`);
+    set('teamCheckSupportV61528','teamCheckSupportDetailV61528',Number(s.support_without_team||0)===0,Number(s.support_without_team||0)===0?'ครบแล้ว':`เหลือ ${Number(s.support_without_team||0).toLocaleString('th-TH')} คน`);
+  }
+
+  function visibleTeams(){
+    const cat=$('teamMasterCategoryFilterV61524')?.value||'',st=$('teamMasterStatusFilterV61523')?.value||'MANAGE',q=String($('teamMasterSearchV61523')?.value||'').toLowerCase().trim();
+    return state.teams.filter(t=>{const lc=teamLifecycle(t);return(!cat||String(t.team_category)===cat)&&(st==='ALL'||(st==='MANAGE'&&lc!=='INACTIVE')||lc===st)&&(!q||[t.team_code,t.team_name,t.org_code,t.org_name].some(v=>String(v||'').toLowerCase().includes(q)));});
+  }
+  function enforcementForTeam(teamId){return (state.enforcementRows||[]).find(r=>String(r.team_id)===String(teamId))||null;}
+  function renderTeams(){
+    const rows=visibleTeams(),body=$('teamMasterBodyV61523');if(!body)return;
+    body.innerHTML=rows.length?rows.map(t=>{
+      const p=policy(t.team_category),n=Number(t.active_member_count||0),lc=teamLifecycle(t),cap=p.max!=null?`${n} / ${p.max} คน`:`${n} คน`;
+      const sub=lc==='INACTIVE'?'เก็บประวัติ':lc==='ACTIVE'?(p.max!=null&&n>=p.max?'ครบตาม Policy':'พร้อมใช้งาน'):`รออีก ${Math.max(0,p.min-n)} คน`;
+      const readiness=lc==='ACTIVE'
+        ? '<span class="badge badge-green">พร้อมจัดกะ</span><small class="team-master-sub-v61523">Auto Ready</small>'
+        : lc==='DRAFT'
+          ? '<span class="badge badge-amber">ยังไม่พร้อม</span><small class="team-master-sub-v61523">จัดสมาชิกให้ครบก่อน</small>'
+          : '<span class="badge badge-gray">ปิดใช้งาน</span><small class="team-master-sub-v61523">ไม่ใช้สำหรับจัดกะ</small>';
+      return `<tr class="${lc==='INACTIVE'?'team-master-row-inactive-v61523':''}"><td><div class="team-master-team-cell-v61523"><span class="team-master-team-icon-v61523">${catIcon(t.team_category)}</span><div><strong>${esc(t.team_name)}</strong><code>${esc(t.team_code)}</code></div></div></td><td>${catChip(t.team_category)}</td><td><strong>${esc(t.org_code)}</strong><small class="team-master-sub-v61523">${esc(t.org_name)}</small></td><td><strong>${esc(cap)}</strong><small class="team-master-sub-v61523">${esc(p.label)} · ${esc(sub)}</small></td><td>${statusBadge(t)}</td><td>${readiness}</td><td><div class="org-row-actions">${lc!=='INACTIVE'?`<button class="btn btn-soft btn-sm" data-team-membership-v61524="${esc(t.team_id)}">จัดสมาชิก</button><button class="btn btn-danger-soft btn-sm" data-team-master-deactivate-v61523="${esc(t.team_id)}">เตรียมปิด</button>`:'<span class="team-master-locked-v61523">เก็บประวัติ</span>'}</div></td></tr>`;
+    }).join(''):'<tr><td colspan="7" class="fc-empty">ไม่พบทีมตามเงื่อนไข</td></tr>';
+    const org=selectedOrgId()?orgById(selectedOrgId()):null;$('teamMasterMetaV61523')&&($('teamMasterMetaV61523').textContent=`${org?`${org.org_code} · ${org.org_name}`:'ทุกหน่วยงานใน Scope'} • ${rows.length.toLocaleString('th-TH')} ทีม`);
+  }
+
+  function deriveEnforcementState(rows,extra={}){
+    const list=Array.isArray(rows)?rows:[],ws=state.summary||{};
+    const enforced=list.filter(r=>r.enforcement_enabled===true).length;
+    const ready=list.filter(r=>r.ready_to_enable===true).length;
+    const notReady=list.filter(r=>r.ready_to_enable!==true).length;
+    const sourceCount=src=>list.filter(r=>r.enforcement_enabled===true&&String(r.enforcement_source||'').toUpperCase()===src).length;
+    return Object.assign({
+      success:true,work_date:extra?.work_date||today(),can_toggle:isHr(),
+      team_total:list.length,enforced_team_count:enforced,ready_team_count:ready,not_ready_team_count:notReady,
+      team_direct_count:sourceCount('TEAM'),org_inherited_count:sourceCount('ORG'),global_inherited_count:sourceCount('GLOBAL'),
+      global_default_enabled:sourceCount('GLOBAL')>0,rollout_started:enforced>0,
+      car_without_team:Number(ws.car_without_team||0),support_without_team:Number(ws.support_without_team||0),
+      unclassified_total:Number(ws.unclassified_total||0),source_of_truth:'ta_get_team_enforcement_rollout_v61529',version:'V6.15.29 FIX3'
+    },extra||{});
+  }
+  async function loadEnforcement(workDate=today(),orgId=selectedOrgId()||null){
+    const teams=(state.teams||[]).filter(t=>!orgId||String(t.org_unit_id||t.org_id||'')===String(orgId));
+    const active=teams.filter(t=>teamLifecycle(t)==='ACTIVE').length;
+    const draft=teams.filter(t=>teamLifecycle(t)==='DRAFT').length;
+    const inactive=teams.filter(t=>teamLifecycle(t)==='INACTIVE').length;
+    state.enforcementRows=[];
+    state.enforcement={
+      success:true,work_date:workDate,team_total:teams.length,
+      ready_team_count:active,not_ready_team_count:draft,
+      inactive_team_count:inactive,enforced_team_count:active,
+      car_without_team:Number(state.summary?.car_without_team||0),
+      motorcycle_without_team:Number(state.summary?.motorcycle_without_team||0),
+      support_without_team:Number(state.summary?.support_without_team||0),
+      unclassified_total:Number(state.summary?.unclassified_total||0),
+      auto_readiness:true,source_of_truth:'Operational Profile + Effective Team',
+      version:'V6.15.29 FIX16T1'
+    };
+    renderEnforcement();renderTeams();
+    return state.enforcement;
+  }
+  function renderEnforcement(){
+    const x=state.enforcement||{},total=Number(x.team_total||0),ready=Number(x.ready_team_count||0),notReady=Number(x.not_ready_team_count||0);
+    const blockers=Number(x.unclassified_total||0)+Number(x.car_without_team||0)+Number(x.motorcycle_without_team||0)+Number(x.support_without_team||0);
+    const allReady=blockers===0&&notReady===0;
+    const st=$('teamEnforcementStatusV61525');if(st){st.textContent=allReady?'Auto Ready':'ตรวจอัตโนมัติ';st.className='badge '+(allReady?'badge-green':'badge-blue');}
+    const detail=$('teamEnforcementDetailV61525');if(detail)detail.textContent='ระบบตรวจวันเริ่มงาน/วันลาออก + รูปแบบการปฏิบัติงาน + Effective Team ตามวันที่อัตโนมัติ • HR Admin ไม่ต้องเปิด/ปิด Enforcement';
+    const put=(id,v)=>{const n=$(id);if(n)n.textContent=Number(v||0).toLocaleString('th-TH');};
+    put('teamEnforcementEnabledTeamsV61529',ready);
+    put('teamEnforcementReadyTeamsV61529',notReady);
+    put('teamEnforcementNotReadyTeamsV61529',x.unclassified_total);
+    put('teamEnforcementTotalTeamsV61529',total);
+    put('teamEnforcementMissingV61525',x.car_without_team);put('teamEnforcementSupportMissingV61528',x.support_without_team);put('teamEnforcementUnclassifiedV61527',x.unclassified_total);
+    const org=selectedOrgId()?orgById(selectedOrgId()):null;const scope=$('teamEnforcementScopeLabelV61529');if(scope)scope.textContent=org?`${org.org_code} · ${org.org_name}`:'ทุกหน่วยงานใน Scope';
+    const title=$('teamEnforcementReadyV61525');if(title)title.textContent=allReady?'✓ พร้อมจัดกะอัตโนมัติ':'ยังมีรายการต้องจัดข้อมูล';
+    const txt=$('teamEnforcementRolloutTextV61529');if(txt)txt.textContent=allReady?'เมื่อพนักงานผ่าน Employment Window + Operational Profile + Effective Team ระบบอนุญาตจัดกะทันที':'จัดรูปแบบและสมาชิกทีมให้ครบ ระบบจะเปลี่ยนเป็นพร้อมจัดกะอัตโนมัติ';
+    const btn=$('teamEnforcementToggleV61525');if(btn){btn.classList.add('hidden');btn.disabled=true;btn.setAttribute('aria-hidden','true');}
+  }
+  function toggleEnforcement(){const x=$('teamEnforcementStatusV61525');x?.scrollIntoView({behavior:'smooth',block:'center'});}
+  function enforcementModalDate(){return $('teamEnforcementEffectiveV61529')?.value||today();}
+  function enforcementModalOrg(){return $('teamEnforcementOrgV61529')?.value||'';}
+  function enforcementAction(){return String($('teamEnforcementActionV61529')?.value||'ENABLE').toUpperCase();}
+  function enforcementFilter(){return String($('teamEnforcementTeamStatusV61529')?.value||'ALL').toUpperCase();}
+  function enforcementSourceLabel(source){const x=String(source||'').toUpperCase();return x==='TEAM'?'เฉพาะทีม':x==='ORG'?'จากหน่วยงาน':x==='GLOBAL'?'จากทั้งระบบ':'ตามค่าเริ่มต้น';}
+  function setEnforcementScope(mode){state.enforcementScope=String(mode||'TEAM').toUpperCase();document.querySelectorAll('[data-enforcement-scope-v61529]').forEach(b=>b.classList.toggle('active',b.dataset.enforcementScopeV61529===state.enforcementScope));document.querySelectorAll('[data-enforcement-scope-pane-v61529]').forEach(p=>p.classList.toggle('hidden',p.dataset.enforcementScopePaneV61529!==state.enforcementScope));state.enforcementSelected.clear();renderEnforcementModal();}
+  function renderEnforcementScopeSummary(targetId,summary,mode){
+    const box=$(targetId);if(!box)return;const s=summary||{};const blockers=Number(s.car_without_team||0)+Number(s.support_without_team||0)+Number(s.unclassified_total||0);const enabled=mode==='GLOBAL'?s.global_default_enabled===true:s.org_default_enabled===true;const label=mode==='GLOBAL'?'ทั้งระบบ':'หน่วยงานนี้';
+    box.innerHTML=`<article><span>รถยนต์ยังไม่มีทีม</span><strong>${Number(s.car_without_team||0).toLocaleString('th-TH')}</strong></article><article><span>สนับสนุนยังไม่มีทีม</span><strong>${Number(s.support_without_team||0).toLocaleString('th-TH')}</strong></article><article><span>รอกำหนดรูปแบบ</span><strong>${Number(s.unclassified_total||0).toLocaleString('th-TH')}</strong></article><article><span>สถานะปัจจุบัน</span><strong>${enabled?'เปิด':'ปิด'}</strong></article><div class="scope-summary-message-v61529 ${blockers===0?'ok':'warn'}"><strong>${blockers===0?`✓ ${label} พร้อมสำหรับเปิด Enforcement`:`⚠ ${label} ยังไม่พร้อมเปิด`}</strong>${blockers===0?'<br><small>เมื่อเปิด จะครอบคลุมพนักงานทุกคนใน Scope ตามวันที่มีผล</small>':`<br><small>ต้องจัดข้อมูลให้ครบอีก ${blockers.toLocaleString('th-TH')} รายการก่อนเปิดระดับนี้</small>`}</div>`;
+  }
+  function rolloutRowsVisible(){const f=enforcementFilter(),action=enforcementAction();return (state.enforcementRows||[]).filter(r=>{if(f==='READY'&&!r.ready_to_enable)return false;if(f==='ENABLED'&&!r.enforcement_enabled)return false;if(f==='NOT_READY'&&r.ready_to_enable)return false;if(action==='ENABLE'&&f==='ALL'&&r.enforcement_enabled&&r.enforcement_source==='TEAM')return true;return true;});}
+  function renderEnforcementTeamRows(){
+    const box=$('teamEnforcementTeamListV61529');if(!box)return;const rows=rolloutRowsVisible();const action=enforcementAction();
+    box.innerHTML=rows.length?rows.map(r=>{
+      const id=String(r.team_id),selected=state.enforcementSelected.has(id);
+      const canSelect=isHr()&&(action==='ENABLE'?(r.ready_to_enable===true&&!r.enforcement_enabled):r.enforcement_enabled===true);
+      const max=r.max_members==null?'':` / ${r.max_members}`;
+      const readiness=r.ready_to_enable?'<span class="team-enforcement-ready-v61529 ok">✓ พร้อม</span>':`<span class="team-enforcement-ready-v61529 warn">⚠ ${r.readiness_code==='TEAM_NOT_READY'?'สมาชิกยังไม่ครบ':'ข้อมูลยังไม่พร้อม'}</span>`;
+      const src=enforcementSourceLabel(r.enforcement_source);
+      const status=r.enforcement_enabled?`<span class="team-enforcement-ready-v61529 on">เปิด · ${esc(src)}</span>`:'<span class="badge badge-gray">ยังไม่เปิด</span>';
+      const context=r.direct_team_override?'กำหนดที่ทีมนี้':r.enforcement_enabled?src:'ยังไม่มี Enforcement';
+      const disabledReason=action==='ENABLE'&&r.enforcement_enabled?'เปิดใช้งานอยู่แล้ว':action==='ENABLE'&&!r.ready_to_enable?'ยังไม่พร้อมเปิด':'';
+      return `<label class="team-enforcement-team-row-v61529 ${canSelect?'':'disabled'}"><input type="checkbox" data-enforcement-team-check-v61529="${esc(id)}" ${selected?'checked':''} ${canSelect?'':'disabled'}/><div class="team-enforcement-team-name-v61529"><strong>${catIcon(r.team_category)} ${esc(r.team_name)}</strong><code>${esc(r.team_code)} · ${esc(r.org_code)}</code>${disabledReason?`<small class="team-enforcement-disabled-reason-v61529f1">${esc(disabledReason)}</small>`:''}</div><div data-col-v61529="capacity"><strong>${Number(r.member_count||0)}${max} คน</strong><small>${esc(catLabel(r.team_category))}</small></div><div data-col-v61529="readiness">${readiness}<small>${esc(context)}</small></div><div data-col-v61529="effective">${status}<small>${r.enforcement_effective_from?`มีผล ${fmtDate(r.enforcement_effective_from)}`:'-'}</small></div></label>`;
+    }).join(''):'<div class="fc-empty">ไม่พบทีมที่ตรงกับเงื่อนไข</div>';
+    const count=$('teamEnforcementSelectedCountV61529');if(count)count.textContent=state.enforcementSelected.size.toLocaleString('th-TH');
+  }
+  function renderEnforcementModal(){
+    const action=enforcementAction(),mode=state.enforcementScope,s=state.enforcementModalState||state.enforcement||{};renderEnforcementTeamRows();
+    renderEnforcementScopeSummary('teamEnforcementOrgSummaryV61529',s,'ORG');renderEnforcementScopeSummary('teamEnforcementGlobalSummaryV61529',s,'GLOBAL');
+    const noteLabel=$('teamEnforcementNoteLabelV61529'),noteHint=$('teamEnforcementNoteHintV61529'),note=$('teamEnforcementNoteV61529');
+    const noteWrap=note?.closest('.team-enforcement-note-v61529');
+    if(noteLabel)noteLabel.textContent=action==='DISABLE'?'เหตุผลการปิดใช้งาน *':'หมายเหตุ (ไม่บังคับ)';
+    if(noteHint)noteHint.textContent=action==='DISABLE'?'ต้องระบุเหตุผลเพื่อเก็บ Audit':'ใช้ระบุรอบ Pilot หรือรายละเอียดเพิ่มเติมได้';
+    if(note)note.placeholder=action==='DISABLE'?'เช่น ปรับโครงสร้างทีม / แก้ไขข้อมูล':'เช่น Pilot รอบเดือนกันยายน';
+    noteWrap?.classList.toggle('required',action==='DISABLE');
+    const bulk=$('teamEnforcementSelectReadyV61529');if(bulk)bulk.textContent=action==='ENABLE'?'เลือกทีมที่พร้อมทั้งหมด':'เลือกทีมที่เปิดอยู่ทั้งหมด';
+    const summary=$('teamEnforcementActionSummaryV61529F1');
+    const scopeText=mode==='TEAM'?'รายทีม':mode==='ORG'?'ทั้งหน่วยงาน':'ทั้งระบบ';
+    if(summary){summary.className='team-enforcement-action-summary-v61529f1 '+(action==='ENABLE'?'enable':'disable');summary.innerHTML=`<strong>${action==='ENABLE'?'เปิดใช้งาน':'ปิดใช้งาน'} · ${scopeText}</strong><span>มีผล ${fmtDate(enforcementModalDate())}${mode==='TEAM'?` · เลือกแล้ว ${state.enforcementSelected.size} ทีม`:''}</span>`;}
+    let valid=false,msg='';
+    if(!isHr()){msg='ดูสถานะได้เท่านั้น · HR Admin เป็นผู้เปิด/ปิด Enforcement';}
+    else if(mode==='TEAM'){valid=state.enforcementSelected.size>0;msg=valid?`${action==='ENABLE'?'พร้อมเปิดใช้งาน':'พร้อมปิดใช้งาน'} ${state.enforcementSelected.size} ทีม`:`กรุณาเลือกทีมที่ต้องการ${action==='ENABLE'?'เปิด':'ปิด'}`;}
+    else if(mode==='ORG'){const org=enforcementModalOrg();const blockers=Number(s.car_without_team||0)+Number(s.support_without_team||0)+Number(s.unclassified_total||0);valid=!!org&&(action==='DISABLE'||blockers===0);msg=!org?'กรุณาเลือกหน่วยงาน':valid?`${action==='ENABLE'?'พร้อมเปิด':'พร้อมปิด'} Enforcement ทั้งหน่วยงาน`:`ยังเปิดไม่ได้ · มีข้อมูลไม่พร้อม ${blockers} รายการ`;}
+    else{const blockers=Number(s.car_without_team||0)+Number(s.support_without_team||0)+Number(s.unclassified_total||0);valid=action==='DISABLE'||blockers===0;msg=valid?`${action==='ENABLE'?'พร้อมเปิด':'พร้อมปิด'} Enforcement ทั้งระบบ`:`ยังเปิดไม่ได้ · มีข้อมูลไม่พร้อม ${blockers} รายการ`;}
+    if(action==='DISABLE'&&!String(note?.value||'').trim()){valid=false;msg='กรุณาระบุเหตุผลการปิดใช้งาน';}
+    const foot=$('teamEnforcementFooterStatusV61529');if(foot){foot.textContent=msg;foot.className=valid?'ok':(action==='DISABLE'?'warning':'');}
+    const btn=$('teamEnforcementApplyV61529');if(btn){btn.disabled=!valid;let label='ยืนยัน';if(mode==='TEAM')label=`ยืนยัน${action==='ENABLE'?'เปิด':'ปิด'} ${state.enforcementSelected.size||''} ทีม`.replace('  ',' ');else if(mode==='ORG')label=`ยืนยัน${action==='ENABLE'?'เปิด':'ปิด'}ทั้งหน่วยงาน`;else label=`ยืนยัน${action==='ENABLE'?'เปิด':'ปิด'}ทั้งระบบ`;btn.textContent=label;btn.className='btn '+(action==='ENABLE'?'btn-primary':'btn-danger-soft');}
+  }
+  async function loadEnforcementModal(){
+    const date=enforcementModalDate(),org=enforcementModalOrg()||null,queryOrg=state.enforcementScope==='GLOBAL'?null:org;
+    try{
+      const rows=await rpc('ta_get_team_enforcement_rollout_v61529',{p_org_id:queryOrg,p_work_date:date});
+      state.enforcementRows=rows||[];
+      // State summary is supplementary. FIX2 backend returns a safe JSON result
+      // instead of raising 500 when actor/session cannot be resolved.
+      let sum=null;
+      try{sum=await rpc('ta_get_team_enforcement_state_v61529',{p_org_id:queryOrg,p_work_date:date});}catch(e){console.info('Enforcement state summary fallback',e?.message||e);}
+      state.enforcementModalState=deriveEnforcementState(state.enforcementRows,Object.assign({work_date:date},sum||{}));
+      state.enforcementSelected.clear();renderEnforcementModal();
+    }catch(e){toast(human(e),'error');}
+  }
+  async function openEnforcementRollout(){
+    const modal=$('teamEnforcementRolloutModalV61529');if(!modal)return;const orgSel=$('teamEnforcementOrgV61529');if(orgSel){const selected=selectedOrgId()||'';orgSel.innerHTML=`<option value="">ทุกหน่วยงานใน Scope</option>${state.orgs.map(o=>`<option value="${esc(o.org_id)}">${esc(o.org_code)} · ${esc(o.org_name)}</option>`).join('')}`;orgSel.value=selected;}
+    const date=$('teamEnforcementEffectiveV61529');if(date)date.value=today();const action=$('teamEnforcementActionV61529');if(action)action.value='ENABLE';const filter=$('teamEnforcementTeamStatusV61529');if(filter)filter.value='READY';const note=$('teamEnforcementNoteV61529');if(note)note.value='';state.enforcementSelected.clear();state.enforcementScope='TEAM';modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');setEnforcementScope('TEAM');await loadEnforcementModal();
+  }
+  function closeEnforcementRollout(){const m=$('teamEnforcementRolloutModalV61529');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.enforcementSelected.clear();}
+  function selectReadyEnforcementTeams(){const action=enforcementAction();state.enforcementSelected.clear();for(const r of rolloutRowsVisible()){if((action==='ENABLE'&&r.ready_to_enable&&!r.enforcement_enabled)||(action==='DISABLE'&&r.enforcement_enabled))state.enforcementSelected.add(String(r.team_id));}renderEnforcementModal();}
+  async function applyEnforcementScope(){
+    if(!isHr())return toast('รายการนี้สำหรับ HR Admin เท่านั้น','warning');const mode=state.enforcementScope,action=enforcementAction(),enabled=action==='ENABLE',date=enforcementModalDate(),note=String($('teamEnforcementNoteV61529')?.value||'').trim();let ids=null;
+    if(mode==='TEAM')ids=[...state.enforcementSelected];else if(mode==='ORG'){const id=enforcementModalOrg();ids=id?[id]:[];}
+    if(!enabled&&!note)return toast('กรุณาระบุเหตุผลการปิดใช้งาน','warning');
+    const label=mode==='TEAM'?`${ids?.length||0} ทีม`:mode==='ORG'?'ทั้งหน่วยงาน':'ทั้งระบบ';const ok=await window.tcConfirm?.({title:`${enabled?'เปิด':'ปิด'} Team Enforcement`,message:`ขอบเขต: ${label}\nมีผลวันที่: ${fmtDate(date)}${note?`\nหมายเหตุ: ${note}`:''}`,confirmText:enabled?'เปิดใช้งาน':'ปิดใช้งาน',tone:enabled?'primary':'danger'});if(!ok)return;
+    try{app()?.showLoading?.('กำลังบันทึก Team Enforcement...');await rpc('ta_set_team_enforcement_scope_v61529',{p_scope_type:mode,p_scope_ids:mode==='GLOBAL'?null:ids,p_enabled:enabled,p_effective_from:date,p_note:note||null});toast(`${enabled?'เปิด':'ปิด'} Team Enforcement เรียบร้อย`,'success');await loadEnforcementModal();await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+  }
+
+  function setTab(tab){
+    const t=String(tab||'OVERVIEW').toUpperCase();state.activeTab=t;
+    document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>b.classList.toggle('active',b.dataset.teamWorkspaceTabV61528===t));
+    document.querySelectorAll('[data-team-workspace-pane-v61528]').forEach(p=>p.classList.toggle('hidden',p.dataset.teamWorkspacePaneV61528!==t));
+    if(t==='HISTORY')loadAudit();if(t==='CHANGES'&&isHr())loadChangeInbox();
+  }
+  function handleNextAction(){const a=$('teamNextActionV61528')?.dataset.action||'CLASSIFY';if(a==='CLASSIFY')openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'});else if(a==='ASSIGN_CAR_TEAM'){setTab('PEOPLE');$('teamMasterCategoryFilterV61524')&&($('teamMasterCategoryFilterV61524').value='CAR');renderTeams();}else if(a==='ASSIGN_MOTORCYCLE_TEAM'){setTab('PEOPLE');$('teamMasterCategoryFilterV61524')&&($('teamMasterCategoryFilterV61524').value='MOTORCYCLE');renderTeams();}else if(a==='ASSIGN_SUPPORT_TEAM'){setTab('PEOPLE');$('teamMasterCategoryFilterV61524')&&($('teamMasterCategoryFilterV61524').value='SUPPORT');renderTeams();}else if(a==='REVIEW_AND_ENABLE'){setTab('PEOPLE');$('teamMasterStatusFilterV61523')&&($('teamMasterStatusFilterV61523').value='ACTIVE');renderTeams();}else setTab('PEOPLE');}
+
+  async function updateCreatePreview(){
+    const orgId=$('teamMasterCreateOrgV61523')?.value||'',cat=$('teamMasterCreateCategoryV61524')?.value||'CAR';if(!orgId)return;
+    try{const x=await rpc('ta_get_team_category_preview_v61528',{p_org_id:orgId,p_team_category:cat});$('teamMasterPreviewNameV61523')&&($('teamMasterPreviewNameV61523').textContent=x.team_name||'-');$('teamMasterPreviewCodeV61523')&&($('teamMasterPreviewCodeV61523').textContent=x.team_code||'-');$('teamMasterPreviewOrgV61523')&&($('teamMasterPreviewOrgV61523').textContent=`${x.org_code||'-'} · ${x.org_name||'-'} • ${catLabel(cat)} • ${policy(cat).label}`);$('teamMasterCreateConfirmV61523')&&($('teamMasterCreateConfirmV61523').disabled=false);}catch(e){$('teamMasterPreviewOrgV61523')&&($('teamMasterPreviewOrgV61523').textContent=human(e));$('teamMasterCreateConfirmV61523')&&($('teamMasterCreateConfirmV61523').disabled=true);}
+  }
+  function openCreate(){if(!state.orgs.length)return toast('ไม่พบหน่วยงานใน Scope','warning');const s=$('teamMasterCreateOrgV61523');if(s)s.value=selectedOrgId()||String(state.orgs[0]?.org_id||'');$('teamMasterCreateCategoryV61524')&&($('teamMasterCreateCategoryV61524').value='CAR');$('teamMasterCreateNoteV61523')&&($('teamMasterCreateNoteV61523').value='');$('teamMasterCreateModalV61523')?.classList.remove('hidden');updateCreatePreview();}
+  function closeCreate(){$('teamMasterCreateModalV61523')?.classList.add('hidden');}
+  async function createTeam(){const orgId=$('teamMasterCreateOrgV61523')?.value||'',cat=$('teamMasterCreateCategoryV61524')?.value||'';if(!orgId||!cat)return;const ok=await window.tcConfirm?.({title:'ยืนยันสร้างทีม',message:[`รูปแบบ: ${catLabel(cat)}`,`ทีม: ${$('teamMasterPreviewNameV61523')?.textContent||'-'}`,`Team Code: ${$('teamMasterPreviewCodeV61523')?.textContent||'-'}`,`Policy: ${policy(cat).label}`].join('\n'),confirmText:'สร้างทีม',tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังสร้างทีม...');await rpc('ta_create_team_v61524',{p_org_id:orgId,p_team_category:cat,p_note:$('teamMasterCreateNoteV61523')?.value?.trim()||null});closeCreate();setTab('PEOPLE');toast('สร้างทีมเรียบร้อย • พร้อมจัดสมาชิก','success');await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+  function closureMovePayload(){return [...state.closureMoves.entries()].map(([emp,target])=>({emp_code:emp,target_team_id:target}));}
+  function closureMembers(){return Array.isArray(state.closurePreview?.members)?state.closurePreview.members:[];}
+  function closureTargets(){return Array.isArray(state.closurePreview?.target_teams)?state.closurePreview.target_teams:[];}
+  function closureMemberByCode(code){return closureMembers().find(x=>String(x.emp_code)===String(code));}
+  function closureTargetsFor(member){const type=String(member?.operational_type||'').toUpperCase();return closureTargets().filter(t=>String(t.team_category||'').toUpperCase()===type);}
+  function closureTargetOptions(member,current){
+    const type=String(member?.operational_type||'').toUpperCase();let html='<option value="">— เลือกปลายทาง —</option>';
+    for(const t of closureTargetsFor(member)){const id=String(t.team_id),max=t.max_members==null?'':` / ${Number(t.max_members)}`,status=String(t.team_status||'').toUpperCase()==='DRAFT'?' · รอสมาชิก':'';html+=`<option value="${esc(id)}" ${String(current||'')===id?'selected':''}>${esc(t.team_code)} · ${Number(t.member_count||0)}${max} คน${status}</option>`;}
+    return html;
+  }
+  function closureBlockerText(b){const c=String(b?.code||'');if(c==='TEAM_CLOSE_MEMBER_PLAN_INCOMPLETE')return `ยังมีสมาชิก ${Number(b.remaining_count||0)} คนที่ยังไม่ได้กำหนดปลายทาง`;if(c==='TEAM_CLOSE_DUPLICATE_MEMBER_PLAN')return 'พบรายการพนักงานซ้ำในแผนการย้าย';if(c==='TEAM_CLOSE_UNKNOWN_MEMBER_PLAN')return 'พบพนักงานที่ไม่ได้เป็นสมาชิกของทีมนี้ในรายการ';if(c==='TEAM_CLOSE_MEMBER_TARGET_INVALID')return 'ทีมปลายทางของพนักงานบางคนไม่ตรงรูปแบบ/หน่วยงาน หรือยังไม่ได้กำหนด';if(c==='TEAM_CLOSE_TARGET_CAPACITY_INVALID')return 'จำนวนสมาชิกของทีมปลายทางบางทีมไม่ผ่านเกณฑ์หลังการย้าย';return c||'ยังมีเงื่อนไขที่ต้องตรวจสอบ';}
+  function renderClosureBulkTargets(){const s=$('teamClosureBulkTargetV61529F12');if(!s)return;const cat=String(state.closurePreview?.team?.team_category||'').toUpperCase();let html='<option value="">เลือกปลายทางสำหรับรายการที่เลือก</option>';for(const t of closureTargets().filter(x=>String(x.team_category||'').toUpperCase()===cat)){const max=t.max_members==null?'':` / ${Number(t.max_members)}`;html+=`<option value="${esc(t.team_id)}">${esc(t.team_code)} · ${Number(t.member_count||0)}${max} คน</option>`;}s.innerHTML=html;const b=$('teamClosureApplyBulkV61529F12');if(b)b.disabled=state.closurePicked.size===0||!s.value;}
+  function renderTeamClosure(){
+    const p=state.closurePreview||{},team=p.team||state.closureTeam||{},members=closureMembers(),moves=state.closureMoves,assigned=members.filter(m=>moves.has(String(m.emp_code))).length,total=Number(p.member_count??members.length??0),schedule=p.schedule_impact||{},enf=p.enforcement||{};
+    const set=(id,v)=>{const n=$(id);if(n)n.textContent=v;};set('teamClosureTeamNameV61529F12',team.team_name||'-');set('teamClosureTeamCodeV61529F12',team.team_code||'-');set('teamClosureIconV61529F12',catIcon(team.team_category));set('teamClosureMemberCountV61529F12',Number(total).toLocaleString('th-TH'));set('teamClosureScheduleCountV61529F12',Number(schedule.schedule_count||0).toLocaleString('th-TH'));set('teamClosureEffectiveV61529F12',fmtDate(p.effective_date||today()));set('teamClosureProgressV61529F12',`${assigned} / ${total} คน`);
+    const enOn=enf.enforcement_enabled===true;set('teamClosureEnforcementV61529F12',enOn?'เปิดอยู่':'ยังไม่เปิด');set('teamClosureEnforcementHintV61529F12',enOn?`${enforcementSourceLabel(enf.enforcement_source)}${String(enf.enforcement_source||'').toUpperCase()==='TEAM'?' · ปิดอัตโนมัติ':''}`:'ไม่ต้องดำเนินการเพิ่ม');
+    const list=$('teamClosureMemberListV61529F12');if(list){list.innerHTML=members.length?members.map(m=>{const code=String(m.emp_code),picked=state.closurePicked.has(code),has=moves.has(code),cur=has?moves.get(code):undefined,target=has?(cur===null?'ไม่เข้าทีม':closureTargets().find(t=>String(t.team_id)===String(cur))?.team_code||'ทีมปลายทาง'):'ยังไม่กำหนด';return `<article class="team-closure-member-row-v61529f12 ${has?'planned':''}"><label class="team-closure-check-v61529f12"><input type="checkbox" data-team-closure-member-check-v61529f12="${esc(code)}" ${picked?'checked':''}/></label><div class="team-closure-person-v61529f12"><strong>${esc(code)} · ${esc(m.full_name||'-')}</strong><span>${esc(m.position_name||'ช่างเทคนิค')} · ${catIcon(m.operational_type)} ${esc(catLabel(m.operational_type))}</span><small>${m.future_only?'นัดหมายเข้า Team ในอนาคต · ':''}ย้ายมีผล ${fmtDate(m.move_effective_date)}</small></div><div class="team-closure-target-v61529f12"><label>ปลายทาง</label><select class="select" data-team-closure-target-v61529f12="${esc(code)}">${closureTargetOptions(m,cur)}</select><small class="${has?'ok':'warn'}">${has?`→ ${esc(target)}`:'ต้องกำหนดก่อนปิดทีม'}</small></div></article>`;}).join(''):'<div class="team-closure-empty-v61529f12"><span>✓</span><div><strong>ทีมนี้ไม่มีสมาชิกที่ต้องย้าย</strong><small>ระบบจะตรวจตารางกะและรายการไปช่วยทีม / ยืมตัวต่อด้านล่าง</small></div></div>';}
+    renderClosureBulkTargets();
+    const impacts=Array.isArray(p.target_impacts)?p.target_impacts:[],blockers=Array.isArray(p.blockers)?p.blockers:[],tempImpact=state.closureTempImpact||{},tempRows=Array.isArray(tempImpact.assignments)?tempImpact.assignments:[],tempBlocking=Number(tempImpact.blocking_count||0),impact=$('teamClosureImpactV61529F12');if(impact){const cap=impacts.length?`<div class="team-closure-target-impact-grid-v61529f12">${impacts.map(x=>`<div class="${x.blocked?'blocked':'ok'}"><span>${esc(x.team_code||'-')}</span><strong>${Number(x.min_after_count||0)}${x.max_after_count!==x.min_after_count?`–${Number(x.max_after_count||0)}`:''} คน</strong><small>${x.blocked?'ไม่ผ่าน Capacity':'ผ่าน Policy'}</small></div>`).join('')}</div>`:'';const sc=`<div class="team-closure-schedule-impact-v61529f12"><span>📅</span><div><strong>กะเดิม ${Number(schedule.schedule_count||0).toLocaleString('th-TH')} รายการจะถูกเก็บไว้</strong><small>${Number(schedule.employee_count||0).toLocaleString('th-TH')} คน · ระบบเปลี่ยน Team Context เท่านั้น ไม่ลบ Shift</small></div></div>`;const temp=tempBlocking?`<div class="team-closure-temp-impact-v61529f14b"><span>↔</span><div><strong>ยังมีไปช่วยทีม / ยืมตัว ${tempBlocking.toLocaleString('th-TH')} รายการ</strong><small>ต้องยกเลิก / สิ้นสุดรายการที่เกี่ยวข้องก่อนปิดทีม</small>${tempRows.slice(0,4).map(x=>`<em>${esc(x.emp_code||'-')} · ${esc(x.assignment_type==='BORROW_CROSS_ORG'?'ยืมต่างหน่วยงาน':'ไปช่วยทีม')} · ${esc(fmtDate(x.effective_from))}–${esc(fmtDate(x.effective_to))} · ${esc(x.status||'-')}</em>`).join('')}${tempRows.length>4?`<em>และอีก ${tempRows.length-4} รายการ</em>`:''}</div></div>`:'';const bl=blockers.length?`<div class="team-closure-blockers-v61529f12">${blockers.map(b=>`<p>• ${esc(closureBlockerText(b))}</p>`).join('')}</div>`:tempBlocking?'':`<div class="team-closure-ready-v61529f12">✓ สมาชิก ทีมปลายทาง และรายการยืมตัวผ่านเงื่อนไขทั้งหมด</div>`;impact.innerHTML=cap+sc+temp+bl;}
+    const ready=p.allowed===true&&tempBlocking===0,reason=String($('teamClosureReasonV61529F12')?.value||'').trim(),allReady=ready&&!!reason;const badge=$('teamClosureReadinessV61529F12');if(badge){badge.textContent=tempBlocking>0?'ติดรายการยืมตัว':ready?'พร้อมปิดทีม':assigned<total?'รอจัดสมาชิก':'ต้องแก้ไข';badge.className='badge '+(tempBlocking>0?'badge-red':ready?'badge-green':assigned<total?'badge-amber':'badge-red');}const foot=$('teamClosureFooterStatusV61529F12');if(foot){foot.className=allReady?'ok':ready?'warning':'';foot.textContent=tempBlocking>0?`ต้องจัดการไปช่วยทีม / ยืมตัว ${tempBlocking} รายการก่อนปิดทีม`:!ready?(assigned<total?`กรุณากำหนดปลายทางอีก ${Math.max(0,total-assigned)} คน`:'กรุณาแก้ Impact ที่ไม่ผ่าน'):!reason?'กรุณาระบุเหตุผลการปิดทีม':'✓ พร้อมย้ายสมาชิกและปิดทีมเป็นรายการเดียว';}const btn=$('teamClosureConfirmV61529F12');if(btn){btn.disabled=!allReady;btn.textContent=tempBlocking>0?'จัดการรายการยืมตัวก่อน':total?`ยืนยันย้าย ${total} คนและปิดทีม`:'ยืนยันปิดทีม';}
+  }
+  let closurePreviewTimer=null;
+  function scheduleClosurePreview(){clearTimeout(closurePreviewTimer);closurePreviewTimer=setTimeout(()=>refreshClosurePreview(),180);}
+  async function refreshClosurePreview(){if(!state.closureTeam?.team_id)return;try{state.closureLoading=true;const [p,temp]=await Promise.all([rpc('ta_preview_team_closure_v61529f12',{p_team_id:state.closureTeam.team_id,p_member_moves:closureMovePayload()}),rpc('ta_get_team_temporary_assignment_impact_v61529f14',{p_team_id:state.closureTeam.team_id})]);state.closurePreview=p||{};state.closureTempImpact=temp||{};const valid=new Set(closureMembers().map(x=>String(x.emp_code)));state.closureMoves=new Map([...state.closureMoves].filter(([c])=>valid.has(String(c))));state.closurePicked=new Set([...state.closurePicked].filter(c=>valid.has(String(c))));renderTeamClosure();}catch(e){toast(human(e),'error');const impact=$('teamClosureImpactV61529F12');if(impact)impact.innerHTML=`<div class="fc-empty">ตรวจข้อมูลปิดทีมไม่สำเร็จ: ${esc(human(e))}</div>`;}finally{state.closureLoading=false;}}
+  async function openTeamClosure(id){const t=state.teams.find(x=>String(x.team_id)===String(id));if(!t)return;state.closureReturnFocus=document.activeElement;state.closureTeam=t;state.closurePreview=null;state.closureTempImpact=null;state.closureMoves=new Map();state.closurePicked=new Set();const r=$('teamClosureReasonV61529F12');if(r)r.value='';const m=$('teamClosureModalV61529F12');if(!m)return;m.removeAttribute('inert');m.classList.remove('hidden');m.setAttribute('aria-hidden','false');renderTeamClosure();await refreshClosurePreview();setTimeout(()=>$('teamClosureSelectAllV61529F12')?.focus(),40);}
+  function closeTeamClosure(){const m=$('teamClosureModalV61529F12');if(!m)return;const active=document.activeElement;if(active&&m.contains(active))active.blur();m.classList.add('hidden');m.setAttribute('aria-hidden','true');m.setAttribute('inert','');try{state.closureReturnFocus?.focus?.();}catch(_){}state.closureTeam=null;state.closurePreview=null;state.closureTempImpact=null;state.closureMoves=new Map();state.closurePicked=new Set();}
+  function selectAllClosureMembers(){const rows=closureMembers();const all=rows.length>0&&rows.every(x=>state.closurePicked.has(String(x.emp_code)));state.closurePicked=all?new Set():new Set(rows.map(x=>String(x.emp_code)));renderTeamClosure();}
+  function applyClosureBulkTarget(){const sel=$('teamClosureBulkTargetV61529F12'),v=sel?.value||'';if(!v||state.closurePicked.size===0)return;let applied=0,skipped=0;for(const code of state.closurePicked){const m=closureMemberByCode(code);if(!m)continue;if(v==='__NONE__'){skipped++;continue;}const t=closureTargets().find(x=>String(x.team_id)===v);if(t&&String(t.team_category).toUpperCase()===String(m.operational_type).toUpperCase()){state.closureMoves.set(code,v);applied++;}else skipped++;}state.closurePicked.clear();if(sel)sel.value='';if(skipped)toast(`กำหนดปลายทาง ${applied} คน · ข้าม ${skipped} คนที่รูปแบบไม่ตรง`,'warning');scheduleClosurePreview();renderTeamClosure();}
+  async function confirmTeamClosure(){const p=state.closurePreview||{},tempBlocking=Number(state.closureTempImpact?.blocking_count||0),reason=String($('teamClosureReasonV61529F12')?.value||'').trim();if(tempBlocking>0)return toast(`ยังปิดทีมไม่ได้ มีรายการไปช่วยทีม / ยืมตัว ${tempBlocking} รายการที่ต้องจัดการก่อน`,'warning');if(p.allowed!==true)return toast('ยังปิดทีมไม่ได้ กรุณาตรวจ Impact Preview','warning');if(!reason)return toast('กรุณาระบุเหตุผลการปิดทีม','warning');const count=Number(p.member_count||0),sc=Number(p.schedule_impact?.schedule_count||0);const ok=await window.tcConfirm?.({title:`ปิด ${p.team?.team_name||'ทีมนี้'}?`,message:[`สมาชิกที่จัดการ: ${count} คน`,`กะเดิมที่จะคงไว้: ${sc} รายการ`,`มีผล: ${fmtDate(p.effective_date||today())}`,`เหตุผล: ${reason}`,'ระบบจะย้ายสมาชิกและปิดทีมใน Transaction เดียว'].join('\n'),confirmText:'ยืนยันปิดทีม',tone:'danger'});if(!ok)return;try{app()?.showLoading?.('กำลังย้ายสมาชิกและปิดทีม...');const out=await rpc('ta_close_team_v61529f12',{p_team_id:state.closureTeam.team_id,p_member_moves:closureMovePayload(),p_reason:reason});toast(`ปิดทีมเรียบร้อย${Number(out?.members_reassigned||0)?` · จัดสมาชิก ${Number(out.members_reassigned)} คน`:''}`,'success');closeTeamClosure();await load();}catch(e){toast(human(e),'error');await refreshClosurePreview();}finally{app()?.hideLoading?.();}}
+  async function deactivateTeam(id){return openTeamClosure(id);}
+
+
+  function membershipRowSearchMatch(r,q){
+    if(!q)return true;
+    return [r.emp_code,r.full_name,r.position_name,r.org_code,r.current_team_code,r.current_team_name]
+      .some(v=>String(v||'').toLowerCase().includes(q));
+  }
+  function membershipSourceRows(){
+    const q=String($('teamMembershipSearchV61524')?.value||'').toLowerCase().trim();
+    const f=String($('teamMembershipSourceFilterV61528F1')?.value||'ALL').toUpperCase();
+    return state.members.filter(r=>{
+      const code=String(r.emp_code);
+      if(state.selected.has(code)||!membershipRowSearchMatch(r,q))return false;
+      const cur=String(r.current_team_code||'');
+      const wasHere=state.initialMembership.has(code);
+      if(f==='NO_TEAM'&&cur)return false;
+      if(f==='OTHER_TEAM'&&(!cur||cur===String(state.activeTeam?.team_code||'')))return false;
+      if(f==='REMOVED'&&!wasHere)return false;
+      return true;
+    });
+  }
+  function membershipTargetRows(){
+    const map=new Map(state.members.map(r=>[String(r.emp_code),r]));
+    return [...state.selected].map(c=>map.get(String(c))).filter(Boolean).sort((a,b)=>{
+      const ai=state.initialMembership.has(String(a.emp_code))?0:1,bi=state.initialMembership.has(String(b.emp_code))?0:1;
+      return ai-bi||String(a.emp_code).localeCompare(String(b.emp_code),'th');
+    });
+  }
+  function membershipChangeCounts(){
+    let added=0,removed=0;
+    state.selected.forEach(c=>{if(!state.initialMembership.has(String(c)))added++;});
+    state.initialMembership.forEach(c=>{if(!state.selected.has(String(c)))removed++;});
+    return{added,removed,changed:added>0||removed>0};
+  }
+  function membershipHasChanges(){return membershipChangeCounts().changed;}
+  function membershipWorkingRowsV61529F15Q(){return Array.isArray(state.workingMembers)?state.workingMembers:[];}
+  function membershipBorrowInRowsV61529F15Q(){return membershipWorkingRowsV61529F15Q().filter(r=>String(r?.member_kind||'').toUpperCase()==='BORROWED_IN');}
+  function membershipBorrowedOutMapV61529F15Q(){return new Map(membershipWorkingRowsV61529F15Q().filter(r=>String(r?.member_kind||'').toUpperCase()==='PERMANENT_BORROWED_OUT').map(r=>[String(r.emp_code),r]));}
+  function membershipPermanentWorkingCountV61529F15Q(){
+    const out=membershipBorrowedOutMapV61529F15Q();let n=0;
+    state.selected.forEach(code=>{if(!out.has(String(code)))n++;});
+    return n;
+  }
+  function membershipWorkingCountV61529F15Q(){return membershipPermanentWorkingCountV61529F15Q()+membershipBorrowInRowsV61529F15Q().length;}
+  function membershipTemporaryLabelV61529F15Q(r){return String(r?.assignment_type||'').toUpperCase()==='BORROW_CROSS_ORG'?'ยืมตัว':'ชั่วคราว';}
+  function memberSubline(r){
+    const type=r.operational_type||r.car_category||state.activeTeam?.team_category;
+    return `${r.position_name||'-'} · ${catIcon(type)} ${catLabel(type)}`;
+  }
+  function syncMembershipTransferControls(){
+    const src=membershipSourceRows(),target=membershipTargetRows(),chg=membershipChangeCounts(),p=policy(state.activeTeam?.team_category);
+    const moveR=$('teamMembershipMoveRightV61528F1'),moveL=$('teamMembershipMoveLeftV61528F1');
+    if(moveR)moveR.disabled=state.membershipLeftPicked.size===0;
+    if(moveL)moveL.disabled=state.membershipRightPicked.size===0;
+    $('teamMembershipSourceCountV61528F1')&&($('teamMembershipSourceCountV61528F1').textContent=`${src.length.toLocaleString('th-TH')} คน`);
+    $('teamMembershipTargetCountV61528F1')&&($('teamMembershipTargetCountV61528F1').textContent=`${target.length.toLocaleString('th-TH')} คน`);
+    const borrowedIn=membershipBorrowInRowsV61529F15Q().length,workingCount=membershipWorkingCountV61529F15Q();
+    $('teamMembershipCurrentV61528F1')&&($('teamMembershipCurrentV61528F1').textContent=`${state.initialMembership.size.toLocaleString('th-TH')} คน`);
+    $('teamMembershipBorrowedInV61529F15Q')&&($('teamMembershipBorrowedInV61529F15Q').textContent=`${borrowedIn.toLocaleString('th-TH')} คน`);
+    $('teamMembershipWorkingNowV61529F15Q')&&($('teamMembershipWorkingNowV61529F15Q').textContent=`${workingCount.toLocaleString('th-TH')} คน`);
+    $('teamMembershipSelectedV61524')&&($('teamMembershipSelectedV61524').textContent=`${state.selected.size.toLocaleString('th-TH')} คน`);
+    const delta=$('teamMembershipDeltaV61528F1');if(delta)delta.textContent=chg.changed?`เพิ่ม ${chg.added} · นำออก ${chg.removed}`:'ยังไม่มีการเปลี่ยนแปลง';
+    const cap=$('teamMembershipCapacityV61528F1');if(cap){cap.textContent=p.max!=null?`ปฏิบัติงาน ${workingCount} / ${p.max}`:`ปฏิบัติงาน ${workingCount} คน`;cap.classList.toggle('full',p.max!=null&&workingCount>=p.max);cap.classList.toggle('blocked',p.max!=null&&workingCount>p.max);cap.title=p.max!=null&&workingCount>p.max?'จำนวนปฏิบัติงานรวมสมาชิกยืมตัวเกิน Capacity ของทีม กรุณาตรวจรายการยืมตัว':'จำนวนปฏิบัติงาน ณ วันที่อ้างอิง';}
+    const strip=$('teamMembershipChangeStripV61528F1');if(strip){const nodes=strip.querySelectorAll('strong');if(nodes[0])nodes[0].textContent=chg.added;if(nodes[1])nodes[1].textContent=chg.removed;if(nodes[2])nodes[2].textContent=!chg.changed?'ยังไม่เปลี่ยน':state.membershipPreview?(state.membershipPreview.allowed?'ผ่าน':'ต้องแก้ไข'):'กำลังตรวจ';strip.classList.toggle('ok',chg.changed&&state.membershipPreview?.allowed===true);strip.classList.toggle('blocked',chg.changed&&state.membershipPreview?.allowed===false);}
+    const foot=$('teamMembershipFooterStatusV61528F1');if(foot){if(!chg.changed)foot.textContent='ยังไม่มีการเปลี่ยนแปลง';else if(!state.membershipPreview)foot.textContent='กำลังตรวจผลกระทบ...';else foot.textContent=state.membershipPreview.allowed?'✓ พร้อมบันทึก':'! ยังบันทึกไม่ได้ — ตรวจ Impact Preview';}
+  }
+  function renderMemberList(){
+    const left=$('teamMembershipListV61524'),right=$('teamMembershipTargetListV61528F1');if(!left||!right)return;
+    const rows=membershipSourceRows(),target=membershipTargetRows();
+    // keep only picks that are still visible / valid
+    state.membershipLeftPicked=new Set([...state.membershipLeftPicked].filter(c=>rows.some(r=>String(r.emp_code)===String(c))));
+    state.membershipRightPicked=new Set([...state.membershipRightPicked].filter(c=>target.some(r=>String(r.emp_code)===String(c))));
+    left.innerHTML=rows.length?rows.map(r=>{
+      const code=String(r.emp_code),wasHere=state.initialMembership.has(code),cur=String(r.current_team_code||'');
+      const origin=wasHere?'นำออกจากทีมนี้':cur&&cur!==String(state.activeTeam?.team_code||'')?`อยู่ทีม ${cur}`:'ยังไม่มีทีม';
+      const originCls=wasHere?'removed':cur?'other':'none';
+      return `<label class="team-transfer-row-v61528f1 ${state.membershipLeftPicked.has(code)?'picked':''}"><input type="checkbox" data-team-membership-left-check-v61528f1="${esc(code)}" ${state.membershipLeftPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${esc(memberSubline(r))}</span><small class="origin ${originCls}">${esc(origin)}</small></div></label>`;
+    }).join(''):'<div class="fc-empty">ไม่พบพนักงานที่สามารถเลือกได้</div>';
+    const borrowedOut=membershipBorrowedOutMapV61529F15Q();
+    right.innerHTML=target.length?target.map(r=>{
+      const code=String(r.emp_code),existing=state.initialMembership.has(code),cur=String(r.current_team_code||''),out=borrowedOut.get(code);
+      let badge=existing?'สมาชิกเดิม':(cur&&cur!==String(state.activeTeam?.team_code||'')?`ย้ายจาก ${cur}`:'เพิ่มใหม่');
+      let cls=existing?'existing':cur?'moved':'added';
+      let extra='';
+      if(existing&&out){badge=`สมาชิกประจำ · ยืมออก → ${out.destination_team_code||out.destination_org_code||'-'}`;cls='borrowed-out';extra=`<small class="team-borrow-period-v61529f15q">↗ ${esc(membershipTemporaryLabelV61529F15Q(out))} ${esc(fmtDate(out.effective_from))}–${esc(fmtDate(out.effective_to))} · วันนี้ไม่ปฏิบัติงานกับทีมนี้</small>`;}
+      return `<label class="team-transfer-row-v61528f1 target ${state.membershipRightPicked.has(code)?'picked':''} ${out?'temporarily-away-v61529f15q':''}"><input type="checkbox" data-team-membership-right-check-v61528f1="${esc(code)}" ${state.membershipRightPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${esc(memberSubline(r))}</span><small class="target-badge ${cls}">${esc(badge)}</small>${extra}</div></label>`;
+    }).join(''):'<div class="fc-empty">ยังไม่มีสมาชิกประจำในทีมหลังบันทึก</div>';
+    const borrowBox=$('teamMembershipBorrowListV61529F15Q'),borrowRows=membershipBorrowInRowsV61529F15Q();
+    if(borrowBox){borrowBox.innerHTML=borrowRows.length?borrowRows.map(r=>`<article class="team-borrow-overlay-row-v61529f15q"><div class="team-borrow-overlay-icon-v61529f15q">↔</div><div><strong>${esc(r.emp_code||'-')} · ${esc(r.full_name||'-')}</strong><span>${esc(r.position_name||'-')} · ${catIcon(r.operational_type||state.activeTeam?.team_category)} ${esc(catLabel(r.operational_type||state.activeTeam?.team_category))}</span><small><b>${esc(membershipTemporaryLabelV61529F15Q(r))}</b> จาก ${esc(r.source_team_code||r.source_org_code||'-')} · ${esc(fmtDate(r.effective_from))}–${esc(fmtDate(r.effective_to))}</small></div><em>อ่านอย่างเดียว</em></article>`).join(''):'<div class="team-borrow-overlay-empty-v61529f15q">ไม่มีสมาชิกยืมตัวในวันที่อ้างอิง</div>';}
+    const borrowHead=$('teamMembershipBorrowCountV61529F15Q');if(borrowHead)borrowHead.textContent=`${borrowRows.length.toLocaleString('th-TH')} คน`;
+    syncMembershipTransferControls();
+  }
+  function moveMembershipRight(){
+    if(!state.membershipLeftPicked.size)return;
+    const p=policy(state.activeTeam?.team_category),next=state.selected.size+state.membershipLeftPicked.size;
+    if(p.max!=null&&next>p.max){const slots=Math.max(0,p.max-state.selected.size);toast(`ทีม${catLabel(state.activeTeam?.team_category)}เพิ่มได้อีกสูงสุด ${slots} คน (สูงสุด ${p.max} คน/ทีม)`,'warning');return;}
+    state.membershipLeftPicked.forEach(c=>state.selected.add(String(c)));state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;renderMemberList();scheduleMembershipPreview();
+  }
+  function moveMembershipLeft(){
+    if(!state.membershipRightPicked.size)return;
+    state.membershipRightPicked.forEach(c=>state.selected.delete(String(c)));state.membershipRightPicked.clear();state.membershipLeftPicked.clear();state.membershipPreview=null;renderMemberList();scheduleMembershipPreview();
+  }
+  function selectAllMembershipLeft(){
+    const rows=membershipSourceRows();if(!rows.length)return;
+    const all=rows.every(r=>state.membershipLeftPicked.has(String(r.emp_code)));
+    state.membershipLeftPicked=all?new Set():new Set(rows.map(r=>String(r.emp_code)));renderMemberList();
+  }
+  function renderMembershipPreview(){
+    const box=$('teamMembershipImpactV61528'),p=state.membershipPreview;if(!box)return;
+    const chg=membershipChangeCounts();
+    if(!chg.changed){box.innerHTML='<div class="team-impact-placeholder-v61528">เลือกพนักงานด้านซ้ายแล้วกด “ย้ายเข้า →” หรือเลือกสมาชิกด้านขวาแล้วกด “← นำออก”</div>';const btn=$('teamMembershipSaveV61524');if(btn)btn.disabled=true;syncMembershipTransferControls();return;}
+    if(!p){box.innerHTML='<div class="team-impact-placeholder-v61528">กำลังตรวจผลกระทบ...</div>';syncMembershipTransferControls();return;}
+    const target=p.target||{},blockers=Array.isArray(p.blockers)?p.blockers:[],sources=Array.isArray(p.source_impacts)?p.source_impacts:[];
+    const belowMin=blockers.find(b=>['SOURCE_TEAM_BELOW_MIN','TARGET_TEAM_BELOW_MIN'].includes(String(b?.code||'')));
+    const aboveMax=blockers.find(b=>String(b?.code||'')==='TARGET_TEAM_ABOVE_MAX');
+    let recovery='';
+    if(belowMin){
+      const min=Number(belowMin.min_members||policy(state.activeTeam?.team_category).min||0),after=Number(belowMin.after_count??belowMin.remaining??0),need=Math.max(1,min-after);
+      recovery=`<div class="team-impact-recovery-v61529f2"><strong>ทำอย่างไรต่อ?</strong><span>เพิ่มสมาชิกให้ทีมอย่างน้อยอีก ${need} คน หรือถ้าต้องการปรับโครงสร้างทั้งทีม ให้ย้ายสมาชิกทั้งหมด/ปิดทีมเดิมเป็นรายการเดียว</span></div>`;
+    }else if(aboveMax){
+      const max=Number(aboveMax.max_members||policy(state.activeTeam?.team_category).max||5),after=Number(aboveMax.after_count||0),over=Math.max(1,after-max);
+      recovery=`<div class="team-impact-recovery-v61529f2"><strong>ทีมเกินความจุ</strong><span>นำออกอย่างน้อย ${over} คน หรือเลือก Team ปลายทางอื่นก่อนบันทึก</span></div>`;
+    }
+    const workingCount=membershipWorkingCountV61529F15Q(),maxWorking=policy(state.activeTeam?.team_category).max,workingWarn=maxWorking!=null&&workingCount>maxWorking?`<div class="team-working-capacity-warning-v61529f15q"><span>⚠</span><div><strong>จำนวนผู้ปฏิบัติงานรวม ${workingCount} คน เกิน Capacity ${maxWorking} คน</strong><small>ตัวเลขนี้รวมสมาชิกยืมตัว ณ วันที่อ้างอิง · FIX15Q แสดงคำเตือนเพื่อให้ Manager ตรวจ Borrow Workflow โดยไม่แก้ Permanent Membership อัตโนมัติ</small></div></div>`:'';
+    box.innerHTML=`<div class="team-impact-title-v61528"><strong>Impact Preview ก่อนบันทึก</strong><span class="${p.allowed?'ok':'blocked'}">${p.allowed?'✓ ผ่านทุกเงื่อนไข':'! ต้องแก้ไข'}</span></div><div class="team-impact-target-v61528"><span>${esc(p.team_code||state.activeTeam?.team_code||'-')}</span><strong>${Number(target.before_count??state.initialMembership.size)} → ${Number(target.after_count??state.selected.size)} คน</strong><small>สมาชิกประจำ · ขั้นต่ำ ${Number(target.min_members??policy(state.activeTeam?.team_category).min)}${target.max_members!=null?` · สูงสุด ${Number(target.max_members)}`:policy(state.activeTeam?.team_category).max!=null?` · สูงสุด ${policy(state.activeTeam?.team_category).max}`:' · ไม่จำกัดสูงสุด'} · ปฏิบัติงานรวมยืมตัว ${workingCount} คน</small></div>${workingWarn}${sources.length?`<div class="team-impact-sources-v61528">${sources.map(s=>`<div class="${s.blocked?'blocked':'ok'}"><span>${esc(s.team_code||'-')}</span><strong>${Number(s.before_count||0)} → ${Number(s.after_count||0)} คน</strong><small>${s.blocked?`ต่ำกว่าขั้นต่ำ ${Number(s.min_members||0)}`:Number(s.after_count||0)===0?'ทีมจะกลับเป็นรอสมาชิก':'ผ่าน'}</small></div>`).join('')}</div>`:''}${blockers.length?`<div class="team-impact-blockers-v61528">${blockers.map(b=>`<p>• ${esc(previewBlockerText(b))}</p>`).join('')}</div>`:''}${recovery}`;
+    const btn=$('teamMembershipSaveV61524');if(btn)btn.disabled=p.allowed!==true||!chg.changed;syncMembershipTransferControls();
+  }
+  function previewBlockerText(b){const c=String(b?.code||'');if(c==='EMPLOYEE_START_DATE_REQUIRED')return `ไม่พบวันเริ่มงานของพนักงาน ${Number(b.count||0)>0?`${Number(b.count)} คน`:''} กรุณาตรวจ Employee Master`;if(c==='OPERATIONAL_ASSIGN_EFFECTIVE_MUST_CURRENT_MONTH_START')return `ฐานวันที่กำหนดครั้งแรกต้องเป็น ${fmtDate(b.required_date||operationalCurrentMonthStart())} • ระบบจะเลื่อนไปวันเริ่มงานรายคนเมื่อจำเป็น`;if(c==='OPERATIONAL_CHANGE_EFFECTIVE_BEFORE_CURRENT_MONTH')return `ไม่สามารถเปลี่ยนรูปแบบย้อนหลังไปก่อน ${fmtDate(b.minimum_effective_date||operationalCurrentMonthStart())}`;if(c==='OPERATIONAL_CHANGE_EFFECTIVE_BEFORE_START_DATE')return `วันที่มีผลต้องไม่ก่อนวันเริ่มงานพนักงาน • เร็วสุด ${fmtDate(b.minimum_effective_date||b.employee_start_date||operationalCurrentMonthStart())}`;if(c==='OPERATIONAL_CHANGE_EFFECTIVE_TOO_EARLY')return `วันที่มีผลต้องไม่ก่อนวันเริ่มงาน/วันที่กำหนดรูปแบบครั้งแรก • เร็วสุด ${fmtDate(b.minimum_effective_date||operationalCurrentMonthStart())}`;if(c==='OPERATIONAL_PROFILE_MIXED_ASSIGN_CHANGE_NOT_ALLOWED')return 'กรุณาแยก “กำหนดรูปแบบครั้งแรก” และ “เปลี่ยนรูปแบบ” เป็นคนละรายการ';if(c==='TARGET_TEAM_ABOVE_MAX')return `${b.team_code||'ทีม'} จะมี ${b.after_count} คน เกินสูงสุด ${b.max_members}`;if(c==='TARGET_TEAM_BELOW_MIN')return `${b.team_code||'ทีม'} จะมี ${b.after_count} คน ต่ำกว่าขั้นต่ำ ${b.min_members}`;if(c==='SOURCE_TEAM_BELOW_MIN')return b.team_code?`ทีมต้นทาง ${b.team_code} จะเหลือ ${b.after_count??b.remaining??'-'} คน ต่ำกว่าขั้นต่ำ ${b.min_members??'-'}`:'ทีมต้นทางบางทีมจะเหลือสมาชิกต่ำกว่าขั้นต่ำ';if(c==='TEAM_MEMBER_OPERATIONAL_TYPE_MISMATCH')return 'มีพนักงานที่รูปแบบการปฏิบัติงานไม่ตรงกับประเภททีม';if(c==='TEAM_MEMBER_ORG_MISMATCH')return 'มีพนักงานอยู่นอกหน่วยงานของทีม';return c||'ยังไม่ผ่านเงื่อนไข';}
+  async function previewMembership(){
+    if(!state.activeTeam)return;
+    if(!membershipHasChanges()){state.membershipPreview=null;renderMembershipPreview();return;}
+    const d=$('teamMembershipEffectiveV61524')?.value||today();state.membershipPreview=null;renderMembershipPreview();
+    try{state.membershipPreview=await rpc('ta_preview_team_membership_change_v61528',{p_team_id:state.activeTeam.team_id,p_emp_codes:[...state.selected],p_effective_from:d});renderMembershipPreview();}catch(e){state.membershipPreview={allowed:false,blockers:[{code:human(e)}]};renderMembershipPreview();}
+  }
+  function scheduleMembershipPreview(){clearTimeout(membershipPreviewTimer);membershipPreviewTimer=setTimeout(previewMembership,180);}
+  async function openMembership(teamId){
+    const t=state.teams.find(x=>String(x.team_id)===String(teamId));if(!t)return;
+    state.activeTeam=t;state.selected.clear();state.initialMembership.clear();state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;
+    $('teamMembershipTitleV61524')&&($('teamMembershipTitleV61524').textContent=`${t.team_name} · ${t.team_code}`);
+    $('teamMembershipCategoryV61524')&&($('teamMembershipCategoryV61524').textContent=`${catIcon(t.team_category)} ${catLabel(t.team_category)}`);
+    $('teamMembershipEffectiveV61524')&&($('teamMembershipEffectiveV61524').value=today());
+    $('teamMembershipSearchV61524')&&($('teamMembershipSearchV61524').value='');$('teamMembershipSourceFilterV61528F1')&&($('teamMembershipSourceFilterV61528F1').value='ALL');
+    const p=policy(t.team_category);$('teamMembershipPolicyV61524')&&($('teamMembershipPolicyV61524').innerHTML=`<div><strong>${catIcon(t.team_category)} ${catLabel(t.team_category)}</strong><span>${esc(p.label)}${t.team_category==='MOTORCYCLE'?' · ต้องมีทีมก่อนจัดกะ':''}</span></div><small><b>วันที่มีผล</b> ด้านบนเป็นวันที่เริ่มสมาชิก/ย้ายทีม • เปลี่ยนได้ก่อนบันทึก • สมาชิกยืมตัวอ่านอย่างเดียวและแก้ช่วงที่เมนูยืมตัวช่าง</small>`);
+    $('teamMembershipModalV61524')?.classList.remove('hidden');await loadMembershipCandidates();
+  }
+  function closeMembership(){
+    $('teamMembershipModalV61524')?.classList.add('hidden');state.activeTeam=null;state.members=[];state.workingMembers=[];state.selected.clear();state.initialMembership.clear();state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;
+  }
+  async function loadMembershipCandidates(){
+    if(!state.activeTeam)return;
+    try{
+      app()?.showLoading?.('กำลังโหลดสมาชิก...');const d=$('teamMembershipEffectiveV61524')?.value||today();
+      state.members=await rpc('ta_get_team_membership_candidates_v61524',{p_team_id:state.activeTeam.team_id,p_effective_date:d})||[];
+      try{state.workingMembers=await rpc('ta_get_team_working_members_v61529f15q',{p_team_id:state.activeTeam.team_id,p_work_date:d})||[];}catch(overlayError){state.workingMembers=[];console.warn('[FIX15Q] Working member overlay unavailable:',overlayError);toast('โหลดสมาชิกประจำได้แล้ว แต่ข้อมูลยืมตัวของทีมยังโหลดไม่สำเร็จ','warning');}
+      state.initialMembership=new Set(state.members.filter(r=>r.is_current_member).map(r=>String(r.emp_code)));state.selected=new Set(state.initialMembership);state.membershipLeftPicked.clear();state.membershipRightPicked.clear();state.membershipPreview=null;renderMemberList();$('teamMembershipMetaV61524')&&($('teamMembershipMetaV61524').textContent=`${catLabel(state.activeTeam.team_category)} • ตรวจสถานะสมาชิก ณ วันที่มีผล ${fmtDate(d)} • เลือกซ้าย → ย้ายเข้าขวา`);renderMembershipPreview();
+    }catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+  }
+  async function saveMembership(){
+    if(!state.activeTeam||!membershipHasChanges())return toast('ยังไม่มีการเปลี่ยนแปลงสมาชิกทีม','warning');
+    if(state.membershipPreview?.allowed!==true)return toast('กรุณาตรวจ Impact Preview ก่อนบันทึก','warning');
+    const d=$('teamMembershipEffectiveV61524')?.value;if(!d)return;const chg=membershipChangeCounts();
+    const ok=await window.tcConfirm?.({title:'ยืนยันการเปลี่ยนสมาชิกทีม',message:[`ทีม: ${state.activeTeam.team_name}`,`Team Code: ${state.activeTeam.team_code}`,`สมาชิก: ${state.initialMembership.size} → ${state.selected.size} คน`,`เพิ่มเข้า: ${chg.added} คน · นำออก: ${chg.removed} คน`,`วันที่มีผล: ${fmtDate(d)}`].join('\n'),confirmText:'บันทึกสมาชิกทีม',tone:'primary'});if(!ok)return;
+    try{app()?.showLoading?.('กำลังบันทึกสมาชิกทีม...');await rpc('ta_set_team_members_v61524',{p_team_id:state.activeTeam.team_id,p_emp_codes:[...state.selected],p_effective_from:d,p_note:$('teamMembershipNoteV61524')?.value?.trim()||null});toast('บันทึกสมาชิกทีมเรียบร้อย','success');closeMembership();await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+  }
+
+  function opStateLabel(v){const t=String(v||'').toUpperCase();return t==='CAR_NEEDS_TEAM'?'รถยนต์ • ยังไม่มีทีม':t==='MOTORCYCLE_NO_TEAM'?'มอเตอร์ไซค์ • ยังไม่มีทีม':t==='SUPPORT_NEEDS_TEAM'?'สนับสนุน • ยังไม่มีทีม':t==='READY'?'พร้อมใช้งาน':'รอ Manager กำหนดรูปแบบ';}
+  const OPERATIONAL_TYPES=['CAR','MOTORCYCLE','SUPPORT'];
+  function operationalMode(){return state.opMode==='CHANGE'?'CHANGE':'ASSIGN';}
+  function operationalCurrentMonthStart(){const t=today();return `${t.slice(0,7)}-01`;}
+  function syncOperationalEffectiveDatePolicy({reset=false}={}){
+    const input=$('teamOperationalProfileEffectiveV61527'),label=$('teamOperationalEffectiveLabelV61529F6'),help=$('teamOperationalEffectiveHelpV61529F6');if(!input)return;
+    const monthStart=operationalCurrentMonthStart(),mode=operationalMode();
+    if(mode==='ASSIGN'){
+      input.disabled=true;input.min=monthStart;input.max=monthStart;input.value=monthStart;input.classList.add('operational-effective-locked-v61529f6');
+      if(label)label.textContent='วันที่มีผล (ระบบกำหนด)';
+      if(help){help.className='operational-effective-help-v61529f6 locked start-date-aware-v61529f9';help.innerHTML=`<strong>ฐาน ${esc(fmtDate(monthStart))}</strong> • หากวันเริ่มงานอยู่หลังต้นเดือน ระบบจะใช้ <strong>วันเริ่มงานของแต่ละคน</strong> อัตโนมัติ`; }
+      return;
+    }
+    input.disabled=false;input.classList.remove('operational-effective-locked-v61529f6');input.min=monthStart;input.removeAttribute('max');
+    if(reset||!input.value||input.value<monthStart)input.value=today();
+    if(label)label.textContent='วันที่มีผล';
+    if(help){help.className='operational-effective-help-v61529f6';help.innerHTML=`เริ่มได้ <strong>${esc(fmtDate(monthStart))}</strong> • และต้องไม่ก่อนวันเริ่มงาน / วันที่กำหนดรูปแบบครั้งแรก`; }
+  }
+  function validateOperationalEffectiveDate({autoCorrect=true,showToast=true}={}){
+    const input=$('teamOperationalProfileEffectiveV61527');if(!input)return true;const monthStart=operationalCurrentMonthStart();
+    if(operationalMode()==='ASSIGN'){
+      if(input.value!==monthStart&&autoCorrect)input.value=monthStart;
+      input.min=monthStart;input.max=monthStart;return input.value===monthStart;
+    }
+    input.min=monthStart;input.removeAttribute('max');
+    if(!input.value||input.value<monthStart){if(autoCorrect)input.value=today();if(showToast)toast(`ไม่สามารถเปลี่ยนรูปแบบย้อนหลังไปก่อนเดือนปัจจุบันได้ • วันที่เร็วสุด ${fmtDate(monthStart)}`,'warning');return false;}
+    return true;
+  }
+  function operationalSourceType(){return operationalMode()==='ASSIGN'?'UNCLASSIFIED':String($('teamOperationalProfileShowV61527')?.value||'CAR').toUpperCase();}
+  function operationalModeCopy(){
+    const mode=operationalMode(),source=operationalSourceType();
+    if(mode==='ASSIGN')return {title:'กำหนดรูปแบบการปฏิบัติงาน',guideTitle:'กำหนดครั้งแรก',guideText:'แสดงเฉพาะพนักงานที่ “รอกำหนดรูปแบบ” เลือกหลายคนพร้อมกันได้ และไม่ต้องระบุเหตุผล',metaAction:'กำหนดรูปแบบ'};
+    return {title:'เปลี่ยนรูปแบบการปฏิบัติงาน',guideTitle:`เปลี่ยนจาก ${catLabel(source)}`,guideText:`เลือกปลายทางได้เฉพาะรูปแบบอื่น ระบบจะไม่แสดง ${catLabel(source)} ซ้ำ และ HR Admin จะได้รับแจ้งเมื่อบันทึก`,metaAction:'เปลี่ยนรูปแบบ'};
+  }
+  function renderOperationalTargetTypeOptions(){
+    const sel=$('teamOperationalProfileTargetV61527');if(!sel)return;
+    const mode=operationalMode(),source=operationalSourceType(),prev=String(sel.value||'').toUpperCase();
+    const allowed=OPERATIONAL_TYPES.filter(t=>mode==='ASSIGN'||t!==source);
+    sel.innerHTML=allowed.map(t=>`<option value="${t}">${catIcon(t)} ${esc(catLabel(t))}</option>`).join('');
+    sel.value=allowed.includes(prev)?prev:(allowed[0]||'CAR');
+  }
+  function updateOperationalModeUI(){
+    const mode=operationalMode(),source=operationalSourceType(),copy=operationalModeCopy();
+    document.querySelectorAll('[data-operational-mode-v61529f5]').forEach(btn=>{const active=btn.dataset.operationalModeV61529f5===mode;btn.classList.toggle('active',active);btn.setAttribute('aria-selected',active?'true':'false');});
+    $('teamOperationalSourceFixedV61529F5')?.classList.toggle('hidden',mode!=='ASSIGN');
+    $('teamOperationalSourceSelectV61529F5')?.classList.toggle('hidden',mode!=='CHANGE');
+    const title=$('teamOperationalProfileTitleV61529F5');if(title)title.textContent=copy.title;
+    const targetLabel=$('teamOperationalTargetLabelV61529F5');if(targetLabel)targetLabel.textContent=mode==='ASSIGN'?'กำหนดเป็น':'เปลี่ยนเป็น';
+    const guide=$('teamOperationalModeGuideV61529F5');if(guide){guide.classList.toggle('change',mode==='CHANGE');guide.innerHTML=`<div><strong>${esc(copy.guideTitle)}</strong><span>${esc(copy.guideText)}</span></div><span class="operational-mode-guide-chip-v61529f5">${mode==='ASSIGN'?'ขั้นตอนแนะนำ':'แจ้ง HR Admin'}</span>`;}
+    $('teamOperationalSameTypeGuideV61529F5')?.classList.toggle('hidden',mode!=='CHANGE');
+    const reasonBox=$('teamOperationalReasonBoxV61528F2');if(reasonBox&&mode==='ASSIGN')reasonBox.classList.add('hidden');else if(reasonBox)reasonBox.classList.remove('hidden');
+    const alert=$('teamOperationalReasonAlertV61528F3');if(alert&&mode==='ASSIGN')alert.classList.add('hidden');
+    renderOperationalTargetTypeOptions();
+    syncOperationalEffectiveDatePolicy();
+  }
+  async function setOperationalMode(mode,source=null,{reload=true}={}){
+    state.opMode=mode==='CHANGE'?'CHANGE':'ASSIGN';
+    const show=$('teamOperationalProfileShowV61527');
+    if(show){show.value=state.opMode==='ASSIGN'?'UNCLASSIFIED':(OPERATIONAL_TYPES.includes(String(source||'').toUpperCase())?String(source).toUpperCase():(OPERATIONAL_TYPES.includes(String(show.value||'').toUpperCase())?String(show.value).toUpperCase():'CAR'));}
+    state.opSelected.clear();state.opLeftPicked.clear();state.opRightPicked.clear();state.opPreview=null;
+    updateOperationalModeUI();syncOperationalEffectiveDatePolicy({reset:true});renderOpTeamOptions();
+    if(reload)await loadOpPool();
+  }
+  function closeOperationalProfile(){$('teamOperationalProfileModalV61527')?.classList.add('hidden');state.opPool=[];state.opTeams=[];state.opSelected.clear();state.opLeftPicked.clear();state.opRightPicked.clear();state.opPreview=null;state.opPendingSearch='';const save=$('teamOperationalProfileSaveV61527');if(save){save.disabled=true;save.textContent='บันทึกการเปลี่ยนแปลง';}}
+  function operationalTargetTeam(){const id=$('teamOperationalProfileTeamV61527')?.value||'';return state.opTeams.find(t=>String(t.team_id)===String(id))||null;}
+  function operationalRowSearchMatch(r,q){if(!q)return true;return[r.emp_code,r.full_name,r.position_name,r.org_code,r.team_code,r.team_name].some(v=>String(v||'').toLowerCase().includes(q));}
+  function operationalSourceRows(){const q=String($('teamOperationalProfileSearchV61527')?.value||'').toLowerCase().trim();return(state.opPool||[]).filter(r=>!state.opSelected.has(String(r.emp_code))&&operationalRowSearchMatch(r,q));}
+  function operationalTargetRows(){return(state.opPool||[]).filter(r=>state.opSelected.has(String(r.emp_code)));}
+  function operationalTargetLabel(){const type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),team=operationalTargetTeam();return `${catIcon(type)} ${catLabel(type)}${team?` · ${team.team_code}`:''}`;}
+  function operationalProjectedCount(){const type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),team=operationalTargetTeam();if(!team)return null;if(state.opPreview?.target_team&&String(state.opPreview.target_team.team_id||team.team_id)===String(team.team_id))return Number(state.opPreview.target_team.after_count||0);const base=Number(team.active_member_count||0);const additions=operationalTargetRows().filter(r=>String(r.team_code||'')!==String(team.team_code||'')).length;return base+additions;}
+  function operationalReasonValue(){return String($('teamOperationalProfileNoteV61527')?.value||'').trim();}
+  function operationalReasonMissing(){return state.opPreview?.reason_required===true&&!operationalReasonValue();}
+  function operationalReady(){return state.opPreview?.allowed===true&&!operationalReasonMissing();}
+  function operationalEffectiveDateMap(){const m=new Map();for(const r of (state.opPreview?.employee_effective_dates||[])){if(r?.emp_code)m.set(String(r.emp_code),r);}return m;}
+  function operationalEffectiveSummary(){const p=state.opPreview||{},a=String(p.effective_date_min||'').slice(0,10),b=String(p.effective_date_max||'').slice(0,10);if(!a&&!b)return operationalMode()==='ASSIGN'?`ระบบกำหนดจากต้นเดือน / วันเริ่มงาน`:`${fmtDate($('teamOperationalProfileEffectiveV61527')?.value||today())}`;if(a&&b&&a!==b)return `${fmtDate(a)} – ${fmtDate(b)} • รายบุคคล`;return fmtDate(a||b);}
+  function syncOperationalTransferControls(){
+    const src=operationalSourceRows(),target=operationalTargetRows(),type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),p=policy(type),team=operationalTargetTeam();if(!target.length)syncOperationalEffectiveDatePolicy({reset:false});
+    state.opLeftPicked=new Set([...state.opLeftPicked].filter(c=>src.some(r=>String(r.emp_code)===String(c))));state.opRightPicked=new Set([...state.opRightPicked].filter(c=>target.some(r=>String(r.emp_code)===String(c))));
+    $('teamOperationalProfileSourceCountV61528F2')&&($('teamOperationalProfileSourceCountV61528F2').textContent=`${src.length.toLocaleString('th-TH')} คน`);$('teamOperationalProfileTargetCountV61528F2')&&($('teamOperationalProfileTargetCountV61528F2').textContent=`${target.length.toLocaleString('th-TH')} คน`);$('teamOperationalProfileSelectedV61527')&&($('teamOperationalProfileSelectedV61527').textContent=target.length?`การเปลี่ยนแปลง ${target.length.toLocaleString('th-TH')} คน`:'ยังไม่มีรายการ');$('teamOperationalTargetTypeV61528F2')&&($('teamOperationalTargetTypeV61528F2').textContent=operationalTargetLabel());
+    const moveR=$('teamOperationalProfileMoveRightV61528F2'),moveL=$('teamOperationalProfileMoveLeftV61528F2');if(moveR)moveR.disabled=state.opLeftPicked.size===0||(p.required&&!team);if(moveL)moveL.disabled=state.opRightPicked.size===0;
+    const cap=$('teamOperationalProfileCapacityV61528F2');if(cap){cap.classList.remove('full','blocked');if(!team){cap.textContent='เลือก Team';}else{const n=operationalProjectedCount();cap.textContent=p.max!=null?`${n??Number(team.active_member_count||0)} / ${p.max} คน`:`${n??Number(team.active_member_count||0)} คน`;if(p.max!=null&&Number(n)>p.max)cap.classList.add('blocked');else if(p.max!=null&&Number(n)>=p.max)cap.classList.add('full');}}
+    const ready=operationalReady(),reasonMissing=operationalReasonMissing();
+    const strip=$('teamOperationalTransferStatusV61528F2');if(strip){const nodes=strip.querySelectorAll('strong');if(nodes[0])nodes[0].textContent=target.length;if(nodes[1])nodes[1].textContent=team?team.team_code:'ยังไม่เลือก Team';if(nodes[2])nodes[2].textContent=!target.length?'รอรายการ':!state.opPreview?'กำลังตรวจ':reasonMissing?'รอเหตุผล':ready?'ผ่าน':'ต้องแก้ไข';strip.classList.toggle('ok',target.length>0&&ready);strip.classList.toggle('blocked',target.length>0&&state.opPreview&&(state.opPreview.allowed===false||reasonMissing));}
+    const foot=$('teamOperationalFooterStatusV61528F2');if(foot){foot.classList.remove('warning','ok','blocked');if(!target.length)foot.textContent='ยังไม่มีรายการรอบันทึก';else if(!state.opPreview)foot.textContent='กำลังตรวจผลกระทบ...';else if(state.opPreview.allowed!==true){foot.textContent='! ยังบันทึกไม่ได้ — ตรวจ Impact Preview';foot.classList.add('blocked');}else if(reasonMissing){foot.textContent='⚠ กรุณาระบุเหตุผลการเปลี่ยน • HR Admin จะได้รับแจ้ง';foot.classList.add('warning');}else{foot.textContent=`✓ พร้อมบันทึก ${target.length} คน`;foot.classList.add('ok');}}
+  }
+  function renderOpTeamOptions(){
+    renderOperationalTargetTypeOptions();const sel=$('teamOperationalProfileTeamV61527');if(!sel)return;const prev=sel.value,type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),p=policy(type);
+    const teams=state.opTeams.filter(t=>String(t.team_category||'').toUpperCase()===type&&teamLifecycle(t)!=='INACTIVE');
+    const first=`<option value="">เลือกทีม${catLabel(type)} (บังคับ)</option>`;
+    sel.innerHTML=first+teams.map(t=>{const n=Number(t.active_member_count||0),pp=policy(type),full=pp.max!=null&&n>=pp.max;return `<option value="${esc(t.team_id)}" ${full?'disabled':''}>${esc(t.team_code)} · ${esc(t.team_name)} • ${n}${pp.max!=null?`/${pp.max}`:''} คน${full?' · เต็ม':''}</option>`;}).join('');
+    if(prev&&[...sel.options].some(o=>o.value===prev&&!o.disabled))sel.value=prev;
+    $('teamOperationalProfileTeamHintV61527')&&($('teamOperationalProfileTeamHintV61527').textContent=type==='CAR'?'รถยนต์ต้องเลือกทีม · 3–5 คน/ทีม':type==='SUPPORT'?'ทีมสนับสนุนต้องเลือกทีม · ขั้นต่ำ 1 คน':'มอเตอร์ไซค์ต้องเลือกทีมก่อนจัดกะ · ขั้นต่ำ 1 คน');
+    $('teamOperationalTargetTitleV61528F2')&&($('teamOperationalTargetTitleV61528F2').textContent=`รายการที่จะเปลี่ยนเป็น ${catLabel(type)}`);state.opPreview=null;renderOpPool();scheduleOperationalPreview();
+  }
+  function renderOpPool(){
+    const left=$('teamOperationalProfileListV61527'),right=$('teamOperationalProfileTargetListV61528F2');if(!left||!right)return;const rows=operationalSourceRows(),target=operationalTargetRows(),type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),destTeam=operationalTargetTeam();
+    state.opLeftPicked=new Set([...state.opLeftPicked].filter(c=>rows.some(r=>String(r.emp_code)===String(c))));state.opRightPicked=new Set([...state.opRightPicked].filter(c=>target.some(r=>String(r.emp_code)===String(c))));
+    left.innerHTML=rows.length?rows.map(r=>{const code=String(r.emp_code),curType=String(r.operational_type||'UNCLASSIFIED').toUpperCase();return `<label class="team-transfer-row-v61528f1 ${state.opLeftPicked.has(code)?'picked':''}"><input type="checkbox" data-operational-profile-left-check-v61528f2="${esc(code)}" ${state.opLeftPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${esc(r.position_name||'-')}</span><small class="origin ${curType==='UNCLASSIFIED'?'none':r.team_code?'other':'none'}">${catIcon(curType)} ${esc(catLabel(curType))}${r.team_code?` · ${esc(r.team_code)}`:''}</small></div></label>`;}).join(''):'<div class="fc-empty">ไม่พบพนักงานตามเงื่อนไข</div>';
+    right.innerHTML=target.length?target.map(r=>{const code=String(r.emp_code),curType=String(r.operational_type||'UNCLASSIFIED').toUpperCase(),fromTeam=r.team_code?` · ${r.team_code}`:'',toTeam=destTeam?` · ${destTeam.team_code}`:'';const eff=operationalEffectiveDateMap().get(code),effText=eff?.effective_date?` · มีผล ${fmtDate(eff.effective_date)}`:'';return `<label class="team-transfer-row-v61528f1 target ${state.opRightPicked.has(code)?'picked':''}"><input type="checkbox" data-operational-profile-right-check-v61528f2="${esc(code)}" ${state.opRightPicked.has(code)?'checked':''}/><div class="team-transfer-person-v61528f1"><strong>${esc(code)} · ${esc(r.full_name||'-')}</strong><span>${catIcon(curType)} ${esc(catLabel(curType))}${esc(fromTeam)} → ${catIcon(type)} ${esc(catLabel(type))}${esc(toTeam)}</span><small class="target-badge ${curType==='UNCLASSIFIED'?'added':'moved'}">${curType==='UNCLASSIFIED'?'กำหนดครั้งแรก':'เปลี่ยน / ย้าย'}${esc(effText)}</small></div></label>`;}).join(''):'<div class="fc-empty">ยังไม่มีรายการรอบันทึก</div>';
+    syncOperationalTransferControls();
+  }
+  function selectAllOperationalLeft(){const rows=operationalSourceRows();if(!rows.length)return;const all=rows.every(r=>state.opLeftPicked.has(String(r.emp_code)));state.opLeftPicked=all?new Set():new Set(rows.map(r=>String(r.emp_code)));renderOpPool();}
+  function moveOperationalRight(){
+    if(!state.opLeftPicked.size)return;const type=String($('teamOperationalProfileTargetV61527')?.value||'CAR').toUpperCase(),p=policy(type),team=operationalTargetTeam();if(p.required&&!team)return toast(`กรุณาเลือก Team ${catLabel(type)} ปลายทางก่อน`,'warning');
+    const addRows=(state.opPool||[]).filter(r=>state.opLeftPicked.has(String(r.emp_code)));if(team&&p.max!=null){const existingTarget=operationalTargetRows(),combined=[...existingTarget,...addRows.filter(r=>!state.opSelected.has(String(r.emp_code)))],base=Number(team.active_member_count||0),additions=combined.filter(r=>String(r.team_code||'')!==String(team.team_code||'')).length,after=base+additions;if(after>p.max){const currentAdds=existingTarget.filter(r=>String(r.team_code||'')!==String(team.team_code||'')).length,slots=Math.max(0,p.max-base-currentAdds);toast(`ทีม ${team.team_code} เพิ่มได้อีกสูงสุด ${slots} คน (รถยนต์สูงสุด ${p.max} คน/ทีม)`,'warning');return;}}
+    state.opLeftPicked.forEach(c=>state.opSelected.add(String(c)));state.opLeftPicked.clear();state.opRightPicked.clear();state.opPreview=null;renderOpPool();scheduleOperationalPreview();
+  }
+  function moveOperationalLeft(){if(!state.opRightPicked.size)return;state.opRightPicked.forEach(c=>state.opSelected.delete(String(c)));state.opRightPicked.clear();state.opLeftPicked.clear();state.opPreview=null;renderOpPool();scheduleOperationalPreview();}
+  async function loadOpPool(){
+    if(state.opLoading)return;const orgId=$('teamOperationalProfileOrgV61527')?.value||'';if(!orgId)return;
+    state.opLoading=true;const left=$('teamOperationalProfileListV61527'),right=$('teamOperationalProfileTargetListV61528F2');if(left)left.innerHTML='<div class="fc-empty">กำลังโหลดพนักงาน...</div>';if(right)right.innerHTML='<div class="fc-empty">กำลังเตรียมปลายทาง...</div>';
+    try{
+      const workDate=$('teamOperationalProfileEffectiveV61527')?.value||today(),show=operationalSourceType();
+      const [pool,teams]=await Promise.all([rpc('ta_get_operational_profile_pool_v61527',{p_org_id:orgId,p_operational_type:show,p_search:null,p_work_date:workDate}),rpc('ta_get_team_master_v61526',{p_org_id:orgId,p_include_inactive:false,p_search:null,p_work_date:workDate})]);
+      state.opPool=pool||[];state.opTeams=teams||[];state.opSelected.clear();state.opLeftPicked.clear();state.opRightPicked.clear();state.opPreview=null;
+      updateOperationalModeUI();renderOpTeamOptions();
+      if(state.opPendingSearch){const q=state.opPendingSearch;$('teamOperationalProfileSearchV61527')&&($('teamOperationalProfileSearchV61527').value=q);state.opPendingSearch='';}
+      renderOpPool();
+      const o=orgById(orgId),copy=operationalModeCopy();
+      $('teamOperationalProfileMetaV61527')&&($('teamOperationalProfileMetaV61527').textContent=`${o?`${o.org_code} · ${o.org_name}`:'หน่วยงาน'} • ${copy.metaAction} • พบ ${state.opPool.length.toLocaleString('th-TH')} คน`);
+    }catch(e){if(left)left.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;if(right)right.innerHTML='<div class="fc-empty">ยังไม่มีรายการรอบันทึก</div>';toast(human(e),'error');}finally{state.opLoading=false;}
+  }
+  async function openOperationalProfile(show='UNCLASSIFIED',opts={}){
+    if(!state.orgs.length)return toast('ไม่พบหน่วยงานใน Scope','warning');
+    const requested=String(show||'UNCLASSIFIED').toUpperCase(),forcedMode=String(opts?.mode||'').toUpperCase();
+    state.opMode=forcedMode==='CHANGE'||(forcedMode!=='ASSIGN'&&OPERATIONAL_TYPES.includes(requested))?'CHANGE':'ASSIGN';
+    const source=state.opMode==='ASSIGN'?'UNCLASSIFIED':(OPERATIONAL_TYPES.includes(requested)?requested:(OPERATIONAL_TYPES.includes(String(opts?.source||'').toUpperCase())?String(opts.source).toUpperCase():'CAR'));
+    const org=$('teamOperationalProfileOrgV61527');if(org)org.value=opts?.orgId||selectedOrgId()||String(state.orgs[0]?.org_id||'');
+    const effectiveInput=$('teamOperationalProfileEffectiveV61527');if(effectiveInput)effectiveInput.value=state.opMode==='ASSIGN'?operationalCurrentMonthStart():(opts?.effectiveDate||today());
+    $('teamOperationalProfileShowV61527')&&($('teamOperationalProfileShowV61527').value=source);
+    $('teamOperationalProfileSearchV61527')&&($('teamOperationalProfileSearchV61527').value='');$('teamOperationalProfileNoteV61527')&&($('teamOperationalProfileNoteV61527').value='');
+    state.opPendingSearch=String(opts?.search||'');state.opSelected.clear();state.opLeftPicked.clear();state.opRightPicked.clear();state.opPreview=null;
+    updateOperationalModeUI();syncOperationalEffectiveDatePolicy({reset:false});$('teamOperationalProfileModalV61527')?.classList.remove('hidden');await loadOpPool();
+  }
+
+  async function previewOperational(){
+    const box=$('teamOperationalImpactV61528'),orgId=$('teamOperationalProfileOrgV61527')?.value||'',type=$('teamOperationalProfileTargetV61527')?.value||'',d=$('teamOperationalProfileEffectiveV61527')?.value||'',teamId=$('teamOperationalProfileTeamV61527')?.value||null;
+    if(!box)return;if(!orgId||!type||!d||state.opSelected.size===0){state.opPreview=null;box.innerHTML='<div class="team-impact-placeholder-v61528">เลือกพนักงานทางซ้ายแล้วกด “ย้ายเข้า →” เพื่อดู Preview</div>';const save=$('teamOperationalProfileSaveV61527');if(save){save.disabled=true;save.textContent='บันทึกการเปลี่ยนแปลง';}const alert=$('teamOperationalReasonAlertV61528F3');if(alert)alert.classList.add('hidden');syncOperationalTransferControls();return;}
+    if(!validateOperationalEffectiveDate({autoCorrect:false,showToast:false})){state.opPreview={allowed:false,blockers:[{code:operationalMode()==='ASSIGN'?'OPERATIONAL_ASSIGN_EFFECTIVE_MUST_CURRENT_MONTH_START':'OPERATIONAL_CHANGE_EFFECTIVE_BEFORE_CURRENT_MONTH'}],minimum_effective_date:operationalCurrentMonthStart()};renderOperationalPreview();return;}
+    if(policy(type).required&&!teamId){state.opPreview=null;box.innerHTML=`<div class="team-impact-blockers-v61528"><p>• ${esc(catLabel(type))} ต้องเลือก Team ปลายทางก่อนบันทึก</p></div>`;$('teamOperationalProfileSaveV61527')&&($('teamOperationalProfileSaveV61527').disabled=true);syncOperationalTransferControls();return;}
+    try{state.opPreview=await rpc('ta_preview_operational_profile_change_v61528',{p_emp_codes:[...state.opSelected],p_org_id:orgId,p_operational_type:type,p_effective_from:d,p_team_id:teamId});const minDate=String(state.opPreview?.minimum_effective_date||'').slice(0,10),inp=$('teamOperationalProfileEffectiveV61527');if(inp&&operationalMode()==='CHANGE'&&minDate&&minDate>String(inp.min||''))inp.min=minDate;renderOperationalPreview();renderOpPool();}catch(e){state.opPreview={allowed:false,blockers:[{code:human(e)}]};renderOperationalPreview();}
+  }
+  function scheduleOperationalPreview(){clearTimeout(operationalPreviewTimer);operationalPreviewTimer=setTimeout(previewOperational,180);}
+  function renderOperationalPreview(){
+    const p=state.opPreview,box=$('teamOperationalImpactV61528');if(!box||!p){syncOperationalTransferControls();return;}const blockers=Array.isArray(p.blockers)?p.blockers:[],src=Array.isArray(p.source_impacts)?p.source_impacts:[],target=p.target_team;const notify=Number(p.hr_notification_count||0),note=operationalReasonValue(),reasonMissing=p.reason_required===true&&!note,ready=p.allowed===true&&!reasonMissing;const backendMin=String(p.minimum_effective_date||'').slice(0,10),effectiveInput=$('teamOperationalProfileEffectiveV61527'),effectiveHelp=$('teamOperationalEffectiveHelpV61529F6');if(operationalMode()==='CHANGE'&&backendMin){if(effectiveInput&&backendMin>String(effectiveInput.min||''))effectiveInput.min=backendMin;if(effectiveHelp&&backendMin>operationalCurrentMonthStart()){effectiveHelp.className='operational-effective-help-v61529f6 important';effectiveHelp.innerHTML=`รายการนี้เร็วสุด <strong>${esc(fmtDate(backendMin))}</strong> • ตามวันเริ่มงาน / วันที่กำหนดรูปแบบครั้งแรก`;}}
+    const readinessLabel=p.allowed!==true?'! ต้องแก้ไข':reasonMissing?'⚠ รอระบุเหตุผล':'✓ ผ่านทุกเงื่อนไข',readinessClass=p.allowed!==true?'blocked':reasonMissing?'warning':'ok';
+    const adjusted=Number(p.start_date_adjusted_count||0),effRows=Array.isArray(p.employee_effective_dates)?p.employee_effective_dates:[],effMin=String(p.effective_date_min||'').slice(0,10),effMax=String(p.effective_date_max||'').slice(0,10),effSummary=operationalEffectiveSummary();
+    const effDetail=operationalMode()==='ASSIGN'?`<div class="operational-effective-summary-v61529f9"><div><span>วันที่เริ่มใช้ / เริ่มจัดกะ</span><strong>${esc(effSummary)}</strong><small>คำนวณจาก MAX(ต้นเดือนปัจจุบัน, วันเริ่มงาน) รายพนักงาน</small></div><span class="${adjusted>0?'adjusted':'base'}">${adjusted>0?`ปรับตามวันเริ่มงาน ${adjusted} คน`:'ทุกคนใช้ต้นเดือน'}</span></div>${effRows.length&&effRows.length<=6?`<div class="operational-effective-people-v61529f9">${effRows.map(r=>`<span><b>${esc(r.emp_code||'-')}</b> ${esc(fmtDate(r.effective_date))}${r.adjusted_by_start_date?' · ตามวันเริ่มงาน':''}</span>`).join('')}</div>`:''}`:`<div class="operational-effective-summary-v61529f9"><div><span>วันที่มีผล / Schedule Boundary</span><strong>${esc(effSummary)}</strong><small>กะก่อนวันมีผลใช้รูปแบบ/ทีมเดิม · ตั้งแต่วันมีผลใช้รูปแบบ/ทีมใหม่</small></div></div>`;
+    box.innerHTML=`<div class="team-impact-title-v61528"><strong>Impact Preview ก่อนบันทึก</strong><span class="${readinessClass}">${readinessLabel}</span></div><div class="team-impact-summary-grid-v61528"><div><span>พนักงาน</span><strong>${Number(p.employee_count||state.opSelected.size)} คน</strong></div><div><span>ปลายทาง</span><strong>${catIcon(p.operational_type)} ${esc(catLabel(p.operational_type))}</strong></div><div><span>แจ้ง HR Admin</span><strong>${notify>0?`${notify} รายการ`:'ไม่ใช่การเปลี่ยนประเภท'}</strong></div></div>${effDetail}${target?`<div class="team-impact-target-v61528"><span>${esc(target.team_code||'-')}</span><strong>${Number(target.before_count??0)} → ${Number(target.after_count||0)} คน</strong><small>${esc(policy(p.operational_type).label)}</small></div>`:''}${src.length?`<div class="team-impact-sources-v61528">${src.map(s=>`<div class="${s.blocked?'blocked':'ok'}"><span>${esc(s.team_code||'-')}</span><strong>${Number(s.before_count||0)} → ${Number(s.after_count||0)} คน</strong><small>${s.blocked?'ต่ำกว่าขั้นต่ำ':Number(s.after_count||0)===0?'ทีมจะกลับเป็นรอสมาชิก':'ผ่าน'}</small></div>`).join('')}</div>`:''}${blockers.length?`<div class="team-impact-blockers-v61528">${blockers.map(b=>`<p>• ${esc(previewBlockerText(b))}</p>`).join('')}</div>`:''}<div class="operational-readiness-check-v61528f3"><span class="${p.allowed?'ok':'blocked'}">${p.allowed?'✓ Team / Capacity ผ่านเงื่อนไข':'✕ Team / Capacity ไม่ผ่านเงื่อนไข'}</span><span class="${blockers.some(b=>String(b.code)==='EMPLOYEE_START_DATE_REQUIRED')?'blocked':'ok'}">${blockers.some(b=>String(b.code)==='EMPLOYEE_START_DATE_REQUIRED')?'✕ วันเริ่มงานไม่ครบ':'✓ วันเริ่มงานสัมพันธ์กับ Effective Date'}</span><span class="${p.reason_required?(reasonMissing?'warning':'ok'):'muted'}">${p.reason_required?(reasonMissing?'⚠ กรุณาระบุเหตุผลการเปลี่ยน':'✓ ระบุเหตุผลแล้ว'):'• กำหนดครั้งแรกไม่บังคับเหตุผล'}</span><span class="${notify>0?'notify':'muted'}">${notify>0?'🔔 HR Admin จะได้รับแจ้งทันที':'• ไม่มีรายการแจ้ง HR Admin'}</span></div>${notify>0?'<div class="team-hr-notify-note-v61528">การเปลี่ยนประเภทเดิมจะสร้างประวัติ Effective Change และส่งรายการ “รอรับทราบ” ให้ HR Admin</div>':''}`;
+    const reason=$('teamOperationalReasonRequiredV61528'),hint=$('teamOperationalReasonHintV61528F2'),boxReason=$('teamOperationalReasonBoxV61528F2'),alert=$('teamOperationalReasonAlertV61528F3'),textarea=$('teamOperationalProfileNoteV61527');if(reason)reason.textContent=p.reason_required?'* จำเป็น':'(ไม่บังคับ)';if(hint)hint.textContent=p.reason_required?'จำเป็นต้องระบุเหตุผล • HR Admin จะได้รับแจ้งทันทีหลังบันทึก':'กำหนดครั้งแรกไม่บังคับเหตุผล';if(boxReason){boxReason.classList.toggle('hidden',operationalMode()==='ASSIGN');boxReason.classList.toggle('required',p.reason_required===true);boxReason.classList.toggle('missing',reasonMissing);boxReason.classList.toggle('optional',p.reason_required!==true);}if(alert){alert.classList.toggle('hidden',operationalMode()==='ASSIGN'||p.reason_required!==true);alert.classList.toggle('complete',p.reason_required===true&&!reasonMissing);alert.innerHTML=reasonMissing?'🔔 <strong>ต้องระบุเหตุผลการเปลี่ยน</strong><span>HR Admin จะได้รับแจ้งทันทีหลังบันทึก</span>':'✓ <strong>ระบุเหตุผลแล้ว</strong><span>พร้อมสร้างรายการแจ้ง HR Admin</span>';}if(textarea){textarea.required=p.reason_required===true;textarea.placeholder=p.reason_required?'ระบุเหตุผล เช่น ปรับลักษณะงาน / พื้นที่รับผิดชอบ':'หมายเหตุเพิ่มเติม (ไม่บังคับ)';}const save=$('teamOperationalProfileSaveV61527');if(save){save.disabled=!ready;save.textContent=p.reason_required?`ยืนยันการเปลี่ยน ${state.opSelected.size} คน`:`บันทึก ${state.opSelected.size} คน`;}syncOperationalTransferControls();
+  }
+  async function saveOperational(){const orgId=$('teamOperationalProfileOrgV61527')?.value||'',type=$('teamOperationalProfileTargetV61527')?.value||'',d=$('teamOperationalProfileEffectiveV61527')?.value||'',teamId=$('teamOperationalProfileTeamV61527')?.value||null,note=$('teamOperationalProfileNoteV61527')?.value?.trim()||null;if(!validateOperationalEffectiveDate({autoCorrect:true,showToast:true}))return;if(state.opPreview?.allowed!==true)return toast('กรุณาตรวจ Impact Preview ก่อนบันทึก','warning');if(state.opPreview?.reason_required===true&&!note)return toast('กรุณาระบุเหตุผลการเปลี่ยนรูปแบบ','warning');const effLine=operationalMode()==='ASSIGN'?`วันที่มีผล: ${operationalEffectiveSummary()} (ตามวันเริ่มงานรายบุคคล)`:`วันที่มีผล: ${fmtDate(d)}`;const ok=await window.tcConfirm?.({title:operationalMode()==='ASSIGN'?'ยืนยันกำหนดรูปแบบการปฏิบัติงาน':'ยืนยันเปลี่ยนรูปแบบการปฏิบัติงาน',message:[`พนักงาน: ${state.opSelected.size} คน`,`ปลายทาง: ${operationalTargetLabel()}`,effLine,'Profile + Team Membership ใช้วันเดียวกันต่อพนักงาน',`แจ้ง HR Admin: ${Number(state.opPreview?.hr_notification_count||0)} รายการ`].join('\n'),confirmText:`บันทึก ${state.opSelected.size} คน`,tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังบันทึกการเปลี่ยนแปลง...');const result=await rpc('ta_assign_operational_profile_v61527',{p_emp_codes:[...state.opSelected],p_org_id:orgId,p_operational_type:type,p_effective_from:d,p_team_id:teamId,p_note:note});const range=result?.effective_date_min&&result?.effective_date_max&&result.effective_date_min!==result.effective_date_max?` • มีผล ${fmtDate(result.effective_date_min)}–${fmtDate(result.effective_date_max)}`:result?.effective_date_min?` • มีผล ${fmtDate(result.effective_date_min)}`:'';toast((Number(result?.change_event_count||0)>0?'บันทึกแล้ว • แจ้ง HR Admin เรียบร้อย':'บันทึกรูปแบบและทีมเรียบร้อย')+range,'success');closeOperationalProfile();await load();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+
+  function changeTypeText(t){return `${catIcon(t)} ${catLabel(t)}`;}
+  async function loadChangeInbox(){if(!allowedRole())return;const host=$('teamChangeInboxV61528');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลด...</div>';try{const sel=$('teamChangeStatusV61528');let status=sel?.value||'ALL';state.changeRows=await rpc('ta_get_operational_change_inbox_v61528',{p_status:status,p_limit:150})||[];renderChangeInbox();}catch(e){if(isAuthFailure(e)||String(e?.message||e).includes('AUTH_SESSION_')){stopChangeRealtime();if(host)host.innerHTML='<div class="fc-empty">Session หมดอายุ • กรุณาเข้าสู่ระบบใหม่</div>';return;}if(host)host.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;}}
+  function renderChangeInbox(){
+    const rows=state.changeRows||[],host=$('teamChangeInboxV61528');if(!host)return;
+    const badge=$('teamChangesUnreadBadgeV61528');const badgeCount=rows.filter(r=>r.hr_status==='UNREAD').length;
+    if(badge){badge.textContent=badgeCount;badge.classList.toggle('hidden',badgeCount===0||!isHr());}
+    const panel=host.closest('.team-change-inbox-v61528');const title=panel?.querySelector('.panel-header h3'),desc=panel?.querySelector('.panel-header p'),statusSel=$('teamChangeStatusV61528');
+    if(title)title.textContent=isHr()?'รายการแจ้งการเปลี่ยนรูปแบบการปฏิบัติงาน':'ประวัติการเปลี่ยนรูปแบบของฉัน';
+    if(desc)desc.textContent=isHr()?'Manager บันทึกแล้วมีผลจริงตาม Effective Date · HR Admin มีหน้าที่รับทราบและติดตามประวัติ ไม่ใช่ผู้อนุมัติ':'แสดงรายการ Effective Change ที่คุณบันทึกไว้ และสถานะการรับทราบของ HR Admin';
+    if(statusSel){statusSel.innerHTML=isHr()?'<option value="UNREAD">ยังไม่รับทราบ</option><option value="ALL">ทั้งหมด</option><option value="ACKNOWLEDGED">รับทราบแล้ว</option>':'<option value="ALL">ทั้งหมดของฉัน</option><option value="UNREAD">HR ยังไม่รับทราบ</option><option value="ACKNOWLEDGED">HR รับทราบแล้ว</option>';}
+    host.innerHTML=rows.length?rows.map(r=>{const acked=r.hr_status==='ACKNOWLEDGED';const statusText=isHr()?(acked?'✓ รับทราบแล้ว':'● ใหม่ · รอรับทราบ'):(acked?'✓ HR รับทราบแล้ว':'● HR ยังไม่รับทราบ');return `<article class="team-change-card-v61528 ${!acked?'unread':''}"><div class="team-change-card-head-v61528"><div><span>${statusText}</span><strong>${esc(r.emp_code)} · ${esc(r.full_name||'-')}</strong><small>${esc(r.org_code||'-')} · ${esc(r.org_name||'-')}</small></div><time>${esc(fmtDateTime(r.changed_at))}</time></div><div class="team-change-flow-v61528"><div><small>เดิม</small><strong>${esc(changeTypeText(r.old_operational_type))}</strong><span>${esc(r.old_team_code||'ไม่ผูกทีม')}</span></div><b>→</b><div><small>ใหม่</small><strong>${esc(changeTypeText(r.new_operational_type))}</strong><span>${esc(r.new_team_code||'ไม่ผูกทีม')}</span></div></div><div class="team-change-meta-v61528"><span>มีผล ${esc(fmtDate(r.effective_date))}</span><span>โดย ${esc(r.changed_by_email||'-')}</span><span class="team-change-effective-badge-v61529f11">บันทึกแล้ว · ไม่รออนุมัติ</span></div><p class="team-change-reason-v61528"><strong>เหตุผล:</strong> ${esc(r.reason||'-')}</p><div class="team-change-card-actions-v61528">${isHr()&&!acked?`<button class="btn btn-primary btn-sm" data-team-change-ack-v61528="${esc(r.event_id)}">✓ รับทราบ</button>`:''}</div></article>`;}).join(''):'<div class="fc-empty">ไม่มีรายการตามสถานะที่เลือก</div>';
+  }
+  async function acknowledgeChange(id){try{await rpc('ta_acknowledge_operational_change_v61528',{p_event_id:id,p_action:'ACKNOWLEDGE',p_note:null});toast('รับทราบการเปลี่ยนแปลงแล้ว','success');await loadChangeInbox();}catch(e){toast(human(e),'error');}}
+  async function enableBrowserNotification(){if(!('Notification'in window))return toast('Browser นี้ไม่รองรับ Notification','warning');const p=await Notification.requestPermission();toast(p==='granted'?'เปิด Browser Notification แล้ว':'ยังไม่ได้อนุญาต Notification',p==='granted'?'success':'warning');}
+  function queueChangeNotification(payload){
+    if(!('Notification'in window)||Notification.permission!=='granted')return;const n=payload?.new||{};
+    if(isHr()&&payload?.eventType==='INSERT'){const key=String(n.batch_id||n.event_id||Date.now());const item=changeNotifyBatches.get(key)||{count:0,first:n,timer:null};item.count+=1;clearTimeout(item.timer);item.timer=setTimeout(()=>{try{new Notification('TimeAttendance · มีการเปลี่ยนรูปแบบการปฏิบัติงาน',{body:item.count>1?`Manager เปลี่ยนข้อมูล ${item.count} คน · เปิด Team Workspace เพื่อรับทราบ`:`${item.first.emp_code||'พนักงาน'}: ${catLabel(item.first.old_operational_type)} → ${catLabel(item.first.new_operational_type)}`});}catch{}changeNotifyBatches.delete(key);},650);changeNotifyBatches.set(key,item);return;}
+  }
+  async function setupChangeRealtime(){
+    if(!allowedRole()||state.changeChannel||!app()?.state?.client?.channel)return;
+    const c=app().state.client;
+    try{
+      await ensureFreshSession(false);
+      state.changeChannel=c.channel('team-operational-change-v61528')
+        .on('postgres_changes',{event:'*',schema:'public',table:'ta_operational_change_events_v61528'},payload=>{queueChangeNotification(payload);loadChangeInbox();})
+        .subscribe(status=>{
+          if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+            try{c.removeChannel?.(state.changeChannel);}catch(_){}
+            state.changeChannel=null;
+          }
+        });
+    }catch(e){
+      if(!isAuthFailure(e)&&!String(e?.message||e).includes('AUTH_SESSION_'))console.warn('Team change realtime fallback to polling',e);
+    }
+    clearInterval(state.changeTimer);
+    state.changeTimer=setInterval(async()=>{
+      if(!allowedRole())return;
+      try{await ensureFreshSession(false);await loadChangeInbox();}
+      catch(e){if(isAuthFailure(e)||String(e?.message||e).includes('AUTH_SESSION_'))stopChangeRealtime();}
+    },60000);
+  }
+
+
+  function teamTimelineTypeLabelV616AY(type){
+    const t=String(type||'').toUpperCase();
+    if(t==='OPERATIONAL_PROFILE')return 'รูปแบบการปฏิบัติงาน';
+    if(t==='TEAM_MEMBERSHIP')return 'จัด / ย้ายทีม';
+    if(t==='BORROW')return 'ยืมตัว';
+    if(t==='CORRECTION')return 'แก้วันที่มีผล';
+    return t||'-';
+  }
+  function teamTimelineActionLabelV616AY(action){
+    const a=String(action||'').toUpperCase();
+    const map={
+      PROFILE_ASSIGNMENT:'กำหนดรูปแบบ',TEAM_ASSIGNMENT:'เข้าทีม',TEAM_TRANSFER:'ย้ายทีม',
+      BORROW_REQUEST:'ยืมตัว',CORRECT_EFFECTIVE_DATE:'แก้วันที่มีผล'
+    };
+    return map[a]||a||'-';
+  }
+  function renderEmployeeTimelineV616AY(){
+    const host=$('teamEmployeeTimelineBodyV616AY'),sum=$('teamEmployeeTimelineSummaryV616AY');
+    if(!host)return;
+    const data=state.employeeTimeline;
+    if(!data){
+      host.innerHTML='<div class="fc-empty">กรอกรหัสพนักงานเพื่อดูประวัติ</div>';
+      sum?.classList.add('hidden');return;
+    }
+    const emp=data.employee||{},rows=Array.isArray(data.rows)?data.rows:[];
+    if(sum){
+      sum.classList.remove('hidden');
+      sum.innerHTML=`<div><span>พนักงาน</span><strong>${esc(emp.emp_code||'-')} · ${esc(emp.full_name||'-')}</strong></div><div><span>หน่วยงาน</span><strong>${esc(emp.org_code||'-')} · ${esc(emp.org_name||'-')}</strong></div><div><span>สถานะ Team ปัจจุบัน</span><strong>${data.current_team?.has_current_team?`${esc(data.current_team.team_code||'-')} · ${esc(data.current_team.team_name||'')}`:'ยังไม่ได้จัด Team'}</strong></div>`;
+    }
+    host.innerHTML=rows.length?rows.map(r=>{
+      const txType=String(r.transaction_type||'').toUpperCase();
+      const canCorrect=r.can_correct===true&&['TEAM_MEMBERSHIP','OPERATIONAL_PROFILE'].includes(txType);
+      const effTo=r.effective_to?` – ${fmtDate(r.effective_to)}`:'';
+      const flow=r.from_label||r.to_label?`<div class="team-timeline-flow-v616ay"><span>${esc(r.from_label||'—')}</span><b>→</b><strong>${esc(r.to_label||'—')}</strong></div>`:'';
+      return `<article class="team-timeline-item-v616ay type-${esc(String(r.transaction_type||'').toLowerCase())}">
+        <div class="team-timeline-dot-v616ay"></div>
+        <div class="team-timeline-card-v616ay">
+          <div class="team-timeline-head-v616ay"><div><span>${esc(teamTimelineTypeLabelV616AY(r.transaction_type))}</span><strong>${esc(teamTimelineActionLabelV616AY(r.action_type))}</strong></div><time>มีผล ${esc(fmtDate(r.effective_from))}${esc(effTo)}</time></div>
+          ${flow}
+          <div class="team-timeline-meta-v616ay"><span>บันทึก ${esc(fmtDateTime(r.recorded_at||r.created_at))}</span><span>โดย ${esc(r.actor_email||'-')}</span>${r.status?`<span>${esc(r.status)}</span>`:''}</div>
+          ${r.reason?`<p>${esc(r.reason)}</p>`:''}
+          <div class="team-timeline-actions-v616ay">${canCorrect?`<button class="btn btn-light btn-sm" data-effective-correct-v616az="${esc(r.source_id)}" data-correction-kind="${esc(txType)}" data-emp-code="${esc(emp.emp_code||'')}" data-old-date="${esc(String(r.effective_from||'').slice(0,10))}" data-operational-type="${esc(r.meta?.operational_type||'')}">แก้วันที่มีผล</button>`:''}${r.action_hint?`<small>${esc(r.action_hint)}</small>`:''}</div>
+        </div>
+      </article>`;
+    }).join(''):'<div class="fc-empty">ยังไม่มี Transaction ของพนักงานรายนี้</div>';
+  }
+  async function loadEmployeeTimelineV616AY(empCode=null){
+    const input=$('teamEmployeeTimelineSearchV616AY');
+    const emp=String(empCode||input?.value||'').trim();
+    if(!emp)return toast('กรุณาระบุรหัสพนักงาน','warning');
+    if(input)input.value=emp;
+    const host=$('teamEmployeeTimelineBodyV616AY');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลด Timeline...</div>';
+    try{
+      state.employeeTimeline=await rpc('ta_get_employee_transaction_timeline_v616ay',{p_emp_code:emp,p_limit:300});
+      renderEmployeeTimelineV616AY();
+    }catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลด Timeline ไม่สำเร็จ: ${esc(human(e))}</div>`;}
+  }
+  function closeEffectiveCorrectionV616AY(){
+    const modal=$('teamEffectiveCorrectionModalV616AY');
+    const active=document.activeElement;if(active&&modal?.contains(active))active.blur();
+    modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');
+    state.effectiveCorrection=null;state.effectiveCorrectionPreview=null;
+  }
+  async function openEffectiveCorrectionV616AY(btn){
+    const sourceId=String(btn?.dataset?.effectiveCorrectV616az||btn?.dataset?.teamEffectiveCorrectV616ay||'').trim();
+    const kind=String(btn?.dataset?.correctionKind||'TEAM_MEMBERSHIP').toUpperCase();
+    const emp=String(btn?.dataset?.empCode||'').trim();
+    const oldDate=String(btn?.dataset?.oldDate||'').slice(0,10);
+    const opType=String(btn?.dataset?.operationalType||'').toUpperCase();
+    if(!sourceId)return;
+    state.effectiveCorrection={sourceId,kind,emp,oldDate,opType};
+    state.effectiveCorrectionPreview=null;
+    $('teamEffectiveCorrectionOldV616AY')&&($('teamEffectiveCorrectionOldV616AY').value=oldDate?fmtDate(oldDate):'-');
+    $('teamEffectiveCorrectionNewV616AY')&&($('teamEffectiveCorrectionNewV616AY').value=oldDate);
+    $('teamEffectiveCorrectionReasonV616AY')&&($('teamEffectiveCorrectionReasonV616AY').value='');
+    const isProfile=kind==='OPERATIONAL_PROFILE';
+    const title=$('teamEffectiveCorrectionTitleV616AY'),subtitle=$('teamEffectiveCorrectionSubtitleV616AZ'),reason=$('teamEffectiveCorrectionReasonV616AY');
+    if(title)title.textContent=isProfile?'แก้วันที่มีผลรูปแบบการปฏิบัติงาน':'แก้วันที่มีผลของการจัด / ย้ายทีม';
+    if(subtitle)subtitle.textContent=isProfile?'วันที่นี้เป็นวันเริ่มใช้รูปแบบกับการจัดกะ • ระบบจะตรวจ Schedule และ Team ที่เกี่ยวข้องก่อนบันทึก':'ระบบไม่ลบ Transaction เดิม • จะสร้าง Correction Audit และปรับช่วง Team ให้ต่อเนื่อง';
+    if(reason)reason.placeholder=isProfile?'เช่น วันที่เริ่มใช้รถยนต์ที่บันทึกไว้ไม่ตรงเอกสารจริง':'เช่น บันทึกวันที่ย้ายทีมผิดจากเอกสารจริง';
+    const typeText=opType?`${catIcon(opType)} ${catLabel(opType)}`:'รูปแบบการปฏิบัติงาน';
+    $('teamEffectiveCorrectionContextV616AY')&&($('teamEffectiveCorrectionContextV616AY').innerHTML=isProfile
+      ?`<strong>${esc(emp)} · ${esc(typeText)}</strong><span>แก้เฉพาะ Effective Date ของ Operational Profile • หากมี Team ที่สร้างพร้อมกัน ระบบจะปรับวันที่ Team ให้สอดคล้องกัน</span>`
+      :`<strong>${esc(emp)}</strong><span>แก้เฉพาะ Effective Date ของ Team Membership • ไม่ลบ Transaction เดิม</span>`);
+    $('teamEffectiveCorrectionImpactV616AY')&&($('teamEffectiveCorrectionImpactV616AY').innerHTML='<div class="fc-empty">กำลังตรวจ Impact Preview...</div>');
+    $('teamEffectiveCorrectionSaveV616AY')&&($('teamEffectiveCorrectionSaveV616AY').disabled=true);
+    const modal=$('teamEffectiveCorrectionModalV616AY');modal?.classList.remove('hidden');modal?.setAttribute('aria-hidden','false');
+    await previewEffectiveCorrectionV616AY();
+  }
+  async function previewEffectiveCorrectionV616AY(){
+    if(!state.effectiveCorrection)return;
+    const newDate=$('teamEffectiveCorrectionNewV616AY')?.value;
+    const reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';
+    const box=$('teamEffectiveCorrectionImpactV616AY'),save=$('teamEffectiveCorrectionSaveV616AY');
+    if(!newDate){if(save)save.disabled=true;return;}
+    const isProfile=state.effectiveCorrection.kind==='OPERATIONAL_PROFILE';
+    try{
+      const p=isProfile
+        ?await rpc('ta_preview_operational_effective_correction_v616az',{p_profile_id:state.effectiveCorrection.sourceId,p_new_effective_from:newDate})
+        :await rpc('ta_preview_team_effective_correction_v616ay',{p_membership_id:state.effectiveCorrection.sourceId,p_new_effective_from:newDate});
+      state.effectiveCorrectionPreview=p;
+      const allowed=p?.allowed===true;
+      if(save)save.disabled=!(allowed&&reason.length>=3);
+      const messages=Array.isArray(p?.messages)?p.messages:[];
+      const blockers=Array.isArray(p?.blockers)?p.blockers:[];
+      const linked=isProfile&&p?.linked_team_membership_id?`<li>Team ที่ผูกกับการกำหนดรูปแบบจะปรับตาม: ${esc(p.linked_team_code||'-')}</li>`:'';
+      const scheduleLine=isProfile?`<li>กะในช่วงวันที่ได้รับผล: ${Number(p?.schedule_rows_in_affected_window||0).toLocaleString('th-TH')} รายการ</li>`:'';
+      if(box)box.innerHTML=`<div class="team-correction-preview-v616ay ${allowed?'ok':'blocked'}"><div><strong>${allowed?'✓ แก้ไขได้':'✕ ยังแก้ไขไม่ได้'}</strong><span>${esc(p?.employee_name||state.effectiveCorrection.emp||'-')}</span></div><div class="team-correction-flow-v616ay"><span>${esc(fmtDate(p?.old_effective_from))}</span><b>→</b><strong>${esc(fmtDate(p?.new_effective_from))}</strong></div><ul>${scheduleLine}${linked}${messages.map(x=>`<li>${esc(x)}</li>`).join('')}${blockers.map(x=>`<li class="blocked">${esc(x?.message||x?.code||x)}</li>`).join('')}</ul></div>`;
+    }catch(e){state.effectiveCorrectionPreview=null;if(save)save.disabled=true;if(box)box.innerHTML=`<div class="team-correction-preview-v616ay blocked">ตรวจ Impact ไม่สำเร็จ: ${esc(human(e))}</div>`;}
+  }
+  async function saveEffectiveCorrectionV616AY(){
+    if(!state.effectiveCorrection||state.effectiveCorrectionPreview?.allowed!==true)return;
+    const newDate=$('teamEffectiveCorrectionNewV616AY')?.value;
+    const reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';
+    if(reason.length<3)return toast('กรุณาระบุเหตุผลการแก้ไข','warning');
+    const isProfile=state.effectiveCorrection.kind==='OPERATIONAL_PROFILE';
+    const ok=await window.tcConfirm?.({title:isProfile?'ยืนยันแก้วันที่มีผลรูปแบบ':'ยืนยันแก้วันที่มีผล Team',message:[`พนักงาน: ${state.effectiveCorrection.emp}`,`เดิม: ${fmtDate(state.effectiveCorrection.oldDate)}`,`ใหม่: ${fmtDate(newDate)}`,isProfile?'วันที่ใหม่จะเป็นวันเริ่มใช้รูปแบบในการจัดกะ':'Effective Team ใช้สำหรับประวัติ/การจัดกลุ่ม','ระบบจะเก็บ Correction Transaction และไม่ลบประวัติเดิม'].join('\n'),confirmText:'บันทึก Correction',tone:'primary'});
+    if(!ok)return;
+    try{
+      app()?.showLoading?.('กำลังบันทึก Correction...');
+      if(isProfile){
+        await rpc('ta_correct_operational_effective_date_v616az',{p_profile_id:state.effectiveCorrection.sourceId,p_new_effective_from:newDate,p_reason:reason});
+      }else{
+        await rpc('ta_correct_team_effective_date_v616ay',{p_membership_id:state.effectiveCorrection.sourceId,p_new_effective_from:newDate,p_reason:reason});
+      }
+      const emp=state.effectiveCorrection.emp;
+      closeEffectiveCorrectionV616AY();
+      toast(isProfile?'แก้วันที่มีผลรูปแบบและบันทึก Transaction เรียบร้อย':'แก้วันที่มีผล Team และบันทึก Transaction เรียบร้อย','success');
+      await Promise.all([loadEmployeeTimelineV616AY(emp),load()]);
+    }catch(e){toast(human(e),'error');}
+    finally{app()?.hideLoading?.();}
+  }
+
+  function renderAudit(){const b=$('teamMasterAuditBodyV61523');if(b)b.innerHTML=state.audit.length?state.audit.map(a=>`<tr><td class="nowrap">${esc(fmtDateTime(a.created_at))}</td><td><code>${esc(a.team_code||'-')}</code></td><td>${esc(a.action_type||'-')}</td><td>${esc(a.actor_email||'-')}</td><td>${esc(a.reason||'-')}</td></tr>`).join(''):'<tr><td colspan="5" class="fc-empty">ยังไม่มีประวัติ</td></tr>';const e=$('teamEnforcementAuditBodyV61529');if(e)e.innerHTML=state.enforcementAudit.length?state.enforcementAudit.map(a=>`<tr><td class="nowrap">${esc(fmtDateTime(a.created_at))}</td><td><span class="badge badge-gray">${esc(a.scope_type||'-')}</span></td><td><strong>${esc(a.scope_code||'-')}</strong><small class="team-master-sub-v61523">${esc(a.scope_name||'')}</small></td><td>${esc(fmtDate(a.effective_from))}</td><td>${a.enabled?'<span class="badge badge-green">เปิด</span>':'<span class="badge badge-red">ปิด</span>'}</td><td>${esc(a.actor_email||'-')}</td><td>${esc(a.note||'-')}</td></tr>`).join(''):'<tr><td colspan="7" class="fc-empty">ยังไม่มีประวัติ Enforcement</td></tr>';}
+  async function loadAudit(){try{const [teamAudit,enfAudit]=await Promise.all([rpc('ta_get_team_audit_v61524',{p_team_id:null,p_limit:150}),rpc('ta_get_team_enforcement_audit_v61529',{p_limit:150})]);state.audit=teamAudit||[];state.enforcementAudit=enfAudit||[];renderAudit();}catch(e){console.warn(e);}}
+
+  async function load(){
+    if(!allowedRole())return;
+    if(state.loading){
+      state.reloadRequested=true;
+      return;
+    }
+    // FIX16CF: Acting Manager has full Manager-equivalent Team Workspace access
+    // inside delegated Scope/Effective Date. Do not short-circuit Team Master
+    // loading to the Temporary Assignment pane, otherwise state.orgs remains
+    // empty and the UI incorrectly shows "ไม่พบหน่วยงานใน Scope".
+    state.loading=true;
+    state.reloadRequested=false;
+    syncNav();
+
+    const body=$('teamMasterBodyV61523');
+    if(body)body.innerHTML='<tr><td colspan="7" class="fc-empty">กำลังโหลดทีม...</td></tr>';
+
+    try{
+      const workDate=teamWorkspaceReferenceDateV616AX();
+
+      // FIX16AX: load Scope organizations first. This prevents a stale org_id
+      // from the previous session/page from limiting the first Team query.
+      const orgs=await rpc('ta_get_team_org_options_v61524',{p_include_inactive:false});
+      state.orgs=orgs||[];
+      renderOrgOptions();
+
+      const orgId=selectedOrgId()||null;
+      const search=null;
+
+      const [teams,summary]=await Promise.all([
+        rpc('ta_get_team_master_v61526',{
+          p_org_id:orgId,
+          p_include_inactive:true,
+          p_search:search,
+          p_work_date:workDate
+        }),
+        rpc('ta_get_team_workspace_summary_v61528',{
+          p_org_id:orgId,
+          p_work_date:workDate
+        })
+      ]);
+
+      state.teams=teams||[];
+      state.summary=summary||{};
+      renderTeams();
+      renderSummary();
+
+      await loadEnforcement();
+      if(allowedRole()){
+        setupChangeRealtime();
+        loadChangeInbox();
+      }
+    }catch(e){
+      state.lastError=e;
+      toast(human(e),'error');
+      if(body)body.innerHTML=`<tr><td colspan="7" class="fc-empty">โหลด Team Workspace ไม่สำเร็จ: ${esc(human(e))}</td></tr>`;
+      loadRuntimeDiagnostic({force:true,silent:true}).catch(()=>{});
+    }finally{
+      state.loading=false;
+      if(state.reloadRequested && document.querySelector('#page-team-master.active')){
+        state.reloadRequested=false;
+        setTimeout(load,0);
+      }
+    }
+  }
+
+  function bind(){
+    syncNav();setTab('OVERVIEW');
+    const refDateV616AX=$('teamMasterReferenceDateV616AX');if(refDateV616AX&&!refDateV616AX.value)refDateV616AX.value=today();
+    $('teamMasterRefreshV61523')?.addEventListener('click',load);$('teamMasterOrgFilterV61523')?.addEventListener('change',load);$('teamMasterReferenceDateV616AX')?.addEventListener('change',load);$('teamMasterCreateV61523')?.addEventListener('click',openCreate);$('teamMasterCreatePeopleV61528')?.addEventListener('click',openCreate);$('teamMasterSearchBtnV61523')?.addEventListener('click',renderTeams);$('teamMasterCategoryFilterV61524')?.addEventListener('change',renderTeams);$('teamMasterStatusFilterV61523')?.addEventListener('change',renderTeams);$('teamMasterSearchV61523')?.addEventListener('input',renderTeams);$('teamMasterCreateOrgV61523')?.addEventListener('change',updateCreatePreview);$('teamMasterCreateCategoryV61524')?.addEventListener('change',updateCreatePreview);$('teamMasterCreateConfirmV61523')?.addEventListener('click',createTeam);
+    $('teamEnforcementRefreshV61525')?.addEventListener('click',()=>loadEnforcement());$('teamEnforcementToggleV61525')?.addEventListener('click',toggleEnforcement);$('teamNextActionBtnV61528')?.addEventListener('click',handleNextAction);$('teamQuickClassifyV61529F1')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));$('teamQuickCreateV61529F1')?.addEventListener('click',openCreate);$('teamQuickPeopleV61529F1')?.addEventListener('click',()=>setTab('PEOPLE'));$('teamQuickEnforcementV61529F1')?.addEventListener('click',()=>{setTab('OVERVIEW');$('teamEnforcementStatusV61525')?.scrollIntoView({behavior:'smooth',block:'center'});});
+    $('teamEnforcementEffectiveV61529')?.addEventListener('change',loadEnforcementModal);$('teamEnforcementOrgV61529')?.addEventListener('change',loadEnforcementModal);$('teamEnforcementActionV61529')?.addEventListener('change',()=>{state.enforcementSelected.clear();const f=$('teamEnforcementTeamStatusV61529');if(f)f.value=enforcementAction()==='ENABLE'?'READY':'ENABLED';renderEnforcementModal();});$('teamEnforcementTeamStatusV61529')?.addEventListener('change',renderEnforcementModal);$('teamEnforcementSelectReadyV61529')?.addEventListener('click',selectReadyEnforcementTeams);$('teamEnforcementNoteV61529')?.addEventListener('input',renderEnforcementModal);$('teamEnforcementApplyV61529')?.addEventListener('click',applyEnforcementScope);
+    $('teamOperationalEffectiveFixOpenV616AZ')?.addEventListener('click',()=>{setTab('HISTORY');setTimeout(()=>{$('teamEmployeeTimelineSearchV616AY')?.focus();$('teamEmployeeTimelineSearchV616AY')?.scrollIntoView?.({behavior:'smooth',block:'center'});},80);});$('teamOperationalProfileOpenV61527')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));$('teamOperationalProfileOpenPeopleV61528')?.addEventListener('click',()=>openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'}));document.querySelectorAll('[data-operational-mode-v61529f5]').forEach(btn=>btn.addEventListener('click',()=>setOperationalMode(btn.dataset.operationalModeV61529f5)));$('teamOperationalProfileOrgV61527')?.addEventListener('change',loadOpPool);$('teamOperationalProfileEffectiveV61527')?.addEventListener('change',async()=>{validateOperationalEffectiveDate({autoCorrect:true,showToast:true});state.opPreview=null;await loadOpPool();});$('teamOperationalProfileShowV61527')?.addEventListener('change',()=>{renderOperationalTargetTypeOptions();loadOpPool();});$('teamOperationalProfileTargetV61527')?.addEventListener('change',()=>{state.opPreview=null;renderOpTeamOptions();});$('teamOperationalProfileTeamV61527')?.addEventListener('change',()=>{state.opPreview=null;renderOpPool();scheduleOperationalPreview();});$('teamOperationalProfileSearchBtnV61527')?.addEventListener('click',renderOpPool);$('teamOperationalProfileSearchV61527')?.addEventListener('input',renderOpPool);$('teamOperationalProfileSearchV61527')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();renderOpPool();}});$('teamOperationalProfileSelectAllLeftV61528F2')?.addEventListener('click',selectAllOperationalLeft);$('teamOperationalProfileMoveRightV61528F2')?.addEventListener('click',moveOperationalRight);$('teamOperationalProfileMoveLeftV61528F2')?.addEventListener('click',moveOperationalLeft);$('teamOperationalProfileNoteV61527')?.addEventListener('input',renderOperationalPreview);$('teamOperationalProfileSaveV61527')?.addEventListener('click',saveOperational);
+    $('teamMembershipEffectiveV61524')?.addEventListener('change',loadMembershipCandidates);$('teamMembershipSearchV61524')?.addEventListener('input',renderMemberList);$('teamMembershipSourceFilterV61528F1')?.addEventListener('change',renderMemberList);$('teamMembershipMoveRightV61528F1')?.addEventListener('click',moveMembershipRight);$('teamMembershipMoveLeftV61528F1')?.addEventListener('click',moveMembershipLeft);$('teamMembershipSelectAllLeftV61528F1')?.addEventListener('click',selectAllMembershipLeft);$('teamMembershipSaveV61524')?.addEventListener('click',saveMembership);
+    $('teamClosureSelectAllV61529F12')?.addEventListener('click',selectAllClosureMembers);$('teamClosureBulkTargetV61529F12')?.addEventListener('change',()=>{const b=$('teamClosureApplyBulkV61529F12');if(b)b.disabled=state.closurePicked.size===0||!$('teamClosureBulkTargetV61529F12')?.value;});$('teamClosureApplyBulkV61529F12')?.addEventListener('click',applyClosureBulkTarget);$('teamClosureReasonV61529F12')?.addEventListener('input',renderTeamClosure);$('teamClosureConfirmV61529F12')?.addEventListener('click',confirmTeamClosure);
+    $('teamMasterAuditRefreshV61523')?.addEventListener('click',loadAudit);$('teamEmployeeTimelineRefreshV616AY')?.addEventListener('click',()=>loadEmployeeTimelineV616AY());$('teamEmployeeTimelineLoadV616AY')?.addEventListener('click',()=>loadEmployeeTimelineV616AY());$('teamEmployeeTimelineSearchV616AY')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadEmployeeTimelineV616AY();}});$('teamEffectiveCorrectionNewV616AY')?.addEventListener('change',previewEffectiveCorrectionV616AY);$('teamEffectiveCorrectionReasonV616AY')?.addEventListener('input',()=>{const p=state.effectiveCorrectionPreview,reason=$('teamEffectiveCorrectionReasonV616AY')?.value?.trim()||'';$('teamEffectiveCorrectionSaveV616AY')&&($('teamEffectiveCorrectionSaveV616AY').disabled=!(p?.allowed===true&&reason.length>=3));});$('teamEffectiveCorrectionSaveV616AY')?.addEventListener('click',saveEffectiveCorrectionV616AY);$('teamChangeRefreshV61528')?.addEventListener('click',loadChangeInbox);$('teamChangeStatusV61528')?.addEventListener('change',loadChangeInbox);$('teamBrowserNotificationV61528')?.addEventListener('click',enableBrowserNotification);
+    document.addEventListener('change',e=>{const l=e.target.closest('[data-team-membership-left-check-v61528f1]');if(l){const c=String(l.dataset.teamMembershipLeftCheckV61528f1);l.checked?state.membershipLeftPicked.add(c):state.membershipLeftPicked.delete(c);renderMemberList();return;}const r=e.target.closest('[data-team-membership-right-check-v61528f1]');if(r){const c=String(r.dataset.teamMembershipRightCheckV61528f1);r.checked?state.membershipRightPicked.add(c):state.membershipRightPicked.delete(c);renderMemberList();return;}const ol=e.target.closest('[data-operational-profile-left-check-v61528f2]');if(ol){const c=String(ol.dataset.operationalProfileLeftCheckV61528f2);ol.checked?state.opLeftPicked.add(c):state.opLeftPicked.delete(c);renderOpPool();return;}const or=e.target.closest('[data-operational-profile-right-check-v61528f2]');if(or){const c=String(or.dataset.operationalProfileRightCheckV61528f2);or.checked?state.opRightPicked.add(c):state.opRightPicked.delete(c);renderOpPool();return;}const cc=e.target.closest('[data-team-closure-member-check-v61529f12]');if(cc){const c=String(cc.dataset.teamClosureMemberCheckV61529f12);cc.checked?state.closurePicked.add(c):state.closurePicked.delete(c);renderTeamClosure();return;}const ct=e.target.closest('[data-team-closure-target-v61529f12]');if(ct){const c=String(ct.dataset.teamClosureTargetV61529f12),v=ct.value;if(!v)state.closureMoves.delete(c);else if(v==='__NONE__')state.closureMoves.set(c,null);else state.closureMoves.set(c,v);renderTeamClosure();scheduleClosurePreview();return;}const en=e.target.closest('[data-enforcement-team-check-v61529]');if(en){const c=String(en.dataset.enforcementTeamCheckV61529);en.checked?state.enforcementSelected.add(c):state.enforcementSelected.delete(c);renderEnforcementModal();return;}});
+    document.addEventListener('click',e=>{
+      const scope=e.target.closest('[data-enforcement-scope-v61529]');if(scope){setEnforcementScope(scope.dataset.enforcementScopeV61529);loadEnforcementModal();return;}if(e.target.closest('[data-team-enforcement-close-v61529]')){closeEnforcementRollout();return;}if(e.target.closest('[data-team-closure-close-v61529f12]')){closeTeamClosure();return;}
+      const tab=e.target.closest('[data-team-workspace-tab-v61528]');if(tab){setTab(tab.dataset.teamWorkspaceTabV61528);return;}
+      const k=e.target.closest('[data-team-kpi-action-v61528]');if(k){const a=k.dataset.teamKpiActionV61528;if(a==='UNCLASSIFIED')openOperationalProfile('UNCLASSIFIED',{mode:'ASSIGN'});else{setTab('PEOPLE');if(['CAR','MOTORCYCLE','SUPPORT'].includes(a)&&$('teamMasterCategoryFilterV61524'))$('teamMasterCategoryFilterV61524').value=a;renderTeams();}return;}
+      const correction=e.target.closest('[data-effective-correct-v616az],[data-team-effective-correct-v616ay]');if(correction){openEffectiveCorrectionV616AY(correction);return;}if(e.target.closest('[data-team-effective-correction-close-v616ay]')){closeEffectiveCorrectionV616AY();return;}const mem=e.target.closest('[data-team-membership-v61524]');if(mem){openMembership(mem.dataset.teamMembershipV61524);return;}
+      const de=e.target.closest('[data-team-master-deactivate-v61523]');if(de){deactivateTeam(de.dataset.teamMasterDeactivateV61523);return;}
+      const ack=e.target.closest('[data-team-change-ack-v61528]');if(ack){acknowledgeChange(ack.dataset.teamChangeAckV61528);return;}
+      if(e.target.closest('[data-team-master-close-v61523]')){closeCreate();return;}if(e.target.closest('[data-team-membership-close-v61524]')){closeMembership();return;}if(e.target.closest('[data-operational-profile-close-v61527]')){closeOperationalProfile();return;}if(e.target.closest('.nav-item[data-page="team-master"]'))setTimeout(load,0);
+    });
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCreate();closeMembership();closeOperationalProfile();closeEnforcementRollout();closeTeamClosure();closeEffectiveCorrectionV616AY();}});
+    document.addEventListener('timeclock:effective-role-changed',()=>{syncNav();if(document.querySelector('#page-team-master.active'))setTimeout(load,0);});window.addEventListener('ta:session-ready',()=>{syncNav();if(document.querySelector('#page-team-master.active'))setTimeout(load,0);});
+    window.addEventListener('timeclock:auth-signed-out',()=>{stopChangeRealtime();});
+    window.addEventListener('timeclock:auth-refreshed',()=>{if(document.querySelector('#page-team-master.active')&&allowedRole()){stopChangeRealtime();setTimeout(()=>{setupChangeRealtime();loadChangeInbox();},50);}});
+  }
+  window.TimeClockTeamMasterV61524={load,openCreate,openMembership,openOperationalProfileV61527:openOperationalProfile,openTeamClosure,loadRuntimeDiagnostic,version:VERSION,state};
+  window.TimeClockTeamEnforcementV61525={loadEnforcement,toggleEnforcement,openRollout:openEnforcementRollout,version:VERSION,state};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+
+
+/* ============================================================================
+   V6.15.29 FIX14B — Temporary Team Assignment / Borrow + Acting UX
+   ============================================================================ */
+(()=>{
+  'use strict';
+  const VERSION='6.15.29 FIX16CA';
+  const $=id=>document.getElementById(id);
+  const app=()=>window.TimeClockApp;
+  const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const role=()=>String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'VIEWER').toUpperCase();
+  const isHr=()=>role()==='HR_ADMIN';
+  const baseManager=()=>role()==='MANAGER';
+  const toast=(m,t='info')=>app()?.toast?.(m,t);
+  const state={
+    access:null,rows:[],summary:{},loaded:false,loading:false,
+    candidates:[],destinations:[],preview:null,selectedEmployee:'',
+    action:null,actingRows:[],actingCandidates:[],actingOrgs:[],actingEdit:null,
+    candidateTimer:null,previewTimer:null,accessLoading:false,
+    workflowFilter:'ACTION'
+  };
+  const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+  const addDays=(iso,n)=>{const [y,m,d]=String(iso).slice(0,10).split('-').map(Number);const x=new Date(y,m-1,d);x.setDate(x.getDate()+n);return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}-${String(x.getDate()).padStart(2,'0')}`;};
+  const monthStart=iso=>String(iso||today()).slice(0,7)+'-01';
+  const fmtDate=v=>{const m=String(v||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v||'-');};
+  const fmtDateTime=v=>{if(!v)return '-';try{return new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short'}).format(new Date(v));}catch{return String(v);}};
+  async function rpc(name,args={}){const c=app()?.state?.client;if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');const {data,error}=await c.rpc(name,args);if(error)throw error;return data;}
+  function human(error){
+    const raw=String(app()?.humanError?.(error)||error?.message||error||'เกิดข้อผิดพลาด');
+    const map=[
+      ['TEMP_ASSIGNMENT_OPERATIONAL_MANAGER_REQUIRED','รายการยืมตัวต้องดำเนินการโดย Manager หรือ Acting Manager ที่มี Authority'],
+      ['TEMP_ASSIGNMENT_AUTHORITY_DENIED','ไม่มีสิทธิ์ดำเนินการรายการยืมตัวนี้'],
+      ['TEMP_ASSIGNMENT_COUNTERPART_AUTHORITY_DENIED','รายการนี้ต้องให้ Manager/Acting ต้นทางเป็นผู้ดำเนินการ'],
+      ['BORROW_CROSS_DIVISION_NOT_ALLOWED','ไม่อนุญาตให้ยืมตัวข้ามระดับฝ่าย'],
+      ['BORROW_DESTINATION_AUTHORITY_REQUIRED','คุณต้องมีสิทธิ์ Manager / Acting ของ Team ปลายทางจึงจะร้องขอยืมช่างได้'],
+      ['BORROW_DESTINATION_MANAGER_REQUIRED','การยืมตัวต้องเริ่มจาก Manager / Acting ฝั่งปลายทาง'],
+      ['SOURCE_MANAGER_NOT_FOUND','ไม่พบ Manager ต้นทางของพนักงาน กรุณาตรวจ Manager Scope'],
+      ['BORROW_SAME_MANAGER_USE_TEAM_TRANSFER','ช่างคนนี้อยู่ภายใต้ Manager เดียวกับปลายทาง ให้ใช้ฟังก์ชัน “ย้ายทีม” ใน Team Membership'],
+      ['BORROW_SOURCE_MANAGER_APPROVAL_REQUIRED','รายการนี้ต้องให้ Manager / Acting ต้นทางเป็นผู้อนุมัติ'],
+      ['BORROW_NOT_WAITING_SOURCE','รายการนี้ไม่ได้อยู่ในสถานะรอ Manager ต้นทาง'],
+      ['BORROW_PREVIEW_BLOCKED','คำขอยืมตัวไม่ผ่านเงื่อนไข'],
+      ['TEMP_ASSIGNMENT_DATE_OVERLAP','พนักงานมีรายการยืมตัวที่ช่วงวันที่ซ้อนกันอยู่แล้ว'],
+      ['HOME_TEAM_REQUIRED_BEFORE_TEMP_ASSIGNMENT','ต้องจัด Permanent Home Team ให้พนักงานก่อนทำรายการ'],
+      ['DESTINATION_TEAM_NOT_ACTIVE_ON_EFFECTIVE_DATE','Team ปลายทางยังไม่พร้อมใช้งานในวันที่เริ่ม'],
+      ['BORROW_OPERATIONAL_TYPE_MISMATCH','ช่างอยู่ต่างประเภทกับ Team ปลายทาง ระบบแสดงรายชื่อให้ตรวจสอบได้ แต่ Policy ปัจจุบันยังไม่อนุญาตให้ส่งคำขอ'],
+      ['DESTINATION_TEAM_CATEGORY_MISMATCH','รูปแบบการปฏิบัติงานของพนักงานไม่ตรงกับประเภท Team ปลายทาง จึงยังส่งคำขอยืมไม่ได้'],
+      ['TEMP_ASSIGNMENT_BACKDATE_NOT_ALLOWED','วันที่เริ่มยืมย้อนหลังได้ไม่เกินวันที่ 1 ของเดือนปัจจุบัน'],
+      ['TEMP_ASSIGNMENT_BEFORE_EMPLOYEE_START_DATE','วันที่เริ่มยืม/ไปช่วยต้องไม่ก่อนวันเริ่มงาน'],
+      ['TEMP_ASSIGNMENT_AFTER_EMPLOYEE_RESIGN_DATE','วันที่สิ้นสุดต้องไม่เกินวันลาออก'],
+      ['TEMP_ASSIGNMENT_SAME_TEAM','Team ปลายทางต้องไม่ใช่ Home Team เดิม'],
+      ['TEMP_ASSIGNMENT_DATE_RANGE_INVALID','วันที่สิ้นสุดต้องไม่น้อยกว่าวันที่เริ่ม'],
+      ['SYSTEM_PERIOD_SCHEDULE_CLOSED','ช่วงวันที่นี้อยู่ในรอบระบบที่ปิดการแก้ไขกะแล้ว'],
+      ['ACTING_ASSIGNMENT_OVERLAP','Acting คนนี้มีช่วงรักษาการซ้อนกันใน Scope เดียวกัน'],
+      ['HR_ADMIN_REQUIRED','รายการนี้สำหรับ HR Admin เท่านั้น']
+    ];
+    for(const [k,v] of map)if(raw.includes(k))return v;
+    return raw.replace(/^Error:\s*/,'');
+  }
+  const assignmentLabel=t=>'ยืมตัว';
+  const assignmentIcon=t=>'↔';
+  function statusInfo(r){
+    const l=String(r?.lifecycle_status||r?.status||'').toUpperCase();
+    const m={
+      PENDING_SOURCE:['รอ Manager ต้นทาง','pending'],PENDING_DESTINATION:['รอ Manager ปลายทาง','pending'],
+      SCHEDULED:['อนุมัติแล้ว · รอเริ่ม','scheduled'],ACTIVE:['กำลังยืมตัว','active'],COMPLETED:['สิ้นสุดแล้ว','completed'],
+      REJECTED:['ไม่อนุมัติ','rejected'],CANCELLED:['ยกเลิกแล้ว','cancelled'],APPROVED:['อนุมัติแล้ว','active']
+    };
+    const x=m[l]||[l||'-','neutral'];return {label:x[0],tone:x[1]};
+  }
+  function directionText(v){return v==='INBOUND'?'ยืมเข้าทีม':v==='OUTBOUND'?'ถูกยืมออก':v==='BOTH'?'เกี่ยวข้องทั้ง 2 ฝั่ง':v==='AUDIT'?'HR Audit':'-';}
+  function authorityLabel(v){return String(v||'').toUpperCase()==='ACTING_MANAGER'?'Acting Manager':String(v||'').toUpperCase()==='MANAGER'?'Manager':String(v||'').toUpperCase()==='SOURCE_AND_DESTINATION'?'Manager ทั้ง 2 ฝั่ง':'-';}
+  // FIX16BY: Acting authority is session-bound. Never reuse access state from a
+  // previously signed-in account in the same browser tab.
+  const currentIdentityKey=()=>{
+    const a=app()?.state||{};
+    const uid=String(a.user?.id||'').trim().toLowerCase();
+    const email=String(a.profile?.email||a.user?.email||'').trim().toLowerCase();
+    return uid||email?`${uid}|${email}`:'';
+  };
+  const currentProfileEmail=()=>String(app()?.state?.profile?.email||app()?.state?.user?.email||'').trim().toLowerCase();
+  function accessBelongsToCurrentIdentity(){
+    const current=currentProfileEmail();
+    const actor=String(state.access?.actor_email||'').trim().toLowerCase();
+    return !!current && !!actor && current===actor;
+  }
+  // FIX16CA: keep Acting authority separate from normal Manager authority.
+  // is_operational_actor is true for both Manager and Acting, so it must never
+  // be used as an Acting flag for menu/DOM decisions.
+  function hasActingAuthority(){
+    return accessBelongsToCurrentIdentity()
+      && state.access?.is_acting===true
+      && !isHr()
+      && !baseManager();
+  }
+  function hasOperationalAuthority(){
+    return accessBelongsToCurrentIdentity()
+      && state.access?.is_operational_actor===true;
+  }
+  function restoreActingUiBaseline({resetTab=false}={}){
+    const page=$('page-team-master');
+    page?.classList.remove('acting-only-v61529f14b');
+    document.querySelectorAll('.acting-base-hidden-v61529f14b').forEach(el=>el.classList.remove('acting-base-hidden-v61529f14b'));
+
+    const title=page?.querySelector('.team-workspace-title-v61528 h2');
+    const desc=page?.querySelector('.team-workspace-title-v61528 p');
+    if(title)title.textContent='ทีมช่างเทคนิค';
+    if(desc)desc.textContent='จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ';
+
+    if(resetTab){
+      document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>b.classList.toggle('active',b.dataset.teamWorkspaceTabV61528==='OVERVIEW'));
+      document.querySelectorAll('[data-team-workspace-pane-v61528]').forEach(p=>p.classList.toggle('hidden',p.dataset.teamWorkspacePaneV61528!=='OVERVIEW'));
+    }
+
+    const baseAllowed=isHr()||baseManager();
+    document.querySelector('.nav-item[data-page="schedule"]')?.classList.toggle('hidden',!baseAllowed);
+    document.querySelector('.nav-item[data-page="work-patterns"]')?.classList.toggle('hidden',!baseAllowed);
+    $('teamMasterNavV61523')?.classList.toggle('hidden',!baseAllowed);
+    $('teamPortalNavV61482')?.classList.toggle('hidden',!baseAllowed);
+    $('teamTemporaryTabV61529F14B')?.classList.toggle('hidden',!baseAllowed);
+    $('teamActingPanelV61529F14B')?.classList.toggle('hidden',!isHr());
+    $('teamTempCreateV61529F14B')?.classList.add('hidden');
+
+    const badge=$('teamTempAuthorityBadgeV61529F14B');
+    if(badge){badge.textContent='กำลังตรวจสอบสิทธิ์';badge.className='badge badge-gray';}
+  }
+  function resetActingSessionState(){
+    const shouldResetTab=actingOnly() || $('page-team-master')?.classList.contains('acting-only-v61529f14b');
+    state.access=null;
+    state.accessLoading=false;
+    state.loaded=false;
+    state.loading=false;
+    state.rows=[];
+    state.summary={};
+    state.candidates=[];
+    state.destinations=[];
+    state.preview=null;
+    state.selectedEmployee='';
+    state.action=null;
+    state.actingRows=[];
+    state.actingRequest=null; // FIX16CD: invalidate responses from the previous session.
+    state.actingCandidates=[];
+    state.actingOrgs=[];
+    state.actingEdit=null;
+    state.identityKey='';
+    if(app()?.state?.profile)app().state.profile._actingTeamAuthority=false;
+    restoreActingUiBaseline({resetTab:shouldResetTab});
+  }
+  function actingOnly(){return hasActingAuthority();}
+  const actorEmail=()=>String(accessBelongsToCurrentIdentity()?state.access?.actor_email:(app()?.state?.profile?.email||'' )).trim().toLowerCase();
+  function isoDayDiff(fromIso,toIso){
+    const a=String(fromIso||'').slice(0,10),b=String(toIso||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(a)||!/^\d{4}-\d{2}-\d{2}$/.test(b))return null;
+    const [ay,am,ad]=a.split('-').map(Number),[by,bm,bd]=b.split('-').map(Number);
+    return Math.round((Date.UTC(by,bm-1,bd)-Date.UTC(ay,am-1,ad))/86400000);
+  }
+  // FIX16CG: Borrow may start retrospectively only within the current calendar month.
+  // Backend remains authoritative; this helper keeps the browser Date Picker and warning in sync.
+  function syncBorrowBackdatePolicyV616CG({showToast=false}={}){
+    const f=$('teamTempCreateFromV61529F14B'),t=$('teamTempCreateToV61529F14B'),w=$('teamTempBackdateWarningV616CG');
+    if(!f)return {valid:false,earliest:monthStart(today()),from:''};
+    const now=today(),earliest=monthStart(now),from=String(f.value||'');
+    f.min=earliest;
+    if(t){
+      const endMin=(from&&from>now)?from:now;
+      t.min=endMin;
+      if(t.value&&t.value<endMin)t.value=endMin;
+    }
+    const tooEarly=!!from&&from<earliest;
+    const backdated=!!from&&from<now&&!tooEarly;
+    if(w){
+      if(backdated){
+        const days=Math.max(0,Number(isoDayDiff(from,now)||0));
+        w.classList.remove('hidden');
+        w.innerHTML=`<strong>⚠ มีผลย้อนหลัง ${days.toLocaleString('th-TH')} วัน</strong><span>เมื่อได้รับอนุมัติ ระบบจะใช้ Team ปลายทางย้อนหลังตั้งแต่ ${esc(fmtDate(from))} • เลือกย้อนหลังได้ไม่เกิน ${esc(fmtDate(earliest))}</span>`;
+      }else if(tooEarly){
+        w.classList.remove('hidden');
+        w.innerHTML=`<strong>✕ วันที่เริ่มอยู่นอกช่วงที่อนุญาต</strong><span>วันที่เริ่มย้อนหลังได้ไม่เกินวันที่ 1 ของเดือนปัจจุบัน (${esc(fmtDate(earliest))})</span>`;
+      }else{
+        w.classList.add('hidden');
+        w.innerHTML='';
+      }
+    }
+    if(tooEarly&&showToast)toast(`วันที่เริ่มย้อนหลังได้ไม่เกิน ${fmtDate(earliest)}`,'warning');
+    return {valid:!tooEarly,earliest,from,backdated};
+  }
+  function isMyRequest(r){const me=actorEmail();return !!me&&String(r?.requested_by_email||'').trim().toLowerCase()===me;}
+  function isExpiringSoon(r){
+    const life=String(r?.lifecycle_status||r?.status||'').toUpperCase();
+    if(life!=='ACTIVE')return false;
+    const left=isoDayDiff(today(),r?.effective_to);return left!==null&&left>=0&&left<=3;
+  }
+  function workflowCounts(){
+    const rows=state.rows||[];
+    return {
+      ACTION:rows.filter(r=>r.can_decide===true).length,
+      REQUESTED:rows.filter(isMyRequest).length,
+      ACTIVE:rows.filter(r=>String(r.lifecycle_status||r.status||'').toUpperCase()==='ACTIVE').length,
+      EXPIRING:rows.filter(isExpiringSoon).length,
+      COMPLETED:rows.filter(r=>String(r.lifecycle_status||r.status||'').toUpperCase()==='COMPLETED').length,
+      ALL:rows.length
+    };
+  }
+  function syncWorkflowFilterUI(){
+    const counts=workflowCounts();
+    document.querySelectorAll('[data-borrow-workflow-filter-v61529f15f]').forEach(btn=>{
+      const key=String(btn.dataset.borrowWorkflowFilterV61529f15f||'ALL').toUpperCase();
+      btn.classList.toggle('active',key===state.workflowFilter);
+      btn.setAttribute('aria-pressed',key===state.workflowFilter?'true':'false');
+      const count=btn.querySelector('[data-borrow-workflow-count-v61529f15f]');if(count)count.textContent=Number(counts[key]||0).toLocaleString('th-TH');
+    });
+  }
+  function setWorkflowFilter(key,{render=true,resetStatus=true}={}){
+    state.workflowFilter=String(key||'ALL').toUpperCase();
+    if(resetStatus&&$('teamTempStatusV61529F14B'))$('teamTempStatusV61529F14B').value='ALL';
+    syncWorkflowFilterUI();if(render)renderWorkspace();
+  }
+
+  async function loadAccess({silent=true}={}){
+    const identityKey=currentIdentityKey();
+    if(!identityKey)return null;
+    if(state.identityKey && state.identityKey!==identityKey)resetActingSessionState();
+    state.identityKey=identityKey;
+    if(state.accessLoading)return state.access;
+    if(!app()?.state?.client)return null;
+    state.accessLoading=true;
+    try{
+      const data=await rpc('ta_get_my_temporary_assignment_access_v61529f14b',{});
+      // A slow response from User A must never be committed after User B signs in.
+      if(currentIdentityKey()!==identityKey)return null;
+      state.access=data||{};
+      if(app()?.state?.profile)app().state.profile._actingTeamAuthority=hasActingAuthority();
+      syncAccessUI();
+      return state.access;
+    }catch(e){if(!silent)toast(human(e),'error');return null;}finally{
+      if(currentIdentityKey()===identityKey)state.accessLoading=false;
+    }
+  }
+
+  function syncAccessUI(){
+    const acting=hasActingAuthority();
+    const operational=hasOperationalAuthority();
+    const can=state.access?.can_access===true||isHr()||baseManager()||acting;
+
+    // Idempotent navigation: every sync computes visibility from the CURRENT
+    // session only. No one-way remove('hidden') that can leak to the next user.
+    $('teamTemporaryTabV61529F14B')?.classList.toggle('hidden',!can);
+    $('teamMasterNavV61523')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
+    $('teamPortalNavV61482')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
+    document.querySelector('.nav-item[data-page="schedule"]')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
+    document.querySelector('.nav-item[data-page="work-patterns"]')?.classList.toggle('hidden',!(isHr()||baseManager()||acting));
+    $('teamActingPanelV61529F14B')?.classList.toggle('hidden',!isHr());
+    $('teamTempCreateV61529F14B')?.classList.toggle('hidden',isHr()||!operational);
+
+    const badge=$('teamTempAuthorityBadgeV61529F14B');
+    if(badge){
+      if(isHr()){badge.textContent='HR Admin · Audit / Acting';badge.className='badge badge-blue';}
+      else if(acting){badge.textContent='Acting Manager · Operational Authority';badge.className='badge badge-purple';}
+      else if(baseManager()){badge.textContent='Manager · Operational Authority';badge.className='badge badge-green';}
+      else{badge.textContent='ไม่มี Operational Authority';badge.className='badge badge-gray';}
+    }
+
+    const page=$('page-team-master');
+    // FIX16CB: Acting is Manager-equivalent inside delegated Scope/Effective Date.
+    // Do not collapse Team Workspace to Borrow-only mode.
+    page?.classList.remove('acting-only-v61529f14b');
+    document.querySelectorAll('.acting-base-hidden-v61529f14b').forEach(b=>b.classList.remove('acting-base-hidden-v61529f14b'));
+    const title=page?.querySelector('.team-workspace-title-v61528 h2');
+    const desc=page?.querySelector('.team-workspace-title-v61528 p');
+    if(title)title.textContent='ทีมช่างเทคนิค';
+    if(desc)desc.textContent=acting
+      ? 'Acting Manager • สิทธิ์เทียบเท่า Manager เฉพาะ Scope และช่วงวันที่ที่ได้รับมอบหมาย'
+      : 'จัดรูปแบบ • สร้างทีม • จัดสมาชิก • พร้อมจัดกะอัตโนมัติ';
+
+    const roleBadge=document.getElementById('roleBadge');
+    if(roleBadge&&acting){
+      roleBadge.textContent='ACTING MANAGER';
+      roleBadge.title=`Base Role ${String(app()?.state?.profile?._realRole||app()?.state?.profile?.role||'VIEWER').toUpperCase()} • Operational Manager ตาม Scope/Effective Date`;
+    }else if(roleBadge){
+      const base=String(app()?.state?.profile?.role||'VIEWER').toUpperCase();
+      roleBadge.textContent=base;
+    }
+
+    window.TimeClockV680?.applyRoleUI?.();
+  }
+
+  function ensureAssignmentTabVisible(){
+    document.querySelectorAll('[data-team-workspace-tab-v61528]').forEach(b=>b.classList.toggle('active',b.dataset.teamWorkspaceTabV61528==='ASSIGNMENTS'));
+    document.querySelectorAll('[data-team-workspace-pane-v61528]').forEach(p=>p.classList.toggle('hidden',p.dataset.teamWorkspacePaneV61528!=='ASSIGNMENTS'));
+  }
+
+  function listRange(){return {from:$('teamTempFromV61529F14B')?.value||monthStart(today()),to:$('teamTempToV61529F14B')?.value||addDays(today(),90)};}
+  function setDefaultRange(){const f=$('teamTempFromV61529F14B'),t=$('teamTempToV61529F14B');if(f&&!f.value)f.value=monthStart(today());if(t&&!t.value)t.value=addDays(today(),90);}
+  function filteredRows(){
+    const status=String($('teamTempStatusV61529F14B')?.value||'ALL').toUpperCase();
+    const workflow=String(state.workflowFilter||'ALL').toUpperCase();
+    const q=String($('teamTempSearchV61529F14B')?.value||'').toLowerCase().trim();
+    return(state.rows||[]).filter(r=>{
+      const life=String(r.lifecycle_status||r.status||'').toUpperCase();
+      const statusOk=status==='ALL'||(status==='OPEN'&&['PENDING_SOURCE','PENDING_DESTINATION','SCHEDULED','ACTIVE'].includes(life))||(status==='PENDING'&&['PENDING_SOURCE','PENDING_DESTINATION'].includes(life))||life===status;
+      const workflowOk=workflow==='ALL'
+        ||(workflow==='ACTION'&&r.can_decide===true)
+        ||(workflow==='REQUESTED'&&isMyRequest(r))
+        ||(workflow==='ACTIVE'&&life==='ACTIVE')
+        ||(workflow==='EXPIRING'&&isExpiringSoon(r))
+        ||(workflow==='COMPLETED'&&life==='COMPLETED');
+      const text=[r.emp_code,r.employee_name,r.source_org_code,r.source_org_name,r.source_team_code,r.destination_org_code,r.destination_org_name,r.destination_team_code,r.requested_by_email,assignmentLabel(r.assignment_type)].join(' ').toLowerCase();
+      return statusOk&&workflowOk&&(!q||text.includes(q));
+    });
+  }
+  function workflowStepperHtml(r){
+    const life=String(r.lifecycle_status||r.status||'').toUpperCase();
+    const rejected=life==='REJECTED',cancelled=life==='CANCELLED';
+    const approved=['SCHEDULED','ACTIVE','COMPLETED','APPROVED'].includes(life);
+    const working=['ACTIVE','COMPLETED'].includes(life);
+    const completed=life==='COMPLETED';
+    const steps=[
+      {label:'ส่งคำขอ',state:'done'},
+      {label:rejected?'ไม่อนุมัติ':'อนุมัติ',state:rejected?'stop':approved?'done':['PENDING_SOURCE','PENDING_DESTINATION'].includes(life)?'current':'idle'},
+      {label:cancelled?'ยกเลิก':'ช่วงยืม',state:cancelled?'stop':working?'done':life==='SCHEDULED'?'current':'idle'},
+      {label:'สิ้นสุด',state:completed?'done':life==='ACTIVE'?'current':'idle'}
+    ];
+    return `<div class="borrow-workflow-stepper-v61529f15f" aria-label="สถานะขั้นตอนการยืมตัว">${steps.map((x,i)=>`<div class="${x.state}"><span>${x.state==='done'?'✓':x.state==='stop'?'×':i+1}</span><small>${esc(x.label)}</small></div>`).join('')}</div>`;
+  }
+  function workflowMetaHtml(r){
+    const tags=[];
+    if(isMyRequest(r))tags.push('<span class="borrow-meta-chip-v61529f15f mine">คำขอของฉัน</span>');
+    if(r.can_decide===true)tags.push('<span class="borrow-meta-chip-v61529f15f action">รอฉันอนุมัติ</span>');
+    if(isExpiringSoon(r)){
+      const left=isoDayDiff(today(),r.effective_to);tags.push(`<span class="borrow-meta-chip-v61529f15f expiring">${left===0?'ครบกำหนดวันนี้':`เหลือ ${left} วัน`}</span>`);
+    }
+    return tags.length?`<div class="borrow-meta-chips-v61529f15f">${tags.join('')}</div>`:'';
+  }
+  function rowActions(r){
+    const out=[];
+    if(r.can_decide){out.push(`<button class="btn btn-primary btn-sm" data-temp-approve-v61529f14b="${esc(r.assignment_id)}">อนุมัติ</button>`);out.push(`<button class="btn btn-danger-soft btn-sm" data-temp-reject-v61529f14b="${esc(r.assignment_id)}">ไม่อนุมัติ</button>`);}
+    if(r.can_end){
+      const l=String(r.lifecycle_status||'').toUpperCase();
+      if(['PENDING_SOURCE','PENDING_DESTINATION','SCHEDULED'].includes(l))out.push(`<button class="btn btn-light btn-sm" data-temp-cancel-v61529f14b="${esc(r.assignment_id)}">ยกเลิก</button>`);
+      else if(l==='ACTIVE')out.push(`<button class="btn btn-light btn-sm" data-temp-end-v61529f14b="${esc(r.assignment_id)}">จบก่อนกำหนด</button>`);
+    }
+    out.push(`<button class="btn btn-light btn-sm" type="button" data-borrow-audit-assignment-v61529f15i="${esc(r.assignment_id)}">⌁ ประวัติ</button>`);
+    return out.join('');
+  }
+  function renderWorkspace(){
+    const rows=filteredRows(),host=$('teamTempListV61529F14B');if(!host)return;
+    const pendingMine=(state.rows||[]).filter(r=>r.can_decide).length;
+    const expiring=(state.rows||[]).filter(isExpiringSoon).length;
+    const put=(id,v)=>{if($(id))$(id).textContent=Number(v||0).toLocaleString('th-TH');};
+    put('teamTempKpiPendingV61529F14B',pendingMine);put('teamTempKpiActiveV61529F14B',state.summary?.active);put('teamTempKpiScheduledV61529F14B',state.summary?.scheduled);put('teamTempKpiInboundV61529F14B',state.summary?.inbound);put('teamTempKpiOutboundV61529F14B',state.summary?.outbound);put('teamTempKpiExpiringV61529F15F',expiring);
+    const badge=$('teamTempPendingBadgeV61529F14B');if(badge){badge.textContent=pendingMine;badge.classList.toggle('hidden',pendingMine===0);}
+    syncWorkflowFilterUI();
+    const resultLabel=$('teamTempResultLabelV61529F15F');if(resultLabel)resultLabel.textContent=`แสดง ${Number(rows.length).toLocaleString('th-TH')} จาก ${Number((state.rows||[]).length).toLocaleString('th-TH')} รายการ`;
+    if(!rows.length){
+      const emptyText=state.workflowFilter==='ACTION'?'ไม่มีรายการรอคุณอนุมัติ':state.workflowFilter==='REQUESTED'?'ยังไม่มีคำขอที่คุณเป็นผู้ร้องขอ':state.workflowFilter==='ACTIVE'?'ไม่มีช่างที่กำลังยืมตัวในช่วงนี้':state.workflowFilter==='EXPIRING'?'ไม่มีรายการที่จะครบกำหนดภายใน 3 วัน':state.workflowFilter==='COMPLETED'?'ยังไม่มีรายการที่สิ้นสุดในช่วงนี้':'ไม่มีรายการตามเงื่อนไข';
+      host.innerHTML=`<div class="team-temp-empty-v61529f14b"><span>✓</span><div><strong>${esc(emptyText)}</strong><small>ลองเปลี่ยนช่วงวันที่ ตัวกรอง หรือคำค้นหา</small></div></div>`;return;
+    }
+    host.innerHTML=rows.map(r=>{
+      const st=statusInfo(r),type=assignmentLabel(r.assignment_type),waiting=r.waiting_for==='SOURCE'?'ต้นทาง':r.waiting_for==='DESTINATION'?'ปลายทาง':'';
+      const auth=r.source_authorized?'Manager/Acting ต้นทาง':r.destination_authorized?'Manager/Acting ปลายทาง':'Audit';
+      return `<article class="team-temp-card-v61529f14b ${st.tone}" data-borrow-assignment-card-v61529f15g="${esc(r.assignment_id||'')}">
+        <div class="team-temp-card-main-v61529f14b">
+          <div class="team-temp-person-v61529f14b"><span class="team-temp-type-icon-v61529f14b">${assignmentIcon(r.assignment_type)}</span><div><strong>${esc(r.emp_code)} · ${esc(r.employee_name||'-')}</strong><small>${esc(r.position_name||'ช่างเทคนิค')}</small><span class="team-temp-type-chip-v61529f14b ${String(r.assignment_type||'').toLowerCase()}">${esc(type)}</span>${workflowMetaHtml(r)}</div></div>
+          <div class="team-temp-flow-v61529f14b"><div><span>ต้นทาง</span><strong>${esc(r.source_org_code||'-')}</strong><small>${esc(r.source_team_code||'-')} · ${esc(r.source_team_name||'')}</small></div><b>→</b><div><span>Team ปลายทาง</span><strong>${esc(r.destination_org_code||'-')}</strong><small>${esc(r.destination_team_code||'-')} · ${esc(r.destination_team_name||'')}</small></div></div>
+          <div class="team-temp-period-v61529f14b"><span>ช่วงยืมตัว</span><strong>${esc(fmtDate(r.effective_from))}</strong><small>ถึง ${esc(fmtDate(r.effective_to))}</small></div>
+          <div class="team-temp-status-v61529f14b"><span class="team-temp-status-chip-v61529f14b ${st.tone}">${esc(st.label)}</span><small>${waiting?`รอการอนุมัติ${waiting} · `:''}${esc(directionText(r.direction))}</small><small>${esc(auth)}</small></div>
+        </div>
+        ${workflowStepperHtml(r)}
+        <div class="team-temp-card-foot-v61529f14b"><p><strong>เหตุผล:</strong> ${esc(r.note||'-')}</p><div><span>ร้องขอโดย ${esc(r.requested_by_email||'-')} · ${esc(fmtDateTime(r.created_at))}</span><div class="team-temp-actions-v61529f14b">${rowActions(r)}</div></div></div>
+      </article>`;
+    }).join('');
+  }
+  async function load(){
+    await loadAccess();if(!(state.access?.can_access||isHr()||baseManager()))return;
+    if(state.loading)return;state.loading=true;setDefaultRange();const host=$('teamTempListV61529F14B');if(host)host.innerHTML='<div class="fc-empty">กำลังโหลดรายการยืมตัว...</div>';
+    const actingTask=isHr()?loadActing():Promise.resolve(); // FIX16CD: independent of Borrow RPC success.
+    try{
+      const range=listRange();const data=await rpc('ta_get_borrow_workspace_v61529f15',{p_from:range.from||null,p_to:range.to||null,p_org_id:null});
+      state.rows=Array.isArray(data?.rows)?data.rows:[];state.summary=data?.summary||{};state.loaded=true;
+      if(isHr()&&state.workflowFilter==='ACTION')state.workflowFilter='ALL';
+      renderWorkspace();
+
+    }catch(e){if(host)host.innerHTML=`<div class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</div>`;toast(human(e),'error');}finally{state.loading=false;await actingTask;}
+  }
+
+  function selectedCandidate(){return state.candidates.find(r=>String(r.emp_code)===String($('teamTempEmployeeV61529F14B')?.value||''))||null;}
+  function selectedDestination(){return state.destinations.find(r=>String(r.team_id)===String($('teamTempDestinationV61529F14B')?.value||''))||null;}
+  function candidateCompatibility(r,d=selectedDestination()){
+    const source=String(r?.operational_type||'').trim().toUpperCase(),target=String(d?.team_category||'').trim().toUpperCase();
+    return {source,target,known:!!source&&!!target,match:!!source&&!!target&&source===target};
+  }
+  function renderCandidateOptions(keep=''){
+    const s=$('teamTempEmployeeV61529F14B');if(!s)return;const old=keep||s.value;
+    const destId=$('teamTempDestinationV61529F14B')?.value||'',dest=selectedDestination();
+    if(!destId){s.disabled=true;s.innerHTML='<option value="">— เลือก Team ปลายทางก่อน —</option>';return;}
+    s.innerHTML='<option value="">— เลือกช่างที่ต้องการยืม —</option>'+state.candidates.map(r=>{
+      const c=candidateCompatibility(r,dest),compat=c.known?(c.match?'✓ ตรงประเภท':`⚠ ${c.source} → ${c.target}`):'⚠ ตรวจประเภทงาน';
+      return `<option value="${esc(r.emp_code)}">${esc(r.emp_code)} · ${esc(r.full_name||'-')} · ${esc(r.home_org_code||'-')} · ${esc(r.home_team_code||'-')} · ${esc(r.operational_type||'-')} · ${esc(compat)} · Manager ${esc(r.source_manager_name||r.source_manager_email||'-')}</option>`;
+    }).join('');
+    s.disabled=false;if(state.candidates.some(r=>String(r.emp_code)===String(old)))s.value=old;
+  }
+  function renderHomeCard(){
+    const r=selectedCandidate(),d=selectedDestination(),box=$('teamTempHomeCardV61529F14B');if(!box)return;
+    if(!r){box.innerHTML='<span>ต้นทาง</span><strong>-</strong><small>เลือกช่างเพื่อดู Home Team, รูปแบบการปฏิบัติงาน และ Manager ต้นทาง</small>';return;}
+    const c=candidateCompatibility(r,d),compat=c.known?(c.match?'<div class="team-temp-compat-v61529f15a ok">✓ รูปแบบการปฏิบัติงานตรงกับ Team ปลายทาง</div>':`<div class="team-temp-compat-v61529f15a warning">⚠ รูปแบบ ${esc(c.source)} ไม่ตรงกับ Team ปลายทาง ${esc(c.target)} · แสดงรายชื่อได้ แต่ต้องตรวจ Preview ก่อนส่งคำขอ</div>`):'';
+    box.innerHTML=`<span>ต้นทาง · Permanent Home Team</span><strong>${esc(r.home_org_code||'-')} · ${esc(r.home_team_code||'-')}</strong><small>${esc(r.home_org_name||'')} · ${esc(r.home_team_name||'')} · ${esc(r.operational_type||'-')} · Manager: ${esc(r.source_manager_name||r.source_manager_email||'-')}</small>${compat}`;
+  }
+  async function loadDestinations(){
+    const d=$('teamTempCreateFromV61529F14B')?.value||today(),s=$('teamTempDestinationV61529F14B'),keep=s?.value||'';state.destinations=[];state.preview=null;if(!s)return;
+    s.disabled=true;s.innerHTML='<option value="">กำลังโหลด Team ปลายทางของคุณ...</option>';
+    try{
+      state.destinations=await rpc('ta_get_borrow_destination_teams_v61529f15',{p_work_date:d})||[];
+      s.innerHTML='<option value="">— เลือก Team ปลายทาง —</option>'+state.destinations.map(r=>`<option value="${esc(r.team_id)}">${esc(r.org_code)} · ${esc(r.team_code)} · ${esc(r.team_name)} · ${Number(r.current_member_count||0)} คน · ${esc(r.team_category||'-')}</option>`).join('');
+      s.disabled=false;if(state.destinations.some(r=>String(r.team_id)===String(keep)))s.value=keep;
+      $('teamTempDestinationHintV61529F14B').textContent=state.destinations.length?'แสดงเฉพาะ Team ปลายทางที่คุณมี Manager / Acting Authority และพร้อมใช้งาน':'ไม่พบ Team ปลายทางที่คุณมีสิทธิ์ร้องขอยืมช่าง';
+    }catch(e){s.innerHTML='<option value="">โหลด Team ไม่สำเร็จ</option>';toast(human(e),'error');}
+    renderCandidateOptions();renderHomeCard();renderPreview();
+  }
+  async function loadCandidates(){
+    const keep=$('teamTempEmployeeV61529F14B')?.value||'',q=$('teamTempCandidateSearchV61529F14B')?.value?.trim()||'',d=$('teamTempCreateFromV61529F14B')?.value||today(),dest=$('teamTempDestinationV61529F14B')?.value||'';
+    state.candidates=[];state.preview=null;if(!dest){renderCandidateOptions();renderHomeCard();renderPreview();return;}
+    try{state.candidates=await rpc('ta_get_borrow_candidates_v61529f15',{p_destination_team_id:dest,p_work_date:d,p_search:q||null,p_limit:500})||[];renderCandidateOptions(keep);renderHomeCard();if(!state.candidates.length)toast('ไม่พบช่างภายใต้ Manager อื่นในฝ่ายเดียวกันที่สามารถแสดงสำหรับการยืมได้','info');}catch(e){renderCandidateOptions();toast(human(e),'error');}
+    renderPreview();
+  }
+  function blockerText(b){const c=String(b?.code||'');return human(c)||c;}
+  function renderPreview(){
+    const p=state.preview,box=$('teamTempPreviewV61529F14B'),save=$('teamTempCreateConfirmV61529F14B');if(!box||!save)return;const note=String($('teamTempNoteV61529F14B')?.value||'').trim();
+    if(!p){box.innerHTML='<div class="team-temp-preview-placeholder-v61529f14b">เลือก Team ปลายทาง ช่าง และช่วงวันที่ เพื่อดูเส้นทางคำขอ</div>';save.disabled=true;save.textContent='ส่งคำขอยืมตัว';return;}
+    const blockers=Array.isArray(p.blockers)?p.blockers:[],warnings=Array.isArray(p.warnings)?p.warnings:[],allowed=p.allowed===true,source=p.source_org||{},dest=p.destination_org||{},st=p.source_team||{},dt=p.destination_team||{},sm=p.source_manager||{},dm=p.destination_manager||{};
+    const c=p.compatibility||candidateCompatibility(selectedCandidate(),selectedDestination()),sourceType=String(c.source_operational_type||c.source||selectedCandidate()?.operational_type||'-').toUpperCase(),destType=String(c.destination_team_category||c.target||dt.team_category||selectedDestination()?.team_category||'-').toUpperCase();
+    const mismatch=c.team_category_match===false||(sourceType!=='-'&&destType!=='-'&&sourceType!==destType),warningRows=[...warnings];
+    if(mismatch&&!warningRows.some(w=>String(w?.code||'')==='BORROW_OPERATIONAL_TYPE_MISMATCH'))warningRows.push({code:'BORROW_OPERATIONAL_TYPE_MISMATCH',operational_type:sourceType,destination_team_category:destType});
+    const workflow='ปลายทางร้องขอ → รอ Manager / Acting ต้นทางอนุมัติ → เมื่ออนุมัติ ปลายทางเป็นผู้จัดกะตลอดช่วงยืม';
+    box.innerHTML=`<div class="team-temp-preview-head-v61529f14b"><div><span>ประเภท</span><strong>↔ ยืมตัว · ต่าง Manager</strong></div><span class="${allowed?'ok':'blocked'}">${allowed?'✓ ผ่านเงื่อนไข':'! ยังส่งคำขอไม่ได้'}</span></div><div class="team-temp-preview-flow-v61529f14b"><div><small>ต้นทาง</small><strong>${esc(source.org_code||'-')} · ${esc(st.team_code||'-')}</strong><span>Manager: ${esc(sm.email||'-')} · ${esc(sourceType)}</span></div><b>→</b><div><small>Team ปลายทาง</small><strong>${esc(dest.org_code||'-')} · ${esc(dt.team_code||'-')}</strong><span>Manager: ${esc(dm.email||'-')} · ${esc(destType)}</span></div></div><div class="team-temp-workflow-v61529f14b"><strong>เส้นทางอนุมัติ</strong><span>${esc(workflow)}</span><small>Manager เดียวกันจะไม่เข้าหน้านี้ และต้องใช้ฟังก์ชันย้ายทีม</small></div>${warningRows.length?`<div class="team-temp-warnings-v61529f15a">${warningRows.map(w=>`<p>⚠ ${esc(blockerText(w))}${w?.operational_type||w?.destination_team_category?` · ${esc(w.operational_type||sourceType)} → ${esc(w.destination_team_category||destType)}`:''}</p>`).join('')}</div>`:''}${blockers.length?`<div class="team-temp-blockers-v61529f14b">${blockers.map(b=>`<p>• ${esc(blockerText(b))}</p>`).join('')}</div>`:''}`;
+    save.disabled=!allowed||note.length<3;save.textContent='ส่งคำขอยืมตัว';
+  }
+  async function preview(){
+    clearTimeout(state.previewTimer);const emp=$('teamTempEmployeeV61529F14B')?.value||'',dest=$('teamTempDestinationV61529F14B')?.value||'',from=$('teamTempCreateFromV61529F14B')?.value||'',to=$('teamTempCreateToV61529F14B')?.value||'';
+    const datePolicy=syncBorrowBackdatePolicyV616CG();
+    if(!emp||!dest||!from||!to){state.preview=null;renderPreview();return;}
+    if(!datePolicy.valid){state.preview={allowed:false,blockers:[{code:'TEMP_ASSIGNMENT_BACKDATE_NOT_ALLOWED'}]};renderPreview();return;}
+    if(to<from){state.preview={allowed:false,blockers:[{code:'TEMP_ASSIGNMENT_DATE_RANGE_INVALID'}]};renderPreview();return;}
+    try{state.preview=await rpc('ta_preview_borrow_request_v61529f15',{p_emp_code:emp,p_destination_team_id:dest,p_effective_from:from,p_effective_to:to});renderPreview();}catch(e){state.preview={allowed:false,blockers:[{code:human(e)}]};renderPreview();}
+  }
+  function schedulePreview(){clearTimeout(state.previewTimer);state.previewTimer=setTimeout(preview,180);}
+  async function openCreate(){
+    await loadAccess({silent:false});if(isHr())return toast('HR Admin ใช้หน้านี้เพื่อตรวจสอบและกำหนด Acting แต่ไม่ใช่ผู้ร้องขอ/อนุมัติยืมตัว','warning');if(!hasOperationalAuthority())return toast('ไม่มี Operational Authority สำหรับร้องขอยืมตัว','error');
+    const modal=$('teamTempCreateModalV61529F14B');if(!modal)return;const f=$('teamTempCreateFromV61529F14B'),t=$('teamTempCreateToV61529F14B');if(f){f.value=today();f.min=monthStart(today());}if(t){t.value=addDays(today(),7);t.min=today();}syncBorrowBackdatePolicyV616CG();$('teamTempCandidateSearchV61529F14B')&&($('teamTempCandidateSearchV61529F14B').value='');$('teamTempNoteV61529F14B')&&($('teamTempNoteV61529F14B').value='');state.preview=null;state.destinations=[];state.candidates=[];modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');await loadDestinations();renderCandidateOptions();renderHomeCard();renderPreview();
+  }
+  function closeCreate(){const m=$('teamTempCreateModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.preview=null;state.destinations=[];state.candidates=[];}
+  async function createAssignment(){
+    const emp=$('teamTempEmployeeV61529F14B')?.value||'',dest=$('teamTempDestinationV61529F14B')?.value||'',from=$('teamTempCreateFromV61529F14B')?.value||'',to=$('teamTempCreateToV61529F14B')?.value||'',note=String($('teamTempNoteV61529F14B')?.value||'').trim();if(state.preview?.allowed!==true)return toast('กรุณาตรวจ Preview ให้ผ่านก่อนส่งคำขอ','warning');if(note.length<3)return toast('กรุณาระบุเหตุผล / รายละเอียดงาน','warning');
+    const sm=state.preview?.source_manager?.email||'-',dm=state.preview?.destination_manager?.email||'-',backdated=from<today();const ok=await window.tcConfirm?.({title:'ส่งคำขอยืมช่าง?',message:[`${emp} · ยืมตัว`,`Manager ต้นทาง: ${sm}`,`Manager ปลายทาง: ${dm}`,`${state.preview?.source_org?.org_code||'-'} → ${state.preview?.destination_org?.org_code||'-'}`,`${fmtDate(from)} – ${fmtDate(to)}`,backdated?`⚠ เมื่ออนุมัติ Team ปลายทางจะมีผลย้อนหลังตั้งแต่ ${fmtDate(from)}`:'','เมื่อส่งแล้ว ระบบจะรอ Manager / Acting ต้นทางอนุมัติ'].filter(Boolean).join('\n'),confirmText:'ส่งคำขอยืมตัว',tone:'primary'});if(!ok)return;
+    try{app()?.showLoading?.('กำลังส่งคำขอยืมตัว...');await rpc('ta_create_borrow_request_v61529f15',{p_emp_code:emp,p_destination_team_id:dest,p_effective_from:from,p_effective_to:to,p_note:note});closeCreate();toast('ส่งคำขอให้ Manager ต้นทางอนุมัติแล้ว','success');await load();window.TimeClockFunctional?.loadNotifications?.();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}
+  }
+
+  function rowById(id){return(state.rows||[]).find(r=>String(r.assignment_id)===String(id))||null;}
+  async function approve(id){const r=rowById(id);if(!r)return;const ok=await window.tcConfirm?.({title:'อนุมัติการยืมตัวช่าง',message:[`${r.emp_code} · ${r.employee_name||'-'}`,`${r.source_org_code} → ${r.destination_org_code}`,`${fmtDate(r.effective_from)} – ${fmtDate(r.effective_to)}`].join('\n'),confirmText:'อนุมัติ',tone:'primary'});if(!ok)return;try{app()?.showLoading?.('กำลังอนุมัติ...');await rpc('ta_decide_borrow_request_v61529f15',{p_assignment_id:id,p_decision:'APPROVE',p_note:null});toast('อนุมัติเรียบร้อย','success');await load();window.TimeClockFunctional?.loadNotifications?.();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+  function openAction(id,mode){const r=rowById(id);if(!r)return;state.action={id,mode,row:r};const modal=$('teamTempActionModalV61529F14B'),title=$('teamTempActionTitleV61529F14B'),sub=$('teamTempActionSubtitleV61529F14B'),sum=$('teamTempActionSummaryV61529F14B'),endBox=$('teamTempActionEndBoxV61529F14B'),end=$('teamTempActionEndDateV61529F14B'),btn=$('teamTempActionConfirmV61529F14B');if(!modal)return;const labels={REJECT:'ไม่อนุมัติคำขอยืมตัว',CANCEL:'ยกเลิกคำขอยืมตัว',END:'จบการยืมตัวก่อนกำหนด'};title.textContent=labels[mode]||'ดำเนินการ';sub.textContent=`${r.emp_code} · ${r.employee_name||'-'} · ${r.source_org_code} → ${r.destination_org_code}`;sum.innerHTML=`<div><span>ประเภท</span><strong>${esc(assignmentLabel(r.assignment_type))}</strong></div><div><span>ช่วงเดิม</span><strong>${esc(fmtDate(r.effective_from))} – ${esc(fmtDate(r.effective_to))}</strong></div>`;$('teamTempActionReasonV61529F14B')&&($('teamTempActionReasonV61529F14B').value='');endBox.classList.toggle('hidden',mode!=='END');if(mode==='END'&&end){end.min=today();end.max=addDays(r.effective_to,-1);end.value=today()<r.effective_to?today():addDays(r.effective_to,-1);}btn.textContent=mode==='REJECT'?'ยืนยันไม่อนุมัติ':mode==='CANCEL'?'ยืนยันยกเลิก':'ยืนยันวันสิ้นสุดใหม่';btn.className=mode==='END'?'btn btn-primary':'btn btn-danger';modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');}
+  function closeAction(){const m=$('teamTempActionModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.action=null;}
+  async function confirmAction(){const a=state.action;if(!a)return;const reason=String($('teamTempActionReasonV61529F14B')?.value||'').trim();if(reason.length<3)return toast('กรุณาระบุเหตุผล','warning');try{app()?.showLoading?.('กำลังบันทึก...');if(a.mode==='REJECT')await rpc('ta_decide_borrow_request_v61529f15',{p_assignment_id:a.id,p_decision:'REJECT',p_note:reason});else{const end=a.mode==='END'?$('teamTempActionEndDateV61529F14B')?.value:today();if(a.mode==='END'&&!end)return toast('กรุณาระบุวันที่สิ้นสุดใหม่','warning');await rpc('ta_end_borrow_request_v61529f15',{p_assignment_id:a.id,p_effective_to:end,p_reason:reason});}closeAction();toast(a.mode==='REJECT'?'บันทึกไม่อนุมัติแล้ว':a.mode==='CANCEL'?'ยกเลิกรายการแล้ว':'ปรับวันสิ้นสุดเรียบร้อย','success');await load();window.TimeClockFunctional?.loadNotifications?.();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+
+  // FIX16CD: HR Acting history is independent of the Borrow date filter.
+  // This reader never grants authority or changes assignment effective dates.
+  async function loadActing(){
+    if(!isHr())return;
+    const identity=currentIdentityKey();
+    if(state.actingRequest?.identity===identity)return state.actingRequest.promise;
+    const request={identity,promise:null};
+    state.actingRequest=request;
+    const body=$('teamActingBodyV61529F14B');
+    if(body)body.innerHTML='<tr><td colspan="6" class="fc-empty">กำลังโหลดรายการ Acting ทุกช่วงวันที่...</td></tr>';
+    const isCurrent=()=>state.actingRequest===request&&currentIdentityKey()===identity&&isHr();
+    request.promise=(async()=>{
+      try{
+        const data=await rpc('ta_get_acting_manager_assignments_v61529f14b',{
+          p_from:null,p_to:null,p_org_id:null
+        });
+        if(!isCurrent())return;
+        if(data!=null&&!Array.isArray(data))throw new Error('รูปแบบข้อมูล Acting ไม่ถูกต้อง กรุณาส่งรายละเอียดให้ผู้ดูแลระบบ');
+        state.actingRows=data||[];
+        renderActing();
+      }catch(e){
+        if(!isCurrent())return;
+        state.actingRows=[];
+        console.warn('Acting reader FIX16CD',e);
+        if(body)body.innerHTML=`<tr><td colspan="6" class="fc-empty" role="alert">โหลดข้อมูล Acting ไม่สำเร็จ: ${esc(human(e))}<br>กดรีเฟรชเพื่อลองใหม่ หากยังพบปัญหา กรุณาส่งข้อความนี้ให้ผู้ดูแลระบบ</td></tr>`;
+      }finally{
+        if(state.actingRequest===request)state.actingRequest=null;
+      }
+    })();
+    return request.promise;
+  }
+  function actingStatus(r){return String(r.lifecycle_status||'').toUpperCase()==='ACTIVE'?'<span class="badge badge-green">กำลังรักษาการ</span>':String(r.lifecycle_status||'').toUpperCase()==='SCHEDULED'?'<span class="badge badge-blue">รอเริ่ม</span>':String(r.lifecycle_status||'').toUpperCase()==='COMPLETED'?'<span class="badge badge-gray">สิ้นสุดแล้ว</span>':'<span class="badge badge-red">ปิดใช้งาน</span>';}
+  function renderActing(){const b=$('teamActingBodyV61529F14B');if(!b)return;b.innerHTML=state.actingRows.length?state.actingRows.map(r=>`<tr><td><strong>${esc(r.acting_name||r.acting_email)}</strong><small class="team-master-sub-v61523">${esc(r.acting_emp_code||'-')} · ${esc(r.acting_email)}</small></td><td><strong>${esc(r.org_code||'-')}</strong><small class="team-master-sub-v61523">${esc(r.org_name||'')}${r.include_descendants?' · รวมหน่วยงานย่อย':''}</small></td><td>${esc(fmtDate(r.effective_from))}<small class="team-master-sub-v61523">ถึง ${esc(fmtDate(r.effective_to))}</small></td><td>${actingStatus(r)}</td><td>${esc(r.reason||'-')}</td><td><button class="btn btn-light btn-sm" data-acting-edit-v61529f14b="${esc(r.acting_id)}">แก้ไข</button></td></tr>`).join(''):'<tr><td colspan="6" class="fc-empty">ไม่พบรายการ Acting ที่บันทึกไว้</td></tr>';}
+  async function loadActingOptions(search=''){if(!isHr())return;const [people,orgs]=await Promise.all([rpc('ta_get_acting_manager_candidates_v61529f14b',{p_search:search||null,p_limit:500}),state.actingOrgs.length?Promise.resolve(state.actingOrgs):rpc('ta_get_acting_org_options_v61529f14b',{})]);state.actingCandidates=people||[];state.actingOrgs=orgs||[];renderActingOptions();}
+  function renderActingOptions(){const p=$('teamActingPersonV61529F14B'),o=$('teamActingOrgV61529F14B');if(p){const old=p.value;p.innerHTML='<option value="">— เลือกผู้รักษาการ —</option>'+state.actingCandidates.map(r=>`<option value="${esc(r.email)}" data-emp="${esc(r.emp_code||'')}">${esc(r.display_name||r.email)} · ${esc(r.email)}${r.emp_code?` · ${esc(r.emp_code)}`:''}</option>`).join('');if([...p.options].some(x=>x.value===old))p.value=old;}if(o){const old=o.value;o.innerHTML='<option value="">— เลือกหน่วยงาน —</option>'+state.actingOrgs.map(r=>`<option value="${esc(r.org_id)}">${esc(r.org_code)} · ${esc(r.org_name)}</option>`).join('');if([...o.options].some(x=>x.value===old))o.value=old;}}
+  async function openActing(id=null){if(!isHr())return;state.actingEdit=id?(state.actingRows.find(r=>String(r.acting_id)===String(id))||null):null;const modal=$('teamActingModalV61529F14B');if(!modal)return;await loadActingOptions('');const r=state.actingEdit;$('teamActingModalTitleV61529F14B').textContent=r?'แก้ไข Acting Manager':'กำหนด Acting Manager';if(r&&!state.actingCandidates.some(x=>String(x.email).toLowerCase()===String(r.acting_email).toLowerCase()))state.actingCandidates.unshift({email:r.acting_email,emp_code:r.acting_emp_code,display_name:r.acting_name,role:'-'});renderActingOptions();if($('teamActingPersonV61529F14B'))$('teamActingPersonV61529F14B').value=r?.acting_email||'';if($('teamActingOrgV61529F14B'))$('teamActingOrgV61529F14B').value=r?.org_unit_id||'';$('teamActingDescendantsV61529F14B')&&($('teamActingDescendantsV61529F14B').checked=r?.include_descendants===true);$('teamActingFromV61529F14B')&&($('teamActingFromV61529F14B').value=r?.effective_from||today());$('teamActingToV61529F14B')&&($('teamActingToV61529F14B').value=r?.effective_to||addDays(today(),7));$('teamActingReasonV61529F14B')&&($('teamActingReasonV61529F14B').value=r?.reason||'');$('teamActingActiveV61529F14B')&&($('teamActingActiveV61529F14B').checked=r?r.is_active!==false:true);modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');}
+  function closeActing(){const m=$('teamActingModalV61529F14B');if(m){m.classList.add('hidden');m.setAttribute('aria-hidden','true');}state.actingEdit=null;}
+  async function saveActing(){if(!isHr())return;const person=$('teamActingPersonV61529F14B'),email=person?.value||'',emp=person?.selectedOptions?.[0]?.dataset?.emp||'',org=$('teamActingOrgV61529F14B')?.value||'',from=$('teamActingFromV61529F14B')?.value||'',to=$('teamActingToV61529F14B')?.value||'',reason=String($('teamActingReasonV61529F14B')?.value||'').trim(),active=$('teamActingActiveV61529F14B')?.checked!==false;if(!email||!org||!from||!to)return toast('กรุณาระบุผู้รักษาการ หน่วยงาน และช่วงวันที่','warning');if(to<from)return toast('วันที่สิ้นสุดต้องไม่น้อยกว่าวันเริ่ม','warning');if(reason.length<3)return toast('กรุณาระบุเหตุผลการรักษาการ','warning');try{app()?.showLoading?.('กำลังบันทึก Acting Manager...');await rpc('ta_set_acting_manager_assignment_v61529f14',{p_acting_id:state.actingEdit?.acting_id||null,p_acting_email:email,p_acting_emp_code:emp||null,p_org_id:org,p_include_descendants:$('teamActingDescendantsV61529F14B')?.checked===true,p_effective_from:from,p_effective_to:to,p_reason:reason,p_is_active:active});closeActing();toast('บันทึก Acting Manager เรียบร้อย','success');await loadActing();}catch(e){toast(human(e),'error');}finally{app()?.hideLoading?.();}}
+
+  async function openActingAdmin(){
+    if(!isHr())return toast('เมนู Acting Manager สำหรับ HR Admin เท่านั้น','error');
+    app()?.switchPage?.('team-master');
+    await loadAccess({silent:false});
+    ensureAssignmentTabVisible();
+    await load();
+    await loadActing();
+    requestAnimationFrame(()=>{
+      const panel=$('teamActingPanelV61529F14B');
+      panel?.classList.remove('hidden');
+      panel?.scrollIntoView?.({behavior:'smooth',block:'start'});
+      panel?.classList.add('team-acting-focus-v616bx');
+      setTimeout(()=>panel?.classList.remove('team-acting-focus-v616bx'),1800);
+    });
+  }
+
+  async function openFromNotification(context={}){
+    const assignmentId=String(context.assignmentId||'');
+    const from=String(context.effectiveFrom||'').slice(0,10);
+    const to=String(context.effectiveTo||'').slice(0,10);
+    const workflow=String(context.workflowFilter||'ALL').toUpperCase();
+    ensureAssignmentTabVisible();
+    const f=$('teamTempFromV61529F14B'),t=$('teamTempToV61529F14B');
+    if(f&&/^\d{4}-\d{2}-\d{2}$/.test(from)&&(!f.value||from<f.value))f.value=from;
+    if(t&&/^\d{4}-\d{2}-\d{2}$/.test(to)&&(!t.value||to>t.value))t.value=to;
+    state.workflowFilter=['ACTION','REQUESTED','ACTIVE','EXPIRING','COMPLETED','ALL'].includes(workflow)?workflow:'ALL';
+    if($('teamTempStatusV61529F14B'))$('teamTempStatusV61529F14B').value='ALL';
+    syncWorkflowFilterUI();
+    await load();
+    if(!assignmentId)return;
+    const card=[...document.querySelectorAll('[data-borrow-assignment-card-v61529f15g]')]
+      .find(el=>String(el.getAttribute('data-borrow-assignment-card-v61529f15g')||'')===assignmentId);
+    if(card){
+      card.classList.add('borrow-notification-highlight-v61529f15g');
+      card.scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(()=>card.classList.remove('borrow-notification-highlight-v61529f15g'),3200);
+    }
+  }
+
+  function bind(){
+    setDefaultRange();
+    $('teamBorrowBrowserNotificationV61529F15G')?.addEventListener('click',()=>window.TimeClockBorrowNotificationsV61529F15G?.requestPermission?.());
+    $('teamTempRefreshV61529F14B')?.addEventListener('click',load);$('teamTempCreateV61529F14B')?.addEventListener('click',openCreate);$('teamTempStatusV61529F14B')?.addEventListener('change',()=>{state.workflowFilter='ALL';syncWorkflowFilterUI();renderWorkspace();});$('teamTempSearchV61529F14B')?.addEventListener('input',renderWorkspace);$('teamTempFromV61529F14B')?.addEventListener('change',load);$('teamTempToV61529F14B')?.addEventListener('change',load);
+    $('teamTempCandidateSearchBtnV61529F14B')?.addEventListener('click',loadCandidates);$('teamTempCandidateSearchV61529F14B')?.addEventListener('input',()=>{clearTimeout(state.candidateTimer);state.candidateTimer=setTimeout(loadCandidates,280);});$('teamTempCandidateSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadCandidates();}});
+    $('teamTempDestinationV61529F14B')?.addEventListener('change',async()=>{if($('teamTempEmployeeV61529F14B'))$('teamTempEmployeeV61529F14B').value='';await loadCandidates();schedulePreview();});$('teamTempEmployeeV61529F14B')?.addEventListener('change',()=>{renderHomeCard();schedulePreview();});$('teamTempCreateFromV61529F14B')?.addEventListener('change',async e=>{const policy=syncBorrowBackdatePolicyV616CG({showToast:true});if(!policy.valid){e.target.value=policy.earliest;syncBorrowBackdatePolicyV616CG();}if($('teamTempCreateToV61529F14B')&&$('teamTempCreateToV61529F14B').value<e.target.value)$('teamTempCreateToV61529F14B').value=e.target.value;if($('teamTempDestinationV61529F14B'))$('teamTempDestinationV61529F14B').value='';await loadDestinations();await loadCandidates();schedulePreview();});$('teamTempCreateToV61529F14B')?.addEventListener('change',()=>{syncBorrowBackdatePolicyV616CG();schedulePreview();});$('teamTempNoteV61529F14B')?.addEventListener('input',renderPreview);$('teamTempCreateConfirmV61529F14B')?.addEventListener('click',createAssignment);$('teamTempActionConfirmV61529F14B')?.addEventListener('click',confirmAction);
+    $('teamActingRefreshV61529F14B')?.addEventListener('click',loadActing);$('teamActingCreateV61529F14B')?.addEventListener('click',()=>openActing(null));$('teamActingSearchBtnV61529F14B')?.addEventListener('click',()=>loadActingOptions($('teamActingSearchV61529F14B')?.value||''));$('teamActingSearchV61529F14B')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadActingOptions(e.target.value||'');}});$('teamActingSaveV61529F14B')?.addEventListener('click',saveActing);
+    document.addEventListener('click',e=>{
+      const wf=e.target.closest('[data-borrow-workflow-filter-v61529f15f]');if(wf){setWorkflowFilter(wf.dataset.borrowWorkflowFilterV61529f15f||'ALL');return;}
+      const kpi=e.target.closest('[data-borrow-kpi-filter-v61529f15f]');if(kpi){setWorkflowFilter(kpi.dataset.borrowKpiFilterV61529f15f||'ALL');return;}
+      const tab=e.target.closest('[data-team-workspace-tab-v61528="ASSIGNMENTS"]');if(tab){setTimeout(()=>{ensureAssignmentTabVisible();load();},0);return;}
+      const ap=e.target.closest('[data-temp-approve-v61529f14b]');if(ap){approve(ap.dataset.tempApproveV61529f14b);return;}const rj=e.target.closest('[data-temp-reject-v61529f14b]');if(rj){openAction(rj.dataset.tempRejectV61529f14b,'REJECT');return;}const ca=e.target.closest('[data-temp-cancel-v61529f14b]');if(ca){openAction(ca.dataset.tempCancelV61529f14b,'CANCEL');return;}const en=e.target.closest('[data-temp-end-v61529f14b]');if(en){openAction(en.dataset.tempEndV61529f14b,'END');return;}const ae=e.target.closest('[data-acting-edit-v61529f14b]');if(ae){openActing(ae.dataset.actingEditV61529f14b);return;}
+      if(e.target.closest('[data-team-temp-close-v61529f14b]')){closeCreate();return;}if(e.target.closest('[data-team-temp-action-close-v61529f14b]')){closeAction();return;}if(e.target.closest('[data-team-acting-close-v61529f14b]')){closeActing();return;}
+    });
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeCreate();closeAction();closeActing();}});
+    const init=async()=>{const a=await loadAccess();if(document.querySelector('#page-team-master.active')){load();}return a;};
+    window.addEventListener('timeclock:auth-signed-out',()=>{
+      resetActingSessionState();
+    });
+    document.addEventListener('timeclock:profile-ready',()=>{
+      const next=currentIdentityKey();
+      if(state.identityKey && state.identityKey!==next)resetActingSessionState();
+      setTimeout(init,0);
+    });
+    window.addEventListener('ta:session-ready',()=>setTimeout(init,0));
+    document.addEventListener('timeclock:effective-role-changed',()=>setTimeout(init,0));
+    setTimeout(init,450);
+  }
+  window.TimeClockTemporaryAssignmentV61529F14B={load,loadAccess,hasOperationalAuthority,hasActingAuthority,openCreate,openActingAdmin,openFromNotification,state,version:VERSION};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+
+/* ===== FIX15G Borrow Notifications + Expiry Reminder live sync ===== */
+(() => {
+  "use strict";
+  const VERSION="V6.15.29 FIX15G";
+  const app=()=>window.TimeClockApp;
+  const $=id=>document.getElementById(id);
+  const state={channel:null,timer:null,seen:new Set(),observed:false};
+
+  function isAuthFailure(error){
+    const status=Number(error?.status||error?.statusCode||0);
+    const raw=String(error?.message||error?.details||error?.hint||error||'');
+    return status===401||/unauthorized|invalid jwt|jwt expired|token.*expired|refresh[_ ]?token/i.test(raw)||String(error?.code||'').toUpperCase()==='PGRST301';
+  }
+  async function ensureFreshSession(force=false){
+    const a=app(),c=a?.state?.client;
+    if(!c?.auth)throw new Error('SUPABASE_CLIENT_NOT_READY');
+    let session=a?.state?.session||null;
+    if(!session?.access_token){const {data,error}=await c.auth.getSession();if(error)throw error;session=data?.session||null;}
+    if(!session?.access_token)throw Object.assign(new Error('AUTH_SESSION_REQUIRED'),{status:401});
+    const expiresAt=Number(session.expires_at||0)*1000;
+    if(force||(expiresAt>0&&expiresAt-Date.now()<90000)){
+      const {data,error}=await c.auth.refreshSession();if(error||!data?.session?.access_token)throw error||Object.assign(new Error('AUTH_SESSION_EXPIRED'),{status:401});
+      session=data.session;if(a?.state){a.state.session=session;a.state.user=session.user||null;}
+    }
+    if(session?.access_token&&c?.realtime?.setAuth){try{const x=c.realtime.setAuth(session.access_token);if(x?.catch)x.catch(()=>{});}catch(_){}}
+    return session;
+  }
+  async function rpc(name,args={},retry=true){
+    const c=app()?.state?.client;if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');
+    await ensureFreshSession(false);const {data,error}=await c.rpc(name,args);
+    if(error&&retry&&isAuthFailure(error)){await ensureFreshSession(true);return rpc(name,args,false);}
+    if(error)throw error;return data;
+  }
+  function buttonState(){
+    const b=$('teamBorrowBrowserNotificationV61529F15G');if(!b)return;
+    if(!('Notification' in window)){b.textContent='🔕 Browser ไม่รองรับ';b.disabled=true;return;}
+    b.disabled=false;
+    if(Notification.permission==='granted'){b.textContent='🔔 แจ้งเตือนเปิดอยู่';b.classList.add('borrow-notify-enabled-v61529f15g');}
+    else if(Notification.permission==='denied'){b.textContent='🔕 Browser ปิดแจ้งเตือน';b.classList.remove('borrow-notify-enabled-v61529f15g');}
+    else{b.textContent='🔔 เปิดแจ้งเตือน';b.classList.remove('borrow-notify-enabled-v61529f15g');}
+  }
+  async function requestPermission(){
+    if(!('Notification' in window))return app()?.toast?.('Browser นี้ไม่รองรับ Notification','warning');
+    const permission=await Notification.requestPermission();buttonState();
+    app()?.toast?.(permission==='granted'?'เปิด Browser Notification สำหรับการยืมตัวแล้ว':'ยังไม่ได้อนุญาต Browser Notification',permission==='granted'?'success':'warning');
+  }
+  function showBrowser(row){
+    if(!row||!('Notification' in window)||Notification.permission!=='granted')return;
+    try{
+      const n=new Notification(`TimeClock · ${row.title||'แจ้งเตือนการยืมตัว'}`,{body:String(row.message||''),tag:`borrow-${row.notification_id||row.assignment_id||Date.now()}`});
+      n.onclick=()=>{
+        try{window.focus();}catch(_){}
+        app()?.switchPage?.('team-master');
+        setTimeout(()=>window.TimeClockTemporaryAssignmentV61529F14B?.openFromNotification?.({
+          assignmentId:row.assignment_id||'',workflowFilter:row.workflow_filter||'ALL',effectiveFrom:row.effective_from||'',effectiveTo:row.effective_to||''
+        }),60);
+        try{n.close();}catch(_){}
+      };
+    }catch(_){ }
+  }
+  function observeRows(rows=[]){
+    const list=Array.isArray(rows)?rows:[];
+    if(!state.observed){list.forEach(r=>state.seen.add(String(r.notification_id||'')));state.observed=true;buttonState();return;}
+    const fresh=list.filter(r=>r?.is_read===false&&!state.seen.has(String(r.notification_id||'')));
+    fresh.slice().reverse().forEach(r=>{state.seen.add(String(r.notification_id||''));showBrowser(r);});
+    if(fresh.length){
+      const first=fresh[0];
+      app()?.toast?.(fresh.length===1?String(first.title||'มีแจ้งเตือนการยืมตัวใหม่'):`มีแจ้งเตือนการยืมตัวใหม่ ${fresh.length} รายการ`,fresh.some(r=>String(r.severity).toLowerCase()==='danger')?'warning':'info');
+    }
+    list.forEach(r=>state.seen.add(String(r.notification_id||'')));
+    buttonState();
+  }
+  function stop(){
+    clearInterval(state.timer);state.timer=null;
+    const c=app()?.state?.client;if(state.channel){try{c?.removeChannel?.(state.channel);}catch(_){}state.channel=null;}
+  }
+  async function setupRealtime(){
+    const c=app()?.state?.client;if(!c?.channel||state.channel)return;
+    try{
+      const session=await ensureFreshSession(false);const uid=String(session?.user?.id||'');if(!uid)return;
+      state.channel=c.channel(`borrow-notification-v61529f15g-${uid.slice(0,8)}`)
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'ta_borrow_notifications_v61529f15g',filter:`target_user_id=eq.${uid}`},()=>window.TimeClockFunctional?.loadNotifications?.())
+        .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){try{c.removeChannel?.(state.channel);}catch(_){}state.channel=null;}});
+    }catch(e){if(!isAuthFailure(e))console.warn('Borrow notification realtime fallback to polling:',e?.message||e);}
+  }
+  function setupPolling(){
+    clearInterval(state.timer);
+    state.timer=setInterval(()=>{if(document.visibilityState==='visible')window.TimeClockFunctional?.loadNotifications?.();},60000);
+  }
+  async function start(){
+    buttonState();
+    try{await setupRealtime();}catch(_){}
+    setupPolling();
+    setTimeout(()=>window.TimeClockFunctional?.loadNotifications?.(),80);
+  }
+  window.addEventListener('ta:session-ready',()=>setTimeout(start,80));
+  window.addEventListener('timeclock:auth-signed-out',stop);
+  window.addEventListener('timeclock:auth-refreshed',()=>{stop();setTimeout(start,80);});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.TimeClockFunctional?.loadNotifications?.();});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',buttonState);else buttonState();
+  window.TimeClockBorrowNotificationsV61529F15G={VERSION,state,observeRows,requestPermission,start,stop,markAllRead:()=>rpc('ta_mark_all_borrow_notifications_read_v61529f15g',{})};
+})();
+
+
+
+/* ===== FIX15I Borrow Audit / History Report ===== */
+(() => {
+  "use strict";
+  const VERSION="V6.15.29 FIX15I";
+  const app=()=>window.TimeClockApp;
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const state={rows:[],summary:{},assignmentId:null,loading:false};
+  const pad=n=>String(n).padStart(2,'0');
+  const localIso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const today=()=>localIso(new Date());
+  const addDays=(iso,n)=>{const [y,m,d]=String(iso).slice(0,10).split('-').map(Number);const x=new Date(y,m-1,d);x.setDate(x.getDate()+n);return localIso(x);};
+  const fmtDate=v=>{const m=String(v||'').slice(0,10).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?`${m[3]}/${m[2]}/${m[1]}`:String(v||'-');};
+  const fmtDateTime=v=>{if(!v)return '-';try{return new Intl.DateTimeFormat('th-TH',{dateStyle:'short',timeStyle:'short'}).format(new Date(v));}catch{return String(v);}};
+  function isMissing(error){const raw=String(error?.message||error?.details||error||'');return /ta_get_borrow_audit_v61529f15i|PGRST202|function.*does not exist/i.test(raw);}
+  async function rpc(name,args={}){const c=app()?.state?.client;if(!c)throw new Error('SUPABASE_CLIENT_NOT_READY');const {data,error}=await c.rpc(name,args);if(error)throw error;return data;}
+  function human(error){if(isMissing(error))return 'กรุณารัน SQL FIX15I Borrow Audit ก่อนใช้งานหน้านี้';return String(app()?.humanError?.(error)||error?.message||error||'เกิดข้อผิดพลาด').replace(/^Error:\s*/,'');}
+  function actionInfo(action){
+    const a=String(action||'').toUpperCase();
+    const map={
+      CREATE:['ส่งคำขอ','create'],DIRECT_APPROVE:['สร้างและอนุมัติทันที','approve'],APPROVE:['อนุมัติ','approve'],
+      REJECT:['ไม่อนุมัติ','reject'],CANCEL:['ยกเลิก','cancel'],END_EARLY:['จบก่อนกำหนด','end']
+    };
+    const x=map[a]||[a||'-','neutral'];return {label:x[0],tone:x[1]};
+  }
+  function authority(v){
+    const x=String(v||'').toUpperCase();
+    if(x.includes('ACTING_MANAGER'))return 'Acting Manager';
+    if(x==='MANAGER')return 'Manager';
+    if(x==='SOURCE_AND_DESTINATION')return 'Manager ทั้ง 2 ฝั่ง';
+    if(x==='HR_ADMIN')return 'HR Admin';
+    return x||'-';
+  }
+  function setKpis(){
+    const s=state.summary||{},put=(id,v)=>{if($(id))$(id).textContent=Number(v||0).toLocaleString('th-TH');};
+    put('borrowAuditKpiTotalV61529F15I',s.total);put('borrowAuditKpiCreateV61529F15I',s.create);put('borrowAuditKpiApproveV61529F15I',s.approve);put('borrowAuditKpiRejectV61529F15I',s.reject);put('borrowAuditKpiCloseV61529F15I',Number(s.cancel||0)+Number(s.end_early||0));
+  }
+  function render(){
+    setKpis();const body=$('borrowAuditBodyV61529F15I');if(!body)return;
+    const rows=Array.isArray(state.rows)?state.rows:[];
+    if(!rows.length){body.innerHTML='<tr><td colspan="8" class="fc-empty">ไม่พบประวัติตามเงื่อนไข</td></tr>';}
+    else body.innerHTML=rows.map(r=>{
+      const a=actionInfo(r.action_type);
+      const source=[r.source_org_code,r.source_team_code].filter(Boolean).join(' · ')||'-';
+      const dest=[r.destination_org_code,r.destination_team_code].filter(Boolean).join(' · ')||'-';
+      return `<tr>
+        <td><strong>${esc(fmtDateTime(r.created_at))}</strong></td>
+        <td><strong>${esc(r.emp_code||'-')}</strong><small>${esc(r.employee_name||'-')}</small></td>
+        <td><span class="borrow-audit-action-v61529f15i ${esc(a.tone)}">${esc(a.label)}</span></td>
+        <td><strong>${esc(source)}</strong><small>→ ${esc(dest)}</small></td>
+        <td><strong>${esc(fmtDate(r.effective_from))}</strong><small>ถึง ${esc(fmtDate(r.effective_to))}</small></td>
+        <td><strong>${esc(r.actor_email||'-')}</strong><small>${esc(r.requested_by_email&&r.action_type==='CREATE'?`ผู้ร้องขอ: ${r.requested_by_email}`:'')}</small></td>
+        <td>${esc(authority(r.authority_type))}</td>
+        <td><div class="borrow-audit-note-v61529f15i">${esc(r.note||r.assignment_note||'-')}</div></td>
+      </tr>`;
+    }).join('');
+    const foot=$('borrowAuditFooterV61529F15I');if(foot){const total=Number(state.summary?.total||0);foot.textContent=`แสดง ${rows.length.toLocaleString('th-TH')} รายการ${total>rows.length?` จากทั้งหมด ${total.toLocaleString('th-TH')} เหตุการณ์`:''} · Audit อ่านอย่างเดียว`;}
+  }
+  function selectedActions(){const v=String($('borrowAuditActionV61529F15I')?.value||'ALL').toUpperCase();if(v==='ALL')return null;if(v==='CREATE')return ['CREATE','DIRECT_APPROVE'];return [v];}
+  async function load(){
+    if(state.loading)return;state.loading=true;
+    const body=$('borrowAuditBodyV61529F15I');if(body)body.innerHTML='<tr><td colspan="8" class="fc-empty">กำลังโหลดประวัติ...</td></tr>';
+    const btn=$('borrowAuditLoadV61529F15I');if(btn)btn.disabled=true;
+    try{
+      const data=await rpc('ta_get_borrow_audit_v61529f15i',{
+        p_from:$('borrowAuditFromV61529F15I')?.value||null,
+        p_to:$('borrowAuditToV61529F15I')?.value||null,
+        p_search:$('borrowAuditSearchV61529F15I')?.value?.trim()||null,
+        p_actions:selectedActions(),
+        p_assignment_id:state.assignmentId||null,
+        p_limit:1500
+      });
+      state.rows=Array.isArray(data?.rows)?data.rows:[];state.summary=data?.summary||{};
+      const scope=$('borrowAuditScopeV61529F15I');if(scope)scope.textContent=data?.is_hr_admin===true?'HR Admin · เห็นประวัติ Borrow ทั้งหมด · Audit อ่านอย่างเดียว':'Manager / Acting · แสดงเฉพาะรายการต้นทาง/ปลายทางที่อยู่ในขอบเขต Authority · Audit อ่านอย่างเดียว';
+      render();
+    }catch(e){if(body)body.innerHTML=`<tr><td colspan="8" class="fc-empty">โหลดไม่สำเร็จ: ${esc(human(e))}</td></tr>`;app()?.toast?.(human(e),'error');}
+    finally{state.loading=false;if(btn)btn.disabled=false;}
+  }
+  function open(assignmentId=null){
+    state.assignmentId=assignmentId?String(assignmentId):null;
+    const modal=$('teamBorrowAuditModalV61529F15I');if(!modal)return;
+    if(!$('borrowAuditToV61529F15I')?.value)$('borrowAuditToV61529F15I').value=today();
+    if(!$('borrowAuditFromV61529F15I')?.value)$('borrowAuditFromV61529F15I').value=addDays(today(),-90);
+    const title=$('teamBorrowAuditTitleV61529F15I'),sub=$('teamBorrowAuditSubtitleV61529F15I');
+    if(title)title.textContent=state.assignmentId?'Timeline รายการยืมตัว':'ประวัติการยืมตัวช่าง';
+    if(sub)sub.textContent=state.assignmentId?'แสดงทุกเหตุการณ์ของรายการที่เลือก · เปลี่ยนช่วงวันที่เพื่อค้นย้อนหลังได้':'ติดตามผู้ร้องขอ ผู้อนุมัติ การยกเลิก และการจบก่อนกำหนดแบบ Audit';
+    modal.classList.remove('hidden');modal.setAttribute('aria-hidden','false');load();
+  }
+  function close(){const modal=$('teamBorrowAuditModalV61529F15I');if(modal){modal.classList.add('hidden');modal.setAttribute('aria-hidden','true');}state.assignmentId=null;}
+  function csvCell(v){const s=String(v??'');return /[",\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}
+  function exportCsv(){
+    if(!state.rows.length)return app()?.toast?.('ไม่มีข้อมูล Audit สำหรับ Export','warning');
+    const rows=[['วันเวลา','รหัสพนักงาน','ชื่อ','เหตุการณ์','หน่วยงานต้นทาง','ทีมต้นทาง','หน่วยงานปลายทาง','ทีมปลายทาง','วันที่เริ่ม','วันที่สิ้นสุด','ผู้ดำเนินการ','Authority','ผู้ร้องขอ','เหตุผล/หมายเหตุ']];
+    state.rows.forEach(r=>rows.push([fmtDateTime(r.created_at),r.emp_code,r.employee_name,actionInfo(r.action_type).label,r.source_org_code,r.source_team_code,r.destination_org_code,r.destination_team_code,fmtDate(r.effective_from),fmtDate(r.effective_to),r.actor_email,authority(r.authority_type),r.requested_by_email,r.note||r.assignment_note||'']));
+    const content='\uFEFF'+rows.map(row=>row.map(csvCell).join(',')).join('\n');const blob=new Blob([content],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`Borrow_Audit_${today()}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);app()?.toast?.('Export Borrow Audit เรียบร้อย','success');
+  }
+  function bind(){
+    $('teamBorrowAuditOpenV61529F15I')?.addEventListener('click',()=>open(null));
+    $('borrowAuditLoadV61529F15I')?.addEventListener('click',load);$('borrowAuditExportV61529F15I')?.addEventListener('click',exportCsv);
+    $('borrowAuditSearchV61529F15I')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();load();}});
+    document.addEventListener('click',e=>{const h=e.target.closest('[data-borrow-audit-assignment-v61529f15i]');if(h){e.preventDefault();open(h.dataset.borrowAuditAssignmentV61529f15i||null);return;}if(e.target.closest('[data-borrow-audit-close-v61529f15i]')){close();return;}});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('teamBorrowAuditModalV61529F15I')?.classList.contains('hidden'))close();});
+  }
+  window.TimeClockBorrowAuditV61529F15I={VERSION,state,open,close,load,exportCsv};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
+})();
+
+
+
 
 /* ===== js/texttime-monitor-v616gm06e-r4-kpi-file-overflow + FIX16AF manager portal reset modal ===== */
 (() => {
