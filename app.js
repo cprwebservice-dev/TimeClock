@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AY Quick Shift No-Silent-Failure + Local Night Toast ===== */
 /* ===== V6.15.29 FIX16AX Quick Night Alert Parity + Single Toast ===== */
 /* ===== V6.15.29 FIX16AW Quick Shift Notification UX Unified ===== */
 /* ===== V6.15.29 FIX16AV Night Sequence UX: actual rest + toast dedupe ===== */
@@ -18219,6 +18220,24 @@ window.tcIsDayShiftCode = value =>
     });
   }
 
+  // FIX16AY — Schedule Pro owns its own Night Sequence toast helper.
+  // Do not call the private helper inside the Shift Assignment IIFE.
+  let lastQuickNightToastV616ay={message:'',at:0};
+
+  function showQuickNightToastV616ay(message,type='error'){
+    const msg=String(message||'').trim();
+    if(!msg)return;
+
+    const now=Date.now();
+    if(
+      lastQuickNightToastV616ay.message===msg
+      && now-lastQuickNightToastV616ay.at<1800
+    )return;
+
+    lastQuickNightToastV616ay={message:msg,at:now};
+    app()?.toast?.(msg,type);
+  }
+
   const smartBulkActionStateV616ax={
     inFlight:false,
     key:'',
@@ -18354,7 +18373,7 @@ window.tcIsDayShiftCode = value =>
           ? ` • พบ ${restBlocked.length.toLocaleString('th-TH')} ช่องที่ติดเงื่อนไขเดียวกัน`
           : '';
 
-        return showNightSequenceToastV616av(
+        return showQuickNightToastV616ay(
           `${detailV616ax}${extraV616ax}`,
           'error'
         );
@@ -18402,6 +18421,18 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
+    } catch(e) {
+      const messageV616ay=String(
+        app()?.humanError?.(e)
+        || e?.message
+        || e
+        || 'ไม่สามารถตรวจสอบ/กำหนดกะด่วนได้'
+      ).trim();
+
+      app()?.toast?.(
+        messageV616ay || 'ไม่สามารถตรวจสอบ/กำหนดกะด่วนได้',
+        'error'
+      );
     } finally {
       smartBulkActionStateV616ax.inFlight=false;
       smartBulkActionStateV616ax.lastAt=Date.now();
