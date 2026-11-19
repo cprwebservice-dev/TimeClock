@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AS Bulk Time Certification Footer Click Reliability ===== */
 /* ===== V6.15.29 FIX16AR Bulk Time Certification ===== */
 /* ===== V6.15.29 FIX16AQ Time Certification Work-Date Boundary Guard ===== */
 /* ===== V6.15.29 FIX16AP Global Popup Reliability Core ===== */
@@ -423,7 +424,7 @@ window.tcIsDayShiftCode = value =>
       #globalActionCoreV616ap{
         position:fixed;
         inset:0;
-        z-index:2147483600;
+        z-index:2147483646;
         display:flex;
         align-items:center;
         justify-content:center;
@@ -580,7 +581,7 @@ window.tcIsDayShiftCode = value =>
       #globalPrintCoreV616ap{
         position:fixed;
         inset:0;
-        z-index:2147483590;
+        z-index:2147483645;
         display:flex;
         align-items:center;
         justify-content:center;
@@ -10067,18 +10068,24 @@ window.tcIsDayShiftCode = value =>
         style.id='bulkTimeCertificationStyleV616ar';
         style.textContent=`
           #bulkTimeCertificationModalV616ar{
-            position:fixed;inset:0;z-index:2147483450;
+            position:fixed;inset:0;z-index:2147483630;
             display:flex;align-items:center;justify-content:center;
-            padding:18px;background:rgba(15,23,42,.68);
+            padding:18px 18px max(26px,env(safe-area-inset-bottom));
+            background:rgba(15,23,42,.68);
             backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+            pointer-events:auto!important;
+            isolation:isolate;
           }
           #bulkTimeCertificationModalV616ar.hidden{display:none!important}
           #bulkTimeCertificationModalV616ar .btc-dialog{
             width:min(980px,calc(100vw - 28px));
-            max-height:calc(100vh - 28px);
+            max-height:calc(100vh - 42px);
             display:flex;flex-direction:column;overflow:hidden;
             background:#fff;border:1px solid #d8e5ef;border-radius:18px;
             box-shadow:0 28px 90px rgba(15,23,42,.36);
+            pointer-events:auto!important;
+            position:relative;
+            z-index:1;
           }
           #bulkTimeCertificationModalV616ar .btc-head{
             display:flex;align-items:center;gap:14px;
@@ -10097,10 +10104,14 @@ window.tcIsDayShiftCode = value =>
           }
           #bulkTimeCertificationModalV616ar .btc-close{
             width:40px;height:40px;border:1px solid #d8e4ef;border-radius:10px;
-            background:#fff;color:#47647d;font-weight:800;cursor:pointer
+            background:#fff;color:#47647d;font-weight:800;cursor:pointer;
+            pointer-events:auto!important;position:relative;z-index:21;touch-action:manipulation
           }
           #bulkTimeCertificationModalV616ar .btc-body{
-            padding:16px 20px 20px;overflow:auto
+            padding:16px 20px 20px;overflow:auto;
+            flex:1 1 auto;min-height:0;
+            position:relative;z-index:1;
+            pointer-events:auto!important
           }
           #bulkTimeCertificationModalV616ar .btc-person{
             display:flex;gap:10px;align-items:center;flex-wrap:wrap;
@@ -10127,7 +10138,8 @@ window.tcIsDayShiftCode = value =>
           }
           #bulkTimeCertificationModalV616ar .btc-btn{
             min-height:40px;padding:0 14px;border:1px solid #cfdde8;
-            border-radius:10px;background:#fff;color:#36546d;font-weight:700;cursor:pointer
+            border-radius:10px;background:#fff;color:#36546d;font-weight:700;cursor:pointer;
+            pointer-events:auto!important;position:relative;z-index:21;touch-action:manipulation
           }
           #bulkTimeCertificationModalV616ar .btc-btn.primary{
             background:#3188c5;border-color:#3188c5;color:#fff
@@ -10161,7 +10173,11 @@ window.tcIsDayShiftCode = value =>
           #bulkTimeCertificationModalV616ar .btc-status.blocked{background:#f3f5f7;color:#74899a}
           #bulkTimeCertificationModalV616ar .btc-foot{
             display:flex;align-items:center;justify-content:space-between;gap:10px;
-            padding:13px 20px 16px;border-top:1px solid #e4edf4;background:#fff
+            padding:13px 20px max(18px,env(safe-area-inset-bottom));
+            border-top:1px solid #e4edf4;background:#fff;
+            flex:0 0 auto;position:relative;z-index:20;
+            pointer-events:auto!important;
+            box-shadow:0 -8px 22px rgba(15,23,42,.05)
           }
           #bulkTimeCertificationModalV616ar .btc-result{
             margin-top:12px;padding:11px 13px;border-radius:10px;
@@ -10325,11 +10341,38 @@ window.tcIsDayShiftCode = value =>
         document.body.classList.remove('bulk-time-cert-open-v616ar');
       };
 
-      $('bulkTimeCertCloseV616ar').onclick=close;
-      $('bulkTimeCertCancelV616ar').onclick=close;
+      modal._closeV616as=close;
+
+      // FIX16AS: footer controls use capture-level delegation so they remain
+      // clickable even when a late-mounted page/status layer overlaps normal
+      // bubbling handlers near the bottom edge of the viewport.
+      if(document.documentElement.dataset.bulkTimeCertClickV616as!=='1'){
+        document.documentElement.dataset.bulkTimeCertClickV616as='1';
+        document.addEventListener('click',event=>{
+          const target=event.target?.closest?.(
+            '#bulkTimeCertCloseV616ar, #bulkTimeCertCancelV616ar, #bulkTimeCertSaveV616ar'
+          );
+          if(!target)return;
+
+          const current=$('bulkTimeCertificationModalV616ar');
+          if(!current||current.classList.contains('hidden'))return;
+
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation?.();
+
+          if(target.id==='bulkTimeCertSaveV616ar'){
+            if(target.disabled)return;
+            void saveBulkTimeCertificationV616ar();
+            return;
+          }
+
+          current._closeV616as?.();
+        },true);
+      }
+
       modal.addEventListener('click',e=>{if(e.target===modal)close();});
       $('bulkTimeCertPreviewV616ar').onclick=previewBulkTimeCertificationV616ar;
-      $('bulkTimeCertSaveV616ar').onclick=saveBulkTimeCertificationV616ar;
       $('bulkTimeCertReplaceV616ar').addEventListener('change',()=>{
         bulkTimeCertificationStateV616ar.replaceExisting=$('bulkTimeCertReplaceV616ar').checked;
         renderBulkTimeCertificationRowsV616ar();
@@ -10403,6 +10446,11 @@ window.tcIsDayShiftCode = value =>
       $('bulkTimeCertResultV616ar').classList.add('hidden');
 
       closeTimeCertificationModalV61139();
+      // FIX16AS: append to body again so this modal is the last top-level
+      // stacking child, then expose it above fixed app chrome/status bars.
+      if(modal.parentElement===document.body)document.body.appendChild(modal);
+      modal.style.zIndex='2147483630';
+      modal.style.pointerEvents='auto';
       modal.classList.remove('hidden');
       modal.setAttribute('aria-hidden','false');
       document.body.classList.add('bulk-time-cert-open-v616ar');
