@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AZ Disciplinary Suspension Overlay ===== */
 /* ===== V6.15.29 FIX16AY Quick Shift No-Silent-Failure + Local Night Toast ===== */
 /* ===== V6.15.29 FIX16AX Quick Night Alert Parity + Single Toast ===== */
 /* ===== V6.15.29 FIX16AW Quick Shift Notification UX Unified ===== */
@@ -7307,6 +7308,56 @@ window.tcIsDayShiftCode = value =>
       const button=$("loadScheduleBtn");if(button){button.disabled=false;button.removeAttribute("aria-busy");button.innerHTML='<span>↻</span> โหลดตารางกะ';}
     }
 
+    async function enrichScheduleSuspensionsV616az(rows,period){
+      const list=Array.isArray(rows)?rows:[];
+      if(!list.length)return;
+
+      const empCodes=[...new Set(
+        list.map(r=>String(r?.emp_code||'').trim()).filter(Boolean)
+      )];
+
+      const overlayMap=new Map();
+
+      try{
+        for(let i=0;i<empCodes.length;i+=300){
+          const chunk=empCodes.slice(i,i+300);
+          const response=await state.client.rpc(
+            'ta_get_employee_suspensions_v616az',
+            {
+              p_start_date:period.startDate,
+              p_end_date:period.endDate,
+              p_emp_codes:chunk
+            }
+          );
+
+          if(response.error)throw response.error;
+
+          (Array.isArray(response.data)?response.data:[]).forEach(item=>{
+            const key=`${String(item?.emp_code||'').trim()}|${String(item?.work_date||'').slice(0,10)}`;
+            if(key!=='|')overlayMap.set(key,item);
+          });
+        }
+      }catch(error){
+        const message=String(error?.code||error?.message||'').toUpperCase();
+        if(
+          message.includes('PGRST202')
+          || message.includes('COULD NOT FIND THE FUNCTION')
+        ){
+          console.warn('FIX16AZ Suspension RPC is not installed yet.');
+          return;
+        }
+        console.warn('FIX16AZ Suspension overlay load:',error);
+        return;
+      }
+
+      list.forEach(row=>{
+        const key=`${String(row?.emp_code||'').trim()}|${String(row?.work_date||'').slice(0,10)}`;
+        row._suspension_v616az=overlayMap.get(key)||null;
+      });
+
+      state.scheduleSuspensionsV616az=overlayMap;
+    }
+
     async function loadSchedule() {
       if (scheduleLoadInFlightV61151) {
         scheduleLoadQueuedV61151 = true;
@@ -7573,11 +7624,13 @@ window.tcIsDayShiftCode = value =>
           loadedAt:Date.now()
         };
 
+        // FIX16AZ: Suspension is a canonical overlay and must be attached
+        // before the first grid render so suspended days are never briefly
+        // exposed as editable normal shift cells.
+        await enrichScheduleSuspensionsV616az(state.schedule,period);
+
         // V6.12.6 performance:
-        // Render the base schedule immediately. Daily Work Plan / Scheduling Rule
-        // metadata and team-manager names are enrichment layers, not prerequisites
-        // for showing the calendar grid. Keeping them off the critical path removes
-        // the long white/loading state on large scopes.
+        // Other metadata remains deferred after the base+Suspension render.
         renderSchedule();
 
         const scheduleRowsForEnrichmentV6125 = state.schedule;
@@ -14075,6 +14128,36 @@ window.tcIsDayShiftCode = value =>
             continue;
           }
 
+          const suspensionV616az=r?._suspension_v616az||null;
+          if(suspensionV616az){
+            const rangeV616az=
+              `${formatDate(suspensionV616az.suspension_start)}–${formatDate(suspensionV616az.suspension_end)}`;
+            const titleV616az=[
+              `${displayName} • พักงาน`,
+              `ช่วง ${rangeV616az}`,
+              `รวม ${Number(suspensionV616az.suspension_days||0).toLocaleString('th-TH')} วันปฏิทิน`,
+              suspensionV616az.warning_reference
+                ? `อ้างอิง ${suspensionV616az.warning_reference}`
+                : null,
+              'กะเดิมยังถูกเก็บไว้ใต้ Suspension Overlay',
+              'คลิกเพื่อดูรายละเอียด / ยกเลิกพักงาน'
+            ].filter(Boolean).join(' | ');
+
+            html += `<td class="day-col schedule-data-cell suspension-cell-v616az" data-cell-key="${safe(r.emp_code)}|${safe(date)}">
+              <button
+                type="button"
+                class="schedule-cell suspension-badge-v616az"
+                data-suspension-cell-v616az="1"
+                data-suspension-id="${safe(suspensionV616az.suspension_id)}"
+                data-emp="${safe(r.emp_code)}"
+                data-date="${safe(date)}"
+                title="${safe(titleV616az)}"
+                aria-label="${safe(titleV616az)}"
+              ><span aria-hidden="true">⏸</span><small>พัก</small></button>
+            </td>`;
+            continue;
+          }
+
           const code =
             r.assigned_shift_code
             || r.effective_shift_code
@@ -18439,6 +18522,542 @@ window.tcIsDayShiftCode = value =>
     }
   }
 
+
+  // ========================================================================
+  // FIX16AZ — Disciplinary Suspension Overlay UI
+  // ========================================================================
+  const suspensionUiV616az={
+    mode:'CREATE',
+    suspensionId:null,
+    empCode:'',
+    fullName:'',
+    startDate:'',
+    endDate:''
+  };
+
+  function suspensionAddDaysV616az(value,days){
+    const s=String(value||'').slice(0,10);
+    if(!s)return '';
+    const d=new Date(`${s}T00:00:00`);
+    d.setDate(d.getDate()+Number(days||0));
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function suspensionDayCountV616az(start,end){
+    if(!start||!end)return 0;
+    const a=new Date(`${start}T00:00:00`);
+    const b=new Date(`${end}T00:00:00`);
+    return Math.floor((b-a)/86400000)+1;
+  }
+
+  function ensureSuspensionStyleV616az(){
+    if($('suspensionStyleV616az'))return;
+    const style=document.createElement('style');
+    style.id='suspensionStyleV616az';
+    style.textContent=`
+      .suspension-cell-v616az{background:rgba(245,158,11,.06)!important}
+      .suspension-badge-v616az{
+        width:34px;height:34px;display:flex!important;
+        flex-direction:column;align-items:center;justify-content:center;
+        gap:0;border:1px solid #f59e0b!important;border-radius:9px!important;
+        background:#fff7e6!important;color:#a55b00!important;
+        cursor:pointer!important;line-height:1!important;
+      }
+      .suspension-badge-v616az span{font-size:13px;font-weight:900}
+      .suspension-badge-v616az small{font-size:8px;font-weight:900;margin-top:1px}
+      .suspension-badge-v616az:hover{
+        transform:translateY(-1px);box-shadow:0 5px 15px rgba(245,158,11,.18)
+      }
+
+      #scheduleSuspensionQuickV616az{
+        border-color:#f2ba5f!important;
+        background:#fff8e8!important;
+        color:#9b5b00!important;
+      }
+
+      #suspensionModalV616az{
+        position:fixed;inset:0;z-index:2147483500;
+        display:flex;align-items:center;justify-content:center;
+        padding:16px;background:rgba(15,23,42,.68);
+        backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+      }
+      #suspensionModalV616az.hidden{display:none!important}
+      #suspensionModalV616az .sus-dialog{
+        width:min(620px,calc(100vw - 28px));
+        max-height:calc(100vh - 28px);
+        overflow:auto;background:#fff;color:#17324d;
+        border:1px solid #d9e5ef;border-radius:18px;
+        box-shadow:0 28px 90px rgba(15,23,42,.36)
+      }
+      #suspensionModalV616az .sus-head{
+        display:flex;align-items:center;gap:13px;
+        padding:17px 19px;border-bottom:1px solid #e4edf4
+      }
+      #suspensionModalV616az .sus-icon{
+        width:44px;height:44px;display:grid;place-items:center;
+        border-radius:12px;background:#fff5df;color:#b96b00;font-weight:900
+      }
+      #suspensionModalV616az .sus-title{flex:1;min-width:0}
+      #suspensionModalV616az .sus-title small{display:block;color:#8196a7;font-size:10px}
+      #suspensionModalV616az .sus-title h3{margin:2px 0 0;font-size:20px}
+      #suspensionModalV616az .sus-close{
+        width:40px;height:40px;border:1px solid #d7e3ed;border-radius:10px;
+        background:#fff;color:#47647d;cursor:pointer;font-weight:800
+      }
+      #suspensionModalV616az .sus-body{padding:17px 19px}
+      #suspensionModalV616az .sus-person{
+        padding:11px 13px;margin-bottom:13px;
+        border:1px solid #dbe7f1;border-radius:11px;background:#f5f9fc
+      }
+      #suspensionModalV616az .sus-grid{
+        display:grid;grid-template-columns:1fr 1fr;gap:10px
+      }
+      #suspensionModalV616az label{
+        display:block;margin-bottom:5px;font-size:11px;font-weight:800;color:#5c7488
+      }
+      #suspensionModalV616az input,
+      #suspensionModalV616az textarea{
+        width:100%;box-sizing:border-box;padding:10px 11px;
+        border:1px solid #cad9e5;border-radius:10px;background:#fff;color:#17324d
+      }
+      #suspensionModalV616az textarea{min-height:76px;resize:vertical}
+      #suspensionModalV616az .sus-count{
+        display:flex;align-items:center;justify-content:space-between;
+        gap:10px;margin:12px 0;padding:11px 13px;border-radius:11px;
+        background:#f7fafc;border:1px solid #dbe7f1
+      }
+      #suspensionModalV616az .sus-count strong{font-size:18px}
+      #suspensionModalV616az .sus-count.invalid{
+        background:#fff2f2;border-color:#fecaca;color:#b91c1c
+      }
+      #suspensionModalV616az .sus-rule{
+        margin-top:10px;padding:11px 13px;border-radius:11px;
+        background:#fff8e8;border:1px solid #f6d79b;color:#7a560f;font-size:12px;line-height:1.55
+      }
+      #suspensionModalV616az .sus-foot{
+        display:flex;align-items:center;justify-content:flex-end;gap:9px;
+        padding:13px 19px 17px;border-top:1px solid #e4edf4
+      }
+      #suspensionModalV616az .sus-btn{
+        min-height:40px;padding:0 15px;border:1px solid #d3e0e9;
+        border-radius:10px;background:#fff;color:#38566e;font-weight:800;cursor:pointer
+      }
+      #suspensionModalV616az .sus-btn.primary{
+        background:#d97706;border-color:#d97706;color:#fff
+      }
+      #suspensionModalV616az .sus-btn.danger{
+        margin-right:auto;background:#fff1f2;border-color:#fecaca;color:#c62828
+      }
+
+      body.theme-dark .suspension-badge-v616az,
+      body.dark-mode .suspension-badge-v616az,
+      body.dark .suspension-badge-v616az{
+        background:#36250d!important;border-color:#c78319!important;color:#ffc96b!important
+      }
+      body.theme-dark #suspensionModalV616az .sus-dialog,
+      body.dark-mode #suspensionModalV616az .sus-dialog,
+      body.dark #suspensionModalV616az .sus-dialog{
+        background:#101d29;color:#e3edf4;border-color:#293c4e
+      }
+      body.theme-dark #suspensionModalV616az .sus-person,
+      body.theme-dark #suspensionModalV616az .sus-count,
+      body.dark-mode #suspensionModalV616az .sus-person,
+      body.dark-mode #suspensionModalV616az .sus-count,
+      body.dark #suspensionModalV616az .sus-person,
+      body.dark #suspensionModalV616az .sus-count{
+        background:#14222f;border-color:#2a3d4f
+      }
+      body.theme-dark #suspensionModalV616az input,
+      body.theme-dark #suspensionModalV616az textarea,
+      body.dark-mode #suspensionModalV616az input,
+      body.dark-mode #suspensionModalV616az textarea,
+      body.dark #suspensionModalV616az input,
+      body.dark #suspensionModalV616az textarea{
+        background:#132330;border-color:#31475b;color:#e6eff5
+      }
+
+      @media(max-width:640px){
+        #suspensionModalV616az{padding:8px}
+        #suspensionModalV616az .sus-grid{grid-template-columns:1fr}
+        #suspensionModalV616az .sus-foot{flex-direction:column-reverse}
+        #suspensionModalV616az .sus-btn{width:100%}
+        #suspensionModalV616az .sus-btn.danger{margin-right:0}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function ensureSuspensionModalV616az(){
+    ensureSuspensionStyleV616az();
+
+    let modal=$('suspensionModalV616az');
+    if(modal)return modal;
+
+    modal=document.createElement('div');
+    modal.id='suspensionModalV616az';
+    modal.className='hidden';
+    modal.setAttribute('role','dialog');
+    modal.setAttribute('aria-modal','true');
+    modal.innerHTML=`
+      <div class="sus-dialog">
+        <div class="sus-head">
+          <div class="sus-icon">⏸</div>
+          <div class="sus-title">
+            <small>DISCIPLINARY SUSPENSION</small>
+            <h3 id="suspensionTitleV616az">ระบุวันพักงาน</h3>
+          </div>
+          <button type="button" class="sus-close" id="suspensionCloseV616az">×</button>
+        </div>
+
+        <div class="sus-body">
+          <div class="sus-person" id="suspensionPersonV616az">-</div>
+
+          <div class="sus-grid">
+            <div>
+              <label>วันที่เริ่มพักงาน *</label>
+              <input type="date" id="suspensionStartV616az">
+            </div>
+            <div>
+              <label>วันที่สิ้นสุดพักงาน *</label>
+              <input type="date" id="suspensionEndV616az">
+            </div>
+          </div>
+
+          <div class="sus-count" id="suspensionCountBoxV616az">
+            <span>จำนวนวันปฏิทิน</span>
+            <strong id="suspensionCountV616az">1 / 7 วัน</strong>
+          </div>
+
+          <div>
+            <label>อ้างอิงใบเตือน / เอกสาร</label>
+            <input type="text" id="suspensionWarningRefV616az" placeholder="เช่น เลขที่หนังสือ / วันที่ใบเตือน">
+          </div>
+
+          <div style="margin-top:10px">
+            <label>หมายเหตุ</label>
+            <textarea id="suspensionNoteV616az" placeholder="รายละเอียดเพิ่มเติม"></textarea>
+          </div>
+
+          <div class="sus-rule">
+            พักงานต้องเป็นช่วงต่อเนื่องสูงสุด 7 วันปฏิทิน •
+            วันหยุดประจำสัปดาห์และวันหยุดนักขัตฤกษ์ที่อยู่ในช่วงนับรวมด้วย •
+            ระบบไม่ลบกะเดิม แต่แสดง “พักงาน” เป็น Overlay
+          </div>
+        </div>
+
+        <div class="sus-foot">
+          <button type="button" class="sus-btn danger hidden" id="suspensionCancelExistingV616az">ยกเลิกพักงาน</button>
+          <button type="button" class="sus-btn" id="suspensionCloseBottomV616az">ปิด</button>
+          <button type="button" class="sus-btn primary" id="suspensionSaveV616az">บันทึกพักงาน</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const close=()=>{
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden','true');
+    };
+
+    $('suspensionCloseV616az').onclick=close;
+    $('suspensionCloseBottomV616az').onclick=close;
+    modal.addEventListener('click',e=>{if(e.target===modal)close();});
+
+    ['suspensionStartV616az','suspensionEndV616az'].forEach(id=>{
+      $(id).addEventListener('change',updateSuspensionCountV616az);
+      $(id).addEventListener('input',updateSuspensionCountV616az);
+    });
+
+    $('suspensionSaveV616az').onclick=saveSuspensionV616az;
+    $('suspensionCancelExistingV616az').onclick=cancelSuspensionV616az;
+
+    return modal;
+  }
+
+  function updateSuspensionCountV616az(){
+    const start=String($('suspensionStartV616az')?.value||'');
+    const end=String($('suspensionEndV616az')?.value||'');
+    const count=suspensionDayCountV616az(start,end);
+    const valid=count>=1&&count<=7;
+
+    const box=$('suspensionCountBoxV616az');
+    box?.classList.toggle('invalid',!valid);
+    if($('suspensionCountV616az')){
+      $('suspensionCountV616az').textContent=
+        count>0
+          ? `${count.toLocaleString('th-TH')} / 7 วัน`
+          : 'กรุณาเลือกช่วงวันที่';
+    }
+
+    const save=$('suspensionSaveV616az');
+    if(save)save.disabled=suspensionUiV616az.mode!=='CREATE'||!valid;
+
+    if(start&&$('suspensionEndV616az')){
+      $('suspensionEndV616az').min=start;
+      $('suspensionEndV616az').max=suspensionAddDaysV616az(start,6);
+    }
+  }
+
+  function selectedSuspensionTargetV616az(){
+    const rows=selectedRows();
+    if(!rows.length){
+      app()?.toast?.('กรุณาเลือกช่องของพนักงานก่อนกด “พักงาน”','error');
+      return null;
+    }
+
+    const empCodes=[...new Set(rows.map(x=>String(x.emp_code||'').trim()))];
+    if(empCodes.length!==1){
+      app()?.toast?.('พักงานกำหนดได้ทีละพนักงาน กรุณาเลือกช่องของพนักงาน 1 คน','warning');
+      return null;
+    }
+
+    const sorted=[...new Set(rows.map(x=>String(x.work_date||'').slice(0,10)))]
+      .filter(Boolean)
+      .sort();
+
+    if(!sorted.length)return null;
+
+    if(sorted.length>1){
+      const expected=suspensionDayCountV616az(sorted[0],sorted[sorted.length-1]);
+      if(expected!==sorted.length){
+        app()?.toast?.(
+          'พักงานต้องเป็นช่วงต่อเนื่อง กรุณาเลือกวันที่ติดกัน หรือเลือก 1 ช่องแล้วกำหนดช่วงใน Modal',
+          'warning'
+        );
+        return null;
+      }
+    }
+
+    const row=rows[0]?.row||{};
+    return {
+      empCode:empCodes[0],
+      fullName:String(row.full_name||empCodes[0]),
+      startDate:sorted[0],
+      endDate:sorted[sorted.length-1]
+    };
+  }
+
+  function openCreateSuspensionV616az(){
+    const target=selectedSuspensionTargetV616az();
+    if(!target)return;
+
+    const modal=ensureSuspensionModalV616az();
+    suspensionUiV616az.mode='CREATE';
+    suspensionUiV616az.suspensionId=null;
+    suspensionUiV616az.empCode=target.empCode;
+    suspensionUiV616az.fullName=target.fullName;
+    suspensionUiV616az.startDate=target.startDate;
+    suspensionUiV616az.endDate=target.endDate;
+
+    $('suspensionTitleV616az').textContent='ระบุวันพักงาน';
+    $('suspensionPersonV616az').innerHTML=
+      `<strong>${target.fullName}</strong> <span>${target.empCode}</span>`;
+
+    $('suspensionStartV616az').disabled=false;
+    $('suspensionEndV616az').disabled=false;
+    $('suspensionWarningRefV616az').disabled=false;
+    $('suspensionNoteV616az').disabled=false;
+
+    $('suspensionStartV616az').value=target.startDate;
+    $('suspensionEndV616az').value=target.endDate;
+    $('suspensionWarningRefV616az').value='';
+    $('suspensionNoteV616az').value='';
+
+    $('suspensionCancelExistingV616az').classList.add('hidden');
+    $('suspensionSaveV616az').classList.remove('hidden');
+
+    updateSuspensionCountV616az();
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden','false');
+  }
+
+  function suspensionOverlayForCellV616az(emp,date){
+    const row=app()?.state?.schedule?.find(r=>
+      String(r?.emp_code||'').trim()===String(emp||'').trim()
+      && String(r?.work_date||'').slice(0,10)===String(date||'').slice(0,10)
+    );
+    return row?._suspension_v616az||null;
+  }
+
+  function openExistingSuspensionV616az(emp,date){
+    const item=suspensionOverlayForCellV616az(emp,date);
+    if(!item)return;
+
+    const row=app()?.state?.schedule?.find(r=>
+      String(r?.emp_code||'').trim()===String(emp||'').trim()
+      && String(r?.work_date||'').slice(0,10)===String(date||'').slice(0,10)
+    )||{};
+
+    const modal=ensureSuspensionModalV616az();
+    suspensionUiV616az.mode='VIEW';
+    suspensionUiV616az.suspensionId=item.suspension_id;
+    suspensionUiV616az.empCode=String(emp||'');
+    suspensionUiV616az.fullName=String(row.full_name||emp||'');
+    suspensionUiV616az.startDate=item.suspension_start;
+    suspensionUiV616az.endDate=item.suspension_end;
+
+    $('suspensionTitleV616az').textContent='รายละเอียดพักงาน';
+    $('suspensionPersonV616az').innerHTML=
+      `<strong>${suspensionUiV616az.fullName}</strong> <span>${suspensionUiV616az.empCode}</span>`;
+
+    $('suspensionStartV616az').value=item.suspension_start||'';
+    $('suspensionEndV616az').value=item.suspension_end||'';
+    $('suspensionWarningRefV616az').value=item.warning_reference||'';
+    $('suspensionNoteV616az').value=item.note||'';
+
+    $('suspensionStartV616az').disabled=true;
+    $('suspensionEndV616az').disabled=true;
+    $('suspensionWarningRefV616az').disabled=true;
+    $('suspensionNoteV616az').disabled=true;
+
+    $('suspensionSaveV616az').classList.add('hidden');
+    $('suspensionCancelExistingV616az').classList.remove('hidden');
+
+    updateSuspensionCountV616az();
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden','false');
+  }
+
+  async function saveSuspensionV616az(){
+    const emp=suspensionUiV616az.empCode;
+    const start=String($('suspensionStartV616az')?.value||'');
+    const end=String($('suspensionEndV616az')?.value||'');
+    const count=suspensionDayCountV616az(start,end);
+
+    if(!emp||!start||!end)return app()?.toast?.('กรุณาระบุช่วงพักงาน','error');
+    if(count<1||count>7){
+      return app()?.toast?.('พักงานกำหนดได้สูงสุด 7 วันปฏิทินต่อเนื่อง','error');
+    }
+
+    const confirmed=await window.tcConfirm({
+      title:'ยืนยันการพักงาน',
+      message:
+        `${suspensionUiV616az.fullName} (${emp})\n`
+        +`${start} → ${end} • รวม ${count} วันปฏิทิน\n\n`
+        +'วันหยุดที่อยู่ในช่วงจะนับรวม และกะเดิมจะไม่ถูกลบ',
+      confirmText:`ยืนยันพักงาน ${count} วัน`,
+      tone:'warning'
+    });
+    if(!confirmed)return;
+
+    app()?.showLoading?.('กำลังบันทึกช่วงพักงาน...');
+    try{
+      const response=await app()?.state?.client?.rpc(
+        'ta_set_employee_suspension_v616az',
+        {
+          p_emp_code:emp,
+          p_start_date:start,
+          p_end_date:end,
+          p_warning_reference:String($('suspensionWarningRefV616az')?.value||'').trim()||null,
+          p_note:String($('suspensionNoteV616az')?.value||'').trim()||null
+        }
+      );
+
+      if(response?.error)throw response.error;
+
+      $('suspensionModalV616az')?.classList.add('hidden');
+      clearSelection();
+      app()?.toast?.(
+        `พักงาน ${formatDate(start)}–${formatDate(end)} • ${count} วันปฏิทิน • บันทึกแล้ว`,
+        'success'
+      );
+      await app()?.loadSchedule?.();
+    }catch(error){
+      app()?.toast?.(
+        app()?.humanError?.(error)||error?.message||String(error),
+        'error'
+      );
+    }finally{
+      app()?.hideLoading?.();
+    }
+  }
+
+  async function cancelSuspensionV616az(){
+    const id=suspensionUiV616az.suspensionId;
+    if(!id)return;
+
+    const reason=await window.tcPrompt({
+      title:'ยกเลิกการพักงาน',
+      message:
+        `${suspensionUiV616az.fullName}\n`
+        +`${formatDate(suspensionUiV616az.startDate)}–${formatDate(suspensionUiV616az.endDate)}\n\n`
+        +'เมื่อยกเลิก ระบบจะกลับไปใช้กะเดิมที่ถูกเก็บไว้',
+      inputLabel:'เหตุผลยกเลิก',
+      placeholder:'ระบุเหตุผล...',
+      required:true,
+      confirmText:'ยืนยันยกเลิก',
+      tone:'danger'
+    });
+
+    if(reason==null)return;
+
+    app()?.showLoading?.('กำลังยกเลิกการพักงาน...');
+    try{
+      const response=await app()?.state?.client?.rpc(
+        'ta_cancel_employee_suspension_v616az',
+        {
+          p_suspension_id:id,
+          p_cancel_reason:String(reason||'').trim()
+        }
+      );
+
+      if(response?.error)throw response.error;
+
+      $('suspensionModalV616az')?.classList.add('hidden');
+      app()?.toast?.('ยกเลิกพักงานแล้ว • ระบบกลับไปใช้กะเดิม','success');
+      await app()?.loadSchedule?.();
+    }catch(error){
+      app()?.toast?.(
+        app()?.humanError?.(error)||error?.message||String(error),
+        'error'
+      );
+    }finally{
+      app()?.hideLoading?.();
+    }
+  }
+
+  function ensureSuspensionQuickButtonV616az(){
+    ensureSuspensionStyleV616az();
+
+    if($('scheduleSuspensionQuickV616az'))return;
+
+    const page=document.getElementById('page-schedule')||document;
+    const quickButtons=[
+      ...page.querySelectorAll('[data-smart-shift],[data-quick-shift]')
+    ];
+    if(!quickButtons.length)return;
+
+    const lv=
+      quickButtons.find(x=>String(x.dataset.quickShift||'').toUpperCase()==='LV')
+      || quickButtons[quickButtons.length-1];
+
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.id='scheduleSuspensionQuickV616az';
+    btn.className=lv.className||'btn btn-light';
+    btn.innerHTML='<span aria-hidden="true">⏸</span> พักงาน';
+    btn.title='ระบุช่วงพักงานต่อเนื่องสูงสุด 7 วันปฏิทิน';
+    btn.addEventListener('click',openCreateSuspensionV616az);
+
+    lv.insertAdjacentElement('afterend',btn);
+  }
+
+  document.addEventListener('click',e=>{
+    const cell=e.target.closest('[data-suspension-cell-v616az]');
+    if(!cell)return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    openExistingSuspensionV616az(
+      cell.dataset.emp,
+      cell.dataset.date
+    );
+  },true);
+
+  document.addEventListener('timeclock:schedule-rendered',()=>{
+    ensureSuspensionQuickButtonV616az();
+  });
+
   function updateHistoryButtons(){ $("scheduleUndoBtn") && ($("scheduleUndoBtn").disabled=!undoStack.length); $("scheduleRedoBtn") && ($("scheduleRedoBtn").disabled=!redoStack.length); }
   function updateSummary(){
     const counts={
@@ -19342,6 +19961,7 @@ ${skippedSummary(compatibility.skipped)}
       );
     });
     document.querySelectorAll("[data-quick-shift]").forEach(b=>b.addEventListener("click",()=>bulkAssign(b.dataset.quickShift)));
+    ensureSuspensionQuickButtonV616az();
     $("scheduleCopyBtn")?.addEventListener("click",copySelection); $("schedulePasteBtn")?.addEventListener("click",pasteSelection); $("scheduleCopyMonthBtnV61412")?.addEventListener("click",copyMonthSourceV61413); $("schedulePasteMonthBtnV61413")?.addEventListener("click",openMonthCopyPasteV61413); $("scheduleCancelMonthCopyBtnV61413")?.addEventListener("click",()=>resetMonthCopyWorkflowV61413()); $("scheduleClearCellsBtn")?.addEventListener("click",clearCells); $("scheduleClearSelectionBtn")?.addEventListener("click",clearSelection); $("scheduleUndoBtn")?.addEventListener("click",undo); $("scheduleRedoBtn")?.addEventListener("click",redo);
     $("schedulePrevMonthBtn")?.addEventListener("click",()=>shiftMonth(-1));
     $("scheduleNextMonthBtn")?.addEventListener("click",()=>shiftMonth(1));
