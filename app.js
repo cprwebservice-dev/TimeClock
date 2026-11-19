@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AX Quick Night Alert Parity + Single Toast ===== */
 /* ===== V6.15.29 FIX16AW Quick Shift Notification UX Unified ===== */
 /* ===== V6.15.29 FIX16AV Night Sequence UX: actual rest + toast dedupe ===== */
 /* ===== V6.15.29 FIX16AU DAY -> NIGHT allowed when rest >= 6h ===== */
@@ -18218,12 +18219,46 @@ window.tcIsDayShiftCode = value =>
     });
   }
 
+  const smartBulkActionStateV616ax={
+    inFlight:false,
+    key:'',
+    lastAt:0
+  };
+
+  function smartBulkActionKeyV616ax(action,rows=[]){
+    const selected=(rows||[])
+      .map(x=>`${String(x.emp_code||'')}|${String(x.work_date||'').slice(0,10)}`)
+      .sort()
+      .join(',');
+    return `${String(action||'').toUpperCase()}::${selected}`;
+  }
+
   async function smartBulkAssign(action, confirmNow=false){
     await window.TimeClockSchedulingRulesV6120?.ensureRuntimeRules?.();
     const rows = selectedRows();
     if (!rows.length) {
       return app()?.toast("กรุณาเลือกช่องกะก่อน","error");
     }
+
+    const actionKeyV616ax=smartBulkActionKeyV616ax(action,rows);
+    const nowV616ax=Date.now();
+
+    // One user action = one precheck / one notification.
+    if(
+      smartBulkActionStateV616ax.inFlight
+      && smartBulkActionStateV616ax.key===actionKeyV616ax
+    )return;
+
+    if(
+      smartBulkActionStateV616ax.key===actionKeyV616ax
+      && nowV616ax-smartBulkActionStateV616ax.lastAt<1200
+    )return;
+
+    smartBulkActionStateV616ax.inFlight=true;
+    smartBulkActionStateV616ax.key=actionKeyV616ax;
+    smartBulkActionStateV616ax.lastAt=nowV616ax;
+
+    try{
 
     const mapped = [];
     const skipped = [];
@@ -18282,22 +18317,53 @@ window.tcIsDayShiftCode = value =>
       lines.push(`• ข้ามเพราะ Work Pattern/ตั้งค่า: ${skipped.length.toLocaleString("th-TH")} ช่อง`);
     }
     if (restBlocked.length) {
-      const nightPolicy = restBlocked.filter(x=>x.nightSequenceBlock).length;
+      const nightRowsV616ax=restBlocked.filter(x=>x.nightSequenceBlock);
+      const nightPolicy = nightRowsV616ax.length;
       const otherRest = restBlocked.length-nightPolicy;
-      if(nightPolicy) lines.push(`• ข้ามเพราะลำดับกะดึกไม่ผ่าน: ${nightPolicy.toLocaleString("th-TH")} ช่อง (ตรวจทั้งวันก่อนหน้าและวันถัดไป)`);
-      if(otherRest) lines.push(`• ข้ามเพราะพักต่ำกว่า 6 ชม.: ${otherRest.toLocaleString("th-TH")} ช่อง`);
-      lines.push('  แนะนำ: กำหนดวันหยุดตามกะล่าสุด หรือเลือกกะกลางคืนแทน');
+
+      if(nightPolicy){
+        lines.push(`• ข้ามเพราะลำดับกะดึกไม่ผ่าน: ${nightPolicy.toLocaleString("th-TH")} ช่อง`);
+
+        const exampleV616ax=nightRowsV616ax[0];
+        const exampleTextV616ax=
+          window.TimeClockSchedulingRulesV6120?.sequenceBlockMessage?.(exampleV616ax);
+        if(exampleTextV616ax){
+          lines.push(`  ตัวอย่าง: ${exampleTextV616ax}`);
+        }
+      }
+
+      if(otherRest){
+        lines.push(`• ข้ามเพราะพักต่ำกว่า 6 ชม.: ${otherRest.toLocaleString("th-TH")} ช่อง`);
+      }
+
+      lines.push('  แนะนำ: ปรับวันถัดไป/วันก่อนหน้าให้ผ่านกฎพักขั้นต่ำ หรือใช้วันหยุด / ลาเต็มวันตามเงื่อนไข');
     }
 
     if (!mapped.length) {
       const firstRest=restBlocked[0];
-      const restText=firstRest?.restMinutes!=null?(firstRest.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2}):'-';
+      const restText=firstRest?.restMinutes!=null
+        ? (firstRest.restMinutes/60).toLocaleString('th-TH',{maximumFractionDigits:2})
+        : '-';
+
+      if(firstRest?.nightSequenceBlock){
+        const detailV616ax=
+          window.TimeClockSchedulingRulesV6120?.sequenceBlockMessage?.(firstRest)
+          || 'กำหนดกะไม่ได้ตามเงื่อนไขลำดับกะดึก';
+
+        const extraV616ax=restBlocked.length>1
+          ? ` • พบ ${restBlocked.length.toLocaleString('th-TH')} ช่องที่ติดเงื่อนไขเดียวกัน`
+          : '';
+
+        return showNightSequenceToastV616av(
+          `${detailV616ax}${extraV616ax}`,
+          'error'
+        );
+      }
+
       return app()?.toast(
-        firstRest?.nightSequenceBlock
-          ? (window.TimeClockSchedulingRulesV6120?.sequenceBlockMessage?.(firstRest) || 'กำหนดกะไม่ได้ตามเงื่อนไขลำดับกะดึก')
-          : firstRest?.nightToMorning
-            ? `กำหนดกะเช้าไม่ได้: วันก่อนหน้าเป็นกะดึก (${firstRest.previousCode||'-'}) ทำให้พักเพียง ${restText} ชม. ต่ำกว่า 6 ชม. • แนะนำให้กำหนดวันหยุด หรือเลือกกะกลางคืน`
-            : (skippedSummary(skipped) || (firstRest?`กำหนดกะไม่ได้: เวลาพัก ${restText} ชม. ต่ำกว่า 6 ชม.`:"ไม่มีรายการที่สามารถกำหนดกะได้")),
+        firstRest?.nightToMorning
+          ? `กำหนดกะเช้าไม่ได้: วันก่อนหน้าเป็นกะดึก (${firstRest.previousCode||'-'}) ทำให้พักเพียง ${restText} ชม. ต่ำกว่า 6 ชม. • แนะนำให้กำหนดวันหยุด หรือเลือกกะกลางคืน`
+          : (skippedSummary(skipped) || (firstRest?`กำหนดกะไม่ได้: เวลาพัก ${restText} ชม. ต่ำกว่า 6 ชม.`:"ไม่มีรายการที่สามารถกำหนดกะได้")),
         "error"
       );
     }
@@ -18334,6 +18400,11 @@ window.tcIsDayShiftCode = value =>
         ),
         skippedTotalV616aw?'info':'success'
       );
+    }
+
+    } finally {
+      smartBulkActionStateV616ax.inFlight=false;
+      smartBulkActionStateV616ax.lastAt=Date.now();
     }
   }
 
@@ -19231,12 +19302,14 @@ ${skippedSummary(compatibility.skipped)}
     wrap()?.addEventListener("click",e=>{const monthBox=e.target.closest("[data-month-copy-emp]");if(monthBox){e.stopPropagation();handleMonthCopyCheckboxV61413(monthBox);return;}const selectAll=e.target.closest("#scheduleMonthCopySelectAllV61413");if(selectAll){e.stopPropagation();handleMonthCopySelectAllV61413(selectAll);return;}const emp=e.target.closest("[data-select-emp]");if(emp){selectByEmp(emp.dataset.selectEmp);return;}const date=e.target.closest("[data-select-date]");if(date){selectByDate(date.dataset.selectDate);return;}});
     wrap()?.addEventListener("dblclick",e=>{const c=e.target.closest("[data-schedule-cell]");if(c)app()?.openAssignment(c.dataset.emp,c.dataset.date);});
     wrap()?.addEventListener("contextmenu",e=>{const c=e.target.closest("[data-schedule-cell]");if(c)openContext(e,c);});
-    document.querySelectorAll("[data-smart-shift]").forEach(button =>
+    document.querySelectorAll("[data-smart-shift]").forEach(button => {
+      if(button.dataset.smartShiftBoundV616ax==='1')return;
+      button.dataset.smartShiftBoundV616ax='1';
       button.addEventListener(
         "click",
         () => smartBulkAssign(button.dataset.smartShift)
-      )
-    );
+      );
+    });
     document.querySelectorAll("[data-quick-shift]").forEach(b=>b.addEventListener("click",()=>bulkAssign(b.dataset.quickShift)));
     $("scheduleCopyBtn")?.addEventListener("click",copySelection); $("schedulePasteBtn")?.addEventListener("click",pasteSelection); $("scheduleCopyMonthBtnV61412")?.addEventListener("click",copyMonthSourceV61413); $("schedulePasteMonthBtnV61413")?.addEventListener("click",openMonthCopyPasteV61413); $("scheduleCancelMonthCopyBtnV61413")?.addEventListener("click",()=>resetMonthCopyWorkflowV61413()); $("scheduleClearCellsBtn")?.addEventListener("click",clearCells); $("scheduleClearSelectionBtn")?.addEventListener("click",clearSelection); $("scheduleUndoBtn")?.addEventListener("click",undo); $("scheduleRedoBtn")?.addEventListener("click",redo);
     $("schedulePrevMonthBtn")?.addEventListener("click",()=>shiftMonth(-1));
@@ -37721,8 +37794,18 @@ ${names}${extra}
           nightDate:v.night_date||null,
           sequenceRestMinutesV616au:
             v.rest_minutes==null?null:Number(v.rest_minutes),
-          sequenceFromCodeV616au:v.previous_code||null,
-          sequenceToCodeV616au:v.night_code||v.next_code||null
+
+          // FIX16AX:
+          // NIGHT_PREVIOUS_* : previous -> night
+          // NIGHT_NEXT_*     : night -> next
+          sequenceFromCodeV616au:
+            String(v.reason||'').toUpperCase().startsWith('NIGHT_NEXT_')
+              ? (v.night_code||null)
+              : (v.previous_code||null),
+          sequenceToCodeV616au:
+            String(v.reason||'').toUpperCase().startsWith('NIGHT_NEXT_')
+              ? (v.next_code||null)
+              : (v.night_code||null)
         });
       });
 
