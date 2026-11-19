@@ -19036,7 +19036,7 @@ ${skippedSummary(compatibility.skipped)}
 
 ;
 
-/* ===== V6.11.15 CSV Import + Technician Work Patterns RESTORED ===== */
+/* ===== V6.15.29 FIX16AM Work Pattern Dedicated Confirm Modal + Role-safe Edit ===== */
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
@@ -19229,6 +19229,223 @@ ${skippedSummary(compatibility.skipped)}
     templateAccessLoaded:false,
     templateAccessSource:''
   };
+
+  // FIX16AM — Work Pattern uses its own confirmation modal.
+  // Do not depend on the shared Global Action Modal because that modal can be
+  // visually open while its confirm click is intercepted on some pages.
+  let workPatternConfirmResolveV616am=null;
+
+  function ensureWorkPatternConfirmModalV616am(){
+    let root=$('workPatternConfirmModalV616am');
+    if(root)return root;
+
+    const style=document.createElement('style');
+    style.id='workPatternConfirmStyleV616am';
+    style.textContent=`
+      #workPatternConfirmModalV616am{
+        position:fixed;inset:0;z-index:2147483000;
+        display:flex;align-items:center;justify-content:center;
+        padding:20px;background:rgba(15,23,42,.64);
+        backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+        pointer-events:auto;
+      }
+      #workPatternConfirmModalV616am.hidden{display:none!important}
+      #workPatternConfirmModalV616am .wpc-dialog{
+        width:min(600px,calc(100vw - 32px));
+        max-height:calc(100vh - 40px);
+        overflow:auto;background:#fff;color:#17324d;
+        border:1px solid #d9e5ef;border-radius:16px;
+        box-shadow:0 28px 80px rgba(15,23,42,.32);
+        pointer-events:auto;
+      }
+      #workPatternConfirmModalV616am .wpc-head{
+        display:flex;align-items:center;gap:14px;
+        padding:18px 20px 16px;border-bottom:1px solid #e5edf5;
+      }
+      #workPatternConfirmModalV616am .wpc-icon{
+        width:44px;height:44px;display:grid;place-items:center;
+        flex:0 0 44px;border-radius:12px;
+        border:1px solid #f2d29b;background:#fff8ea;
+        color:#b87500;font-size:22px;font-weight:800;
+      }
+      #workPatternConfirmModalV616am .wpc-title-wrap{min-width:0;flex:1}
+      #workPatternConfirmModalV616am .wpc-kicker{
+        display:block;margin-bottom:2px;color:#7d92a6;
+        font-size:11px;letter-spacing:.04em;
+      }
+      #workPatternConfirmModalV616am .wpc-title{
+        margin:0;color:#17324d;font-size:20px;line-height:1.25;font-weight:800;
+      }
+      #workPatternConfirmModalV616am .wpc-close{
+        width:40px;height:40px;display:grid;place-items:center;
+        border:1px solid #d8e4ef;border-radius:10px;background:#fff;
+        color:#48657f;font-size:18px;font-weight:700;cursor:pointer;
+      }
+      #workPatternConfirmModalV616am .wpc-body{padding:18px 20px}
+      #workPatternConfirmModalV616am .wpc-message{
+        padding:16px;border:1px solid #d9e7f2;border-radius:12px;
+        background:#f7fafc;color:#3f5d77;font-size:14px;
+        line-height:1.68;white-space:pre-line;font-weight:600;
+      }
+      #workPatternConfirmModalV616am .wpc-actions{
+        display:flex;justify-content:flex-end;gap:10px;
+        padding:14px 20px 18px;border-top:1px solid #e5edf5;
+      }
+      #workPatternConfirmModalV616am .wpc-btn{
+        min-width:106px;height:42px;padding:0 18px;border-radius:10px;
+        border:1px solid #d6e2ed;background:#fff;color:#3d5871;
+        font-weight:700;cursor:pointer;
+      }
+      #workPatternConfirmModalV616am .wpc-btn:hover{background:#f7fafc}
+      #workPatternConfirmModalV616am .wpc-confirm{
+        min-width:150px;border-color:#3c91cf;background:#3c91cf;color:#fff;
+      }
+      #workPatternConfirmModalV616am .wpc-confirm:hover{background:#2f82bd}
+      #workPatternConfirmModalV616am .wpc-confirm.warning{
+        border-color:#d97706;background:#d97706;
+      }
+      #workPatternConfirmModalV616am .wpc-confirm.warning:hover{background:#b85f04}
+
+      body.theme-dark #workPatternConfirmModalV616am .wpc-dialog,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-dialog,
+      body.dark #workPatternConfirmModalV616am .wpc-dialog{
+        background:#101d29;color:#dbe7ef;border-color:#293c4e;
+      }
+      body.theme-dark #workPatternConfirmModalV616am .wpc-head,
+      body.theme-dark #workPatternConfirmModalV616am .wpc-actions,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-head,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-actions,
+      body.dark #workPatternConfirmModalV616am .wpc-head,
+      body.dark #workPatternConfirmModalV616am .wpc-actions{
+        border-color:#293c4e;
+      }
+      body.theme-dark #workPatternConfirmModalV616am .wpc-title,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-title,
+      body.dark #workPatternConfirmModalV616am .wpc-title{color:#f2f7fa}
+      body.theme-dark #workPatternConfirmModalV616am .wpc-kicker,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-kicker,
+      body.dark #workPatternConfirmModalV616am .wpc-kicker{color:#8ca3b7}
+      body.theme-dark #workPatternConfirmModalV616am .wpc-message,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-message,
+      body.dark #workPatternConfirmModalV616am .wpc-message{
+        background:#14222f;border-color:#2a3d4f;color:#cddae4;
+      }
+      body.theme-dark #workPatternConfirmModalV616am .wpc-close,
+      body.theme-dark #workPatternConfirmModalV616am .wpc-btn,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-close,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-btn,
+      body.dark #workPatternConfirmModalV616am .wpc-close,
+      body.dark #workPatternConfirmModalV616am .wpc-btn{
+        background:#132330;border-color:#31475b;color:#d5e3ed;
+      }
+      body.theme-dark #workPatternConfirmModalV616am .wpc-confirm,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-confirm,
+      body.dark #workPatternConfirmModalV616am .wpc-confirm{
+        background:#3c91cf;border-color:#3c91cf;color:#fff;
+      }
+      body.theme-dark #workPatternConfirmModalV616am .wpc-confirm.warning,
+      body.dark-mode #workPatternConfirmModalV616am .wpc-confirm.warning,
+      body.dark #workPatternConfirmModalV616am .wpc-confirm.warning{
+        background:#d97706;border-color:#d97706;color:#fff;
+      }
+
+      @media(max-width:640px){
+        #workPatternConfirmModalV616am{padding:12px}
+        #workPatternConfirmModalV616am .wpc-actions{
+          flex-direction:column-reverse;
+        }
+        #workPatternConfirmModalV616am .wpc-btn{width:100%}
+      }
+    `;
+    document.head.appendChild(style);
+
+    root=document.createElement('div');
+    root.id='workPatternConfirmModalV616am';
+    root.className='hidden';
+    root.setAttribute('role','dialog');
+    root.setAttribute('aria-modal','true');
+    root.setAttribute('aria-labelledby','workPatternConfirmTitleV616am');
+    root.innerHTML=`
+      <div class="wpc-dialog" tabindex="-1">
+        <div class="wpc-head">
+          <div class="wpc-icon">?</div>
+          <div class="wpc-title-wrap">
+            <span class="wpc-kicker">ยืนยันรายการ</span>
+            <h3 class="wpc-title" id="workPatternConfirmTitleV616am">ยืนยันการดำเนินการ</h3>
+          </div>
+          <button type="button" class="wpc-close" id="workPatternConfirmCloseV616am" aria-label="ปิด">×</button>
+        </div>
+        <div class="wpc-body">
+          <div class="wpc-message" id="workPatternConfirmMessageV616am"></div>
+        </div>
+        <div class="wpc-actions">
+          <button type="button" class="wpc-btn" id="workPatternConfirmCancelV616am">ยกเลิก</button>
+          <button type="button" class="wpc-btn wpc-confirm warning" id="workPatternConfirmOkV616am">ยืนยัน</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(root);
+
+    const settle=value=>{
+      if(!workPatternConfirmResolveV616am)return;
+      const resolve=workPatternConfirmResolveV616am;
+      workPatternConfirmResolveV616am=null;
+      root.classList.add('hidden');
+      root.setAttribute('aria-hidden','true');
+      resolve(Boolean(value));
+    };
+
+    $('workPatternConfirmCancelV616am')?.addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();settle(false);
+    });
+    $('workPatternConfirmCloseV616am')?.addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();settle(false);
+    });
+    $('workPatternConfirmOkV616am')?.addEventListener('click',e=>{
+      e.preventDefault();e.stopPropagation();settle(true);
+    });
+    root.addEventListener('click',e=>{
+      if(e.target===root){
+        e.preventDefault();e.stopPropagation();settle(false);
+      }
+    });
+    document.addEventListener('keydown',e=>{
+      if(root.classList.contains('hidden'))return;
+      if(e.key==='Escape'){e.preventDefault();settle(false);}
+      if(e.key==='Enter'){e.preventDefault();settle(true);}
+    },true);
+
+    return root;
+  }
+
+  async function workPatternConfirmV616am(message,options={}){
+    const root=ensureWorkPatternConfirmModalV616am();
+
+    if(workPatternConfirmResolveV616am){
+      const oldResolve=workPatternConfirmResolveV616am;
+      workPatternConfirmResolveV616am=null;
+      oldResolve(false);
+    }
+
+    const title=String(options.title||'ยืนยันการดำเนินการ').trim();
+    const confirmText=String(options.confirmText||'ยืนยัน').trim();
+    const tone=String(options.tone||'warning').trim().toLowerCase();
+
+    $('workPatternConfirmTitleV616am').textContent=title;
+    $('workPatternConfirmMessageV616am').textContent=String(message||'').trim();
+
+    const ok=$('workPatternConfirmOkV616am');
+    ok.textContent=confirmText;
+    ok.classList.toggle('warning',tone==='warning'||tone==='danger');
+
+    root.classList.remove('hidden');
+    root.setAttribute('aria-hidden','false');
+
+    return new Promise(resolve=>{
+      workPatternConfirmResolveV616am=resolve;
+      requestAnimationFrame(()=>ok?.focus?.({preventScroll:true}));
+    });
+  }
   const dowNames=['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'];
   const dowText=a=>(a||[]).map(x=>dowNames[Number(x)]||x).join(', ')||'-';
   const hours=m=>(Number(m||0)/60).toLocaleString('th-TH',{maximumFractionDigits:2});
@@ -20068,6 +20285,28 @@ ${skippedSummary(compatibility.skipped)}
   async function openEmployeePattern(emp){
     ensureWpModals();
     const r=wp.employees.find(x=>String(x.emp_code)===String(emp));if(!r)return;
+
+    const referenceMonthV616am=workPatternMonthStartV61419(
+      $('employeePatternDate')?.value
+      || $('wpBulkEffectiveDateV61416')?.value
+      || window.TimeClockCalendarV61448.month()
+    );
+    const accessV616am=await getWorkPatternEditAccessV61423(
+      [r],
+      referenceMonthV616am,
+      {showToast:true}
+    );
+    if(!accessV616am.ready||!accessV616am.allowedRows.length){
+      const reasonV616am=
+        accessV616am.deniedRows?.[0]?._work_pattern_access?.access_reason
+        || 'NO_EDIT_SCOPE';
+      app()?.toast?.(
+        `ไม่มีสิทธิ์แก้ไขรูปแบบการทำงานของพนักงานคนนี้ (${reasonV616am})`,
+        'error'
+      );
+      return;
+    }
+
     $('epEmpCode').value=r.emp_code;
     $('epEmployee').innerHTML=`<strong>${esc(r.emp_code)} • ${esc(r.full_name||'')}</strong><small>${esc([r.department,r.position_name].filter(Boolean).join(' • ')||'-')}</small>`;
     const patternCode=r.pattern_code||'TECH_6D';
@@ -20217,7 +20456,14 @@ ${patternShortLabelV61416(wp.bulkPatternCode)} • ${wp.bulkShiftPeriod==='NIGHT
 ${names}${extra}
 
 รูปแบบ 5/6 วันและกะตั้งต้นในหน้านี้เป็น Monthly Baseline • หากต้องเปลี่ยนเฉพาะบางวัน ให้จัดกะในปฏิทิน${permissionNote}`; 
-    const confirmed=window.tcConfirm?await window.tcConfirm(message):window.confirm(message);
+    const confirmed=await workPatternConfirmV616am(
+      message,
+      {
+        title:'ยืนยันการกำหนดรูปแบบการทำงาน',
+        confirmText:`ยืนยันใช้กับ ${selectedRows.length.toLocaleString('th-TH')} คน`,
+        tone:'warning'
+      }
+    );
     if(!confirmed)return;
     const rows=selectedRows.map(r=>{
       const effectivePattern=effectivePatternForEmployeeV61417(r,wp.bulkPatternCode);
