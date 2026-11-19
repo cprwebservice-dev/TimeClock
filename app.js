@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AT Bulk Certification Selection Scope Fix ===== */
 /* ===== V6.15.29 FIX16AS Bulk Time Certification Footer Click Reliability ===== */
 /* ===== V6.15.29 FIX16AR Bulk Time Certification ===== */
 /* ===== V6.15.29 FIX16AQ Time Certification Work-Date Boundary Guard ===== */
@@ -10482,6 +10483,10 @@ window.tcIsDayShiftCode = value =>
 
         bulkTimeCertificationStateV616ar.rows=Array.isArray(data)?data:[];
         renderBulkTimeCertificationRowsV616ar();
+
+        // Defensive footer sync after Preview.
+        updateBulkTimeCertificationSummaryV616ar();
+
         $('bulkTimeCertResultV616ar').classList.add('hidden');
       }catch(e){
         toast(humanError(e),'error');
@@ -10546,10 +10551,16 @@ window.tcIsDayShiftCode = value =>
     }
 
     function selectedBulkTimeCertificationDatesV616ar(){
-      return qa(
-        '[data-bulk-time-cert-date]:checked',
-        $('bulkTimeCertBodyV616ar')
-      ).map(x=>x.dataset.bulkTimeCertDate).filter(Boolean);
+      // FIX16AT:
+      // Use the modal's own DOM query instead of the external qa helper.
+      const body=$('bulkTimeCertBodyV616ar');
+      if(!body)return [];
+
+      return Array.from(
+        body.querySelectorAll('[data-bulk-time-cert-date]:checked')
+      )
+        .map(x=>String(x.dataset.bulkTimeCertDate||'').trim())
+        .filter(Boolean);
     }
 
     function updateBulkTimeCertificationSummaryV616ar(){
