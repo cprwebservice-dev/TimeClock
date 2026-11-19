@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AR Bulk Time Certification ===== */
 /* ===== V6.15.29 FIX16AQ Time Certification Work-Date Boundary Guard ===== */
 /* ===== V6.15.29 FIX16AP Global Popup Reliability Core ===== */
 (() => {
@@ -10011,6 +10012,7 @@ window.tcIsDayShiftCode = value =>
       // V6.11.40 — explicit modal stack state.
       // Time Certification can be opened from Team Daily Detail or Monthly Personal Overview,
       // both of which already use their own overlay layers.
+      ensureBulkTimeCertificationButtonV616ar();
       document.body.classList.add('time-certification-modal-open-v61140');
 
       $('timeCertificationModal')?.classList.remove('hidden');
@@ -10042,6 +10044,577 @@ window.tcIsDayShiftCode = value =>
       // V6.14.15: one refresh path for Attendance Detail, Monthly Personal,
       // TEAM DAILY DETAIL and TIME VIEW.
       return refreshCertificationViewsV61415(empCode, workDate, source);
+    }
+
+    // =====================================================================
+    // FIX16AR — Bulk Time Certification
+    // One employee / multiple work dates / canonical save per date.
+    // =====================================================================
+    const bulkTimeCertificationStateV616ar={
+      rows:[],
+      empCode:'',
+      fullName:'',
+      source:'',
+      replaceExisting:false
+    };
+
+    function ensureBulkTimeCertificationModalV616ar(){
+      let modal=$('bulkTimeCertificationModalV616ar');
+      if(modal)return modal;
+
+      if(!$('bulkTimeCertificationStyleV616ar')){
+        const style=document.createElement('style');
+        style.id='bulkTimeCertificationStyleV616ar';
+        style.textContent=`
+          #bulkTimeCertificationModalV616ar{
+            position:fixed;inset:0;z-index:2147483450;
+            display:flex;align-items:center;justify-content:center;
+            padding:18px;background:rgba(15,23,42,.68);
+            backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+          }
+          #bulkTimeCertificationModalV616ar.hidden{display:none!important}
+          #bulkTimeCertificationModalV616ar .btc-dialog{
+            width:min(980px,calc(100vw - 28px));
+            max-height:calc(100vh - 28px);
+            display:flex;flex-direction:column;overflow:hidden;
+            background:#fff;border:1px solid #d8e5ef;border-radius:18px;
+            box-shadow:0 28px 90px rgba(15,23,42,.36);
+          }
+          #bulkTimeCertificationModalV616ar .btc-head{
+            display:flex;align-items:center;gap:14px;
+            padding:18px 20px;border-bottom:1px solid #e4edf4;
+          }
+          #bulkTimeCertificationModalV616ar .btc-icon{
+            width:44px;height:44px;display:grid;place-items:center;
+            border-radius:12px;background:#eaf4ff;color:#247ab7;font-weight:900;
+          }
+          #bulkTimeCertificationModalV616ar .btc-title{min-width:0;flex:1}
+          #bulkTimeCertificationModalV616ar .btc-title small{
+            display:block;color:#7890a4;font-size:11px;letter-spacing:.05em
+          }
+          #bulkTimeCertificationModalV616ar .btc-title h3{
+            margin:2px 0 0;color:#17324d;font-size:20px
+          }
+          #bulkTimeCertificationModalV616ar .btc-close{
+            width:40px;height:40px;border:1px solid #d8e4ef;border-radius:10px;
+            background:#fff;color:#47647d;font-weight:800;cursor:pointer
+          }
+          #bulkTimeCertificationModalV616ar .btc-body{
+            padding:16px 20px 20px;overflow:auto
+          }
+          #bulkTimeCertificationModalV616ar .btc-person{
+            display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+            margin-bottom:12px;padding:11px 13px;border-radius:12px;
+            background:#f5f9fc;border:1px solid #dbe7f1;color:#37566f
+          }
+          #bulkTimeCertificationModalV616ar .btc-person strong{color:#17324d}
+          #bulkTimeCertificationModalV616ar .btc-grid{
+            display:grid;grid-template-columns:1fr 1fr 1.15fr;gap:10px
+          }
+          #bulkTimeCertificationModalV616ar label{
+            display:block;margin-bottom:5px;color:#567188;font-size:11px;font-weight:700
+          }
+          #bulkTimeCertificationModalV616ar input,
+          #bulkTimeCertificationModalV616ar select,
+          #bulkTimeCertificationModalV616ar textarea{
+            width:100%;box-sizing:border-box;border:1px solid #cad9e5;
+            border-radius:10px;background:#fff;color:#17324d;padding:10px 11px
+          }
+          #bulkTimeCertificationModalV616ar textarea{min-height:70px;resize:vertical}
+          #bulkTimeCertificationModalV616ar .btc-tools{
+            display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+            margin:12px 0
+          }
+          #bulkTimeCertificationModalV616ar .btc-btn{
+            min-height:40px;padding:0 14px;border:1px solid #cfdde8;
+            border-radius:10px;background:#fff;color:#36546d;font-weight:700;cursor:pointer
+          }
+          #bulkTimeCertificationModalV616ar .btc-btn.primary{
+            background:#3188c5;border-color:#3188c5;color:#fff
+          }
+          #bulkTimeCertificationModalV616ar .btc-summary{
+            margin-left:auto;color:#70879a;font-size:12px
+          }
+          #bulkTimeCertificationModalV616ar .btc-table-wrap{
+            border:1px solid #dbe6ef;border-radius:12px;overflow:auto;
+            max-height:390px
+          }
+          #bulkTimeCertificationModalV616ar table{
+            width:100%;border-collapse:collapse;font-size:12px
+          }
+          #bulkTimeCertificationModalV616ar th{
+            position:sticky;top:0;z-index:2;background:#f5f8fb;
+            color:#60788c;text-align:left;padding:9px 8px;border-bottom:1px solid #dce7ef;
+            white-space:nowrap
+          }
+          #bulkTimeCertificationModalV616ar td{
+            padding:9px 8px;border-bottom:1px solid #edf2f6;color:#39566e;
+            vertical-align:top
+          }
+          #bulkTimeCertificationModalV616ar tr:last-child td{border-bottom:0}
+          #bulkTimeCertificationModalV616ar tr.btc-blocked{opacity:.58;background:#fafbfc}
+          #bulkTimeCertificationModalV616ar .btc-status{
+            display:inline-flex;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:800
+          }
+          #bulkTimeCertificationModalV616ar .btc-status.ready{background:#eaf8f1;color:#178357}
+          #bulkTimeCertificationModalV616ar .btc-status.existing{background:#fff5df;color:#a56500}
+          #bulkTimeCertificationModalV616ar .btc-status.blocked{background:#f3f5f7;color:#74899a}
+          #bulkTimeCertificationModalV616ar .btc-foot{
+            display:flex;align-items:center;justify-content:space-between;gap:10px;
+            padding:13px 20px 16px;border-top:1px solid #e4edf4;background:#fff
+          }
+          #bulkTimeCertificationModalV616ar .btc-result{
+            margin-top:12px;padding:11px 13px;border-radius:10px;
+            background:#f5f9fc;border:1px solid #dbe7f1;color:#49677f;font-size:12px;
+            white-space:pre-line
+          }
+          #bulkTimeCertificationModalV616ar .btc-empty{
+            padding:28px;text-align:center;color:#8095a7
+          }
+
+          body.theme-dark #bulkTimeCertificationModalV616ar .btc-dialog,
+          body.dark-mode #bulkTimeCertificationModalV616ar .btc-dialog,
+          body.dark #bulkTimeCertificationModalV616ar .btc-dialog{
+            background:#101d29;border-color:#293c4e;color:#dce8f2
+          }
+          body.theme-dark #bulkTimeCertificationModalV616ar .btc-head,
+          body.theme-dark #bulkTimeCertificationModalV616ar .btc-foot,
+          body.dark-mode #bulkTimeCertificationModalV616ar .btc-head,
+          body.dark-mode #bulkTimeCertificationModalV616ar .btc-foot,
+          body.dark #bulkTimeCertificationModalV616ar .btc-head,
+          body.dark #bulkTimeCertificationModalV616ar .btc-foot{
+            background:#101d29;border-color:#293c4e
+          }
+          body.theme-dark #bulkTimeCertificationModalV616ar .btc-title h3,
+          body.dark-mode #bulkTimeCertificationModalV616ar .btc-title h3,
+          body.dark #bulkTimeCertificationModalV616ar .btc-title h3{color:#f0f6fa}
+          body.theme-dark #bulkTimeCertificationModalV616ar .btc-person,
+          body.theme-dark #bulkTimeCertificationModalV616ar .btc-result,
+          body.dark-mode #bulkTimeCertificationModalV616ar .btc-person,
+          body.dark-mode #bulkTimeCertificationModalV616ar .btc-result,
+          body.dark #bulkTimeCertificationModalV616ar .btc-person,
+          body.dark #bulkTimeCertificationModalV616ar .btc-result{
+            background:#14222f;border-color:#2a3d4f;color:#afc0ce
+          }
+          body.theme-dark #bulkTimeCertificationModalV616ar .btc-person strong,
+          body.dark-mode #bulkTimeCertificationModalV616ar .btc-person strong,
+          body.dark #bulkTimeCertificationModalV616ar .btc-person strong{color:#ecf3f8}
+          body.theme-dark #bulkTimeCertificationModalV616ar input,
+          body.theme-dark #bulkTimeCertificationModalV616ar select,
+          body.theme-dark #bulkTimeCertificationModalV616ar textarea,
+          body.dark-mode #bulkTimeCertificationModalV616ar input,
+          body.dark-mode #bulkTimeCertificationModalV616ar select,
+          body.dark-mode #bulkTimeCertificationModalV616ar textarea,
+          body.dark #bulkTimeCertificationModalV616ar input,
+          body.dark #bulkTimeCertificationModalV616ar select,
+          body.dark #bulkTimeCertificationModalV616ar textarea{
+            background:#132330;border-color:#31475b;color:#e1ebf3
+          }
+          body.theme-dark #bulkTimeCertificationModalV616ar .btc-table-wrap,
+          body.dark-mode #bulkTimeCertificationModalV616ar .btc-table-wrap,
+          body.dark #bulkTimeCertificationModalV616ar .btc-table-wrap{border-color:#293c4e}
+          body.theme-dark #bulkTimeCertificationModalV616ar th,
+          body.dark-mode #bulkTimeCertificationModalV616ar th,
+          body.dark #bulkTimeCertificationModalV616ar th{
+            background:#132330;color:#9eb2c2;border-color:#293c4e
+          }
+          body.theme-dark #bulkTimeCertificationModalV616ar td,
+          body.dark-mode #bulkTimeCertificationModalV616ar td,
+          body.dark #bulkTimeCertificationModalV616ar td{
+            color:#d2dee7;border-color:#223545
+          }
+
+          @media(max-width:760px){
+            #bulkTimeCertificationModalV616ar{padding:8px}
+            #bulkTimeCertificationModalV616ar .btc-grid{grid-template-columns:1fr}
+            #bulkTimeCertificationModalV616ar .btc-summary{width:100%;margin-left:0}
+            #bulkTimeCertificationModalV616ar .btc-foot{flex-direction:column-reverse}
+            #bulkTimeCertificationModalV616ar .btc-foot .btc-btn{width:100%}
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      modal=document.createElement('div');
+      modal.id='bulkTimeCertificationModalV616ar';
+      modal.className='hidden';
+      modal.setAttribute('role','dialog');
+      modal.setAttribute('aria-modal','true');
+      modal.innerHTML=`
+        <div class="btc-dialog">
+          <div class="btc-head">
+            <div class="btc-icon">✓✓</div>
+            <div class="btc-title">
+              <small>TIME CERTIFICATION • BULK</small>
+              <h3>รับรองเวลาหลายวัน</h3>
+            </div>
+            <button type="button" class="btc-close" id="bulkTimeCertCloseV616ar">×</button>
+          </div>
+
+          <div class="btc-body">
+            <div class="btc-person">
+              <span>พนักงาน</span>
+              <strong id="bulkTimeCertPersonV616ar">-</strong>
+              <span id="bulkTimeCertPersonMetaV616ar"></span>
+            </div>
+
+            <div class="btc-grid">
+              <div>
+                <label>วันที่เริ่มต้น</label>
+                <input type="date" id="bulkTimeCertStartV616ar">
+              </div>
+              <div>
+                <label>วันที่สิ้นสุด</label>
+                <input type="date" id="bulkTimeCertEndV616ar">
+              </div>
+              <div>
+                <label>เหตุผลการรับรองเวลา *</label>
+                <select id="bulkTimeCertReasonV616ar"></select>
+              </div>
+            </div>
+
+            <div style="margin-top:10px">
+              <label>หมายเหตุ</label>
+              <textarea id="bulkTimeCertNoteV616ar" placeholder="ระบุรายละเอียดเพิ่มเติม / เหตุผลที่ต้องรับรองหลายวัน"></textarea>
+            </div>
+
+            <div class="btc-tools">
+              <button type="button" class="btc-btn primary" id="bulkTimeCertPreviewV616ar">ตรวจสอบช่วงวันที่</button>
+              <label style="display:flex;align-items:center;gap:7px;margin:0;cursor:pointer">
+                <input type="checkbox" id="bulkTimeCertReplaceV616ar" style="width:auto">
+                อัปเดตรายการที่รับรองแล้ว
+              </label>
+              <span class="btc-summary" id="bulkTimeCertSummaryV616ar">ยังไม่ได้ตรวจสอบ</span>
+            </div>
+
+            <div class="btc-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>เลือก</th>
+                    <th>วันที่</th>
+                    <th>กะ</th>
+                    <th>รับรองเวลา</th>
+                    <th>เวลาออกจริง</th>
+                    <th>สถานะ</th>
+                  </tr>
+                </thead>
+                <tbody id="bulkTimeCertBodyV616ar">
+                  <tr><td colspan="6"><div class="btc-empty">เลือกช่วงวันที่ แล้วกด “ตรวจสอบช่วงวันที่”</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div id="bulkTimeCertResultV616ar" class="btc-result hidden"></div>
+          </div>
+
+          <div class="btc-foot">
+            <small style="color:#8296a7">ระบบจะแยกบันทึก 1 Certification ต่อ 1 Work Date</small>
+            <div style="display:flex;gap:9px">
+              <button type="button" class="btc-btn" id="bulkTimeCertCancelV616ar">ปิด</button>
+              <button type="button" class="btc-btn primary" id="bulkTimeCertSaveV616ar" disabled>บันทึกรายการที่เลือก</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      const close=()=>{
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden','true');
+        document.body.classList.remove('bulk-time-cert-open-v616ar');
+      };
+
+      $('bulkTimeCertCloseV616ar').onclick=close;
+      $('bulkTimeCertCancelV616ar').onclick=close;
+      modal.addEventListener('click',e=>{if(e.target===modal)close();});
+      $('bulkTimeCertPreviewV616ar').onclick=previewBulkTimeCertificationV616ar;
+      $('bulkTimeCertSaveV616ar').onclick=saveBulkTimeCertificationV616ar;
+      $('bulkTimeCertReplaceV616ar').addEventListener('change',()=>{
+        bulkTimeCertificationStateV616ar.replaceExisting=$('bulkTimeCertReplaceV616ar').checked;
+        renderBulkTimeCertificationRowsV616ar();
+      });
+      $('bulkTimeCertBodyV616ar').addEventListener('change',e=>{
+        if(!e.target.matches('[data-bulk-time-cert-date]'))return;
+        updateBulkTimeCertificationSummaryV616ar();
+      });
+
+      return modal;
+    }
+
+    function bulkTimeCertDateTimeTextV616ar(value){
+      if(!value)return '-';
+      const s=String(value);
+      const date=s.slice(0,10);
+      const time=(s.match(/T?(\d{2}:\d{2})/)||[])[1]||'';
+      return `${formatDate(date)} ${time}`.trim();
+    }
+
+    async function populateBulkTimeCertificationReasonsV616ar(){
+      await loadTimeCertificationReasonsV61139();
+      const select=$('bulkTimeCertReasonV616ar');
+      if(!select)return;
+
+      select.innerHTML='<option value="">เลือกเหตุผล...</option>'
+        +(timeCertificationStateV61139.reasons||[])
+          .filter(x=>x.is_active!==false)
+          .map(x=>`<option value="${safe(String(x.reason_code||''))}">${safe(String(x.reason_code||''))} · ${safe(String(x.reason_name||''))}</option>`)
+          .join('');
+    }
+
+    async function openBulkTimeCertificationV616ar(){
+      const row=timeCertificationStateV61139.row;
+      if(!row)return;
+
+      const atomicCtx=window.TimeClockEmployeeRequestAtomicV61510;
+      if(atomicCtx?.type==='TIME_ISSUE'){
+        return toast('คำขอรับรองเวลาจาก Employee Request ต้องดำเนินการทีละคำขอ','warning');
+      }
+
+      const empCode=String(row.emp_code||val('timeCertificationEmpCode')||'').trim();
+      const workDate=String(row.work_date||val('timeCertificationWorkDate')||'').slice(0,10);
+      if(!empCode||!workDate)return;
+
+      bulkTimeCertificationStateV616ar.rows=[];
+      bulkTimeCertificationStateV616ar.empCode=empCode;
+      bulkTimeCertificationStateV616ar.fullName=row.full_name||empCode;
+      bulkTimeCertificationStateV616ar.source=timeCertificationStateV61139.source||'';
+      bulkTimeCertificationStateV616ar.replaceExisting=false;
+
+      const modal=ensureBulkTimeCertificationModalV616ar();
+      await populateBulkTimeCertificationReasonsV616ar();
+
+      setText('bulkTimeCertPersonV616ar',row.full_name||empCode);
+      setText(
+        'bulkTimeCertPersonMetaV616ar',
+        `${empCode}${row.department?` • ${row.department}`:''}`
+      );
+
+      setVal('bulkTimeCertStartV616ar',workDate);
+      setVal('bulkTimeCertEndV616ar',workDate);
+      $('bulkTimeCertStartV616ar').max=todayISO();
+      $('bulkTimeCertEndV616ar').max=todayISO();
+      setVal('bulkTimeCertReasonV616ar',val('timeCertificationReason')||'');
+      setVal('bulkTimeCertNoteV616ar',val('timeCertificationNote')||'');
+      $('bulkTimeCertReplaceV616ar').checked=false;
+      setText('bulkTimeCertSummaryV616ar','ยังไม่ได้ตรวจสอบ');
+      $('bulkTimeCertBodyV616ar').innerHTML='<tr><td colspan="6"><div class="btc-empty">เลือกช่วงวันที่ แล้วกด “ตรวจสอบช่วงวันที่”</div></td></tr>';
+      $('bulkTimeCertSaveV616ar').disabled=true;
+      $('bulkTimeCertResultV616ar').classList.add('hidden');
+
+      closeTimeCertificationModalV61139();
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden','false');
+      document.body.classList.add('bulk-time-cert-open-v616ar');
+    }
+
+    async function previewBulkTimeCertificationV616ar(){
+      const empCode=bulkTimeCertificationStateV616ar.empCode;
+      const start=val('bulkTimeCertStartV616ar');
+      const end=val('bulkTimeCertEndV616ar');
+
+      if(!empCode||!start||!end)return toast('กรุณาระบุช่วงวันที่','error');
+
+      const startMs=Date.parse(`${start}T00:00:00`);
+      const endMs=Date.parse(`${end}T00:00:00`);
+      const days=Math.floor(Math.abs(endMs-startMs)/86400000)+1;
+      if(days>31)return toast('Bulk Certification เลือกได้สูงสุด 31 วันต่อครั้ง','error');
+
+      try{
+        showLoading('กำลังตรวจสอบวันที่และกะ...');
+        const {data,error}=await state.client.rpc(
+          'ta_preview_time_certification_bulk_v616ar',
+          {
+            p_emp_code:empCode,
+            p_start_date:start,
+            p_end_date:end
+          }
+        );
+        if(error)throw error;
+
+        bulkTimeCertificationStateV616ar.rows=Array.isArray(data)?data:[];
+        renderBulkTimeCertificationRowsV616ar();
+        $('bulkTimeCertResultV616ar').classList.add('hidden');
+      }catch(e){
+        toast(humanError(e),'error');
+      }finally{
+        hideLoading();
+      }
+    }
+
+    function renderBulkTimeCertificationRowsV616ar(){
+      const body=$('bulkTimeCertBodyV616ar');
+      if(!body)return;
+
+      const replace=Boolean(
+        $('bulkTimeCertReplaceV616ar')?.checked
+      );
+      bulkTimeCertificationStateV616ar.replaceExisting=replace;
+
+      const rows=bulkTimeCertificationStateV616ar.rows||[];
+      if(!rows.length){
+        body.innerHTML='<tr><td colspan="6"><div class="btc-empty">ไม่พบข้อมูลในช่วงวันที่ที่เลือก</div></td></tr>';
+        updateBulkTimeCertificationSummaryV616ar();
+        return;
+      }
+
+      body.innerHTML=rows.map(r=>{
+        const existing=String(r.existing_status||'').toUpperCase()==='CERTIFIED';
+        const selectable=Boolean(r.eligible)&&(!existing||replace);
+        const statusClass=!r.eligible?'blocked':existing?'existing':'ready';
+        const statusText=!r.eligible
+          ? (r.status_message||r.status_code||'ไม่สามารถรับรอง')
+          : existing&&!replace
+            ? 'รับรองแล้ว'
+            : existing&&replace
+              ? 'พร้อมอัปเดต'
+              : 'พร้อมรับรอง';
+
+        return `
+          <tr class="${selectable?'':'btc-blocked'}">
+            <td>
+              <input
+                type="checkbox"
+                data-bulk-time-cert-date="${safe(String(r.work_date||''))}"
+                ${selectable?'checked':'disabled'}
+              >
+            </td>
+            <td><strong>${safe(formatDate(r.work_date))}</strong></td>
+            <td>
+              <strong>${safe(r.effective_shift_code||'-')}</strong>
+              <div>${safe(bulkTimeCertDateTimeTextV616ar(r.planned_start_at))} → ${safe(bulkTimeCertDateTimeTextV616ar(r.planned_end_at))}</div>
+            </td>
+            <td>
+              ${safe(bulkTimeCertDateTimeTextV616ar(r.proposed_start_at))}
+              <br>→ ${safe(bulkTimeCertDateTimeTextV616ar(r.proposed_end_at))}
+            </td>
+            <td>${safe(bulkTimeCertDateTimeTextV616ar(r.actual_out_at))}</td>
+            <td><span class="btc-status ${statusClass}">${safe(statusText)}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      updateBulkTimeCertificationSummaryV616ar();
+    }
+
+    function selectedBulkTimeCertificationDatesV616ar(){
+      return qa(
+        '[data-bulk-time-cert-date]:checked',
+        $('bulkTimeCertBodyV616ar')
+      ).map(x=>x.dataset.bulkTimeCertDate).filter(Boolean);
+    }
+
+    function updateBulkTimeCertificationSummaryV616ar(){
+      const rows=bulkTimeCertificationStateV616ar.rows||[];
+      const selected=selectedBulkTimeCertificationDatesV616ar();
+      const ready=rows.filter(r=>r.eligible).length;
+      const blocked=rows.filter(r=>!r.eligible).length;
+      setText(
+        'bulkTimeCertSummaryV616ar',
+        `เลือก ${selected.length} วัน • พร้อม ${ready} • ข้าม ${blocked}`
+      );
+      if($('bulkTimeCertSaveV616ar')){
+        $('bulkTimeCertSaveV616ar').disabled=selected.length===0;
+        $('bulkTimeCertSaveV616ar').textContent=
+          selected.length?`บันทึก ${selected.length} วัน`:'บันทึกรายการที่เลือก';
+      }
+    }
+
+    async function saveBulkTimeCertificationV616ar(){
+      const dates=selectedBulkTimeCertificationDatesV616ar();
+      if(!dates.length)return toast('กรุณาเลือกรายการที่จะรับรอง','error');
+
+      const reasonCode=String(val('bulkTimeCertReasonV616ar')||'').trim().toUpperCase();
+      const note=String(val('bulkTimeCertNoteV616ar')||'').trim();
+      if(!reasonCode)return toast('กรุณาเลือกเหตุผลการรับรองเวลา','error');
+
+      const reason=(timeCertificationStateV61139.reasons||[])
+        .find(x=>String(x.reason_code||'').toUpperCase()===reasonCode);
+      if(reason?.requires_note&&!note){
+        return toast('เหตุผลนี้ต้องระบุหมายเหตุเพิ่มเติม','error');
+      }
+
+      const confirmed=await window.tcConfirm({
+        title:'ยืนยัน Bulk Time Certification',
+        message:
+          `พนักงาน ${bulkTimeCertificationStateV616ar.fullName} (${bulkTimeCertificationStateV616ar.empCode})\n`
+          +`รับรอง ${dates.length} Work Date\n\n`
+          +'ระบบจะแยกบันทึกและตรวจสอบกติกาทีละวัน',
+        confirmText:`ยืนยัน ${dates.length} วัน`,
+        tone:'warning'
+      });
+      if(!confirmed)return;
+
+      try{
+        showLoading(`กำลังรับรองเวลา ${dates.length} วัน...`);
+
+        const {data,error}=await state.client.rpc(
+          'ta_save_time_certification_bulk_v616ar',
+          {
+            p_emp_code:bulkTimeCertificationStateV616ar.empCode,
+            p_work_dates:dates,
+            p_reason_code:reasonCode,
+            p_note:note||null,
+            p_replace_existing:Boolean($('bulkTimeCertReplaceV616ar')?.checked)
+          }
+        );
+        if(error)throw error;
+
+        const saved=Number(data?.saved_rows||0);
+        const skipped=Number(data?.skipped_rows||0);
+        const failed=Number(data?.failed_rows||0);
+
+        const result=$('bulkTimeCertResultV616ar');
+        result.textContent=
+          `บันทึกสำเร็จ ${saved} วัน • ข้าม ${skipped} วัน • ไม่สำเร็จ ${failed} วัน`;
+        result.classList.remove('hidden');
+
+        toast(
+          failed
+            ? `Bulk Certification สำเร็จ ${saved} วัน และมี ${failed} วันที่ต้องตรวจสอบ`
+            : `Bulk Certification สำเร็จ ${saved} วัน`,
+          failed?'warning':'success'
+        );
+
+        const savedDates=(data?.results||[])
+          .filter(x=>x?.status==='SAVED')
+          .map(x=>String(x.work_date||'').slice(0,10))
+          .filter(Boolean);
+
+        for(const d of savedDates){
+          try{
+            await refreshTimeCertificationSourceV61139(
+              bulkTimeCertificationStateV616ar.empCode,
+              d,
+              bulkTimeCertificationStateV616ar.source
+            );
+          }catch(_){}
+        }
+
+        await previewBulkTimeCertificationV616ar();
+
+      }catch(e){
+        toast(humanError(e),'error');
+      }finally{
+        hideLoading();
+      }
+    }
+
+    function ensureBulkTimeCertificationButtonV616ar(){
+      const save=$('timeCertificationSaveBtn');
+      if(!save||$('timeCertificationBulkBtnV616ar'))return;
+
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.id='timeCertificationBulkBtnV616ar';
+      btn.className=save.className
+        ? String(save.className).replace(/\bprimary\b/g,'').trim()
+        : 'btn btn-light';
+      btn.textContent='รับรองหลายวัน';
+      btn.title='รับรองพนักงานคนนี้หลาย Work Dates';
+      btn.addEventListener('click',openBulkTimeCertificationV616ar);
+
+      save.parentElement?.insertBefore(btn,save);
     }
 
     async function saveTimeCertificationV61139() {
@@ -16339,6 +16912,7 @@ window.tcIsDayShiftCode = value =>
         applyTimeCertificationDateScopeV616aq();
         updateTimeCertificationActualOutLimitV61145();
       });
+      ensureBulkTimeCertificationButtonV616ar();
       $("timeCertificationSaveBtn")?.addEventListener("click", saveTimeCertificationV61139);
       $("timeCertificationRevokeBtn")?.addEventListener("click", revokeTimeCertificationV61139);
 
