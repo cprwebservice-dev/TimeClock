@@ -382,6 +382,7 @@ window.tcIsDayShiftCode = value =>
 })();
 
 
+/* ===== V6.15.29 FIX16AQ Time Certification Work-Date Boundary Guard ===== */
 /* ===== V6.15.29 FIX16AP Global Popup Reliability Core ===== */
 (() => {
   "use strict";
@@ -9451,6 +9452,8 @@ window.tcIsDayShiftCode = value =>
     }
 
     function updateTimeCertificationActualOutLimitV61145() {
+      applyTimeCertificationDateScopeV616aq();
+
       const limit = timeCertificationStateV61139.actualOutLimit;
       const endDate = $('timeCertificationEndDate');
       const endTime = $('timeCertificationEndTime');
@@ -9463,9 +9466,20 @@ window.tcIsDayShiftCode = value =>
       endTime.setCustomValidity('');
 
       if (!limit) {
+        const workDate=String(
+          val('timeCertificationWorkDate')
+          || timeCertificationStateV61139.row?.work_date
+          || ''
+        ).slice(0,10);
+        const maxEnd=timeCertificationAllowedEndDateV616aq(
+          timeCertificationStateV61139.row,
+          workDate
+        );
         if (hint) {
           hint.className = 'time-cert-end-limit-v61145 no-limit';
-          hint.textContent = 'ไม่พบเวลาออกจริง • สามารถระบุเวลาสิ้นสุดรับรองได้';
+          hint.textContent = maxEnd>workDate
+            ? 'ไม่พบเวลาออกจริง • 1 รายการรับรอง = 1 วันทำงาน • กะข้ามวันสิ้นสุดได้ถึงวันถัดไป'
+            : 'ไม่พบเวลาออกจริง • 1 รายการรับรอง = 1 วันทำงาน • วันที่สิ้นสุดต้องเป็นวันเดียวกัน';
         }
         updateTimeCertificationDurationV61139();
         return;
@@ -9674,6 +9688,116 @@ window.tcIsDayShiftCode = value =>
       $('timeCertificationNote')?.classList.toggle('is-required', required);
     }
 
+    // FIX16AQ — Time Certification is one WORK DATE per record.
+    // Start/end DATE fields describe the datetime boundary of that work date.
+    // They are NOT a multi-day certification range.
+    function timeCertificationAllowedEndDateV616aq(row,workDate){
+      const wd=String(workDate||row?.work_date||'').slice(0,10);
+      if(!wd)return wd;
+
+      const shiftStartRaw=row?.shift_1_planned_start_at
+        || row?.effective_shift_start_time
+        || row?.shift_start_time;
+      const shiftEndRaw=row?.shift_1_planned_end_at
+        || row?.effective_shift_end_time
+        || row?.shift_end_time;
+
+      const startTime=timeCertificationTimeV61139(shiftStartRaw);
+      const endTime=timeCertificationTimeV61139(shiftEndRaw);
+
+      let endDate=timeCertificationIsoDateV61139(shiftEndRaw,wd);
+      if(!endDate)endDate=wd;
+
+      if(endDate===wd){
+        const startMin=attendanceClockMinutes(startTime);
+        const endMin=attendanceClockMinutes(endTime);
+        if(startMin!=null&&endMin!=null&&endMin<=startMin){
+          endDate=addCalendarDaysISO(wd,1);
+        }
+      }
+
+      // Never let a certification record span more than the effective Shift-1
+      // calendar boundary. Day shift => same date. Night shift => +1 date.
+      return endDate>wd ? addCalendarDaysISO(wd,1) : wd;
+    }
+
+    function applyTimeCertificationDateScopeV616aq(){
+      const row=timeCertificationStateV61139.row;
+      if(!row)return;
+
+      const workDate=String(
+        val('timeCertificationWorkDate')
+        || row.work_date
+        || ''
+      ).slice(0,10);
+      if(!workDate)return;
+
+      const startDate=$('timeCertificationStartDate');
+      const endDate=$('timeCertificationEndDate');
+      if(!startDate||!endDate)return;
+
+      const maxEndDate=timeCertificationAllowedEndDateV616aq(row,workDate);
+      const overnight=maxEndDate>workDate;
+
+      startDate.value=workDate;
+      startDate.min=workDate;
+      startDate.max=workDate;
+      startDate.disabled=true;
+      startDate.title='1 รายการรับรอง = 1 วันทำงาน';
+
+      endDate.min=workDate;
+      endDate.max=maxEndDate;
+
+      if(!overnight){
+        endDate.value=workDate;
+        endDate.disabled=true;
+        endDate.title='กะนี้สิ้นสุดภายในวันเดียวกัน';
+      }else{
+        endDate.disabled=false;
+        if(
+          !endDate.value
+          || endDate.value<workDate
+          || endDate.value>maxEndDate
+        ){
+          endDate.value=maxEndDate;
+        }
+        endDate.title='กะข้ามวัน: เลือกได้เฉพาะวันเริ่มกะหรือวันถัดไป';
+      }
+
+      const hint=$('timeCertificationEndLimitHint');
+      if(hint&&!timeCertificationStateV61139.actualOutLimit){
+        hint.className='time-cert-end-limit-v61145 no-limit';
+        hint.textContent=overnight
+          ? '1 รายการรับรอง = 1 วันทำงาน • กะข้ามวันจึงสิ้นสุดได้ถึงวันถัดไป'
+          : '1 รายการรับรอง = 1 วันทำงาน • กะนี้ต้องสิ้นสุดภายในวันเดียวกัน';
+      }
+    }
+
+    function validateTimeCertificationDateScopeV616aq(row,workDate,startDate,endDate){
+      const wd=String(workDate||'').slice(0,10);
+      const start=String(startDate||'').slice(0,10);
+      const end=String(endDate||'').slice(0,10);
+      const maxEnd=timeCertificationAllowedEndDateV616aq(row,wd);
+
+      if(!wd||start!==wd){
+        return {
+          ok:false,
+          message:'วันที่เริ่มรับรองต้องเป็นวันทำงานที่กำลังรับรองเท่านั้น'
+        };
+      }
+
+      if(!end||end<wd||end>maxEnd){
+        return {
+          ok:false,
+          message:maxEnd>wd
+            ? `กะนี้รับรองเวลาสิ้นสุดได้ไม่เกิน ${formatDate(maxEnd)}`
+            : 'กะนี้รับรองเวลาได้ภายในวันทำงานเดียวกันเท่านั้น'
+        };
+      }
+
+      return {ok:true,maxEnd};
+    }
+
     function updateTimeCertificationDurationV61139() {
       const startDate = val('timeCertificationStartDate');
       const startTime = val('timeCertificationStartTime');
@@ -9797,6 +9921,11 @@ window.tcIsDayShiftCode = value =>
       setVal('timeCertificationStartTime', defaultStartTime);
       setVal('timeCertificationEndDate', defaultEndDate);
       setVal('timeCertificationEndTime', defaultEndTime);
+
+      // FIX16AQ: lock calendar dates to the single certified work date.
+      // Day shifts stay on workDate; overnight shifts may end on +1 day only.
+      applyTimeCertificationDateScopeV616aq();
+
       setVal('timeCertificationNote', row.certification_note || '');
       setVal('timeCertificationReasonSearch', '');
       setVal('timeCertificationApprover', state.profile?.display_name || state.profile?.email || state.user?.email || '-');
@@ -9901,6 +10030,8 @@ window.tcIsDayShiftCode = value =>
       timeCertificationStateV61139.source = '';
       timeCertificationStateV61139.actualOutLimit = null;
       timeCertificationStateV61139.shift1Only = false;
+      if($('timeCertificationStartDate'))$('timeCertificationStartDate').disabled=false;
+      if($('timeCertificationEndDate'))$('timeCertificationEndDate').disabled=false;
       const atomicCtxV61510 = window.TimeClockEmployeeRequestAtomicV61510;
       if (atomicCtxV61510?.type === 'TIME_ISSUE') {
         window.TimeClockEmployeeRequestAtomicV61510 = null;
@@ -9932,6 +10063,18 @@ window.tcIsDayShiftCode = value =>
       if (blockedReasonV61143 === 'FUTURE') return toast('รับรองเวลาได้เฉพาะวันที่ปัจจุบันและย้อนหลังเท่านั้น','error');
       if (blockedReasonV61143 === 'LEAVE') return toast('วันลาไม่สามารถรับรองเวลาได้','error');
       if (blockedReasonV61143 === 'OFF') return toast('วันหยุด / กะ OFF ไม่สามารถรับรองเวลาได้','error');
+
+      const dateScopeV616aq=validateTimeCertificationDateScopeV616aq(
+        row,
+        workDate,
+        startDate,
+        endDate
+      );
+      if(!dateScopeV616aq.ok){
+        applyTimeCertificationDateScopeV616aq();
+        updateTimeCertificationDurationV61139();
+        return toast(dateScopeV616aq.message,'error');
+      }
 
       const startMs = timeCertificationDateTimeMsV61139(startDate,startTime);
       const endMs = timeCertificationDateTimeMsV61139(endDate,endTime);
@@ -16191,6 +16334,10 @@ window.tcIsDayShiftCode = value =>
       ["timeCertificationEndDate","timeCertificationEndTime"].forEach(id => {
         $(id)?.addEventListener("input", updateTimeCertificationActualOutLimitV61145);
         $(id)?.addEventListener("change", updateTimeCertificationActualOutLimitV61145);
+      });
+      $("timeCertificationStartDate")?.addEventListener("change",()=>{
+        applyTimeCertificationDateScopeV616aq();
+        updateTimeCertificationActualOutLimitV61145();
       });
       $("timeCertificationSaveBtn")?.addEventListener("click", saveTimeCertificationV61139);
       $("timeCertificationRevokeBtn")?.addEventListener("click", revokeTimeCertificationV61139);
