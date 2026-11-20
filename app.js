@@ -45090,3 +45090,896 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
     open:openPage
   };
 })();
+
+
+/* ============================================================================
+ * TimeClock V6.15.29 | FIX16BJ
+ * MANAGER DASHBOARD RUNTIME RESTORE
+ *
+ * Restores the Manager Dashboard runtime lost from later app.js patch bases.
+ * Uses existing backend contracts:
+ *   - ta_get_manager_dashboard_filters_v616eq
+ *   - ta_get_manager_dashboard_v616eq
+ *   - ta_get_manager_dashboard_area_trend_v616er (optional enrichment)
+ *
+ * Important:
+ *   - Does NOT replace TimeClock global app/runtime.
+ *   - Does NOT change backend formulas or permissions.
+ *   - Does NOT fall back to legacy Dashboard readers for Manager Overview.
+ *   - Overview remains visible when optional Area Trend fails/times out.
+ * ========================================================================== */
+(() => {
+  'use strict';
+
+  const VERSION = '6.15.29-FIX16BJ';
+  const ROOT_ID = 'managerDashboardRuntimeV616bj';
+  const STYLE_ID = 'managerDashboardStyleV616bj';
+
+  const runtime = {
+    filters: [],
+    loading: false,
+    requestSeq: 0,
+    initialized: false,
+    lastPayload: null,
+    lastAreaTrend: null
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const qa = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  const txt = (v) => String(v ?? '').trim();
+  const upper = (v) => txt(v).toUpperCase();
+  const esc = (v) => txt(v)
+    .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+    .replaceAll('"','&quot;').replaceAll("'","&#039;");
+  const n = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;
+  const nf = (v, digits=0) => Number(v||0).toLocaleString('th-TH',{
+    minimumFractionDigits:digits, maximumFractionDigits:digits
+  });
+
+  function app(){
+    return window.TimeClockApp || null;
+  }
+  function client(){
+    return app()?.state?.client || null;
+  }
+  function toast(message, type='info'){
+    const a=app();
+    if(a?.toast) return a.toast(message,type);
+    if(window.toast) return window.toast(message,type);
+    console[type==='error'?'error':'log']('[Dashboard]',message);
+  }
+  function humanError(error){
+    return app()?.humanError?.(error)
+      || error?.message
+      || error?.details
+      || String(error||'เกิดข้อผิดพลาด');
+  }
+  function page(){
+    return $('page-dashboard');
+  }
+  function normLabel(s){
+    return txt(s).replace(/\s+/g,' ').replace(/\*/g,'').trim();
+  }
+
+  function findFieldByLabel(labelText){
+    const root=page();
+    if(!root)return null;
+    const wanted=normLabel(labelText);
+    const labels=qa('label',root);
+    const label=labels.find(l=>{
+      const t=normLabel(l.textContent);
+      return t===wanted || t.startsWith(wanted);
+    });
+    if(!label)return null;
+
+    let shell=label.closest('.field,.form-field,.filter-field,.dashboard-filter-field') || label.parentElement;
+    let control=shell?.querySelector?.('select,input');
+    if(!control && label.htmlFor) control=$(label.htmlFor);
+    return control||null;
+  }
+
+  function controls(){
+    return {
+      start: findFieldByLabel('วันที่เริ่มต้น') || $('dashStart'),
+      end: findFieldByLabel('วันที่สิ้นสุด') || $('dashEnd'),
+      side: findFieldByLabel('ด้าน'),
+      division: findFieldByLabel('ฝ่าย'),
+      zone: findFieldByLabel('พื้นที่') || $('dashZone'),
+      org: findFieldByLabel('หน่วยงาน') || $('dashDepartment')
+    };
+  }
+
+  function isManagerDashboardUi(){
+    const c=controls();
+    return Boolean(page() && c.start && c.end && c.side && c.division && c.zone && c.org);
+  }
+
+  function directChildUnderPage(node){
+    const p=page();
+    if(!p||!node)return null;
+    let cur=node;
+    while(cur && cur.parentElement!==p) cur=cur.parentElement;
+    return cur?.parentElement===p ? cur : null;
+  }
+
+  function findFilterPanel(){
+    const c=controls();
+    if(!c.start)return null;
+    return c.start.closest(
+      '.panel,.dashboard-filter-panel,.filter-panel,.manager-dashboard-filter,.dashboard-filter-shell'
+    ) || directChildUnderPage(c.start);
+  }
+
+  function ensureStyle(){
+    if($(STYLE_ID))return;
+    const st=document.createElement('style');
+    st.id=STYLE_ID;
+    st.textContent=`
+      .fix16bj-superseded-dashboard{display:none!important}
+      #${ROOT_ID}{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+      #${ROOT_ID} *{box-sizing:border-box}
+      #${ROOT_ID} .mdb-alert{
+        border:1px solid #f4c97c;background:#fff8e8;color:#85540b;
+        border-radius:12px;padding:11px 14px;font-size:12px;line-height:1.55
+      }
+      #${ROOT_ID} .mdb-alert.error{
+        border-color:#fecaca;background:#fff3f3;color:#a92323
+      }
+      #${ROOT_ID} .mdb-alert.info{
+        border-color:#b8d9f4;background:#f1f8fe;color:#245d89
+      }
+      #${ROOT_ID} .mdb-kpis{
+        display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px
+      }
+      #${ROOT_ID} .mdb-kpi{
+        border:1px solid var(--border,#dbe6ef);border-radius:14px;background:var(--card,#fff);
+        padding:14px;min-width:0;box-shadow:0 4px 15px rgba(15,42,64,.035)
+      }
+      #${ROOT_ID} .mdb-kpi span{display:block;color:var(--muted,#72869a);font-size:11px}
+      #${ROOT_ID} .mdb-kpi strong{display:block;margin-top:5px;font-size:25px;line-height:1;color:var(--ink,#102a43)}
+      #${ROOT_ID} .mdb-kpi small{display:block;margin-top:7px;color:var(--muted,#7b8fa1);font-size:10px;line-height:1.35}
+      #${ROOT_ID} .mdb-kpi.attention{border-color:#f5cd86;background:linear-gradient(180deg,#fff,#fffaf0)}
+      #${ROOT_ID} .mdb-kpi.danger{border-color:#fecaca;background:linear-gradient(180deg,#fff,#fff5f5)}
+      #${ROOT_ID} .mdb-grid-2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);gap:12px}
+      #${ROOT_ID} .mdb-panel{
+        border:1px solid var(--border,#dbe6ef);border-radius:15px;background:var(--card,#fff);
+        overflow:hidden;min-width:0
+      }
+      #${ROOT_ID} .mdb-head{
+        padding:13px 15px;border-bottom:1px solid var(--border,#e5edf3);
+        display:flex;align-items:center;justify-content:space-between;gap:12px
+      }
+      #${ROOT_ID} .mdb-head h3{margin:0;font-size:15px;color:var(--ink,#102a43)}
+      #${ROOT_ID} .mdb-head p{margin:3px 0 0;font-size:10.5px;color:var(--muted,#71869a)}
+      #${ROOT_ID} .mdb-body{padding:14px}
+      #${ROOT_ID} .mdb-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+      #${ROOT_ID} .mdb-action{
+        border:1px solid #e0e8ef;border-radius:12px;padding:11px;background:#fbfdff;min-width:0
+      }
+      #${ROOT_ID} .mdb-action b{display:block;font-size:18px;color:#173b5e}
+      #${ROOT_ID} .mdb-action span{display:block;margin-top:4px;font-size:10.5px;color:#6e8295}
+      #${ROOT_ID} .mdb-action.hot{border-color:#f4c97c;background:#fff9ed}
+      #${ROOT_ID} .mdb-hours{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+      #${ROOT_ID} .mdb-hour{
+        padding:10px;border:1px solid #e0e9f0;border-radius:11px;background:#fbfdff
+      }
+      #${ROOT_ID} .mdb-hour span{font-size:10px;color:#75899a}
+      #${ROOT_ID} .mdb-hour b{display:block;margin-top:4px;font-size:18px;color:#153b5f}
+      #${ROOT_ID} .mdb-workforce{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+      #${ROOT_ID} .mdb-workforce-card{
+        border:1px solid #e0e9f0;border-radius:12px;padding:11px;background:#fbfdff
+      }
+      #${ROOT_ID} .mdb-workforce-card header{
+        display:flex;justify-content:space-between;align-items:center;margin-bottom:8px
+      }
+      #${ROOT_ID} .mdb-workforce-card header strong{font-size:13px}
+      #${ROOT_ID} .mdb-workforce-card header b{font-size:20px;color:#123c62}
+      #${ROOT_ID} .mdb-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+      #${ROOT_ID} .mdb-mini-grid div{padding:7px;border-radius:9px;background:#f3f7fa;text-align:center}
+      #${ROOT_ID} .mdb-mini-grid span{display:block;font-size:9.5px;color:#778b9d}
+      #${ROOT_ID} .mdb-mini-grid b{display:block;margin-top:2px;font-size:14px}
+      #${ROOT_ID} .mdb-donut-wrap{display:flex;align-items:center;gap:18px}
+      #${ROOT_ID} .mdb-donut{
+        --rate:0deg;width:126px;height:126px;border-radius:50%;
+        background:conic-gradient(#2f88c9 var(--rate),#e8eef3 0);
+        display:grid;place-items:center;flex:0 0 auto;position:relative
+      }
+      #${ROOT_ID} .mdb-donut::after{
+        content:"";width:88px;height:88px;border-radius:50%;
+        background:var(--card,#fff);position:absolute
+      }
+      #${ROOT_ID} .mdb-donut-inner{position:relative;z-index:1;text-align:center}
+      #${ROOT_ID} .mdb-donut-inner strong{display:block;font-size:25px;color:#123b5e}
+      #${ROOT_ID} .mdb-donut-inner span{font-size:9.5px;color:#75889a}
+      #${ROOT_ID} .mdb-donut-copy{display:grid;gap:7px;min-width:0;flex:1}
+      #${ROOT_ID} .mdb-donut-row{
+        display:flex;justify-content:space-between;gap:9px;padding-bottom:6px;border-bottom:1px dashed #e2e9ef
+      }
+      #${ROOT_ID} .mdb-donut-row span{font-size:10.5px;color:#72869a}
+      #${ROOT_ID} .mdb-donut-row b{font-size:11px;color:#173b5d}
+      #${ROOT_ID} .mdb-chart{width:100%;height:230px;position:relative}
+      #${ROOT_ID} .mdb-chart svg{width:100%;height:100%;display:block;overflow:visible}
+      #${ROOT_ID} .mdb-chart-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:10px;color:#74889a}
+      #${ROOT_ID} .mdb-chart-legend i{display:inline-block;width:16px;height:3px;border-radius:3px;margin-right:5px;vertical-align:middle}
+      #${ROOT_ID} .mdb-table-wrap{overflow:auto;max-height:430px}
+      #${ROOT_ID} table{width:100%;border-collapse:separate;border-spacing:0;font-size:10.5px}
+      #${ROOT_ID} th{
+        position:sticky;top:0;z-index:1;background:#edf6fd;color:#214b6f;
+        text-align:left;padding:9px;border-bottom:1px solid #cfdfeb
+      }
+      #${ROOT_ID} td{padding:8px 9px;border-bottom:1px solid #edf1f4;color:var(--ink,#17324b);vertical-align:middle}
+      #${ROOT_ID} td.num,#${ROOT_ID} th.num{text-align:right}
+      #${ROOT_ID} .mdb-rate{
+        min-width:120px;display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center
+      }
+      #${ROOT_ID} .mdb-track{height:7px;border-radius:999px;background:#e8eef3;overflow:hidden}
+      #${ROOT_ID} .mdb-track i{display:block;height:100%;border-radius:999px;background:#3995d0}
+      #${ROOT_ID} .mdb-badge{
+        display:inline-flex;align-items:center;padding:3px 7px;border-radius:999px;
+        background:#eef5fa;color:#315b7a;font-size:9.5px;font-weight:700
+      }
+      #${ROOT_ID} .mdb-section-title{
+        font-size:11px;font-weight:800;letter-spacing:.04em;color:#54738d;margin-bottom:8px
+      }
+      #${ROOT_ID} .mdb-empty{padding:26px;text-align:center;color:#7c8f9f;font-size:11px}
+      #${ROOT_ID} .mdb-skeleton{
+        height:96px;border-radius:12px;background:linear-gradient(90deg,#f1f4f7,#fafbfd,#f1f4f7);
+        background-size:200% 100%;animation:mdbPulseV616bj 1.2s linear infinite
+      }
+      @keyframes mdbPulseV616bj{to{background-position:-200% 0}}
+      body.theme-dark #${ROOT_ID} .mdb-kpi,
+      body.dark-mode #${ROOT_ID} .mdb-kpi,
+      body.dark #${ROOT_ID} .mdb-kpi,
+      body.theme-dark #${ROOT_ID} .mdb-panel,
+      body.dark-mode #${ROOT_ID} .mdb-panel,
+      body.dark #${ROOT_ID} .mdb-panel{background:#14222e;border-color:#2b3d4d}
+      body.theme-dark #${ROOT_ID} .mdb-kpi strong,
+      body.dark-mode #${ROOT_ID} .mdb-kpi strong,
+      body.dark #${ROOT_ID} .mdb-kpi strong,
+      body.theme-dark #${ROOT_ID} .mdb-head h3,
+      body.dark-mode #${ROOT_ID} .mdb-head h3,
+      body.dark #${ROOT_ID} .mdb-head h3,
+      body.theme-dark #${ROOT_ID} td,
+      body.dark-mode #${ROOT_ID} td,
+      body.dark #${ROOT_ID} td{color:#e3edf5}
+      body.theme-dark #${ROOT_ID} th,
+      body.dark-mode #${ROOT_ID} th,
+      body.dark #${ROOT_ID} th{background:#1d3446;color:#d8e8f5}
+      body.theme-dark #${ROOT_ID} .mdb-action,
+      body.dark-mode #${ROOT_ID} .mdb-action,
+      body.dark #${ROOT_ID} .mdb-action,
+      body.theme-dark #${ROOT_ID} .mdb-hour,
+      body.dark-mode #${ROOT_ID} .mdb-hour,
+      body.dark #${ROOT_ID} .mdb-hour,
+      body.theme-dark #${ROOT_ID} .mdb-workforce-card,
+      body.dark-mode #${ROOT_ID} .mdb-workforce-card,
+      body.dark #${ROOT_ID} .mdb-workforce-card{background:#172936;border-color:#2b3f50}
+      @media(max-width:1120px){
+        #${ROOT_ID} .mdb-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+        #${ROOT_ID} .mdb-grid-2{grid-template-columns:1fr}
+      }
+      @media(max-width:760px){
+        #${ROOT_ID} .mdb-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+        #${ROOT_ID} .mdb-actions,#${ROOT_ID} .mdb-hours{grid-template-columns:repeat(2,minmax(0,1fr))}
+        #${ROOT_ID} .mdb-workforce{grid-template-columns:1fr}
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function ensureRoot(){
+    ensureStyle();
+    let root=$(ROOT_ID);
+    if(root)return root;
+    const filter=findFilterPanel();
+    if(!filter)return null;
+
+    root=document.createElement('section');
+    root.id=ROOT_ID;
+    root.dataset.version=VERSION;
+
+    // Hide stale legacy/blank Dashboard output at the same hierarchy level.
+    let sibling=filter.nextElementSibling;
+    while(sibling){
+      if(sibling.id!==ROOT_ID) sibling.classList.add('fix16bj-superseded-dashboard');
+      sibling=sibling.nextElementSibling;
+    }
+
+    // Also hide known legacy Dashboard containers if they exist elsewhere.
+    [
+      '#dashboardKpis','.executive-strip','.dashboard-main-grid','.dashboard-bottom-grid',
+      '#dashboardBars','#dashboardQuick','#dashboardOpsMetricsV616H',
+      '[data-manager-dashboard-output]','.manager-dashboard-output'
+    ].forEach(sel=>{
+      qa(sel,page()).forEach(el=>{
+        if(!el.contains(filter) && el.id!==ROOT_ID) el.classList.add('fix16bj-superseded-dashboard');
+      });
+    });
+
+    filter.insertAdjacentElement('afterend',root);
+    return root;
+  }
+
+  function setLoading(){
+    const root=ensureRoot();
+    if(!root)return;
+    root.innerHTML=`
+      <div class="mdb-kpis">
+        ${Array.from({length:5}).map(()=>'<div class="mdb-skeleton"></div>').join('')}
+      </div>
+      <div class="mdb-grid-2">
+        <div class="mdb-skeleton" style="height:270px"></div>
+        <div class="mdb-skeleton" style="height:270px"></div>
+      </div>`;
+  }
+
+  async function rpc(name,args){
+    const c=client();
+    if(!c) throw new Error('Supabase client ยังไม่พร้อม');
+    const res=await c.rpc(name,args);
+    if(res?.error) throw res.error;
+    return res?.data;
+  }
+
+  function rpcArgs(){
+    const c=controls();
+    return {
+      p_start_date: c.start?.value || null,
+      p_end_date: c.end?.value || null,
+      p_side_id: c.side?.value || null,
+      p_division_id: c.division?.value || null,
+      p_zone: c.zone?.value || null,
+      p_org_id: c.org?.value || null
+    };
+  }
+
+  function option(select,value,label){
+    const o=document.createElement('option');
+    o.value=value||'';
+    o.textContent=label||'';
+    select.appendChild(o);
+  }
+  function uniqBy(arr,keyFn){
+    const m=new Map();
+    arr.forEach(x=>{
+      const k=keyFn(x);
+      if(k && !m.has(k))m.set(k,x);
+    });
+    return [...m.values()];
+  }
+
+  function populateSelect(select,rows,valueKey,labelFn,allLabel,current){
+    if(!select)return;
+    select.innerHTML='';
+    option(select,'',allLabel);
+    rows.forEach(r=>option(select,r[valueKey],labelFn(r)));
+    if(current && rows.some(r=>String(r[valueKey])===String(current))) select.value=current;
+    else select.value='';
+  }
+
+  function filterRowsForHierarchy(){
+    const c=controls();
+    let rows=runtime.filters.slice();
+    if(c.side?.value){
+      rows=rows.filter(r=>String(r.side_id||r.org_id||'')===c.side.value);
+    }
+    if(c.division?.value){
+      rows=rows.filter(r=>String(r.division_id||r.org_id||'')===c.division.value);
+    }
+    if(c.zone?.value){
+      rows=rows.filter(r=>txt(r.area_bucket||r.zone)===c.zone.value);
+    }
+    return rows;
+  }
+
+  function populateHierarchy(changed='INIT'){
+    const c=controls();
+    if(!c.side||!c.division||!c.zone||!c.org)return;
+
+    const prev={
+      side:c.side.value, division:c.division.value, zone:c.zone.value, org:c.org.value
+    };
+
+    const sides=uniqBy(
+      runtime.filters.filter(r=>r.side_id),
+      r=>String(r.side_id)
+    ).sort((a,b)=>txt(a.side_name).localeCompare(txt(b.side_name),'th'));
+
+    populateSelect(
+      c.side,sides,'side_id',
+      r=>r.side_name || r.side_code || 'ไม่ระบุด้าน',
+      'ทุกด้าน',
+      changed==='INIT'?prev.side:c.side.value
+    );
+
+    let divBase=runtime.filters;
+    if(c.side.value) divBase=divBase.filter(r=>String(r.side_id||r.org_id||'')===c.side.value);
+    const divisions=uniqBy(
+      divBase.filter(r=>r.division_id),
+      r=>String(r.division_id)
+    ).sort((a,b)=>txt(a.division_name).localeCompare(txt(b.division_name),'th'));
+
+    const divisionKeep=(changed==='SIDE')?'':prev.division;
+    populateSelect(
+      c.division,divisions,'division_id',
+      r=>r.division_name || r.division_code || 'ไม่ระบุฝ่าย',
+      'ทุกฝ่าย',
+      divisionKeep
+    );
+
+    let zoneBase=runtime.filters;
+    if(c.side.value) zoneBase=zoneBase.filter(r=>String(r.side_id||r.org_id||'')===c.side.value);
+    if(c.division.value) zoneBase=zoneBase.filter(r=>String(r.division_id||r.org_id||'')===c.division.value);
+    const zones=uniqBy(
+      zoneBase.filter(r=>txt(r.area_bucket||r.zone)),
+      r=>txt(r.area_bucket||r.zone)
+    ).map(r=>({zone:txt(r.area_bucket||r.zone)}))
+     .sort((a,b)=>a.zone.localeCompare(b.zone,'th'));
+
+    const zoneKeep=(changed==='SIDE'||changed==='DIVISION')?'':prev.zone;
+    populateSelect(c.zone,zones,'zone',r=>r.zone,'ทุกพื้นที่',zoneKeep);
+
+    let orgBase=filterRowsForHierarchy();
+    const orgs=uniqBy(
+      orgBase.filter(r=>r.org_id),
+      r=>String(r.org_id)
+    ).sort((a,b)=>{
+      const aa=n(a.level_order)-n(b.level_order);
+      return aa || txt(a.org_name).localeCompare(txt(b.org_name),'th');
+    });
+
+    const orgKeep=['SIDE','DIVISION','ZONE'].includes(changed)?'':prev.org;
+    populateSelect(
+      c.org,orgs,'org_id',
+      r=>r.identity_label || [r.org_code,r.org_name].filter(Boolean).join(' · ') || r.org_name,
+      'ทุกหน่วยงานใน Scope',
+      orgKeep
+    );
+  }
+
+  async function loadFilters(force=false){
+    if(runtime.filters.length && !force)return runtime.filters;
+    const c=controls();
+    if(!c.start||!c.end)return [];
+    const data=await rpc('ta_get_manager_dashboard_filters_v616eq',{
+      p_start_date:c.start.value,
+      p_end_date:c.end.value
+    });
+    runtime.filters=Array.isArray(data?.orgs)?data.orgs:[];
+    populateHierarchy('INIT');
+    return runtime.filters;
+  }
+
+  function completeRate(summary){
+    const total=n(summary?.total_rows);
+    if(total<=0)return null;
+    return Math.max(0,Math.min(100,n(summary?.complete_time_rows)*100/total));
+  }
+  function rateText(v){
+    return v==null || !Number.isFinite(Number(v)) ? '—' : `${nf(v,1)}%`;
+  }
+  function dateLabel(v){
+    const s=txt(v).slice(0,10);
+    if(!s)return '-';
+    const d=new Date(`${s}T00:00:00`);
+    if(Number.isNaN(d.getTime()))return s;
+    return d.toLocaleDateString('th-TH',{day:'2-digit',month:'short'});
+  }
+
+  function lineChart(daily){
+    const rows=(Array.isArray(daily)?daily:[]).filter(x=>x?.date);
+    if(!rows.length)return '<div class="mdb-empty">ยังไม่มีข้อมูลรายวันในช่วงที่เลือก</div>';
+
+    const W=820,H=220,L=42,R=18,T=14,B=34;
+    const pw=W-L-R, ph=H-T-B;
+    const x=i=>L+(rows.length===1?pw/2:(i*pw/(rows.length-1)));
+    const y=v=>T+(100-Math.max(0,Math.min(100,n(v))))*ph/100;
+    const points=(key)=>rows.map((r,i)=>`${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`).join(' ');
+    const yLines=[0,25,50,75,100].map(v=>`
+      <line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#e5edf3" stroke-width="1"/>
+      <text x="${L-7}" y="${y(v)+3}" text-anchor="end" font-size="9" fill="#7890a4">${v}</text>
+    `).join('');
+    const step=Math.max(1,Math.ceil(rows.length/7));
+    const labels=rows.map((r,i)=>i%step===0||i===rows.length-1
+      ? `<text x="${x(i)}" y="${H-10}" text-anchor="middle" font-size="8.5" fill="#7a8fa1">${esc(dateLabel(r.date))}</text>`
+      : ''
+    ).join('');
+    const dots=rows.map((r,i)=>`
+      <circle cx="${x(i)}" cy="${y(r.completeRate)}" r="2.8" fill="#2f91cf">
+        <title>${esc(dateLabel(r.date))} รายวัน ${rateText(r.completeRate)}</title>
+      </circle>
+      <circle cx="${x(i)}" cy="${y(r.cumCompleteRate)}" r="2.6" fill="#f39a31">
+        <title>${esc(dateLabel(r.date))} สะสม ${rateText(r.cumCompleteRate)}</title>
+      </circle>
+    `).join('');
+    return `
+      <div class="mdb-chart">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="อัตราลงเวลาครบรายวันและสะสม">
+          ${yLines}
+          <polyline fill="none" stroke="#2f91cf" stroke-width="2.6" vector-effect="non-scaling-stroke" points="${points('completeRate')}"/>
+          <polyline fill="none" stroke="#f39a31" stroke-width="2.6" vector-effect="non-scaling-stroke" points="${points('cumCompleteRate')}"/>
+          ${dots}${labels}
+        </svg>
+      </div>
+      <div class="mdb-chart-legend">
+        <span><i style="background:#2f91cf"></i>รายวัน</span>
+        <span><i style="background:#f39a31"></i>สะสม</span>
+        <span>สูตร: วันทำงานที่ต้องลงเวลาเท่านั้น</span>
+      </div>`;
+  }
+
+  function workforceHtml(rows){
+    const data=Array.isArray(rows)?rows:[];
+    if(!data.length)return '<div class="mdb-empty">ยังไม่มีข้อมูลกำลังพลตาม Scope นี้</div>';
+    return `<div class="mdb-workforce">${
+      data.map(r=>`
+        <article class="mdb-workforce-card">
+          <header><strong>${esc(r.area||'ไม่ระบุพื้นที่')}</strong><b>${nf(r.total)}</b></header>
+          <div class="mdb-mini-grid">
+            <div><span>รถยนต์</span><b>${nf(r.car)}</b></div>
+            <div><span>มอเตอร์ไซค์</span><b>${nf(r.motorcycle)}</b></div>
+            <div><span>สนับสนุน</span><b>${nf(r.support)}</b></div>
+          </div>
+        </article>`).join('')
+    }</div>`;
+  }
+
+  function orgRowsFromAreaTrend(areaTrend, overview){
+    const groups=Array.isArray(areaTrend?.area_groups)?areaTrend.area_groups:[];
+    if(groups.length){
+      return groups.map(g=>{
+        const daily=Array.isArray(g.daily)?g.daily:[];
+        const latest=[...daily].reverse().find(x=>n(x.total)>0) || daily[daily.length-1] || {};
+        return {
+          name:g.area || 'ไม่ระบุพื้นที่ย่อย',
+          area:g.zone || '',
+          employees:null,
+          dailyRate: latest.completeRate ?? null,
+          cumulativeRate: latest.cumCompleteRate ?? (
+            n(g.total)>0 ? n(g.complete)*100/n(g.total) : null
+          ),
+          dailyTotal:latest.total ?? 0,
+          cumulativeTotal:g.total ?? 0
+        };
+      });
+    }
+    const orgs=Array.isArray(overview?.org_comparison)?overview.org_comparison:[];
+    return orgs.map(o=>({
+      name:[o.org_code,o.org_name].filter(Boolean).join(' · ') || o.org_name || '-',
+      area:o.area || '',
+      employees:o.employee_count,
+      dailyRate:o.daily_rate,
+      cumulativeRate:o.cumulative_rate,
+      dailyTotal:o.daily_total,
+      cumulativeTotal:o.cumulative_total
+    }));
+  }
+
+  function orgTable(rows){
+    if(!rows.length)return '<div class="mdb-empty">ยังไม่มีข้อมูลเปรียบเทียบหน่วยงาน</div>';
+    const sorted=[...rows].sort((a,b)=>{
+      const av=a.cumulativeRate==null?999:n(a.cumulativeRate);
+      const bv=b.cumulativeRate==null?999:n(b.cumulativeRate);
+      return av-bv || txt(a.name).localeCompare(txt(b.name),'th');
+    });
+    return `
+      <div class="mdb-table-wrap">
+        <table>
+          <thead><tr>
+            <th>พื้นที่ / หน่วยงาน</th>
+            <th class="num">พนักงาน</th>
+            <th>รายวัน</th>
+            <th>สะสม</th>
+          </tr></thead>
+          <tbody>${sorted.map(r=>{
+            const dr=r.dailyRate==null?null:n(r.dailyRate);
+            const cr=r.cumulativeRate==null?null:n(r.cumulativeRate);
+            return `<tr>
+              <td><b>${esc(r.name)}</b>${r.area?`<br><span class="mdb-badge">${esc(r.area)}</span>`:''}</td>
+              <td class="num">${r.employees==null?'—':nf(r.employees)}</td>
+              <td><div class="mdb-rate"><div class="mdb-track"><i style="width:${dr==null?0:Math.max(0,Math.min(100,dr))}%"></i></div><b>${rateText(dr)}</b></div></td>
+              <td><div class="mdb-rate"><div class="mdb-track"><i style="width:${cr==null?0:Math.max(0,Math.min(100,cr))}%;background:#f39a31"></i></div><b>${rateText(cr)}</b></div></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function render(overview, areaTrend=null, warning=null){
+    const root=ensureRoot();
+    if(!root)return;
+
+    const s=overview?.summary || {};
+    const total=n(s.total_rows);
+    const complete=n(s.complete_time_rows);
+    const rate=completeRate(s);
+    const need=n(s.need_review_rows);
+    const absent=n(s.absent_rows);
+    const late=n(s.late_rows);
+    const early=n(s.early_leave_rows);
+    const teams=overview?.teams || {};
+    const daily=Array.isArray(overview?.daily)?overview.daily:[];
+    const orgRows=orgRowsFromAreaTrend(areaTrend,overview);
+
+    const dailyLatest=[...daily].reverse().find(x=>n(x.total)>0) || null;
+
+    root.innerHTML=`
+      ${warning?`<div class="mdb-alert info">${esc(warning)}</div>`:''}
+
+      <div class="mdb-kpis">
+        <article class="mdb-kpi">
+          <span>พนักงานใน Scope</span><strong>${nf(s.total_employees)}</strong>
+          <small>ตามสิทธิ์และตัวกรององค์กรที่เลือก</small>
+        </article>
+        <article class="mdb-kpi">
+          <span>วันทำงานที่ต้องลงเวลา</span><strong>${nf(total)}</strong>
+          <small>Eligible employee-days ตาม FIX16ES</small>
+        </article>
+        <article class="mdb-kpi ${rate!=null && rate<90?'attention':''}">
+          <span>อัตราลงเวลาครบ</span><strong>${rateText(rate)}</strong>
+          <small>${complete.toLocaleString('th-TH')} / ${total.toLocaleString('th-TH')} วัน-คน</small>
+        </article>
+        <article class="mdb-kpi ${need>0?'attention':''}">
+          <span>รายการควรตรวจสอบ</span><strong>${nf(need)}</strong>
+          <small>เวลาไม่ครบ / สาย / กลับก่อน / ทำงานวันหยุด</small>
+        </article>
+        <article class="mdb-kpi">
+          <span>OT รวม</span><strong>${nf(s.overtime_hours,1)}</strong>
+          <small>ชั่วโมงตามช่วงวันที่ที่เลือก</small>
+        </article>
+      </div>
+
+      <div class="mdb-grid-2">
+        <section class="mdb-panel">
+          <div class="mdb-head"><div><h3>ลำดับที่ควรจัดการ</h3><p>เรียงจากประเด็นที่กระทบการลงเวลามากที่สุด</p></div></div>
+          <div class="mdb-body">
+            <div class="mdb-actions">
+              <div class="mdb-action ${absent>0?'hot':''}"><b>${nf(absent)}</b><span>ขาดงาน / เวลาไม่ครบ ≥30 นาที</span></div>
+              <div class="mdb-action ${need>0?'hot':''}"><b>${nf(need)}</b><span>รายการต้องตรวจสอบทั้งหมด</span></div>
+              <div class="mdb-action"><b>${nf(late)}</b><span>มาสาย 1–29 นาที</span></div>
+              <div class="mdb-action"><b>${nf(early)}</b><span>กลับก่อนเวลา</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mdb-panel">
+          <div class="mdb-head"><div><h3>อัตราลงเวลาครบ</h3><p>${dailyLatest?`ข้อมูลล่าสุด ${esc(dateLabel(dailyLatest.date))}`:'ตามช่วงวันที่ที่เลือก'}</p></div></div>
+          <div class="mdb-body">
+            <div class="mdb-donut-wrap">
+              <div class="mdb-donut" style="--rate:${rate==null?0:rate*3.6}deg">
+                <div class="mdb-donut-inner"><strong>${rateText(rate)}</strong><span>ลงเวลาครบ</span></div>
+              </div>
+              <div class="mdb-donut-copy">
+                <div class="mdb-donut-row"><span>ครบ</span><b>${nf(complete)}</b></div>
+                <div class="mdb-donut-row"><span>ทั้งหมด</span><b>${nf(total)}</b></div>
+                <div class="mdb-donut-row"><span>ทีม Active</span><b>${nf(teams.total)}</b></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <section class="mdb-panel">
+        <div class="mdb-head"><div><h3>ชั่วโมงและภาระงาน</h3><p>ใช้ประกอบการตัดสินใจเรื่อง OT การกระจายงาน และการจัดกะ</p></div></div>
+        <div class="mdb-body">
+          <div class="mdb-hours">
+            <div class="mdb-hour"><span>ชั่วโมงสุทธิ</span><b>${nf(s.paid_work_hours,1)}</b></div>
+            <div class="mdb-hour"><span>ชั่วโมงปกติ</span><b>${nf(s.regular_hours,1)}</b></div>
+            <div class="mdb-hour"><span>OT</span><b>${nf(s.overtime_hours,1)}</b></div>
+            <div class="mdb-hour"><span>รอคอย</span><b>${nf(s.waiting_hours,1)}</b></div>
+            <div class="mdb-hour"><span>งานวันหยุด</span><b>${nf(s.offday_work_hours,1)}</b></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="mdb-grid-2">
+        <section class="mdb-panel">
+          <div class="mdb-head"><div><h3>อัตราลงเวลาครบ: รายวัน vs สะสม</h3><p>สูตรวันทำงานที่ต้องลงเวลาเท่านั้น • Late/Early ยังถือว่าครบหากมี IN+OUT</p></div></div>
+          <div class="mdb-body">${lineChart(daily)}</div>
+        </section>
+
+        <section class="mdb-panel">
+          <div class="mdb-head"><div><h3>กำลังพลตามพื้นที่</h3><p>รถยนต์ / มอเตอร์ไซค์ / สนับสนุน</p></div><span class="mdb-badge">ทีม ${nf(teams.total)}</span></div>
+          <div class="mdb-body">${workforceHtml(overview?.workforce)}</div>
+        </section>
+      </div>
+
+      <section class="mdb-panel">
+        <div class="mdb-head">
+          <div><h3>เปรียบเทียบอัตราลงเวลาครบตามหน่วยงาน</h3><p>เรียงสะสมจากต่ำไปสูงเพื่อช่วยจัดลำดับการแก้ไข</p></div>
+          <span class="mdb-badge">${nf(orgRows.length)} รายการ</span>
+        </div>
+        <div class="mdb-body" style="padding:0">${orgTable(orgRows)}</div>
+      </section>
+    `;
+  }
+
+  function renderError(error){
+    const root=ensureRoot();
+    if(!root)return;
+    const msg=humanError(error);
+    root.innerHTML=`
+      <div class="mdb-alert error">
+        <strong>Dashboard ดึงข้อมูลไม่สำเร็จ</strong><br>
+        ${esc(msg)}<br>
+        <small>Manager Dashboard ใช้ ta_get_manager_dashboard_v616eq โดยตรง และจะไม่ fallback ไป reader รุ่นเก่าเพื่อป้องกัน Scope ผิด</small>
+      </div>`;
+  }
+
+  async function loadDashboardV616bj({reloadFilters=false}={}){
+    if(!isManagerDashboardUi())return false;
+    if(runtime.loading)return false;
+
+    runtime.loading=true;
+    const seq=++runtime.requestSeq;
+    setLoading();
+
+    try{
+      await loadFilters(reloadFilters);
+
+      const args=rpcArgs();
+      const overview=await rpc('ta_get_manager_dashboard_v616eq',args);
+      if(seq!==runtime.requestSeq)return false;
+
+      runtime.lastPayload=overview;
+      render(overview,null,null);
+
+      // Optional enrichment: dashboard remains usable even when this RPC is slow/unavailable.
+      rpc('ta_get_manager_dashboard_area_trend_v616er',args)
+        .then(area=>{
+          if(seq!==runtime.requestSeq)return;
+          runtime.lastAreaTrend=area;
+          render(runtime.lastPayload,area,null);
+        })
+        .catch(err=>{
+          if(seq!==runtime.requestSeq)return;
+          console.warn('[TimeClock] FIX16BJ optional area trend unavailable:',err);
+          render(runtime.lastPayload,null,'กราฟเปรียบเทียบพื้นที่ใช้ข้อมูล Overview ชั่วคราว • Area Trend RPC ยังไม่ตอบกลับ');
+        });
+
+      return true;
+    }catch(error){
+      console.error('[TimeClock] FIX16BJ Dashboard load failed:',error);
+      renderError(error);
+      return false;
+    }finally{
+      runtime.loading=false;
+    }
+  }
+
+  function setPreset(textValue){
+    const c=controls();
+    if(!c.start||!c.end)return;
+    const today=new Date();
+    const iso=d=>[
+      d.getFullYear(),
+      String(d.getMonth()+1).padStart(2,'0'),
+      String(d.getDate()).padStart(2,'0')
+    ].join('-');
+
+    const t=normLabel(textValue);
+    let start=new Date(today), end=new Date(today);
+    if(t==='7 วัน'){
+      start.setDate(end.getDate()-6);
+    }else if(t==='15 วัน'){
+      start.setDate(end.getDate()-14);
+    }else if(t==='เดือนนี้'){
+      start=new Date(today.getFullYear(),today.getMonth(),1);
+      end=new Date(today.getFullYear(),today.getMonth()+1,0);
+    }else if(t==='วันนี้'){
+      start=new Date(today); end=new Date(today);
+    }else return false;
+
+    c.start.value=iso(start);
+    c.end.value=iso(end);
+    runtime.filters=[];
+    loadDashboardV616bj({reloadFilters:true});
+    return true;
+  }
+
+  function clearFilters(){
+    const c=controls();
+    [c.side,c.division,c.zone,c.org].forEach(x=>{if(x)x.value='';});
+    populateHierarchy('INIT');
+    loadDashboardV616bj();
+  }
+
+  function bindCapture(){
+    if(document.documentElement.dataset.managerDashboardFix16bjBound==='1')return;
+    document.documentElement.dataset.managerDashboardFix16bjBound='1';
+
+    document.addEventListener('click',e=>{
+      if(!isManagerDashboardUi())return;
+      const target=e.target.closest('button');
+      if(!target)return;
+
+      const label=normLabel(target.textContent);
+
+      if(target.id==='loadDashboardBtn' || label==='แสดงผล'){
+        if(!page()?.contains(target))return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        loadDashboardV616bj();
+        return;
+      }
+
+      if(target.id==='clearDashboardFilterBtn' || label==='ล้างตัวกรอง'){
+        if(!page()?.contains(target))return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        clearFilters();
+        return;
+      }
+
+      if(['วันนี้','7 วัน','15 วัน','เดือนนี้'].includes(label)){
+        if(!page()?.contains(target))return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setPreset(label);
+      }
+    },true);
+
+    document.addEventListener('change',e=>{
+      if(!isManagerDashboardUi())return;
+      const c=controls();
+      const target=e.target;
+      if(![c.side,c.division,c.zone,c.org].includes(target))return;
+
+      e.stopImmediatePropagation();
+
+      if(target===c.side) populateHierarchy('SIDE');
+      else if(target===c.division) populateHierarchy('DIVISION');
+      else if(target===c.zone) populateHierarchy('ZONE');
+
+      // Do not auto-fetch on every cascade step; final selection can use แสดงผล.
+    },true);
+  }
+
+  function init(){
+    if(!isManagerDashboardUi())return false;
+    bindCapture();
+    ensureRoot();
+
+    if(!runtime.initialized){
+      runtime.initialized=true;
+      loadDashboardV616bj({reloadFilters:true});
+    }
+    return true;
+  }
+
+  // Initial / late DOM mount / page re-entry.
+  const startInit=()=>{
+    let tries=0;
+    const timer=setInterval(()=>{
+      tries++;
+      const ok=init();
+      if(ok || tries>=20)clearInterval(timer);
+    },250);
+  };
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',startInit,{once:true});
+  }else{
+    startInit();
+  }
+
+  // Re-run when Dashboard navigation is selected.
+  document.addEventListener('click',e=>{
+    const nav=e.target.closest('[data-page="dashboard"]');
+    if(!nav)return;
+    setTimeout(()=>{
+      runtime.initialized=false;
+      init();
+    },350);
+  },true);
+
+  window.TimeClockManagerDashboardV616bj={
+    version:VERSION,
+    load:loadDashboardV616bj,
+    reloadFilters:()=>loadDashboardV616bj({reloadFilters:true}),
+    state:runtime
+  };
+
+  console.info('[TimeClock] Manager Dashboard FIX16BJ runtime restored',VERSION);
+})();
+
