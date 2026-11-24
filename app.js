@@ -4976,6 +4976,7 @@ window.tcIsDayShiftCode = value =>
       );
 
       renderAttendanceEmployeeDropdown();
+      syncAttendanceFilterFirstButtonV616br();
 
       if (loadAfter) {
         await loadAttendance();
@@ -7679,7 +7680,123 @@ window.tcIsDayShiftCode = value =>
       if(groups.some(g=>g.key===current))select.value=current;else select.value='';
     }
 
-    async function loadAttendance() {
+    // FIX16BR — HR Admin Attendance Detail Filter-first Load
+    // HR Admin must intentionally narrow Organization/Employee scope before
+    // the expensive attendance + calendar + team-context pipeline is called.
+    function attendanceRealRoleV616br() {
+      return String(
+        state.profile?._realRole
+        || state.profile?.role
+        || ""
+      ).trim().toUpperCase();
+    }
+
+    function attendanceHrFilterStateV616br() {
+      return {
+        zone: String(val("attZone") || "").trim(),
+        subArea: String(val("attSubArea") || "").trim(),
+        department: String(
+          selectedOrgIdV616M("attDepartment")
+          || val("attDepartment")
+          || ""
+        ).trim(),
+        selectedEmployees: Number(
+          attendanceEmployeeFilter?.selected?.size
+          || 0
+        )
+      };
+    }
+
+    function attendanceHrHasIntentionalFilterV616br() {
+      if (attendanceRealRoleV616br() !== "HR_ADMIN") return true;
+      const filter = attendanceHrFilterStateV616br();
+      return Boolean(
+        filter.zone
+        || filter.subArea
+        || filter.department
+        || filter.selectedEmployees > 0
+      );
+    }
+
+    function attendanceHrFilterFirstMessageV616br() {
+      return "เพื่อให้รายละเอียดเวลาทำงานโหลดเร็วขึ้น HR Admin ต้องเลือกพื้นที่ / พื้นที่ย่อย / หน่วยงาน หรือพนักงานก่อน แล้วกด ‘ค้นหา’";
+    }
+
+    function setAttendanceLoadStatusV616br(type,message) {
+      let box = $("attendanceLoadStatusV616BR");
+      const button = $("loadAttendanceBtn");
+      if (!box && button) {
+        const actions = button.closest(".attendance-filter-actions");
+        if (actions) {
+          box = document.createElement("div");
+          box.id = "attendanceLoadStatusV616BR";
+          box.setAttribute("role","status");
+          box.style.gridColumn = "1 / -1";
+          box.style.marginTop = "8px";
+          actions.insertAdjacentElement("afterend",box);
+        }
+      }
+      if (!box) return;
+      if (!message) {
+        box.className = "schedule-load-status hidden";
+        box.textContent = "";
+        return;
+      }
+      box.className = `schedule-load-status ${type || "info"}`;
+      box.textContent = message;
+    }
+
+    function syncAttendanceFilterFirstButtonV616br() {
+      const button = $("loadAttendanceBtn");
+      if (!button) return;
+      const blocked =
+        attendanceRealRoleV616br() === "HR_ADMIN"
+        && !attendanceHrHasIntentionalFilterV616br();
+      button.disabled = blocked;
+      button.title = blocked
+        ? attendanceHrFilterFirstMessageV616br()
+        : "ค้นหารายละเอียดเวลาทำงานตาม Filter ที่เลือก";
+      if (attendanceRealRoleV616br() === "HR_ADMIN") {
+        setAttendanceLoadStatusV616br(
+          "info",
+          blocked
+            ? attendanceHrFilterFirstMessageV616br()
+            : "เลือก Filter แล้ว • กด ‘ค้นหา’ เพื่อโหลดข้อมูลเฉพาะ Scope ที่เลือก"
+        );
+      } else {
+        setAttendanceLoadStatusV616br("","");
+      }
+    }
+
+    function prepareAttendanceFilterFirstV616br() {
+      ++attendanceLoadRequestId;
+      state.attendance = [];
+      state.attendanceServerFilter = null;
+      state.attendanceFullCalendarLimitedV61462 = false;
+      state.attendanceCalendarScopeLimitedV61462 = false;
+      renderAttendance();
+      setText("attendanceCount","รอเลือก Filter");
+      const body = $("attendanceBody");
+      if (body) {
+        body.innerHTML = `<tr><td colspan="28"><div class="empty-state"><strong>กรุณาเลือก Filter ก่อนค้นหา</strong><small>${safe(attendanceHrFilterFirstMessageV616br())}</small></div></td></tr>`;
+      }
+      syncAttendanceFilterFirstButtonV616br();
+    }
+
+    async function loadAttendance(eventOrOptions = null) {
+      if (!attendanceHrHasIntentionalFilterV616br()) {
+        prepareAttendanceFilterFirstV616br();
+        if (eventOrOptions?.type === "click") {
+          toast(attendanceHrFilterFirstMessageV616br(),"info");
+        }
+        return;
+      }
+
+      setAttendanceLoadStatusV616br(
+        "loading",
+        "กำลังโหลดรายละเอียดเวลาทำงานตาม Filter ที่เลือก..."
+      );
+
       const requestId =
         ++attendanceLoadRequestId;
 
@@ -7885,6 +8002,7 @@ window.tcIsDayShiftCode = value =>
           activeEmployeeCodes;
 
         renderAttendance();
+        setAttendanceLoadStatusV616br("","");
 
         document.dispatchEvent(
           new CustomEvent(
@@ -7928,6 +8046,9 @@ window.tcIsDayShiftCode = value =>
         }
       } finally {
         hideLoading();
+        if (attendanceRealRoleV616br() === "HR_ADMIN") {
+          syncAttendanceFilterFirstButtonV616br();
+        }
       }
     }
 
@@ -17837,7 +17958,16 @@ window.tcIsDayShiftCode = value =>
       document.body.classList.remove(
         "sidebar-mobile-open"
       );
-      if (page === "attendance" && !state.attendance.length) loadAttendance();
+      if (page === "attendance" && !state.attendance.length) {
+        if (
+          attendanceRealRoleV616br() === "HR_ADMIN"
+          && !attendanceHrHasIntentionalFilterV616br()
+        ) {
+          prepareAttendanceFilterFirstV616br();
+        } else {
+          loadAttendance();
+        }
+      }
       if (page === "shift-requests") window.TimeClockV680?.loadShiftRequests?.();
       if (page === "team-master") window.TimeClockTeamMasterV61523?.load?.();
       if (page === "schedule") {
@@ -17941,6 +18071,10 @@ window.tcIsDayShiftCode = value =>
           setVal("attSubArea","");
           setVal("attDepartment","");
           await loadAttendanceFilterOptions(true);
+          if (attendanceRealRoleV616br() === "HR_ADMIN") {
+            if (!attendanceHrHasIntentionalFilterV616br()) prepareAttendanceFilterFirstV616br();
+            else syncAttendanceFilterFirstButtonV616br();
+          }
         }
       );
       $("attSubArea")?.addEventListener(
@@ -17949,6 +18083,10 @@ window.tcIsDayShiftCode = value =>
           attendanceRejectOutOfScopeValueV616K("attSubArea","พื้นที่ย่อย");
           setVal("attDepartment","");
           await loadAttendanceFilterOptions(true);
+          if (attendanceRealRoleV616br() === "HR_ADMIN") {
+            if (!attendanceHrHasIntentionalFilterV616br()) prepareAttendanceFilterFirstV616br();
+            else syncAttendanceFilterFirstButtonV616br();
+          }
         }
       );
       $("attDepartment")?.addEventListener(
@@ -17958,6 +18096,10 @@ window.tcIsDayShiftCode = value =>
           invalidateAttendanceEmployeeOptions(
             true
           );
+          if (attendanceRealRoleV616br() === "HR_ADMIN") {
+            if (!attendanceHrHasIntentionalFilterV616br()) prepareAttendanceFilterFirstV616br();
+            else syncAttendanceFilterFirstButtonV616br();
+          }
         }
       );
       $("attTeamV616T")?.addEventListener("change",()=>loadAttendance());
@@ -18020,6 +18162,7 @@ window.tcIsDayShiftCode = value =>
           }
 
           renderAttendanceEmployeeDropdown();
+          syncAttendanceFilterFirstButtonV616br();
         }
       );
 
@@ -18047,6 +18190,7 @@ window.tcIsDayShiftCode = value =>
           });
 
           renderAttendanceEmployeeDropdown();
+          syncAttendanceFilterFirstButtonV616br();
         }
       );
 
@@ -18073,6 +18217,7 @@ window.tcIsDayShiftCode = value =>
           });
 
           renderAttendanceEmployeeDropdown();
+          syncAttendanceFilterFirstButtonV616br();
         }
       );
 
@@ -18081,6 +18226,10 @@ window.tcIsDayShiftCode = value =>
         () => {
           attendanceEmployeeFilter.selected.clear();
           renderAttendanceEmployeeDropdown();
+          if (attendanceRealRoleV616br() === "HR_ADMIN") {
+            if (!attendanceHrHasIntentionalFilterV616br()) prepareAttendanceFilterFirstV616br();
+            else syncAttendanceFilterFirstButtonV616br();
+          }
         }
       );
 
@@ -21536,6 +21685,18 @@ ${skippedSummary(compatibility.skipped)}
     }
   }
   document.addEventListener("click",e=>{
+    const actingOpen=e.target.closest("[data-admin-acting-open]");
+    if(actingOpen){
+      e.preventDefault();
+      e.stopPropagation();
+      const actingApi=window.TimeClockTemporaryAssignmentV61529F14B;
+      if(typeof actingApi?.openActingAdmin==="function"){
+        actingApi.openActingAdmin();
+      }else{
+        app()?.toast?.("โมดูล Acting Manager ยังไม่พร้อม กรุณารีเฟรชหน้าเว็บแล้วลองใหม่","warning");
+      }
+      return;
+    }
     const open=e.target.closest("[data-admin-open]");
     if(open)app()?.switchPage?.(open.dataset.adminOpen);
   });
@@ -21547,6 +21708,8 @@ ${skippedSummary(compatibility.skipped)}
   });
   window.TimeClockAdminCenter={refresh:refreshAdminCenter};
 })();
+
+console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
 
 ;
 
@@ -47143,4 +47306,5 @@ window.TimeClockDashboardRestoreV616BL = Object.freeze({
 });
 console.info("[TimeClock] Manager Dashboard full GL06 restored 6.15.29-FIX16BL");
 
-;(()=>{try{console.info('[TimeClock] FIX16BO-R1 Attendance/Schedule RPC batching active');}catch(_){}})();
+;(()=>{try{console.info('[TimeClock] FIX16BO-R1 Attendance/Schedule RPC batching active');
+    console.info('[TimeClock] FIX16BR Attendance Detail HR Admin filter-first active');}catch(_){}})();
