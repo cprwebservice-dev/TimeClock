@@ -7306,19 +7306,36 @@ window.tcIsDayShiftCode = value =>
       }
       if (!calendarEmpCodes.length) return [];
       try {
-        const rows = await window.TimeClockShiftAPI.getMonthlySchedule(
-          window.TimeClockApp || { state },
-          {
-            p_month: month,
-            p_start_date: startDate,
-            p_end_date: endDate,
-            p_zone: val('attZone') || null,
-            p_department: val('attDepartment') || null,
-            p_emp_codes: calendarEmpCodes,
-            p_schedule_statuses: null
-          }
-        );
-        const calendarRows = (rows || []).map(row => ({ ...row }));
+        // FIX16BO-R1: keep each canonical Schedule RPC comfortably below the
+        // Browser/PostgREST statement-timeout boundary. Batch by employee-day
+        // volume, not by returned-row paging, because the SQL function still
+        // computes its full employee set before PostgREST applies range().
+        const scheduleBatchSizeV616BOR1 = Math.max(10, Math.min(125, Math.floor(500 / dayCount)));
+        const scheduleBatchesV616BOR1 = [];
+        for (let i=0; i<calendarEmpCodes.length; i+=scheduleBatchSizeV616BOR1) {
+          scheduleBatchesV616BOR1.push(calendarEmpCodes.slice(i,i+scheduleBatchSizeV616BOR1));
+        }
+        const rows = [];
+        const scheduleConcurrencyV616BOR1 = 3;
+        for (let i=0; i<scheduleBatchesV616BOR1.length; i+=scheduleConcurrencyV616BOR1) {
+          const group = scheduleBatchesV616BOR1.slice(i,i+scheduleConcurrencyV616BOR1);
+          const groupRows = await Promise.all(
+            group.map(batch => window.TimeClockShiftAPI.getMonthlySchedule(
+              window.TimeClockApp || { state },
+              {
+                p_month: month,
+                p_start_date: startDate,
+                p_end_date: endDate,
+                p_zone: val('attZone') || null,
+                p_department: val('attDepartment') || null,
+                p_emp_codes: batch,
+                p_schedule_statuses: null
+              }
+            ))
+          );
+          groupRows.forEach(batchRows => rows.push(...(Array.isArray(batchRows)?batchRows:[])));
+        }
+        const calendarRows = rows.map(row => ({ ...row }));
         const period = { startDate, endDate, month: String(startDate).slice(0,7), viewMode:'ATTENDANCE', personDisplayMode:'MONTH' };
         await Promise.all([
           enrichScheduleWorkPlanMetaV6118(period, calendarRows),
@@ -7369,13 +7386,30 @@ window.tcIsDayShiftCode = value =>
       const empCodes=[...new Set(list.map(r=>String(r?.emp_code||'').trim()).filter(Boolean))];
       if(!list.length||!empCodes.length||!state.client||!startDate||!endDate)return list;
       try{
+        // FIX16BO-R1: 250 employees can mean 1,000+ employee-days and exceed
+        // PostgREST timeout. Keep each Team Context call near 200 employee-days.
+        const startObjV616BOR1=attendanceParseDate(startDate);
+        const endObjV616BOR1=attendanceParseDate(endDate);
+        const dayCountV616BOR1=startObjV616BOR1&&endObjV616BOR1
+          ?Math.max(1,Math.floor((endObjV616BOR1-startObjV616BOR1)/86400000)+1)
+          :31;
+        const teamBatchSizeV616BOR1=Math.max(10,Math.min(60,Math.floor(200/dayCountV616BOR1)));
+        const batchesV616BOR1=[];
+        for(let i=0;i<empCodes.length;i+=teamBatchSizeV616BOR1){
+          batchesV616BOR1.push(empCodes.slice(i,i+teamBatchSizeV616BOR1));
+        }
         const all=[];
-        for(let i=0;i<empCodes.length;i+=250){
-          const args={p_emp_codes:empCodes.slice(i,i+250),p_start_date:startDate,p_end_date:endDate};
-          let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
-          if(response.error&&window.TimeClockShiftAPI?.missingFunction?.(response.error))response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
-          if(response.error)throw response.error;
-          all.push(...(Array.isArray(response.data)?response.data:[]));
+        const teamConcurrencyV616BOR1=3;
+        for(let i=0;i<batchesV616BOR1.length;i+=teamConcurrencyV616BOR1){
+          const group=batchesV616BOR1.slice(i,i+teamConcurrencyV616BOR1);
+          const groupRows=await Promise.all(group.map(async batch=>{
+            const args={p_emp_codes:batch,p_start_date:startDate,p_end_date:endDate};
+            let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
+            if(response.error&&window.TimeClockShiftAPI?.missingFunction?.(response.error))response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
+            if(response.error)throw response.error;
+            return Array.isArray(response.data)?response.data:[];
+          }));
+          groupRows.forEach(batchRows=>all.push(...batchRows));
         }
         const map=new Map(all.map(x=>[`${String(x.emp_code||'').trim()}|${String(x.work_date||'').slice(0,10)}`,x]));
         list.forEach(row=>{
@@ -9239,17 +9273,30 @@ window.tcIsDayShiftCode = value =>
       scheduleTeamContextStateV61526.error=null;
       fillScheduleOperationalTeamOptionsV61526(list);
       try {
+        // FIX16BO-R1: size Team Context requests by employee-day volume.
+        const periodStartV616BOR1=new Date(`${period.startDate}T00:00:00`);
+        const periodEndV616BOR1=new Date(`${period.endDate}T00:00:00`);
+        const dayCountV616BOR1=Number.isFinite(periodStartV616BOR1.getTime())&&Number.isFinite(periodEndV616BOR1.getTime())
+          ?Math.max(1,Math.floor((periodEndV616BOR1-periodStartV616BOR1)/86400000)+1)
+          :31;
+        const chunkSize=Math.max(10,Math.min(60,Math.floor(200/dayCountV616BOR1)));
+        const chunksV616BOR1=[];
+        for (let i=0;i<empCodes.length;i+=chunkSize) chunksV616BOR1.push(empCodes.slice(i,i+chunkSize));
         const all=[];
-        const chunkSize=250;
-        for (let i=0;i<empCodes.length;i+=chunkSize) {
-          const chunk=empCodes.slice(i,i+chunkSize);
-          const args={p_emp_codes:chunk,p_start_date:period.startDate,p_end_date:period.endDate};
-          let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
-          if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
-            response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
-          }
-          if (response.error) throw response.error;
-          all.push(...(Array.isArray(response.data)?response.data:[]));
+        const concurrencyV616BOR1=3;
+        for (let i=0;i<chunksV616BOR1.length;i+=concurrencyV616BOR1) {
+          const group=chunksV616BOR1.slice(i,i+concurrencyV616BOR1);
+          const groupRows=await Promise.all(group.map(async chunk=>{
+            const args={p_emp_codes:chunk,p_start_date:period.startDate,p_end_date:period.endDate};
+            let response=await state.client.rpc('ta_get_schedule_working_team_context_v61529f14b',args);
+            if (response.error && window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
+              response=await state.client.rpc('ta_get_schedule_team_context_v61526',args);
+            }
+            if (response.error) throw response.error;
+            return Array.isArray(response.data)?response.data:[];
+          }));
+          if (scheduleTeamContextStateV61526.key!==key) return;
+          groupRows.forEach(batchRows=>all.push(...batchRows));
         }
         if (scheduleTeamContextStateV61526.key!==key) return;
         const map=new Map(all.map(x=>[`${String(x.emp_code||'').trim()}|${String(x.work_date||'').slice(0,10)}`,x]));
@@ -47095,3 +47142,5 @@ window.TimeClockDashboardRestoreV616BL = Object.freeze({
   backendChanges:false
 });
 console.info("[TimeClock] Manager Dashboard full GL06 restored 6.15.29-FIX16BL");
+
+;(()=>{try{console.info('[TimeClock] FIX16BO-R1 Attendance/Schedule RPC batching active');}catch(_){}})();
