@@ -4729,6 +4729,9 @@ window.tcIsDayShiftCode = value =>
       return String(el.value||'').trim();
     }
 
+    // FIX16BV: PostgREST caps table/RPC responses at 1,000 rows by default.
+    // Read canonical employee-code scope page-by-page so HR Admin / large
+    // Manager scopes are never silently truncated to the first 1,000 people.
     async function loadOrgEmployeeCodesV616M(orgId,startDate,endDate) {
       const id=String(orgId||'').trim() || null;
       const start=String(startDate||todayISO()).slice(0,10);
@@ -4736,17 +4739,40 @@ window.tcIsDayShiftCode = value =>
       const key=`EMP|${id || 'ALL_SCOPE'}|${start}|${end}`;
       const hit=orgScopeContractV616L.cache.get(key);
       if(hit && Date.now()-hit.loadedAt<=orgScopeContractV616L.ttl) return [...hit.codes];
-      const {data,error}=await state.client.rpc('ta_get_org_employee_codes_v616m',{p_org_id:id,p_start_date:start,p_end_date:end});
-      if(error) {
-        if(window.TimeClockShiftAPI?.missingFunction?.(error)) throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
-        throw error;
+
+      const pageSizeV616BV=1000;
+      const maxRowsV616BV=20000;
+      const allRowsV616BV=[];
+
+      for(let fromV616BV=0;fromV616BV<maxRowsV616BV;fromV616BV+=pageSizeV616BV) {
+        let requestV616BV=state.client.rpc('ta_get_org_employee_codes_v616m',{
+          p_org_id:id,p_start_date:start,p_end_date:end
+        });
+        if(typeof requestV616BV?.order==='function') {
+          requestV616BV=requestV616BV.order('emp_code',{ascending:true});
+        }
+        if(typeof requestV616BV?.range==='function') {
+          requestV616BV=requestV616BV.range(fromV616BV,fromV616BV+pageSizeV616BV-1);
+        }
+        const {data,error}=await requestV616BV;
+        if(error) {
+          if(window.TimeClockShiftAPI?.missingFunction?.(error)) throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
+          throw error;
+        }
+        const pageV616BV=Array.isArray(data)?data:[];
+        allRowsV616BV.push(...pageV616BV);
+        if(pageV616BV.length<pageSizeV616BV) break;
       }
-      const codes=[...new Set((data||[]).map(row=>String(row?.emp_code||'').trim()).filter(Boolean))];
+
+      const codes=[...new Set(allRowsV616BV.map(row=>String(row?.emp_code||'').trim()).filter(Boolean))];
       orgScopeContractV616L.cache.set(key,{loadedAt:Date.now(),codes});
       return [...codes];
     }
 
 
+    // FIX16BV: ta_get_scope_employee_options_v616o is ordered by emp_code in
+    // FIX16O, so range pagination is stable and safe. This removes the hidden
+    // 1,000-row PostgREST ceiling from Attendance/Schedule employee selectors.
     async function loadScopeEmployeeOptionsV616O(orgId,startDate,endDate) {
       const id=String(orgId||'').trim() || null;
       const start=String(startDate||todayISO()).slice(0,10);
@@ -4754,16 +4780,42 @@ window.tcIsDayShiftCode = value =>
       const key=`EMP_OPTIONS_V616O|${id || 'ALL_SCOPE'}|${start}|${end}`;
       const hit=orgScopeContractV616L.cache.get(key);
       if(hit && Date.now()-hit.loadedAt<=orgScopeContractV616L.ttl) return hit.rows.map(row=>({...row}));
-      const {data,error}=await state.client.rpc('ta_get_scope_employee_options_v616o',{
-        p_org_id:id,p_start_date:start,p_end_date:end
-      });
-      if(error) {
-        if(window.TimeClockShiftAPI?.missingFunction?.(error)) {
-          throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
+
+      const pageSizeV616BV=1000;
+      const maxRowsV616BV=20000;
+      const rawRowsV616BV=[];
+
+      for(let fromV616BV=0;fromV616BV<maxRowsV616BV;fromV616BV+=pageSizeV616BV) {
+        let requestV616BV=state.client.rpc('ta_get_scope_employee_options_v616o',{
+          p_org_id:id,p_start_date:start,p_end_date:end
+        });
+        if(typeof requestV616BV?.order==='function') {
+          requestV616BV=requestV616BV.order('emp_code',{ascending:true});
         }
-        throw error;
+        if(typeof requestV616BV?.range==='function') {
+          requestV616BV=requestV616BV.range(fromV616BV,fromV616BV+pageSizeV616BV-1);
+        }
+        const {data,error}=await requestV616BV;
+        if(error) {
+          if(window.TimeClockShiftAPI?.missingFunction?.(error)) {
+            throw new Error('ORG_SCOPE_SOURCE_OF_TRUTH_RPC_REQUIRED: กรุณารัน SQL FIX16O');
+          }
+          throw error;
+        }
+        const pageV616BV=Array.isArray(data)?data:[];
+        rawRowsV616BV.push(...pageV616BV);
+        if(pageV616BV.length<pageSizeV616BV) break;
       }
-      const rows=(data||[]).map(row=>({
+
+      const uniqueRowsV616BV=new Map();
+      rawRowsV616BV.forEach(row=>{
+        const empCodeV616BV=String(row?.emp_code||'').trim();
+        if(empCodeV616BV && !uniqueRowsV616BV.has(empCodeV616BV)) {
+          uniqueRowsV616BV.set(empCodeV616BV,row);
+        }
+      });
+
+      const rows=[...uniqueRowsV616BV.values()].map(row=>({
         ...row,
         emp_code:String(row?.emp_code||'').trim(),
         full_name:String(row?.full_name||'').trim(),
@@ -47336,3 +47388,5 @@ console.info("[TimeClock] Manager Dashboard full GL06 restored 6.15.29-FIX16BL")
 
 
 console.info("[TimeClock] FIX16BT-R1 User Account candidate search complete-results active");
+
+console.info("[TimeClock] FIX16BV Canonical employee scope pagination active");
