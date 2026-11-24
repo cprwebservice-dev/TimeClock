@@ -33394,12 +33394,26 @@ ${names}${extra}
         .toLowerCase();
 
     if(!key) {
-      box.classList.add(
+      box.innerHTML = `
+        <div class="account-employee-empty">
+          พร้อมค้นหา ${state.candidates.length.toLocaleString("th-TH")} คนที่มี Email • พิมพ์รหัส ชื่อ หรือ Email
+        </div>
+      `;
+      box.classList.remove(
         "hidden"
       );
-      box.innerHTML = "";
       return;
     }
+
+    const rankCandidate = employee => {
+      const empCode = String(employee.emp_code || "").toLowerCase();
+      const email = String(employee.email || "").toLowerCase();
+      const fullName = String(employee.full_name || "").toLowerCase();
+      if(empCode === key || email === key) return 0;
+      if(empCode.startsWith(key) || email.startsWith(key)) return 1;
+      if(fullName.startsWith(key)) return 2;
+      return 3;
+    };
 
     const matches =
       state.candidates
@@ -33408,11 +33422,21 @@ ${names}${extra}
             employee
           ).includes(key)
         )
-        .slice(0,30);
+        .sort((a,b) =>
+          rankCandidate(a) - rankCandidate(b)
+          || String(a.full_name || a.emp_code || "").localeCompare(
+            String(b.full_name || b.emp_code || ""),
+            "th"
+          )
+        );
 
     box.innerHTML =
       matches.length
-        ? matches
+        ? `
+          <div class="account-employee-empty">
+            พบ ${matches.length.toLocaleString("th-TH")} รายการ • แสดงครบทุกผลลัพธ์
+          </div>
+          ${matches
             .map(employee => {
               const exists =
                 Boolean(
@@ -33469,7 +33493,8 @@ ${names}${extra}
                 </button>
               `;
             })
-            .join("")
+            .join("")}
+        `
         : `
           <div class="account-employee-empty">
             ไม่พบพนักงานที่ตรงกับคำค้นหา
@@ -47308,3 +47333,6 @@ console.info("[TimeClock] Manager Dashboard full GL06 restored 6.15.29-FIX16BL")
 
 ;(()=>{try{console.info('[TimeClock] FIX16BO-R1 Attendance/Schedule RPC batching active');
     console.info('[TimeClock] FIX16BR Attendance Detail HR Admin filter-first active');}catch(_){}})();
+
+
+console.info("[TimeClock] FIX16BT-R1 User Account candidate search complete-results active");
