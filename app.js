@@ -16937,21 +16937,32 @@ window.tcIsDayShiftCode = value =>
       setVal("holDate", date || ""); setVal("holName", h.holiday_name || ""); setVal("holSource", h.source || "HR_ADMIN"); setVal("holNote", h.note || ""); $("holDate").disabled = !!date; openModal("holidayModal");
     }
 
-    async function saveHoliday() {
-      showLoading("กำลังบันทึกวันหยุดและประมวลผลใหม่...");
-      try {
-        const { error } = await state.client.rpc("ta_upsert_holiday", { p_holiday_date: val("holDate"), p_holiday_name: val("holName"), p_source: val("holSource") || "HR_ADMIN", p_note: val("holNote") || null, p_change_reason: "บันทึกจากหน้า HR Admin" });
-        if (error) throw error;
-        closeModal("holidayModal"); toast("บันทึกวันหยุดเรียบร้อย", "success"); await loadHolidays();
-      } catch (err) { toast(humanError(err), "error"); }
-      finally { hideLoading(); }
+    // HOLIDAY-R1: atomic master mutation + existing Attendance Job, no synchronous rebuild.
+    let holidayMutationBusyR1 = false;
+    function holidayMutationMessageR1(data, verb) {
+      if(data?.status === "QUEUED") return `${verb}วันหยุดแล้ว • สร้าง Job รอประมวลผล ${String(data.job_id||"").slice(0,8)} — ไปที่ ประมวลผล Attendance ใหม่ เพื่อดำเนินการต่อ`;
+      if(data?.status === "FUTURE_DATE") return `${verb}วันหยุดแล้ว • วันที่ในอนาคต`;
+      return `${verb}วันหยุดแล้ว • ตรวจสอบสถานะ Job`;
     }
-
+    async function saveHoliday() {
+      if(holidayMutationBusyR1)return;
+      holidayMutationBusyR1=true;
+      showLoading("กำลังบันทึกวันหยุดและสร้างคิว...");
+      try {
+        const { data,error } = await state.client.rpc("ta_upsert_holiday_queued_v616holidayr1", { p_holiday_date: val("holDate"), p_holiday_name: val("holName"), p_source: val("holSource") || "HR_ADMIN", p_note: val("holNote") || null, p_change_reason: "บันทึกจากหน้า HR Admin" });
+        if (error) throw error;
+        closeModal("holidayModal"); toast(holidayMutationMessageR1(data,"บันทึก"), "success"); await loadHolidays();
+      } catch (err) { toast(humanError(err), "error"); }
+      finally { holidayMutationBusyR1=false; hideLoading(); }
+    }
     async function deleteHoliday(date) {
-      if (!await window.tcConfirm(`ยืนยันการลบวันหยุด ${formatDate(date)}?`)) return;
-      showLoading("กำลังลบวันหยุดและประมวลผลใหม่...");
-      try { const { error } = await state.client.rpc("ta_delete_holiday", { p_holiday_date: date, p_change_reason: "ลบจากหน้า HR Admin" }); if (error) throw error; toast("ลบวันหยุดเรียบร้อย", "success"); await loadHolidays(); }
-      catch (err) { toast(humanError(err), "error"); } finally { hideLoading(); }
+      if(holidayMutationBusyR1)return;
+      if (!await window.tcConfirm(`ยืนยันการลบวันหยุด ${formatDate(date)}? ระบบจะสร้าง Job รอประมวลผล Attendance สำหรับวันที่ผ่านมา`)) return;
+      if(holidayMutationBusyR1)return;
+      holidayMutationBusyR1=true;
+      showLoading("กำลังลบวันหยุดและสร้างคิว...");
+      try { const { data,error } = await state.client.rpc("ta_delete_holiday_queued_v616holidayr1", { p_holiday_date: date, p_change_reason: "ลบจากหน้า HR Admin" }); if (error) throw error; toast(holidayMutationMessageR1(data,"ลบ"), "success"); await loadHolidays(); }
+      catch (err) { toast(humanError(err), "error"); } finally { holidayMutationBusyR1=false; hideLoading(); }
     }
 
     let managerScopeRows = [];
@@ -47390,3 +47401,5 @@ console.info("[TimeClock] Manager Dashboard full GL06 restored 6.15.29-FIX16BL")
 console.info("[TimeClock] FIX16BT-R1 User Account candidate search complete-results active");
 
 console.info("[TimeClock] FIX16BV Canonical employee scope pagination active");
+
+console.info("[TimeClock] HOLIDAY-R1 queued holiday mutations active");
