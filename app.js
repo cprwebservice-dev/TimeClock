@@ -22208,9 +22208,66 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
   }
   function mountProfile(){if($("profileMenu"))return;const p=document.createElement("div");p.id="profileMenu";p.className="profile-menu hidden";p.innerHTML=`<div class="profile-head"><div class="profile-avatar" id="profileAvatar">TC</div><div class="profile-meta"><strong id="profileName">-</strong><span id="profileEmail">-</span><span id="profileRole">VIEWER</span></div></div><hr><button class="profile-action" data-profile-go="smart-assistant">✦ ผู้ช่วยวิเคราะห์</button><button class="profile-action" data-profile-go="system-settings">⚙ System Settings</button><button class="profile-action" id="profileTheme">◐ เปลี่ยนธีม</button><button class="profile-action" id="profileLogout">↪ ออกจากระบบ</button>`;document.body.appendChild(p);qa("[data-profile-go]",p).forEach(b=>b.onclick=()=>{go(b.dataset.profileGo);p.classList.add("hidden")});$("profileTheme").onclick=()=>$("themeToggleBtn")?.click();$("profileLogout").onclick=()=>$("logoutBtn")?.click();}
   function enhanceTopbar(){const old=q(".global-search");old?.classList.add("hidden-important");const right=q(".topbar-right");if(!right||$("shellSearchBtn"))return;const b=document.createElement("button");b.id="shellSearchBtn";b.className="btn btn-light shell-search-trigger desktop-only";b.innerHTML="<span>⌕ ค้นหาทั้งระบบ</span><kbd>Ctrl K</kbd>";b.onclick=openCommand;right.insertBefore(b,right.firstChild);const roleEl=$("roleBadge");if(roleEl){roleEl.style.cursor="pointer";roleEl.title="เปิดโปรไฟล์ผู้ใช้งาน";roleEl.onclick=toggleProfile;}}
+  // FIX16 CONTACT-R1: static HRIS contact details; no RPC, credentials or role changes.
+  function mountContactV616(){
+    const search=$("shellSearchBtn"), shell=$("appShell");
+    if(!search||!shell||$("hrisContactBtnV616"))return;
+    const style=document.createElement("style");
+    style.id="hrisContactCssV616";
+    style.textContent=`
+      #hrisContactBtnV616{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;flex:0 0 auto;min-height:40px;padding:0 12px;font-size:13px;font-weight:600;}
+      #hrisContactBtnV616 svg{width:17px;height:17px;flex:none;}
+      #hrisContactDialogV616{--ct-bg:#fff;--ct-ink:#18334b;--ct-muted:#60798e;--ct-line:#d9e5ef;--ct-soft:#f3f7fa;--ct-accent:#236a9a;--ct-green:#087b53;box-sizing:border-box;position:fixed;inset:0;margin:auto;width:min(440px,calc(100vw - 28px));max-width:calc(100vw - 28px);max-height:calc(100dvh - 28px);overflow:auto;padding:0;border:1px solid var(--ct-line);border-radius:20px;background:var(--ct-bg);color:var(--ct-ink);box-shadow:0 20px 72px #0b203b40;font:inherit;text-align:left;}
+      #hrisContactDialogV616:not([open]){display:none;}
+      #hrisContactDialogV616::backdrop{background:rgba(13,31,48,.48);}
+      #hrisContactDialogV616 *{box-sizing:border-box;}
+      #hrisContactDialogV616 .ct-head{display:flex;align-items:flex-start;gap:12px;padding:21px 22px 16px;border-bottom:1px solid var(--ct-line);}
+      #hrisContactDialogV616 .ct-icon{width:44px;height:44px;border-radius:13px;background:var(--ct-soft);color:var(--ct-accent);display:grid;place-items:center;flex:none;}
+      #hrisContactDialogV616 h2{font-size:20px;line-height:1.35;margin:0 0 4px;color:var(--ct-ink);font-weight:700;}
+      #hrisContactDialogV616 .ct-sub{font-size:12px;color:var(--ct-muted);line-height:1.5;}
+      #hrisContactDialogV616 .ct-x{margin-left:auto;border:0;background:transparent;color:var(--ct-muted);font-size:25px;line-height:1;cursor:pointer;padding:5px 8px;}
+      #hrisContactDialogV616 .ct-body{padding:18px 22px 20px;display:grid;gap:12px;}
+      #hrisContactDialogV616 .ct-block{border:1px solid var(--ct-line);border-radius:12px;padding:12px 14px;background:var(--ct-soft);}
+      #hrisContactDialogV616 .ct-label{font-size:12px;font-weight:600;color:var(--ct-muted);margin-bottom:7px;}
+      #hrisContactDialogV616 .ct-phones{display:flex;flex-wrap:wrap;gap:8px;}
+      #hrisContactDialogV616 .ct-phone{color:var(--ct-accent);font-size:15px;font-weight:700;text-decoration:none;border:1px solid var(--ct-line);border-radius:8px;padding:7px 10px;background:var(--ct-bg);}
+      #hrisContactDialogV616 .ct-line{color:var(--ct-green);font-weight:700;}
+      #hrisContactDialogV616 .ct-copyrow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:7px;}
+      #hrisContactDialogV616 .ct-id{font-size:18px;font-weight:700;user-select:all;overflow-wrap:anywhere;}
+      #hrisContactDialogV616 .ct-copy{background:var(--ct-bg);border:1px solid var(--ct-line);color:var(--ct-accent);font:inherit;font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;cursor:pointer;}
+      #hrisContactDialogV616 .ct-feedback{font-size:12px;color:var(--ct-muted);min-height:18px;}
+      #hrisContactDialogV616 .ct-foot{padding:0 22px 20px;display:flex;justify-content:flex-end;}
+      #hrisContactDialogV616 .ct-close{background:#276f9f;border:0;border-radius:9px;padding:9px 22px;color:#fff;font:inherit;font-weight:600;cursor:pointer;}
+      #hrisContactDialogV616 :focus-visible,#hrisContactBtnV616:focus-visible{outline:2px solid #4e9bd2;outline-offset:3px;}
+      body:is(.dark,.theme-dark,.dark-mode) #hrisContactDialogV616,html[data-theme="dark"] #hrisContactDialogV616{--ct-bg:#172536;--ct-ink:#e7f1fa;--ct-muted:#afc0d2;--ct-line:#3b5066;--ct-soft:#203247;--ct-accent:#98d0ff;--ct-green:#7cdec0;}
+      @media(max-width:700px){#hrisContactBtnV616{padding:0 9px;min-width:36px;}#hrisContactBtnV616 .ct-btn-label{display:none;}}
+    `;
+    document.head.appendChild(style);
+    const icon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 14v-3a9 9 0 0 1 18 0v3M3 13a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm13 0a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2zm5 3c0 4-3 5-7 5h-2"/></svg>';
+    const button=document.createElement("button");
+    button.id="hrisContactBtnV616";button.type="button";button.className="btn btn-light";
+    button.setAttribute("aria-label","ติดต่อเรา");button.setAttribute("aria-haspopup","dialog");button.title="ติดต่อเรา – สอบถามการใช้งาน";
+    button.innerHTML=icon+'<span class="ct-btn-label">ติดต่อเรา</span>';
+    search.insertAdjacentElement("afterend",button);
+    const dialog=document.createElement("dialog");dialog.id="hrisContactDialogV616";
+    dialog.setAttribute("aria-labelledby","hrisContactTitleV616");
+    dialog.innerHTML=`<div class="ct-head"><div class="ct-icon" aria-hidden="true">${icon.replace('<svg ','<svg width="24" height="24" ')}</div><div><h2 id="hrisContactTitleV616">สอบถามการใช้งาน</h2><div class="ct-sub">ฝ่ายบริหารระบบข้อมูลบุคคล (HRIS)</div></div><button type="button" class="ct-x" aria-label="ปิด" autofocus>×</button></div><div class="ct-body"><div class="ct-block"><div class="ct-label">โทร.</div><div class="ct-phones"><a class="ct-phone" href="tel:0909904704">090-990-4704</a><a class="ct-phone" href="tel:0830971884">083-097-1884</a></div></div><div class="ct-block"><div class="ct-label ct-line">LINE OA</div><div class="ct-sub">เพิ่มเพื่อนค้นหา ID :</div><div class="ct-copyrow"><span class="ct-id">@884yanzf</span><button type="button" class="ct-copy">คัดลอก ID</button></div><div class="ct-feedback" role="status" aria-live="polite"></div></div></div><div class="ct-foot"><button type="button" class="ct-close">ปิด</button></div>`;
+    shell.appendChild(dialog);
+    const feedback=q(".ct-feedback",dialog);
+    button.addEventListener("click",()=>{if(shell.classList.contains("hidden")||dialog.open)return;feedback.textContent="";dialog.showModal();});
+    qa(".ct-x,.ct-close",dialog).forEach(b=>b.addEventListener("click",()=>dialog.close()));
+    dialog.addEventListener("click",e=>{if(e.target!==dialog)return;const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();});
+    dialog.addEventListener("close",()=>{if(!shell.classList.contains("hidden"))button.focus({preventScroll:true});});
+    dialog.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();e.stopPropagation();}});
+    q(".ct-copy",dialog).addEventListener("click",async()=>{
+      try{await navigator.clipboard.writeText("@884yanzf");feedback.textContent="คัดลอก LINE ID แล้ว";}
+      catch(_){const selection=window.getSelection(),range=document.createRange();range.selectNodeContents(q(".ct-id",dialog));selection.removeAllRanges();selection.addRange(range);feedback.textContent="เลือก ID แล้ว กรุณากด Ctrl+C หรือคัดลอกด้วยตนเอง";}
+    });
+    new MutationObserver(()=>{if(shell.classList.contains("hidden")&&dialog.open)dialog.close();}).observe(shell,{attributes:true,attributeFilter:["class"]});
+  }
   function toggleProfile(){const p=$("profileMenu");if(!p)return;p.classList.toggle("hidden");$("profileName").textContent=name();$("profileEmail").textContent=email();$("profileRole").textContent=role();$("profileAvatar").textContent=(name().slice(0,2)||"TC").toUpperCase();}
   function bind(){document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openCommand();}if(e.key==="Escape"){closeCommand();$("notificationDrawer")?.classList.remove("open");$("profileMenu")?.classList.add("hidden");}});$("notificationBtn")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();$("notificationDrawer")?.classList.toggle("open");window.TimeClockFunctional?.loadNotifications?.();},true);document.addEventListener("click",e=>{if(!e.target.closest("#profileMenu")&&!e.target.closest("#roleBadge"))$("profileMenu")?.classList.add("hidden");});}
-  function init(){mountStatus();mountCommand();mountDrawer();mountProfile();enhanceTopbar();bind();document.documentElement.dataset.platformVersion=VERSION;}
+  function init(){mountStatus();mountCommand();mountDrawer();mountProfile();enhanceTopbar();mountContactV616();bind();document.documentElement.dataset.platformVersion=VERSION;}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
 
@@ -47715,3 +47772,5 @@ console.info("[TimeClock] FIX16-TTM-NAV-R1 profile-ready menu lifecycle active")
 console.info("[TimeClock] FIX16-EP-UI-R1 compact Employee Portal admin grid active");
 
 ;console.info("[TimeClock] FIX16 LOGIN-R1 production connection locked");
+
+console.info("[TimeClock] FIX16 CONTACT-R1 HRIS contact dialog active");
