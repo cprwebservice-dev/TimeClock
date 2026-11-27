@@ -3469,7 +3469,7 @@ window.tcIsDayShiftCode = value =>
       ["dashDepartment","scheduleDepartment","reportDepartment"].forEach(id =>
         fillScopedDepartmentSelectV616L(id, departmentOptionsV616L, "ทุกหน่วยงานใน Scope")
       );
-      await loadManagerDashboardFiltersV616EQ(true);
+      try{await loadManagerDashboardFiltersV616EQ(true);}catch(e){console.warn('[DASH-LOAD-R1 initial dashboard filters]',e?.message||e);}
       fillShiftSelect();
       populateSharedEmployeeMasterList();
     }
@@ -5808,10 +5808,12 @@ window.tcIsDayShiftCode = value =>
     async function loadManagerDashboardFiltersV616EQ(preserve = true) {
       const client = state.client;
       if (!client || !$("dashSide") || !$("dashDivision")) return false;
+      const owner=dashboardSessionR1(),start=val('dashStart'),end=val('dashEnd');
+      const seq=state.dashboardFilterSeqR1=(state.dashboardFilterSeqR1||0)+1;
       const response = await client.rpc("ta_get_manager_dashboard_filters_v616eq",{
-        p_start_date: val("dashStart"),
-        p_end_date: val("dashEnd")
+        p_start_date:start,p_end_date:end
       });
+      if(!dashboardSameSessionR1(owner)||seq!==state.dashboardFilterSeqR1||start!==val('dashStart')||end!==val('dashEnd'))throw new Error('DASHBOARD_FILTER_CHANGED');
       if (response.error) {
         if (window.TimeClockShiftAPI?.missingFunction?.(response.error)) {
           dashboardManagerV616EQ.filtersAvailable = false;
@@ -6293,7 +6295,9 @@ window.tcIsDayShiftCode = value =>
       if(scroll)scroll.scrollLeft=0;
     }
 
-    async function loadDashboardAttendanceHeatmapV616FG() {
+    async function loadDashboardAttendanceHeatmapV616FG(internal=false) {
+      if(state.dashboardLoadingR1&&!internal){dashboardStatusR1('กำลังโหลด Dashboard • กรุณากดโหลดอีกครั้งหลังเสร็จหากเปลี่ยนตัวกรอง');return;}
+      const owner=dashboardSessionR1(),key=dashboardKeyR1();
       const host=$('dashboardHeatmapGridV616FG'),modeInput=$('dashboardHeatmapModeV616FG'),status=$('dashboardHeatmapStatusV616FG');
       if(!host||!state.client)return;
       const mode=['AREA','SUB_AREA','ORG'].includes(modeInput?.value)?modeInput.value:'AREA';
@@ -6307,13 +6311,13 @@ window.tcIsDayShiftCode = value =>
       if(status)status.textContent=`กำลังโหลดระดับ ${mode==='ORG'?'หน่วยงาน':mode==='SUB_AREA'?'Sub Area':'Area'}…`;
       try{
         const {data,error}=await state.client.rpc('ta_get_manager_dashboard_heatmap_v616fg',args);
-        if(req!==state.dashboardHeatmapRequestV616FG)return;
+        if(!dashboardSameSessionR1(owner)||key!==dashboardKeyR1()||req!==state.dashboardHeatmapRequestV616FG)return;
         if(error)throw error;
         const payload=data||{dates:[],groups:[]};
         cache.set(fingerprint,payload);
         renderDashboardAttendanceHeatmapV616FG(payload);
       }catch(error){
-        if(req!==state.dashboardHeatmapRequestV616FG)return;
+        if(!dashboardSameSessionR1(owner)||key!==dashboardKeyR1()||req!==state.dashboardHeatmapRequestV616FG)return;
         renderDashboardAttendanceHeatmapV616FG({_error:window.TimeClockShiftAPI?.missingFunction?.(error)
           ?'กรุณารัน SQL FIX16FG เพื่อเปิด Heatmap ตาม Area / Sub Area / หน่วยงาน'
           :`โหลด Heatmap ไม่สำเร็จ: ${humanError(error)}`});
@@ -6566,11 +6570,14 @@ window.tcIsDayShiftCode = value =>
       const requestId=state.dashboardPendingRequestSeqV616FD=(state.dashboardPendingRequestSeqV616FD||0)+1;
       state.dashboardPendingRequestsV616FD={key,status:'loading'};
       const common={p_start_date:val('dashStart'),p_end_date:val('dashEnd'),p_search:null,p_limit:1000};
-      Promise.all([
-        state.client.rpc('ta_get_shift_change_requests_v680',{...common,p_statuses:['PENDING']}),
-        state.client.rpc('ta_get_employee_requests_v61481',{...common,p_statuses:['PENDING','IN_REVIEW'],p_request_types:null})
-      ]).then(results=>{
-        if(requestId!==state.dashboardPendingRequestSeqV616FD)return;
+      const owner=dashboardSessionR1(),filter=dashboardKeyR1();
+      return (async()=>{
+        const a=await state.client.rpc('ta_get_shift_change_requests_v680',{...common,p_statuses:['PENDING']});
+        if(!dashboardSameSessionR1(owner)||filter!==dashboardKeyR1())throw new Error('DASHBOARD_STALE_REQUEST');
+        const b=await state.client.rpc('ta_get_employee_requests_v61481',{...common,p_statuses:['PENDING','IN_REVIEW'],p_request_types:null});
+        return [a,b];
+      })().then(results=>{
+        if(!dashboardSameSessionR1(owner)||filter!==dashboardKeyR1()||requestId!==state.dashboardPendingRequestSeqV616FD)return;
         if(results.some(r=>r?.error))throw new Error('REQUEST_QUEUE_READ_FAILED');
         const a=Array.isArray(results[0]?.data)?results[0].data:[];
         const b=Array.isArray(results[1]?.data)?results[1].data:[];
@@ -6578,7 +6585,7 @@ window.tcIsDayShiftCode = value =>
         state.dashboardPendingRequestsV616FD={key,status:'ready',count:pendingRows.length,truncated:a.length>=1000||b.length>=1000};
         if(state.managerDashboardV616EQ?._filterKeyV616EQ===key)renderDashboardExecutiveKpisV616FD(state.managerDashboardV616EQ);
       }).catch(()=>{
-        if(requestId!==state.dashboardPendingRequestSeqV616FD)return;
+        if(!dashboardSameSessionR1(owner)||filter!==dashboardKeyR1()||requestId!==state.dashboardPendingRequestSeqV616FD)return;
         state.dashboardPendingRequestsV616FD={key,status:'error'};
         if(state.managerDashboardV616EQ?._filterKeyV616EQ===key)renderDashboardExecutiveKpisV616FD(state.managerDashboardV616EQ);
       });
@@ -6649,12 +6656,42 @@ window.tcIsDayShiftCode = value =>
       if ($("dashboardManagerVersionV616EQ")) $("dashboardManagerVersionV616EQ").textContent=String(payload?.version||"V6.15.29 FIX16EQ");
     }
 
-    async function loadDashboard() {
+    // FIX16 DASH-LOAD-R1: single-flight overview, no speculative parallel dashboard reads.
+    let dashboardFlightR1=null;
+    function dashboardSessionR1(){return [state.client,state.user?.id||'',state.profile?.role||''];}
+    function dashboardSameSessionR1(owner){const now=dashboardSessionR1();return now.every((v,i)=>v===owner[i]);}
+    function dashboardKeyR1(){return JSON.stringify(dashboardManagerArgsV616EQ());}
+    function dashboardStatusR1(message){
+      const btn=$('loadDashboardBtn');if(!btn)return;
+      let el=$('dashboardLoadStatusR1');
+      if(!el){el=document.createElement('div');el.id='dashboardLoadStatusR1';el.setAttribute('role','status');el.style.cssText='font-size:12px;line-height:1.6;color:var(--muted,#64748b);margin:6px 0;white-space:normal';btn.parentElement.insertAdjacentElement('afterend',el);}
+      el.textContent=message;
+    }
+    function loadDashboard(){
+      if(dashboardFlightR1)return dashboardFlightR1;
+      const owner=dashboardSessionR1();
+      const btn=$('loadDashboardBtn');if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true');}
+      const mode=$('dashboardHeatmapModeV616FG'),modeWasDisabled=mode?.disabled;if(mode)mode.disabled=true;
+      state.dashboardLoadingR1=true;state.dashboardLoadSuccessR1=false;
+      dashboardFlightR1=Promise.resolve().then(()=>loadDashboardCoreR1(owner)).finally(()=>{
+        state.dashboardLoadingR1=false;dashboardFlightR1=null;
+        if(btn){btn.disabled=false;btn.removeAttribute('aria-busy');}
+        if(mode)mode.disabled=modeWasDisabled;
+        if(state.dashboardLoadSuccessR1&&dashboardSameSessionR1(owner)&&state.currentPage==='dashboard')document.dispatchEvent(new CustomEvent('timeclock:dashboard-load-settled-r1'));
+      });
+      return dashboardFlightR1;
+    }
+    async function loadDashboardCoreR1(owner) {
+      let mainKey=null,overlayVisible=true;
+      const isCurrent=()=>dashboardSameSessionR1(owner)&&(!mainKey||mainKey===dashboardKeyR1());
+      dashboardStatusR1('กำลังโหลดข้อมูลหลัก… ตัวเลขเดิมยังไม่ใช่ผลค้นหาล่าสุด');
       state.dashboardHeatmapRequestV616FG=(state.dashboardHeatmapRequestV616FG||0)+1;
       state.dashboardHeatmapCacheV616FG=new Map();
       showLoading("กำลังโหลด Dashboard...");
       try {
         const filterReadyV616EQ = await loadManagerDashboardFiltersV616EQ(true);
+        if(!isCurrent())return;
+        mainKey=dashboardKeyR1();
 
         if (filterReadyV616EQ) {
           const managerResponseV616EQ = await state.client.rpc(
@@ -6662,28 +6699,35 @@ window.tcIsDayShiftCode = value =>
             dashboardManagerArgsV616EQ()
           );
 
+          if(!isCurrent()){dashboardStatusR1('ตัวกรองเปลี่ยนแล้ว • กดโหลด Dashboard อีกครั้ง');return;}
           if (!managerResponseV616EQ.error) {
-            const payloadV616EQ = managerResponseV616EQ.data || {};
+            if(!managerResponseV616EQ.data || typeof managerResponseV616EQ.data!=='object' || Array.isArray(managerResponseV616EQ.data) || !managerResponseV616EQ.data.summary) throw new Error('DASHBOARD_INVALID_PAYLOAD');
+            const payloadV616EQ = managerResponseV616EQ.data;
             payloadV616EQ._filterKeyV616EQ = [
               val("dashStart"),val("dashEnd"),val("dashSide")||"",val("dashDivision")||"",
               val("dashZone")||"",selectedOrgIdV616M("dashDepartment")||""
             ].join("|");
             state.managerDashboardV616EQ = payloadV616EQ;
             state.dashboard = payloadV616EQ.summary || {};
+            state.dashboardPendingRequestsV616FD={key:payloadV616EQ._filterKeyV616EQ,status:'loading'};
+            state.managerDashboardAreaV616ER=null;
+            for(const id of ['dashboardAreaTrendGridV616ER','dashboardAreaTrendCompareV616EV','dashboardHeatmapGridV616FG']){const h=$(id);if(h)h.textContent='รอโหลดข้อมูลตามตัวกรอง';}
+            for(const id of ['dashboardAreaTrendStatusV616ER','dashboardAreaTrendCompareStatusV616FB','dashboardHeatmapStatusV616FG']){const h=$(id);if(h)h.textContent='รอโหลด';}
             renderDashboard(state.dashboard);
             state.dashboardOrgManagerMapV616FB = new Map();
             state.dashboardOrgManagerLoadingV616FB = true;
             if($("dashboardOrgManagerStatusV616FB")) $("dashboardOrgManagerStatusV616FB").textContent='กำลังโหลด Manager ตาม Scope…';
             renderManagerDashboardV616EQ(payloadV616EQ);
-            loadDashboardPendingRequestsV616FD(payloadV616EQ);
+            hideLoading();overlayVisible=false;
+            dashboardStatusR1('โหลดข้อมูลหลักแล้ว • กำลังโหลดส่วนเสริม');
             // FIX16FB: fetch only current authorized Organization managers in one scoped READ RPC.
             // A separate request keeps the original dashboard and charts responsive.
             state.dashboardOrgManagerRequestV616FB=(state.dashboardOrgManagerRequestV616FB||0)+1;
             const managerRequestIdV616FB=state.dashboardOrgManagerRequestV616FB;
-            state.client.rpc('ta_get_dashboard_org_managers_v616fb', {
+            await state.client.rpc('ta_get_dashboard_org_managers_v616fb', {
               p_start_date:val('dashStart'), p_end_date:val('dashEnd')
             }).then(({data,error})=>{
-              if(managerRequestIdV616FB!==state.dashboardOrgManagerRequestV616FB) return;
+              if(!isCurrent()||managerRequestIdV616FB!==state.dashboardOrgManagerRequestV616FB) return;
               state.dashboardOrgManagerLoadingV616FB=false;
               if(error){
                 state.dashboardOrgManagerMapV616FB=new Map();
@@ -6699,12 +6743,13 @@ window.tcIsDayShiftCode = value =>
               }
               renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison||[]);
             }).catch(error=>{
-              if(managerRequestIdV616FB!==state.dashboardOrgManagerRequestV616FB) return;
+              if(!isCurrent()||managerRequestIdV616FB!==state.dashboardOrgManagerRequestV616FB) return;
               state.dashboardOrgManagerLoadingV616FB=false;
               if($("dashboardOrgManagerStatusV616FB")) $("dashboardOrgManagerStatusV616FB").textContent='ยังโหลด Manager ไม่สำเร็จ • ตรวจ SQL FIX16FB';
               console.warn('Dashboard Manager column could not load',error);
               renderDashboardOrgComparisonV616ER(state.managerDashboardV616EQ?.org_comparison||[]);
             });
+            if(!isCurrent()){dashboardStatusR1('ตัวกรองเปลี่ยนแล้ว • กดโหลด Dashboard อีกครั้ง');return;}
             state.managerDashboardAreaV616ER=null;
             const areaHostV616ER=$("dashboardAreaTrendGridV616ER");
             if(areaHostV616ER) areaHostV616ER.innerHTML='<div class="dashboard-manager-empty-v616eq">กำลังโหลดแนวโน้มราย Area…</div>';
@@ -6714,21 +6759,27 @@ window.tcIsDayShiftCode = value =>
             const requestIdV616ER=state.managerDashboardAreaReqV616ER;
             const areaArgsV616ER=dashboardManagerArgsV616EQ();
             // Keep primary dashboard responsive while the optional area trend loads.
-            state.client.rpc("ta_get_manager_dashboard_area_trend_v616er",areaArgsV616ER).then(({data,error})=>{
-              if(requestIdV616ER!==state.managerDashboardAreaReqV616ER) return;
+            await state.client.rpc("ta_get_manager_dashboard_area_trend_v616er",areaArgsV616ER).then(({data,error})=>{
+              if(!isCurrent()||requestIdV616ER!==state.managerDashboardAreaReqV616ER) return;
               state.managerDashboardAreaV616ER=error?{
                 _error:window.TimeClockShiftAPI?.missingFunction?.(error)
                   ? 'กรุณารัน SQL FIX16ER เพื่อเปิดกราฟราย Area'
                   : `โหลดกราฟราย Area ไม่สำเร็จ: ${humanError(error)}`
               }:(data||{area_groups:[]});
               renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
-              loadDashboardAttendanceHeatmapV616FG();
+
             }).catch(error=>{
-              if(requestIdV616ER!==state.managerDashboardAreaReqV616ER) return;
+              if(!isCurrent()||requestIdV616ER!==state.managerDashboardAreaReqV616ER) return;
               state.managerDashboardAreaV616ER={_error:`โหลดข้อมูลราย Area ไม่สำเร็จ: ${humanError(error)}`};
               renderDashboardAreaTrendV616ER(state.managerDashboardAreaV616ER);
-              loadDashboardAttendanceHeatmapV616FG();
+
             });
+            if(!isCurrent()){dashboardStatusR1('ตัวกรองเปลี่ยนแล้ว • กดโหลด Dashboard อีกครั้ง');return;}
+            await loadDashboardAttendanceHeatmapV616FG(true);
+            if(!isCurrent()){dashboardStatusR1('ตัวกรองเปลี่ยนแล้ว • กดโหลด Dashboard อีกครั้ง');return;}
+            await loadDashboardPendingRequestsV616FD(payloadV616EQ);
+            if(isCurrent()){state.dashboardLoadSuccessR1=true;dashboardStatusR1('ข้อมูลหลักอัปเดต '+new Date().toLocaleTimeString('th-TH')+' • กราฟที่โหลดไม่สำเร็จจะแจ้งในแต่ละส่วน');}
+            else dashboardStatusR1('ตัวกรองเปลี่ยนแล้ว • กดโหลด Dashboard อีกครั้ง');
             return;
           }
 
@@ -6768,6 +6819,7 @@ window.tcIsDayShiftCode = value =>
           response = await state.client.rpc("ta_get_dashboard_overview", args);
         }
         if (response.error) throw response.error;
+        if(!isCurrent())return;
         const data = response.data;
         state.dashboard = Array.isArray(data) ? data[0] : data;
         state.managerDashboardV616EQ = null;
@@ -6778,8 +6830,9 @@ window.tcIsDayShiftCode = value =>
           version:"ต้องรัน SQL FIX16EQ",
           workforce:[],teams:{},daily:[],org_comparison:[]
         });
-      } catch (err) { toast(humanError(err), "error"); }
-      finally { hideLoading(); }
+        dashboardStatusR1('ข้อมูลภาพรวมแบบเดิม • ตรวจสอบ SQL FIX16EQ');
+      } catch (err) { if(dashboardSameSessionR1(owner)){dashboardStatusR1('โหลด Dashboard ไม่สำเร็จ • ข้อมูลเดิมไม่ใช่ผลล่าสุด • '+humanError(err));console.warn('[FIX16 DASH-LOAD-R1]',err?.code||'',err?.message||err);toast(humanError(err), "error");} }
+      finally { if(overlayVisible)hideLoading(); }
     }
 
     function renderDashboard(d) {
@@ -18195,7 +18248,8 @@ window.tcIsDayShiftCode = value =>
       });
       $("loadDashboardBtn").addEventListener("click", loadDashboard);
       ["dashStart","dashEnd"].forEach(id => $(id)?.addEventListener("change", async () => {
-        await loadManagerDashboardFiltersV616EQ(true);
+        if(state.dashboardLoadingR1){dashboardStatusR1('ตัวกรองเปลี่ยนแล้ว • กดโหลดอีกครั้งเมื่อรอบปัจจุบันเสร็จ');return;}
+        try{await loadManagerDashboardFiltersV616EQ(true);}catch(e){dashboardStatusR1('โหลดตัวกรองไม่สำเร็จ • '+humanError(e));}
       }));
       $("dashSide")?.addEventListener("change", () => dashboardCascadeFiltersV616EQ("side",false));
       $("dashDivision")?.addEventListener("change", () => dashboardCascadeFiltersV616EQ("division",false));
@@ -19423,7 +19477,7 @@ window.tcIsDayShiftCode = value =>
       if ($('dashDivision')) $('dashDivision').value = '';
       if ($('dashZone')) $('dashZone').value = '';
       if ($('dashDepartment')) $('dashDepartment').value = '';
-      loadManagerDashboardFiltersV616EQ(false).finally(()=>$('loadDashboardBtn')?.click());
+      loadDashboard();
     });
     $('globalSearch')?.addEventListener('keydown', e => {
       if (e.key !== 'Enter') return;
@@ -47005,7 +47059,7 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
     const managerPayload=window.TimeClockApp?.state?.managerDashboardV616EQ;
     const managerKey=[start,end,$('dashSide')?.value||'',$('dashDivision')?.value||'',zone,window.TimeClockApp?.selectedOrgIdV616M?.('dashDepartment')||''].join('|');
     const managerDaily=(managerPayload?._filterKeyV616EQ===managerKey && Array.isArray(managerPayload?.daily))?managerPayload.daily:[];
-    if(managerDaily.length){
+    if(managerPayload?._filterKeyV616EQ===managerKey && Array.isArray(managerPayload?.daily)){
       const rows=managerDaily.map(r=>({
         date:String(r.date||''),
         total:Number(r.total||0),
@@ -47030,26 +47084,8 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
       return;
     }
 
-    let dates=dateList(start,end); if(!dates.length)return;
-    let displayStart=start;
-    if(dates.length>31){dates=dates.slice(-31);displayStart=dates[0];}
-    const requestKey=[start,end,displayStart,$('dashSide')?.value||'',$('dashDivision')?.value||'',zone,department].join('|');
-    if(!force && $('dashboardViewDailyV616H')?.dataset.loadedKey===requestKey) return;
-    const token=++loadToken;
-    $('dashboardDailyLoadStateV616H') && ($('dashboardDailyLoadStateV616H').textContent='กำลังโหลดข้อมูลรายวัน…');
-    $('dashboardDailyRateChartV616H') && ($('dashboardDailyRateChartV616H').innerHTML='<div class="dashboard-daily-loading-v616h"><i></i><span>กำลังสรุปข้อมูลรายวัน</span></div>');
-    try{
-      const rows=await mapPool(dates,4,async date=>seriesRow(date,await rpcOverview(date,zone,department)));
-      if(token!==loadToken)return;
-      $('dashboardViewDailyV616H').dataset.loadedKey=requestKey;
-      renderDaily(rows,start,end,displayStart);
-    }catch(err){
-      console.error('FIX16H daily dashboard:',err);
-      if(token!==loadToken)return;
-      $('dashboardDailyLoadStateV616H') && ($('dashboardDailyLoadStateV616H').textContent='โหลดไม่สำเร็จ');
-      $('dashboardDailyRateChartV616H') && ($('dashboardDailyRateChartV616H').innerHTML='<div class="dashboard-daily-empty-v616h">ไม่สามารถโหลดข้อมูลรายวันได้</div>');
-      window.TimeClockApp?.toast?.(window.TimeClockApp?.humanError?.(err)||err?.message||'โหลด Dashboard รายวันไม่สำเร็จ','error');
-    }
+    // No per-day RPC fan-out on missing/mismatched canonical data.
+    const status=$('dashboardDailyLoadStateV616H');if(status)status.textContent='รอข้อมูล Dashboard ตามตัวกรอง • กดโหลด Dashboard';
   }
 
   function bind(){
@@ -47327,7 +47363,7 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
   const value = id => $(id)?.value||'';
   const all = (a) => Array.isArray(a)?a:[];
   const host = (id,html) => { if($(id)) $(id).innerHTML=html; };
-  function isShown(){return !($('dashboardViewDailyV616H')?.classList.contains('hidden'));}
+  function isShown(){return app()?.state?.currentPage==='dashboard' && !!$('dashboardViewDailyV616H') && !$('dashboardViewDailyV616H').classList.contains('hidden');}
   function args(){return {
     p_start_date:value('dashStart'),p_end_date:value('dashEnd'),
     p_side_id:value('dashSide')||null,p_division_id:value('dashDivision')||null,
@@ -47634,7 +47670,7 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
   // scope-preserving, read-only RPCs. A timeout in one must not hide the other.
   // Requests with identical filters share one in-flight serial pair of promises.
   async function load(force=false){
-    if(!isShown()||!chartsReady())return;
+    if(!isShown()||!chartsReady()||app()?.state?.dashboardLoadingR1)return;
     const key=currentKey();if(!force&&key===lastKey&&lastData&&!pendingTrendRpc.has(key))return;
     if(!force&&key===lastFailureKey&&Date.now()-lastFailureAt<15000)return;
     const p=args();if(!p.p_start_date||!p.p_end_date)return;
@@ -47732,6 +47768,7 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
     ['dashStart','dashEnd','dashSide','dashDivision','dashZone','dashDepartment'].forEach(id=>$(id)?.addEventListener('change',()=>{lastKey='';}));
     $('loadDashboardBtn')?.addEventListener('click',()=>{lastKey='';setTimeout(()=>load(true),180);});
     document.addEventListener('timeclock:dashboard-rendered-v616h',()=>{if(isShown())load(false);});
+    document.addEventListener('timeclock:dashboard-load-settled-r1',()=>{if(isShown())load(true);});
     if(isShown())setTimeout(()=>load(),250);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
@@ -47774,3 +47811,5 @@ console.info("[TimeClock] FIX16-EP-UI-R1 compact Employee Portal admin grid acti
 ;console.info("[TimeClock] FIX16 LOGIN-R1 production connection locked");
 
 console.info("[TimeClock] FIX16 CONTACT-R1 HRIS contact dialog active");
+
+console.info("[TimeClock] FIX16 DASH-LOAD-R1 serialized dashboard refresh active");
