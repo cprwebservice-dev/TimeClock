@@ -22740,6 +22740,116 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
     });
   }
 
+  // ATT-MONTH-R2: visual refinement only, scoped to daily attendance grid.
+  function ensureAttendanceGridStyleR2(){
+    if($("attendanceGridStyleR2")) return;
+    const style=document.createElement("style");
+    style.id="attendanceGridStyleR2";
+    style.textContent=`
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] {
+        --att-r2-text:#263b50;--att-r2-muted:#62768a;--att-r2-empty:#91a0af;
+        --att-r2-base:#fff;--att-r2-alt:#f8fafc;--att-r2-absence:#fff1f2;
+        --att-r2-hover:#edf4fb;--att-r2-grid:#e4ebf2;
+        --att-r2-alert:#ad3f12;--att-r2-ot:#176b4a;--att-r2-shift:#17605c;--att-r2-shift-bg:#e8f5f3;
+      }
+      html[data-theme="dark"] #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2],
+      body:is(.dark,.theme-dark,.dark-mode) #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2]{
+        --att-r2-text:#e2e8f0;--att-r2-muted:#a5b6c8;--att-r2-empty:#8497ad;
+        --att-r2-base:#142538;--att-r2-alt:#192c40;--att-r2-absence:#40272f;
+        --att-r2-hover:#263f55;--att-r2-grid:#304559;
+        --att-r2-alert:#fdba74;--att-r2-ot:#86efac;--att-r2-shift:#a7e6dc;--att-r2-shift-bg:#234740;
+      }
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table{border-collapse:separate;border-spacing:0;table-layout:auto;min-width:1640px!important;font-variant-numeric:tabular-nums;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead th{
+        position:sticky!important;top:0!important;z-index:41!important;height:42px!important;min-height:42px!important;
+        padding:5px 7px!important;line-height:1.16!important;white-space:nowrap;
+        background:#285977!important;color:#fff!important;vertical-align:middle;box-shadow:none!important;
+        border-bottom:2px solid #d5a05f!important;
+      }
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead th.shift-1{background:#326f95!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead th.shift-2{background:#526c8b!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead th.attendance-plan-head{background:#375f7e!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead th.shift-2.attendance-plan-head{background:#465e7b!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead th.attendance-punch-head span{font-size:9px;line-height:1.1;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead th.attendance-punch-head strong{font-size:11px;line-height:1.12;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tbody tr{height:46px!important;--att-r2-row:var(--att-r2-base);}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tbody tr:nth-child(even){--att-r2-row:var(--att-r2-alt);}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tbody tr.status-absence[data-att-readiness=""]{--att-r2-row:var(--att-r2-absence);}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tbody tr:hover{--att-r2-row:var(--att-r2-hover);}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tbody td{height:46px!important;padding:5px 7px!important;line-height:1.22;vertical-align:middle;background:var(--att-r2-row)!important;background-image:none!important;color:var(--att-r2-text);border-right-color:var(--att-r2-grid);border-bottom-color:var(--att-r2-grid);}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="work_date"]{box-sizing:border-box;width:132px;min-width:132px;max-width:132px;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="emp_code"]{box-sizing:border-box;width:86px;min-width:86px;max-width:86px;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="full_name"]{box-sizing:border-box;width:155px;min-width:155px;max-width:155px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="department"]{min-width:180px;width:180px;max-width:180px;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="pattern_code"]{min-width:74px;white-space:nowrap;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="day_type"]{min-width:96px;white-space:nowrap;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="shift_code"]{min-width:64px;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-plan-cell-v61110{min-width:72px;text-align:center;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td.attendance-punch-cell-v6119:not(.attendance-plan-cell-v61110){min-width:78px;text-align:center;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="shift_1_start"],
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="shift_2_start"],
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="display_status"]{border-left:2px solid var(--att-r2-grid);}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table [data-att-col="display_status"]{min-width:104px;white-space:nowrap;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .sticky-att-1{position:sticky!important;left:0!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .sticky-att-2{position:sticky!important;left:var(--att-r2-left-2,132px)!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .sticky-att-3{position:sticky!important;left:var(--att-r2-left-3,218px)!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tbody :is(.sticky-att-1,.sticky-att-2,.sticky-att-3){z-index:12!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead :is(.sticky-att-1,.sticky-att-2,.sticky-att-3){z-index:60!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .sticky-att-3{box-shadow:4px 0 7px rgba(15,23,42,.10)!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .sticky-att-2{box-shadow:none!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-date-cell-v61462{gap:5px;justify-content:flex-start;white-space:nowrap;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-date-cell-v61462 small{background:none!important;color:var(--att-r2-muted)!important;padding:0;font-weight:500;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td[data-att-col="emp_code"] strong{font-weight:500;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td[data-att-col="pattern_code"] :is(.fc-badge,.badge),
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-planned-value-v61110,
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-planned-open-v61110{
+        background:transparent!important;border:0!important;box-shadow:none!important;color:var(--att-r2-text)!important;min-width:0!important;padding:0!important;border-radius:0!important;font-weight:500!important;
+      }
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-planned-value-v61110 b{font-weight:500!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-planned-open-v61110{color:var(--att-r2-muted)!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td[data-att-col="shift_code"] .badge{background:var(--att-r2-shift-bg)!important;color:var(--att-r2-shift)!important;border:0!important;padding:3px 6px;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-punch-value-v6119{background:transparent!important;border:0!important;box-shadow:none!important;min-width:0!important;padding:0!important;color:var(--att-r2-text)!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-punch-value-v6119 i{color:var(--att-r2-muted)!important;font-weight:500;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-punch-value-v6119 b{font-weight:700!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .attendance-punch-empty-v6119{color:var(--att-r2-empty)!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td.text-right{font-variant-numeric:tabular-nums;text-align:right;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td.att-r2-positive{color:var(--att-r2-alert)!important;font-weight:700;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td[data-att-col="overtime_minutes"].att-r2-positive{color:var(--att-r2-ot)!important;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td.absence-value:not(.att-r2-positive),
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td.calc-ot:not(.att-r2-positive){color:var(--att-r2-text)!important;font-weight:400;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table td[data-att-col="display_status"] .fc-badge{background:var(--att-r2-status-bg,#f1f5f9)!important;color:var(--att-r2-status-fg,#475569)!important;border:0!important;box-shadow:none!important;padding:4px 7px;font-weight:600;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr:is(.status-normal,.status-complete){--att-r2-status-bg:#dcfce7;--att-r2-status-fg:#166534;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr.status-absence{--att-r2-status-bg:#fee2e2;--att-r2-status-fg:#b91c1c;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr:is(.status-late,.status-early_leave,.status-late_and_early_leave){--att-r2-status-bg:#ffedd5;--att-r2-status-fg:#9a3412;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr.status-leave{--att-r2-status-bg:#ede9fe;--att-r2-status-fg:#6d28d9;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr:is(.status-pending_calc,.status-calc_blocked,.status-coverage_unknown,.status-in_progress){--att-r2-status-bg:#fef3c7;--att-r2-status-fg:#92400e;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr.status-upcoming{--att-r2-status-bg:#dbeafe;--att-r2-status-fg:#1d4ed8;}
+      html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr:is(.status-pending_calc,.status-calc_blocked,.status-coverage_unknown,.status-in_progress) td:first-child{border-left-color:#d97706!important;}
+      html[data-theme="dark"] #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr.status-day_off,
+      body:is(.dark,.theme-dark,.dark-mode) #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table tr.status-day_off{--att-r2-status-bg:#334155;--att-r2-status-fg:#e2e8f0;}
+      @media(max-width:900px){html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table .sticky-att-3{position:static!important;left:auto!important;box-shadow:none!important;}html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table thead .sticky-att-3{position:sticky!important;top:0!important;left:auto!important;z-index:41!important;}}
+      @media print{html #page-attendance[data-att-ui-r2][data-att-ui-r2][data-att-ui-r2] .attendance-grid-table :is(th,td){position:static!important;box-shadow:none!important;} }
+    `;
+    document.head.appendChild(style);
+  }
+  function syncAttendanceStickyR2(table){
+    if(!table)return;
+    const first=table.querySelector('thead [data-att-col="work_date"]');
+    const second=table.querySelector('thead [data-att-col="emp_code"]');
+    if(!first||!second)return;
+    const measure=()=>{
+      const a=first.getBoundingClientRect().width,b=second.getBoundingClientRect().width;
+      if(a>0&&b>0){table.style.setProperty("--att-r2-left-2",`${a}px`);table.style.setProperty("--att-r2-left-3",`${a+b}px`);}
+    };
+    measure();
+    if(!table._attResizeR2&&typeof ResizeObserver==="function"){
+      table._attResizeR2=new ResizeObserver(measure);table._attResizeR2.observe(first);table._attResizeR2.observe(second);
+    }
+    requestAnimationFrame(measure);
+  }
+  function attendanceTimeTipR2(value){return value?` title="${esc(String(value))}"`:"";}
+  function attendanceMetricToneR2(row,value){return !row._tc_readiness&&Number(value)>0?" att-r2-positive":"";}
+
   function enhanceAttendance(){
     const page=$("page-attendance"); if(!page || $("attendanceEnterpriseTools")) return;
     const statusSelect=$("attStatus");
@@ -22813,6 +22923,7 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
       </div>`
     );
     const table=qs("table",tablePanel); table?.classList.add("attendance-grid-table");
+    ensureAttendanceGridStyleR2(); page.dataset.attUiR2="1";
     const keys=[
       "work_date","emp_code","full_name","department",
       "zone","sub_area","pattern_code","template_code",
@@ -22832,7 +22943,8 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
       "early_leave_minutes","absence_minutes",
       "comp_off_balance"
     ];
-    qsa("thead th",table).forEach((th,i)=>{th.dataset.sortKey=keys[i]; if(i===0)th.classList.add("sticky-att-1"); if(i===1)th.classList.add("sticky-att-2");});
+    qsa("thead th",table).forEach((th,i)=>{th.dataset.sortKey=keys[i]; if(i===0)th.classList.add("sticky-att-1"); if(i===1)th.classList.add("sticky-att-2"); if(i===2)th.classList.add("sticky-att-3");});
+    syncAttendanceStickyR2(table);
     qs(".panel-body",tablePanel)?.insertAdjacentHTML("beforeend",`<div class="attendance-pagination"><button id="attPrevPage" class="btn btn-light">‹ ก่อนหน้า</button><span id="attPageInfo" class="page-info">หน้า 1 / 1</span><button id="attNextPage" class="btn btn-light">ถัดไป ›</button></div>`);
     document.body.insertAdjacentHTML("beforeend",`
       <aside
@@ -23030,34 +23142,34 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
 
           const punchState=app()?.attendancePolicyFlagsV61428?.(r)?.punchState;
           const rowClass=`attendance-row-v61462 status-${String(status||"normal").toLowerCase()} ${punchState?.anyPunch?"has-punch":"no-punch"}`;
-          return `<tr class="${rowClass}" data-att-key="${esc(key)}">
+          return `<tr class="${rowClass}" data-att-key="${esc(key)}" data-att-readiness="${esc(r._tc_readiness||'')}">
             <td data-att-col="work_date" class="nowrap sticky-att-1"><div class="attendance-date-cell-v61462"><strong>${fmtDate(r.work_date)}</strong><small>${new Date(`${String(r.work_date).slice(0,10)}T00:00:00`).toLocaleDateString("th-TH",{weekday:"short"})}</small></div></td>
             <td data-att-col="emp_code" class="sticky-att-2"><strong>${esc(r.emp_code)}</strong></td>
-            <td data-att-col="full_name" class="nowrap">${esc(r.full_name)}</td>
-            <td data-att-col="department"><div class="attendance-org-cell-v616u"><strong>${esc(app()?.canonicalOrgNameV616Q?.(r)||r.department||"-")}</strong><small>${esc(app()?.attendanceOrgSublineV616V?.(r)||"")}</small></div></td>
+            <td data-att-col="full_name" class="nowrap sticky-att-3" title="${esc(r.full_name||'')}">${esc(r.full_name)}</td>
+            <td data-att-col="department"><div class="attendance-org-cell-v616u" title="${esc([app()?.canonicalOrgNameV616Q?.(r)||r.department||'-',app()?.attendanceOrgSublineV616V?.(r)||''].filter(Boolean).join(' • '))}"><strong>${esc(app()?.canonicalOrgNameV616Q?.(r)||r.department||"-")}</strong><small>${esc(app()?.attendanceOrgSublineV616V?.(r)||"")}</small></div></td>
             <td data-att-col="zone" class="${optionalClass("zone").trim()}">${esc(r.zone||r.area||"-")}</td>
             <td data-att-col="sub_area" class="${optionalClass("sub_area").trim()}">${esc(r.sub_area||"-")}</td>
             <td data-att-col="pattern_code"><span class="fc-badge active">${esc(r.pattern_code||"-")}</span></td>
             <td data-att-col="template_code" class="${optionalClass("template_code").trim()}">${esc(app()?.workTemplateLabelV6118?.(r.template_code)||r.template_code||"-")}</td>
             <td data-att-col="day_type">${esc(statusLabel(r.day_type||"-"))}</td>
             <td data-att-col="shift_code"><span class="badge badge-blue">${esc(codeOf(r)||"-")}</span></td>
-            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_start">${app()?.attendancePlannedCellV61110?.(r.shift_1_planned_start_at,1,"START",r)||"-"}</td>
-            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_end">${app()?.attendancePlannedCellV61110?.(r.shift_1_planned_end_at,1,"END",r)||"-"}</td>
-            <td class="attendance-punch-cell-v6119 shift-1" data-att-col="shift_1_in">${app()?.attendancePunchCellV6119?.(r.shift_1_actual_in_at,1,"IN")||"-"}</td>
-            <td class="attendance-punch-cell-v6119 shift-1" data-att-col="shift_1_out">${app()?.attendancePunchCellV6119?.(r.shift_1_actual_out_at,1,"OUT")||"-"}</td>
-            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_start">${app()?.attendancePlannedCellV61110?.(r.shift_2_planned_start_at,2,"START",r)||"-"}</td>
-            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_end">${app()?.attendancePlannedCellV61110?.(r.shift_2_planned_end_at,2,"END",r)||"-"}</td>
-            <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_in">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_in_at,2,"IN")||"-"}</td>
-            <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_out">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_out_at,2,"OUT")||"-"}</td>
+            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_start"${attendanceTimeTipR2(r.shift_1_planned_start_at)}>${app()?.attendancePlannedCellV61110?.(r.shift_1_planned_start_at,1,"START",r)||"-"}</td>
+            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-1" data-att-col="shift_1_end"${attendanceTimeTipR2(r.shift_1_planned_end_at)}>${app()?.attendancePlannedCellV61110?.(r.shift_1_planned_end_at,1,"END",r)||"-"}</td>
+            <td class="attendance-punch-cell-v6119 shift-1" data-att-col="shift_1_in"${attendanceTimeTipR2(r.shift_1_actual_in_at)}>${app()?.attendancePunchCellV6119?.(r.shift_1_actual_in_at,1,"IN")||"-"}</td>
+            <td class="attendance-punch-cell-v6119 shift-1" data-att-col="shift_1_out"${attendanceTimeTipR2(r.shift_1_actual_out_at)}>${app()?.attendancePunchCellV6119?.(r.shift_1_actual_out_at,1,"OUT")||"-"}</td>
+            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_start"${attendanceTimeTipR2(r.shift_2_planned_start_at)}>${app()?.attendancePlannedCellV61110?.(r.shift_2_planned_start_at,2,"START",r)||"-"}</td>
+            <td class="attendance-punch-cell-v6119 attendance-plan-cell-v61110 shift-2" data-att-col="shift_2_end"${attendanceTimeTipR2(r.shift_2_planned_end_at)}>${app()?.attendancePlannedCellV61110?.(r.shift_2_planned_end_at,2,"END",r)||"-"}</td>
+            <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_in"${attendanceTimeTipR2(r.shift_2_actual_in_at)}>${app()?.attendancePunchCellV6119?.(r.shift_2_actual_in_at,2,"IN")||"-"}</td>
+            <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_out"${attendanceTimeTipR2(r.shift_2_actual_out_at)}>${app()?.attendancePunchCellV6119?.(r.shift_2_actual_out_at,2,"OUT")||"-"}</td>
             <td data-att-col="display_status"><span class="fc-badge ${badgeClass}">${esc(attendanceStatusText(r))}</span></td>
             <td data-att-col="net_work_minutes" class="text-right">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0) ?? "0.00")}</td>
             <td data-att-col="regular_minutes" class="text-right">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0) ?? "0.00")}</td>
-            <td data-att-col="overtime_minutes" class="text-right calc-ot${optionalClass("overtime_minutes")}">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0) ?? "0.00")}</td>
+            <td data-att-col="overtime_minutes" class="text-right calc-ot${attendanceMetricToneR2(r,r.overtime_minutes)}${optionalClass("overtime_minutes")}">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0) ?? "0.00")}</td>
             <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0) ?? "0.00")}</td>
             <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${r._tc_readiness?"-":((Number(r.break_deducted_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2}))}</td>
-            <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${r._tc_readiness?"-":(num(app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0)))}</td>
-            <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${r._tc_readiness?"-":(num(r.early_leave_minutes))}</td>
-            <td data-att-col="absence_minutes" class="text-right absence-value${optionalClass("absence_minutes")}">${r._tc_readiness?"-":(num(attendanceAbsence(r)))}</td>
+            <td data-att-col="late_minutes" class="text-right${attendanceMetricToneR2(r,app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0))}${optionalClass("late_minutes")}">${r._tc_readiness?"-":(num(app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0)))}</td>
+            <td data-att-col="early_leave_minutes" class="text-right${attendanceMetricToneR2(r,r.early_leave_minutes)}${optionalClass("early_leave_minutes")}">${r._tc_readiness?"-":(num(r.early_leave_minutes))}</td>
+            <td data-att-col="absence_minutes" class="text-right absence-value${attendanceMetricToneR2(r,attendanceAbsence(r))}${optionalClass("absence_minutes")}">${r._tc_readiness?"-":(num(attendanceAbsence(r)))}</td>
             <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${r._tc_readiness?"-":(esc(comp))}</td>
           </tr>`;
         }).join("")
@@ -23136,6 +23248,7 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
     });
 
     applyAttendanceColumnVisibility();
+    syncAttendanceStickyR2($("attendanceBody")?.closest("table"));
   }
 
   let attendanceDetailCurrentKey = null;
