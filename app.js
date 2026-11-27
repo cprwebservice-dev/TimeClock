@@ -41373,6 +41373,61 @@ async function loadPortalTeamRowsV616AD(){
     return team.link;
   }
 
+  // FIX16 EP-UI-R1: scoped compact HR Employee Portal table; no RPC changes.
+  function ensureAdminPortalTableUIR1(body){
+    const table=body.closest("table.portal-table-v61482");
+    if(!table)return;
+    table.classList.add("ep-admin-grid-r1");
+    const wrap=table.closest(".table-wrap");
+    if(wrap){wrap.classList.add("ep-admin-scroll-r1");wrap.setAttribute("role","region");wrap.setAttribute("aria-label","ตารางพนักงาน Employee Portal");wrap.tabIndex=0;}
+    const last=table.querySelector("thead th:last-child");
+    if(last)last.textContent="Activate / Login • จัดการ";
+    if($("epAdminCompactStyleR1"))return;
+    const style=document.createElement("style");style.id="epAdminCompactStyleR1";
+    style.textContent=`
+      #page-admin-employee-portal .ep-admin-scroll-r1{max-height:clamp(300px,65vh,780px);overflow:auto!important;border:1px solid #dce6ee;border-radius:10px;scrollbar-gutter:stable;}
+      #page-admin-employee-portal .ep-admin-grid-r1{--ep-bg:#fff;--ep-alt:#f8fafc;--ep-hover:#edf5fc;--ep-selected:#e8f2fc;--ep-text:#19364e;--ep-muted:#62788c;--ep-line:#e1e9f0;width:100%!important;min-width:1100px!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important;margin:0!important;font-variant-numeric:tabular-nums;}
+      #page-admin-employee-portal .ep-admin-grid-r1 thead th{position:sticky!important;top:0!important;z-index:5!important;height:36px!important;min-height:36px!important;padding:6px 9px!important;line-height:1.2!important;background:#285d80!important;color:#fff!important;white-space:nowrap;vertical-align:middle!important;}
+      #page-admin-employee-portal .ep-admin-grid-r1 th:nth-child(1){width:4%;text-align:center;}
+      #page-admin-employee-portal .ep-admin-grid-r1 th:nth-child(2){width:15%;}
+      #page-admin-employee-portal .ep-admin-grid-r1 th:nth-child(3){width:15%;}
+      #page-admin-employee-portal .ep-admin-grid-r1 th:nth-child(4){width:23%;}
+      #page-admin-employee-portal .ep-admin-grid-r1 th:nth-child(5){width:5%;text-align:center;}
+      #page-admin-employee-portal .ep-admin-grid-r1 th:nth-child(6){width:12%;}
+      #page-admin-employee-portal .ep-admin-grid-r1 th:nth-child(7){width:26%;}
+      #page-admin-employee-portal .ep-admin-grid-r1 :is(th,td){box-sizing:border-box;}
+      #page-admin-employee-portal .ep-admin-grid-r1 tbody tr{--ep-row:var(--ep-bg);height:52px!important;}
+      #page-admin-employee-portal .ep-admin-grid-r1 tbody tr:nth-child(even){--ep-row:var(--ep-alt);}
+      #page-admin-employee-portal .ep-admin-grid-r1 tbody tr:hover{--ep-row:var(--ep-hover);}
+      #page-admin-employee-portal .ep-admin-grid-r1 tbody tr:has(input:checked){--ep-row:var(--ep-selected);}
+      #page-admin-employee-portal .ep-admin-grid-r1 tbody td{height:52px!important;padding:5px 9px!important;vertical-align:middle!important;line-height:1.3!important;background:var(--ep-row)!important;color:var(--ep-text)!important;border-bottom:1px solid var(--ep-line)!important;overflow:hidden;text-overflow:ellipsis;}
+      #page-admin-employee-portal .ep-admin-grid-r1 tbody td:first-child,#page-admin-employee-portal .ep-admin-grid-r1 tbody td:nth-child(5){text-align:center;}
+      #page-admin-employee-portal .ep-admin-grid-r1 tbody td strong{display:block;font-size:12px!important;font-weight:600;color:var(--ep-text)!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3;}
+      #page-admin-employee-portal .ep-admin-grid-r1 tbody td small{display:block;font-size:11px!important;color:var(--ep-muted)!important;margin:1px 0 0!important;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+      #page-admin-employee-portal .ep-admin-grid-r1 .ep-actions-r1{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;}
+      #page-admin-employee-portal .ep-admin-grid-r1 .ep-dates-r1{min-width:0;overflow:hidden;}
+      #page-admin-employee-portal .ep-admin-grid-r1 .ep-dates-r1 small{margin:0!important;}
+      #page-admin-employee-portal .ep-admin-grid-r1 .ep-dates-r1 b{font-weight:500;color:var(--ep-text);}
+      #page-admin-employee-portal .ep-admin-grid-r1 button[data-portal-admin-activation-v616ab]{font-size:11px!important;line-height:1.25!important;min-height:30px!important;height:auto!important;padding:5px 9px!important;border-radius:7px!important;white-space:nowrap;box-shadow:none!important;}
+      #page-admin-employee-portal .ep-admin-grid-r1 .portal-status-v61482{font-size:11px!important;font-weight:600!important;padding:3px 7px!important;gap:5px;white-space:nowrap;}
+      #page-admin-employee-portal .ep-admin-grid-r1 input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#2c78ad;}
+      #page-admin-employee-portal .ep-admin-grid-r1 :is(button,input):focus-visible,#page-admin-employee-portal .ep-admin-scroll-r1:focus-visible{outline:2px solid #489cdd;outline-offset:2px;}
+      #page-admin-employee-portal .ep-admin-grid-r1 .fc-empty{padding:18px!important;text-align:center;}
+      html[data-theme="dark"] #page-admin-employee-portal .ep-admin-grid-r1,body:is(.theme-dark,.dark,.dark-mode) #page-admin-employee-portal .ep-admin-grid-r1{--ep-bg:#172534;--ep-alt:#1b2c3c;--ep-hover:#243d53;--ep-selected:#203f59;--ep-text:#e0eaf4;--ep-muted:#a4b7c9;--ep-line:#31465a;}
+      html[data-theme="dark"] #page-admin-employee-portal .ep-admin-scroll-r1,body:is(.theme-dark,.dark,.dark-mode) #page-admin-employee-portal .ep-admin-scroll-r1{border-color:#31465a;}
+      html[data-theme="dark"] #page-admin-employee-portal .ep-admin-grid-r1 .portal-status-v61482.off,body:is(.theme-dark,.dark,.dark-mode) #page-admin-employee-portal .ep-admin-grid-r1 .portal-status-v61482.off{background:#263746;color:#c4d2df;border-color:#455969;}
+      @media(max-width:720px){#page-admin-employee-portal .ep-admin-scroll-r1{max-height:60vh;}#page-admin-employee-portal .ep-admin-grid-r1{min-width:1100px!important;}}
+    `;
+    document.head.appendChild(style);
+  }
+  function syncAdminSelectionUIR1(){
+    const rows=admin.rows;
+    const checked=rows.filter(r=>admin.selected.has(String(r.emp_code))).length;
+    const all=$("portalAdminSelectAllV61482");
+    if(all){all.checked=rows.length>0&&checked===rows.length;all.indeterminate=checked>0&&checked<rows.length;all.disabled=rows.length===0;}
+    const meta=$("portalAdminMetaV61482");
+    if(meta)meta.textContent=`${rows.length.toLocaleString("th-TH")} รายการ • เลือกแล้ว ${admin.selected.size.toLocaleString("th-TH")} คน`;
+  }
   function renderAdmin(){
     // V6.14.84: paged RPC results are combined into admin.rows before render.
     // Do not switch to admin.filtered merely because
@@ -41389,6 +41444,8 @@ async function loadPortalTeamRowsV616AD(){
     $("portalAdminKpiOffV61482")&&( $("portalAdminKpiOffV61482").textContent=off.toLocaleString("th-TH") );
     $("portalAdminMetaV61482")&&( $("portalAdminMetaV61482").textContent=`${rows.length.toLocaleString("th-TH")} รายการ • เลือกแล้ว ${admin.selected.size.toLocaleString("th-TH")} คน` );
     const body=$("portalAdminBodyV61482");if(!body)return;
+    ensureAdminPortalTableUIR1(body);
+    syncAdminSelectionUIR1();
     body.innerHTML=rows.length?rows.map(r=>{
       const status=String(r.portal_status||"NOT_ENABLED").toUpperCase();
       const emp=esc(r.emp_code);
@@ -41402,15 +41459,21 @@ async function loadPortalTeamRowsV616AD(){
       }else{
         action=`<button class="btn btn-primary btn-sm" data-portal-admin-activation-v616ab="${emp}">เปิดสิทธิ์ + สร้าง Code</button>`;
       }
+      const name=esc(r.full_name||"-");
+      const position=esc(r.position_name||"-");
+      const department=esc(r.department||"-");
+      const location=esc([r.zone||r.area||"-",r.sub_area].filter(Boolean).join(" / "));
+      const activated=esc(fmtDateTime(r.activated_at));
+      const login=esc(fmtDateTime(r.last_login_at));
       return `<tr>
-        <td><input type="checkbox" data-portal-admin-select-v61482="${emp}" ${admin.selected.has(String(r.emp_code))?"checked":""}/></td>
-        <td><strong>${emp}</strong><small>${esc(r.full_name||"-")}</small></td>
-        <td><strong>${esc(r.position_name||"-")}</strong></td>
-        <td><strong>${esc(r.department||"-")}</strong><small>${esc(r.zone||r.area||"-")} ${r.sub_area?`/ ${esc(r.sub_area)}`:""}</small></td>
+        <td><input type="checkbox" aria-label="เลือกพนักงาน ${emp}" data-portal-admin-select-v61482="${emp}" ${admin.selected.has(String(r.emp_code))?"checked":""}/></td>
+        <td><strong title="${emp}">${emp}</strong><small title="${name}">${name}</small></td>
+        <td><strong title="${position}">${position}</strong></td>
+        <td><strong title="${department}">${department}</strong><small title="${location}">${location}</small></td>
         <td>${esc(r.pc||"-")}</td>
         <td>${statusBadge(status)}</td>
-        <td><div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px">
-          <span><small>Activate ${esc(fmtDateTime(r.activated_at))}</small><small>Login ${esc(fmtDateTime(r.last_login_at))}</small></span>
+        <td><div class="ep-actions-r1">
+          <span class="ep-dates-r1"><small title="Activate ${activated}">Activate <b>${activated}</b></small><small title="Login ${login}">Login <b>${login}</b></small></span>
           ${action}
         </div></td>
       </tr>`;
@@ -41625,7 +41688,7 @@ async function loadPortalTeamRowsV616AD(){
       }
       const a=e.target.closest("[data-portal-activation-v61482]");if(a){await issueActivation(a.dataset.portalActivationV61482,false);return;}
       const r=e.target.closest("[data-portal-reset-pin-v61482]");if(r){await issueActivation(r.dataset.portalResetPinV61482,true);return;}
-      const sel=e.target.closest("[data-portal-admin-select-v61482]");if(sel){const code=String(sel.dataset.portalAdminSelectV61482);sel.checked?admin.selected.add(code):admin.selected.delete(code);renderAdmin();return;}
+      const sel=e.target.closest("[data-portal-admin-select-v61482]");if(sel){const code=String(sel.dataset.portalAdminSelectV61482);sel.checked?admin.selected.add(code):admin.selected.delete(code);syncAdminSelectionUIR1();return;}
       if(e.target.closest("[data-close-team-portal-v61482]")){closeActivation();return;}
       const nav=e.target.closest('.nav-item[data-page="team-portal"]');if(nav)setTimeout(loadTeam,0);
       const adminNav=e.target.closest('.nav-item[data-page="admin-employee-portal"]');
@@ -47626,3 +47689,5 @@ console.info("[TimeClock] FIX16BV Canonical employee scope pagination active");
 console.info("[TimeClock] HOLIDAY-R1 queued holiday mutations active");
 
 console.info("[TimeClock] FIX16-TTM-NAV-R1 profile-ready menu lifecycle active");
+
+console.info("[TimeClock] FIX16-EP-UI-R1 compact Employee Portal admin grid active");
