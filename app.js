@@ -1856,41 +1856,11 @@ window.tcIsDayShiftCode = value =>
       url: "https://lryojaccbbbgdbpjstld.supabase.co",
       key: "sb_publishable_xxYLeNtxgeWoE0o5GNOwDg_QXfiFy_Y"
     });
-    try {
-      if (!localStorage.getItem(APP_CONFIG_KEY)) {
-        localStorage.setItem(
-          APP_CONFIG_KEY,
-          JSON.stringify({
-            url: DEFAULT_SUPABASE_CONFIG.url,
-            key: DEFAULT_SUPABASE_CONFIG.key
-          })
-        );
-      }
-    } catch (_) {}
-
-
-    function getSupabaseConfigWithDefaults(config = {}) {
-      return {
-        url:
-          String(
-            config?.url
-            || config?.supabaseUrl
-            || ""
-          ).trim()
-          || DEFAULT_SUPABASE_CONFIG.url,
-
-        key:
-          String(
-            config?.key
-            || config?.anonKey
-            || config?.publishableKey
-            || ""
-          ).trim()
-          || DEFAULT_SUPABASE_CONFIG.key
-      };
+    // FIX16 LOGIN-R1: a deployed build, not browser input, selects the backend.
+    // Keep only a compatibility mirror for older UI readers; never trust it for auth.
+    function getSupabaseConfigWithDefaults() {
+      return { ...DEFAULT_SUPABASE_CONFIG };
     }
-
-
 
     const state = {
       client: null,
@@ -3068,6 +3038,7 @@ window.tcIsDayShiftCode = value =>
       setTimeout(() => el.remove(), 4500);
     }
     function openModal(id) {
+      if (id === "configModal") return; // LOGIN-R1: no browser endpoint editor
       const modal = $(id);
       if (!modal) return;
       modal.classList.remove("hidden");
@@ -3084,51 +3055,71 @@ window.tcIsDayShiftCode = value =>
       }
     }
     function getConfig() {
+      const config = getSupabaseConfigWithDefaults();
       try {
-        const stored =
-          JSON.parse(
-            localStorage.getItem(
-              APP_CONFIG_KEY
-            ) || "null"
-          );
+        localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
+      } catch (_) { /* unavailable storage must not change the target */ }
+      return config;
+    }
 
-        const config =
-          getSupabaseConfigWithDefaults(
-            stored || {}
-          );
+    function productionConnectionAdminR1() {
+      return Boolean(state.session?.access_token && state.user?.id &&
+        state.profile?.is_active === true &&
+        String(state.profile._realRole || state.profile.role || "").toUpperCase() === "HR_ADMIN");
+    }
 
-        if(
-          !stored?.url
-          || !stored?.key
-        ) {
-          localStorage.setItem(
-            APP_CONFIG_KEY,
-            JSON.stringify(
-              config
-            )
-          );
-        }
+    function syncProductionConnectionButtonR1() {
+      const button = $("configBtn");
+      if (!button) return;
+      const allowed = productionConnectionAdminR1();
+      button.hidden = !allowed;
+      button.disabled = !allowed;
+      button.classList.toggle("hidden", !allowed);
+      button.setAttribute("aria-hidden", String(!allowed));
+      if (allowed) button.style.removeProperty("display");
+      else button.style.setProperty("display", "none", "important");
+      button.title = "ตั้งค่าระบบ / ตรวจสอบการเชื่อมต่อ";
+      button.setAttribute("aria-label", button.title);
+    }
 
-        return config;
-      } catch {
-        return {
-          ...DEFAULT_SUPABASE_CONFIG
-        };
+    function applyProductionLoginUiR1() {
+      for (const id of ["openConfigFromLogin", "openLegacyConfigBtn", "saveConfigBtn"]) {
+        const el = $(id);
+        if (!el) continue;
+        el.hidden = true;
+        el.disabled = true;
+        el.setAttribute("aria-hidden", "true");
+        el.style.setProperty("display", "none", "important");
       }
+      const modal = $("configModal");
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.hidden = true;
+        modal.inert = true;
+        modal.setAttribute("aria-hidden", "true");
+        modal.style.setProperty("display", "none", "important");
+      }
+      for (const id of ["configUrl", "configKey"]) {
+        const field = $(id);
+        if (field) { field.value = ""; field.disabled = true; }
+      }
+      const subtitle = document.querySelector("#loginForm .brand-subtitle");
+      if (subtitle) subtitle.textContent = "เข้าสู่ระบบด้วยบัญชีผู้ใช้งาน";
+      const version = $("appBuildVersion");
+      if (version) version.textContent = "V6.15.29 • FIX16 LOGIN-R1";
+      const connectionHint = document.querySelector('[data-settings-panel="connection"] .settings-panel-head p');
+      if (connectionHint) connectionHint.textContent = "การเชื่อมต่อที่กำหนดจาก Production Configuration (อ่านอย่างเดียว)";
+      syncProductionConnectionButtonR1();
     }
 
-    function saveConfig(url, key) {
-      localStorage.setItem(
-        APP_CONFIG_KEY,
-        JSON.stringify({
-          url:
-            url.trim(),
-
-          key:
-            key.trim()
-        })
-      );
+    function openProductionConnectionSettingsR1() {
+      if (!productionConnectionAdminR1()) return;
+      switchPage("system-settings");
+      document.querySelector('[data-settings-tab="connection"]')?.click();
     }
+    // The production HTML loads this bundle at the end of body. Boot repeats
+    // this idempotently for alternate loading order.
+    applyProductionLoginUiR1();
 
     function initClient() {
       const cfg = getConfig();
@@ -3206,13 +3197,18 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function boot() {
+      applyProductionLoginUiR1();
       setDefaultDates();
       bindEvents();
       if ($("shiftRecalcStart")) setVal("shiftRecalcStart", firstDayOfMonth());
       if ($("shiftRecalcEnd")) setVal("shiftRecalcEnd", todayISO());
-      const cfg = getConfig();
-      if (cfg) { setVal("configUrl", cfg.url); setVal("configKey", cfg.key); }
-      if (!initClient()) { openModal("configModal"); return; }
+      try {
+        if (!initClient()) throw new Error("SUPABASE_CLIENT_NOT_READY");
+      } catch (_) {
+        showLogin();
+        toast("ไม่สามารถเริ่มการเชื่อมต่อระบบได้ กรุณารีเฟรชหรือติดต่อผู้ดูแลระบบ", "error");
+        return;
+      }
       const { data: { session }, error } = await state.client.auth.getSession();
       if (error) toast(error.message, "error");
       if (session) {
@@ -3293,6 +3289,7 @@ window.tcIsDayShiftCode = value =>
       $("appShell").classList.add("hidden");
       $("loginScreen").classList.remove("hidden");
       setLoginPasswordVisibility(false);
+      syncProductionConnectionButtonR1();
     }
     function showApp() { $("loginScreen").classList.add("hidden"); $("appShell").classList.remove("hidden"); }
 
@@ -3368,6 +3365,7 @@ window.tcIsDayShiftCode = value =>
       $("adminNavGroup").classList.toggle("hidden", p.role !== "HR_ADMIN" && p._realRole !== "HR_ADMIN");
       qsa("#adminNavGroup .nav-item:not(#systemSettingsNav)").forEach(el => el.classList.toggle("hidden", p.role !== "HR_ADMIN"));
       $("systemSettingsNav")?.classList.toggle("hidden", p._realRole !== "HR_ADMIN");
+      syncProductionConnectionButtonR1();
       const actingManagerV616CB = window.TimeClockTemporaryAssignmentV61529F14B?.hasActingAuthority?.() === true;
       $("teamPortalNavV61482")?.classList.toggle(
         "hidden",
@@ -18123,15 +18121,13 @@ window.tcIsDayShiftCode = value =>
     }
 
     function bindEvents() {
-      $("loginForm").addEventListener("submit", async e => { e.preventDefault(); if (!state.client) return openModal("configModal"); showLoading("กำลังเข้าสู่ระบบ..."); try { const { error } = await state.client.auth.signInWithPassword({ email: val("loginEmail").trim(), password: val("loginPassword") }); if (error) throw error; const { data:{session} } = await state.client.auth.getSession(); state.session=session; state.user=session.user; await enterApp(); } catch(err){toast(humanError(err),"error");} finally{hideLoading();} });
+      $("loginForm").addEventListener("submit", async e => { e.preventDefault(); if (!state.client) return toast("ไม่สามารถเชื่อมต่อระบบได้ กรุณารีเฟรชหรือติดต่อผู้ดูแลระบบ", "error"); showLoading("กำลังเข้าสู่ระบบ..."); try { const { error } = await state.client.auth.signInWithPassword({ email: val("loginEmail").trim(), password: val("loginPassword") }); if (error) throw error; const { data:{session} } = await state.client.auth.getSession(); state.session=session; state.user=session.user; await enterApp(); } catch(err){toast(humanError(err),"error");} finally{hideLoading();} });
       $("loginPasswordToggle")?.addEventListener(
         "click",
         toggleLoginPasswordVisibility
       );
       $("logoutBtn").addEventListener("click", async () => { if (state.client) await state.client.auth.signOut(); showLogin(); });
-      $("openConfigFromLogin").addEventListener("click", () => openModal("configModal"));
-      $("configBtn").addEventListener("click", () => { const c=getConfig(); setVal("configUrl",c?.url); setVal("configKey",c?.key); openModal("configModal"); });
-      $("saveConfigBtn").addEventListener("click", () => { const url=val("configUrl").trim(), key=val("configKey").trim(); if(!url||!key) return toast("กรุณากรอก URL และ Key", "error"); saveConfig(url,key); closeModal("configModal"); toast("บันทึกการตั้งค่าแล้ว กรุณาโหลดหน้าใหม่", "success"); setTimeout(()=>location.reload(),700); });
+      $("configBtn")?.addEventListener("click", openProductionConnectionSettingsR1);
       qsa("[data-close-modal]").forEach(b => b.addEventListener("click", () => closeModal(b.dataset.closeModal)));
       qsa(".nav-item").forEach(b => b.addEventListener("click", () => switchPage(b.dataset.page)));
       $("mobileMenuBtn").addEventListener("click", () => {
@@ -22012,7 +22008,7 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
     if($("settingsEnvironmentHero")) $("settingsEnvironmentHero").textContent=settings.environment;
     if($("aboutAppName")) $("aboutAppName").textContent=settings.systemName;
     if($("aboutVersion")) $("aboutVersion").textContent=settings.version;
-    const cfg=JSON.parse(localStorage.getItem("ta_supabase_config_v1")||"null");
+    const cfg=getConfig(); // LOGIN-R1: display only the fixed deployed configuration
     if(cfg){ $("setConnectionUrl").value=cfg.url||""; $("setConnectionKey").value=maskKey(cfg.key||""); try{$("setProjectRef").value=new URL(cfg.url).hostname.split(".")[0]}catch{} }
     $("setSessionStatus").value=window.TimeClockApp?.state?.session?"Authenticated":"No active session";
     renderFeatureFlags(); renderShiftColors(); applyVisuals(); applyFeatureFlags();
@@ -22072,7 +22068,7 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
       applyShiftColorVariablesV61153();
       renderShiftColorPreviewV6140();
     });
-    $("testConnectionBtn")?.addEventListener("click",testConnection); $("openLegacyConfigBtn")?.addEventListener("click",()=>document.getElementById("configModal")?.classList.remove("hidden"));
+    $("testConnectionBtn")?.addEventListener("click",()=>{if(productionConnectionAdminR1()) return testConnection();});
     $("developerConsoleToggle")?.addEventListener("click",()=>$("developerConsoleBody").classList.toggle("hidden"));
     $("devConsoleClearBtn")?.addEventListener("click",()=>setDebug("-",null,null,"Ready","ล้าง Log แล้ว"));
   }
@@ -47691,3 +47687,5 @@ console.info("[TimeClock] HOLIDAY-R1 queued holiday mutations active");
 console.info("[TimeClock] FIX16-TTM-NAV-R1 profile-ready menu lifecycle active");
 
 console.info("[TimeClock] FIX16-EP-UI-R1 compact Employee Portal admin grid active");
+
+;console.info("[TimeClock] FIX16 LOGIN-R1 production connection locked");
