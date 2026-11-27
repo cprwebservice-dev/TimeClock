@@ -2335,7 +2335,20 @@ window.tcIsDayShiftCode = value =>
       };
     }
 
+    function attendanceMonthReadinessR1(r) {
+      if(!r?._tc_month_view) return null;
+      if(!r._tc_month_meta || r._tc_calendar_gap) return "COVERAGE_UNKNOWN";
+      const date=String(r.work_date||"").slice(0,10), today=r._tc_today_bkk;
+      if(date>today) return "UPCOMING";
+      if(r._tc_queue_blocked) return "CALC_BLOCKED";
+      // A current/overnight shift is not a completed workday yet.
+      const ends=[r.shift_1_planned_end_at,r.shift_2_planned_end_at].filter(Boolean).map(x=>String(x).replace(" ","T").slice(0,19)).sort();
+      if((ends.length && ends[ends.length-1]>r._tc_now_bkk) || (date===today && !ends.length)) return "IN_PROGRESS";
+      if(r._tc_queue_pending || !r._tc_has_calc) return "PENDING_CALC";
+      return null;
+    }
     function attendanceAbsenceMinutes(r) {
+      if(attendanceMonthReadinessR1(r)) return 0;
       const dayType = String(r?.day_type || '')
         .trim()
         .toUpperCase();
@@ -2492,6 +2505,7 @@ window.tcIsDayShiftCode = value =>
     // minutes is ABSENCE and its minutes are shown in "ขาดงาน(นาที)" instead,
     // preventing the same minutes from appearing in both columns.
     function attendanceLateMinutesForDisplayV61456(r) {
+      if(attendanceMonthReadinessR1(r)) return 0;
       const minutes = Math.max(0, Number(r?.late_minutes || 0) || 0);
       return minutes >= 1 && minutes < ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428
         ? minutes
@@ -2567,6 +2581,16 @@ window.tcIsDayShiftCode = value =>
       const lateMinutes = Math.max(0, Number(row?.late_minutes || 0) || 0);
       const earlyMinutes = Math.max(0, Number(row?.early_leave_minutes ?? row?.early_minutes ?? 0) || 0);
 
+      const readinessR1 = attendanceMonthReadinessR1(row);
+      if(readinessR1) {
+        return {
+          primaryStatus:readinessR1==="COVERAGE_UNKNOWN"?readinessR1:leave?"LEAVE":dayOff?"DAY_OFF":readinessR1,
+          leave:readinessR1==="COVERAGE_UNKNOWN"?false:leave,dayOff:readinessR1==="COVERAGE_UNKNOWN"?false:dayOff,upcoming:readinessR1==="UPCOMING",plannedWork,punchState,
+          absence:false,absenceByMissing:false,absenceByLate:false,absenceReason:null,
+          late:false,lateMinutes:0,early:false,earlyMinutes:0,
+          thresholdMinutes:ATTENDANCE_LATE_ABSENCE_THRESHOLD_V61428
+        };
+      }
       let missingReason = null;
       if (plannedWork && !future && !punchState.complete) {
         if (!punchState.anyPunch) missingReason = 'MISSING_BOTH';
@@ -2667,7 +2691,11 @@ window.tcIsDayShiftCode = value =>
         ? r
         : attendanceDisplayStatus(r);
 
-      return ({
+      const label = ({
+        PENDING_CALC:"รอประมวลผล",
+        COVERAGE_UNKNOWN:"ยังยืนยันข้อมูลไม่ได้",
+        CALC_BLOCKED:"ติดปัญหาการประมวลผล",
+        IN_PROGRESS:"ระหว่างวันทำงาน",
         ABSENCE:"ขาดงาน",
         ABSENT:"ขาดงาน",
         LEAVE:"ลา",
@@ -2678,6 +2706,9 @@ window.tcIsDayShiftCode = value =>
         LATE_AND_EARLY_LEAVE:"สายและกลับก่อน",
         NORMAL:"ปกติ"
       })[status] || attendanceLabel(status);
+      const readiness=typeof r==="string"?null:attendanceMonthReadinessR1(r);
+      const suffix=({PENDING_CALC:"รอประมวลผล",CALC_BLOCKED:"ติดปัญหาการประมวลผล",COVERAGE_UNKNOWN:"ยังยืนยันข้อมูลไม่ได้"})[readiness];
+      return suffix && ["LEAVE","DAY_OFF"].includes(status) ? `${label} · ${suffix}` : label;
     }
 
     const ATTENDANCE_OPTIONAL_COLUMNS = new Set([
@@ -3003,7 +3034,7 @@ window.tcIsDayShiftCode = value =>
       return [
         definitions.map(definition => definition[1]),
         ...(rows || []).map(row =>
-          definitions.map(definition => definition[2](row))
+          definitions.map(definition => row._tc_readiness && ["net_work_minutes","regular_minutes","overtime_minutes","waiting_minutes","break_deducted_minutes","late_minutes","early_leave_minutes","absence_minutes","comp_off_balance"].includes(definition[0]) ? "-" : definition[2](row))
         )
       ];
     }
@@ -6944,12 +6975,7 @@ window.tcIsDayShiftCode = value =>
       const attendanceCacheKeyV61463 = depth === 0
         ? attendanceReadCacheKeyV61463(range, requestEmployeeCodes)
         : null;
-      if (attendanceCacheKeyV61463) {
-        const cached = attendanceReadCacheV61463.get(attendanceCacheKeyV61463);
-        if (cached && Date.now() - Number(cached.savedAt || 0) <= ATTENDANCE_READ_CACHE_TTL_V61463) {
-          return attendanceCloneRowsV61463(cached.rows);
-        }
-      }
+      // ATT-MONTH-R1: attendance reads are live while the worker is rebuilding.
 
       let response =
         await state.client.rpc(
@@ -7300,6 +7326,9 @@ window.tcIsDayShiftCode = value =>
     function attendanceScheduleSkeletonRowV61462(row) {
       const result = { ...(row || {}) };
       const workDate = String(result.work_date || '').slice(0,10);
+      if(result._tc_calendar_gap){
+        return {...result,work_date:workDate,_attendance_calendar_row_v61462:true,_attendance_has_persisted_row_v61462:false};
+      }
       const windowMeta = scheduleEffectiveShiftWindowV6133(result);
       const startTime = windowMeta?.start || result.shift_start_time || null;
       const endTime = windowMeta?.end || result.shift_end_time || null;
@@ -7328,7 +7357,6 @@ window.tcIsDayShiftCode = value =>
     }
 
     async function fetchAttendanceCalendarRowsV61462(requestEmployeeCodes, persistedRows = []) {
-      if (!window.TimeClockShiftAPI?.getMonthlySchedule) return [];
       const startDate = val('attStart');
       const endDate = val('attEnd');
       if (!startDate || !endDate) return [];
@@ -7358,50 +7386,49 @@ window.tcIsDayShiftCode = value =>
         state.attendanceCalendarScopeLimitedV61462 = false;
       }
       if (!calendarEmpCodes.length) return [];
-      try {
-        // FIX16BO-R1: keep each canonical Schedule RPC comfortably below the
-        // Browser/PostgREST statement-timeout boundary. Batch by employee-day
-        // volume, not by returned-row paging, because the SQL function still
-        // computes its full employee set before PostgREST applies range().
-        const scheduleBatchSizeV616BOR1 = Math.max(10, Math.min(125, Math.floor(500 / dayCount)));
-        const scheduleBatchesV616BOR1 = [];
-        for (let i=0; i<calendarEmpCodes.length; i+=scheduleBatchSizeV616BOR1) {
-          scheduleBatchesV616BOR1.push(calendarEmpCodes.slice(i,i+scheduleBatchSizeV616BOR1));
+      // ATT-MONTH-R1: bounded, uncached reads. Do not silently fall back
+      // to partial persisted rows when the calendar cannot be loaded.
+      const calendarRows = [];
+      const orgId = selectedOrgIdV616M("attDepartment");
+      const department = orgId ? null : selectedLegacyDepartmentV616M("attDepartment");
+      async function readBatch(range,codes) {
+        const response = await state.client.rpc("ta_get_attendance_month_calendar_r1", {
+          p_start_date:range.start,p_end_date:range.end,
+          p_zone:val("attZone") || null,p_department:department,
+          p_org_id:orgId,p_emp_codes:codes
+        });
+        if (response.error) {
+          if (attendanceIsTimeout(response.error)) {
+            const chunks = attendanceChunkRanges(range.start,range.end,Math.max(1,Math.floor((Date.parse(range.end)-Date.parse(range.start))/172800000)));
+            if (range.start!==range.end && chunks.length>1) {
+              let result=[];
+              for (const c of chunks) result.push(...await readBatch(c,codes));
+              return result;
+            }
+            if(codes.length>1) {
+              const half=Math.ceil(codes.length/2);
+              return [...await readBatch(range,codes.slice(0,half)),...await readBatch(range,codes.slice(half))];
+            }
+          }
+          throw response.error;
         }
-        const rows = [];
-        const scheduleConcurrencyV616BOR1 = 3;
-        for (let i=0; i<scheduleBatchesV616BOR1.length; i+=scheduleConcurrencyV616BOR1) {
-          const group = scheduleBatchesV616BOR1.slice(i,i+scheduleConcurrencyV616BOR1);
-          const groupRows = await Promise.all(
-            group.map(batch => window.TimeClockShiftAPI.getMonthlySchedule(
-              window.TimeClockApp || { state },
-              {
-                p_month: month,
-                p_start_date: startDate,
-                p_end_date: endDate,
-                p_zone: val('attZone') || null,
-                p_department: val('attDepartment') || null,
-                p_emp_codes: batch,
-                p_schedule_statuses: null
-              }
-            ))
-          );
-          groupRows.forEach(batchRows => rows.push(...(Array.isArray(batchRows)?batchRows:[])));
-        }
-        const calendarRows = rows.map(row => ({ ...row }));
-        const period = { startDate, endDate, month: String(startDate).slice(0,7), viewMode:'ATTENDANCE', personDisplayMode:'MONTH' };
-        await Promise.all([
-          enrichScheduleWorkPlanMetaV6118(period, calendarRows),
-          window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(calendarRows)
-        ]);
-        const subArea = val('attSubArea');
-        return calendarRows
-          .filter(row => !subArea || String(row.sub_area || '') === String(subArea))
-          .map(attendanceScheduleSkeletonRowV61462);
-      } catch (error) {
-        console.warn('Attendance full-calendar V6.14.63 fallback to persisted rows:', error);
-        return [];
+        if(!Array.isArray(response.data)) throw new Error("ATT_MONTH_INVALID_RESPONSE");
+        return response.data;
       }
+      for (let i=0;i<calendarEmpCodes.length;i+=20) {
+        for (const range of attendanceChunkRanges(startDate,endDate,7)) {
+          calendarRows.push(...await readBatch(range,calendarEmpCodes.slice(i,i+20)));
+        }
+      }
+      const period = { startDate, endDate, month: String(startDate).slice(0,7), viewMode:'ATTENDANCE', personDisplayMode:'MONTH' };
+      // The schedule rows remain usable even when optional decorations fail.
+      const extras = await Promise.allSettled([
+        enrichScheduleWorkPlanMetaV6118(period, calendarRows.filter(r=>!r._tc_calendar_gap)),
+        window.TimeClockSchedulingRulesV6120?.enrichScheduleRows?.(calendarRows.filter(r=>!r._tc_calendar_gap))
+      ]);
+      if(extras.some(x=>x.status==='rejected')) console.warn("ATT_MONTH_OPTIONAL_PLAN_ENRICHMENT_FAILED");
+      const subArea=val("attSubArea");
+      return calendarRows.filter(row=>!subArea||String(row.sub_area||"")===String(subArea)).map(attendanceScheduleSkeletonRowV61462);
     }
 
     function mergeAttendanceCalendarRowsV61462(calendarRows, attendanceRows) {
@@ -7425,7 +7452,15 @@ window.tcIsDayShiftCode = value =>
           pattern_code: row.pattern_code || base.pattern_code || base.resolved_pattern_code || '',
           template_code: row.template_code || base.template_code || base.daily_work_template_code || base.effective_work_template_code || '',
           _attendance_calendar_row_v61462: Boolean(base._attendance_calendar_row_v61462),
-          _attendance_has_persisted_row_v61462: true
+          _attendance_has_persisted_row_v61462: true,
+          _tc_month_meta:base._tc_month_meta===true,
+          _tc_calendar_gap:base._tc_calendar_gap===true,
+          _tc_has_calc:base._tc_has_calc,
+          _tc_queue_pending:base._tc_queue_pending,
+          _tc_queue_blocked:base._tc_queue_blocked,
+          _tc_aw_updated:base._tc_aw_updated,
+          _tc_today_bkk:base._tc_today_bkk,
+          _tc_now_bkk:base._tc_now_bkk
         });
       });
       return [...merged.values()].sort((a,b) =>
@@ -7971,6 +8006,7 @@ window.tcIsDayShiftCode = value =>
           requestEmployeeCodes,
           persistedAttendanceRows
         );
+        if(requestId!==attendanceLoadRequestId) return;
         const mergedAttendanceRowsV61462 = mergeAttendanceCalendarRowsV61462(
           calendarRowsV61462,
           persistedAttendanceRows
@@ -8008,14 +8044,25 @@ window.tcIsDayShiftCode = value =>
           val("attEnd")
         );
 
-        state.attendance.forEach(
-          normalizeAttendanceStatusFromPunchesV61120
-        );
+        if(requestId!==attendanceLoadRequestId) return;
+        const knownNamesR1=new Map(state.attendance.filter(r=>r.full_name).map(r=>[r.emp_code,r.full_name]));
+        state.attendance.forEach(row=>{
+          if(!row.full_name && knownNamesR1.has(row.emp_code)) row.full_name=knownNamesR1.get(row.emp_code);
+          row._tc_month_view=true;
+          row._tc_readiness=attendanceMonthReadinessR1(row);
+          if(row._tc_readiness){
+            for(const field of ["net_work_minutes","regular_minutes","overtime_minutes","waiting_minutes","break_deducted_minutes","late_minutes","early_leave_minutes","absence_minutes","comp_off_balance"]) row[field]=null;
+            row.comp_off_earned=false;
+            row.absence_reason=null;
+          }
+          normalizeAttendanceStatusFromPunchesV61120(row);
+        });
 
         if (val("attStatus")) {
           const wantedStatus = String(val("attStatus") || '').toUpperCase();
           state.attendance = state.attendance.filter(row => {
             const flags = attendancePolicyFlagsV61428(row);
+            if (["PENDING_CALC","CALC_BLOCKED","IN_PROGRESS","COVERAGE_UNKNOWN","UPCOMING"].includes(wantedStatus)) return row._tc_readiness===wantedStatus;
             if (wantedStatus === 'ABSENCE') return flags.absence;
             if (wantedStatus === 'LATE') return flags.late;
             if (wantedStatus === 'EARLY_LEAVE') return flags.early;
@@ -8079,6 +8126,10 @@ window.tcIsDayShiftCode = value =>
         );
 
       } catch(error) {
+        if(requestId!==attendanceLoadRequestId) return;
+        state.attendance=[];
+        renderAttendance();
+        setAttendanceLoadStatusV616br("error","โหลดปฏิทินหรือข้อมูลสถานะไม่ครบ กรุณาค้นหาใหม่ (ไม่แสดงข้อมูลบางส่วนเป็นผลสมบูรณ์)");
         if(
           attendanceIsTimeout(
             error
@@ -22691,6 +22742,12 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
 
   function enhanceAttendance(){
     const page=$("page-attendance"); if(!page || $("attendanceEnterpriseTools")) return;
+    const statusSelect=$("attStatus");
+    if(statusSelect) for(const [value,label] of [["PENDING_CALC","รอประมวลผล"],["CALC_BLOCKED","ติดปัญหาการประมวลผล"],["IN_PROGRESS","ระหว่างวันทำงาน"],["COVERAGE_UNKNOWN","ยังยืนยันข้อมูลไม่ได้"],["UPCOMING","รอทำงาน"]]){
+      if(!Array.from(statusSelect.options).some(o=>o.value===value)){
+        const option=document.createElement("option");option.value=value;option.textContent=label;statusSelect.appendChild(option);
+      }
+    }
     const tablePanel=qs(".panel.section-gap",page);
     tablePanel?.insertAdjacentHTML(
       "beforebegin",
@@ -22703,6 +22760,7 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
             <div class="attendance-result-heading">
               <h3>สรุปผลการค้นหา</h3>
               <p>ข้อมูลตามช่วงวันที่และตัวกรองที่เลือก</p>
+              <p id="attendanceCoverageV61462" role="status" style="margin-top:6px;line-height:1.5;color:#526c87"></p>
             </div>
             <div class="field attendance-page-size-field">
               <label>จำนวนต่อหน้า</label>
@@ -22903,7 +22961,7 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
   }
   function attendanceRows(){
     const term=attGrid.search; let rows=[...(app()?.state?.attendance||[])];
-    if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,app()?.canonicalOrgNameV616Q?.(r)||r.department,app()?.canonicalOrgCodeV616Q?.(r),app()?.attendanceTeamLabelV616U?.(r)||"",app()?.attendanceCurrentTeamCompactLabelV616BB?.(r)||"",r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),statusLabel(attendanceStatus(r))].some(v=>String(v||"").toLowerCase().includes(term)));
+    if(term) rows=rows.filter(r=>[r.emp_code,r.full_name,app()?.canonicalOrgNameV616Q?.(r)||r.department,app()?.canonicalOrgCodeV616Q?.(r),app()?.attendanceTeamLabelV616U?.(r)||"",app()?.attendanceCurrentTeamCompactLabelV616BB?.(r)||"",r.zone,r.sub_area,r.pattern_code,r.template_code,r.day_type,codeOf(r),attendanceStatusText(r)].some(v=>String(v||"").toLowerCase().includes(term)));
     const key=attGrid.sortKey,dir=attGrid.sortDir==="asc"?1:-1;
     rows.sort((a,b)=>{let av,bv;if(key==="shift_start"){av=app()?.attendanceShiftTime?.(a,"start");bv=app()?.attendanceShiftTime?.(b,"start");}else if(key==="shift_end"){av=app()?.attendanceShiftTime?.(a,"end");bv=app()?.attendanceShiftTime?.(b,"end");}else if(key==="shift_code"){av=codeOf(a);bv=codeOf(b);}else if(key==="display_status"){av=attendanceStatus(a);bv=attendanceStatus(b);}else{av=a[key];bv=b[key];}if(typeof av==="number"||typeof bv==="number")return (Number(av||0)-Number(bv||0))*dir;return String(av||"").localeCompare(String(bv||""),"th")*dir;});
     return rows;
@@ -22992,15 +23050,15 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
             <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_in">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_in_at,2,"IN")||"-"}</td>
             <td class="attendance-punch-cell-v6119 shift-2" data-att-col="shift_2_out">${app()?.attendancePunchCellV6119?.(r.shift_2_actual_out_at,2,"OUT")||"-"}</td>
             <td data-att-col="display_status"><span class="fc-badge ${badgeClass}">${esc(attendanceStatusText(r))}</span></td>
-            <td data-att-col="net_work_minutes" class="text-right">${app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0) ?? "0.00"}</td>
-            <td data-att-col="regular_minutes" class="text-right">${app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0) ?? "0.00"}</td>
-            <td data-att-col="overtime_minutes" class="text-right calc-ot${optionalClass("overtime_minutes")}">${app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0) ?? "0.00"}</td>
-            <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0) ?? "0.00"}</td>
-            <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${(Number(r.break_deducted_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2})}</td>
-            <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${num(app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0))}</td>
-            <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${num(r.early_leave_minutes)}</td>
-            <td data-att-col="absence_minutes" class="text-right absence-value${optionalClass("absence_minutes")}">${num(attendanceAbsence(r))}</td>
-            <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${esc(comp)}</td>
+            <td data-att-col="net_work_minutes" class="text-right">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.net_work_minutes||0) ?? "0.00")}</td>
+            <td data-att-col="regular_minutes" class="text-right">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.regular_minutes||0) ?? "0.00")}</td>
+            <td data-att-col="overtime_minutes" class="text-right calc-ot${optionalClass("overtime_minutes")}">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.overtime_minutes||0) ?? "0.00")}</td>
+            <td data-att-col="waiting_minutes" class="text-right${optionalClass("waiting_minutes")}">${r._tc_readiness?"-":(app()?.attendanceMinutesToHourMinuteV61457?.(r.waiting_minutes||0) ?? "0.00")}</td>
+            <td data-att-col="break_deducted_minutes" class="text-right${optionalClass("break_deducted_minutes")}">${r._tc_readiness?"-":((Number(r.break_deducted_minutes||0)/60).toLocaleString("th-TH",{minimumFractionDigits:1,maximumFractionDigits:2}))}</td>
+            <td data-att-col="late_minutes" class="text-right${optionalClass("late_minutes")}">${r._tc_readiness?"-":(num(app()?.attendanceLateMinutesForDisplayV61456?.(r) ?? ((Number(r.late_minutes||0)>=1&&Number(r.late_minutes||0)<30)?Number(r.late_minutes||0):0)))}</td>
+            <td data-att-col="early_leave_minutes" class="text-right${optionalClass("early_leave_minutes")}">${r._tc_readiness?"-":(num(r.early_leave_minutes))}</td>
+            <td data-att-col="absence_minutes" class="text-right absence-value${optionalClass("absence_minutes")}">${r._tc_readiness?"-":(num(attendanceAbsence(r)))}</td>
+            <td data-att-col="comp_off_balance" class="${optionalClass("comp_off_balance")}">${r._tc_readiness?"-":(esc(comp))}</td>
           </tr>`;
         }).join("")
       : `<tr><td colspan="28" class="fc-empty">${
@@ -23044,7 +23102,12 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
       const uniqueDays=new Set(all.map(r=>String(r.work_date||"").slice(0,10))).size;
       const uniqueEmployees=new Set(all.map(r=>String(r.emp_code||"")).filter(Boolean)).size;
       const noPunch=all.filter(r=>!app()?.attendancePolicyFlagsV61428?.(r)?.punchState?.anyPunch).length;
-      coverageEl.textContent=`${uniqueDays.toLocaleString("th-TH")} วัน • ${uniqueEmployees.toLocaleString("th-TH")} คน • ไม่มีการลงเวลา ${noPunch.toLocaleString("th-TH")} รายการ`;
+      const dates=all.filter(r=>r._tc_has_calc===true).map(r=>String(r.work_date).slice(0,10)).sort();
+      const clear=all.filter(r=>r._tc_has_calc===true&&!r._tc_readiness).map(r=>String(r.work_date).slice(0,10)).sort();
+      const pending=all.filter(r=>["PENDING_CALC","CALC_BLOCKED"].includes(r._tc_readiness)).length;
+      const unknown=all.filter(r=>r._tc_readiness==="COVERAGE_UNKNOWN").length;
+      const daysExpected=Math.round((Date.parse($("attEnd")?.value)-Date.parse($("attStart")?.value))/86400000)+1;
+      coverageEl.textContent=`${uniqueDays} วัน • ${uniqueEmployees} คน • รอ/ติดคิว ${pending} • ยังยืนยันไม่ได้ ${unknown} • ล่าสุดมีผล ${dates.length?fmtDate(dates[dates.length-1]):"-"} • มีผลและไม่ติด GF ล่าสุด ${clear.length?fmtDate(clear[clear.length-1]):"-"}`+(uniqueEmployees===1&&uniqueDays<daysExpected?` • แสดง ${uniqueDays}/${daysExpected} วัน (ตรวจช่วงสิทธิ์/ตัวกรอง)`:"");
     }
 
     $("attPageInfo").textContent=
@@ -23334,6 +23397,7 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
       ?? 0;
 
     const issueNotes=[];
+    if(row._tc_readiness && row._tc_readiness!=="UPCOMING") issueNotes.push("ยังไม่ใช่ผลคำนวณสุดท้าย • เวลาหรือยอดในรายละเอียดอาจเป็นข้อมูลเดิม");
     const attendanceFlagsV61428 = app()?.attendancePolicyFlagsV61428?.(row);
     if(attendanceFlagsV61428?.absenceByLate){
       issueNotes.push(`ขาดงาน • เข้าหลังเริ่มกะ ${num(late)} นาที`);
@@ -23836,6 +23900,9 @@ console.info("[TimeClock] FIX16BS Acting Manager Admin Center shortcut active");
   async function openAttendanceDetail(key){
     const row=attendanceDetailRow(key);
     if(!row)return;
+    if(row._tc_readiness && row._tc_readiness!=="UPCOMING"){
+      app()?.toast?.("ผลคำนวณรายวันนี้ยังไม่ยืนยัน ข้อมูลในรายละเอียดอาจเป็นผลเดิม","warning");
+    }
 
     attendanceDetailCurrentKey=key;
     const requestId=++attendanceDetailRequestId;
