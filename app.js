@@ -3999,6 +3999,7 @@ window.tcIsDayShiftCode = value =>
     ) {
       attendanceEmployeeFilter.loadedKey =
         null;
+      attendanceEmployeeFilter.loading = false;
 
       attendanceEmployeeFilter.options =
         [];
@@ -4034,6 +4035,8 @@ window.tcIsDayShiftCode = value =>
         : new Set();
 
       const cacheKey = attendanceEmployeeFilterKey();
+      const hierarchyRequestR1 = attendanceHierarchyRequestR1;
+      const isCurrentR1 = () => hierarchyRequestR1 === attendanceHierarchyRequestR1 && cacheKey === attendanceEmployeeFilterKey();
       attendanceEmployeeFilter.loading = true;
       renderAttendanceEmployeeDropdown();
 
@@ -4129,12 +4132,14 @@ window.tcIsDayShiftCode = value =>
           }
         }
 
+        if (!isCurrentR1()) return;
         attendanceEmployeeFilter.options =
           rows;
 
         attendanceEmployeeFilter.loadedKey =
           cacheKey;
       } catch (error) {
+        if (!isCurrentR1()) return;
         attendanceEmployeeFilter.options =
           fallbackAttendanceEmployeeOptions();
 
@@ -4171,6 +4176,7 @@ window.tcIsDayShiftCode = value =>
           );
         }
       } finally {
+        if (!isCurrentR1()) return;
         const available = new Set(
           attendanceEmployeeFilter.options.map(
             employee => employee.emp_code
@@ -4255,7 +4261,18 @@ window.tcIsDayShiftCode = value =>
       );
     }
 
+    // FIX16 ATT-FILTER-R1 — keep each child list inside its selected parent.
+    let attendanceHierarchyRequestR1 = 0;
+    function attendanceNarrowOrgContractR1(contract,area,subArea="") {
+      if (!contract?.strict) return contract;
+      const a=orgScopeNormalizeV616L(area), b=orgScopeNormalizeV616L(subArea);
+      return {...contract,units:(contract.units || []).filter(unit=>
+        (!a || [unit?.area,unit?.zone].map(orgScopeNormalizeV616L).includes(a)) &&
+        (!b || orgScopeNormalizeV616L(unit?.sub_area)===b)
+      )};
+    }
     async function loadAttendanceFilterOptions(preserve = true) {
+      const requestId = ++attendanceHierarchyRequestR1;
       const oldArea = preserve ? String(val("attZone") || "") : "";
       const oldSubArea = preserve ? String(val("attSubArea") || "") : "";
       const oldDepartment = preserve ? String(val("attDepartment") || "") : "";
@@ -4311,35 +4328,36 @@ window.tcIsDayShiftCode = value =>
           );
         }
 
+        const areaContractR1 = attendanceNarrowOrgContractR1(orgContractV616L,effectiveArea);
         let subAreas = scopedLocationValuesV616L(
-          Array.isArray(f.sub_areas) ? f.sub_areas : [],
-          orgContractV616L,
+          areaContractR1?.strict ? [] : (Array.isArray(f.sub_areas) ? f.sub_areas : []),
+          areaContractR1,
           ["sub_area"]
         );
         let departments = Array.isArray(f.departments) ? f.departments : [];
 
-        // Employee options are the most concrete scope source for the hierarchy.
-        // Use them to remove impossible Area/Sub-area/Department combinations.
-        if (effectiveArea) {
+        // Canonical Org Master drives strict scopes, including zero-row units.
+        // Only legacy scopes need an employee-based hierarchy lookup.
+        if (effectiveArea && !areaContractR1?.strict) {
           try {
             const areaEmployees = await attendanceHierarchyEmployeesV616K(effectiveArea,null);
             const derivedSubAreas = [...new Set(areaEmployees.map(r => r.sub_area).filter(Boolean))]
               .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
             const derivedDepartments = [...new Set(areaEmployees.map(r => r.department).filter(Boolean))]
               .sort((a,b)=>a.localeCompare(b,"th",{numeric:true}));
-            if (derivedSubAreas.length) subAreas = derivedSubAreas;
-            if (areaEmployees.length) departments = derivedDepartments;
+            subAreas = derivedSubAreas;
+            departments = derivedDepartments;
           } catch (hierarchyError) {
             console.warn("Attendance scope hierarchy area FIX16K:",hierarchyError);
           }
         }
 
-        subAreas = scopedLocationValuesV616L(subAreas,orgContractV616L,["sub_area"]);
+        subAreas = scopedLocationValuesV616L(subAreas,areaContractR1,["sub_area"]);
         let effectiveSubArea = oldSubArea && subAreas.some(v => String(v) === oldSubArea)
           ? oldSubArea
           : "";
 
-        if (effectiveArea && effectiveSubArea) {
+        if (effectiveSubArea && !areaContractR1?.strict) {
           try {
             const subEmployees = await attendanceHierarchyEmployeesV616K(effectiveArea,effectiveSubArea);
             departments = [...new Set(subEmployees.map(r => r.department).filter(Boolean))]
@@ -4362,14 +4380,16 @@ window.tcIsDayShiftCode = value =>
         }
 
         areas = scopedLocationValuesV616L(areas,orgContractV616L,["area","zone"]);
-        subAreas = scopedLocationValuesV616L(subAreas,orgContractV616L,["sub_area"]);
+        subAreas = scopedLocationValuesV616L(subAreas,areaContractR1,["sub_area"]);
         effectiveArea = effectiveArea && areas.includes(effectiveArea) ? effectiveArea : "";
         effectiveSubArea = effectiveSubArea && subAreas.includes(effectiveSubArea) ? effectiveSubArea : "";
+        const departmentContractR1 = attendanceNarrowOrgContractR1(orgContractV616L,effectiveArea,effectiveSubArea);
         const attendanceDepartmentOptionsV616L = scopedDepartmentOptionsV616L(
           departments,
-          orgContractV616L,
+          departmentContractR1,
           {area:effectiveArea,sub_area:effectiveSubArea}
         );
+        if (requestId !== attendanceHierarchyRequestR1) return;
         departments = attendanceDepartmentOptionsV616L.map(option => String(option?.label || option?.value || '').trim()).filter(Boolean);
 
         state.filters.attendance = {
@@ -4397,10 +4417,11 @@ window.tcIsDayShiftCode = value =>
         }
         setVal("attDepartment",effectiveDepartment);
       } catch (err) {
+        if (requestId !== attendanceHierarchyRequestR1) return;
         toast(`โหลดตัวกรองรายละเอียดเวลาไม่สำเร็จ: ${humanError(err)}`, "error");
       }
 
-      invalidateAttendanceEmployeeOptions(preserve);
+      if (requestId === attendanceHierarchyRequestR1) invalidateAttendanceEmployeeOptions(preserve);
     }
 
     function fillSearchableAttendanceFilter(
@@ -18189,6 +18210,9 @@ window.tcIsDayShiftCode = value =>
           attendanceRejectOutOfScopeValueV616K("attZone","พื้นที่");
           setVal("attSubArea","");
           setVal("attDepartment","");
+          fillSearchableAttendanceFilter("attSubArea","attSubAreaOptions",[],"ทุกพื้นที่ย่อย");
+          fillSearchableDepartmentIdentityV616M("attDepartment","attDepartmentOptions",[],"ทุกหน่วยงานใน Scope");
+          invalidateAttendanceEmployeeOptions(false);
           await loadAttendanceFilterOptions(true);
           if (attendanceRealRoleV616br() === "HR_ADMIN") {
             if (!attendanceHrHasIntentionalFilterV616br()) prepareAttendanceFilterFirstV616br();
@@ -18201,6 +18225,8 @@ window.tcIsDayShiftCode = value =>
         async () => {
           attendanceRejectOutOfScopeValueV616K("attSubArea","พื้นที่ย่อย");
           setVal("attDepartment","");
+          fillSearchableDepartmentIdentityV616M("attDepartment","attDepartmentOptions",[],"ทุกหน่วยงานใน Scope");
+          invalidateAttendanceEmployeeOptions(false);
           await loadAttendanceFilterOptions(true);
           if (attendanceRealRoleV616br() === "HR_ADMIN") {
             if (!attendanceHrHasIntentionalFilterV616br()) prepareAttendanceFilterFirstV616br();
