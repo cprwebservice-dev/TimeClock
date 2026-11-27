@@ -18000,11 +18000,15 @@ window.tcIsDayShiftCode = value =>
           "error"
         );
       }
+      if (page === "admin-texttime-monitor" && !window.TimeClockTextTimeMonitorV616GM06E?.mount?.()) {
+        return toast("TextTime Monitor ยังไม่พร้อม กรุณาลองเปิดเมนูอีกครั้ง", "warning");
+      }
       state.currentPage = page;
       qsa(".page").forEach(x => x.classList.toggle("active", x.id === `page-${page}`));
       qsa(".nav-item").forEach(x => x.classList.toggle("active", x.dataset.page === page));
       const titles = {
         dashboard:["Dashboard","ภาพรวมการลงเวลาและการจัดกะ"], attendance:["รายละเอียดเวลาทำงาน","ตรวจเวลาเข้า–ออกและผลการคำนวณ"], "shift-requests":["คำขอ / แจ้งข้อมูล","คำขอแก้ไขกะ • ปัญหาเวลา • งานกะพิเศษ และ Manager พิจารณาตามสายบังคับบัญชา"], "team-master":["ทีมช่างเทคนิค","สร้าง Team Master แบบ Auto Generate ตามหน่วยงานใน Scope ของ Manager"], "team-portal":["สมาชิกทีม / Portal","จัดการ QR/Link, Activation Code และ Reset PIN ของลูกทีม"], schedule:["ปฏิทินจัดกะ","สลับดูภาพรวมรายหน่วยงานหรือจัดกะรายบุคคลได้ในหน้าเดียว"], "work-patterns":["รูปแบบการทำงาน","จัดกลุ่ม 5/6 วัน และกะตั้งต้นเช้า/ดึกแบบหลายคน พร้อม Override รายบุคคล"], report:["ศูนย์รายงาน","สร้างและส่งออกรายงานจากข้อมูล Time-Clock"],
+        "admin-texttime-monitor":["TextTime Monitor","ติดตาม TextTime Batch, Resolver, Apply และ Attendance Queue"],
         "admin-center":["HR Admin Center","ศูนย์บริหารและตรวจสอบสถานะระบบ"], "admin-health":["System Health","ตรวจสุขภาพระบบและการตั้งค่าหลักแบบ Read-only"], "admin-periods":["จัดการรอบระบบ","กำหนด Deadline การจัดกะและรับรองเวลาทำงานประจำเดือน"], "admin-certification-reasons":["เหตุผลรับรองเวลา","HR Admin จัดการเหตุผลที่ใช้ใน Time Certification"], "admin-attendance-rebuild":["ประมวลผล Attendance","ประมวลผลใหม่ตามช่วงวันที่ พร้อม Progress และ Error Log"], "admin-shifts":["ตั้งค่ากะทำงาน","จัดการข้อมูลกะมาตรฐาน"], "system-settings":["System Settings","ตั้งค่าระบบและ Developer Console"], "admin-holidays":["วันหยุดนักขัตฤกษ์","จัดการวันหยุดและประมวลผล Attendance"], "admin-org":["ผังโครงสร้างองค์กร","จัดการหน่วยงาน Manager และ Scope ตามลำดับชั้น"], "admin-accounts":["จัดการบัญชีผู้ใช้งาน","สร้างบัญชี กำหนด Role และติดตาม First Login"], "admin-employee-portal":["Employee Portal","เปิด/ระงับสิทธิ์ Portal ให้พนักงานแบบ Bulk โดยไม่ต้องมี Email"], "admin-users":["User และสิทธิ์","กำหนด Role และ Manager Scope ด้วย Email"], "admin-import":["นำเข้าพนักงาน","ตรวจสอบและนำเข้าข้อมูล CSV"], "admin-time-import":["นำเข้าข้อมูลลงเวลา CSV","นำเข้า EmployeeId วันที่ เวลา เข้า/ออก และ GPS จาก CSV UTF-8"]
       };
       setText("pageTitle", titles[page]?.[0] || page);
@@ -18053,6 +18057,11 @@ window.tcIsDayShiftCode = value =>
           ?.load?.();
       }
 
+      if (page === "admin-texttime-monitor") window.TimeClockTextTimeMonitorV616GM06E?.activate?.();
+      if (page === "admin-center") {
+        window.TimeClockTextTimeMonitorV616GM06E?.mount?.();
+        window.TimeClockTextTimeMonitorV616GM06E?.refreshSummary?.(true);
+      }
       if (page === "admin-health") window.TimeClockSystemHealthV616CW?.load?.();
       if (page === "admin-periods") window.TimeClockSystemPeriods?.load?.();
       if (page === "admin-shifts") loadShiftMaster();
@@ -45642,15 +45651,26 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
   let loading = false;
   let timer = null;
   let lastLoadAt = null;
+  let sessionKey = "";
+  let generation = 0;
+  let pendingFull = false;
+  let requestLimit = 0;
+  let mountRetry = null;
+  let mountAttempts = 0;
 
-  function profileRole() {
-    const p = app()?.state?.profile || {};
-    return String(p._realRole || p.role || "VIEWER").toUpperCase();
+  function authorizedKey() {
+    const st = app()?.state;
+    const p = st?.profile;
+    if (!st?.client || !st?.session?.access_token || !st?.user?.id || !p?.is_active) return "";
+    if (st.session.user?.id !== st.user.id || p.user_id !== st.user.id) return "";
+    if (String(p._realRole || p.role || "").toUpperCase() !== "HR_ADMIN" ||
+        String(p.role || "").toUpperCase() !== "HR_ADMIN") return "";
+    return String(st.user.id);
   }
 
-  function isHrAdmin() {
-    return profileRole() === "HR_ADMIN";
-  }
+  function isHrAdmin() { return !!authorizedKey(); }
+  function monitorActive() { return !!$(`page-${PAGE}`)?.classList.contains("active"); }
+  function centerActive() { return !!$("page-admin-center")?.classList.contains("active"); }
 
   function dateTime(value) {
     if (!value) return "-";
@@ -45881,7 +45901,7 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
         </div>
         <div class="ttm-hero-actions">
           <button type="button" class="btn btn-light" id="ttmRefreshBtn">รีเฟรช</button>
-          <button type="button" class="btn ttm-danger" id="ttmPauseBtn">Pause Automation</button>
+          <button type="button" class="btn ttm-danger" id="ttmPauseBtn" disabled>Pause Automation</button>
         </div>
       </div>
 
@@ -45934,22 +45954,25 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
     $("ttmPauseBtn")?.addEventListener("click", pauseAutomation);
   }
 
+  // FIX16-TTM-NAV-R1: structural mount only; no RPC during auth bootstrap.
   function mount() {
-    if (!isHrAdmin()) return;
+    if (!isHrAdmin()) return false;
     injectStyle();
     ensureNav();
     ensureAdminCenterCards();
     ensurePage();
-    refreshAdminSummary(true);
+    $("textTimeMonitorNavV616GM06E")?.classList.remove("hidden");
+    return !!$(`page-${PAGE}`);
   }
 
   function openPage() {
     if (!isHrAdmin()) return app()?.toast?.("เมนูนี้สำหรับ HR_ADMIN เท่านั้น","error");
-    mount();
     app()?.switchPage?.(PAGE);
-    if ($("pageTitle")) $("pageTitle").textContent = "TextTime Monitor";
-    if ($("pageSubtitle")) $("pageSubtitle").textContent = "ติดตาม TextTime Batch, Resolver, Apply และ Attendance Queue";
-    loadMonitor();
+  }
+
+  function activate() {
+    if (!mount()) return;
+    loadMonitor({quiet:true});
   }
 
   async function rpc(name,args={}) {
@@ -46329,48 +46352,59 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
   }
 
   async function loadMonitor({quiet=false,limit=30}={}) {
-    if (!isHrAdmin() || loading) return;
+    const key = authorizedKey();
+    if (!key || !mount()) return;
+    if (loading) {
+      if (limit > requestLimit) pendingFull = true;
+      return;
+    }
     loading = true;
-    if (!quiet) app()?.showLoading?.("กำลังโหลด TextTime Monitor...");
+    requestLimit = limit;
+    const requestGeneration = generation;
+    const valid = () => requestGeneration === generation && authorizedKey() === key;
+    if (limit > 5 && $("ttmRefreshBtn")) $("ttmRefreshBtn").disabled = true;
     try {
       const data = await rpc(RPC_MONITOR,{p_limit:limit});
+      if (!valid()) return;
       cache = Array.isArray(data) ? data[0] : data;
-      render(cache || {});
+      if (limit > 5) render(cache || {});
+      else renderSummary(cache || {});
     } catch (error) {
+      if (!valid()) return;
       const message = app()?.humanError?.(error) || error?.message || String(error);
-      if ($("ttmHeroHealth")) $("ttmHeroHealth").innerHTML = pill("FAIL","โหลดไม่สำเร็จ");
+      if (limit > 5 && $("ttmHeroHealth")) $("ttmHeroHealth").innerHTML = pill("FAIL","โหลดไม่สำเร็จ");
+      if (limit > 5 && $("ttmLastRefresh")) $("ttmLastRefresh").textContent = `โหลดไม่สำเร็จ: ${message} • กดรีเฟรชเพื่อลองใหม่`;
       if ($("adminTextTimeHealth")) $("adminTextTimeHealth").textContent = "Error";
       if ($("adminTextTimeHealthSub")) $("adminTextTimeHealthSub").textContent = message;
       if (!quiet) app()?.toast?.(message,"error");
     } finally {
-      loading = false;
-      if (!quiet) app()?.hideLoading?.();
+      if (requestGeneration === generation) {
+        loading = false;
+        requestLimit = 0;
+        if ($("ttmRefreshBtn")) $("ttmRefreshBtn").disabled = false;
+        const runFull = pendingFull;
+        pendingFull = false;
+        if (runFull && valid() && monitorActive()) loadMonitor({quiet:true});
+      }
     }
   }
 
-  async function refreshAdminSummary(quiet=true) {
-    if (!isHrAdmin()) return;
-    try {
-      const data = await rpc(RPC_MONITOR,{p_limit:5});
-      cache = Array.isArray(data) ? data[0] : data;
-      renderSummary(cache || {});
-    } catch (error) {
-      if ($("adminTextTimeHealth")) $("adminTextTimeHealth").textContent = "Error";
-      if ($("adminTextTimeHealthSub")) $("adminTextTimeHealthSub").textContent = app()?.humanError?.(error) || error?.message || "โหลดไม่ได้";
-      if (!quiet) app()?.toast?.(app()?.humanError?.(error) || error?.message || String(error),"error");
-    }
+  function refreshAdminSummary(quiet=true) {
+    if (!centerActive()) return;
+    return loadMonitor({quiet,limit:5});
   }
 
   async function pauseAutomation() {
     const a = cache?.automation || {};
-    if (!a.is_enabled) return;
+    const key = authorizedKey();
+    if (!key || !a.is_enabled) return;
     const ok = window.confirm(
       "Pause TextTime Automation?\n\nระบบจะหยุดการประมวลผลรอบถัดไป แต่จะไม่ย้อนกลับข้อมูลที่ Apply ไปแล้ว และไม่มีปุ่ม Resume ในหน้านี้"
     );
     if (!ok) return;
 
     const reason = window.prompt("ระบุเหตุผลที่ Pause (แนะนำ)", "Pause จาก TextTime Monitor");
-    if (reason === null) return;
+    if (reason === null || authorizedKey() !== key) return;
 
     app()?.showLoading?.("กำลัง Pause TextTime Automation...");
     try {
@@ -46387,54 +46421,61 @@ body.theme-dark .employee-month-borrow-scope-banner-v61529f15l>div>span,body.the
   function startTimer() {
     if (timer) return;
     timer = window.setInterval(() => {
-      if ($(`page-${PAGE}`)?.classList.contains("active")) {
-        loadMonitor({quiet:true});
-      } else if ($("page-admin-center")?.classList.contains("active")) {
-        refreshAdminSummary(true);
-      }
+      if (!isHrAdmin() || document.visibilityState === "hidden") return;
+      if (monitorActive()) loadMonitor({quiet:true});
+      else if (centerActive()) refreshAdminSummary(true);
     },REFRESH_MS);
   }
 
-  function bindAdminCenterRefresh() {
-    $("adminCenterRefreshBtn")?.addEventListener("click",() => {
-      window.setTimeout(() => refreshAdminSummary(true),100);
-    });
-    document.querySelector('.nav-item[data-page="admin-center"]')?.addEventListener("click",() => {
-      window.setTimeout(() => {
-        mount();
-        refreshAdminSummary(true);
-      },50);
-    });
+  function clearSessionUI() {
+    generation++;
+    loading = false;
+    requestLimit = 0;
+    pendingFull = false;
+    cache = null;
+    lastLoadAt = null;
+    if (timer) window.clearInterval(timer);
+    timer = null;
+    if (mountRetry) window.clearTimeout(mountRetry);
+    mountRetry = null;
+    mountAttempts = 0;
+    ["textTimeMonitorNavV616GM06E","adminTextTimeHealthCard","adminTextTimeModuleV616GM06E",`page-${PAGE}`].forEach(id => $(id)?.remove());
   }
 
-  function boot() {
-    window.setTimeout(() => {
-      if (isHrAdmin()) {
-        mount();
-        bindAdminCenterRefresh();
-        startTimer();
-      }
-    },250);
+  function syncLifecycle() {
+    const key = authorizedKey();
+    if (key !== sessionKey) {
+      clearSessionUI();
+      sessionKey = key;
+    }
+    if (!key) {
+      if (app()?.state?.session && app()?.state?.currentPage === PAGE) app()?.switchPage?.("dashboard");
+      return;
+    }
+    mount();
+    startTimer();
+    // Retry only for missing DOM anchors; never poll auth or call RPC at boot.
+    if ((!$(`page-${PAGE}`) || !$("textTimeMonitorNavV616GM06E")) && !mountRetry && mountAttempts < 20) {
+      mountAttempts++;
+      mountRetry = window.setTimeout(() => { mountRetry = null; syncLifecycle(); },250);
+    }
   }
 
-  window.addEventListener("ta:session-ready",() => {
-    window.setTimeout(() => {
-      if (isHrAdmin()) {
-        mount();
-        bindAdminCenterRefresh();
-        startTimer();
-      }
-    },50);
+  // Listen to the real profile completion event, including a slow cold login.
+  document.addEventListener("timeclock:profile-ready",syncLifecycle);
+  document.addEventListener("timeclock:effective-role-changed",syncLifecycle);
+  window.addEventListener("ta:session-ready",syncLifecycle);
+  window.addEventListener("timeclock:auth-refreshed",syncLifecycle);
+  window.addEventListener("timeclock:auth-signed-out",() => { clearSessionUI(); sessionKey = ""; });
+  document.addEventListener("click",e => {
+    if (e.target?.closest?.("#adminCenterRefreshBtn")) refreshAdminSummary(true);
   });
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded",boot,{once:true});
-  } else {
-    boot();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",syncLifecycle,{once:true});
+  else syncLifecycle();
 
   window.TimeClockTextTimeMonitorV616GM06E = {
     mount,
+    activate,
     load:loadMonitor,
     refreshSummary:refreshAdminSummary,
     open:openPage
@@ -47403,3 +47444,5 @@ console.info("[TimeClock] FIX16BT-R1 User Account candidate search complete-resu
 console.info("[TimeClock] FIX16BV Canonical employee scope pagination active");
 
 console.info("[TimeClock] HOLIDAY-R1 queued holiday mutations active");
+
+console.info("[TimeClock] FIX16-TTM-NAV-R1 profile-ready menu lifecycle active");
